@@ -16187,13 +16187,60 @@ impl Runtime {
                 if request.method != "GET" && request.method != "HEAD" {
                     return Response::error(404, "plexsim: not found");
                 }
-                Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([("Metadata".to_string(), Value::Array(Vec::new()))]),
-                        false,
-                    ),
-                )
+                // Measured: both are candidate lists in the tag container, EMPTY for an
+                // item with none.  Cycle 59: an UPLOAD is a candidate here, selected
+                // while the row carries it.
+                let field = if tail[0] == "clearLogos" { "clearLogo" } else { "theme" };
+                let owned = if field == "clearLogo" {
+                    row.get("_clearLogo").is_some_and(|value| !value.is_null())
+                } else {
+                    artwork::owns_field(Some(row), "theme")
+                };
+                let current = owned
+                    .then(|| row.get(&format!("_{field}_url")).and_then(Value::as_str).map(str::to_string))
+                    .flatten();
+                let entries = row
+                    .get("_uploads")
+                    .and_then(|uploads| uploads.get(field))
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                    .map(|upload| {
+                        let path = artwork::candidate_path(key, upload);
+                        json!({"key": path, "ratingKey": upload, "thumb": path,
+                               "selected": current.as_deref() == Some(upload)})
+                    })
+                    .collect::<Vec<_>>();
+                let mut fields = Map::new();
+                fields.insert("size".to_string(), json!(entries.len()));
+                fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+                fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+                fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
+                if !entries.is_empty() {
+                    fields.insert("Metadata".to_string(), Value::Array(entries));
+                }
+                Response::json(200, self.container(fields, false))
+            }
+            "theme" | "clearLogo" => {
+                // Cycle 59: an UPLOADED theme or logo is served from the row that owns
+                // it; cycle 60: only a READ serves it, and anything else is the 404.
+                let owned = if tail[0] == "clearLogo" {
+                    row.get("_clearLogo").is_some_and(|value| !value.is_null())
+                } else {
+                    artwork::owns_field(Some(row), "theme")
+                };
+                let stored = row.get(&format!("_{}_url", tail[0])).and_then(Value::as_str);
+                match stored.and_then(|url| self.uploads.get(url)) {
+                    Some((body, content_type))
+                        if owned && matches!(request.method.as_str(), "GET" | "HEAD") =>
+                    {
+                        let mut response = Response::bytes(200, content_type.clone());
+                        response.body = body.clone();
+                        response
+                    }
+                    _ => Response::error(404, "plexsim: not found"),
+                }
             }
             "art" | "thumb" | "poster" => self.route_art(key, row, tail, query, request),
             "file" => {
