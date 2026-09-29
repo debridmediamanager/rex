@@ -349,6 +349,9 @@ pub struct Runtime {
     timeline_offsets: HashMap<(String, String), i64>,
     completed_sessions: HashSet<(String, String)>,
     completion_pending_stop: HashSet<(String, String)>,
+    /// The (session, ratingKey) pairs whose session has reported a position past
+    /// the minute: only those delete the resume point with a sub-minute beat.
+    progressed: HashSet<(String, String)>,
     pub hidden_continue: HashSet<String>,
     /// Leaves completed in a PLAYBACK SESSION (Python's `_viewedInSession`): history,
     /// not view state, so a later scrobble or unscrobble leaves it standing.
@@ -470,6 +473,7 @@ impl Runtime {
             timeline_offsets: HashMap::new(),
             completed_sessions: HashSet::new(),
             completion_pending_stop: HashSet::new(),
+            progressed: HashSet::new(),
             hidden_continue: HashSet::new(),
             viewed_in_session: HashSet::new(),
             spelling: None,
@@ -7187,6 +7191,115 @@ impl Runtime {
         Response::empty(200)
     }
 
+    /// library.progress with `completes=True` -- a `/:/timeline` beat's
+    /// view-state half, measured on half-hour media.
+    ///
+    /// The resume point: a position past a minute and outside the last tenth is
+    /// stored (a beat with no `duration` stores nothing), and a beat at or under
+    /// a minute DELETES it, but only inside a session that already passed the
+    /// minute (cycle 58).  A beat at exactly the stored position writes nothing.
+    /// The completion is a CROSSING (cycles 45/70): this session's previous
+    /// non-zero position was under 90% and this one is at `(duration * 9) // 10`
+    /// or past -- then the view counts once per session, stamps `lastViewedAt`,
+    /// writes a history row, bumps the parents, and (cycle 57) records that the
+    /// view came from a playback session.
+    fn library_progress(
+        &mut self,
+        key: &str,
+        offset: Option<i64>,
+        total: i64,
+        device_id: i64,
+        session: &str,
+        completes: bool,
+    ) {
+        let Some(row) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        let pair = (session.to_string(), key.to_string());
+        let stored = row.get("viewOffset").and_then(Value::as_i64);
+        let unmoved = offset.is_some() && stored.is_some() && offset == stored;
+        if let Some(offset) = offset.filter(|_| !unmoved) {
+            self.hidden_continue.remove(key);
+            if row.get("type").and_then(Value::as_str) == Some("episode") {
+                let show = row.get("grandparentRatingKey").map(string_value);
+                let siblings = self
+                    .catalog
+                    .items
+                    .iter()
+                    .filter(|other| other.get("grandparentRatingKey").map(string_value) == show)
+                    .filter_map(key_of)
+                    .collect::<Vec<_>>();
+                for sibling in siblings {
+                    self.hidden_continue.remove(&sibling);
+                }
+            }
+            let near_end = completes && total > 0 && (offset as f64) >= total as f64 * 0.9;
+            if (total > 0 || !completes) && offset > 60000 && !near_end {
+                let stamp = now();
+                self.update_view(key, "viewOffset", Some(json!(offset)));
+                self.update_view(key, "lastViewedAt", Some(json!(stamp)));
+                let mut stamped = vec![key.to_string()];
+                stamped.extend(self.parent_keys(key));
+                self.stamp_view(&stamped);
+                for name in ["parentRatingKey", "grandparentRatingKey"] {
+                    if let Some(parent) = row.get(name).map(string_value) {
+                        self.update_view(&parent, "lastViewedAt", Some(json!(stamp)));
+                    }
+                }
+            } else if total > 0 && offset <= 60000 && self.progressed.contains(&pair) {
+                self.update_view(key, "viewOffset", None);
+            }
+        }
+        let position = offset.or(stored).unwrap_or(0);
+        let seen = self.timeline_offsets.get(&pair).copied();
+        if offset.is_some() && total > 0 {
+            self.timeline_offsets.insert(pair.clone(), position);
+            if position > 60000 {
+                self.progressed.insert(pair.clone());
+            }
+        }
+        let crossed = seen.is_some_and(|seen| seen > 0 && (seen as f64) < total as f64 * 0.9) && total > 0;
+        if completes && crossed && position >= total.saturating_mul(9) / 10 {
+            let completed = self.catalog.get(key).and_then(|row| row.get("_completed")).and_then(Value::as_str).map(str::to_string);
+            if completed.as_deref() != Some(session) {
+                let stamp = now();
+                let count = self.catalog.get(key).and_then(|row| row.get("viewCount")).and_then(Value::as_i64).unwrap_or(0);
+                if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                    object.insert("_completed".to_string(), json!(session));
+                    object.remove("_completionStopped");
+                }
+                self.update_view(key, "viewCount", Some(json!(count + 1)));
+                self.viewed_in_session.insert(key.to_string());
+                self.update_view(key, "viewOffset", None);
+                self.update_view(key, "lastViewedAt", Some(json!(stamp)));
+                let mut stamped = vec![key.to_string()];
+                stamped.extend(self.parent_keys(key));
+                self.stamp_view(&stamped);
+                if let Some(current) = self.catalog.get(key).cloned() {
+                    self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
+                    let history = self.history_row_for_device(&current, device_id);
+                    self.history.push(history);
+                }
+                for name in ["parentRatingKey", "grandparentRatingKey"] {
+                    let Some(parent) = row.get(name).map(string_value) else {
+                        continue;
+                    };
+                    if self.catalog.get(&parent).is_none() {
+                        continue;
+                    }
+                    let previous = self.catalog.get(&parent).and_then(|p| p.get("viewCount")).and_then(Value::as_i64).unwrap_or(0);
+                    self.update_view(&parent, "viewCount", Some(json!(previous + 1)));
+                    self.update_view(&parent, "lastViewedAt", Some(json!(stamp)));
+                }
+            }
+        } else if offset.is_some_and(|offset| total > 0 && (offset as f64) < total as f64 * 0.9) {
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                object.remove("_completed");
+                object.remove("_completionStopped");
+            }
+        }
+    }
+
     /// library.progress with `completes=False`: `/:/progress` never completes a
     /// play, and stores any position past a minute as the resume point.  A beat
     /// at exactly the stored position writes nothing (cycle 58).
@@ -7203,26 +7316,7 @@ impl Runtime {
             self.dirty = true;
             return;
         }
-        let stored = self.catalog.get(key).and_then(|row| row.get("viewOffset")).and_then(Value::as_i64);
-        if stored == Some(position) {
-            return;
-        }
-        // A timeline puts the row back in Continue Watching.
-        self.hidden_continue.remove(key);
-        if position > 60000 {
-            let stamp = now();
-            self.update_view(key, "viewOffset", Some(json!(position)));
-            self.update_view(key, "lastViewedAt", Some(json!(stamp)));
-            let mut stamped = vec![key.to_string()];
-            stamped.extend(self.parent_keys(key));
-            self.stamp_view(&stamped);
-            // A progress beat stamps `lastViewedAt` on the SEASON and the SHOW too.
-            for name in ["parentRatingKey", "grandparentRatingKey"] {
-                if let Some(parent) = self.catalog.get(key).and_then(|row| row.get(name)).map(string_value) {
-                    self.update_view(&parent, "lastViewedAt", Some(json!(stamp)));
-                }
-            }
-        }
+        self.library_progress(key, Some(position), 0, 1, "", false);
     }
 
     /// `/:/scrobble` and `/:/unscrobble` -- Mark as Played / Unplayed, an EMPTY
@@ -7898,105 +7992,55 @@ impl Runtime {
             .or_else(|| headers.get("x-plex-session-identifier").cloned())
             .unwrap_or_else(|| client.clone());
         let session_pair = (session_identifier.clone(), key.clone());
-        let previous_offset = self.timeline_offsets.get(&session_pair).copied();
-        let previously_completed = self.completed_sessions.contains(&session_pair);
         let decided_for_response = self.decided_sessions.contains(&session_pair);
-        let mut completed_now = false;
-        let crossed_completion = time > 60000
-            && duration > 0
-            && time >= duration.saturating_mul(9) / 10
-            && !previously_completed
-            && (state == "playing"
-                || previous_offset.is_some_and(|previous| {
-                    previous > 0 && previous < duration.saturating_mul(9) / 10
-                }));
-        if state == "playing"
-            && !self.sessions.contains_key(&client)
-            && time < duration.saturating_mul(9) / 10
-        {
-            self.completed_sessions.remove(&session_pair);
-            self.completion_pending_stop.remove(&session_pair);
-        }
-        if time > 60000 {
-            self.started_sessions.insert(session_identifier.clone());
-        }
-        // A timeline puts the row back in Continue Watching -- for an episode that
-        // row is its SHOW's, which any of the show's episodes hides and brings back.
-        // A beat at EXACTLY the stored position writes nothing (cycle 58).
-        let unmoved = self
-            .catalog
-            .get(&key)
-            .and_then(|row| row.get("viewOffset"))
-            .and_then(Value::as_i64)
-            == Some(time);
-        if !key.is_empty() && query.contains_key("time") && !unmoved {
-            self.hidden_continue.remove(&key);
-            if let Some(show) = self
+        // The play's session tag, as `_completed` stores it (`session or True`).
+        let session_tag = if session_identifier.is_empty() { "\u{1}".to_string() } else { session_identifier.clone() };
+        let completed_by = |runtime: &Self| {
+            runtime
                 .catalog
                 .get(&key)
-                .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-                .and_then(|row| row.get("grandparentRatingKey"))
-                .map(string_value)
-            {
-                let siblings = self
-                    .catalog
-                    .items
-                    .iter()
-                    .filter(|row| {
-                        row.get("grandparentRatingKey").map(string_value).as_deref() == Some(show.as_str())
-                    })
-                    .filter_map(key_of)
-                    .collect::<Vec<_>>();
-                for sibling in siblings {
-                    self.hidden_continue.remove(&sibling);
+                .and_then(|row| row.get("_completed"))
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        };
+        // A completed play answers `complete` to every beat past 90% until a
+        // `stopped` beat has closed it, and `ignore` to every beat after that.
+        let already = !key.is_empty()
+            && completed_by(self).as_deref() == Some(session_tag.as_str())
+            && self.catalog.get(&key).is_some_and(|row| row.get("_completionStopped").is_some());
+        let total = if query.get("duration").is_some() { duration } else { 0 };
+        if !key.is_empty() {
+            let device_id = self.device_id(&client);
+            let offset = query.get("time").map(|_| time);
+            self.library_progress(&key, offset, total, device_id, &session_tag, true);
+            if state == "stopped" && completed_by(self).as_deref() == Some(session_tag.as_str()) {
+                if let Some(object) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+                    object.insert("_completionStopped".to_string(), json!(true));
                 }
             }
         }
-        if !key.is_empty() && time > 60000 {
-            self.update_view(&key, "viewOffset", Some(json!(time)));
+        // Cycle 50: `progress` is sticky within the playback SESSION once one of
+        // its beats passes the minute gate.
+        if time > 60000 {
+            self.started_sessions.insert(session_identifier.clone());
         }
-        if state != "stopped" {
-            self.timeline_offsets.insert(session_pair.clone(), time);
-        }
-        let stopped_at_completion = state == "stopped"
-            && time > 60000
-            && duration > 0
-            && time >= duration.saturating_mul(9) / 10;
-        if (crossed_completion || stopped_at_completion) && !previously_completed {
-            let count = self
-                .catalog
-                .get(&key)
-                .and_then(|row| row.get("viewCount"))
-                .and_then(Value::as_i64)
-                .unwrap_or(0)
-                .saturating_add(1);
-            self.update_view(&key, "viewCount", Some(json!(count)));
-            self.update_view(&key, "lastViewedAt", Some(json!(now())));
-            self.update_view(&key, "viewOffset", None);
-            self.completed_sessions.insert(session_pair.clone());
-            // Cycle 57: the view came from a PLAYBACK SESSION.
-            self.viewed_in_session.insert(key.clone());
-            completed_now = true;
-            if let Some(row) = self.catalog.get(&key).cloned() {
-                let device_id = self.device_id(&client);
-                self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
-                self.history
-                    .push(self.history_row_for_device(&row, device_id));
+        let mut playback_state = "ignore";
+        if total > 0 {
+            playback_state = if self.started_sessions.contains(&session_identifier) {
+                "progress"
+            } else {
+                "ignore"
+            };
+            if time >= total.saturating_mul(9) / 10 {
+                // Past 90% it is never `progress`: `complete` for the beat that
+                // completed the play and every one after it until a `stopped`
+                // closes it, `ignore` for a beat that completed nothing.
+                let finished = completed_by(self).as_deref() == Some(session_tag.as_str());
+                playback_state = if finished && !already { "complete" } else { "ignore" };
             }
-        }
-        if state == "playing" && crossed_completion {
-            self.completion_pending_stop.insert(session_pair.clone());
         }
         if state == "stopped" {
-            self.timeline_offsets.remove(&session_pair);
             self.started_sessions.remove(&session_identifier);
-            if previously_completed {
-                // A player often sends one final stopped beat with its last
-                // position after the completion beat.  PMS keeps the item
-                // completed and clears that replayed position instead of
-                // resurrecting viewOffset.
-                self.update_view(&key, "viewOffset", None);
-            }
         }
         if let Some(item_id) = query
             .get("playQueueItemID")
@@ -8058,22 +8102,6 @@ impl Runtime {
             );
         }
         self.save_if_dirty();
-        let stop_after_completed_play =
-            state == "stopped" && self.completion_pending_stop.remove(&session_pair);
-        let pending_completed_play = state == "playing"
-            && previously_completed
-            && self.completion_pending_stop.contains(&session_pair);
-        let playback_state = if completed_now || stop_after_completed_play {
-            "complete"
-        } else if pending_completed_play {
-            "complete"
-        } else if previously_completed {
-            "ignore"
-        } else if time > 60000 || self.started_sessions.contains(&session_identifier) {
-            "progress"
-        } else {
-            "ignore"
-        };
         let stored = self
             .catalog
             .get(&key)
