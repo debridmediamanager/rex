@@ -333,6 +333,9 @@ pub struct Runtime {
     /// can take a snapshot without a mutable callback into the route thread.
     /// This is bounded in `push_event`; it is runtime state, never persisted.
     events: Vec<(String, Value)>,
+    /// How many events the bound has drained from the front of `events`, so a
+    /// subscriber's cursor stays a sequence number once the buffer is full.
+    events_dropped: usize,
 }
 
 impl Runtime {
@@ -416,6 +419,7 @@ impl Runtime {
             bandwidth_bytes: 0,
             dirty: false,
             events: Vec::new(),
+            events_dropped: 0,
         };
         runtime.load_state()?;
         Ok(runtime)
@@ -2601,7 +2605,23 @@ impl Runtime {
         if self.events.len() > 512 {
             let excess = self.events.len() - 512;
             self.events.drain(0..excess);
+            self.events_dropped += excess;
         }
+    }
+
+    /// The sequence number the next event will take. A socket opened now reads from here:
+    /// once the 512-event bound was reached, `events.len()` stopped moving and every
+    /// subscriber after that point saw no frame at all.
+    fn event_cursor(&self) -> usize {
+        self.events_dropped + self.events.len()
+    }
+
+    fn events_since(&self, cursor: usize) -> Vec<(String, Value)> {
+        self.events
+            .iter()
+            .skip(cursor.saturating_sub(self.events_dropped))
+            .cloned()
+            .collect()
     }
 
     fn push_timeline(&mut self, key: &str, state: i64, metadata_state: Option<&str>) {
@@ -18657,7 +18677,7 @@ fn handle_connection<S: Read + Write>(
                     return Ok(());
                 }
                 guard.mark_device(&request.headers);
-                guard.events.len()
+                guard.event_cursor()
             };
             return handle_websocket(&mut stream, &runtime, &request, event_start);
         }
@@ -18672,7 +18692,7 @@ fn handle_connection<S: Read + Write>(
                     return Ok(());
                 }
                 guard.mark_device(&request.headers);
-                guard.events.len()
+                guard.event_cursor()
             };
             return handle_eventsource(&mut stream, &runtime, &request, event_start);
         }
@@ -18766,11 +18786,7 @@ fn handle_websocket<S: Write>(
     let events = runtime
         .lock()
         .map_err(|_| "runtime lock poisoned".to_string())?
-        .events
-        .iter()
-        .skip(event_start)
-        .cloned()
-        .collect::<Vec<_>>();
+        .events_since(event_start);
     for (kind, value) in events {
         if filters.as_deref() == Some("all")
             || (filters.as_deref() == Some("log") && kind != "log")
@@ -18850,11 +18866,7 @@ fn handle_eventsource<S: Write>(
     let events = runtime
         .lock()
         .map_err(|_| "runtime lock poisoned".to_string())?
-        .events
-        .iter()
-        .skip(event_start)
-        .cloned()
-        .collect::<Vec<_>>();
+        .events_since(event_start);
     for (kind, value) in events {
         if filters.as_deref() == Some("all")
             || (filters.as_deref() == Some("log") && kind != "log")
