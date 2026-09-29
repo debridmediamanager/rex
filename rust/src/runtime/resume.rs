@@ -576,7 +576,7 @@ impl Runtime {
         let mut rows = self
             .playlists
             .values()
-            .map(|playlist| self.dynamic_playlist_row(playlist))
+            .map(|playlist| self.playlist_row(playlist, false, true))
             .collect::<Vec<_>>();
         rows.sort_by_key(|row| {
             -row.get("lastViewedAt")

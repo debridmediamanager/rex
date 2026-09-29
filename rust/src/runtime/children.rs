@@ -26,6 +26,24 @@ fn non_null(value: Option<&Value>) -> Option<Value> {
 }
 
 impl Runtime {
+    /// A child list's row: the light grid projection without the librarySection
+    /// fields, carrying `Guid` only under `includeGuids=1` (and then a one-entry list
+    /// naming the row's own guid when it has none).
+    pub(super) fn child_list_row(&self, row: &Value, query: &HashMap<String, String>) -> Value {
+        let include_guids = query.get("includeGuids").is_some_and(|value| value == "1");
+        let mut shown = self.grid_row(row, false, include_guids, false);
+        if include_guids {
+            if let Some(object) = shown.as_object_mut() {
+                if object.get("Guid").is_none() {
+                    if let Some(guid) = object.get("guid").cloned() {
+                        object.insert("Guid".to_string(), json!([{"id": guid}]));
+                    }
+                }
+            }
+        }
+        shown
+    }
+
     /// The container fields of a child list (everything but its rows and paging).
     /// `first_row_type` is the type of the list's first row, which decides whether it
     /// is an episode list.

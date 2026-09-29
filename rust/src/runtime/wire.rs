@@ -480,6 +480,13 @@ pub(super) fn exclude_container(response: &mut Response, query: &HashMap<String,
     fn trim_rows(rows: &mut [Value], excluded: &[String]) {
         for row in rows.iter_mut() {
             let Some(object) = row.as_object_mut() else { continue };
+            // Cycle 22/70: the option reaches the rows INSIDE a detail row's inline
+            // `Related` and `Extras` blocks too.
+            for block in ["Related", "Extras"] {
+                if let Some(holder) = object.get_mut(block) {
+                    walk(holder, excluded);
+                }
+            }
             let media_count = object.get("Media").and_then(Value::as_array).map(Vec::len);
             for name in excluded {
                 object.remove(name);
