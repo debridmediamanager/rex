@@ -18097,6 +18097,7 @@ fn handle_connection<S: Read + Write>(
         page_container(&mut response, &query, &request_path);
         add_paging_headers(&mut response, &query);
         response = xml_or_json(response, request.headers.get("accept").map(String::as_str));
+        order_json_body(&mut response, &request_path);
         let envelope = wire::Wire::of(&request, &request_path, &query);
         let still_open = wire::write_enveloped(&mut stream, &response, &envelope, keep)?;
         served_any = true;
@@ -19803,6 +19804,38 @@ pub fn xml_or_json(response: Response, accept: Option<&str>) -> Response {
         body,
         headers: response.headers,
         close: response.close,
+    }
+}
+
+/// A JSON body in the order the XML writer emits, with every private marker
+/// dropped (server.py's `json_body`).
+///
+/// Cycle 19, measured on kids and zen: a real PMS's JSON object keys come out
+/// in exactly its XML order -- the container's attributes, then its child keys;
+/// a row's attributes in the row's attribute order, then its child element
+/// keys.  Cycle 22: a LIGHT row's JSON child order is the light order, read off
+/// the row's own `_light` marker -- so the markers are dropped AFTER ordering.
+/// The plug-in framework's subtrees write their own bodies and are left alone.
+fn order_json_body(response: &mut Response, path: &str) {
+    if !response.content_type.starts_with("application/json")
+        || path == "/system"
+        || path.starts_with("/system/")
+        || path.starts_with("/:/plugins")
+    {
+        return;
+    }
+    let Ok(document) = serde_json::from_slice::<Value>(&response.body) else {
+        return;
+    };
+    let Some(object) = document.as_object() else {
+        return;
+    };
+    if object.len() != 1 || !object.values().next().is_some_and(Value::is_object) {
+        return;
+    }
+    let ordered = strip_private_value(&xmlout::ordered(&document, None));
+    if let Ok(body) = serde_json::to_vec(&ordered) {
+        response.body = body;
     }
 }
 
