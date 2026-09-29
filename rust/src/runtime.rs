@@ -7155,6 +7155,9 @@ impl Runtime {
                             values.insert(key, value.clone());
                         }
                     }
+                    // The session serialiser's marker: the XML/JSON orderer writes a
+                    // `_session` element's attributes alphabetically (cycle 49).
+                    values.insert("_session".to_string(), json!(true));
                     Value::Object(values)
                 })
                 .collect::<Vec<_>>();
