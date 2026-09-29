@@ -2113,145 +2113,236 @@ impl Runtime {
         )
     }
 
-    fn media_providers(&self, query: &HashMap<String, String>) -> Value {
-        let mut dirs = self
-            .catalog
-            .sections
-            .iter()
-            .map(|section| {
-                let mut row = self.section_directory(section);
-                if let Some(object) = row.as_object_mut() {
-                    let section_id = string_value(section.get("key").unwrap_or(&Value::Null));
-                    // The provider directory is keyed by the section id while
-                    // its navigation key points at the grid.  Keeping those
-                    // identities separate is load-bearing: Plex Web indexes
-                    // this response by `id` before it reads the pivots.
-                    object.insert("id".to_string(), json!(section_id));
-                    object.insert(
-                        "key".to_string(),
-                        json!(format!("/library/sections/{}/all", section_id)),
-                    );
-                }
-                row
-            })
-            .collect::<Vec<_>>();
-        dirs.insert(0, json!({"title":"Home", "hubKey":"/hubs"}));
-        if query
-            .get("includePreferences")
-            .is_some_and(|value| value == "1")
-        {
-            for row in dirs.iter_mut().skip(1) {
-                let section_id = row.get("id").map(string_value).unwrap_or_default();
-                let Some(section) = self.section(&section_id) else {
-                    continue;
-                };
-                let kind = section
-                    .get("type")
-                    .and_then(Value::as_str)
-                    .unwrap_or("movie");
-                if let Some(object) = row.as_object_mut() {
-                    object.insert(
-                        "Preferences".to_string(),
-                        json!({"Setting": self.section_preference_rows(&section_id, kind)}),
-                    );
-                }
-            }
+    /// Cycle 66, measured identically on kids, zen and plexscratch42: whether a Roku at
+    /// `version` is one a real PMS withholds library pivots from -- an absent or
+    /// unparseable version, or one below 6.4.2 on the components it carries.
+    fn roku_predates_pivots(version: Option<&str>) -> bool {
+        let text = version.unwrap_or("");
+        let (core, _suffix) = match text.split_once('-') {
+            Some((core, suffix)) => (core, Some(suffix)),
+            None => (text, None),
+        };
+        let parts = core.split('.').collect::<Vec<_>>();
+        let digits = |part: &str| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit());
+        // `(\d+)\.(\d+)(?:\.(\d+)(?:\.\d+)*(?:-.*)?)?`: a suffix only after three parts.
+        if parts.len() < 2 || !parts.iter().all(|part| digits(part)) || (parts.len() == 2 && _suffix.is_some()) {
+            return true;
         }
-        if query
-            .get("includeStorage")
-            .is_some_and(|value| value == "1")
-        {
-            for row in dirs.iter_mut().skip(1) {
-                let section_id = row.get("id").map(string_value).unwrap_or_default();
-                let mut duration = 0i64;
-                let mut storage = 0i64;
-                for item in self.section_rows(&section_id) {
+        let major = parts[0].parse::<u64>().unwrap_or(0);
+        let minor = parts[1].parse::<u64>().unwrap_or(0);
+        if (major, minor) != (6, 4) {
+            return (major, minor) < (6, 4);
+        }
+        parts.get(2).is_some_and(|patch| patch.parse::<u64>().unwrap_or(0) < 2)
+    }
+
+    /// `/media/providers` -- the first call a modern client makes (the oracle's
+    /// `media_providers`, `media_provider_rows` and `server_info`, in the order its
+    /// JSON writer emits them).
+    fn media_providers(&self, query: &HashMap<String, String>, headers: &HashMap<String, String>) -> Value {
+        let claimed = self.assert_claimed;
+        let mut directories = vec![json!({"hubKey": "/hubs", "title": "Home"})];
+        let option_on = |name: &str| query.get(name).is_some_and(|value| bool_option(value) && value.trim_start_matches('+').trim_start_matches('0') == "1");
+        let storage = option_on("includeStorage");
+        let preferences = option_on("includePreferences");
+        let mut duration_sum = 0i64;
+        let mut storage_sum = 0i64;
+        for section in &self.catalog.sections {
+            let key = string_value(section.get("key").unwrap_or(&Value::Null));
+            let kind = section.get("type").and_then(Value::as_str).unwrap_or("movie");
+            let show = kind == "show";
+            let mut pivots = vec![
+                json!({"id": "recommended", "key": format!("/hubs/sections/{key}"), "type": "hub",
+                       "title": "Recommended", "context": "content.discover", "symbol": "star"}),
+                json!({"id": "library", "key": format!("/library/sections/{key}/all?type={}", if show { 2 } else { 1 }),
+                       "type": "list", "title": "Library", "context": "content.library", "symbol": "library"}),
+            ];
+            // Cycle 59, measured on fun and both copies: a library that HOLDS a
+            // collection gains this tab after Library; one that holds none does not.
+            if self.collections.values().any(|collection| collection.section == key) {
+                pivots.push(json!({"id": "collections", "key": format!("/library/sections/{key}/collections"),
+                                   "type": "list", "title": "Collections", "context": "content.collections",
+                                   "symbol": "stack"}));
+            }
+            pivots.push(json!({"id": "categories", "key": format!("/library/sections/{key}/categories"),
+                               "type": "list", "title": "Categories", "context": "content.categories",
+                               "symbol": "stack"}));
+            let mut row = Map::new();
+            row.insert("agent".to_string(), json!(if show { "tv.plex.agents.series" } else { "tv.plex.agents.movie" }));
+            row.insert("language".to_string(), section.get("language").cloned().filter(|v| !v.is_null() && v != "").unwrap_or_else(|| json!("en-US")));
+            row.insert("refreshing".to_string(), json!(false));
+            row.insert("scanner".to_string(), json!(if show { "Plex TV Series" } else { "Plex Movie" }));
+            row.insert("uuid".to_string(), section.get("uuid").cloned().unwrap_or(Value::Null));
+            row.insert("id".to_string(), json!(key));
+            row.insert("key".to_string(), json!(format!("/library/sections/{key}")));
+            row.insert("hubKey".to_string(), json!(format!("/hubs/sections/{key}")));
+            row.insert("type".to_string(), json!(kind));
+            row.insert("title".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+            row.insert("updatedAt".to_string(), json!(1757500000));
+            row.insert("scannedAt".to_string(), json!(1757500000));
+            if preferences {
+                // Cycle 25: the block `/library/sections?includePreferences=1` answers,
+                // the FIRST child of the library `Directory`, before `Pivot`.
+                row.insert("Preferences".to_string(), json!({"Setting": self.section_preference_rows(&key, kind)}));
+            }
+            if storage {
+                // Cycle 46: each library `Directory` gains its own totals as JSON
+                // NUMBERS; cycle 56: a SHOW library's totals are its EPISODES'.
+                let mut own_duration = 0i64;
+                let mut own_storage = 0i64;
+                for item in self.section_rows(&key) {
                     let owners = if item.get("Media").is_some() {
                         vec![item]
                     } else {
                         self.leaves(&key_of(&item).unwrap_or_default())
                     };
-                    for owner in owners {
-                        duration = duration.saturating_add(
-                            owner.get("duration").and_then(Value::as_i64).unwrap_or(0),
-                        );
-                        storage = storage.saturating_add(
-                            owner
-                                .get("Media")
-                                .and_then(Value::as_array)
-                                .into_iter()
-                                .flatten()
-                                .flat_map(|media| {
-                                    media
-                                        .get("Part")
-                                        .and_then(Value::as_array)
-                                        .into_iter()
-                                        .flatten()
-                                })
-                                .filter_map(|part| part.get("size").and_then(Value::as_i64))
-                                .sum::<i64>(),
-                        );
+                    for owner in owners.iter().filter(|owner| owner.get("Media").is_some()) {
+                        own_duration += owner.get("duration").and_then(Value::as_i64).unwrap_or(0);
+                        own_storage += owner
+                            .get("Media")
+                            .and_then(Value::as_array)
+                            .into_iter()
+                            .flatten()
+                            .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+                            .filter_map(|part| part.get("size").and_then(Value::as_i64))
+                            .sum::<i64>();
                     }
                 }
-                if let Some(object) = row.as_object_mut() {
-                    object.insert("durationTotal".to_string(), json!(duration));
-                    object.insert("storageTotal".to_string(), json!(storage));
+                row.insert("durationTotal".to_string(), json!(own_duration));
+                row.insert("storageTotal".to_string(), json!(own_storage));
+                duration_sum += own_duration;
+                storage_sum += own_storage;
+            }
+            row.insert("Pivot".to_string(), Value::Array(pivots));
+            directories.push(Value::Object(row));
+        }
+        // Cycle 59, measured on plexscratch42 and plexscratch: a server holding a
+        // VIDEO playlist lists this source LAST, with one pivot.
+        if self
+            .playlists
+            .values()
+            .any(|playlist| self.dynamic_playlist_row(playlist).get("playlistType").and_then(Value::as_str) == Some("video"))
+        {
+            directories.push(json!({
+                "id": "playlists", "key": "/playlists", "type": "playlist", "title": "Playlists",
+                "Pivot": [{"id": "playlists.video", "key": "/playlists?playlistType=video", "type": "list",
+                           "title": "Video", "context": "content.playlists.video", "symbol": "playlist"}]
+            }));
+        }
+        // Cycle 16/66: an OLD Roku (`X-Plex-Platform: Roku`, header or query, and a
+        // version below 6.4.2) is handed no `id` and no `Pivot` on the library rows;
+        // cycle 59: the Playlists source keeps its `id` and loses only its pivot.
+        let platform = headers
+            .get("x-plex-platform")
+            .or_else(|| query.get("X-Plex-Platform"))
+            .map(String::as_str);
+        let version = headers
+            .get("x-plex-version")
+            .or_else(|| query.get("X-Plex-Version"))
+            .map(String::as_str);
+        if platform == Some("Roku") && Self::roku_predates_pivots(version) {
+            for row in directories.iter_mut() {
+                let Some(object) = row.as_object_mut() else { continue };
+                let key = object.get("key").map(string_value).unwrap_or_default();
+                if key.starts_with("/library/sections/") {
+                    object.remove("id");
+                    object.remove("Pivot");
+                } else if key == "/playlists" {
+                    object.remove("Pivot");
                 }
             }
         }
-        let pivots = json!([
-            {"id":"recommended", "key":"recommended", "title":"Recommended"},
-            {"id":"library", "key":"library", "title":"Library"},
-            {"id":"categories", "key":"categories", "title":"Categories"}
-        ]);
-        let directories = dirs
-            .into_iter()
-            .map(|mut row| {
-                if let Some(object) = row.as_object_mut() {
-                    object.insert("Pivot".to_string(), pivots.clone());
-                }
-                row
-            })
-            .collect::<Vec<_>>();
+        let mut content = Map::new();
+        content.insert("key".to_string(), json!("/library/sections"));
+        content.insert("type".to_string(), json!("content"));
+        if storage {
+            // ...and the `content` FEATURE gains the sum over every library.
+            content.insert("durationTotal".to_string(), json!(duration_sum));
+            content.insert("storageTotal".to_string(), json!(storage_sum));
+        }
+        content.insert("Directory".to_string(), Value::Array(directories));
         let features = vec![
-            json!({"type":"manage"}),
-            json!({"type":"playlist"}),
-            json!({"type":"collection"}),
-            json!({"type":"rate"}),
-            json!({"type":"actions", "Action":[{"id":"removeFromContinueWatching"}]}),
-            json!({"type":"timeline", "scrobbleKey":"/:/scrobble", "unscrobbleKey":"/:/unscrobble"}),
-            json!({"type":"playqueue"}),
-            json!({"type":"metadata"}),
-            json!({"type":"match"}),
-            json!({"type":"search"}),
-            json!({"type":"content", "Directory":directories}),
-            json!({"type":"imagetranscoder"}),
-            json!({"type":"promoted"}),
-            json!({"type":"continuewatching", "Action":[{"id":"removeFromContinueWatching"}]}),
-            json!({"type":"queryParser"}),
-            json!({"type":"subscribe"}),
-            json!({"type":"universalsearch"}),
+            Value::Object(content),
+            json!({"key": "/hubs/search", "type": "search"}),
+            json!({"key": "/library/matches", "type": "match"}),
+            json!({"key": "/library/metadata", "type": "metadata"}),
+            json!({"key": "/:/rate", "type": "rate"}),
+            json!({"key": "/photo/:/transcode", "type": "imagetranscoder"}),
+            json!({"key": "/hubs/promoted", "type": "promoted"}),
+            json!({"key": "/hubs/continueWatching", "type": "continuewatching"}),
+            json!({"key": "/actions", "type": "actions",
+                   "Action": [{"id": "removeFromContinueWatching", "key": "/actions/removeFromContinueWatching"}]}),
+            json!({"flavor": "universal", "key": "/playlists", "type": "playlist"}),
+            json!({"flavor": "universal", "key": "/playQueues", "type": "playqueue"}),
+            json!({"key": "/library/collections", "type": "collection"}),
+            json!({"scrobbleKey": "/:/scrobble", "unscrobbleKey": "/:/unscrobble", "key": "/:/timeline", "type": "timeline"}),
+            json!({"type": "manage"}),
+            json!({"type": "queryParser"}),
+            json!({"flavor": "download", "type": "subscribe"}),
+            json!({"key": "/library/search", "type": "universalsearch"}),
         ];
-        self.container(
-            Map::from_iter([
-                (
-                    "MediaProvider".to_string(),
-                    json!([{
-                        "identifier":"com.plexapp.plugins.library",
-                        "title":"Plex Library",
-                        "types":"video,audio,photo",
-                        "protocols":"stream,download",
-                        "Feature":features
-                    }]),
-                ),
-                ("livetv".to_string(), json!(7)),
-                ("allowMediaDeletion".to_string(), json!(true)),
-                ("allowSync".to_string(), json!(false)),
-                ("transcoderVideo".to_string(), json!(false)),
-                ("diagnostics".to_string(), json!("logs")),
-            ]),
-            false,
-        )
+        let mut body = Map::new();
+        for (name, value) in [
+            ("size", json!(1)),
+            ("allowCameraUpload", json!(false)),
+            ("allowChannelAccess", json!(true)),
+            ("allowMediaDeletion", json!(true)),
+            ("allowSharing", json!(true)),
+            ("allowSync", json!(false)),
+            ("allowTuners", json!(false)),
+            ("apiVersion", json!("1.1.1")),
+            ("backgroundProcessing", json!(true)),
+            ("certificate", json!(true)),
+            ("companionProxy", json!(true)),
+            ("countryCode", json!("deu")),
+            ("diagnostics", json!("logs,streaminglogs")),
+            ("eventStream", json!(true)),
+            ("friendlyName", json!(self.friendly)),
+            ("livetv", json!(7)),
+            ("machineIdentifier", json!(self.machine)),
+            ("musicAnalysis", json!(2)),
+            ("myPlex", json!(true)),
+            ("myPlexMappingState", json!("mapped")),
+            ("myPlexSigninState", json!(if claimed { "ok" } else { "none" })),
+            ("myPlexSubscription", json!(claimed)),
+            ("myPlexUsername", if claimed { json!(self.owner_email) } else { Value::Null }),
+            ("ownerFeatures", json!(OWNER_FEATURES)),
+            ("platform", json!("Linux")),
+            ("platformVersion", json!("6.1")),
+            ("pluginHost", json!(true)),
+            ("pushNotifications", json!(false)),
+            ("readOnlyLibraries", json!(false)),
+            ("streamingBrainABRVersion", json!(3)),
+            ("streamingBrainVersion", json!(2)),
+            ("sync", json!(true)),
+            ("transcoderActiveVideoSessions", json!(0)),
+            ("transcoderAudio", json!(false)),
+            ("transcoderLyrics", json!(false)),
+            ("transcoderSubtitles", json!(false)),
+            ("transcoderVideo", json!(false)),
+            ("transcoderVideoBitrates", json!("64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000")),
+            ("transcoderVideoQualities", json!("0,1,2,3,4,5,6,7,8,9,10,11,12")),
+            ("transcoderVideoResolutions", json!("128,128,160,240,320,480,768,720,720,1080,1080,1080,1080")),
+            ("updatedAt", json!(1789127123)),
+            ("updater", json!(true)),
+            ("version", json!(VERSION)),
+            ("voiceSearch", json!(true)),
+        ] {
+            if !value.is_null() {
+                body.insert(name.to_string(), value);
+            }
+        }
+        body.insert(
+            "MediaProvider".to_string(),
+            json!([{
+                "identifier": "com.plexapp.plugins.library",
+                "title": "Library",
+                "types": "video,audio,photo",
+                "protocols": "stream,download",
+                "Feature": features,
+            }]),
+        );
+        json!({"MediaContainer": body})
     }
 
     fn metadata_provider_rows(&self) -> Vec<Value> {
@@ -5066,7 +5157,7 @@ impl Runtime {
                 ),
             ),
             ("GET" | "HEAD", "/media/providers") => {
-                Response::json(200, self.media_providers(&query))
+                Response::json(200, self.media_providers(&query, &request.headers))
             }
             ("POST", "/media/providers") => Response::error(400, "plexsim: bad request"),
             ("POST", "/player/playback/play") => Response::error(400, "plexsim: bad request"),
@@ -18883,6 +18974,10 @@ fn unix_year(timestamp: i64) -> i64 {
     let month = (5 * doy + 2).div_euclid(153);
     year + if month < 10 { 0 } else { 1 }
 }
+
+/// The account feature names plex.tv reports for the owner (the oracle's
+/// `OWNER_FEATURES` with no claim of its own).
+const OWNER_FEATURES: &str = "adaptive_bitrate,camera_upload,collections,content_filter,download_certificates,dvr,federated-auth,hardware_transcoding,home,hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,music-analysis,music_videos,pass,photosV6-edit,photosV6-tv-albums,premium_music_metadata,radio,server-manager,session_bandwidth_restrictions,session_kick,shared-radio,sync,trailers,tuner-sharing,type-first,unsupportedtuners,webhooks";
 
 /// Python's ordering of two JSON scalars for a sort: numbers by value, strings
 /// by code point, anything else as equal.
