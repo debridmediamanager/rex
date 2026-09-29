@@ -4919,13 +4919,22 @@ impl Runtime {
                 Response::plain(200, b"1 ??? - Uninitialized\n".to_vec())
             }
             ("GET" | "HEAD", "/server/identity") => self.identity_response(&query),
-            ("PUT", "/:/progress") => self.route_progress(&query),
-            ("GET" | "HEAD", "/:/progress") => self.route_progress(&query),
-            ("GET" | "HEAD", "/:/timeline") => self.route_timeline(&query, &request.headers),
-            ("PUT" | "POST", "/:/timeline") => self.route_timeline(&query, &request.headers),
-            ("GET" | "HEAD", "/:/scrobble") => self.route_scrobble(&query, true),
-            ("GET" | "HEAD", "/:/unscrobble") => self.route_scrobble(&query, false),
-            ("GET" | "HEAD", "/:/rate") => self.route_rate(&query),
+            // The play-state writers answer on every verb the dispatcher routes, as
+            // the Python oracle does: the suite's own `PUT /:/scrobble` wrote
+            // nothing here and every Dashboard check after it read no history.
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/progress") => {
+                self.route_progress(&query)
+            }
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/timeline") => {
+                self.route_timeline(&query, &request.headers)
+            }
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/scrobble") => {
+                self.route_scrobble(&query, true)
+            }
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/unscrobble") => {
+                self.route_scrobble(&query, false)
+            }
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/rate") => self.route_rate(&query),
             ("GET" | "HEAD", "/video/:/transcode/universal/decision") => {
                 self.route_decision(&query, &request.headers)
             }
@@ -5982,68 +5991,160 @@ impl Runtime {
 
     fn route_history(&self, query: &HashMap<String, String>) -> Response {
         let mut rows = self.history.clone();
-        if let Some(key) = query
-            .get("ratingKey")
-            .or_else(|| query.get("metadataId"))
-            .or_else(|| query.get("metadataItemID"))
-        {
-            rows.retain(|row| string_value(row.get("ratingKey").unwrap_or(&Value::Null)) == *key);
-        }
-        if let Some(account) = query.get("accountID") {
-            rows.retain(|row| {
-                string_value(row.get("accountID").unwrap_or(&Value::Null)) == *account
-            });
-        }
-        if let Some(value) = query.get("viewedAt>") {
-            if let Ok(value) = value.parse::<i64>() {
-                rows.retain(|row| row.get("viewedAt").and_then(Value::as_i64).unwrap_or(0) > value);
-            }
-        }
-        if let Some(kind) = query.get("type") {
-            let wanted = kind
-                .split(',')
-                .map(|value| value.parse::<i64>())
-                .collect::<Result<Vec<_>, _>>();
-            let Ok(wanted) = wanted else {
-                return Response::error(400, "plexsim: bad request");
-            };
-            if wanted.is_empty() {
-                return Response::error(400, "plexsim: bad request");
-            }
-            let session_rows = wanted.contains(&0);
-            let scrobble_rows = wanted.contains(&1);
-            rows.retain(|row| {
-                if row.get("viewType").and_then(Value::as_i64) == Some(1) {
-                    scrobble_rows
-                } else {
-                    session_rows
+        // Cycle 14, measured case by case on kids (1.43.4) and zen (1.42.2): this page
+        // VALIDATES its ids.  `accountID`, `librarySectionID` and `metadataItemID` are
+        // 400 for anything that is not a whole number -- `abc`, empty and `1.5` alike --
+        // while `1`, `-1`, `01` and (cycle 55) `+1` are fine.
+        for name in ["accountID", "librarySectionID", "metadataItemID"] {
+            if let Some(value) = query.get(name) {
+                if !int_param(value, None) {
+                    return Response::error(400, "plexsim: bad request");
                 }
-            });
-        } else {
-            // A plain history listing is the session-play view (the same
-            // rows selected by type=0).  Scrobble rows carry viewType=1 and
-            // are only included when the client asks for that type.
-            rows.retain(|row| row.get("viewType").and_then(Value::as_i64) != Some(1));
+            }
         }
-        if let Some(sort) = query.get("sort") {
-            let descending = sort == "viewedAt:desc";
-            if sort != "viewedAt" && !descending {
+        // Cycle 54, measured on kids and zen: `offset` is an int32 here.
+        if let Some(value) = query.get("offset") {
+            if !int_param(value, Some(32)) {
                 return Response::error(400, "plexsim: bad request");
             }
-            rows.sort_by_key(|row| row.get("viewedAt").and_then(Value::as_i64).unwrap_or(0));
-            if descending {
-                rows.reverse();
+        }
+        let number = |value: &str| value.trim_start_matches('+').parse::<i128>().unwrap_or(0);
+        if let Some(wanted) = query.get("metadataItemID") {
+            // `metadataItemID` is additionally 404 for a whole number the server holds
+            // no row for; cycle 57: a COLLECTION's or a PLAYLIST's id is an empty 200.
+            let wanted_number = number(wanted);
+            let key = wanted_number.to_string();
+            if !rows.iter().any(|row| {
+                string_value(row.get("ratingKey").unwrap_or(&Value::Null)) == *wanted
+            }) && self.catalog.get(&key).is_none()
+                && !self.playlists.contains_key(&key)
+                && !self.collections.contains_key(&key)
+            {
+                return Response::error(404, "plexsim: not found");
             }
         }
-        let total = rows.len();
-        let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(rows))]);
-        page_fields(&mut fields, query);
-        if query.contains_key("X-Plex-Container-Start")
-            && query.contains_key("X-Plex-Container-Size")
-        {
-            fields.insert("totalSize".to_string(), json!(total));
+        // Cycle 54 corrected the keys: `viewedAt%3E=` is the key `viewedAt>` and it is
+        // INCLUSIVE, `viewedAt<` likewise, and a bare `viewedAt` is exact.  On this page
+        // a value must be an integer and anything else is a 400; `viewedAt>=` and
+        // `viewedAt<=` are unknown keys, ignored and not validated.
+        let mut time_tests: Vec<(&str, i64)> = Vec::new();
+        for key in ["viewedAt>", "viewedAt<", "viewedAt"] {
+            if let Some(value) = query.get(key) {
+                let digits = value.strip_prefix('-').unwrap_or(value);
+                if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                time_tests.push((key, value.parse::<i64>().unwrap_or(0)));
+            }
         }
-        Response::json(200, self.container(fields, true))
+        // Cycle 15/70: the `type` is the row's `viewType` -- a row with none (a
+        // timeline completion) is type 0, and an absent `type=` means `type=0`.
+        let mut wanted_types = vec![0i64];
+        if let Some(kind) = query.get("type") {
+            let mut parsed = Vec::new();
+            for part in kind.split(',') {
+                let digits = part.trim_start_matches('-');
+                if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                parsed.push(part.parse::<i64>().unwrap_or(0));
+            }
+            wanted_types = parsed;
+        }
+        rows.retain(|row| {
+            wanted_types.contains(&row.get("viewType").and_then(Value::as_i64).unwrap_or(0))
+        });
+        let row_number = |row: &Value, field: &str| -> Option<i128> {
+            let text = string_value(row.get(field).unwrap_or(&Value::Null));
+            let text = if text.is_empty() { "0".to_string() } else { text };
+            let digits = text.trim_start_matches('-');
+            (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
+                .then(|| text.parse::<i128>().unwrap_or(0))
+        };
+        for (name, field) in [
+            ("accountID", "accountID"),
+            ("deviceID", "deviceID"),
+            ("librarySectionID", "librarySectionID"),
+            ("metadataItemID", "ratingKey"),
+        ] {
+            let Some(wanted) = query.get(name).filter(|value| !value.is_empty()) else {
+                continue;
+            };
+            if name == "deviceID" {
+                rows.retain(|row| string_value(row.get(field).unwrap_or(&Value::Null)) == *wanted);
+            } else {
+                let wanted = number(wanted);
+                rows.retain(|row| row_number(row, field) == Some(wanted));
+            }
+        }
+        rows.retain(|row| {
+            let viewed = row.get("viewedAt").and_then(Value::as_i64).unwrap_or(0);
+            time_tests.iter().all(|(key, moment)| match *key {
+                "viewedAt>" => viewed >= *moment,
+                "viewedAt<" => viewed <= *moment,
+                _ => viewed == *moment,
+            })
+        });
+        // Default order is viewedAt ASCENDING, and an unknown sort key is a 400 --
+        // not the 500 a library listing answers.
+        let spec = query
+            .get("sort")
+            .filter(|value| !value.is_empty())
+            .cloned()
+            .unwrap_or_else(|| "viewedAt".to_string());
+        let terms = spec
+            .split(',')
+            .filter(|term| !term.is_empty())
+            .map(|term| {
+                let (field, direction) = term.split_once(':').unwrap_or((term, ""));
+                (field.to_string(), direction == "desc")
+            })
+            .collect::<Vec<_>>();
+        for (field, descending) in terms.iter().rev() {
+            if !matches!(
+                field.as_str(),
+                "viewedAt" | "historyKey" | "ratingKey" | "accountID" | "deviceID" | "title"
+            ) {
+                return Response::error(400, "plexsim: bad request");
+            }
+            let sort_key = |row: &Value| -> (bool, Value) {
+                match row.get(field.as_str()) {
+                    None | Some(Value::Null) => (true, json!(0)),
+                    Some(value) => (false, value.clone()),
+                }
+            };
+            rows.sort_by(|a, b| {
+                let (an, av) = sort_key(a);
+                let (bn, bv) = sort_key(b);
+                let order = an.cmp(&bn).then_with(|| compare_json(&av, &bv));
+                if *descending { order.reverse() } else { order }
+            });
+        }
+        // Cycle 18, measured on kids and zen: `limit=` is a THIRD grammar here --
+        // `limit=-1` answers ZERO rows -- and `group=` is refused outright with a 400,
+        // the empty form included.
+        if query.contains_key("group") {
+            return Response::error(400, "plexsim: bad request");
+        }
+        if let Some(raw) = query.get("limit") {
+            let digits = raw.trim_start_matches('-');
+            if !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()) {
+                let limit = raw.parse::<i64>().unwrap_or(0).max(0) as usize;
+                rows.truncate(limit);
+            }
+        }
+        let (page, paged, start, total) = match page_window(rows, query) {
+            Ok(window) => window,
+            Err(status) => return Response::error(status, "plexsim: bad container parameter"),
+        };
+        let mut fields = Map::new();
+        fields.insert("size".to_string(), json!(page.len()));
+        fields.insert("Metadata".to_string(), Value::Array(page));
+        if paged {
+            fields.insert("totalSize".to_string(), json!(total));
+            fields.insert("offset".to_string(), json!(start));
+        }
+        Response::json(200, self.container(fields, false))
     }
 
     fn route_bandwidth(&self, query: &HashMap<String, String>) -> Response {
@@ -10813,7 +10914,7 @@ impl Runtime {
                 // `+999999`) is an EMPTY 200, and an item the server holds -- in any
                 // library -- is the 400, as are an empty value, a word, `1.5`, ` 1` and
                 // `2147483648`.
-                if !pms_int_param(raw_item, Some(32)) {
+                if !int_param(raw_item, Some(32)) {
                     return Response::error(400, "plexsim: bad request");
                 }
                 let item = raw_item.parse::<i64>().unwrap_or(0);
@@ -19315,20 +19416,18 @@ fn unix_year(timestamp: i64) -> i64 {
     year + if month < 10 { 0 } else { 1 }
 }
 
-/// Cycle 54: an integer query parameter as a real PMS parses it -- an optional
-/// sign and digits, nothing else (no space, no `0x`, no fraction), inside the
-/// signed range of `bits`; `None` takes any size.  Measured on kids and zen over
-/// fifteen values.
-fn pms_int_param(value: &str, bits: Option<u32>) -> bool {
-    let digits = value.strip_prefix(['+', '-']).unwrap_or(value);
-    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-        return false;
-    }
-    let Some(bits) = bits else { return true };
-    let limit = 1i128 << (bits - 1);
-    match value.trim_start_matches('+').parse::<i128>() {
-        Ok(number) => -limit <= number && number < limit,
-        Err(_) => false,
+/// Python's ordering of two JSON scalars for a sort: numbers by value, strings
+/// by code point, anything else as equal.
+fn compare_json(left: &Value, right: &Value) -> std::cmp::Ordering {
+    match (left, right) {
+        (Value::Number(a), Value::Number(b)) => a
+            .as_f64()
+            .unwrap_or(0.0)
+            .partial_cmp(&b.as_f64().unwrap_or(0.0))
+            .unwrap_or(std::cmp::Ordering::Equal),
+        (Value::String(a), Value::String(b)) => a.cmp(b),
+        (Value::Bool(a), Value::Bool(b)) => a.cmp(b),
+        _ => std::cmp::Ordering::Equal,
     }
 }
 
