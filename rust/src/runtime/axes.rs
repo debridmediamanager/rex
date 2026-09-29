@@ -321,9 +321,36 @@ impl Runtime {
         title2: &str,
         show_nocache: bool,
     ) -> Response {
+        self.section_listing_response(section_id, section, rows, query, title2, show_nocache, None, false)
+    }
+
+    /// `listing_container` with the knobs its callers use: a `viewGroup` override and
+    /// the unwatched subset's `?unwatched=1` on a row with children (cycle 50).
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn section_listing_response(
+        &self,
+        section_id: &str,
+        section: &Value,
+        rows: Vec<Value>,
+        query: &HashMap<String, String>,
+        title2: &str,
+        show_nocache: bool,
+        view_group: Option<&str>,
+        unwatched_keys: bool,
+    ) -> Response {
         let rows = rows
             .into_iter()
-            .map(|row| guid_gate(self.section_listing_row(&row), query))
+            .map(|row| {
+                let mut projected = guid_gate(self.section_listing_row(&row), query);
+                if unwatched_keys {
+                    if let Some(key) = projected.get("key").and_then(Value::as_str).map(str::to_string) {
+                        if key.ends_with("/children") {
+                            projected["key"] = json!(format!("{key}?unwatched=1"));
+                        }
+                    }
+                }
+                projected
+            })
             .collect::<Vec<_>>();
         let (page, paged, start, total) = match page_window(rows, query) {
             Ok(window) => window,
@@ -341,7 +368,9 @@ impl Runtime {
         fields.insert("title2".to_string(), json!(title2));
         fields.insert(
             "viewGroup".to_string(),
-            section.get("type").cloned().unwrap_or_else(|| json!("movie")),
+            view_group
+                .map(|group| json!(group))
+                .unwrap_or_else(|| section.get("type").cloned().unwrap_or_else(|| json!("movie"))),
         );
         fields.insert("viewMode".to_string(), json!(65592));
         fields.insert(
@@ -890,5 +919,47 @@ impl Runtime {
             Err(status) => return Some(Response::error(status, "plexsim: unsupported sort")),
         };
         Some(self.axis_listing(section_id, section, rows, query, &title2, true))
+    }
+
+    /// `/library/sections/{id}/unwatched` -- a LISTING titled "Unplayed", typed like a
+    /// listing and answering ONLY the library's own top-level type (cycle 20), running
+    /// the listing's filters (cycle 54), ordered by titleSort whatever `sort=` says once
+    /// it validates (cycles 50, 55), and carrying `nocache` on a show library (cycle 16).
+    pub(super) fn unwatched_listing(
+        &self,
+        section_id: &str,
+        section: &Value,
+        query: &HashMap<String, String>,
+        pairs: &[(String, String)],
+    ) -> Response {
+        if let Some(status) = Self::axis_type_refusal(query, 500, 500) {
+            return Response::error(status, "plexsim: bad type");
+        }
+        let own = if section.get("type").and_then(Value::as_str) == Some("show") { 2 } else { 1 };
+        let asked = query
+            .get("type")
+            .and_then(|value| value.trim_start_matches('+').parse::<i64>().ok())
+            .unwrap_or(own);
+        let rows = if asked != own {
+            Vec::new()
+        } else {
+            self.axis_typed_rows(section_id, query, pairs)
+                .into_iter()
+                .filter(|row| !row.get("viewCount").is_some_and(truthy))
+                .collect()
+        };
+        let rows = match self.axis_filters(rows, pairs, section) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad filter"),
+        };
+        if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
+            if let Err(status) = self.sort_rows(rows.clone(), Some(sort)) {
+                return Response::error(status, "plexsim: unsupported sort");
+            }
+        }
+        let rows = self.sort_rows(rows.clone(), Some("titleSort")).unwrap_or(rows);
+        let show = section.get("type").and_then(Value::as_str) == Some("show");
+        let view_group = (show && asked != own).then_some("episode");
+        self.section_listing_response(section_id, section, rows, query, "Unplayed", true, view_group, true)
     }
 }

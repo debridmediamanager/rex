@@ -10997,6 +10997,9 @@ impl Runtime {
                 if segments.len() == 4 && segments[3] == "search" {
                     return self.route_section_search(section_key, section, query, pairs, request);
                 }
+                if segments.len() == 4 && segments[3] == "unwatched" && matches!(request.method.as_str(), "GET" | "HEAD") {
+                    return self.unwatched_listing(section_key, section, query, pairs);
+                }
                 if segments.len() == 4 && segments[3] == "unwatched" {
                     let kind = section
                         .get("type")
