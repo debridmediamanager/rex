@@ -6671,7 +6671,10 @@ impl Runtime {
                 Response::json(
                     200,
                     self.container(
-                        Map::from_iter([("Setting".to_string(), Value::Array(vec![row]))]),
+                        Map::from_iter([
+                            ("size".to_string(), json!(1)),
+                            ("Setting".to_string(), Value::Array(vec![row])),
+                        ]),
                         false,
                     ),
                 )
