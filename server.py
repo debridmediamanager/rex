@@ -17954,6 +17954,14 @@ class PlexSim:
             metadata_module.enrich(row, self.tmdb, parsed, chosen=chosen)
         except Exception as error:  # a failed lookup must not fail the match
             logger.debug("re-identify failed for %s: %s", guid, error)
+        # `enrich` writes the TMDB vote into `rating` as well as `audienceRating`, which
+        # the catalog build needs and load then drops (`hierarchy.normalize_rows`).
+        # `rating` is the CRITIC score: on zen (1.42.2) 743 of 1,538 matched movies carry
+        # it, every one beside a Rotten Tomatoes critic `ratingImage`, and none of the
+        # 795 whose ratings are all audience ones does. A Fix Match skipped the load
+        # rule and put a TMDB vote back as a critic rating on every matched row.
+        if row.get("type") in ("movie", "show", "episode"):
+            row.pop("rating", None)
 
     def after_artwork_edit(self, row, query):
         """The fallback and the cascade an artwork CLEAR owes its children. Cycle 31.
