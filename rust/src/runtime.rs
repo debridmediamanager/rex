@@ -470,7 +470,8 @@ impl Runtime {
             queues: HashMap::new(),
             download_queues: HashMap::new(),
             next_playlist: 1,
-            next_collection: 1,
+            // Key spaces stay disjoint (library.py): collections are 50000+.
+            next_collection: 50001,
             next_queue: 2,
             next_queue_item: 1,
             next_dynamic_key: 40000,
