@@ -3964,8 +3964,24 @@ impl Runtime {
     }
 
     pub fn route(&mut self, request: &Request) -> Response {
+        if request.method == "PATCH" {
+            // Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not
+            // in 1.42.2's method table at all -- a 500 with the 109-byte document on every
+            // path, `/identity` and `/system` included, answered before any routing, so it
+            // registers no device and carries no framework cookie.
+            return Response::error(500, "plexsim: unknown method");
+        }
         self.mark_device(&request.headers);
         let mut response = self.request_route(request);
+        let (raw_path, _) = split_target(&request.target);
+        if let Some(cookie) = Self::framework_cookie(&request.method, &raw_path) {
+            // Cycle 33/52: the plug-in framework's session cookie rides every response it
+            // writes itself -- but not the Tornado banner answer, which hands none back.
+            let tornado = response.headers.iter().any(|(name, _)| name == "Server");
+            if !tornado && !response.headers.iter().any(|(name, _)| name == "Set-Cookie") {
+                response.headers.push(("Set-Cookie".to_string(), cookie));
+            }
+        }
         self.localize_response(request, &mut response);
         if let Some(origin) = request.headers.get("origin") {
             response
@@ -4224,9 +4240,12 @@ impl Runtime {
         // its normal empty plugin container for the doubled form.  Do this
         // before the ordinary trailing-slash normalization so `/identity//`
         // cannot become the valid `/identity` route.
+        if path == "/:/plugins//" {
+            // Cycle 50: the doubled slash answers the parent's own listing.
+            path = "/:/plugins".to_string();
+        }
         if path.contains("//") {
-            if path == "/:/plugins//"
-                || matches!(
+            if matches!(
                     path.as_str(),
                     "/status/sessions//"
                         | "/media/providers//"
@@ -4250,6 +4269,11 @@ impl Runtime {
                     && path != "/library/metadata//")
             {
                 return Response::json(200, plugin_container(Vec::new()));
+            }
+            // Cycle 53: under `/system` an empty segment is still the FRAMEWORK's 404 --
+            // empty body, no `Content-Type`.
+            if path.starts_with("/system/") {
+                return Response::bare(404);
             }
             return Response::error(404, "plexsim: not found");
         }
@@ -4556,42 +4580,6 @@ impl Runtime {
                     false,
                 ),
             ),
-            ("GET" | "HEAD", "/system/library/sections") => Response::json(
-                200,
-                self.container(
-                    Map::from_iter([("identifier".to_string(), json!("com.plexapp.system"))]),
-                    false,
-                ),
-            ),
-            ("GET" | "HEAD", "/system/search") => {
-                let body = self.container(
-                    Map::from_iter([
-                        ("identifier".to_string(), json!("com.plexapp.system")),
-                        ("prefsKey".to_string(), json!("/:/plugins/com.plexapp.system/prefs")),
-                        ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
-                        ("size".to_string(), json!(0)),
-                    ]),
-                    false,
-                );
-                // `/system` is a plug-in framework surface. Its empty search
-                // response is written as a self-closing XML container even
-                // when the client asks with the generic `*/*` accept value.
-                if request
-                    .headers
-                    .get("accept")
-                    .is_some_and(|accept| accept.contains("*/*") || accept.contains("xml"))
-                {
-                    Response {
-                        status: 200,
-                        content_type: "application/xml".to_string(),
-                        body: b"<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer identifier=\"com.plexapp.system\" mediaTagPrefix=\"/system/bundle/media/\" mediaTagVersion=\"1\" prefsKey=\"/:/plugins/com.plexapp.system/prefs\" size=\"0\"/>\n".to_vec(),
-                        headers: Vec::new(),
-                        close: false,
-                    }
-                } else {
-                    Response::json(200, body)
-                }
-            }
             ("GET" | "HEAD", "/media/providers") => {
                 Response::json(200, self.media_providers(&query))
             }
@@ -4631,80 +4619,6 @@ impl Runtime {
                         false,
                     ),
                 )
-            }
-            ("GET" | "HEAD", "/system") => {
-                let directories = vec![
-                    json!({"key":"/system/agents","title":"Agents"}),
-                    json!({"key":"/system/library","title":"Library"}),
-                ];
-                let paged = query
-                    .get("X-Plex-Container-Start")
-                    .and_then(|value| value.parse::<usize>().ok())
-                    .zip(query.get("X-Plex-Container-Size").and_then(|value| value.parse::<usize>().ok()));
-                let shown = if let Some((start, size)) = paged {
-                    directories.iter().skip(start).take(size).cloned().collect::<Vec<_>>()
-                } else {
-                    directories.clone()
-                };
-                if request
-                    .headers
-                    .get("accept")
-                    .is_some_and(|accept| accept.contains("xml") || accept.contains("*/*"))
-                {
-                    let size = shown.len();
-                    let attrs = if paged.is_some() {
-                        format!(
-                            "totalSize=\"{}\" noHistory=\"0\" replaceParent=\"0\" size=\"{}\" identifier=\"com.plexapp.system\"",
-                            directories.len(), size
-                        )
-                    } else {
-                        format!("identifier=\"com.plexapp.system\" size=\"{}\"", size)
-                    };
-                    let children = shown
-                        .iter()
-                        .map(|row| {
-                            format!(
-                                "  <Directory key=\"{}\" title=\"{}\"/>\n",
-                                string_value(row.get("key").unwrap_or(&Value::Null)),
-                                string_value(row.get("title").unwrap_or(&Value::Null))
-                            )
-                        })
-                        .collect::<String>();
-                    let body = if shown.is_empty() {
-                        format!(
-                            "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer {attrs}/>\n"
-                        )
-                    } else {
-                        format!(
-                            "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer {attrs}>\n{children}</MediaContainer>\n"
-                        )
-                    };
-                    Response {
-                        status: 200,
-                        content_type: "application/xml".to_string(),
-                        body: body.into_bytes(),
-                        headers: Vec::new(),
-                        close: false,
-                    }
-                } else {
-                    let mut fields = Map::from_iter([
-                        ("identifier".to_string(), json!("com.plexapp.system")),
-                        ("noHistory".to_string(), json!(false)),
-                        ("replaceParent".to_string(), json!(false)),
-                        ("Directory".to_string(), Value::Array(shown)),
-                    ]);
-                    if let Some((start, _)) = paged {
-                        fields.insert("offset".to_string(), json!(start));
-                        fields.insert("totalSize".to_string(), json!(directories.len()));
-                    }
-                    Response::json(
-                        200,
-                        self.container(fields, false),
-                    )
-                }
-            },
-            ("GET" | "HEAD", "/:/plugins") => {
-                Response::json(200, plugin_container(Vec::new()))
             }
             ("GET" | "HEAD", "/livetv") => Response::json(
                 200,
@@ -5041,124 +4955,6 @@ impl Runtime {
                 false,
             ),
         )
-    }
-
-    fn agent_language_rows(&self, query: &HashMap<String, String>) -> Vec<(String, String)> {
-        let requested = query
-            .get("X-Plex-Language")
-            .map(|value| value.replace('_', "-").to_ascii_lowercase());
-        let language_key = requested
-            .as_deref()
-            .and_then(|value| value.split('-').next())
-            .unwrap_or("");
-        load_json_sidecar(&self.catalog_path, "agent_languages.json")
-            .and_then(|value| value.get("languages").cloned())
-            .and_then(|value| value.as_object().cloned())
-            .and_then(|languages| {
-                languages
-                    .get(language_key)
-                    .or_else(|| languages.get(""))
-                    .and_then(Value::as_array)
-                    .map(|rows| {
-                        rows.iter()
-                            .filter_map(|row| {
-                                let values = row.as_array()?;
-                                Some((
-                                    values.first()?.as_str()?.to_string(),
-                                    values.get(1)?.as_str()?.to_string(),
-                                ))
-                            })
-                            .collect::<Vec<_>>()
-                    })
-            })
-            .unwrap_or_default()
-    }
-
-    fn agent_default_language(
-        &self,
-        query: &HashMap<String, String>,
-        rows: &[(String, String)],
-    ) -> String {
-        let requested = query
-            .get("X-Plex-Language")
-            .map(|value| value.replace('_', "-").to_ascii_lowercase());
-        let Some(language) = requested
-            .as_deref()
-            .and_then(|value| value.split('-').next())
-        else {
-            return "en-US".to_string();
-        };
-        rows.iter()
-            .find(|(code, _)| {
-                code.to_ascii_lowercase()
-                    .starts_with(&format!("{language}-"))
-            })
-            .map(|(code, _)| code.clone())
-            .unwrap_or_else(|| "en-US".to_string())
-    }
-
-    fn xml_attribute(value: &str) -> String {
-        let mut escaped = String::new();
-        for character in value.chars() {
-            match character {
-                '&' => escaped.push_str("&amp;"),
-                '<' => escaped.push_str("&lt;"),
-                '>' => escaped.push_str("&gt;"),
-                '"' => escaped.push_str("&#34;"),
-                '\'' => escaped.push_str("&#39;"),
-                c if c as u32 >= 0x80 => escaped.push_str(&format!("&#{};", c as u32)),
-                c => escaped.push(c),
-            }
-        }
-        escaped
-    }
-
-    fn agent_json_response(
-        &self,
-        identifiers: &[&str],
-        query: &HashMap<String, String>,
-    ) -> Response {
-        // The reference endpoint is the one measured exception to ordinary
-        // JSON child arrays: each Language child is written with the same key.
-        // Keep that wire quirk here instead of changing the general serializer.
-        let languages = self.agent_language_rows(query);
-        let default_language = self.agent_default_language(query, &languages);
-        let mut body = String::from(r#"{"MediaContainer":{"Agent":["#);
-        for (index, identifier) in identifiers.iter().enumerate() {
-            if index > 0 {
-                body.push(',');
-            }
-            let quoted_identifier = serde_json::to_string(identifier).unwrap_or_default();
-            let has_prefs = if identifier.contains("movie") || identifier.contains("series") {
-                1
-            } else {
-                0
-            };
-            body.push_str(&format!(
-                r#"{{"identifier":{quoted_identifier},"name":{quoted_identifier},"hasPrefs":{has_prefs},"id":{}"#,
-                index + 1,
-            ));
-            for (code, _title) in &languages {
-                let quoted_code = serde_json::to_string(code).unwrap_or_default();
-                body.push_str(&format!(
-                    r#","Language":{{"code":{quoted_code},"default":{}}}"#,
-                    if code == &default_language {
-                        "true"
-                    } else {
-                        "false"
-                    }
-                ));
-            }
-            body.push('}');
-        }
-        body.push_str("]}}");
-        Response {
-            status: 200,
-            content_type: "application/json".to_string(),
-            body: body.into_bytes(),
-            headers: vec![("Cache-Control".to_string(), "no-cache".to_string())],
-            close: false,
-        }
     }
 
     fn route_section_detail(&self, section: &Value, query: &HashMap<String, String>) -> Response {
@@ -14887,7 +14683,7 @@ impl Runtime {
                 ),
             ),
             "match" => Response::error(400, "plexsim: bad request"),
-            "refresh" | "analyze" => {
+            "refresh" => {
                 if request.method != "PUT" {
                     return Response::error(404, "plexsim: not found");
                 }
