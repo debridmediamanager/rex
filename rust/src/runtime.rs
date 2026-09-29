@@ -17830,7 +17830,16 @@ fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option
     } else {
         parts[2].to_string()
     };
-    let is_read_only = matches!(method.as_str(), "GET" | "HEAD");
+    // Cycle 37/38: GET and HEAD answer without consuming a declared body, and so do the
+    // two query-only UI writes (an item edit, a playlist create); an upload waits for
+    // its bytes.
+    let target_path = target.split('?').next().unwrap_or("");
+    let query_only_write = (method == "PUT"
+        && target_path
+            .strip_prefix("/library/metadata/")
+            .is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit())))
+        || (method == "POST" && target_path == "/playlists");
+    let is_read_only = matches!(method.as_str(), "GET" | "HEAD") || query_only_write;
     let transfer_chunked = headers
         .get("transfer-encoding")
         .is_some_and(|value| value.eq_ignore_ascii_case("chunked"));
