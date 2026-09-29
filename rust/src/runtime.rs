@@ -12875,7 +12875,10 @@ impl Runtime {
                             return response;
                         }
                     }
-                    if segments.len() == 5 && segments[3] == "firstCharacter" {
+                    // `/firstCharacter/top` is the tag-table leaf (`route_section_top`), not
+                    // the bucket named `top`: the section /top check measured the bare empty
+                    // 200 with no `title2`, where the bucket answers "Start with 'top'".
+                    if segments.len() == 5 && segments[3] == "firstCharacter" && segments[4] != "top" {
                         return self.first_character_listing(section_key, section, segments[4], query, pairs);
                     }
                     if segments.len() == 5 && segments[4] != "top" && !segments[4].is_empty() {
@@ -13096,7 +13099,11 @@ impl Runtime {
                         ),
                     );
                 }
-                if segments.len() == 5 && segments[3] == "firstCharacter" && !segments[4].is_empty() {
+                if segments.len() == 5
+                    && segments[3] == "firstCharacter"
+                    && !segments[4].is_empty()
+                    && segments[4] != "top"
+                {
                     // Cycle 16, measured on kids and zen: the bucket behind a
                     // letter is a real LISTING, not the axis.  The match is on the
                     // ROW's own STORED sort title (cycle 18: empty for a generated
