@@ -8883,18 +8883,16 @@ impl Runtime {
                     ("filter".to_string(), json!(format!("{kind}={id}"))),
                     ("tag".to_string(), json!(name)),
                     ("tagType".to_string(), json!(tag_type)),
-                    ("count".to_string(), json!(count)),
                 ]);
-                if tag_type == 6 {
-                    if let Some(tag_key) = tag_key {
-                        row.insert("tagKey".to_string(), json!(tag_key));
-                    } else {
-                        row.insert(
-                            "tagKey".to_string(),
-                            json!(format!("{:024x}", tag_id(element, &name))),
-                        );
-                    }
+                // Cycle 28, measured on kids and zen: a PERSON search tag row carries
+                // its 24-hex `tagKey` directly after `tagType`, with `count` LAST, and
+                // a `Genre` row carries none.
+                if matches!(tag_type, 4..=7) {
+                    let tag_key =
+                        tag_key.unwrap_or_else(|| crate::hierarchy::person_tag_key(&name));
+                    row.insert("tagKey".to_string(), json!(tag_key));
                 }
+                row.insert("count".to_string(), json!(count));
                 out.push((kind.to_string(), Value::Object(row)));
             }
         }
