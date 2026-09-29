@@ -13901,6 +13901,15 @@ impl Runtime {
             fields.insert("offset".to_string(), json!(start));
             fields.insert("totalSize".to_string(), json!(total));
         }
+        if query.get("includeMeta").map(String::as_str) == Some("1") {
+            // Cycle 46: the section's complete descriptor with only its folder Type
+            // active.
+            let kind = section.get("type").and_then(Value::as_str).unwrap_or("movie").to_string();
+            if let Some(mut meta) = self.section_meta(section_key, &kind, false) {
+                meta_active(&mut meta, Some("folder"), None);
+                fields.insert("Meta".to_string(), meta);
+            }
+        }
         Response::json(200, self.container(fields, true))
     }
 
