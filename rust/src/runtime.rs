@@ -422,8 +422,8 @@ impl Runtime {
             for media in item.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
                 for part in media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
                     if let Some(object) = part.as_object_mut() {
-                        object.remove("accessible");
-                        object.remove("exists");
+                        object.shift_remove("accessible");
+                        object.shift_remove("exists");
                     }
                 }
             }
@@ -586,7 +586,7 @@ impl Runtime {
                                     row.insert(field.to_string(), value.clone());
                                 }
                                 None => {
-                                    row.remove(field);
+                                    row.shift_remove(field);
                                 }
                             }
                         }
@@ -618,7 +618,7 @@ impl Runtime {
                             for (field, field_value) in fields {
                                 // A removal is recorded as null.
                                 if field_value.is_null() {
-                                    row.remove(field);
+                                    row.shift_remove(field);
                                 } else {
                                     row.insert(field.clone(), field_value.clone());
                                 }
@@ -890,8 +890,8 @@ impl Runtime {
                     if let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut) {
                         for part in parts {
                             if let Some(part) = part.as_object_mut() {
-                                part.remove("accessible");
-                                part.remove("exists");
+                                part.shift_remove("accessible");
+                                part.shift_remove("exists");
                             }
                         }
                     }
@@ -955,7 +955,7 @@ impl Runtime {
             // (`_generatedTitle`) carries the sort title it was written with.
             let sort_written = original.get("_generatedTitle").is_some();
             if generated && sort_matches_generated && !sort_locked && !sort_written {
-                object.remove("titleSort");
+                object.shift_remove("titleSort");
             }
         }
         if kind == "show" {
@@ -1018,7 +1018,7 @@ impl Runtime {
                         ("index", "parentIndex"),
                     ] {
                         if destination == "parentYear" && object.get("year").is_some() {
-                            object.remove(destination);
+                            object.shift_remove(destination);
                             continue;
                         }
                         if let Some(value) = parent.get(source).filter(|value| {
@@ -1027,7 +1027,7 @@ impl Runtime {
                         }) {
                             object.insert(destination.to_string(), value.clone());
                         } else {
-                            object.remove(destination);
+                            object.shift_remove(destination);
                         }
                     }
                 }
@@ -1041,7 +1041,7 @@ impl Runtime {
                     {
                         object.insert("parentTitle".to_string(), value.clone());
                     } else {
-                        object.remove("parentTitle");
+                        object.shift_remove("parentTitle");
                     }
                     object.insert(
                         "parentIndex".to_string(),
@@ -1053,7 +1053,7 @@ impl Runtime {
                     {
                         object.insert("parentStudio".to_string(), value.clone());
                     } else {
-                        object.remove("parentStudio");
+                        object.shift_remove("parentStudio");
                     }
                     if object.get("summary").is_none() {
                         if let Some(value) = parent.get("summary") {
@@ -1070,7 +1070,7 @@ impl Runtime {
                     {
                         object.insert("grandparentTitle".to_string(), value.clone());
                     } else {
-                        object.remove("grandparentTitle");
+                        object.shift_remove("grandparentTitle");
                     }
                     if object.get("summary").is_none() {
                         if let Some(value) = self
@@ -1084,7 +1084,7 @@ impl Runtime {
                 }
             }
             for field in ["Genre", "studio", "tagline", "Country"] {
-                object.remove(field);
+                object.shift_remove(field);
             }
             // Cycle 14/15: a flattened show's episodes skip the season level.
             self.apply_flatten_projection(object);
@@ -1101,7 +1101,7 @@ impl Runtime {
             for (name, value) in stored {
                 let text = string_value(&value);
                 if text.is_empty() {
-                    object.remove(&name);
+                    object.shift_remove(&name);
                 } else {
                     object.insert(name, json!(text));
                 }
@@ -1142,7 +1142,7 @@ impl Runtime {
                         .flatten()
                     {
                         if let Some(stream_object) = stream.as_object_mut() {
-                            stream_object.remove("_content");
+                            stream_object.shift_remove("_content");
                         }
                     }
                 }
@@ -1189,14 +1189,14 @@ impl Runtime {
     fn listing_row(&self, original: &Value) -> Value {
         let mut row = self.detail_row(original);
         if let Some(object) = row.as_object_mut() {
-            object.remove("Media");
-            object.remove("Guid");
-            object.remove("Rating");
-            object.remove("Field");
-            object.remove("Preferences");
-            object.remove("OnDeck");
+            object.shift_remove("Media");
+            object.shift_remove("Guid");
+            object.shift_remove("Rating");
+            object.shift_remove("Field");
+            object.shift_remove("Preferences");
+            object.shift_remove("OnDeck");
             for name in ["Label", "Style", "Similar", "Mood"] {
-                object.remove(name);
+                object.shift_remove(name);
             }
             for name in [
                 "Genre",
@@ -1249,13 +1249,13 @@ impl Runtime {
             "OnDeck",
             "Extras",
         ] {
-            object.remove(name);
+            object.shift_remove(name);
         }
         if !keep_location {
-            object.remove("Location");
+            object.shift_remove("Location");
         }
         if !keep_guid {
-            object.remove("Guid");
+            object.shift_remove("Guid");
         }
         // Cycle 19: a LIGHT row orders its children `Media Image UltraBlurColors Guid
         // Genre ...` where a detail row puts Guid after its tags; only the builder knows
@@ -1267,7 +1267,7 @@ impl Runtime {
                 "librarySectionTitle",
                 "librarySectionKey",
             ] {
-                object.remove(name);
+                object.shift_remove(name);
             }
         }
         let caps = [
@@ -1320,7 +1320,7 @@ impl Runtime {
                 if let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut) {
                     for part in parts {
                         if let Some(part_object) = part.as_object_mut() {
-                            part_object.remove("Stream");
+                            part_object.shift_remove("Stream");
                         }
                     }
                 }
@@ -1333,15 +1333,15 @@ impl Runtime {
         let mut row = self.grid_row(original, false, true, false);
         if let Some(object) = row.as_object_mut() {
             if original.get("type").and_then(Value::as_str) == Some("season") {
-                object.remove("leafCount");
-                object.remove("viewedLeafCount");
+                object.shift_remove("leafCount");
+                object.shift_remove("viewedLeafCount");
             }
             for name in [
                 "librarySectionID",
                 "librarySectionKey",
                 "librarySectionTitle",
             ] {
-                object.remove(name);
+                object.shift_remove(name);
             }
             // A section grid exposes the file path for a row, but the
             // database location id is an internal column and is absent from
@@ -1350,7 +1350,7 @@ impl Runtime {
             if let Some(locations) = object.get_mut("Location").and_then(Value::as_array_mut) {
                 for location in locations {
                     if let Some(location) = location.as_object_mut() {
-                        location.remove("id");
+                        location.shift_remove("id");
                     }
                 }
             }
@@ -1359,7 +1359,7 @@ impl Runtime {
                     if let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut) {
                         for part in parts {
                             if let Some(part_object) = part.as_object_mut() {
-                                part_object.remove("Stream");
+                                part_object.shift_remove("Stream");
                             }
                         }
                     }
@@ -1376,10 +1376,10 @@ impl Runtime {
         let mut row = self.detail_row(original);
         if let Some(object) = row.as_object_mut() {
             for name in ["Guid", "Rating", "Field", "Preferences", "OnDeck"] {
-                object.remove(name);
+                object.shift_remove(name);
             }
             for name in ["Label", "Style", "Similar", "Mood"] {
-                object.remove(name);
+                object.shift_remove(name);
             }
             for name in [
                 "Genre",
@@ -1804,7 +1804,7 @@ impl Runtime {
                 if let Some(array) = body.get(key).and_then(Value::as_array) {
                     // `size` leads the container on a real PMS whatever it counts.
                     let size = array.len();
-                    body.remove("size");
+                    body.shift_remove("size");
                     let mut sized = Map::new();
                     sized.insert("size".to_string(), json!(size));
                     sized.extend(body);
@@ -2243,10 +2243,10 @@ impl Runtime {
                 let Some(object) = row.as_object_mut() else { continue };
                 let key = object.get("key").map(string_value).unwrap_or_default();
                 if key.starts_with("/library/sections/") {
-                    object.remove("id");
-                    object.remove("Pivot");
+                    object.shift_remove("id");
+                    object.shift_remove("Pivot");
                 } else if key == "/playlists" {
-                    object.remove("Pivot");
+                    object.shift_remove("Pivot");
                 }
             }
         }
@@ -3324,14 +3324,14 @@ impl Runtime {
                 if kind == "season" {
                     object.insert("titleSort".to_string(), json!(title));
                 } else {
-                    object.remove("titleSort");
+                    object.shift_remove("titleSort");
                 }
                 object.insert("updatedAt".to_string(), json!(now()));
                 if kind == "episode" {
                     // Re-measured against a DIRECT episode unmatch: the same field
                     // set goes as in a season's cascade, and the summary empties.
                     for field in ["Director", "Writer", "Producer", "Role", "audienceRating", "year"] {
-                        object.remove(field);
+                        object.shift_remove(field);
                     }
                     object.insert("summary".to_string(), json!(""));
                 }
@@ -3344,7 +3344,7 @@ impl Runtime {
                     .map(string_value)
                     .and_then(|parent| self.catalog.get(&parent).cloned());
                 if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                    object.remove("year");
+                    object.shift_remove("year");
                     if let Some(thumb) = show
                         .as_ref()
                         .and_then(|show| show.get("thumb"))
@@ -3368,7 +3368,7 @@ impl Runtime {
                     self.unmatch_row(&episode);
                     if let Some(object) = self.catalog.get_mut(&episode).and_then(Value::as_object_mut) {
                         object.insert("parentGuid".to_string(), json!(guid.clone()));
-                        object.remove("parentThumb");
+                        object.shift_remove("parentThumb");
                     }
                 }
             }
@@ -3390,12 +3390,12 @@ impl Runtime {
                 "Genre", "Country", "Role", "Director", "Writer", "Producer", "studio",
                 "contentRating", "contentRatingAge", "tagline", "audienceRating", "rating",
             ] {
-                object.remove(field);
+                object.shift_remove(field);
             }
             object.insert("summary".to_string(), json!(""));
             object.insert("guid".to_string(), json!(guid.clone()));
             if kind == "show" {
-                object.remove("art");
+                object.shift_remove("art");
             }
             if let Some(title) = file_title {
                 object.insert("title".to_string(), json!(title));
@@ -3415,17 +3415,17 @@ impl Runtime {
                 self.unmatch_row(&season_key);
                 if let Some(object) = self.catalog.get_mut(&season_key).and_then(Value::as_object_mut) {
                     object.insert("parentGuid".to_string(), json!(guid.clone()));
-                    object.remove("parentThumb");
-                    object.remove("parentStudio");
+                    object.shift_remove("parentThumb");
+                    object.shift_remove("parentStudio");
                 }
             }
             for leaf in self.leaves(key) {
                 let leaf_key = key_of(&leaf).unwrap_or_default();
                 if let Some(object) = self.catalog.get_mut(&leaf_key).and_then(Value::as_object_mut) {
                     object.insert("grandparentGuid".to_string(), json!(guid.clone()));
-                    object.remove("grandparentThumb");
-                    object.remove("grandparentArt");
-                    object.remove("contentRating");
+                    object.shift_remove("grandparentThumb");
+                    object.shift_remove("grandparentArt");
+                    object.shift_remove("contentRating");
                 }
             }
         }
@@ -3459,7 +3459,7 @@ impl Runtime {
                 object.insert(field.to_string(), value);
             }
             None => {
-                object.remove(field);
+                object.shift_remove(field);
             }
         }
         self.dirty = true;
@@ -5978,14 +5978,14 @@ impl Runtime {
                 for described in meta.get_mut("Type").and_then(Value::as_array_mut).into_iter().flatten() {
                     for sort in described.get_mut("Sort").and_then(Value::as_array_mut).into_iter().flatten() {
                         if let Some(object) = sort.as_object_mut() {
-                            object.remove("active");
-                            object.remove("activeDirection");
+                            object.shift_remove("active");
+                            object.shift_remove("activeDirection");
                         }
                     }
                     for filter in described.get_mut("Filter").and_then(Value::as_array_mut).into_iter().flatten() {
                         if filter.get("filter").and_then(Value::as_str) != Some("duplicate") {
                             if let Some(object) = filter.as_object_mut() {
-                                object.remove("advanced");
+                                object.shift_remove("advanced");
                             }
                         }
                     }
@@ -6384,7 +6384,7 @@ impl Runtime {
                 }
             }
             if let Some(object) = projected.as_object_mut() {
-                object.remove("librarySectionKey");
+                object.shift_remove("librarySectionKey");
                 object.insert(
                     "librarySectionUUID".to_string(),
                     self.section(&string_value(
@@ -6409,8 +6409,8 @@ impl Runtime {
         let project = |row: &Value| {
             let mut projected = self.detail_row(row);
             if let Some(object) = projected.as_object_mut() {
-                object.remove("Field");
-                object.remove("librarySectionKey");
+                object.shift_remove("Field");
+                object.shift_remove("librarySectionKey");
                 if let Some(section) = self.section(&string_value(
                     row.get("librarySectionID").unwrap_or(&Value::Null),
                 )) {
@@ -6490,8 +6490,8 @@ impl Runtime {
             .map(|row| {
                 let mut entry = self.detail_row(row);
                 if let Some(object) = entry.as_object_mut() {
-                    object.remove("Field");
-                    object.remove("librarySectionKey");
+                    object.shift_remove("Field");
+                    object.shift_remove("librarySectionKey");
                     object.insert("allowSync".to_string(), json!(true));
                     let uuid = self
                         .section(&string_value(row.get("librarySectionID").unwrap_or(&Value::Null)))
@@ -7237,10 +7237,10 @@ impl Runtime {
         let Some(object) = session.as_object_mut() else {
             return session;
         };
-        object.remove("Guid");
-        object.remove("Image");
-        object.remove("Media");
-        object.remove("_light");
+        object.shift_remove("Guid");
+        object.shift_remove("Image");
+        object.shift_remove("Media");
+        object.shift_remove("_light");
         object.insert("_session".to_string(), json!(true));
         object.insert("sessionKey".to_string(), json!(client));
         object.insert("ratingKey".to_string(), json!(key));
@@ -7427,7 +7427,7 @@ impl Runtime {
                 if let Some(object) = row.as_object_mut() {
                     object.insert("label".to_string(), json!(""));
                     object.insert("summary".to_string(), json!(""));
-                    object.remove("enumValues");
+                    object.shift_remove("enumValues");
                 }
                 Response::json(
                     200,
@@ -7564,7 +7564,7 @@ impl Runtime {
                 continue;
             };
             let mut setting = setting.clone();
-            setting.remove("enumValues");
+            setting.shift_remove("enumValues");
             setting.insert("label".to_string(), json!(""));
             setting.insert("summary".to_string(), json!(""));
             self.push_event("preference", json!({"Setting": [Value::Object(setting)]}));
@@ -7777,7 +7777,7 @@ impl Runtime {
                 let count = self.catalog.get(key).and_then(|row| row.get("viewCount")).and_then(Value::as_i64).unwrap_or(0);
                 if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
                     object.insert("_completed".to_string(), json!(session));
-                    object.remove("_completionStopped");
+                    object.shift_remove("_completionStopped");
                 }
                 self.update_view(key, "viewCount", Some(json!(count + 1)));
                 self.viewed_in_session.insert(key.to_string());
@@ -7805,8 +7805,8 @@ impl Runtime {
             }
         } else if offset.is_some_and(|offset| total > 0 && (offset as f64) < total as f64 * 0.9) {
             if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                object.remove("_completed");
-                object.remove("_completionStopped");
+                object.shift_remove("_completed");
+                object.shift_remove("_completionStopped");
             }
         }
     }
@@ -7936,11 +7936,11 @@ impl Runtime {
                 let count = state.get("viewCount").and_then(Value::as_i64).unwrap_or(1);
                 state.insert("viewCount".to_string(), json!(count + 1));
                 state.insert("lastViewedAt".to_string(), json!(now()));
-                state.remove("viewOffset");
+                state.shift_remove("viewOffset");
             } else {
-                state.remove("viewCount");
-                state.remove("viewOffset");
-                state.remove("lastViewedAt");
+                state.shift_remove("viewCount");
+                state.shift_remove("viewOffset");
+                state.shift_remove("lastViewedAt");
             }
             self.dirty = true;
             self.save_if_dirty();
@@ -8033,10 +8033,10 @@ impl Runtime {
         if self.catalog.get(&key).is_none() {
             let state = self.list_state_mut(&key);
             if rating == -1.0 {
-                state.remove("userRating");
-                state.remove("lastRatedAt");
+                state.shift_remove("userRating");
+                state.shift_remove("lastRatedAt");
             } else if rating < 0.0 {
-                state.remove("userRating");
+                state.shift_remove("userRating");
                 state.insert("lastRatedAt".to_string(), json!(now()));
             } else {
                 state.insert("userRating".to_string(), json!(rating));
@@ -8380,13 +8380,13 @@ impl Runtime {
         }
         let mut output = self.detail_row(&row);
         if let Some(object) = output.as_object_mut() {
-            object.remove("Guid");
-            object.remove("Image");
+            object.shift_remove("Guid");
+            object.shift_remove("Image");
             object.insert("_session".to_string(), json!(true));
             if object.get("summary").is_some_and(Value::is_string)
                 && object.get("summary").and_then(Value::as_str) == Some("")
             {
-                object.remove("summary");
+                object.shift_remove("summary");
             }
             let mut media = selected_media;
             if let Some(media_object) = media.as_object_mut() {
@@ -8425,7 +8425,7 @@ impl Runtime {
                     .map(|mut part| {
                         if let Some(part_object) = part.as_object_mut() {
                             let streams = part_object
-                                .remove("Stream")
+                                .shift_remove("Stream")
                                 .and_then(|value| value.as_array().cloned())
                                 .unwrap_or_default()
                                 .into_iter()
@@ -8466,8 +8466,8 @@ impl Runtime {
                                     stream
                                 })
                                 .collect::<Vec<_>>();
-                            part_object.remove("exists");
-                            part_object.remove("accessible");
+                            part_object.shift_remove("exists");
+                            part_object.shift_remove("accessible");
                             if let Some(id) = part_object.get("id").cloned() {
                                 part_object.insert("id".to_string(), json!(string_value(&id)));
                             }
@@ -8754,7 +8754,7 @@ impl Runtime {
                     .unwrap_or_else(|| json!({}));
                 if let Some(object) = item.as_object_mut() {
                     if object.get("summary").is_some_and(|v| string_value(v).is_empty()) {
-                        object.remove("summary");
+                        object.shift_remove("summary");
                     }
                     for (name, value) in self.list_state.get(&key).cloned().unwrap_or_default() {
                         if !name.starts_with('_') {
@@ -9185,7 +9185,7 @@ impl Runtime {
                 for row in &mut rows {
                     if let Some(object) = row.as_object_mut() {
                         for name in &names {
-                            object.remove(*name);
+                            object.shift_remove(*name);
                         }
                     }
                 }
@@ -9471,7 +9471,7 @@ impl Runtime {
             .map(|row| {
                 let mut entry = self.detail_row(row);
                 if let Some(object) = entry.as_object_mut() {
-                    object.remove("Field");
+                    object.shift_remove("Field");
                 }
                 Self::with_included_at(entry)
             })
@@ -9740,7 +9740,7 @@ impl Runtime {
                                 .split_whitespace()
                                 .any(|word| word.starts_with(&needle));
                         if let Some(object) = value.as_object_mut() {
-                            object.remove("Guid");
+                            object.shift_remove("Guid");
                             for tag_name in
                                 ["Genre", "Country", "Director", "Writer", "Producer", "Role"]
                             {
@@ -9749,7 +9749,7 @@ impl Runtime {
                                 {
                                     for tag in tags {
                                         if let Some(tag_object) = tag.as_object_mut() {
-                                            tag_object.remove("id");
+                                            tag_object.shift_remove("id");
                                         }
                                     }
                                 }
@@ -10039,14 +10039,14 @@ impl Runtime {
             .map(|row| {
                 let mut projected = self.listing_row(row);
                 if let Some(object) = projected.as_object_mut() {
-                    object.remove("librarySectionID");
-                    object.remove("librarySectionKey");
-                    object.remove("Guid");
+                    object.shift_remove("librarySectionID");
+                    object.shift_remove("librarySectionKey");
+                    object.shift_remove("Guid");
                     for tag_name in ["Genre", "Country", "Director", "Writer", "Producer", "Role"] {
                         if let Some(tags) = object.get_mut(tag_name).and_then(Value::as_array_mut) {
                             for tag in tags {
                                 if let Some(tag_object) = tag.as_object_mut() {
-                                    tag_object.remove("id");
+                                    tag_object.shift_remove("id");
                                 }
                             }
                         }
@@ -10074,10 +10074,10 @@ impl Runtime {
             .into_iter()
             .map(|(_, mut row)| {
                 if let Some(object) = row.as_object_mut() {
-                    object.remove("reason");
-                    object.remove("reasonID");
-                    object.remove("reasonTitle");
-                    object.remove("score");
+                    object.shift_remove("reason");
+                    object.shift_remove("reasonID");
+                    object.shift_remove("reasonTitle");
+                    object.shift_remove("score");
                 }
                 json!({"score":0.52,"Directory":row})
             })
@@ -10320,8 +10320,8 @@ impl Runtime {
         let mut sorts = self.playlist_sort_rows();
         for sort in &mut sorts {
             if let Some(object) = sort.as_object_mut() {
-                object.remove("active");
-                object.remove("activeDirection");
+                object.shift_remove("active");
+                object.shift_remove("activeDirection");
             }
         }
         if !listing_all {
@@ -10947,7 +10947,7 @@ impl Runtime {
                             object.insert("playQueueLastAddedItemID".to_string(), json!(marker));
                         }
                         if was_selected {
-                            object.remove("Metadata");
+                            object.shift_remove("Metadata");
                             object.insert("size".to_string(), json!(0));
                             if let Some(was_id) = was_id {
                                 object.insert("playQueueSelectedItemID".to_string(), json!(was_id));
@@ -11740,7 +11740,7 @@ impl Runtime {
                 .map(|row| {
                     let mut entry = self.detail_row(&row);
                     if let Some(object) = entry.as_object_mut() {
-                        object.remove("Field");
+                        object.shift_remove("Field");
                     }
                     entry
                 })
@@ -12301,8 +12301,8 @@ impl Runtime {
                         .map(|row| {
                             let mut entry = self.detail_row(row);
                             if let Some(object) = entry.as_object_mut() {
-                                object.remove("Field");
-                                object.remove("librarySectionKey");
+                                object.shift_remove("Field");
+                                object.shift_remove("librarySectionKey");
                             }
                             entry
                         })
@@ -12400,7 +12400,7 @@ impl Runtime {
                         if self.catalog.get(start).is_none() || self.catalog.get(end).is_none() {
                             return Response::error(404, "plexsim: not found");
                         }
-                        fields.remove("allowSync");
+                        fields.shift_remove("allowSync");
                         fields.insert("size".to_string(), json!(0));
                         return Response::json(200, self.container(fields, false));
                     }
@@ -12479,7 +12479,7 @@ impl Runtime {
                                             .get("Media")
                                             .and_then(Value::as_array)
                                             .map_or(0, Vec::len);
-                                        object.remove("Media");
+                                        object.shift_remove("Media");
                                         object.insert("mediaCount".to_string(), json!(count));
                                         object.insert("mediaCountOptimized".to_string(), json!(0));
                                     }
@@ -12631,7 +12631,7 @@ impl Runtime {
                             }
                         }
                         rows = roots;
-                        fields.remove("mixedParents");
+                        fields.shift_remove("mixedParents");
                     }
                     if !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
                         // The subsets start from the listing's default order, titleSort,
@@ -12809,7 +12809,7 @@ impl Runtime {
                                     .get("Media")
                                     .and_then(Value::as_array)
                                     .map_or(0, Vec::len);
-                                object.remove("Media");
+                                object.shift_remove("Media");
                                 object.insert("mediaCount".to_string(), json!(count));
                                 object.insert("mediaCountOptimized".to_string(), json!(0));
                             }
@@ -14855,17 +14855,17 @@ impl Runtime {
                             .get("Media")
                             .and_then(Value::as_array)
                             .map_or(0, Vec::len);
-                        object.remove("Media");
+                        object.shift_remove("Media");
                         object.insert("mediaCount".to_string(), json!(count));
                         object.insert("mediaCountOptimized".to_string(), json!(0));
                     }
                     for name in &excluded_elements {
                         if *name != "Media" {
-                            object.remove(*name);
+                            object.shift_remove(*name);
                         }
                     }
                     for name in &excluded_fields {
-                        object.remove(*name);
+                        object.shift_remove(*name);
                     }
                 }
                 projected
@@ -14922,7 +14922,7 @@ impl Runtime {
             fields.insert("nocache".to_string(), json!(true));
         }
         for name in &excluded_fields {
-            fields.remove(*name);
+            fields.shift_remove(*name);
         }
         if query.get("includeMeta").is_some_and(|value| value == "1") {
             let advanced = query.get("includeAdvanced").is_some_and(|value| value == "1");
@@ -15042,7 +15042,7 @@ impl Runtime {
                 if row.get("type").and_then(Value::as_str) == Some("episode") {
                     if let Some(object) = projected.as_object_mut() {
                         for field in ["Director", "Writer", "Role"] {
-                            object.remove(field);
+                            object.shift_remove(field);
                         }
                     }
                 }
@@ -15279,7 +15279,7 @@ impl Runtime {
             if row.get("type").and_then(Value::as_str) == Some("episode") {
                 if let Some(object) = row.as_object_mut() {
                     for field in ["Genre", "studio", "tagline", "Country"] {
-                        object.remove(field);
+                        object.shift_remove(field);
                     }
                 }
             }
@@ -15821,7 +15821,7 @@ impl Runtime {
                         .get("Media")
                         .and_then(Value::as_array)
                         .map_or(0, Vec::len);
-                    object.remove("Media");
+                    object.shift_remove("Media");
                     object.insert("mediaCount".to_string(), json!(media_count));
                     object.insert("mediaCountOptimized".to_string(), json!(0));
                 }
@@ -15894,7 +15894,7 @@ impl Runtime {
                     .and_then(Value::as_object_mut)
                 {
                     for name in ["identifier", "mediaTagPrefix", "mediaTagVersion"] {
-                        fields.remove(name);
+                        fields.shift_remove(name);
                     }
                 }
             }
@@ -16245,7 +16245,7 @@ impl Runtime {
                                     .get("Media")
                                     .and_then(Value::as_array)
                                     .map_or(0, Vec::len);
-                                object.remove("Media");
+                                object.shift_remove("Media");
                                 object.insert("mediaCount".to_string(), json!(count));
                                 object.insert("mediaCountOptimized".to_string(), json!(0));
                             }
@@ -16258,14 +16258,14 @@ impl Runtime {
                         strip_excluded_fields(shown, &names);
                     }
                     for name in &names {
-                        fields.remove(*name);
+                        fields.shift_remove(*name);
                     }
                 }
                 fields.insert("Metadata".to_string(), Value::Array(rows.clone()));
                 page_fields(&mut fields, query);
                 if fields.contains_key("Directory") {
                     let directory = fields
-                        .remove("Directory")
+                        .shift_remove("Directory")
                         .unwrap_or(Value::Array(Vec::new()));
                     let metadata_len = fields
                         .get("Metadata")
@@ -16576,7 +16576,7 @@ impl Runtime {
                 for existing in streams.iter_mut() {
                     if existing.get("streamType").and_then(Value::as_i64) == Some(3) {
                         if let Some(existing) = existing.as_object_mut() {
-                            existing.remove("selected");
+                            existing.shift_remove("selected");
                         }
                     }
                 }
@@ -16949,8 +16949,8 @@ impl Runtime {
                             child.insert("_inheritedContentRating".to_string(), json!(true));
                         }
                         _ => {
-                            child.remove("contentRating");
-                            child.remove("_inheritedContentRating");
+                            child.shift_remove("contentRating");
+                            child.shift_remove("_inheritedContentRating");
                         }
                     }
                 }
@@ -16958,7 +16958,7 @@ impl Runtime {
         }
         if kind == "episode" && changed.contains("contentRating") {
             if let Some(child) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                child.remove("_inheritedContentRating");
+                child.shift_remove("_inheritedContentRating");
             }
         }
         if kind == "season" && changed.contains("summary") {
@@ -16979,8 +16979,8 @@ impl Runtime {
                                 child.insert("_inheritedSummary".to_string(), json!(true));
                             }
                             _ => {
-                                child.remove("summary");
-                                child.remove("_inheritedSummary");
+                                child.shift_remove("summary");
+                                child.shift_remove("_inheritedSummary");
                             }
                         }
                     }
@@ -17045,7 +17045,7 @@ impl Runtime {
             let mut gone = row.clone();
             gone["title"] = json!("");
             if let Some(object) = gone.as_object_mut() {
-                object.remove("year");
+                object.shift_remove("year");
             }
             self.push_timeline_entry(&gone, 9, Some("deleted"), None, None, None);
             if let Some(survivor) = self.catalog.get(&existing_key).cloned() {
@@ -18281,7 +18281,7 @@ impl Runtime {
                             if &id == chosen {
                                 object.insert("selected".to_string(), json!(true));
                             } else {
-                                object.remove("selected");
+                                object.shift_remove("selected");
                             }
                         }
                     }
@@ -20180,7 +20180,7 @@ fn strip_excluded_fields(value: &mut Value, names: &HashSet<&str>) {
     match value {
         Value::Object(object) => {
             for name in names {
-                object.remove(*name);
+                object.shift_remove(*name);
             }
             for child in object.values_mut() {
                 strip_excluded_fields(child, names);
@@ -20202,11 +20202,11 @@ fn strip_excluded_element(value: &mut Value, name: &str) {
                 .get("Media")
                 .and_then(Value::as_array)
                 .map_or(0, Vec::len);
-            object.remove("Media");
+            object.shift_remove("Media");
             object.insert("mediaCount".to_string(), json!(count));
             object.insert("mediaCountOptimized".to_string(), json!(0));
         } else {
-            object.remove(name);
+            object.shift_remove(name);
         }
         for child in object.values_mut() {
             strip_excluded_element(child, name);
@@ -20727,8 +20727,8 @@ fn meta_active(meta: &mut Value, active: Option<&str>, spec: Option<&str>) {
         entry["active"] = json!(is_active);
         for sort in entry.get_mut("Sort").and_then(Value::as_array_mut).into_iter().flatten() {
             if let Some(object) = sort.as_object_mut() {
-                object.remove("active");
-                object.remove("activeDirection");
+                object.shift_remove("active");
+                object.shift_remove("activeDirection");
             }
         }
         if !is_active {
@@ -21383,7 +21383,7 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
     let Some(body) = document.get_mut("MediaContainer").and_then(Value::as_object_mut) else {
         return;
     };
-    let flat = body.remove("_pageflat");
+    let flat = body.shift_remove("_pageflat");
     let rewrite = |response: &mut Response, document: &Value| {
         response.body = serde_json::to_vec(document).unwrap_or_default();
     };
@@ -21656,7 +21656,7 @@ fn exclude_fields_response(request: &Request, response: &mut Response) {
         return;
     };
     for name in &names {
-        body.remove(*name);
+        body.shift_remove(*name);
     }
     if let Some(rows) = body.get_mut("Metadata").and_then(Value::as_array_mut) {
         for row in rows {

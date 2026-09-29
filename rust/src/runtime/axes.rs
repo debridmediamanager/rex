@@ -663,7 +663,7 @@ impl Runtime {
             // Measured across all 26 axes: every one carries `content: "secondary"`
             // EXCEPT `actor`.
             if let Some(body) = container.get_mut("MediaContainer").and_then(Value::as_object_mut) {
-                body.remove("content");
+                body.shift_remove("content");
             }
         }
         Response::json(200, container)

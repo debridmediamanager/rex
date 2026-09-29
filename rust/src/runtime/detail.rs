@@ -80,7 +80,7 @@ impl Runtime {
                 .map(|extra| {
                     let mut shown = self.detail_row(extra);
                     if let Some(object) = shown.as_object_mut() {
-                        object.remove("art");
+                        object.shift_remove("art");
                     }
                     shown
                 })

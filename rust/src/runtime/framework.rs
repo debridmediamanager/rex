@@ -1263,7 +1263,7 @@ impl Runtime {
         agents.sort_by(|a, b| a.0.cmp(&b.0));
         for (_, mut row) in agents {
             if let Some(object) = row.as_object_mut() {
-                object.remove("enabled");
+                object.shift_remove("enabled");
             }
             rows.push(row);
         }

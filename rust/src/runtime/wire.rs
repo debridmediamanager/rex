@@ -490,7 +490,7 @@ pub(super) fn exclude_container(response: &mut Response, query: &HashMap<String,
             }
             let media_count = object.get("Media").and_then(Value::as_array).map(Vec::len);
             for name in excluded {
-                object.remove(name);
+                object.shift_remove(name);
             }
             if excluded.iter().any(|name| name == "Media") {
                 let count = media_count.map(|n| json!(n)).or_else(|| object.get("mediaCount").cloned()).unwrap_or(json!(0));
@@ -500,7 +500,7 @@ pub(super) fn exclude_container(response: &mut Response, query: &HashMap<String,
                 if let Some(media_rows) = object.get_mut("Media").and_then(Value::as_array_mut) {
                     for media in media_rows {
                         if let Some(media) = media.as_object_mut() {
-                            if let Some(parts) = media.remove("Part") {
+                            if let Some(parts) = media.shift_remove("Part") {
                                 let count = parts.as_array().map_or(0, Vec::len);
                                 media.insert("partCount".to_string(), json!(count));
                             }

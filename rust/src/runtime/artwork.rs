@@ -50,7 +50,7 @@ fn hand_down(child: &mut Map<String, Value>, field: &str, owner: Option<&Value>)
             child.insert(field.to_string(), value.clone());
         }
         None => {
-            child.remove(field);
+            child.shift_remove(field);
         }
     }
 }
@@ -142,8 +142,8 @@ impl Runtime {
                     let snapshot = Value::Object(object.clone());
                     let source = handed_down_from("art", Some(&snapshot), Some(&row));
                     hand_down(object, "art", source.as_ref());
-                    object.remove("theme");
-                    object.remove("parentTheme");
+                    object.shift_remove("theme");
+                    object.shift_remove("parentTheme");
                     if let Some(theme) = row.get("theme").filter(|v| !v.is_null()) {
                         object.insert("parentTheme".to_string(), theme.clone());
                     }
@@ -151,7 +151,7 @@ impl Runtime {
                     if owns_field(Some(&row), "thumb") {
                         object.insert("parentThumb".to_string(), row["thumb"].clone());
                     } else {
-                        object.remove("parentThumb");
+                        object.shift_remove("parentThumb");
                     }
                     let source = handed_down_from("art", Some(&row), show.as_ref());
                     hand_down(object, "art", source.as_ref());
@@ -171,7 +171,7 @@ impl Runtime {
                                     object.insert(target, value.clone());
                                 }
                                 None => {
-                                    object.remove(&target);
+                                    object.shift_remove(&target);
                                 }
                             }
                         }
@@ -285,7 +285,7 @@ impl Runtime {
             return Response::error(500, "plexsim: internal error");
         };
         if chosen == placeholder {
-            object.remove(private);
+            object.shift_remove(private);
         } else {
             object.insert(private.to_string(), json!(chosen));
         }
@@ -337,7 +337,7 @@ impl Runtime {
             let season = self.parent_of(&row, "parentRatingKey");
             let show = self.parent_of(&row, "grandparentRatingKey");
             if let Some(object) = row.as_object_mut() {
-                object.remove(if field == "thumb" { "_poster_url" } else { "_art_url" });
+                object.shift_remove(if field == "thumb" { "_poster_url" } else { "_art_url" });
                 if field == "thumb" && object.get("parentThumb").is_some_and(|v| !v.is_null()) {
                     let parent = object["parentThumb"].clone();
                     object.insert(field.to_string(), parent);

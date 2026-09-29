@@ -753,13 +753,13 @@ impl Runtime {
         }
         let Some(object) = shown.as_object_mut() else { return shown };
         if flat && !is_show {
-            object.remove("librarySectionID");
-            object.remove("librarySectionKey");
+            object.shift_remove("librarySectionID");
+            object.shift_remove("librarySectionKey");
         }
         let mut ordered = Map::new();
         // The marker the XML/JSON orderer leads the hit by; never serialised.
         ordered.insert("_searchhit".to_string(), json!(true));
-        if let Some(title) = object.remove("librarySectionTitle") {
+        if let Some(title) = object.shift_remove("librarySectionTitle") {
             ordered.insert("librarySectionTitle".to_string(), title);
         }
         if let Some(score) = score {

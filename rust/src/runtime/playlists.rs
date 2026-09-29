@@ -398,8 +398,8 @@ impl Runtime {
             columns.insert("summary".to_string(), json!(summary));
         }
         columns.insert("updatedAt".to_string(), json!(now()));
-        columns.remove("ratingKey");
-        columns.remove("_generatedTitle");
+        columns.shift_remove("ratingKey");
+        columns.shift_remove("_generatedTitle");
         let new_title = columns.get("title").map(string_value).unwrap_or_default();
         if let Some(stored) = self.playlists.get_mut(id) {
             stored.title = new_title.clone();

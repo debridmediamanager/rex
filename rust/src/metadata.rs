@@ -743,7 +743,7 @@ pub fn enrich(
             ids.push(json!({"id":format!("tvdb://{}",v)}));
         }
         if ids.is_empty() {
-            row.remove("Guid");
+            row.shift_remove("Guid");
         } else {
             put(row, "Guid", ids);
         }

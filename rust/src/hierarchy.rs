@@ -344,7 +344,7 @@ fn artwork_fields() -> &'static [&'static str] {
 }
 
 pub fn set_season_count(show: &mut Row, seasons: &[Row]) {
-    show.remove("seasonCount");
+    show.shift_remove("seasonCount");
     let specials = seasons
         .iter()
         .filter(|row| int_value(row, "index") == Some(0))
@@ -445,7 +445,7 @@ pub fn normalize_rows(rows: &mut [Value]) {
                     "/library/metadata/{}/",
                     str_value(season, "ratingKey").unwrap_or_default()
                 )) {
-                    row.remove("parentThumb");
+                    row.shift_remove("parentThumb");
                 }
             }
         }
@@ -525,7 +525,7 @@ pub fn normalize_rows(rows: &mut [Value]) {
         if !derived.is_empty() && derived != title {
             put(row, "titleSort", derived);
         } else {
-            row.remove("titleSort");
+            row.shift_remove("titleSort");
         }
         if let Some(original) = str_value(row, "originalTitle") {
             let files: Vec<String> = row
@@ -553,20 +553,20 @@ pub fn normalize_rows(rows: &mut [Value]) {
                 .iter()
                 .any(|x| original.to_ascii_lowercase().ends_with(x))
             {
-                row.remove("originalTitle");
+                row.shift_remove("originalTitle");
             }
         }
         if row.get("Field") == Some(&json!([{"locked":true,"name":"thumb"}])) {
-            row.remove("Field");
+            row.shift_remove("Field");
         }
         if row.get("Label") == Some(&json!([])) {
-            row.remove("Label");
+            row.shift_remove("Label");
         }
         if kind == "movie" {
-            row.remove("Location");
+            row.shift_remove("Location");
         }
         if matches!(kind.as_str(), "movie" | "show" | "episode") {
-            row.remove("rating");
+            row.shift_remove("rating");
         }
         if kind == "episode" && str_value(row, "contentRating").is_none() {
             if let Some(parent) =
@@ -593,11 +593,11 @@ pub fn normalize_rows(rows: &mut [Value]) {
             row.entry("index").or_insert(json!(1));
         }
         for key in ["theme", "parentTheme", "grandparentTheme"] {
-            row.remove(key);
+            row.shift_remove(key);
         }
         if kind == "season" {
             if !bool_value(row, "skipCount") {
-                row.remove("skipCount");
+                row.shift_remove("skipCount");
             }
             if row.get("year").is_some()
                 && !stored
@@ -606,22 +606,22 @@ pub fn normalize_rows(rows: &mut [Value]) {
                     .unwrap_or(false)
             {
                 let parent = by_key.get(&str_value(row, "parentRatingKey").unwrap_or_default());
-                row.remove("year");
+                row.shift_remove("year");
                 if let Some(year) = parent.and_then(|p| p.get("year")).cloned() {
                     put(row, "parentYear", year);
                 }
             }
             if row.get("year").is_some_and(|v| !v.is_null()) {
-                row.remove("parentYear");
+                row.shift_remove("parentYear");
             } else {
-                row.remove("year");
+                row.shift_remove("year");
             }
         }
         if kind == "show" {
             if let Some(locations) = row.get_mut("Location").and_then(Value::as_array_mut) {
                 for loc in locations {
                     if let Some(loc) = loc.as_object_mut() {
-                        loc.remove("id");
+                        loc.shift_remove("id");
                     }
                 }
             }
@@ -635,7 +635,7 @@ pub fn normalize_rows(rows: &mut [Value]) {
             }
         }
         if kind == "episode" && row.get("Chapter").is_none() {
-            row.remove("chapterSource");
+            row.shift_remove("chapterSource");
         }
     }
     let stamps: HashMap<String, String> = rows
@@ -789,7 +789,7 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
             put(leaf, "librarySectionTitle", "Debrid Movies");
             put(leaf, "librarySectionKey", "/library/sections/1");
             for key in ["index", "parentIndex", "grandparentTitle"] {
-                leaf.remove(key);
+                leaf.shift_remove(key);
             }
             rows.push(leaf_value.clone());
             continue;
@@ -950,7 +950,7 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
         // row's background URL; the consumed source marker is removed first just
         // as the Python builder does.
         let episode_still = leaf.get("_art_url").cloned();
-        leaf.remove("_art_url");
+        leaf.shift_remove("_art_url");
         put(leaf, "type", "episode");
         let episode = int_value(leaf, "_episode").unwrap();
         put(leaf, "index", episode);
@@ -1028,7 +1028,7 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
                 "_season_air",
                 "_season_summary",
             ] {
-                row.remove(key);
+                row.shift_remove(key);
             }
         }
     }

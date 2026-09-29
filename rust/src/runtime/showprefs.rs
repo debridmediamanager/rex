@@ -82,7 +82,7 @@ impl Runtime {
                 if self.show_flattened(&row) {
                     object.insert("skipChildren".to_string(), json!(true));
                 } else {
-                    object.remove("skipChildren");
+                    object.shift_remove("skipChildren");
                 }
             }
             Some("episode") => {
@@ -92,10 +92,10 @@ impl Runtime {
                     .and_then(|key| self.catalog.get(&key).cloned());
                 if show.as_ref().is_some_and(|show| self.show_flattened(show)) {
                     object.insert("skipParent".to_string(), json!(true));
-                    object.remove("parentRatingKey");
-                    object.remove("parentKey");
+                    object.shift_remove("parentRatingKey");
+                    object.shift_remove("parentKey");
                 } else {
-                    object.remove("skipParent");
+                    object.shift_remove("skipParent");
                 }
             }
             _ => {}
@@ -164,7 +164,7 @@ impl Runtime {
             if let Some(stored) = stored.as_object_mut() {
                 for (name, value) in &writes {
                     if value.is_empty() {
-                        stored.remove(name);
+                        stored.shift_remove(name);
                     } else {
                         stored.insert(name.clone(), json!(value));
                     }

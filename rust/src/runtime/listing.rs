@@ -285,13 +285,13 @@ impl Runtime {
                 let mut shown = self.grid_row(row, true, keep_guid, false);
                 if type_number.is_none() {
                     if let Some(object) = shown.as_object_mut() {
-                        object.remove("Media");
+                        object.shift_remove("Media");
                         match row.get("_libraryAllDuration") {
                             Some(duration) if !duration.is_null() => {
                                 object.insert("duration".to_string(), duration.clone());
                             }
                             _ => {
-                                object.remove("duration");
+                                object.shift_remove("duration");
                             }
                         }
                     }

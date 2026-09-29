@@ -1249,8 +1249,8 @@ pub fn normalize_media(media: &mut Value) {
     let container = str_value(media, "container")
         .unwrap_or_default()
         .to_ascii_lowercase();
-    media.remove("optimizedForStreaming");
-    media.remove("has64bitOffsets");
+    media.shift_remove("optimizedForStreaming");
+    media.shift_remove("has64bitOffsets");
     if MP4_FAMILY.contains(&container.as_str()) {
         let large = parts
             .iter()
@@ -1311,12 +1311,12 @@ pub fn normalize_media(media: &mut Value) {
                 video_profile(str_value(p, "videoProfile").as_deref()),
             );
         }
-        p.remove("optimizedForStreaming");
-        p.remove("has64bitOffsets");
+        p.shift_remove("optimizedForStreaming");
+        p.shift_remove("has64bitOffsets");
         if container == "mpegts" {
             put(p, "packetLength", 188)
         } else {
-            p.remove("packetLength");
+            p.shift_remove("packetLength");
         }
         if MP4_FAMILY.contains(&container.as_str()) {
             put(p, "optimizedForStreaming", false);
@@ -1330,7 +1330,7 @@ pub fn normalize_media(media: &mut Value) {
             && !matches!(p.get("hasThumbnail"),Some(Value::Number(x))if x.as_i64()==Some(1))
             && !matches!(p.get("hasThumbnail"), Some(Value::Bool(true)))
         {
-            p.remove("hasThumbnail");
+            p.shift_remove("hasThumbnail");
         }
         if let Some(streams) = p.get_mut("Stream").and_then(Value::as_array_mut) {
             for stream in streams {
@@ -1342,7 +1342,7 @@ pub fn normalize_media(media: &mut Value) {
                     .chain(std::iter::once(&("selected", "selected")))
                 {
                     if s.get(*flag) == Some(&Value::Bool(false)) {
-                        s.remove(*flag);
+                        s.shift_remove(*flag);
                     }
                 }
                 if let Some(code) = str_value(s, "languageCode") {
@@ -1368,7 +1368,7 @@ pub fn normalize_media(media: &mut Value) {
                             .unwrap_or(Value::Null),
                     );
                     if int_value(s, "level") == Some(-99) {
-                        s.remove("level");
+                        s.shift_remove("level");
                     }
                 }
                 if int_value(s, "streamType") == Some(2) {
@@ -1379,12 +1379,12 @@ pub fn normalize_media(media: &mut Value) {
                         if let Some(profile) = profile {
                             put(s, "profile", profile);
                         } else {
-                            s.remove("profile");
+                            s.shift_remove("profile");
                         }
                     }
                 }
                 if int_value(s, "streamType") == Some(3) {
-                    s.remove("embeddedInVideo");
+                    s.shift_remove("embeddedInVideo");
                     if let Some(codec) = str_value(s, "codec") {
                         if let Some((_, mapped)) =
                             SUBTITLE_CODECS.iter().find(|(raw, _)| *raw == codec)
@@ -1394,7 +1394,7 @@ pub fn normalize_media(media: &mut Value) {
                     }
                     for flag in ["default", "forced"] {
                         if !bool_value(s, flag) {
-                            s.remove(flag);
+                            s.shift_remove(flag);
                         }
                     }
                     s.entry("canAutoSync").or_insert(Value::Bool(false));

@@ -336,9 +336,9 @@ impl Runtime {
             false
         };
         if empty {
-            row.remove("Collection");
+            row.shift_remove("Collection");
         }
-        row.remove("_collectionLight");
+        row.shift_remove("_collectionLight");
     }
 
     /// Add rows to a collection: each joins once, is tagged and locked.
@@ -433,7 +433,7 @@ impl Runtime {
         let mut row = self.dynamic_collection_row(&collection);
         if let Some(object) = row.as_object_mut() {
             for name in ["librarySectionID", "librarySectionKey", "librarySectionTitle"] {
-                object.remove(name);
+                object.shift_remove(name);
             }
         }
         self.dirty = true;
@@ -547,7 +547,7 @@ impl Runtime {
                     collection.extra.insert("Field".to_string(), fields.clone());
                 }
                 None => {
-                    collection.extra.remove("Field");
+                    collection.extra.shift_remove("Field");
                 }
             }
         }
@@ -573,7 +573,7 @@ impl Runtime {
                     collection.extra.insert("titleSort".to_string(), sort.clone());
                 }
                 None => {
-                    collection.extra.remove("titleSort");
+                    collection.extra.shift_remove("titleSort");
                 }
             }
         }
@@ -612,7 +612,7 @@ impl Runtime {
             if renamed {
                 let light = row.entry("_collectionLight".to_string()).or_insert_with(|| json!({}));
                 if let Some(light) = light.as_object_mut() {
-                    let first = light.remove(&old.to_lowercase()).unwrap_or_else(|| json!(old));
+                    let first = light.shift_remove(&old.to_lowercase()).unwrap_or_else(|| json!(old));
                     light.insert(title.to_lowercase(), first);
                 }
             }
@@ -1009,7 +1009,7 @@ impl Runtime {
             if let Some((upload, _)) = self.list_artwork.get(&id) {
                 for entry in &mut entries {
                     if let Some(object) = entry.as_object_mut() {
-                        object.remove("selected");
+                        object.shift_remove("selected");
                     }
                 }
                 entries.push(json!({"_element": "Photo", "key": upload, "ratingKey": upload,
@@ -1046,8 +1046,8 @@ impl Runtime {
                 ]),
             );
             if let Some(body) = container.get_mut("MediaContainer").and_then(Value::as_object_mut) {
-                body.remove("content");
-                body.remove("thumb");
+                body.shift_remove("content");
+                body.shift_remove("thumb");
                 body.insert("key".to_string(), json!(id));
                 body.insert("nocache".to_string(), json!(true));
                 body.insert("parentIndex".to_string(), json!(self.collection_tag_id(collection)));
@@ -1165,7 +1165,7 @@ impl Runtime {
                 body.insert("parentTitle".to_string(), json!(collection.title));
                 body.insert("title2".to_string(), json!(collection.title));
             } else {
-                body.remove("allowSync");
+                body.shift_remove("allowSync");
             }
             return Response::json(200, json!({"MediaContainer": body}));
         }
@@ -1232,7 +1232,7 @@ impl Runtime {
         };
         for tag in tags.iter_mut() {
             let Some(tag_object) = tag.as_object_mut() else { continue };
-            tag_object.remove("count");
+            tag_object.shift_remove("count");
             let name = tag_object.get("tag").map(string_value).unwrap_or_default();
             if let Some(collection) = self.collections.values().find(|collection| {
                 !collection.smart

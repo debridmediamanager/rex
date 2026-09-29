@@ -410,7 +410,7 @@ pub(super) fn set_lock(row: &mut Map<String, Value>, field: &str, locked: bool) 
         )
     });
     if fields.is_empty() {
-        row.remove("Field");
+        row.shift_remove("Field");
     } else {
         row.insert("Field".to_string(), Value::Array(fields));
     }
@@ -424,7 +424,7 @@ pub(super) fn derive_title_sort(row: &mut Map<String, Value>) {
     if field_locked(row, "titleSort") {
         return;
     }
-    if row.remove("_section_title_sort").is_some() {
+    if row.shift_remove("_section_title_sort").is_some() {
         return;
     }
     let title = row
@@ -439,14 +439,14 @@ pub(super) fn derive_title_sort(row: &mut Map<String, Value>) {
         && generated_season_re().is_match(&title)
     {
         // Cycle 20: a title the SERVER generated stores no sort title at all.
-        row.remove("titleSort");
+        row.shift_remove("titleSort");
         return;
     }
     let derived = crate::hierarchy::sort_title(&title);
     if derived != title {
         row.insert("titleSort".to_string(), json!(derived));
     } else {
-        row.remove("titleSort");
+        row.shift_remove("titleSort");
     }
 }
 
@@ -596,12 +596,12 @@ impl Runtime {
             .map(|tag| tag.get("tag").map(string_value).unwrap_or_default())
             .collect::<Vec<_>>();
         if fresh.is_empty() {
-            row.remove(key);
+            row.shift_remove(key);
         } else {
             row.insert(key.to_string(), Value::Array(fresh));
         }
         if key == "Collection" {
-            row.remove("_collectionLight");
+            row.shift_remove("_collectionLight");
             outcome.collection_added.extend(after.iter().cloned());
             for gone in before {
                 if !after.contains(&gone) {
@@ -665,7 +665,7 @@ impl Runtime {
             if value == "1" {
                 row.insert("isAdult".to_string(), json!(true));
             } else {
-                row.remove("isAdult");
+                row.shift_remove("isAdult");
             }
             return Ok(());
         }
@@ -721,9 +721,9 @@ impl Runtime {
                 _ => {
                     // Cycle 20: a negative rating REMOVES the field, the way a
                     // negative year does.
-                    row.remove(field);
+                    row.shift_remove(field);
                     if field == "userRating" {
-                        row.remove("lastRatedAt");
+                        row.shift_remove("lastRatedAt");
                     }
                 }
             }
@@ -731,7 +731,7 @@ impl Runtime {
         }
         if value.is_empty() {
             if field == "year" && section {
-                row.remove(field);
+                row.shift_remove(field);
                 return Ok(());
             }
             if has(INTEGER_FIELDS, field) {
@@ -740,7 +740,7 @@ impl Runtime {
             if has(KEEP_EMPTY_FIELDS, field) {
                 row.insert(field.to_string(), json!(""));
             } else {
-                row.remove(field);
+                row.shift_remove(field);
             }
             return Ok(());
         }
@@ -755,7 +755,7 @@ impl Runtime {
                 return Err(refuse(500, format!("year out of range {value:?}")));
             }
             if has(PARSED_NOT_STORED, field) || number < 0 || (field == "year" && number == 0) {
-                row.remove(field);
+                row.shift_remove(field);
             } else {
                 row.insert(field.to_string(), json!(number as i64));
             }
@@ -770,7 +770,7 @@ impl Runtime {
                     return Err(refuse(500, format!("unparseable {field} {value:?}")));
                 }
                 None => {
-                    row.remove(field);
+                    row.shift_remove(field);
                 }
             }
             return Ok(());
@@ -831,7 +831,7 @@ impl Runtime {
                 row.insert("_own_content_rating".to_string(), json!(true));
             } else if !written.is_empty() {
                 // Cycle 20: an EMPTY write gives the row back to the show.
-                row.remove("_own_content_rating");
+                row.shift_remove("_own_content_rating");
             }
         }
         if section && pairs.iter().any(|(name, _)| name == "titleSort.value") {
@@ -977,7 +977,7 @@ impl Runtime {
                     if has(ARTWORK_VALUE_FIELDS, field) {
                         if value.is_empty() {
                             // Cycle 31: an EMPTY artwork value REMOVES the column.
-                            row.remove(field);
+                            row.shift_remove(field);
                         } else {
                             let stamp = row
                                 .get("updatedAt")
@@ -1017,7 +1017,7 @@ impl Runtime {
             if let Some(year) = date.get(..4).and_then(|year| year.parse::<i64>().ok()) {
                 row.insert("year".to_string(), json!(year));
             } else {
-                row.remove("year");
+                row.shift_remove("year");
             }
         }
         let mut tag_types = adding.iter().map(|(name, _)| name.clone()).collect::<Vec<_>>();
@@ -1059,7 +1059,7 @@ impl Runtime {
             }
         }
         if written.contains("title") {
-            row.remove("_generatedTitle");
+            row.shift_remove("_generatedTitle");
         }
         let title_now = row.get("title").map(string_value).unwrap_or_default();
         if written.contains("title") && title_now.is_empty() && row.get("title").is_some() {
@@ -1159,7 +1159,7 @@ impl Runtime {
                         object.insert("parentYear".to_string(), year);
                     }
                     _ => {
-                        object.remove("parentYear");
+                        object.shift_remove("parentYear");
                     }
                 }
             }
@@ -1224,7 +1224,7 @@ impl Runtime {
                     child.insert(name.to_string(), value.clone());
                 }
                 None => {
-                    child.remove(name);
+                    child.shift_remove(name);
                 }
             }
         }

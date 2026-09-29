@@ -156,7 +156,7 @@ impl Runtime {
                 let mut shown = self.grid_row(&row, false, false, false);
                 if let Some(object) = shown.as_object_mut() {
                     for tag in ["Genre", "Country", "Director", "Writer", "Role", "Collection"] {
-                        object.remove(tag);
+                        object.shift_remove(tag);
                     }
                     object.insert("state".to_string(), json!(state));
                 }

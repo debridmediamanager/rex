@@ -398,7 +398,7 @@ impl Runtime {
             .map(|rows| rows.iter().filter_map(key_of).collect::<Vec<_>>())
             .unwrap_or_default();
         if keys.is_empty() {
-            built.remove("hubKey");
+            built.shift_remove("hubKey");
         } else {
             built.insert("hubKey".to_string(), json!(format!("/library/metadata/{}", keys.join(","))));
         }
@@ -847,7 +847,7 @@ pub(super) fn guid_gate(mut row: Value, query: &HashMap<String, String>) -> Valu
                 }
             }
         } else {
-            object.remove("Guid");
+            object.shift_remove("Guid");
         }
     }
     row

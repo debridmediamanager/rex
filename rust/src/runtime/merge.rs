@@ -64,7 +64,7 @@ impl Runtime {
                 let mut clone = original.clone();
                 if let Some(object) = clone.as_object_mut() {
                     object.insert("Media".to_string(), json!([source.clone()]));
-                    object.remove("Field");
+                    object.shift_remove("Field");
                     object.insert("ratingKey".to_string(), json!(new_key));
                     object.insert("key".to_string(), json!(format!("/library/metadata/{new_key}")));
                     object.insert("guid".to_string(), json!(format!("local://{new_key}")));
@@ -80,7 +80,7 @@ impl Runtime {
             let mut untitled = clone.clone();
             if let Some(object) = untitled.as_object_mut() {
                 object.insert("title".to_string(), json!(""));
-                object.remove("year");
+                object.shift_remove("year");
             }
             self.push_timeline_entry(&untitled, 0, Some("created"), None, None, None);
             self.push_timeline_entry(clone, 0, Some("created"), None, None, None);
