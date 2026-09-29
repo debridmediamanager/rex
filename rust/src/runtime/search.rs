@@ -392,7 +392,7 @@ impl Runtime {
 
     /// Every playlist row, smart first, then by sort title (`library.playlists`).
     fn playlist_rows(&self) -> Vec<Value> {
-        let mut rows = self.playlists.values().map(|p| self.dynamic_playlist_row(p)).collect::<Vec<_>>();
+        let mut rows = self.playlists.values().map(|p| self.playlist_row(p, false, true)).collect::<Vec<_>>();
         rows.sort_by_key(|row| {
             (
                 !row.get("smart").and_then(Value::as_bool).unwrap_or(false),
