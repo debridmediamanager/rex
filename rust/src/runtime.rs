@@ -12674,6 +12674,14 @@ impl Runtime {
                         {
                             return response;
                         }
+                        // `server.py`: any other two-segment leaf is a bucket of an axis
+                        // that has none -- `studio` and `platform` among them -- a 404.
+                        if !matches!(
+                            segments[3],
+                            "query" | "indexes" | "firstCharacter" | "extras" | "composite" | "stations"
+                        ) {
+                            return Response::error(404, "plexsim: not found");
+                        }
                     }
                 }
                 if segments.len() == 4
