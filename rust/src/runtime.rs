@@ -12000,6 +12000,31 @@ impl Runtime {
                         ),
                     );
                 }
+                if matches!(request.method.as_str(), "GET" | "HEAD") && segments.len() >= 5 {
+                    // Cycle 16, swept on both references: a leaf with no bucket answers
+                    // 404 to an extra segment, and so does a SECOND extra segment on a
+                    // leaf that has one -- never the leaf itself again.
+                    let bucketless = matches!(
+                        segments[3],
+                        "all" | "onDeck" | "recentlyAdded" | "newest" | "recentlyViewed"
+                            | "allLeaves" | "collections" | "common" | "sorts" | "filters"
+                            | "folder" | "search" | "unwatched" | "prefs" | "studio"
+                            | "audioLanguage" | "subtitleLanguage" | "videoCodec" | "audioCodec"
+                            | "audioLayout" | "location"
+                    );
+                    let deep_bucket = segments.len() >= 6
+                        && segments[4] != "top"
+                        && (segments[3] == "firstCharacter"
+                            || matches!(
+                                segments[3],
+                                "genre" | "director" | "writer" | "producer" | "actor" | "country"
+                                    | "network" | "collection" | "label" | "mood" | "style" | "year"
+                                    | "decade" | "contentRating" | "resolution" | "userRating" | "rating"
+                            ));
+                    if (bucketless && segments[4] != "top") || deep_bucket {
+                        return Response::error(404, "plexsim: not found");
+                    }
+                }
                 if matches!(request.method.as_str(), "GET" | "HEAD") {
                     // The secondary axes and the bucket listings behind them, ported
                     // whole from server.py (see runtime/axes.rs).
