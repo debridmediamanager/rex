@@ -11895,50 +11895,52 @@ impl Runtime {
                         rows = roots;
                         fields.remove("mixedParents");
                     }
-                    if kind == "show" && leaf == "recentlyAdded" {
-                        rows.sort_by(|left, right| {
-                            right
-                                .get("addedAt")
-                                .and_then(Value::as_i64)
+                    if !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
+                        // The subsets start from the listing's default order, titleSort,
+                        // and each re-sorts stably on its own key.
+                        rows = self.sort_rows(rows, Some("titleSort")).unwrap_or_default();
+                        let stamp = |row: &Value, name: &str| {
+                            row.get(name)
+                                .and_then(|value| {
+                                    value.as_i64().or_else(|| string_value(value).parse().ok())
+                                })
                                 .unwrap_or(0)
-                                .cmp(&left.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
-                        });
-                    } else if kind == "show" && leaf == "newest" {
-                        rows.sort_by(|left, right| {
-                            string_value(right.get("originallyAvailableAt").unwrap_or(&Value::Null))
-                                .cmp(&string_value(
-                                    left.get("originallyAvailableAt").unwrap_or(&Value::Null),
-                                ))
-                        });
-                    } else if kind == "show" && leaf == "recentlyViewed" {
-                        rows.retain(|row| row.get("lastViewedAt").is_some());
-                        rows.sort_by(|left, right| {
-                            right
-                                .get("lastViewedAt")
-                                .and_then(Value::as_i64)
-                                .unwrap_or(0)
-                                .cmp(
-                                    &left
-                                        .get("lastViewedAt")
-                                        .and_then(Value::as_i64)
-                                        .unwrap_or(0),
-                                )
-                        });
-                    } else if kind != "show" && leaf == "newest" {
-                        rows.sort_by(|left, right| {
-                            string_value(right.get("originallyAvailableAt").unwrap_or(&Value::Null))
-                                .cmp(&string_value(
-                                    left.get("originallyAvailableAt").unwrap_or(&Value::Null),
-                                ))
-                        });
-                    } else {
-                        rows.sort_by(|left, right| {
-                            right
-                                .get("addedAt")
-                                .and_then(Value::as_i64)
-                                .unwrap_or(0)
-                                .cmp(&left.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
-                        });
+                        };
+                        let rating_key = |row: &Value| stamp(row, "ratingKey");
+                        match leaf {
+                            "recentlyViewed" => {
+                                // Cycle 55, from `order by metadata_item_settings.updated_at
+                                // desc` and measured on zen (`viewUpdatedAt` descending,
+                                // ties by ratingKey) and plexscratch42: the ORDER is the
+                                // view-state write time, falling back to the view time.
+                                rows.retain(|row| stamp(row, "lastViewedAt") != 0);
+                                rows.sort_by_key(|row| {
+                                    let written = stamp(row, "viewUpdatedAt");
+                                    let viewed = stamp(row, "lastViewedAt");
+                                    (-(if written != 0 { written } else { viewed }), rating_key(row))
+                                });
+                                rows.truncate(100);
+                            }
+                            "recentlyAdded" | "recentlyAddedGrandparents" => {
+                                // Cycle 54: only the LITERAL `unwatched=1` drops the
+                                // watched rows here, before the cap.
+                                if query.get("unwatched").is_some_and(|value| value == "1") {
+                                    rows.retain(|row| stamp(row, "viewCount") == 0);
+                                }
+                                rows.sort_by_key(|row| -stamp(row, "addedAt"));
+                                rows.truncate(100);
+                            }
+                            _ => {
+                                rows.sort_by(|left, right| {
+                                    string_value(
+                                        right.get("originallyAvailableAt").unwrap_or(&Value::Null),
+                                    )
+                                    .cmp(&string_value(
+                                        left.get("originallyAvailableAt").unwrap_or(&Value::Null),
+                                    ))
+                                });
+                            }
+                        }
                     }
                     let rows = rows
                         .iter()
@@ -11952,8 +11954,10 @@ impl Runtime {
                         fields.insert("nocache".to_string(), json!(true));
                     }
                     if leaf == "recentlyViewedShows" || leaf == "recentlyViewedGrandparents" {
+                        // Measured on both servers: it is the one subset with
+                        // `allowSync` false, on a movie library as on a show one.
+                        fields.insert("allowSync".to_string(), json!(false));
                         if kind == "show" {
-                            fields.insert("allowSync".to_string(), json!(false));
                             fields.insert("viewGroup".to_string(), json!("show"));
                         } else {
                             fields.insert("viewGroup".to_string(), json!("movie"));
