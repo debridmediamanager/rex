@@ -2365,7 +2365,7 @@ impl Runtime {
 
     fn metadata_provider_group_row(&self, group: &MetadataProviderGroup) -> Value {
         json!({
-            "id": group.id,
+            "id": group.id.parse::<i64>().map(|id| json!(id)).unwrap_or_else(|_| json!(group.id)),
             "title": group.title,
             "primaryIdentifier": group.primary_identifier,
             "MetadataAgentProviderGroupItem": group.items,
@@ -2377,7 +2377,7 @@ impl Runtime {
             .metadata_provider_rows()
             .into_iter()
             .map(|provider| {
-                let id = string_value(provider.get("id").unwrap_or(&Value::Null));
+                let id = provider.get("id").cloned().unwrap_or(Value::Null);
                 let identifier = provider
                     .get("identifier")
                     .and_then(Value::as_str)
@@ -2413,7 +2413,8 @@ impl Runtime {
     ) -> Response {
         // Cycle 31: creating a provider needs an external provider object; a POST to
         // either listing is a 400.
-        if request.method == "POST" && (segments.len() == 3 || (segments.len() == 4 && segments[3] == "group")) {
+        // Cycle 40: the GROUP listing's query-only POST is Add Agent's create.
+        if request.method == "POST" && segments.len() == 3 {
             return Response::error(400, "plexsim: bad request");
         }
         if segments.len() == 3 {
@@ -2458,21 +2459,19 @@ impl Runtime {
         }
         if segments.len() == 4 && segments[3] == "group" {
             if request.method == "GET" || request.method == "HEAD" {
+                let rows = self.metadata_provider_groups();
                 return Response::json(
                     200,
-                    self.container(
-                        Map::from_iter([(
-                            "MetadataAgentProviderGroup".to_string(),
-                            Value::Array(self.metadata_provider_groups()),
-                        )]),
-                        false,
-                    ),
+                    json!({"MediaContainer": {"size": rows.len(), "MetadataAgentProviderGroup": rows}}),
                 );
             }
             if request.method == "POST" {
                 let Some(primary) = query.get("primaryIdentifier") else {
                     return Response::error(400, "plexsim: bad request");
                 };
+                if query.get("title").is_none() {
+                    return Response::error(400, "plexsim: bad request");
+                }
                 let provider = self
                     .metadata_provider_rows()
                     .into_iter()
@@ -2491,8 +2490,8 @@ impl Runtime {
                         .unwrap_or_else(|| "Provider Group".to_string()),
                     primary_identifier: primary.clone(),
                     items: vec![json!({
-                        "id": id,
-                        "metadataAgentProviderGroupId": id,
+                        "id": id.parse::<i64>().unwrap_or(0),
+                        "metadataAgentProviderGroupId": id.parse::<i64>().unwrap_or(0),
                         "metadataAgentProviderId": provider_id,
                         "order": 1000.0
                     })],
@@ -2502,13 +2501,7 @@ impl Runtime {
                     .insert(group.id.clone(), group);
                 return Response::json(
                     200,
-                    self.container(
-                        Map::from_iter([(
-                            "MetadataAgentProviderGroup".to_string(),
-                            Value::Array(vec![row]),
-                        )]),
-                        false,
-                    ),
+                    json!({"MediaContainer": {"size": 1, "MetadataAgentProviderGroup": [row]}}),
                 );
             }
             return Response::error(404, "plexsim: not found");
@@ -2516,23 +2509,25 @@ impl Runtime {
         let Some(group_id) = segments.get(4).copied() else {
             return Response::error(404, "plexsim: not found");
         };
+        // Only groups the client created have a lifecycle; any other id is a 404.
+        if !(segments.len() == 5 && matches!(request.method.as_str(), "GET" | "HEAD"))
+            && !self.metadata_provider_groups.contains_key(group_id)
+        {
+            return Response::error(404, "plexsim: not found");
+        }
         if segments.len() == 5 && request.method == "PUT" {
+            let Some(title) = query.get("title").cloned() else {
+                return Response::error(400, "plexsim: bad request");
+            };
             let Some(group) = self.metadata_provider_groups.get_mut(group_id) else {
                 return Response::error(404, "plexsim: not found");
             };
-            if let Some(title) = query.get("title") {
-                group.title = title.clone();
-            }
+            group.title = title;
             let row = group.clone();
             return Response::json(
                 200,
-                self.container(
-                    Map::from_iter([(
-                        "MetadataAgentProviderGroup".to_string(),
-                        Value::Array(vec![self.metadata_provider_group_row(&row)]),
-                    )]),
-                    false,
-                ),
+                json!({"MediaContainer": {"size": 1,
+                    "MetadataAgentProviderGroup": [self.metadata_provider_group_row(&row)]}}),
             );
         }
         if segments.len() == 5 && request.method == "DELETE" {
@@ -7475,6 +7470,16 @@ impl Runtime {
         Ok(found)
     }
 
+    /// Where a LIST row's per-user state lives: a collection keeps it on its own
+    /// stored row (`extra`, which its projection splices back in), a playlist in
+    /// `list_state`.
+    fn list_state_mut(&mut self, key: &str) -> &mut Map<String, Value> {
+        if self.collections.contains_key(key) {
+            return &mut self.collections.get_mut(key).expect("checked").extra;
+        }
+        self.list_state.entry(key.to_string()).or_default()
+    }
+
     /// Cycle 54: `viewUpdatedAt`, the time a row's per-user view state was
     /// written -- a rating, a scrobble, an unscrobble, a stored progress.
     fn stamp_view(&mut self, keys: &[String]) {
@@ -7646,7 +7651,7 @@ impl Runtime {
     /// at exactly the stored position writes nothing (cycle 58).
     fn store_progress(&mut self, key: &str, position: i64) {
         if self.catalog.get(key).is_none() {
-            let state = self.list_state.entry(key.to_string()).or_default();
+            let state = self.list_state_mut(key);
             if state.get("viewOffset").and_then(Value::as_i64) == Some(position) {
                 return;
             }
@@ -7677,7 +7682,7 @@ impl Runtime {
             if watched && is_collection {
                 return Response::empty(200);
             }
-            let state = self.list_state.entry(key.clone()).or_default();
+            let state = self.list_state_mut(&key);
             if watched {
                 let count = state.get("viewCount").and_then(Value::as_i64).unwrap_or(1);
                 state.insert("viewCount".to_string(), json!(count + 1));
@@ -7778,7 +7783,7 @@ impl Runtime {
         };
         let rating = rating.unwrap_or(-1.0);
         if self.catalog.get(&key).is_none() {
-            let state = self.list_state.entry(key.clone()).or_default();
+            let state = self.list_state_mut(&key);
             if rating == -1.0 {
                 state.remove("userRating");
                 state.remove("lastRatedAt");
