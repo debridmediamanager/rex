@@ -30,6 +30,7 @@ mod frames;
 mod artwork;
 mod butler;
 mod children;
+mod detail;
 mod framework;
 mod gates;
 mod listing;
@@ -899,24 +900,10 @@ impl Runtime {
             let leaves = self.leaves(&key);
             object.insert("childCount".to_string(), json!(seasons.len()));
             object.insert("leafCount".to_string(), json!(leaves.len()));
-            let duration = leaves
-                .iter()
-                .filter_map(|leaf| leaf.get("duration").and_then(Value::as_i64))
-                .sum::<i64>();
-            object.insert("duration".to_string(), json!(duration));
-            if let Some(first_air) = leaves
-                .iter()
-                .filter_map(|leaf| leaf.get("originallyAvailableAt").and_then(Value::as_str))
-                .min()
-            {
-                object.insert("originallyAvailableAt".to_string(), json!(first_air));
-                if let Some(year) = first_air
-                    .get(..4)
-                    .and_then(|value| value.parse::<i64>().ok())
-                {
-                    object.insert("year".to_string(), json!(year));
-                }
-            }
+            // A show's own `duration`, `year` and `originallyAvailableAt` are the
+            // STORED columns (measured: The Simpsons stays 1989 and its typical
+            // episode length); the detail read only fills them when absent
+            // (`show_detail`), which is done by the route, not by every projection.
             object.insert(
                 "viewedLeafCount".to_string(),
                 json!(leaves
@@ -931,16 +918,9 @@ impl Runtime {
                         .or_insert(value.clone());
                 }
             }
-            if let Some(section) = self.section(&string_value(
-                object.get("librarySectionID").unwrap_or(&Value::Null),
-            )) {
-                object.insert(
-                    "librarySectionUUID".to_string(),
-                    section.get("uuid").cloned().unwrap_or(Value::Null),
-                );
-            }
-            let preferences = self.item_preferences("show", original);
-            object.insert("Preferences".to_string(), json!({"Setting": preferences}));
+            // `Preferences`, `OnDeck` and `Extras` are DETAIL blocks the route adds
+            // under their include options (`apply_detail_blocks`); no projection
+            // carries them unasked, and a show row names its library by id only.
             if self
                 .section_prefs
                 .get(&(
@@ -952,9 +932,6 @@ impl Runtime {
                 object.insert("skipChildren".to_string(), json!(true));
             } else {
                 object.remove("skipChildren");
-            }
-            if let Some(on_deck) = self.on_deck_for(&leaves) {
-                object.insert("OnDeck".to_string(), json!({"Metadata": on_deck}));
             }
         } else if kind == "season" {
             let children = self.children(&key);
@@ -972,7 +949,6 @@ impl Runtime {
                         ("title", "parentTitle"),
                         ("studio", "parentStudio"),
                         ("thumb", "parentThumb"),
-                        ("art", "parentArt"),
                         ("year", "parentYear"),
                         ("index", "parentIndex"),
                     ] {
@@ -989,30 +965,6 @@ impl Runtime {
                             object.remove(destination);
                         }
                     }
-                }
-            }
-            object.insert("Extras".to_string(), json!({"Metadata": []}));
-            object.insert(
-                "Preferences".to_string(),
-                json!({"Setting": self.item_preferences("season", original)}),
-            );
-            // OnDeck is selected at show level, then exposed only by the season
-            // owning that candidate.  The reference does not put the same row on
-            // every season in a show with multiple seasons.
-            if let Some(parent_key) = object.get("parentRatingKey").map(string_value) {
-                if let Some(parent) = self.catalog.get(&parent_key) {
-                    let leaves = self.leaves(&parent_key);
-                    if let Some(candidate) = self.on_deck_for(&leaves) {
-                        if candidate
-                            .get("parentRatingKey")
-                            .map(string_value)
-                            .as_deref()
-                            == Some(key.as_str())
-                        {
-                            object.insert("OnDeck".to_string(), json!({"Metadata": candidate}));
-                        }
-                    }
-                    let _ = parent;
                 }
             }
         } else if kind == "episode" {
@@ -1038,11 +990,6 @@ impl Runtime {
                     } else {
                         object.remove("parentStudio");
                     }
-                    if let Some(value) = parent.get("year") {
-                        object.insert("parentYear".to_string(), value.clone());
-                    } else {
-                        object.remove("parentYear");
-                    }
                     if object.get("summary").is_none() {
                         if let Some(value) = parent.get("summary") {
                             object.insert("summary".to_string(), value.clone());
@@ -1060,20 +1007,6 @@ impl Runtime {
                     } else {
                         object.remove("grandparentTitle");
                     }
-                    for field in ["thumb", "art"] {
-                        if let Some(value) = show.get(field) {
-                            object.insert(format!("grandparent{field}"), value.clone());
-                        }
-                    }
-                    for (source, destination) in
-                        [("studio", "grandparentStudio"), ("year", "grandparentYear")]
-                    {
-                        if let Some(value) = show.get(source) {
-                            object.insert(destination.to_string(), value.clone());
-                        } else {
-                            object.remove(destination);
-                        }
-                    }
                     if object.get("summary").is_none() {
                         if let Some(value) = self
                             .catalog
@@ -1088,8 +1021,6 @@ impl Runtime {
             for field in ["Genre", "studio", "tagline", "Country"] {
                 object.remove(field);
             }
-            object.insert("Extras".to_string(), json!({"Metadata": []}));
-            object.remove("Preferences");
         }
         // Item preferences are represented twice by PMS: as a Preferences block
         // and as string attributes on the row itself.  Keep the private storage
@@ -1118,14 +1049,7 @@ impl Runtime {
                         || value.starts_with("none://")
                         || value.starts_with("tv.plex.agents.none://")
                 });
-            if unmatched {
-                object.remove("Preferences");
-            } else {
-                object.insert(
-                    "Preferences".to_string(),
-                    json!({"Setting": self.item_preferences("movie", original)}),
-                );
-            }
+            let _ = unmatched;
         }
         object.insert(
             "ratingKey".to_string(),
@@ -1148,54 +1072,8 @@ impl Runtime {
                         .into_iter()
                         .flatten()
                     {
-                        let Some(stream_object) = stream.as_object_mut() else {
-                            continue;
-                        };
-                        stream_object.remove("_content");
-                        let stream_type = stream_object
-                            .get("streamType")
-                            .and_then(Value::as_i64)
-                            .unwrap_or(0);
-                        if stream_type == 1 {
-                            let codec = stream_object
-                                .get("codec")
-                                .and_then(Value::as_str)
-                                .map(|value| value.to_ascii_uppercase())
-                                .unwrap_or_default();
-                            let height = stream_object
-                                .get("height")
-                                .and_then(Value::as_i64)
-                                .map(|value| format!("{value}p"));
-                            let title = stream_object
-                                .get("displayTitle")
-                                .and_then(Value::as_str)
-                                .map(str::to_string)
-                                .or_else(|| height.map(|value| format!("{value} ({codec})")))
-                                .unwrap_or_else(|| codec.clone());
-                            stream_object.insert("displayTitle".to_string(), json!(title.clone()));
-                            stream_object.insert("extendedDisplayTitle".to_string(), json!(title));
-                        } else if stream_type == 3 {
-                            let language = stream_object
-                                .get("language")
-                                .and_then(Value::as_str)
-                                .unwrap_or("Unknown")
-                                .to_string();
-                            let display = stream_object
-                                .get("displayTitle")
-                                .and_then(Value::as_str)
-                                .filter(|value| !value.is_empty())
-                                .unwrap_or(&language)
-                                .to_string();
-                            stream_object
-                                .insert("displayTitle".to_string(), json!(display.clone()));
-                            let extended = stream_object
-                                .get("title")
-                                .and_then(Value::as_str)
-                                .filter(|value| !value.is_empty())
-                                .map(|title| format!("{display} ({title})"))
-                                .unwrap_or(display);
-                            stream_object
-                                .insert("extendedDisplayTitle".to_string(), json!(extended));
+                        if let Some(stream_object) = stream.as_object_mut() {
+                            stream_object.remove("_content");
                         }
                     }
                 }
@@ -1223,7 +1101,9 @@ impl Runtime {
         } else if let Some(url) = object.get("thumb").and_then(Value::as_str) {
             images.push(json!({"alt": title, "type": "coverPoster", "url": url}));
         }
-        if kind != "episode" && kind != "clip" {
+        // An episode's background is the art it borrows (measured on both servers,
+        // detail and listing alike); a clip's borrowed art is no Image row.
+        if kind != "clip" {
             if let Some(url) = object.get("art").and_then(Value::as_str) {
                 images.push(json!({"alt": title, "type": "background", "url": url}));
             }
@@ -13894,6 +13774,7 @@ impl Runtime {
                 prepared
             };
             let mut detail = self.detail_row(&prepared);
+            self.apply_detail_blocks(row, &mut detail, query);
             let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
             if let Some(excluded) = query.get("excludeFields") {
                 let names = excluded.split(',').collect::<HashSet<_>>();
@@ -13972,10 +13853,27 @@ impl Runtime {
                     object.insert("Related".to_string(), json!({"Hub":[hub]}));
                 }
             }
-            let mut container = self.container(
-                Map::from_iter([("Metadata".to_string(), Value::Array(vec![detail]))]),
-                true,
-            );
+            // Re-measured against fun and the 1.43.4 reference: the detail container
+            // says `allowSync` (not for a clip) and names the row's library by id,
+            // title and UUID beside the identifier and the media-tag pair.
+            let mut detail_fields = Map::new();
+            detail_fields.insert("size".to_string(), json!(1));
+            detail_fields.insert("allowSync".to_string(), json!(kind != "clip"));
+            if kind != "clip" {
+                let section_id = row.get("librarySectionID").cloned().unwrap_or(Value::Null);
+                let section = self.section(&string_value(&section_id)).cloned().unwrap_or_default();
+                detail_fields.insert("librarySectionID".to_string(), section_id);
+                detail_fields.insert(
+                    "librarySectionTitle".to_string(),
+                    section.get("title").cloned().unwrap_or(Value::Null),
+                );
+                detail_fields.insert(
+                    "librarySectionUUID".to_string(),
+                    section.get("uuid").cloned().unwrap_or(Value::Null),
+                );
+            }
+            detail_fields.insert("Metadata".to_string(), Value::Array(vec![detail]));
+            let mut container = self.container(detail_fields, true);
             if query
                 .get("asyncCheckFiles")
                 .is_some_and(|value| is_true_option(value))
