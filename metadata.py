@@ -25,6 +25,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import hierarchy
+
 API = "https://api.themoviedb.org/3"
 IMAGE_BASE = "https://image.tmdb.org/t/p/"
 
@@ -401,7 +403,15 @@ def enrich(row, tmdb, parsed, chosen=None):
     backdrop = details.get("backdrop_path")
 
     row["title"] = show_title
-    row["titleSort"] = re.sub(r"(?i)^(the|a|an)\s+", "", show_title)
+    # The load-time rule (`hierarchy.sort_title`), sent only when it differs: a bare
+    # article strip gave a Fix Match row a titleSort equal to its title -- "Tears of
+    # Steel" sorting as "Tears of Steel" -- which a real PMS never sends, and it
+    # outlived an unmatch.
+    derived = hierarchy.sort_title(show_title)
+    if derived and derived != show_title:
+        row["titleSort"] = derived
+    else:
+        row.pop("titleSort", None)
     row["summary"] = details.get("overview") or row.get("summary") or ""
     if date[:4].isdigit():
         row["year"] = int(date[:4])
