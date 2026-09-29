@@ -10766,15 +10766,31 @@ impl Runtime {
                     if typed.is_empty() {
                         continue;
                     }
+                    // Measured: a voice hub carries `hubKey` and NO `key`, and both
+                    // the hub and every row carry a `distance`.  The reference's
+                    // distance is its own fuzzy-match cost; plexsim reports the
+                    // query's length, which is what an exact word-prefix hit costs.
+                    let distance = raw.trim().chars().count();
+                    let keys = typed.iter().filter_map(key_of).collect::<Vec<_>>();
+                    let typed = typed
+                        .into_iter()
+                        .map(|mut row| {
+                            if let Some(object) = row.as_object_mut() {
+                                object.insert("distance".to_string(), json!(distance));
+                            }
+                            row
+                        })
+                        .collect::<Vec<_>>();
                     hubs.push(json!({
-                        "hubIdentifier": format!("results.search.{number}"),
+                        "hubKey": format!("/library/metadata/{}", keys.join(",")),
                         "title": kind,
-                        "context": "hub.results.search",
                         "type": kind,
-                        "style": "shelf",
-                        "distance": 0.3,
+                        "hubIdentifier": format!("results.search.{number}"),
+                        "context": "hub.results.search",
                         "size": typed.len(),
                         "more": false,
+                        "style": "shelf",
+                        "distance": distance,
                         "Metadata": typed,
                     }));
                 }
@@ -10793,7 +10809,7 @@ impl Runtime {
                 ("context".to_string(), json!("hub.results.search")),
                 ("type".to_string(), json!(wanted.unwrap_or("movie"))),
                 ("style".to_string(), json!("shelf")),
-                ("distance".to_string(), json!(0.3)),
+                ("distance".to_string(), json!(raw.trim().chars().count())),
                 ("size".to_string(), json!(rows.len())),
                 ("more".to_string(), json!(false)),
                 ("Metadata".to_string(), Value::Array(rows)),
