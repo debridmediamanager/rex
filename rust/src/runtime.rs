@@ -1369,6 +1369,18 @@ impl Runtime {
                     .collect();
             }
         }
+        // Cycle 62: after a section-path collection rename a member's LIGHT row keeps
+        // the FIRST name the tag had, while its detail row carries the new one.
+        if let Some(light) = original.get("_collectionLight").and_then(Value::as_object) {
+            if let Some(tags) = object.get_mut("Collection").and_then(Value::as_array_mut) {
+                for tag in tags.iter_mut() {
+                    let name = tag.get("tag").map(string_value).unwrap_or_default();
+                    if let Some(first) = light.get(&name.to_lowercase()) {
+                        tag["tag"] = first.clone();
+                    }
+                }
+            }
+        }
         if let Some(media_rows) = object.get_mut("Media").and_then(Value::as_array_mut) {
             for media in media_rows {
                 if let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut) {
@@ -13231,7 +13243,11 @@ impl Runtime {
                 .partition(|key| self.collections.contains_key(key));
             for key in lists {
                 if !edits.is_empty() {
-                    let _ = self.edit_collection(&key, &edits);
+                    // Cycles 58/61: a taken name is a 409 the save must answer.
+                    let answer = self.edit_collection(&key, &edits);
+                    if answer.status != 200 {
+                        return answer;
+                    }
                 }
             }
             let pairs = Self::request_pairs(request);
