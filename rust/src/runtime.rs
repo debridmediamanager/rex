@@ -19304,6 +19304,13 @@ fn handle_websocket<S: Write>(
         .map(str::to_string)
         .collect::<HashSet<_>>();
     let everything = filters.is_empty() && filter_value.is_some();
+    // Cycle 65: the socket's language, fixed at the handshake; activity titles follow it.
+    let (language, catalog_path) = {
+        let guard = runtime
+            .lock()
+            .map_err(|_| "runtime lock poisoned".to_string())?;
+        (i18n::socket_language(&guard.catalog_path, request), guard.catalog_path.clone())
+    };
     let started = std::time::Instant::now();
     let mut cursor = event_start;
     let mut last_write = std::time::Instant::now();
@@ -19315,7 +19322,8 @@ fn handle_websocket<S: Write>(
             (guard.events_since(cursor), guard.event_cursor())
         };
         cursor = next;
-        for (kind, value) in events {
+        for (kind, mut value) in events {
+            i18n::localise_notification(&mut value, language.as_deref(), &catalog_path);
             let wanted = if filters.is_empty() {
                 everything || kind != "log"
             } else {
@@ -19405,11 +19413,18 @@ fn handle_eventsource<S: Write>(
         .into_iter()
         .find(|(key, _)| key == "filters")
         .map(|(_, value)| value);
-    let events = runtime
-        .lock()
-        .map_err(|_| "runtime lock poisoned".to_string())?
-        .events_since(event_start);
-    for (kind, value) in events {
+    let (events, language, catalog_path) = {
+        let guard = runtime
+            .lock()
+            .map_err(|_| "runtime lock poisoned".to_string())?;
+        (
+            guard.events_since(event_start),
+            i18n::socket_language(&guard.catalog_path, request),
+            guard.catalog_path.clone(),
+        )
+    };
+    for (kind, mut value) in events {
+        i18n::localise_notification(&mut value, language.as_deref(), &catalog_path);
         if filters.as_deref() == Some("all")
             || (filters.as_deref() == Some("log") && kind != "log")
             || (filters

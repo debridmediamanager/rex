@@ -321,3 +321,87 @@ impl Localiser<'_> {
         }
     }
 }
+
+/// `activity_strings.json`: the server's gettext catalogue for activity titles
+/// (`strings`) and the butler's progress messages (`progress`).
+fn activity_tables(catalog: &std::path::Path) -> &'static (Value, Value) {
+    static TABLES: std::sync::OnceLock<(Value, Value)> = std::sync::OnceLock::new();
+    TABLES.get_or_init(|| {
+        let document = load_json_sidecar(catalog, "activity_strings.json").unwrap_or(Value::Null);
+        (
+            document.get("strings").cloned().unwrap_or(Value::Null),
+            document.get("progress").cloned().unwrap_or(Value::Null),
+        )
+    })
+}
+
+/// One activity title, subtitle or butler message in `language`, or the text itself
+/// (the oracle's `_localise_activity_text`).  Cycle 65, measured on plexscratch42 with
+/// ten sockets open through one scan: `Suche...`, `Durchsuche TV Shows`, `Abonnements
+/// verarbeiten …` under `de`; `{1}` is content and stays.  A regional catalogue answers
+/// first and an id it lacks reads the catalogue it is based on.
+fn activity_text(text: &str, language: &str, table: &Value) -> String {
+    if text.is_empty() {
+        return text.to_string();
+    }
+    let Some(entries) = table.as_object() else {
+        return text.to_string();
+    };
+    if let Some(exact) = entries.get(text) {
+        return cell(exact, language).unwrap_or_else(|| text.to_string());
+    }
+    for (msgid, languages) in entries {
+        let Some((head, tail)) = msgid.split_once("{1}") else { continue };
+        let Some(target) = cell(languages, language) else { continue };
+        if text.len() > head.len() + tail.len() && text.starts_with(head) && text.ends_with(tail) {
+            return target.replace("{1}", &text[head.len()..text.len() - tail.len()]);
+        }
+    }
+    text.to_string()
+}
+
+/// The language a notification socket was opened with, fixed at the handshake
+/// (cycle 65): `X-Plex-Language` in the query, else the handshake's
+/// `Accept-Language` -- all Plex Web sends.
+pub(super) fn socket_language(catalog: &std::path::Path, request: &Request) -> Option<String> {
+    let strings = load_json_sidecar(catalog, "translations.json")?.get("strings").cloned()?;
+    let languages = Languages::from_strings(&strings);
+    let (_, raw_query) = split_target(&request.target);
+    let pairs = parse_query(&raw_query);
+    request_language(&pairs, &request.headers, true, &languages)
+}
+
+/// The rows one socket is sent (the oracle's `_localise_activity_rows`): the
+/// `ActivityNotification` rows' titles in the socket's language, and (cycle 66) the
+/// butler's `ProgressNotification` messages, which are catalogue ids too.  Status
+/// frames and a scan's own progress line stay English.
+pub(super) fn localise_notification(value: &mut Value, language: Option<&str>, catalog: &std::path::Path) {
+    let Some(language) = language else { return };
+    let (strings, progress) = activity_tables(catalog);
+    let Some(object) = value.as_object_mut() else { return };
+    for (element, rows) in object.iter_mut() {
+        let rows: Vec<&mut Value> = match rows {
+            Value::Array(list) => list.iter_mut().collect(),
+            other => vec![other],
+        };
+        for row in rows {
+            match element.as_str() {
+                "ActivityNotification" => {
+                    if let Some(activity) = row.get_mut("Activity").and_then(Value::as_object_mut) {
+                        for field in ["title", "subtitle"] {
+                            if let Some(text) = activity.get(field).and_then(Value::as_str).map(str::to_string) {
+                                activity.insert(field.to_string(), json!(activity_text(&text, language, strings)));
+                            }
+                        }
+                    }
+                }
+                "ProgressNotification" => {
+                    if let Some(text) = row.get("message").and_then(Value::as_str).map(str::to_string) {
+                        row["message"] = json!(activity_text(&text, language, progress));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
