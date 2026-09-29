@@ -13589,10 +13589,40 @@ impl Runtime {
             .get("excludeFields")
             .map(|value| value.split(',').collect::<HashSet<_>>())
             .unwrap_or_default();
+        // Measured on kids and zen: `includeStorage=1` puts `durationTotal` and
+        // `storageTotal` -- JSON STRINGS (cycle 27) -- on the library's OWN top-level
+        // type only; a show carries the sum over its episodes.
+        let own_type = if section_type == "show" { 2 } else { 1 };
+        let with_storage = query.get("includeStorage").is_some_and(|value| {
+            bool_option(value) && value.trim_start_matches('+').trim_start_matches('0') == "1"
+        }) && query.get("type").map_or(true, |value| {
+            value.is_empty() || value.trim_start_matches('+').parse::<i64>().ok() == Some(own_type)
+        });
         let rows = rows
             .iter()
             .map(|row| {
                 let mut projected = self.section_listing_row(row);
+                if with_storage {
+                    let leaves = if row.get("Media").is_some() {
+                        vec![row.clone()]
+                    } else {
+                        self.leaves(&key_of(row).unwrap_or_default())
+                    };
+                    let duration = leaves
+                        .iter()
+                        .map(|leaf| leaf.get("duration").and_then(Value::as_i64).unwrap_or(0))
+                        .sum::<i64>();
+                    let storage = leaves
+                        .iter()
+                        .flat_map(|leaf| leaf.get("Media").and_then(Value::as_array).cloned().unwrap_or_default())
+                        .flat_map(|media| media.get("Part").and_then(Value::as_array).cloned().unwrap_or_default())
+                        .filter_map(|part| part.get("size").and_then(Value::as_i64))
+                        .sum::<i64>();
+                    if let Some(object) = projected.as_object_mut() {
+                        object.insert("durationTotal".to_string(), json!(duration.to_string()));
+                        object.insert("storageTotal".to_string(), json!(storage.to_string()));
+                    }
+                }
                 if let Some(object) = projected.as_object_mut() {
                     if exclude_media {
                         let count = row
