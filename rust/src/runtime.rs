@@ -7702,6 +7702,9 @@ impl Runtime {
         completes: bool,
     ) {
         let Some(row) = self.catalog.get(key).cloned() else {
+            if self.playlists.contains_key(key) {
+                self.list_progress(key, offset, total, session);
+            }
             return;
         };
         let pair = (session.to_string(), key.to_string());
@@ -7786,6 +7789,81 @@ impl Runtime {
                 object.remove("_completed");
                 object.remove("_completionStopped");
             }
+        }
+    }
+
+    /// A view-state field of a catalog row, or of a list row's own state.
+    fn view_state(&self, key: &str, name: &str) -> Option<Value> {
+        if let Some(row) = self.catalog.get(key) {
+            return row.get(name).filter(|value| !value.is_null()).cloned();
+        }
+        if let Some(collection) = self.collections.get(key) {
+            return collection.extra.get(name).cloned();
+        }
+        self.list_state.get(key).and_then(|state| state.get(name)).cloned()
+    }
+
+    fn set_view_state(&mut self, key: &str, name: &str, value: Option<Value>) {
+        if self.catalog.get(key).is_some() {
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                match value {
+                    Some(value) => {
+                        object.insert(name.to_string(), value);
+                    }
+                    None => {
+                        object.shift_remove(name);
+                    }
+                }
+            }
+            return;
+        }
+        let state = self.list_state_mut(key);
+        match value {
+            Some(value) => {
+                state.insert(name.to_string(), value);
+            }
+            None => {
+                state.shift_remove(name);
+            }
+        }
+    }
+
+    /// The item machine run on a PLAYLIST's own state (cycle 59): the resume
+    /// point past a minute, and a crossing past 90% steps the list's view count
+    /// from the 1 it is born with.
+    fn list_progress(&mut self, key: &str, offset: Option<i64>, total: i64, session: &str) {
+        let pair = (session.to_string(), key.to_string());
+        let stored = self.view_state(key, "viewOffset").and_then(|v| v.as_i64());
+        if let Some(offset) = offset.filter(|offset| Some(*offset) != stored) {
+            let near_end = total > 0 && (offset as f64) >= total as f64 * 0.9;
+            if total > 0 && offset > 60000 && !near_end {
+                self.set_view_state(key, "viewOffset", Some(json!(offset)));
+                self.set_view_state(key, "lastViewedAt", Some(json!(now())));
+            } else if total > 0 && offset <= 60000 && self.progressed.contains(&pair) {
+                self.set_view_state(key, "viewOffset", None);
+            }
+        }
+        let position = offset.or(stored).unwrap_or(0);
+        let seen = self.timeline_offsets.get(&pair).copied();
+        if offset.is_some() && total > 0 {
+            self.timeline_offsets.insert(pair.clone(), position);
+            if position > 60000 {
+                self.progressed.insert(pair.clone());
+            }
+        }
+        let crossed = total > 0 && seen.is_some_and(|seen| seen > 0 && (seen as f64) < total as f64 * 0.9);
+        if crossed && position >= total.saturating_mul(9) / 10 {
+            if self.view_state(key, "_completed").and_then(|v| v.as_str().map(str::to_string)).as_deref() != Some(session) {
+                self.set_view_state(key, "_completed", Some(json!(session)));
+                self.set_view_state(key, "_completionStopped", None);
+                let count = self.view_state(key, "viewCount").and_then(|v| v.as_i64()).unwrap_or(1);
+                self.set_view_state(key, "viewCount", Some(json!(count + 1)));
+                self.set_view_state(key, "viewOffset", None);
+                self.set_view_state(key, "lastViewedAt", Some(json!(now())));
+            }
+        } else if offset.is_some_and(|offset| total > 0 && (offset as f64) < total as f64 * 0.9) {
+            self.set_view_state(key, "_completed", None);
+            self.set_view_state(key, "_completionStopped", None);
         }
     }
 
@@ -8490,7 +8568,11 @@ impl Runtime {
             .cloned()
             .or_else(|| headers.get("x-plex-client-identifier").cloned())
             .unwrap_or_else(|| "default".to_string());
-        if !key.is_empty() && self.catalog.get(&key).is_none() {
+        // Cycle 59, measured on plexscratch42 and plexscratch: a PLAYLIST's
+        // ratingKey is a timeline row too -- it runs the item's own machine on the
+        // list's own state and opens a Now Playing session.
+        let listed = !key.is_empty() && self.catalog.get(&key).is_none() && self.playlists.contains_key(&key);
+        if !key.is_empty() && self.catalog.get(&key).is_none() && !listed {
             return Response::error(404, "plexsim: no such item");
         }
         if state == "stopped" {
@@ -8517,26 +8599,21 @@ impl Runtime {
         let session_tag = if session_identifier.is_empty() { "\u{1}".to_string() } else { session_identifier.clone() };
         let completed_by = |runtime: &Self| {
             runtime
-                .catalog
-                .get(&key)
-                .and_then(|row| row.get("_completed"))
-                .and_then(Value::as_str)
-                .map(str::to_string)
+                .view_state(&key, "_completed")
+                .and_then(|value| value.as_str().map(str::to_string))
         };
         // A completed play answers `complete` to every beat past 90% until a
         // `stopped` beat has closed it, and `ignore` to every beat after that.
         let already = !key.is_empty()
             && completed_by(self).as_deref() == Some(session_tag.as_str())
-            && self.catalog.get(&key).is_some_and(|row| row.get("_completionStopped").is_some());
+            && self.view_state(&key, "_completionStopped").is_some();
         let total = if query.get("duration").is_some() { duration } else { 0 };
         if !key.is_empty() {
             let device_id = self.device_id(&client);
             let offset = query.get("time").map(|_| time);
             self.library_progress(&key, offset, total, device_id, &session_tag, true);
             if state == "stopped" && completed_by(self).as_deref() == Some(session_tag.as_str()) {
-                if let Some(object) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
-                    object.insert("_completionStopped".to_string(), json!(true));
-                }
+                self.set_view_state(&key, "_completionStopped", Some(json!(true)));
             }
         }
         // Cycle 50: `progress` is sticky within the playback SESSION once one of
@@ -8572,6 +8649,7 @@ impl Runtime {
             .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
             .and_then(|value| value.parse::<i64>().ok());
         if !key.is_empty()
+            && !listed
             && query.get("offline").map(String::as_str) == Some("1")
             && playback_state == "ignore"
         {
@@ -8623,11 +8701,16 @@ impl Runtime {
             let decided = self
                 .decided_sessions
                 .contains(&(session_identifier.clone(), key.clone()));
-            let Some(row) = self.catalog.get(&key) else {
-                return Response::error(404, "plexsim: no such item");
+            let row = if listed {
+                json!({"ratingKey": key, "type": "playlist"})
+            } else {
+                let Some(row) = self.catalog.get(&key) else {
+                    return Response::error(404, "plexsim: no such item");
+                };
+                row.clone()
             };
-            let session = self.session_row(
-                row,
+            let mut session = self.session_row(
+                &row,
                 &key,
                 &client,
                 &session_identifier,
@@ -8638,6 +8721,35 @@ impl Runtime {
                 query,
                 decided,
             );
+            if listed {
+                // Cycle 59: a playlist's session row is the LISTING row -- its state
+                // block included, no empty `summary` -- with the session's
+                // `sessionKey` and `viewOffset`, and only `User` and `Player`.
+                let player = session.get("Player").cloned().unwrap_or(Value::Null);
+                let session_key = session.get("sessionKey").cloned().unwrap_or(json!(client));
+                let mut item = self
+                    .playlists
+                    .get(&key)
+                    .cloned()
+                    .map(|p| self.dynamic_playlist_row(&p))
+                    .unwrap_or_else(|| json!({}));
+                if let Some(object) = item.as_object_mut() {
+                    if object.get("summary").is_some_and(|v| string_value(v).is_empty()) {
+                        object.remove("summary");
+                    }
+                    for (name, value) in self.list_state.get(&key).cloned().unwrap_or_default() {
+                        if !name.starts_with('_') {
+                            object.insert(name, value);
+                        }
+                    }
+                    object.insert("sessionKey".to_string(), session_key);
+                    object.insert("viewOffset".to_string(), json!(time));
+                    object.insert("User".to_string(), json!({"id": "1"}));
+                    object.insert("Player".to_string(), player);
+                    object.insert("_session".to_string(), json!(true));
+                }
+                session = item;
+            }
             let session_key = session
                 .get("sessionKey")
                 .map(string_value)
@@ -8657,7 +8769,10 @@ impl Runtime {
             frame.insert("guid".to_string(), json!(""));
             frame.insert("ratingKey".to_string(), json!(key));
             frame.insert("url".to_string(), json!(""));
-            frame.insert("key".to_string(), json!(format!("/library/metadata/{key}")));
+            frame.insert(
+                "key".to_string(),
+                json!(if listed { format!("/playlists/{key}") } else { format!("/library/metadata/{key}") }),
+            );
             frame.insert("viewOffset".to_string(), json!(time));
             frame.insert("state".to_string(), json!(state));
             // Measured on a writable copy of the reference: every frame of a session
@@ -8686,23 +8801,19 @@ impl Runtime {
         }
         self.save_if_dirty();
         let stored = self
-            .catalog
-            .get(&key)
-            .and_then(|row| row.get("viewOffset"))
-            .and_then(Value::as_i64)
+            .view_state(&key, "viewOffset")
+            .and_then(|value| value.as_i64())
+            .filter(|value| *value != 0)
             .unwrap_or(-1);
+        // A playlist is born with a view count of 1.
+        let view_count = self
+            .view_state(&key, "viewCount")
+            .and_then(|value| value.as_i64())
+            .unwrap_or(if listed { 1 } else { 0 });
         let mut fields = Map::from_iter([
             ("playbackState".to_string(), json!(playback_state)),
             ("skipCount".to_string(), json!(0)),
-            (
-                "viewCount".to_string(),
-                json!(self
-                    .catalog
-                    .get(&key)
-                    .and_then(|row| row.get("viewCount"))
-                    .and_then(Value::as_i64)
-                    .unwrap_or(0)),
-            ),
+            ("viewCount".to_string(), json!(view_count)),
             ("viewOffset".to_string(), json!(stored)),
         ]);
         let product = query
