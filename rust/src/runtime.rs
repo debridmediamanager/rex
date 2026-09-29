@@ -17758,6 +17758,37 @@ fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option
     if parts[1].len() > MAX_TARGET_BYTES {
         return Err("target too long".to_string());
     }
+    // Cycle 36, swept byte by byte on kids and zen: the request TARGET must be printable
+    // ASCII (0x21-0x7E), and every `%` in its PATH must begin an escape a real PMS reads
+    // -- two characters present, parsed like `strtol` (an optional sign, then a hex
+    // digit), `%%` a literal pair. The query is not validated this way.
+    if !parts[1].bytes().all(|byte| (0x21..=0x7e).contains(&byte)) {
+        return Err("bad request target".to_string());
+    }
+    {
+        let raw_path = parts[1].split('?').next().unwrap_or("").as_bytes();
+        let mut index = 0;
+        while let Some(offset) = raw_path[index..].iter().position(|b| *b == b'%') {
+            let at = index + offset;
+            let following = &raw_path[at + 1..(at + 3).min(raw_path.len())];
+            if following.first() == Some(&b'%') {
+                index = at + 2;
+                continue;
+            }
+            if following.len() < 2 {
+                return Err("bad request target".to_string());
+            }
+            let signs = following.iter().take_while(|b| matches!(**b, b'+' | b'-')).count();
+            let digit = following.get(signs);
+            if signs > 1 || !digit.is_some_and(|b| b.is_ascii_hexdigit()) {
+                return Err("bad request target".to_string());
+            }
+            index = at + 3;
+            if index >= raw_path.len() {
+                break;
+            }
+        }
+    }
     if !legacy_http09 && !parts[2].starts_with("HTTP/") {
         return Err("bad request line".to_string());
     }
