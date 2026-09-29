@@ -14982,23 +14982,34 @@ impl Runtime {
                 if request.body.is_empty() || !request.body_complete {
                     return Response::error(406, "plexsim: subtitle body required");
                 }
-                let id = self.next_dynamic_key;
-                self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
+                // Measured on the copy: the new stream's id is the next after the
+                // highest the server holds, and it is the Stream the reference writes:
+                // the format as `codec` and `format`, the stem as `title`, a
+                // `/library/streams/{id}` key, `transient: "0"`, selected -- no language.
+                let id = self
+                    .catalog
+                    .items
+                    .iter()
+                    .flat_map(|item| item.get("Media").and_then(Value::as_array).cloned().unwrap_or_default())
+                    .flat_map(|media| media.get("Part").and_then(Value::as_array).cloned().unwrap_or_default())
+                    .flat_map(|part| part.get("Stream").and_then(Value::as_array).cloned().unwrap_or_default())
+                    .filter_map(|stream| stream.get("id").and_then(Value::as_i64))
+                    .max()
+                    .unwrap_or(0)
+                    + 1;
                 let content = String::from_utf8_lossy(&request.body).to_string();
-                let stream = json!({
-                    "id": id,
-                    "key": format!("/library/streams/{id}"),
-                    "streamType": 3,
-                    "codec": format,
-                    "format": format,
-                    "language": "Unknown",
-                    "title": stem,
-                    "displayTitle": format,
-                    "extendedDisplayTitle": format,
-                    "selected": true,
-                    "transient": "0",
-                    "_content": content,
-                });
+                let mut stream_row = Map::new();
+                stream_row.insert("id".to_string(), json!(id));
+                stream_row.insert("streamType".to_string(), json!(3));
+                stream_row.insert("codec".to_string(), json!(format));
+                stream_row.insert("format".to_string(), json!(format));
+                stream_row.insert("title".to_string(), json!(stem));
+                stream_row.insert("key".to_string(), json!(format!("/library/streams/{id}")));
+                stream_row.insert("transient".to_string(), json!("0"));
+                stream_row.insert("selected".to_string(), json!(true));
+                crate::mediainfo::stream_titles(&mut stream_row, None, None);
+                stream_row.insert("_content".to_string(), json!(content));
+                let stream = Value::Object(stream_row);
                 let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
                     return Response::error(404, "plexsim: not found");
                 };
