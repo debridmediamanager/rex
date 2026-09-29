@@ -699,6 +699,36 @@ pub(super) fn write_enveloped<S: Write>(
     Ok(keep)
 }
 
+/// The head of a response whose body is streamed after it (a part read): the envelope's
+/// own lines, with Content-Length the streamed body's length -- or none, when the
+/// upstream did not say -- instead of the empty placeholder body's.
+pub(super) fn write_enveloped_head<S: Write>(
+    stream: &mut S,
+    response: &Response,
+    wire: &Wire,
+    keep: bool,
+    length: Option<u64>,
+) -> Result<bool, String> {
+    let (status, lines, _body, keep) = envelope(response, wire, keep);
+    let mut out = format!("HTTP/1.1 {} {}\r\n", status, reason_phrase(status));
+    for (name, value) in &lines {
+        if name.eq_ignore_ascii_case("content-length") {
+            match length {
+                Some(length) => out.push_str(&format!("{name}: {length}\r\n")),
+                None => {}
+            }
+            continue;
+        }
+        out.push_str(&format!("{name}: {value}\r\n"));
+    }
+    out.push_str("\r\n");
+    stream
+        .write_all(out.as_bytes())
+        .map_err(|e| e.to_string())?;
+    stream.flush().map_err(|e| e.to_string())?;
+    Ok(keep)
+}
+
 /// `excludeElements=` as a property of the RESPONSE (`server.py` `_exclude_container`,
 /// cycles 11, 15, 22, 70): every MediaContainer's rows -- and every hub's -- lose the
 /// named child elements; dropping `Media` substitutes `mediaCount` and

@@ -49,6 +49,7 @@ mod stats;
 mod streams;
 mod structural;
 mod transcoder;
+mod upstream;
 mod wire;
 use artwork::owns_artwork;
 use resume::{
@@ -328,8 +329,11 @@ pub struct Runtime {
     pub state_path: Option<PathBuf>,
     pub catalog_path: PathBuf,
     pub source_digest: String,
-    pub rd_api: String,
-    pub rd_token: String,
+    /// `debrid.Resolver`, shared with the part reads that stream outside the lock.
+    resolver: Arc<upstream::Resolver>,
+    /// A part read the router accepted; `handle_connection` streams it after the
+    /// runtime lock is released, so a media body never holds up the rest of the API.
+    pending_part: Option<PartProxy>,
     decision_profiles: decision::Profiles,
     pub part_mode: String,
     pub public_url: Option<String>,
@@ -473,9 +477,16 @@ impl Runtime {
             state_path: options.state,
             catalog_path: options.catalog,
             source_digest,
-            rd_api: std::env::var("RD_API")
-                .unwrap_or_else(|_| "https://api.real-debrid.com/rest/1.0".to_string()),
-            rd_token,
+            // `os.environ.get("RD_API") or <default>`: an empty value is the default too.
+            resolver: Arc::new(upstream::Resolver::new(
+                std::env::var("RD_API")
+                    .ok()
+                    .filter(|api| !api.is_empty())
+                    .unwrap_or_else(|| "https://api.real-debrid.com/rest/1.0".to_string()),
+                rd_token,
+            )),
+            // Fix Match needs a live agent; the cache lives beside the catalog.
+            pending_part: None,
             decision_profiles,
             part_mode: options.part_mode,
             public_url: options.public_url,
@@ -18477,7 +18488,9 @@ impl Runtime {
                     .get("_debrid")
                     .and_then(Value::as_str)
                     .filter(|link| !link.is_empty())
-                    .map_or(true, |link| self.resolve_link(link) != Err(true));
+                    .map_or(true, |link| {
+                        self.resolver.resolve(link) != Err(upstream::ResolveError::Unavailable)
+                    });
                 if let Some(object) = part.as_object_mut() {
                     object.insert("accessible".to_string(), json!(available));
                     object.insert("exists".to_string(), json!(available));
@@ -19677,6 +19690,14 @@ impl Runtime {
                                 }
                             }
                         }
+                        // `resolve_part`: the part carries its ROW's addedAt, the stamp
+                        // behind the byte response's ETag and Last-Modified.
+                        if let Some(object) = selected.as_object_mut() {
+                            object.insert(
+                                "addedAt".to_string(),
+                                row.get("addedAt").cloned().unwrap_or(Value::Null),
+                            );
+                        }
                         part = Some(selected);
                     }
                 }
@@ -19700,62 +19721,67 @@ impl Runtime {
         if link.is_empty() {
             return Response::error(404, "plexsim: no such part");
         }
-        // Cycle 44: the provider saying the file is gone is a plain 404; any other
-        // resolve failure is the 502.
-        if let Err(unavailable) = self.resolve_link(&link) {
-            return if unavailable {
-                Response::error(404, "plexsim: not found")
-            } else {
-                Response::error(502, "plexsim: debrid resolve failed")
-            };
-        }
-        self.stream_part(&part, request)
+        // The Download context-menu entry is the same Part read with `download=1`; the
+        // only difference a real PMS makes is the disposition header, which is what
+        // turns a play into a save. The name is the media FILE's, not the URL's.
+        let download = query
+            .get("download")
+            .map(|value| value.trim_start_matches('+').parse::<i64>().unwrap_or(0) != 0)
+            .unwrap_or(false);
+        let part_name = part
+            .get("file")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .rsplit('/')
+            .next()
+            .unwrap_or("")
+            .to_string();
+        let filename = if !part_name.is_empty() {
+            part_name
+        } else if segments.len() > 1 {
+            segments[segments.len() - 1].to_string()
+        } else {
+            format!("part-{}", segments.first().copied().unwrap_or(""))
+        };
+        let part_id = segments.first().copied().unwrap_or("").to_string();
+        self.stream_part(&part, &part_id, &link, download.then_some(filename), request)
     }
 
-    fn stream_part(&mut self, part: &Value, request: &Request) -> Response {
+    /// The part read's response head, and the plan `handle_connection` carries out once
+    /// the runtime lock is released: resolve the link (cached), open the CDN url with
+    /// the measured window, then stream exactly that many bytes. Resolving and opening
+    /// happen before any status is written, as `_serve_part`/`_proxy` do, so a dead link
+    /// is a 404, a failed resolve a 502 and a refusing CDN its own status.
+    fn stream_part(
+        &mut self,
+        part: &Value,
+        part_id: &str,
+        link: &str,
+        download: Option<String>,
+        request: &Request,
+    ) -> Response {
         let size = part.get("size").and_then(Value::as_u64).unwrap_or(0);
         let range = request.headers.get("range").cloned();
-        let selected = parse_range(range.as_deref(), size);
-        let (status, start, end, content_range) = match selected {
-            RangeResult::Unsatisfiable => (416, 0, 0, None),
-            RangeResult::Partial(window) => (
-                206,
-                window.start,
-                window.end,
-                Some(format!(
-                    "bytes {}-{}/{}",
-                    window.advertised_start, window.advertised_end, size
-                )),
-            ),
-            RangeResult::Whole => (200, 0, size.saturating_sub(1), None),
+        // Cycle 44: the MEASURED grammar decides the window rather than the CDN's own
+        // leniency; with no size in the catalog there is nothing to compute a window
+        // from, so the client's header passes through and the CDN's answer is echoed.
+        let window = if size == 0 {
+            PartWindow::Passthrough(range.clone())
+        } else {
+            match parse_range(range.as_deref(), size) {
+                RangeResult::Unsatisfiable => PartWindow::Unsatisfiable,
+                RangeResult::Partial(window) => PartWindow::Partial {
+                    first: window.start,
+                    last: window.end,
+                    content_range: format!(
+                        "bytes {}-{}/{}",
+                        window.advertised_start, window.advertised_end, size
+                    ),
+                },
+                RangeResult::Whole => PartWindow::Whole(size),
+            }
         };
-        if status == 416 {
-            return Response {
-                status,
-                content_type: "text/html".to_string(),
-                body: error_document(416),
-                headers: vec![
-                    ("X-Plex-Protocol".to_string(), "1.0".to_string()),
-                    ("Cache-Control".to_string(), "no-cache".to_string()),
-                    ("Date".to_string(), http_date()),
-                ],
-                close: false,
-            };
-        }
-        let Some(bytes) = self.fetch_part(part, start, end) else {
-            return Response {
-                status: 404,
-                content_type: "text/html".to_string(),
-                body: b"<!DOCTYPE html><html><body>404 Not Found</body></html>".to_vec(),
-                headers: Vec::new(),
-                close: true,
-            };
-        };
-        if request.method != "HEAD" {
-            self.bandwidth_bytes = self.bandwidth_bytes.saturating_add(bytes.len() as u64);
-        }
-        let mut response = Response::bytes(status, part_content_type(part));
-        response.body = bytes;
+        let mut response = Response::bytes(200, part_content_type(part));
         response
             .headers
             .push(("X-Plex-Protocol".to_string(), "1.0".to_string()));
@@ -19769,128 +19795,64 @@ impl Runtime {
                 .headers
                 .push(("Vary".to_string(), "Origin".to_string()));
         }
-        let part_id = string_value(part.get("id").unwrap_or(&Value::Null));
-        let stamp = string_value(
-            part.get("addedAt")
-                .or_else(|| part.get("updatedAt"))
-                .unwrap_or(&Value::Null),
+        // Measured: every byte response from a real PMS carries BOTH validators. plexsim
+        // owns no file to hash, so the ETag is a digest of what identifies these bytes
+        // (part id, the row's addedAt, size) and Last-Modified is that stamp.
+        let stamp = ["addedAt", "updatedAt"]
+            .iter()
+            .filter_map(|field| part.get(*field))
+            .find(|value| truthy(value))
+            .cloned()
+            .unwrap_or(json!(0));
+        let size_seed = part
+            .get("size")
+            .filter(|value| truthy(value))
+            .cloned()
+            .unwrap_or(json!(0));
+        let etag = bytes_digest(
+            format!("{part_id}/{}/{}", string_value(&stamp), string_value(&size_seed)).as_bytes(),
         );
-        let etag = bytes_digest(format!("{part_id}/{stamp}/{size}").as_bytes());
         response
             .headers
             .push(("ETag".to_string(), format!("\"{etag}\"")));
-        response
-            .headers
-            .push(("Last-Modified".to_string(), http_date()));
+        if let Some(seconds) = stamp.as_i64().filter(|seconds| *seconds != 0) {
+            response
+                .headers
+                .push(("Last-Modified".to_string(), http_date_at(seconds)));
+        }
         response
             .headers
             .push(("Accept-Ranges".to_string(), "bytes".to_string()));
-        if let Some(content_range) = content_range {
-            response
-                .headers
-                .push(("Content-Range".to_string(), content_range));
+        if let Some(name) = &download {
+            response.headers.push((
+                "Content-Disposition".to_string(),
+                download_disposition(name),
+            ));
         }
         if let Some(origin) = origin {
             response
                 .headers
-                .push(("Access-Control-Allow-Origin".to_string(), origin.clone()));
+                .push(("Access-Control-Allow-Origin".to_string(), origin));
         }
         response.headers.push(("Date".to_string(), http_date()));
+        // A media read must NOT keep the connection alive: ffmpeg seeks by sending its
+        // next Range on the same connection, which lands behind the body still queued
+        // from the last one. Every CDN answers a media range with `Connection: close`.
+        response.close = true;
+        self.pending_part = Some(PartProxy {
+            resolver: Arc::clone(&self.resolver),
+            link: link.to_string(),
+            redirect: self.part_mode == "redirect",
+            window,
+            head: request.method == "HEAD",
+        });
         response
     }
 
-    fn fetch_part(&self, part: &Value, start: u64, end: u64) -> Option<Vec<u8>> {
-        let link = part.get("_debrid").and_then(Value::as_str).unwrap_or("");
-        if link.is_empty() {
-            return None;
-        }
-        let download = self.unrestrict(link)?;
-        if let Some((host, path, port)) = parse_http_url(&download) {
-            if let Ok(mut stream) = TcpStream::connect((host.as_str(), port)) {
-                let request = format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={start}-{end}\r\nConnection: close\r\n\r\n");
-                if stream.write_all(request.as_bytes()).is_err() {
-                    return None;
-                }
-                let mut bytes = Vec::new();
-                if stream.read_to_end(&mut bytes).is_err() {
-                    return None;
-                }
-                if let Some(pos) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
-                    let status = String::from_utf8_lossy(&bytes[..pos])
-                        .lines()
-                        .next()
-                        .and_then(|line| line.split_whitespace().nth(1))
-                        .and_then(|value| value.parse::<u16>().ok())
-                        .unwrap_or(0);
-                    if (200..300).contains(&status) {
-                        return Some(bytes[pos + 4..].to_vec());
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    fn unrestrict(&self, link: &str) -> Option<String> {
-        self.resolve_link(link).ok()
-    }
-
-    /// Restricted link -> CDN url.  `Err(true)` is Real-Debrid saying the FILE is not
-    /// there (a 404 or `unavailable_file`, error code 24) -- which a real PMS answers
-    /// with a plain 404 -- and `Err(false)` every other failure, the 502 (cycle 44).
-    fn resolve_link(&self, link: &str) -> Result<String, bool> {
-        let (host, base_path, port) = parse_http_url(&self.rd_api).ok_or(false)?;
-        let result = self.unrestrict_http(link, &host, &base_path, port);
-        result
-    }
-
-    fn unrestrict_http(
-        &self,
-        link: &str,
-        host: &str,
-        base_path: &str,
-        port: u16,
-    ) -> Result<String, bool> {
-        let host = host.to_string();
-        let base = base_path.trim_end_matches('/');
-        let path = format!("{base}/unrestrict/link");
-        let body = format!("link={}", form_encode(link));
-        let mut stream = TcpStream::connect((host.as_str(), port)).map_err(|_| false)?;
-        let authorization = if self.rd_token.is_empty() {
-            String::new()
-        } else {
-            format!("Authorization: Bearer {}\r\n", self.rd_token)
-        };
-        let request = format!(
-            "POST {path} HTTP/1.1\r\nHost: {host}\r\n{authorization}Content-Type: application/x-www-form-urlencoded\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-            body.len()
-        );
-        stream.write_all(request.as_bytes()).map_err(|_| false)?;
-        let mut bytes = Vec::new();
-        stream.read_to_end(&mut bytes).map_err(|_| false)?;
-        let header_end = bytes
-            .windows(4)
-            .position(|window| window == b"\r\n\r\n")
-            .ok_or(false)?;
-        let status = String::from_utf8_lossy(&bytes[..header_end])
-            .lines()
-            .next()
-            .and_then(|line| line.split_whitespace().nth(1))
-            .and_then(|code| code.parse::<u16>().ok())
-            .ok_or(false)?;
-        let payload =
-            serde_json::from_slice::<Value>(&bytes[header_end + 4..]).unwrap_or(Value::Null);
-        if !(200..300).contains(&status) {
-            let unavailable = status == 404
-                || payload.get("error_code").and_then(Value::as_i64) == Some(24)
-                || payload.get("error").and_then(Value::as_str) == Some("unavailable_file");
-            return Err(unavailable);
-        }
-        payload
-            .get("download")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .ok_or(false)
+    /// Adds what a part read actually WROTE to the bandwidth statistic (cycle 44: a
+    /// real PMS counts written bytes, so a seek or a stop does not count the whole part).
+    pub(crate) fn count_part_bytes(&mut self, written: u64) {
+        self.bandwidth_bytes = self.bandwidth_bytes.saturating_add(written);
     }
 
     fn route_bundled_resource(&self, relative: &str, head: bool) -> Response {
@@ -20754,6 +20716,7 @@ fn handle_connection<S: Read + Write>(
         let empty_container_size = query
             .get("X-Plex-Container-Size")
             .is_some_and(String::is_empty);
+        let mut part_plan = None;
         let mut response = if invalid_absolute_target || invalid_dot_path {
             Response::error(400, "plexsim: bad request")
         } else if malformed_query {
@@ -20761,10 +20724,13 @@ fn handle_connection<S: Read + Write>(
         } else if empty_container_size {
             Response::error(500, "plexsim: bad request")
         } else {
-            runtime
+            let mut guard = runtime
                 .lock()
-                .map_err(|_| "runtime lock poisoned".to_string())?
-                .route(&request)
+                .map_err(|_| "runtime lock poisoned".to_string())?;
+            guard.pending_part = None;
+            let response = guard.route(&request);
+            part_plan = guard.pending_part.take();
+            response
         };
         // Cycle 30/49: a refusal of the request's ENVELOPE closes the socket -- the
         // malformed query pair among them -- while a refusal of its MEANING keeps it.
@@ -20833,7 +20799,13 @@ fn handle_connection<S: Read + Write>(
             response.body = upper_json_escapes(std::mem::take(&mut response.body));
         }
         let envelope = wire::Wire::of(&request, &request_path, &query);
-        let still_open = wire::write_enveloped(&mut stream, &response, &envelope, keep)?;
+        let still_open = match part_plan {
+            Some(plan) if response.status == 200 => {
+                serve_part_proxy(&mut stream, &runtime, response.clone(), plan, &envelope, keep)?;
+                false
+            }
+            _ => wire::write_enveloped(&mut stream, &response, &envelope, keep)?,
+        };
         served_any = true;
         if response.close || !keep || !still_open || close_after_write {
             break;
@@ -22722,27 +22694,172 @@ fn generated_jpeg(width: u32, height: u32) -> Vec<u8> {
     output
 }
 
-fn parse_http_url(url: &str) -> Option<(String, String, u16)> {
-    let rest = url.strip_prefix("http://")?;
-    let (host_port, path) = rest.split_once('/').unwrap_or((rest, ""));
-    let (host, port) = host_port
-        .split_once(':')
-        .map(|(h, p)| (h, p.parse().ok().unwrap_or(80)))
-        .unwrap_or((host_port, 80));
-    Some((host.to_string(), format!("/{path}"), port))
-}
-
-fn form_encode(value: &str) -> String {
-    let mut out = String::new();
-    for byte in value.bytes() {
-        if byte.is_ascii_alphanumeric() || b"-_.~".contains(&byte) {
-            out.push(byte as char);
+/// `_download_disposition`: both filename forms PMS writes on a download. Cycle 41: the
+/// legacy quoted form substitutes `_` for `+`; the RFC 5987 form keeps the name and uses
+/// cycle 29's escaper, the URI unreserved set minus the dot.
+fn download_disposition(filename: &str) -> String {
+    let plain = filename.replace('"', "").replace('+', "_");
+    let mut extended = String::new();
+    for byte in filename.bytes() {
+        if byte.is_ascii_alphanumeric() || b"_-~".contains(&byte) {
+            extended.push(byte as char);
         } else {
-            out.push('%');
-            out.push_str(&format!("{byte:02X}"));
+            extended.push_str(&format!("%{byte:02X}"));
         }
     }
-    out
+    format!("attachment; filename=\"{plain}\"; filename*=UTF-8''{extended}")
+}
+
+/// How a part read's window was decided, carried out of the lock with the plan.
+#[derive(Debug, Clone)]
+enum PartWindow {
+    /// No size in the catalog: the client's own header goes to the CDN.
+    Passthrough(Option<String>),
+    Unsatisfiable,
+    Partial {
+        first: u64,
+        last: u64,
+        content_range: String,
+    },
+    Whole(u64),
+}
+
+/// A part read accepted by the router, finished by `handle_connection` without the lock.
+#[derive(Debug)]
+struct PartProxy {
+    resolver: Arc<upstream::Resolver>,
+    link: String,
+    redirect: bool,
+    window: PartWindow,
+    head: bool,
+}
+
+/// Content-Range sits right after Accept-Ranges, where the part read has always put it.
+fn insert_after_accept_ranges(response: &mut Response, content_range: String) {
+    let at = response
+        .headers
+        .iter()
+        .position(|(name, _)| name == "Accept-Ranges")
+        .map_or(response.headers.len(), |index| index + 1);
+    response
+        .headers
+        .insert(at, ("Content-Range".to_string(), content_range));
+}
+
+/// Carry out a `PartProxy`: resolve, open the CDN url, write the head, stream the body.
+/// Answers whether the connection stays open (a part read never keeps it).
+fn serve_part_proxy<S: Write>(
+    stream: &mut S,
+    runtime: &SharedRuntime,
+    mut response: Response,
+    plan: PartProxy,
+    envelope: &wire::Wire,
+    keep: bool,
+) -> Result<bool, String> {
+    let url = match plan.resolver.resolve(&plan.link) {
+        Ok((url, _size)) => url,
+        // Cycle 44: the provider saying the FILE is gone is a plain 404, as a real PMS
+        // answers for a part it cannot open; any other resolve failure is the 502.
+        Err(upstream::ResolveError::Unavailable) => {
+            return wire::write_enveloped(stream, &Response::error(404, "plexsim: not found"), envelope, keep);
+        }
+        Err(upstream::ResolveError::Failed) => {
+            let refusal = Response::error(502, "plexsim: debrid resolve failed");
+            return wire::write_enveloped(stream, &refusal, envelope, keep);
+        }
+    };
+    if plan.redirect {
+        let mut redirect = Response::bytes(302, "");
+        redirect.headers.push(("Location".to_string(), url));
+        return wire::write_enveloped(stream, &redirect, envelope, keep);
+    }
+    let mut headers = vec![("User-Agent", upstream::UPSTREAM_UA.to_string())];
+    let want = match &plan.window {
+        PartWindow::Unsatisfiable => {
+            let refusal = Response {
+                status: 416,
+                content_type: "text/html".to_string(),
+                body: error_document(416),
+                headers: vec![
+                    ("X-Plex-Protocol".to_string(), "1.0".to_string()),
+                    ("Cache-Control".to_string(), "no-cache".to_string()),
+                    ("Date".to_string(), http_date()),
+                ],
+                close: false,
+            };
+            return wire::write_enveloped(stream, &refusal, envelope, keep);
+        }
+        PartWindow::Partial { first, last, .. } => {
+            headers.push(("Range", format!("bytes={first}-{last}")));
+            Some(last - first + 1)
+        }
+        PartWindow::Whole(size) => Some(*size),
+        PartWindow::Passthrough(range) => {
+            if let Some(range) = range {
+                headers.push(("Range", range.clone()));
+            }
+            None
+        }
+    };
+    let mut upstream = match upstream::open("GET", &url, &headers, b"", std::time::Duration::from_secs(30)) {
+        Ok(upstream) if upstream.status < 400 => upstream,
+        Ok(refused) => {
+            // The CDN refused a url the cache still holds: resolve afresh next time
+            // rather than replaying a dead url until the TTL runs out.
+            plan.resolver.invalidate(&plan.link);
+            let refusal = Response::error(refused.status, "plexsim: upstream refused");
+            return wire::write_enveloped(stream, &refusal, envelope, keep);
+        }
+        Err(_) => {
+            let refusal = Response::error(502, "plexsim: upstream failed");
+            return wire::write_enveloped(stream, &refusal, envelope, keep);
+        }
+    };
+    let length = match (&plan.window, want) {
+        (PartWindow::Partial { content_range, .. }, Some(want)) => {
+            response.status = 206;
+            insert_after_accept_ranges(&mut response, content_range.clone());
+            Some(want)
+        }
+        (_, Some(want)) => Some(want),
+        (_, None) => {
+            response.status = upstream.status;
+            if let Some(range) = upstream.header("content-range") {
+                insert_after_accept_ranges(&mut response, range.to_string());
+            }
+            upstream
+                .header("content-length")
+                .and_then(|value| value.trim().parse::<u64>().ok())
+        }
+    };
+    let still_open = wire::write_enveloped_head(stream, &response, envelope, keep, length)?;
+    if plan.head {
+        return Ok(still_open);
+    }
+    let mut written = 0_u64;
+    let mut buffer = vec![0_u8; 256 * 1024];
+    loop {
+        let room = want.map_or(buffer.len() as u64, |want| (want - written).min(buffer.len() as u64));
+        if room == 0 {
+            break;
+        }
+        let count = match upstream.read(&mut buffer[..room as usize]) {
+            Ok(0) | Err(_) => break,
+            Ok(count) => count,
+        };
+        // A seek or a stop closes the socket mid-body. Normal.
+        if stream.write_all(&buffer[..count]).is_err() {
+            break;
+        }
+        written += count as u64;
+    }
+    let _ = stream.flush();
+    if written > 0 {
+        if let Ok(mut guard) = runtime.lock() {
+            guard.count_part_bytes(written);
+        }
+    }
+    Ok(false)
 }
 
 fn base64_decode(text: &str) -> Option<String> {
@@ -22811,10 +22928,16 @@ fn is_true_option(value: &str) -> bool {
 /// The current time in the IMF-fixdate form every response's `Date` carries
 /// (`BaseHTTPRequestHandler.date_time_string`).
 fn http_date() -> String {
-    let seconds = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|elapsed| elapsed.as_secs() as i64)
-        .unwrap_or(0);
+    http_date_at(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|elapsed| elapsed.as_secs() as i64)
+            .unwrap_or(0),
+    )
+}
+
+/// An RFC 1123 date for a unix time: `time.strftime("%a, %d %b %Y %H:%M:%S GMT", gmtime())`.
+fn http_date_at(seconds: i64) -> String {
     let days = seconds.div_euclid(86_400);
     let rest = seconds.rem_euclid(86_400);
     // Howard Hinnant's civil-from-days.
