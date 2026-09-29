@@ -5375,6 +5375,9 @@ impl Runtime {
             ("GET" | "HEAD", "/system/proxy") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/video/:/transcode/universal/subtitles") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/photo/:/transcode") => self.route_photo_transcode(request, &query),
+            ("GET" | "HEAD", "/service/ultrablur/colors" | "/services/ultrablur/colors") => {
+                self.route_ultrablur_colors(request, &query)
+            }
             ("GET" | "HEAD", "/channels") => Response::json(
                 200,
                 self.container(
@@ -9173,6 +9176,50 @@ impl Runtime {
     /// A SECTION's Continue Watching see-all leaf (cycles 21, 26, 57): a show
     /// library keeps a hidden row, a movie library drops it, and a next-up whose
     /// anchor was only scrobbled is not listed.
+    /// Cycle 70: `/service(s)/ultrablur/colors?url=` -- Plex for Android's backdrop tint
+    /// (js:831397).  zen answers both spellings and resolves the url exactly as
+    /// `/photo/:/transcode` does: no `url` a 400, an unresolvable one a 404, a server
+    /// path that is not an image a 500, any image it serves a 200 with the four corner
+    /// colours.  plexsim has no image decoder, so the VALUES are the row's own palette.
+    fn route_ultrablur_colors(&mut self, request: &Request, query: &HashMap<String, String>) -> Response {
+        let Some(url) = query.get("url").cloned() else {
+            return Response::error(400, "plexsim: bad request");
+        };
+        let photo_query = HashMap::from([
+            ("url".to_string(), url.clone()),
+            ("width".to_string(), "64".to_string()),
+            ("height".to_string(), "64".to_string()),
+        ]);
+        let fetched = self.route_photo_transcode(request, &photo_query);
+        if fetched.status != 200 {
+            return fetched;
+        }
+        let inner = url.split(['?', '#']).next().unwrap_or_default().to_string();
+        let owner = inner
+            .strip_prefix("/library/metadata/")
+            .and_then(|rest| rest.split_once('/'))
+            .map(|(key, _)| key.to_string())
+            .filter(|key| !key.is_empty() && key.bytes().all(|b| b.is_ascii_digit()));
+        let palette = owner
+            .and_then(|key| self.catalog.get(&key))
+            .and_then(|row| row.get("UltraBlurColors"))
+            .map(|colors| if colors.is_array() { colors[0].clone() } else { colors.clone() })
+            .filter(Value::is_object);
+        let mut colors = Map::new();
+        for (corner, fallback) in crate::hierarchy::DEFAULT_ULTRABLUR {
+            let value = palette
+                .as_ref()
+                .and_then(|palette| palette.get(*corner))
+                .cloned()
+                .unwrap_or_else(|| json!(fallback));
+            colors.insert(corner.to_string(), value);
+        }
+        Response::json(
+            200,
+            json!({"MediaContainer": {"size": 1, "UltraBlurColors": [Value::Object(colors)]}}),
+        )
+    }
+
     /// `section_continue_watching`: a show library keeps a hidden row, a movie library
     /// drops it, and a next-up whose show was never played in a session is not listed.
     fn section_continue_watching_rows(&self, section_key: &str, is_show: bool) -> Vec<Value> {
