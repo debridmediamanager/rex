@@ -3411,8 +3411,10 @@ impl Runtime {
             ("originallyAvailableAt".to_string(), "date".to_string()),
             ("id".to_string(), "id".to_string()),
             ("guid".to_string(), "string".to_string()),
-            ("type".to_string(), "string".to_string()),
-            ("parent".to_string(), "string".to_string()),
+            // Cycle 20: `type` with an operator is the row's TYPE NUMBER, and `parent` the
+            // immediate parentRatingKey -- both integer columns.
+            ("type".to_string(), "integer".to_string()),
+            ("parent".to_string(), "integer".to_string()),
             ("parentIndex".to_string(), "integer".to_string()),
             ("originalTitle".to_string(), "string".to_string()),
             ("createdAt".to_string(), "date".to_string()),
@@ -3475,9 +3477,27 @@ impl Runtime {
             "mood",
             "style",
             "role",
+            // Cycle 54: eighteen more tag-table fields from the binary's parameter names.
+            "similar",
+            "format",
+            "subformat",
+            "tag",
+            "make",
+            "model",
+            "lens",
+            "aperture",
+            "exposure",
+            "iso",
+            "device",
+            "autotag",
+            "place",
+            "channel",
+            "mediaProcessingTarget",
+            "sharedWith",
         ] {
             fields.insert(field.to_string(), "tag".to_string());
         }
+        fields.insert("clusterStartsAt".to_string(), "date".to_string());
         fields.insert("contentRating".to_string(), "tag".to_string());
         fields.insert("audioLanguage".to_string(), "audioLanguage".to_string());
         fields.insert(
@@ -3551,6 +3571,23 @@ impl Runtime {
         if field == "parent" {
             return row.get("parentRatingKey").cloned().unwrap_or(Value::Null);
         }
+        if field == "trash" {
+            // plexsim holds no trashed row; kids' own answer is 0 everywhere.
+            return json!(0);
+        }
+        if matches!(field, "cluster" | "clusterStartsAt" | "clusterZoomLevel" | "clustering") {
+            // The photo-cluster columns match no row of a video library.
+            return Value::Null;
+        }
+        if matches!(
+            field,
+            "similar" | "format" | "subformat" | "tag" | "make" | "model" | "lens" | "aperture"
+                | "exposure" | "iso" | "device" | "autotag" | "place" | "channel"
+                | "mediaProcessingTarget" | "sharedWith"
+        ) {
+            let element = if field == "iso" { "ISO".to_string() } else { capitalize_ascii(field) };
+            return row.get(&element).cloned().unwrap_or_else(|| json!([]));
+        }
         if field == "titleSort" {
             return json!(crate::hierarchy::stored_sort_title(
                 row.as_object().unwrap_or(&Map::new()),
@@ -3611,17 +3648,7 @@ impl Runtime {
             field,
             "viewedLeafCount" | "unviewedLeafCount" | "viewedOrInProgressLeafCount"
         ) {
-            let key = string_value(row.get("ratingKey").unwrap_or(&Value::Null));
-            let leaves = if row.get("type").and_then(Value::as_str) == Some("show") {
-                self.leaves(&key)
-            } else if row.get("type").and_then(Value::as_str) == Some("season") {
-                row.get("parentRatingKey")
-                    .map(string_value)
-                    .map(|parent| self.leaves(&parent))
-                    .unwrap_or_default()
-            } else {
-                Vec::new()
-            };
+            let leaves = self.show_leaves_for_counts(row);
             let viewed = leaves
                 .iter()
                 .filter(|leaf| leaf.get("viewCount").is_some())
@@ -3710,6 +3737,12 @@ impl Runtime {
         if field == "createdAt" {
             return row.get("addedAt").cloned().unwrap_or(Value::Null);
         }
+        if field == "unwatchedLeaves" {
+            // Cycle 54: 1 while the SHOW (for a season or an episode) has an unwatched leaf.
+            let leaves = self.show_leaves_for_counts(row);
+            let viewed = leaves.iter().filter(|leaf| leaf.get("viewCount").is_some()).count();
+            return json!((leaves.len() > viewed) as i64);
+        }
         if matches!(field, "audioLanguage" | "subtitleLanguage") {
             let stream_type = if field == "audioLanguage" { 2 } else { 3 };
             return Value::Array(
@@ -3777,6 +3810,26 @@ impl Runtime {
                 .unwrap_or(Value::Null);
         }
         actual.cloned().unwrap_or(Value::Null)
+    }
+
+    /// The leaves a leaf-count filter counts: a show's own, and -- cycles 14/54 -- the
+    /// SHOW's for a season or an episode row.
+    fn show_leaves_for_counts(&self, row: &Value) -> Vec<Value> {
+        let key = string_value(row.get("ratingKey").unwrap_or(&Value::Null));
+        match row.get("type").and_then(Value::as_str) {
+            Some("show") => self.leaves(&key),
+            Some("season") => row
+                .get("parentRatingKey")
+                .map(string_value)
+                .map(|parent| self.leaves(&parent))
+                .unwrap_or_default(),
+            Some("episode") => row
+                .get("grandparentRatingKey")
+                .map(string_value)
+                .map(|show| self.leaves(&show))
+                .unwrap_or_default(),
+            _ => Vec::new(),
+        }
     }
 
     fn filter_rows(
@@ -3946,6 +3999,8 @@ impl Runtime {
                 "remote",
                 "isAdult",
                 "resourcesChangedAt",
+                // Cycle 53: the tenth schema column sorts too.
+                "mediaAnalysisVersion",
                 "mediaHeight",
                 "type",
                 "index",
@@ -11533,6 +11588,23 @@ impl Runtime {
                         } else {
                             self.section_rows(section_key)
                         };
+                    if leaf == "recentlyViewedShows" {
+                        // Cycle 54: this subset runs the listing's FILTERS, where newest,
+                        // recentlyViewed and recentlyAdded ignore them.
+                        let filter_pairs = pairs
+                            .iter()
+                            .filter(|(name, _)| {
+                                !name.starts_with("X-Plex-")
+                                    && !name.starts_with("include")
+                                    && !name.starts_with("exclude")
+                            })
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        rows = match self.filter_rows(rows, &filter_pairs, kind) {
+                            Ok(rows) => rows,
+                            Err(status) => return Response::error(status, "plexsim: bad request"),
+                        };
+                    }
                     if kind == "show" && matches!(leaf, "recentlyAddedGrandparents") {
                         let mut seen = HashSet::new();
                         let mut roots = Vec::new();
@@ -11772,6 +11844,14 @@ impl Runtime {
                         "id",
                         "type",
                         "editionTitle",
+                        // Cycle 20/53: the artwork columns and `userFields` parse as
+                        // Rules with an empty fieldTitle (PARSE_ONLY_FIELD_TYPES) though a
+                        // listing refuses them.
+                        "theme",
+                        "banner",
+                        "art",
+                        "thumb",
+                        "userFields",
                     ] {
                         field_types
                             .entry(field.to_string())
@@ -11788,6 +11868,17 @@ impl Runtime {
                     if query.get("sort").is_some() && order.is_none() {
                         return Response::error(500, "plexsim: bad request");
                     }
+                    // Cycle 20: a `sourceType` other than 1 brings the DEFAULT order with
+                    // it (an explicit `sort=` still wins), and one that is not a whole
+                    // number is a 500 here as on a listing.
+                    let source = match crate::filters::source_order(query.get("sourceType").map(String::as_str)) {
+                        Ok(source) => source,
+                        Err(_) => return Response::error(500, "plexsim: bad request"),
+                    };
+                    let order = match order {
+                        Some(order) if !order.is_empty() => Some(order),
+                        _ => source,
+                    };
                     let limit = query
                         .get("limit")
                         .and_then(|value| value.parse::<i64>().ok());
@@ -11986,10 +12077,28 @@ impl Runtime {
                         .get("type")
                         .and_then(Value::as_str)
                         .unwrap_or("movie");
-                    let rows = self
+                    let unwatched = self
                         .section_rows(section_key)
                         .into_iter()
                         .filter(|row| row.get("viewCount").is_none())
+                        .collect::<Vec<_>>();
+                    // Cycle 54: this list runs the listing's filters (`genre=zzzq` answers
+                    // nothing, a word on a number is a 500).
+                    let filter_pairs = pairs
+                        .iter()
+                        .filter(|(name, _)| {
+                            !name.starts_with("X-Plex-")
+                                && !name.starts_with("include")
+                                && !name.starts_with("exclude")
+                        })
+                        .cloned()
+                        .collect::<Vec<_>>();
+                    let unwatched = match self.filter_rows(unwatched, &filter_pairs, kind) {
+                        Ok(rows) => rows,
+                        Err(status) => return Response::error(status, "plexsim: bad request"),
+                    };
+                    let rows = unwatched
+                        .into_iter()
                         .map(|row| {
                             let mut listed = self.listing_row(&row);
                             if kind == "show" {
@@ -14334,6 +14443,28 @@ impl Runtime {
                     "episode" => vec![row.clone()],
                     _ => Vec::new(),
                 };
+                // Cycle 54: `/grandchildren` runs the listing QUERY, as `/children` does --
+                // filters constrain it and an unparseable value is a 500.
+                let section_type = self
+                    .section(&string_value(row.get("librarySectionID").unwrap_or(&Value::Null)))
+                    .and_then(|section| section.get("type").and_then(Value::as_str))
+                    .unwrap_or("show")
+                    .to_string();
+                let filter_pairs = query
+                    .iter()
+                    .filter(|(name, _)| {
+                        !name.starts_with("X-Plex-")
+                            && !name.starts_with("include")
+                            && !name.starts_with("exclude")
+                    })
+                    .map(|(name, value)| (name.clone(), value.clone()))
+                    .collect::<Vec<_>>();
+                if !filter_pairs.is_empty() {
+                    rows = match self.filter_rows(rows, &filter_pairs, &section_type) {
+                        Ok(rows) => rows,
+                        Err(status) => return Response::error(status, "plexsim: bad request"),
+                    };
+                }
                 if let Some(type_value) = query.get("type") {
                     let Ok(type_number) = type_value.parse::<i64>() else {
                         return Response::error(500, "plexsim: bad request");
