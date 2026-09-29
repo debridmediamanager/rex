@@ -19782,6 +19782,13 @@ fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option
         } else if pending.len() > 10 {
             return Err("method length".to_string());
         }
+        // Cycle 27: a request line ended by a bare LF, with no CR, is a 400 on kids and
+        // zen. Waiting for a CRLF CRLF that never comes would leave it unanswered.
+        if let Some(newline) = pending.iter().position(|byte| *byte == b'\n') {
+            if newline > 0 && pending[newline - 1] != b'\r' {
+                return Err("bad request line".to_string());
+            }
+        }
         if pending.len() >= MAX_HEADER_BYTES {
             break None;
         }
@@ -19870,7 +19877,17 @@ fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option
             }
         }
     }
-    if !legacy_http09 && !parts[2].starts_with("HTTP/") {
+    // Cycle 27: the version is exactly `HTTP/<digit>.<digit>` (`HTTP/1` is a 400, while
+    // `HTTP/2.0` and `HTTP/9.9` are answered), and the asterisk-form target is refused.
+    let version_shaped = |version: &str| {
+        let bytes = version.as_bytes();
+        bytes.len() == 8
+            && version.starts_with("HTTP/")
+            && bytes[5].is_ascii_digit()
+            && bytes[6] == b'.'
+            && bytes[7].is_ascii_digit()
+    };
+    if !legacy_http09 && (!version_shaped(parts[2]) || parts[1] == "*") {
         return Err("bad request line".to_string());
     }
     let mut headers = HashMap::new();
