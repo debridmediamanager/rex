@@ -28,6 +28,7 @@ use crate::{catalog::Catalog, decision, xmlout};
 mod agents;
 mod edit;
 mod frames;
+mod listing;
 
 const VERSION: &str = "1.42.2.10156-plexsim";
 const MEDIA_TAG_PREFIX: &str = "/system/bundle/media/flags/";
@@ -4854,7 +4855,10 @@ impl Runtime {
             ),
             ("GET" | "HEAD", "/library/sections") => self.route_sections(&query),
             ("GET" | "HEAD", "/library/sections/all") => self.route_sections(&query),
-            ("GET" | "HEAD", "/library/all") => self.route_all(&query),
+            ("GET" | "HEAD", "/library/all") => {
+                let pairs = Self::request_pairs(request);
+                self.route_library_all(&query, &pairs)
+            }
             ("GET" | "HEAD", "/library/recentlyAdded") => self.route_recently_added(&query),
             ("GET" | "HEAD", "/library/onDeck") => self.route_on_deck(&query),
             ("GET" | "HEAD", "/devices") => self.route_devices(),
@@ -13506,45 +13510,17 @@ impl Runtime {
             Err(status) => return Response::error(status, "plexsim: bad request"),
         };
         let rows = if let Some(group) = query.get("group") {
-            if !matches!(
-                group.as_str(),
-                "studio"
-                    | "type"
-                    | "guid"
-                    | "id"
-                    | "originalTitle"
-                    | "createdAt"
-                    | "mediaCount"
-                    | "ratingCount"
-                    | "absoluteIndex"
-            ) {
-                return Response::error(500, "plexsim: bad request");
-            }
-            if group == "studio" {
-                let mut seen = HashSet::new();
-                rows.into_iter()
-                    .filter(|row| {
-                        seen.insert(string_value(row.get("studio").unwrap_or(&Value::Null)))
-                    })
-                    .collect::<Vec<_>>()
-            } else {
-                // These columns are valid grouping keys. Their row order is
-                // still the normal stable listing order; the studio axis is
-                // the one measured as a collapsed shelf.
-                rows
+            match self.grouped(rows, group) {
+                Ok(rows) => rows,
+                Err(status) => return Response::error(status, "plexsim: bad request"),
             }
         } else {
             rows
         };
-        let mut rows = rows;
-        if let Some(limit) = query
-            .get("limit")
-            .and_then(|value| value.parse::<i64>().ok())
-        {
-            if limit >= 0 {
-                rows.truncate(if limit == 0 { 1 } else { limit as usize });
-            }
-        }
+        let rows = match Self::limited(rows, query) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad request"),
+        };
         let exclude_media = query
             .get("excludeElements")
             .is_some_and(|value| value.split(',').any(|name| name == "Media"));
