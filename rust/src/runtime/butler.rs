@@ -679,3 +679,36 @@ impl Runtime {
         Response::json(200, json!({"MediaContainer": body}))
     }
 }
+
+impl Runtime {
+    /// `/accounts` and `/accounts/{id}` (`accounts` in server.py): the server's own user
+    /// row, in a bare container carrying only its `identifier`; any other id is a 404.
+    pub(super) fn route_account(&self, account_id: Option<&str>) -> Response {
+        if let Some(id) = account_id {
+            let digits = id.strip_prefix('+').unwrap_or(id);
+            let one = !digits.is_empty()
+                && digits.bytes().all(|b| b.is_ascii_digit())
+                && digits.trim_start_matches('0') == "1";
+            if !one {
+                return Response::error(404, "plexsim: no such account");
+            }
+        }
+        Response::json(
+            200,
+            json!({"MediaContainer": {
+                "size": 1,
+                "identifier": "com.plexapp.system.accounts",
+                "Account": [{
+                    "id": 1,
+                    "key": "/accounts/1",
+                    "name": self.owner_username,
+                    "defaultAudioLanguage": "en",
+                    "autoSelectAudio": true,
+                    "defaultSubtitleLanguage": "en",
+                    "subtitleMode": 2,
+                    "thumb": "",
+                }],
+            }}),
+        )
+    }
+}
