@@ -190,7 +190,9 @@ fn tables(catalog: &Path) -> &'static FrameworkTables {
         let flag_blank = flags
             .get("blank")
             .and_then(Value::as_str)
-            .and_then(base64_decode_bytes)
+            // The captured blank is MIME base64, wrapped at 76 columns.
+            .map(|text| text.split_whitespace().collect::<String>())
+            .and_then(|text| base64_decode_bytes(&text))
             .unwrap_or_default();
         let mut substitutions = HashMap::new();
         if let Some(kinds) = flags.get("substitutions").and_then(Value::as_object) {
@@ -245,7 +247,7 @@ impl Response {
             status,
             content_type: "application/xml".to_string(),
             body,
-            headers: Vec::new(),
+            headers: vec![("X-Plexsim-No-Head-Gzip".to_string(), "1".to_string())],
             close: false,
         }
     }

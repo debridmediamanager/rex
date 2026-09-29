@@ -563,16 +563,6 @@ pub fn compare(
     wanted: &str,
     field: &str,
 ) -> Result<bool, FilterError> {
-    if let Some(title) = actual.get("__title") {
-        // The title carrier `Runtime::filter_value` builds for `title`.
-        let text = title.as_str().unwrap_or("").to_string();
-        if field == "title" && operator == "=" {
-            let sort = actual.get("__sort").and_then(Value::as_str).unwrap_or(&text).to_string();
-            let original = actual.get("__original").and_then(Value::as_str).unwrap_or("").to_string();
-            return Ok(title_match(wanted, &text, Some(&sort), Some(&original)));
-        }
-        return compare(kind, operator, &Value::String(text), wanted, field);
-    }
     let mut operator = operator.to_string();
     if field == "decade" {
         operator = "=".into();
@@ -1230,6 +1220,9 @@ mod tests {
     }
     #[test]
     fn title() {
+        assert!(!title_match("Th\u{e9} Zarquon", "The Zarquon Machine", Some("Zarquon Machine"), Some("Le Salaire de la Peur")));
+        assert!(title_match("The Zarquon", "The Zarquon Machine", Some("Zarquon Machine"), Some("")));
+        assert!(title_match("Z\u{e1}rquon Machine", "The Zarquon Machine", Some("Zarquon Machine"), Some("")));
         assert!(title_match("Fire", "Firefly", None, None));
         assert!(!title_match("ire", "Firefly", None, None));
     }
