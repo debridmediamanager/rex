@@ -5211,13 +5211,41 @@ impl Runtime {
             // registers no device and carries no framework cookie.
             return Response::error(500, "plexsim: unknown method");
         }
+        // `persist.py`: a client write is on disk before it is answered (cycle 73 lost
+        // five writes to a SIGKILL under a coalesced save), and so is a client's first
+        // appearance or a changed name or platform (cycle 74). Everything else -- the
+        // lastSeenAt every request stamps -- waits for the coalescing saver in `serve`,
+        // so a read never rewrites the state file.
+        let (raw_path, _) = split_target(&request.target);
+        let mut persist_before_answer =
+            !matches!(request.method.as_str(), "GET" | "HEAD" | "OPTIONS")
+                || matches!(
+                    raw_path.as_str(),
+                    "/:/scrobble" | "/:/unscrobble" | "/:/rate" | "/:/progress" | "/:/timeline"
+                );
+        let identifier = request
+            .headers
+            .get("x-plex-client-identifier")
+            .cloned()
+            .unwrap_or_default();
+        let before = self
+            .devices
+            .get(&identifier)
+            .map(|device| (device.name.clone(), device.platform.clone()));
+        let known_devices = self.device_order.len();
         self.mark_device(&request.headers);
         self.register_request_device(request);
+        let after = self
+            .devices
+            .get(&identifier)
+            .map(|device| (device.name.clone(), device.platform.clone()));
+        if before != after || self.device_order.len() != known_devices {
+            persist_before_answer = true;
+        }
         let mut response = self.request_route(request);
         exclude_fields_response(request, &mut response);
         sync_version_response(request, &mut response);
         self.stream_titles_response(request, &mut response);
-        let (raw_path, _) = split_target(&request.target);
         if let Some(cookie) = Self::framework_cookie(&request.method, &raw_path) {
             // Cycle 33/52: the plug-in framework's session cookie rides every response it
             // writes itself -- but not the Tornado banner answer, which hands none back.
@@ -5233,7 +5261,9 @@ impl Runtime {
         }
         self.localize_response(request, &mut response);
         // The CORS trio is the envelope's (`wire.rs`), written for every response.
-        self.save_if_dirty();
+        if persist_before_answer {
+            self.save_if_dirty();
+        }
         response
     }
 
@@ -20323,6 +20353,60 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
     });
 }
 
+static TERMINATE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+extern "C" fn on_sigterm(_signal: libc::c_int) {
+    TERMINATE.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
+/// `persist.Store.start`: with `--state`, what a request leaves dirty without being a
+/// client write is coalesced -- saved at most once per two-second interval -- and a
+/// SIGTERM saves before the process exits. Saving on every request instead rewrote the
+/// whole state file (every catalog row) on every read, since each one stamps its
+/// device's lastSeenAt.
+fn start_state_saver(runtime: SharedRuntime) {
+    let enabled = runtime
+        .lock()
+        .map(|runtime| runtime.state_path.is_some())
+        .unwrap_or(false);
+    if !enabled {
+        return;
+    }
+    // SAFETY: the handler only stores to an atomic, which is async-signal-safe.
+    unsafe {
+        libc::signal(libc::SIGTERM, on_sigterm as libc::sighandler_t);
+    }
+    thread::spawn(move || {
+        // `run()` waits for the dirty flag and then a whole interval, so a write is
+        // saved two seconds after the first request that dirtied the state.
+        let interval = std::time::Duration::from_secs(2);
+        let mut dirty_since: Option<std::time::Instant> = None;
+        loop {
+            thread::sleep(std::time::Duration::from_millis(100));
+            let terminate = TERMINATE.load(std::sync::atomic::Ordering::SeqCst);
+            let mut guard = runtime
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            if terminate {
+                guard.save_if_dirty();
+                std::process::exit(0);
+            }
+            if !guard.dirty {
+                dirty_since = None;
+                continue;
+            }
+            if dirty_since
+                .get_or_insert_with(std::time::Instant::now)
+                .elapsed()
+                >= interval
+            {
+                guard.save_if_dirty();
+                dirty_since = None;
+            }
+        }
+    });
+}
+
 pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     let host = options.host.clone();
     let port = options.port;
@@ -20335,6 +20419,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         None => None,
     };
     let runtime = Arc::new(Mutex::new(Runtime::load(options)?));
+    start_state_saver(Arc::clone(&runtime));
     start_gdm(Arc::clone(&runtime), &gdm_mode, port);
     let listener = TcpListener::bind((host.as_str(), port))
         .map_err(|e| format!("cannot bind {host}:{port}: {e}"))?;

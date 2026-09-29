@@ -240,6 +240,27 @@ def main():
                   stale, misspelt(speller)))
         speller.stop()
 
+        # -- a read is coalesced, not saved before it is answered -------------------
+        # persist.Store: only a client write (or a first-seen device) is saved before
+        # its answer; every other request marks the state dirty and the saver writes at
+        # most once per two-second interval. A server that saved on every request
+        # rewrote the whole state file -- every catalog row -- on each read.
+        coalesced = os.path.join(work, "coalesced.pickle")
+        reader = Instance(catalog, coalesced)
+        reader.request("GET", "/:/scrobble?key=1007&identifier=" + LIBRARY)
+        time.sleep(2.5)
+        saved_at = os.stat(coalesced).st_mtime_ns
+        for _ in range(5):
+            reader.request("GET", "/library/metadata/1007")
+        rewritten_by_reads = os.stat(coalesced).st_mtime_ns != saved_at
+        time.sleep(2.5)
+        saved_later = os.stat(coalesced).st_mtime_ns != saved_at
+        reader.stop()
+        check("a read is not saved before its answer, and the interval saves it",
+              not rewritten_by_reads and saved_later,
+              "rewritten by reads %s, saved within the interval %s" % (
+                  rewritten_by_reads, saved_later))
+
         # -- without --state a restart is still the undo button ----------------
         plain = Instance(catalog)
         again = snapshot(plain)
