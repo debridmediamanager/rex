@@ -4246,6 +4246,14 @@ impl Runtime {
             };
             self.catalog.get(&key)
         };
+        if bare == "id" {
+            // The row's id is its ratingKey, ordered as a number.
+            return target
+                .and_then(key_of)
+                .and_then(|key| key.parse::<i64>().ok())
+                .map(|id| json!(id))
+                .unwrap_or(Value::Null);
+        }
         if bare == "viewUpdatedAt" {
             return target
                 .and_then(|target| target.get("_viewUpdatedAt"))
@@ -5077,9 +5085,12 @@ impl Runtime {
         if !self.authorized(&path, &request, &query) {
             return self.unauthorized_route(&path, request);
         }
-        if (path == "/player" || path.starts_with("/player/"))
-            && request.headers.contains_key("x-plex-target-client-identifier")
-        {
+        if path == "/player" || path.starts_with("/player/") {
+            // Player commands go to a PLAYER, not to a server: a real PMS answers 400
+            // for every one of them.
+            if !request.headers.contains_key("x-plex-target-client-identifier") {
+                return Response::error(400, "plexsim: bad request");
+            }
             // Cycle 59, measured on zen, kids and both copies: WITH an
             // `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
             // `PlexClient.sendCommand()` -- the server looks for that player to proxy
@@ -8447,17 +8458,50 @@ impl Runtime {
                 query,
                 decided,
             );
+            let session_key = session
+                .get("sessionKey")
+                .map(string_value)
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| client.clone());
+            let player = session
+                .get("Player")
+                .and_then(|player| player.get("machineIdentifier"))
+                .map(string_value)
+                .or_else(|| query.get("X-Plex-Client-Identifier").cloned())
+                .or_else(|| headers.get("x-plex-client-identifier").cloned())
+                .unwrap_or_default();
             self.sessions.insert(client.clone(), session);
+            let mut frame = Map::new();
+            frame.insert("sessionKey".to_string(), json!(session_key));
+            frame.insert("clientIdentifier".to_string(), json!(player));
+            frame.insert("guid".to_string(), json!(""));
+            frame.insert("ratingKey".to_string(), json!(key));
+            frame.insert("url".to_string(), json!(""));
+            frame.insert("key".to_string(), json!(format!("/library/metadata/{key}")));
+            frame.insert("viewOffset".to_string(), json!(time));
+            frame.insert("state".to_string(), json!(state));
+            // Measured on a writable copy of the reference: every frame of a session
+            // driven from a play queue carries `playQueueItemID` and `playQueueID`, and a
+            // session with no queue carries neither.
+            if let Some(item_id) = query
+                .get("playQueueItemID")
+                .and_then(|value| value.parse::<i64>().ok())
+            {
+                if let Some(queue) = self
+                    .queues
+                    .values()
+                    .find(|queue| queue.items.iter().any(|item| item.id == item_id))
+                {
+                    frame.insert("playQueueItemID".to_string(), json!(item_id));
+                    frame.insert(
+                        "playQueueID".to_string(),
+                        json!(queue.id.parse::<i64>().unwrap_or(0)),
+                    );
+                }
+            }
             self.push_event(
                 "playing",
-                json!({"PlaySessionStateNotification": {
-                    "sessionKey": client,
-                    "clientIdentifier": headers.get("x-plex-client-identifier").cloned().unwrap_or_default(),
-                    "ratingKey": key,
-                    "key": format!("/library/metadata/{key}"),
-                    "viewOffset": time,
-                    "state": state,
-                }}),
+                json!({"PlaySessionStateNotification": Value::Object(frame)}),
             );
         }
         self.save_if_dirty();
@@ -8579,19 +8623,10 @@ impl Runtime {
             .cloned()
             .collect::<Vec<_>>();
 
-        let mut in_progress = if is_show {
-            episodes.clone()
-        } else {
-            items.clone()
-        };
-        in_progress.retain(|row| {
-            row.get("viewOffset")
-                .and_then(Value::as_i64)
-                .is_some_and(|offset| offset > 60000)
-                && key_of(row)
-                    .map(|key| !self.hidden_continue.contains(&key))
-                    .unwrap_or(false)
-        });
+        // Cycle 57/58: the section's Continue Watching shelf is the same list as its
+        // see-all leaf (`section_continue_watching`): the library's resume rows, a
+        // next-up only once its show has a playback completion.
+        let in_progress = self.section_continue_watching_rows(section_key, is_show);
 
         let mut watched = if is_show {
             episodes.clone()
@@ -8793,7 +8828,9 @@ impl Runtime {
                     } else {
                         // Cycle 56, measured on zen and kids: `includeGuids=1` carries
                         // `Guid` on a library hub page's rows too.
-                        let mut shown = self.listing_row(&row);
+                        // The oracle's `_grid_row`: a shelf row keeps its `Media` (Parts
+                        // without Streams) and its librarySection fields.
+                        let mut shown = self.grid_row(&row, true, false, false);
                         if include_guids {
                             let guids = row
                                 .get("Guid")
@@ -8845,12 +8882,17 @@ impl Runtime {
                 ("style".to_string(), json!("shelf")),
                 ("context".to_string(), json!(context)),
                 ("key".to_string(), json!(key)),
-                ("promoted".to_string(), json!(promoted)),
-                ("random".to_string(), json!(random)),
                 ("more".to_string(), json!(!exhausted && total > shelf_limit)),
                 ("size".to_string(), json!(rows.len())),
                 ("Metadata".to_string(), Value::Array(rows.clone())),
             ]);
+            // The oracle carries `promoted` and `random` only on the shelves that are.
+            if promoted {
+                hub.insert("promoted".to_string(), json!(true));
+            }
+            if random {
+                hub.insert("random".to_string(), json!(true));
+            }
             if !rows.is_empty() {
                 let keys = rows.iter().filter_map(key_of).collect::<Vec<_>>();
                 if !keys.is_empty() {
@@ -9011,25 +9053,42 @@ impl Runtime {
                 })
                 .map(|index| index + 1)
                 .unwrap_or(hubs.len());
+            // Cycle 59, measured on plexscratch42 and plexscratch: the shelf is the head
+            // of its own key -- this library's video playlists (and every EMPTY one),
+            // newest viewed first -- so its rows are that listing's.
+            let key = format!("/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc&sectionID={section_key}");
+            let listing_query = HashMap::from([
+                ("type".to_string(), "15".to_string()),
+                ("playlistType".to_string(), "video".to_string()),
+                ("sort".to_string(), "lastViewedAt:desc".to_string()),
+                ("sectionID".to_string(), section_key.to_string()),
+            ]);
+            let listed = serde_json::from_slice::<Value>(&self.route_playlist_all(&listing_query).body)
+                .ok()
+                .and_then(|body| body["MediaContainer"]["Metadata"].as_array().cloned())
+                .unwrap_or_default();
+            let mut limit = count.unwrap_or(6);
+            let mut exhausted = false;
+            if limit < 0 {
+                limit = (listed.len() as i64 + limit).max(0);
+                exhausted = true;
+            }
+            let rows = listed.iter().take(limit as usize).cloned().collect::<Vec<_>>();
             let mut playlist = Map::from_iter([
-                (
-                    "hubIdentifier".to_string(),
-                    json!(format!("recent.library.playlists.{section_key}")),
-                ),
+                ("hubIdentifier".to_string(), json!(format!("recent.library.playlists.{section_key}"))),
                 ("title".to_string(), json!("Recent Playlists")),
                 ("type".to_string(), json!("playlist")),
                 ("style".to_string(), json!("shelf")),
                 ("context".to_string(), json!("hub.recent.library.playlists")),
-                (
-                    "key".to_string(),
-                    json!(format!("/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc&sectionID={section_key}")),
-                ),
-                ("promoted".to_string(), json!(false)),
-                ("more".to_string(), json!(false)),
-                ("size".to_string(), json!(0)),
-                ("Metadata".to_string(), json!([])),
+                ("key".to_string(), json!(key)),
+                ("more".to_string(), json!(!exhausted && listed.len() > rows.len())),
+                ("size".to_string(), json!(rows.len())),
             ]);
-            playlist.insert("random".to_string(), json!(false));
+            let keys = rows.iter().filter_map(key_of).collect::<Vec<_>>();
+            if !keys.is_empty() {
+                playlist.insert("hubKey".to_string(), json!(format!("/library/metadata/{}", keys.join(","))));
+            }
+            playlist.insert("Metadata".to_string(), Value::Array(rows));
             hubs.insert(position, Value::Object(playlist));
         }
 
@@ -9114,18 +9173,26 @@ impl Runtime {
     /// A SECTION's Continue Watching see-all leaf (cycles 21, 26, 57): a show
     /// library keeps a hidden row, a movie library drops it, and a next-up whose
     /// anchor was only scrobbled is not listed.
+    /// `section_continue_watching`: a show library keeps a hidden row, a movie library
+    /// drops it, and a next-up whose show was never played in a session is not listed.
+    fn section_continue_watching_rows(&self, section_key: &str, is_show: bool) -> Vec<Value> {
+        self.continue_watching(is_show)
+            .into_iter()
+            .filter(|row| {
+                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+                    && row.get("_nextUpFromScrobble").is_none()
+            })
+            .collect()
+    }
+
     fn route_section_continue_watching_items(&self, section_key: &str) -> Response {
         let Some(section) = self.section(section_key) else {
             return Response::error(404, "plexsim: no such section");
         };
         let is_show = section.get("type").and_then(Value::as_str) == Some("show");
         let rows = self
-            .continue_watching(is_show)
+            .section_continue_watching_rows(section_key, is_show)
             .iter()
-            .filter(|row| {
-                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
-                    && row.get("_nextUpFromScrobble").is_none()
-            })
             .map(|row| self.detail_row(row))
             .collect::<Vec<_>>();
         Response::json(
@@ -9791,7 +9858,13 @@ impl Runtime {
                 let Some(section) = query.get("sectionID") else {
                     return true;
                 };
-                self.playlist_keys(playlist).iter().any(|key| {
+                // Cycle 59, measured on plexscratch42 and plexscratch: an EMPTY
+                // playlist answers to every library.
+                let keys = self.playlist_keys(playlist);
+                if keys.is_empty() {
+                    return true;
+                }
+                keys.iter().any(|key| {
                     self.catalog
                         .get(key)
                         .map(|row| {
@@ -11552,6 +11625,22 @@ impl Runtime {
                     ]),
                     false,
                 ),
+            );
+        }
+        if segments.len() == 4
+            && segments[..2] == ["hubs", "sections"]
+            && segments[3] == "extras"
+        {
+            // Measured on both servers: an empty hub list -- `size 0`, `allowSync` and
+            // the identifier, nothing else -- for a movie library, a show library and a
+            // section id the server does not have alike.
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 0, "allowSync": true,
+                                          "identifier": "com.plexapp.plugins.library"}}),
             );
         }
         if path.starts_with("/hubs/sections/") {
@@ -14183,11 +14272,64 @@ impl Runtime {
             .ok()
             .flatten()
             .is_some();
+        // Measured on both servers: the DEFAULT order of a listing is `titleSort`
+        // ascending, not the catalog's order -- except (cycle 16) a show library's
+        // `type=3` and `type=4` grids, which default to the SHOW's order: the show's
+        // title, then `parentIndex`, then `index`.
+        let show_order = section_type == "show"
+            && matches!(query.get("type").map(String::as_str), Some("3" | "4"));
+        let rows = if show_order && query.get("sort").is_none_or(|sort| sort.is_empty()) && !by_id {
+            let mut rows = rows;
+            let show_title = |row: &Value| {
+                let key = row
+                    .get("grandparentRatingKey")
+                    .or_else(|| row.get("parentRatingKey"))
+                    .map(string_value)
+                    .unwrap_or_default();
+                let key = if row.get("type").and_then(Value::as_str) == Some("season") {
+                    row.get("parentRatingKey").map(string_value).unwrap_or(key)
+                } else {
+                    key
+                };
+                self.catalog
+                    .get(&key)
+                    .and_then(|show| show.get("title"))
+                    .map(string_value)
+                    .unwrap_or_default()
+            };
+            let number = |row: &Value, name: &str| {
+                row.get(name).map(string_value).and_then(|v| v.parse::<i64>().ok()).unwrap_or(0)
+            };
+            let parent_index = |row: &Value| {
+                if row.get("type").and_then(Value::as_str) == Some("episode") {
+                    row.get("parentRatingKey")
+                        .map(string_value)
+                        .and_then(|key| self.catalog.get(&key))
+                        .map(|season| number(season, "index"))
+                        .unwrap_or_else(|| number(row, "parentIndex"))
+                } else {
+                    number(row, "parentIndex")
+                }
+            };
+            rows.sort_by(|a, b| {
+                (show_title(a), parent_index(a), number(a, "index"))
+                    .cmp(&(show_title(b), parent_index(b), number(b, "index")))
+            });
+            rows
+        } else {
+            rows
+        };
         let sort = query
             .get("sort")
             .filter(|sort| !sort.is_empty())
             .map(String::as_str)
-            .or(if by_id { Some("id") } else { None });
+            .or(if by_id {
+                Some("id")
+            } else if show_order {
+                None
+            } else {
+                Some("titleSort")
+            });
         let rows = match self.sort_rows(rows, sort) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
