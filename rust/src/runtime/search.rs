@@ -953,12 +953,14 @@ impl Runtime {
             }
         };
         let flat_tag = |mut shown: Map<String, Value>| {
+            // `shift_remove`: `Map::remove` is a SWAP remove under preserve_order, which
+            // moved the row's last attribute (`count`) into the removed slot.
             let score = shown
-                .remove("score")
+                .shift_remove("score")
                 .and_then(|value| value.as_str().and_then(|s| s.parse::<f64>().ok()))
                 .unwrap_or(0.32);
             for name in ["reason", "reasonID", "reasonTitle"] {
-                shown.remove(name);
+                shown.shift_remove(name);
             }
             json!({"score": score, "Directory": shown})
         };
