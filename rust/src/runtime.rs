@@ -2345,13 +2345,38 @@ impl Runtime {
     ) -> Response {
         if segments.len() == 3 {
             if request.method == "GET" || request.method == "HEAD" {
+                let mut rows = self.metadata_provider_rows();
+                if let Some(raw) = query.get("metadataTypes").filter(|raw| !raw.is_empty()) {
+                    // Cycle 54, measured on kids and zen: a comma list of int32 media
+                    // types (a 400 otherwise), keeping the providers that serve EVERY
+                    // one of them -- `0` answers none, `1` the movie agent and the no-op
+                    // agent.  An empty value is every provider.
+                    let parts = raw.split(',').collect::<Vec<_>>();
+                    if !parts.iter().all(|part| int_param(part, Some(32))) {
+                        return Response::error(400, "plexsim: bad request");
+                    }
+                    let wanted = parts
+                        .iter()
+                        .map(|part| part.trim_start_matches('+').parse::<i64>().unwrap_or(0))
+                        .collect::<HashSet<_>>();
+                    rows.retain(|row| {
+                        let served = row
+                            .get("MetadataType")
+                            .and_then(Value::as_array)
+                            .into_iter()
+                            .flatten()
+                            .map(|kind| kind.get("type").and_then(Value::as_i64).unwrap_or(0))
+                            .collect::<HashSet<_>>();
+                        wanted.is_subset(&served)
+                    });
+                }
                 return Response::json(
                     200,
                     self.container(
-                        Map::from_iter([(
-                            "MetadataAgentProvider".to_string(),
-                            Value::Array(self.metadata_provider_rows()),
-                        )]),
+                        Map::from_iter([
+                            ("size".to_string(), json!(rows.len())),
+                            ("MetadataAgentProvider".to_string(), Value::Array(rows)),
+                        ]),
                         false,
                     ),
                 );

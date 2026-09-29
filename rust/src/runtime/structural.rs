@@ -241,6 +241,47 @@ impl Runtime {
         if segments.len() == 4 && segments[..2] == ["library", "people"] && segments[3] == "media" {
             return self.structural_parse_refusal(query, ALL);
         }
+        self.parameter_refusal(&segments, query)
+    }
+
+    /// Cycle 54/55, from the binary's parameter names and measured on kids, zen and
+    /// plexscratch42: parameters that are PARSED -- a value the grammar refuses is a
+    /// 400 -- on paths whose handlers otherwise ignore them.
+    fn parameter_refusal(&self, segments: &[&str], query: &HashMap<String, String>) -> Option<u16> {
+        let bad_int32 = |name: &str| query.get(name).is_some_and(|value| !int_param(value, Some(32)));
+        let item_exists = |key: &str| self.catalog.get(key).is_some();
+        // `augmentCount` on an item is an int32 -- after the row is looked up, since an
+        // unknown id is still a 404 -- and so is a Related list's `count`.
+        if segments.len() == 3 && segments[..2] == ["library", "metadata"] && item_exists(segments[2]) {
+            if bad_int32("augmentCount") {
+                return Some(400);
+            }
+        }
+        if segments.len() == 4
+            && segments[..2] == ["library", "metadata"]
+            && segments[3] == "similar"
+            && item_exists(segments[2])
+            && bad_int32("count")
+        {
+            return Some(400);
+        }
+        // The legacy `/search`: `count` is an int32.
+        if segments == ["search"] && bad_int32("count") {
+            return Some(400);
+        }
+        if segments == ["hubs", "search"] {
+            // Cycle 55: an id that PARSES as a signed 32-bit integer and names no
+            // section is refused; what does not parse (`abc`, `-1`, `1.5`, ` 3`,
+            // `2147483648`) is ignored.
+            if let Some(wanted) = query.get("sectionId") {
+                if int_param(wanted, Some(32)) {
+                    let number = wanted.trim_start_matches('+').parse::<i64>().unwrap_or(0);
+                    if number >= 0 && self.section(&number.to_string()).is_none() {
+                        return Some(400);
+                    }
+                }
+            }
+        }
         None
     }
 }
