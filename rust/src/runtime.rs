@@ -472,7 +472,8 @@ impl Runtime {
             queues: HashMap::new(),
             download_queues: HashMap::new(),
             next_playlist: 1,
-            next_collection: 1,
+            // Key spaces stay disjoint (library.py): collections are 50000+.
+            next_collection: 50001,
             next_queue: 2,
             next_queue_item: 1,
             next_dynamic_key: 40000,
@@ -3644,6 +3645,16 @@ impl Runtime {
             "subtitleLanguage".to_string(),
         );
         fields.insert("file".to_string(), "string".to_string());
+        // The Meta's own media Field types (section_meta.json): advertised on
+        // both library types, so a SHOW grid filters on them through its leaves.
+        for (field, kind) in [
+            ("duration", "integer"),
+            ("mediaSize", "integer"),
+            ("mediaBitrate", "integer"),
+            ("hdr", "boolean"),
+        ] {
+            fields.entry(field.to_string()).or_insert_with(|| kind.to_string());
+        }
         fields.insert(
             "resolution".to_string(),
             if section_type == "movie" {
@@ -4750,7 +4761,6 @@ impl Runtime {
         self.mark_device(&request.headers);
         let mut response = self.request_route(request);
         exclude_fields_response(request, &mut response);
-        exclude_elements_response(request, &mut response);
         self.stream_titles_response(request, &mut response);
         let (raw_path, _) = split_target(&request.target);
         if let Some(cookie) = Self::framework_cookie(&request.method, &raw_path) {
@@ -11890,7 +11900,14 @@ impl Runtime {
                     );
                     let mut rows =
                         if leaf == "recentlyViewedShows" || leaf == "recentlyViewedGrandparents" {
-                            let mut roots = self.section_rows(section_key);
+                            // Cycle 20, measured on kids and zen: a typed QUERY --
+                            // `?type=3` answers the library's seasons and `?type=4` its
+                            // episodes, `type=1` on a show library none.
+                            let own = if kind == "show" { 2 } else { 1 };
+                            let asked = listing::parsed_type(query, 500, None).ok().flatten().unwrap_or(own);
+                            let mut roots = self
+                                .sort_rows(self.choose_rows(Some(section_key), Some(asked)), Some("titleSort"))
+                                .unwrap_or_default();
                             roots.sort_by(|left, right| {
                                 right
                                     .get("lastViewedAt")
@@ -12009,12 +12026,19 @@ impl Runtime {
                         .iter()
                         .map(|row| guid_gate(self.section_listing_row(row), query))
                         .collect::<Vec<_>>();
-                    if kind == "show"
-                        && leaf != "recentlyViewedShows"
-                        && leaf != "recentlyViewedGrandparents"
-                    {
-                        fields.insert("mixedParents".to_string(), json!(true));
+                    if kind == "show" {
+                        // Every subset of a show library carries both, the recently
+                        // viewed shows included (only the grandparents roll-up drops
+                        // `mixedParents`).
+                        if leaf != "recentlyAddedGrandparents" {
+                            fields.insert("mixedParents".to_string(), json!(true));
+                        }
                         fields.insert("nocache".to_string(), json!(true));
+                    }
+                    // The rest of `listing_container`'s fields.
+                    let title2 = fields.get("title2").map(string_value).unwrap_or_default();
+                    for (name, value) in self.listing_fields(section_key, kind, kind, &title2) {
+                        fields.entry(name).or_insert(value);
                     }
                     if leaf == "recentlyViewedShows" || leaf == "recentlyViewedGrandparents" {
                         // Measured on both servers: it is the one subset with
@@ -12099,6 +12123,14 @@ impl Runtime {
                         Ok(rows) => rows,
                         Err(status) => return Response::error(status, "plexsim: bad request"),
                     };
+                    if let Some(group) = query.get("group") {
+                        // Cycle 14: the section `allLeaves` takes `group=` too -- the
+                        // same as the grid's `type=4&group=index`.
+                        rows = match self.grouped(rows, group) {
+                            Ok(rows) => rows,
+                            Err(status) => return Response::error(status, "plexsim: bad request"),
+                        };
+                    }
                     let mut rows = rows
                         .iter()
                         .map(|row| self.leaf_listing_row(row))
@@ -13214,13 +13246,7 @@ impl Runtime {
                                         "false".to_string()
                                     }
                                 }
-                                _ => {
-                                    if value.contains('%') {
-                                        String::new()
-                                    } else {
-                                        value.replace(':', "%3a").replace('|', "%7c")
-                                    }
-                                }
+                                _ => escaped_pref(value),
                             };
                             self.section_prefs
                                 .insert((section_key.to_string(), name.clone()), stored);
@@ -14499,81 +14525,204 @@ impl Runtime {
         else {
             return Response::error(400, "plexsim: bad request");
         };
-        let ids = query
-            .get("id")
-            .map(|value| value.split(',').map(str::to_string).collect::<Vec<_>>());
-        let mut rows = self.choose_rows(Some(section_key), Some(type_number));
-        if let Some(ids) = ids {
-            rows.retain(|row| key_of(row).is_some_and(|key| ids.contains(&key)));
-        }
-        let compare_fields = [
-            "title",
-            "ratingKey",
-            "parentRatingKey",
-            "titleSort",
-            "tagline",
-            "index",
-            "summary",
-            "year",
-            "studio",
-            "originallyAvailableAt",
-            "contentRating",
-            "userRating",
-        ];
-        let mut mixed_fields = Vec::new();
-        if rows.len() > 1 {
-            for field in compare_fields {
-                let values = rows
-                    .iter()
-                    .map(|row| {
-                        if field == "titleSort" {
-                            row.get("titleSort").or_else(|| row.get("title"))
-                        } else {
-                            row.get(field)
-                        }
-                        .cloned()
-                        .unwrap_or(Value::Null)
-                    })
-                    .collect::<HashSet<_>>();
-                if values.len() > 1 {
-                    mixed_fields.push(field);
+        // server.py's `common_fields`: the fields the selected rows SHARE, the
+        // differing ones named in `mixedFields` (a FIXED order, "" when none).
+        let wanted = match type_number {
+            1 => "movie",
+            2 => "show",
+            3 => "season",
+            4 => "episode",
+            _ => "",
+        };
+        let section = self.section(section_key).cloned().unwrap_or(Value::Null);
+        let section_type = section.get("type").and_then(Value::as_str).unwrap_or("movie").to_string();
+        let filter_pairs = query
+            .iter()
+            .filter(|(name, _)| {
+                !name.starts_with("X-Plex-") && !matches!(name.as_str(), "type" | "sort" | "includeGuids")
+            })
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect::<Vec<_>>();
+        let mut rows = if let Some(ids) = query.get("id") {
+            // An id of the wrong TYPE is simply not part of the set.
+            ids.split(',')
+                .filter(|key| !key.trim().is_empty() && key.trim().bytes().all(|b| b.is_ascii_digit()))
+                .filter_map(|key| self.catalog.get(key.trim()).cloned())
+                .filter(|row| row.get("type").and_then(Value::as_str) == Some(wanted))
+                .collect::<Vec<_>>()
+        } else {
+            self.choose_rows(Some(section_key), Some(type_number))
+        };
+        rows = match self.filter_rows(rows, &filter_pairs, &section_type) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad request"),
+        };
+        rows.retain(|row| row.get("type").and_then(Value::as_str) == Some(wanted));
+        // An episode carries no Genre, studio, tagline or Country of its own (the
+        // show's are the catalog's copy; the detail row drops them too).
+        for row in rows.iter_mut() {
+            if row.get("type").and_then(Value::as_str) == Some("episode") {
+                if let Some(object) = row.as_object_mut() {
+                    for field in ["Genre", "studio", "tagline", "Country"] {
+                        object.remove(field);
+                    }
                 }
             }
         }
-        let mixed = mixed_fields.join(",");
-        let output = rows
-            .first()
-            .map(|row| {
-                let mut common = self.detail_row(row);
-                if let Some(object) = common.as_object_mut() {
-                    object.insert("type".to_string(), json!("common"));
-                    object.insert("mixedFields".to_string(), json!(mixed));
-                    for field in &mixed_fields {
-                        object.remove(*field);
-                    }
-                    object.insert("guid".to_string(), json!(""));
-                    object.remove("key");
-                    if rows.len() == 1 {
-                        object.insert(
-                            "key".to_string(),
-                            json!(format!(
-                                "/library/metadata/{section_key}/children",
-                                section_key = key_of(row).unwrap_or_default()
-                            )),
-                        );
-                    }
-                    object.remove("Media");
+        let value = |row: &Value, field: &str| -> Value {
+            match field {
+                "titleSort" => row
+                    .get("titleSort")
+                    .filter(|value| !string_value(value).is_empty())
+                    .or_else(|| row.get("title"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "index" if row.get("type").and_then(Value::as_str) == Some("movie") => {
+                    row.get("index").cloned().filter(|v| !v.is_null()).unwrap_or(json!(1))
                 }
-                common
-            })
-            .into_iter()
-            .collect::<Vec<_>>();
-        let mut fields = Map::from_iter([
-            ("title2".to_string(), json!("Common")),
-            ("Metadata".to_string(), Value::Array(output)),
-        ]);
-        page_fields(&mut fields, query);
-        Response::json(200, self.container(fields, true))
+                _ => row.get(field).cloned().unwrap_or(Value::Null),
+            }
+        };
+        let mut fields_list = vec![
+            "title", "ratingKey", "parentRatingKey", "titleSort", "tagline", "index", "summary",
+            "year", "studio", "originallyAvailableAt", "contentRating", "userRating",
+        ];
+        if wanted == "season" {
+            fields_list.retain(|field| *field != "title");
+        }
+        let mut common = Map::new();
+        common.insert("mixedFields".to_string(), json!(""));
+        let mut mixed = Vec::new();
+        for field in &fields_list {
+            let distinct = rows
+                .iter()
+                .map(|row| serde_json::to_string(&value(row, field)).unwrap_or_default())
+                .collect::<HashSet<_>>();
+            if distinct.len() > 1 {
+                mixed.push(*field);
+            } else if let Some(first) = rows.first() {
+                let v = value(first, field);
+                if !v.is_null() {
+                    common.insert(field.to_string(), v);
+                }
+            }
+        }
+        if rows.len() == 1 {
+            common.insert(
+                "key".to_string(),
+                json!(format!("/library/metadata/{}/children", key_of(&rows[0]).unwrap_or_default())),
+            );
+        }
+        common.insert("type".to_string(), json!("common"));
+        common.insert("guid".to_string(), json!(""));
+        if mixed.contains(&"titleSort") || rows.is_empty() {
+            common.insert("titleSort".to_string(), json!(""));
+        }
+        if wanted == "episode" && !rows.is_empty() {
+            let shows = rows
+                .iter()
+                .map(|row| row.get("grandparentRatingKey").map(string_value).unwrap_or_default())
+                .collect::<HashSet<_>>();
+            if shows.len() == 1 {
+                let show = rows[0].get("grandparentRatingKey").map(string_value).unwrap_or_default();
+                common.insert("grandparentRatingKey".to_string(), json!(show.clone()));
+                let title = self
+                    .catalog
+                    .get(&show)
+                    .and_then(|row| row.get("title"))
+                    .cloned()
+                    .or_else(|| rows[0].get("grandparentTitle").cloned())
+                    .unwrap_or(Value::Null);
+                common.insert("grandparentTitle".to_string(), title);
+            }
+            common.insert("parentTitle".to_string(), json!(""));
+        }
+        common.insert("mixedFields".to_string(), json!(mixed.join(",")));
+        if let Some(rating) = common.get("userRating").and_then(Value::as_f64) {
+            // Cycle 25, measured on plexscratch: a Common's `userRating` is a STRING
+            // (`"8"`, not `8.0`); the item row keeps the float.
+            let text = if rating.fract() == 0.0 { format!("{}", rating as i64) } else { rating.to_string() };
+            common.insert("userRating".to_string(), json!(text));
+        }
+        if rows.len() == 1 {
+            for key in ["Guid", "Rating", "Field"] {
+                if let Some(v) = rows[0].get(key).filter(|v| v.as_array().is_some_and(|a| !a.is_empty())) {
+                    common.insert(key.to_string(), v.clone());
+                }
+            }
+        } else if !rows.is_empty() {
+            let mut shared: Option<HashSet<String>> = None;
+            for row in &rows {
+                let images = row
+                    .get("Rating")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(|r| r.get("image").map(string_value).unwrap_or_default())
+                    .collect::<HashSet<_>>();
+                shared = Some(match shared {
+                    None => images,
+                    Some(prev) => prev.intersection(&images).cloned().collect(),
+                });
+            }
+            let shared = shared.unwrap_or_default();
+            let mut ratings = Vec::new();
+            for first in rows[0].get("Rating").and_then(Value::as_array).into_iter().flatten() {
+                let image = first.get("image").map(string_value).unwrap_or_default();
+                if !shared.contains(&image) {
+                    continue;
+                }
+                let entries = rows
+                    .iter()
+                    .filter_map(|row| {
+                        row.get("Rating")
+                            .and_then(Value::as_array)
+                            .and_then(|list| list.iter().find(|r| r.get("image").map(string_value).as_deref() == Some(image.as_str())))
+                            .cloned()
+                    })
+                    .collect::<Vec<_>>();
+                ratings.push(if entries.iter().all(|e| e == first) { first.clone() } else { json!({}) });
+            }
+            if !ratings.is_empty() {
+                common.insert("Rating".to_string(), Value::Array(ratings));
+            }
+        }
+        for key in ["Genre", "Country", "Director", "Writer", "Producer", "Role", "Collection", "Label"] {
+            let name_of = |tag: &Value| {
+                tag.get("tag").or_else(|| tag.get("id")).map(string_value).unwrap_or_default()
+            };
+            let mut shared: Option<HashSet<String>> = None;
+            for row in &rows {
+                let names = row
+                    .get(key)
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(name_of)
+                    .collect::<HashSet<_>>();
+                shared = Some(match shared {
+                    None => names,
+                    Some(prev) => prev.intersection(&names).cloned().collect(),
+                });
+            }
+            if let Some(shared) = shared.filter(|set| !set.is_empty()) {
+                let tags = rows[0]
+                    .get(key)
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter(|tag| shared.contains(&name_of(tag)))
+                    .cloned()
+                    .collect::<Vec<_>>();
+                common.insert(key.to_string(), Value::Array(tags));
+            }
+        }
+        // The row is written as a `Common` element (the handler's `_xml` override).
+        common.insert("_element".to_string(), json!("Common"));
+        let mut fields = Map::new();
+        fields.insert("Metadata".to_string(), json!([Value::Object(common)]));
+        let body = self.secondary_body(&section, Some("Common"), fields);
+        Response::json(200, json!({"MediaContainer": body}))
     }
 
     fn route_section_collection_axis(&self, section_key: &str) -> Response {
@@ -19805,6 +19954,35 @@ fn tree_stream(stream: &Value) -> Value {
     Value::Object(out)
 }
 
+/// A text preference as a real PMS stores it (server.py's `_escaped_pref`).
+/// Cycle 21: the value is percent-decoded a SECOND time -- a decode that FAILS
+/// (a `%` not followed by two hex digits, or bytes that are not UTF-8) stores
+/// the empty string -- and then `%`, `:` and `|` are escaped in LOWERCASE hex.
+fn escaped_pref(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' {
+            let hex = |b: u8| (b as char).to_digit(16);
+            match (bytes.get(index + 1).and_then(|b| hex(*b)), bytes.get(index + 2).and_then(|b| hex(*b))) {
+                (Some(high), Some(low)) => {
+                    out.push((high * 16 + low) as u8);
+                    index += 3;
+                    continue;
+                }
+                _ => return String::new(),
+            }
+        }
+        out.push(bytes[index]);
+        index += 1;
+    }
+    let Ok(text) = String::from_utf8(out) else {
+        return String::new();
+    };
+    text.replace('%', "%25").replace(':', "%3a").replace('|', "%7c")
+}
+
 fn page_fields(fields: &mut Map<String, Value>, query: &HashMap<String, String>) {
     if let (Some(start), Some(size)) = (
         query
@@ -20489,97 +20667,6 @@ fn accept_wants_xml(header: &str) -> bool {
     best.map(|(_, _, is_xml)| is_xml).unwrap_or(true)
 }
 
-
-/// `excludeElements=` applied to a whole response's rows (cycle 15: it is a property
-/// of the RESPONSE, and every container that carries rows honours it -- the container's
-/// own `Metadata` and each `Hub`'s). Only the measured element set is removable
-/// (cycle 22); dropping `Media` substitutes `mediaCount` and `mediaCountOptimized` 0,
-/// and `Part` drops each Media's Parts for a `partCount` (cycle 70). A DECISION keeps
-/// everything (cycle 26).
-fn exclude_elements_response(request: &Request, response: &mut Response) {
-    if !matches!(request.method.as_str(), "GET" | "HEAD")
-        || response.content_type != "application/json"
-    {
-        return;
-    }
-    let (path, raw_query) = split_target(&request.target);
-    if path.starts_with("/video/:/transcode/universal/decision") {
-        return;
-    }
-    const EXCLUDABLE: &[&str] = &[
-        "Media", "Part", "Genre", "Country", "Guid", "Rating", "Director", "Writer", "Role",
-        "Producer", "CommonSenseMedia",
-    ];
-    let Some(spec) = parse_query(&raw_query)
-        .into_iter()
-        .rev()
-        .find(|(key, _)| key == "excludeElements")
-        .map(|(_, value)| value)
-    else {
-        return;
-    };
-    let excluded = spec
-        .split(',')
-        .filter(|name| EXCLUDABLE.contains(name))
-        .map(str::to_string)
-        .collect::<Vec<_>>();
-    if excluded.is_empty() {
-        return;
-    }
-    let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
-        return;
-    };
-    fn trim(rows: &mut Vec<Value>, excluded: &[String]) {
-        for row in rows.iter_mut() {
-            let Some(object) = row.as_object_mut() else { continue };
-            let count = object.get("Media").and_then(Value::as_array).map(Vec::len);
-            for name in excluded {
-                object.remove(name);
-            }
-            if excluded.iter().any(|name| name == "Media") {
-                let count = count
-                    .map(|count| json!(count))
-                    .or_else(|| object.get("mediaCount").cloned())
-                    .unwrap_or_else(|| json!(0));
-                object.insert("mediaCount".to_string(), count);
-                object.insert("mediaCountOptimized".to_string(), json!(0));
-            } else if excluded.iter().any(|name| name == "Part") {
-                // `remove` above took `Part` off the row itself; the Parts live under Media.
-            }
-            if !excluded.iter().any(|name| name == "Media") && excluded.iter().any(|name| name == "Part") {
-                if let Some(media_rows) = object.get_mut("Media").and_then(Value::as_array_mut) {
-                    for media in media_rows.iter_mut() {
-                        if let Some(media) = media.as_object_mut() {
-                            if let Some(parts) = media.remove("Part") {
-                                let count = parts.as_array().map_or(0, Vec::len);
-                                media.insert("partCount".to_string(), json!(count));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    fn walk(body: &mut Map<String, Value>, excluded: &[String]) {
-        if let Some(rows) = body.get_mut("Metadata").and_then(Value::as_array_mut) {
-            trim(rows, excluded);
-        }
-        if let Some(hubs) = body.get_mut("Hub").and_then(Value::as_array_mut) {
-            for hub in hubs.iter_mut() {
-                if let Some(hub) = hub.as_object_mut() {
-                    walk(hub, excluded);
-                }
-            }
-        }
-    }
-    let Some(body) = document.get_mut("MediaContainer").and_then(Value::as_object_mut) else {
-        return;
-    };
-    walk(body, &excluded);
-    if let Ok(bytes) = serde_json::to_vec(&document) {
-        response.body = bytes;
-    }
-}
 
 /// `excludeFields=` applied to a whole response, as a real PMS applies it.
 ///
