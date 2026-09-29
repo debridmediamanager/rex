@@ -8998,6 +8998,9 @@ impl Runtime {
                 ),
             );
         }
+        if let Some(refusal) = listing_refusal(query, &[]) {
+            return refusal;
+        }
         let mut rows = self
             .playlists
             .values()
@@ -16867,6 +16870,22 @@ impl Runtime {
             return Response::error(500, "plexsim: playlist importer unavailable");
         }
         let id = segments[0];
+        // Cycle 18, measured on plexscratch with all seven verbs on each path: the
+        // playlist paths refuse the verbs they do not implement, exactly as the
+        // collection's do -- a GET of ONE member, or of `/move`, is a 404.
+        if !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit()) {
+            let method = request.method.as_str();
+            let allowed: Option<&[&str]> = match segments {
+                [_] => Some(&["GET", "HEAD", "PUT", "DELETE"]),
+                [_, "items"] => Some(&["GET", "HEAD", "PUT", "DELETE"]),
+                [_, "items", _] => Some(&["DELETE", "PUT"]),
+                [_, "items", _, "move"] => Some(&["PUT"]),
+                _ => None,
+            };
+            if method != "PATCH" && allowed.is_some_and(|verbs| !verbs.contains(&method)) {
+                return Response::error(404, "plexsim: not found");
+            }
+        }
         if id.parse::<i64>().is_ok_and(|value| value > i32::MAX as i64) {
             return Response::error(400, "plexsim: bad request");
         }
@@ -19483,6 +19502,36 @@ fn python_int(text: &str) -> Option<i64> {
         return None;
     }
     text.replace('_', "").trim_start_matches('+').parse::<i64>().ok()
+}
+
+/// The refusals a listing answers wherever it consumes a query (the oracle's
+/// `_listing_refusals`).  Cycle 18, measured on kids and zen: `parentIndex=` is a
+/// 500 on `/library/all` and on `/playlists` as well as on a section listing, and so
+/// is a `resolution=` outside the enum; cycle 20: `sourceType` filters nothing but
+/// its VALUE is parsed.  `allow` is the section extras leaf's `extraType` exemption.
+fn listing_refusal(query: &HashMap<String, String>, allow: &[&str]) -> Option<Response> {
+    const REFUSED: &[&str] = &[
+        "parentIndex", "theme", "banner", "art", "thumb", "slug", "extraType", "userFields",
+    ];
+    for key in query.keys() {
+        let bare = key.trim_end_matches(['<', '>', '=', '!']);
+        if REFUSED.contains(&bare) && !allow.contains(&bare) {
+            return Some(Response::error(500, "plexsim: cannot filter on that field"));
+        }
+    }
+    for (key, value) in query {
+        if key.trim_end_matches(['<', '>', '=', '!']) == "resolution"
+            && !crate::filters::RESOLUTIONS.contains(&value.trim())
+        {
+            return Some(Response::error(500, "plexsim: unknown resolution"));
+        }
+    }
+    if let Some(value) = query.get("sourceType") {
+        if let Err(error) = crate::filters::source_order(Some(value)) {
+            return Some(Response::error(error.status, "plexsim: bad sourceType"));
+        }
+    }
+    None
 }
 
 fn compare_json(left: &Value, right: &Value) -> std::cmp::Ordering {
