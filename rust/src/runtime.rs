@@ -10065,7 +10065,7 @@ impl Runtime {
             return self.route_metadata_providers(&segments, query, request);
         }
         if segments.first() == Some(&"web") {
-            return self.route_web(&segments[1..], request.method == "HEAD");
+            return self.route_web(&segments[1..], request.method == "HEAD", path.ends_with('/'));
         }
         if path.starts_with("/:/resources/") {
             return self.route_bundled_resource(
@@ -17368,7 +17368,7 @@ impl Runtime {
         Response {
             status: 200,
             content_type,
-            body: if head { Vec::new() } else { body },
+            body: { let _ = head; body },
             headers: vec![
                 ("Cache-Control".to_string(), "no-cache".to_string()),
                 ("Accept-Ranges".to_string(), "bytes".to_string()),
@@ -17377,7 +17377,7 @@ impl Runtime {
         }
     }
 
-    fn route_web(&self, segments: &[&str], head: bool) -> Response {
+    fn route_web(&self, segments: &[&str], head: bool, trailing_slash: bool) -> Response {
         let Some(root) = &self.web_root else {
             return Response::error(404, "plexsim: not found");
         };
@@ -17396,11 +17396,23 @@ impl Runtime {
         if !canonical.starts_with(&canonical_root) {
             return Response::error(404, "plexsim: not found");
         }
-        let Ok(body) = fs::read(canonical) else {
+        let mut response = if canonical.is_dir() {
+            // Cycle 29: a DIRECTORY is an empty `application/octet-stream` 200 on both
+            // references, never the index page.
+            Response::bytes(200, "application/octet-stream")
+        } else if trailing_slash && !segments.is_empty() {
+            // Cycle 29: a trailing slash after a FILE is a 404.
             return Response::error(404, "plexsim: not found");
+        } else {
+            let Ok(body) = fs::read(&canonical) else {
+                return Response::error(404, "plexsim: not found");
+            };
+            let mut response = Response::bytes(200, content_type(path.to_string_lossy().as_ref()));
+            // The envelope drops a HEAD's body and keeps its length.
+            let _ = head;
+            response.body = body;
+            response
         };
-        let mut response = Response::bytes(200, content_type(path.to_string_lossy().as_ref()));
-        response.body = if head { Vec::new() } else { body };
         response
             .headers
             .push(("Cache-Control".to_string(), "no-cache".to_string()));
@@ -19224,7 +19236,7 @@ fn static_sidecar_response(catalog: &Path, name: &str, content_type: &str, head:
     Response {
         status: 200,
         content_type: content_type.to_string(),
-        body: if head { Vec::new() } else { body },
+        body: { let _ = head; body },
         headers: vec![
             ("Cache-Control".to_string(), "no-cache".to_string()),
             ("Accept-Ranges".to_string(), "bytes".to_string()),
