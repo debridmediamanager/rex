@@ -19828,11 +19828,34 @@ fn normalize_date_value(value: &str) -> Result<Option<String>, ()> {
     Ok(Some(format!("{y:04}-{m:02}-{d:02}")))
 }
 
+/// The current time in the IMF-fixdate form every response's `Date` carries
+/// (`BaseHTTPRequestHandler.date_time_string`).
 fn http_date() -> String {
-    // The conformance contract only depends on the presence and position of
-    // Date.  Keep this deterministic; the source part has no real filesystem
-    // mtime to expose.
-    "Thu, 01 Jan 1970 00:00:00 GMT".to_string()
+    let seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs() as i64)
+        .unwrap_or(0);
+    let days = seconds.div_euclid(86_400);
+    let rest = seconds.rem_euclid(86_400);
+    // Howard Hinnant's civil-from-days.
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    let weekday = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"][days.rem_euclid(7) as usize];
+    let month_name = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        [(month - 1) as usize];
+    format!(
+        "{weekday}, {day:02} {month_name} {year} {:02}:{:02}:{:02} GMT",
+        rest / 3600,
+        rest % 3600 / 60,
+        rest % 60
+    )
 }
 
 pub fn xml_or_json(response: Response, accept: Option<&str>) -> Response {
