@@ -3089,6 +3089,19 @@ impl Runtime {
     }
 
     fn filter_value(&self, row: &Value, field: &str) -> Value {
+        if field == "title" {
+            // Cycle 18/32: the bare `title=` matcher reads the title, the stored SORT
+            // title (its folded pass) and the original title; every other operator
+            // reads the title alone. The two extra strings travel with the value
+            // (`server.py` `_TitleValue`), unwrapped by `filters::compare`.
+            if let Some(object) = row.as_object() {
+                return json!({
+                    "__title": crate::hierarchy::stored_title(object),
+                    "__sort": crate::hierarchy::stored_sort_title(object),
+                    "__original": row.get("originalTitle").and_then(Value::as_str).unwrap_or(""),
+                });
+            }
+        }
         // A few query columns intentionally do not appear on the row itself.
         // They are projections over hierarchy, view state, tags, or Media and
         // must be resolved before the generic scalar lookup below.
@@ -3129,11 +3142,6 @@ impl Runtime {
         }
         if field == "parent" {
             return row.get("parentRatingKey").cloned().unwrap_or(Value::Null);
-        }
-        if field == "title" {
-            return json!(crate::hierarchy::stored_title(
-                row.as_object().unwrap_or(&Map::new()),
-            ));
         }
         if field == "titleSort" {
             return json!(crate::hierarchy::stored_sort_title(
