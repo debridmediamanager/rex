@@ -9924,12 +9924,6 @@ impl Runtime {
                 request.method == "HEAD",
             );
         }
-        if segments.starts_with(&["hubs", "sections"])
-            && segments.get(3) == Some(&"manage")
-            && request.method == "GET"
-        {
-            return Response::error(400, "plexsim: bad request");
-        }
         if path == "/neighborhood/devices" && matches!(request.method.as_str(), "GET" | "HEAD") {
             return Response::json(200, self.container(Map::new(), false));
         }
@@ -11310,6 +11304,31 @@ impl Runtime {
             if request.method != "GET" && request.method != "HEAD" {
                 return Response::error(404, "plexsim: not found");
             }
+            if let Some(raw_item) = query.get("metadataItemId") {
+                // Measured on both servers: naming an item -- even with an empty id --
+                // is a 400 on a read.  Cycle 55 refined it on zen and kids: the id is a
+                // signed 32-bit integer and there are THREE answers.  `-1` (and `-01`)
+                // is the bare hub list, a number naming NO item (`0`, `-2`, `999999`,
+                // `+999999`) is an EMPTY 200, and an item the server holds -- in any
+                // library -- is the 400, as are an empty value, a word, `1.5`, ` 1` and
+                // `2147483648`.
+                if !pms_int_param(raw_item, Some(32)) {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                let item = raw_item.parse::<i64>().unwrap_or(0);
+                if item != -1 {
+                    if self.catalog.get(&item.to_string()).is_some() {
+                        return Response::error(400, "plexsim: bad request");
+                    }
+                    return Response::json(
+                        200,
+                        self.container(
+                            Map::from_iter([("size".to_string(), json!(0))]),
+                            false,
+                        ),
+                    );
+                }
+            }
             let rows = if section.get("type").and_then(Value::as_str) == Some("show") {
                 vec![
                     ("tv.recentlyaired", "Recently Released Episodes", false),
@@ -11351,7 +11370,10 @@ impl Runtime {
             return Response::json(
                 200,
                 self.container(
-                    Map::from_iter([("Hub".to_string(), Value::Array(hubs))]),
+                    Map::from_iter([
+                        ("size".to_string(), json!(hubs.len())),
+                        ("Hub".to_string(), Value::Array(hubs)),
+                    ]),
                     false,
                 ),
             );
@@ -19757,6 +19779,23 @@ fn unix_year(timestamp: i64) -> i64 {
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
     let month = (5 * doy + 2).div_euclid(153);
     year + if month < 10 { 0 } else { 1 }
+}
+
+/// Cycle 54: an integer query parameter as a real PMS parses it -- an optional
+/// sign and digits, nothing else (no space, no `0x`, no fraction), inside the
+/// signed range of `bits`; `None` takes any size.  Measured on kids and zen over
+/// fifteen values.
+fn pms_int_param(value: &str, bits: Option<u32>) -> bool {
+    let digits = value.strip_prefix(['+', '-']).unwrap_or(value);
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return false;
+    }
+    let Some(bits) = bits else { return true };
+    let limit = 1i128 << (bits - 1);
+    match value.trim_start_matches('+').parse::<i128>() {
+        Ok(number) => -limit <= number && number < limit,
+        Err(_) => false,
+    }
 }
 
 fn local_interface_address() -> Option<String> {
