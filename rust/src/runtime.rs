@@ -34,6 +34,7 @@ mod framework;
 mod gates;
 mod listing;
 mod resume;
+mod streams;
 mod transcoder;
 mod wire;
 use artwork::owns_artwork;
@@ -1130,6 +1131,9 @@ impl Runtime {
             "ratingKey".to_string(),
             original.get("ratingKey").cloned().unwrap_or(Value::Null),
         );
+        // Stream titles are the catalog's own, recomputed at load
+        // (`Catalog::normalize`); a response localises and suffixes them per client
+        // (`stream_titles_response`).  Only the private stream content is dropped.
         if let Some(media_rows) = object.get_mut("Media").and_then(Value::as_array_mut) {
             for media in media_rows {
                 for part in media
@@ -4454,6 +4458,7 @@ impl Runtime {
         self.mark_device(&request.headers);
         let mut response = self.request_route(request);
         exclude_fields_response(request, &mut response);
+        self.stream_titles_response(request, &mut response);
         let (raw_path, _) = split_target(&request.target);
         if let Some(cookie) = Self::framework_cookie(&request.method, &raw_path) {
             // Cycle 33/52: the plug-in framework's session cookie rides every response it
