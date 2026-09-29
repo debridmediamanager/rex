@@ -21965,6 +21965,14 @@ def main():
     # owner's path, stamp and all. plexsim re-versioned `thumb`, `art` and `theme` onto
     # the picking row whatever it owned, so a season that borrowed the show's backdrop
     # came away claiming a path only the show serves.
+    #
+    # By the time this runs, cycle 27's own borrowed-artwork check above has cleared the
+    # SHOW's `art`, and the cascade took every season's borrowed copy with it -- so there
+    # was no borrower left and this skipped on every run. The show is given a backdrop
+    # first, the way cycle 29's check does it: an upload makes it the owner, and the
+    # seasons with none of their own borrow it again.
+    request(base, "POST", "/library/metadata/%s/arts" % show,
+            body=bytes([0x89]) + b"PNG" + bytes([13, 10, 26, 10]) + b"c27t-show")
     seasons_c27t = [s_c27t for s_c27t in
                     (get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
                      .get("Metadata") or []) if s_c27t.get("type") == "season"]
