@@ -3604,12 +3604,17 @@ def main():
     titles = [r.get("title") or "" for r in sample.get("Metadata") or []]
     first = titles[0] if titles else ""
     word = first.split(" ")[0] if first else "zzz"
+    # The rows the word reaches, counted off the titles rather than assumed to be all of
+    # them: the fixture's movies no longer all begin with the same word.
+    beginning = sum(1 for title in titles
+                    if any(w.lower().startswith(word.lower()) for w in title.split()))
+    leading = sum(1 for title in titles if title.lower().startswith(word.lower()))
     cases = [
-        ("?title=%s" % quote(word), total, "a bare = on a title matches a word's beginning"),
+        ("?title=%s" % quote(word), beginning, "a bare = on a title matches a word's beginning"),
         ("?title=zzzznope", 0, "a title miss"),
         ("?title%%3D=%s" % quote(word), 0, "== is exact, so a word does not match"),
         ("?title%%3D=%s" % quote(first), 1, "== matches the whole title"),
-        ("?title%%3C=%s" % quote(word), total, "<= begins with"),
+        ("?title%%3C=%s" % quote(word), leading, "<= begins with"),
         ("?bogusfield=1", total, "an unknown field is ignored, not an error"),
     ]
     years = sorted({r.get("year") for r in sample.get("Metadata") or [] if r.get("year")})
@@ -3620,7 +3625,8 @@ def main():
             ("?year%%3C%%3C=%d" % low, 0, "<<= is strictly less"),
             ("?year%%3E=%d" % years[0], total, ">= is inclusive"),
             ("?year%%3C%%3C=%d" % high, total, "<<= the other way"),
-            ("?push=1&year=%d&or=1&year=%d&pop=1" % (low, years[0]), total,
+            ("?push=1&year=%d&or=1&year=%d&pop=1" % (low, years[0]),
+             sum(1 for r in sample.get("Metadata") or [] if r.get("year") == years[0]),
              "push/pop with or is a union"),
             ("?year=%d&and=1&year=%d" % (low, years[0]), 0, "and of two years is empty"),
         ]
@@ -4676,11 +4682,27 @@ def main():
                                      % movie_section)
     up_keys = [r.get("ratingKey") for r in secondary_up.get("Metadata") or []]
     down_keys = [r.get("ratingKey") for r in secondary_down.get("Metadata") or []]
-    if len(up_keys) > 1:
-        check("a secondary sort key is honoured", up_keys == list(reversed(down_keys)),
+
+    def by_year(rows_sk):
+        # [(year, [keys in that year, in listing order])] -- the secondary key decides
+        # only WITHIN a year, so that is where the two orders must be mirror images.
+        groups_sk = []
+        for r_sk in rows_sk:
+            if groups_sk and groups_sk[-1][0] == r_sk.get("year"):
+                groups_sk[-1][1].append(r_sk.get("ratingKey"))
+            else:
+                groups_sk.append((r_sk.get("year"), [r_sk.get("ratingKey")]))
+        return groups_sk
+    up_groups = by_year(secondary_up.get("Metadata") or [])
+    down_groups = by_year(secondary_down.get("Metadata") or [])
+    if any(len(keys_sk) > 1 for _year_sk, keys_sk in up_groups):
+        check("a secondary sort key is honoured",
+              [y_sk for y_sk, _k_sk in up_groups] == [y_sk for y_sk, _k_sk in down_groups]
+              and all(k_up == list(reversed(k_down)) for (_y1, k_up), (_y2, k_down)
+                      in zip(up_groups, down_groups)),
               "%s vs %s" % (up_keys, down_keys))
     else:
-        skip("a secondary sort key is honoured", "need two rows")
+        skip("a secondary sort key is honoured", "need two rows sharing a year")
     # Measured: `random:<seed>` differs per seed and is stable for one seed --
     # which is what lets a client page through a shuffled library without
     # repeating or skipping rows.
@@ -18858,8 +18880,13 @@ def main():
                        (get(base, "/library/sections/%s/all?type=1&sort=studio:desc"
                             % movie_section)[1].get("Metadata") or [])
                        if r_c22c.get("studio")]
+        # The whole listing is in descending CODEPOINT order, and the lowercase row
+        # comes first -- asserted over every row rather than as the first two, because a
+        # row an earlier check retitled (`Москва Probe`) sorts above both.
         check("a text sort compares raw codepoints, so lowercase sorts above uppercase",
-              order_c22c[:2] == ["zebra lower", "Zebra Upper"]
+              order_c22c == sorted(order_c22c, reverse=True)
+              and "zebra lower" in order_c22c and "Zebra Upper" in order_c22c
+              and order_c22c.index("zebra lower") < order_c22c.index("Zebra Upper")
               and studio_c22c[:2] == ["aaa lower", "ZZZ Upper"],
               "title:desc %s | studio:desc %s" % (order_c22c[:3], studio_c22c[:3]))
     else:
@@ -20769,9 +20796,17 @@ def main():
             body_c26h = json.loads(response_c26h.read() or b"{}")
         return (body_c26h.get("MediaContainer", {}).get("Metadata") or [{}])[0]
 
-    detail_c26h = (get(base, "/library/metadata/%s" % spare)[1].get("Metadata")
+    # A movie that HAS a summary to keep, chosen by that rather than taken to be `spare`:
+    # an unmatched row's summary is empty, and `spare` is the fixture's unmatched movie.
+    summarised_c26h = next(
+        (r_c26h.get("ratingKey") for r_c26h in
+         (get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or [])
+         if str(r_c26h.get("ratingKey")) != str(movie)
+         and (get(base, "/library/metadata/%s" % r_c26h.get("ratingKey"))[1]
+              .get("Metadata") or [{}])[0].get("summary")), spare)
+    detail_c26h = (get(base, "/library/metadata/%s" % summarised_c26h)[1].get("Metadata")
                    or [{}])[0]
-    row_c26h = decide_full_c26h(spare)
+    row_c26h = decide_full_c26h(summarised_c26h)
     check("a MOVIE's decision row keeps its summary",
           bool(detail_c26h.get("summary"))
           and row_c26h.get("summary") == detail_c26h.get("summary"),

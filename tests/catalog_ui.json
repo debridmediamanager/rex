@@ -1,5 +1,5 @@
 {
- "_provenance": "Derived from catalog.example.json -- the redacted copy of a real probe-built catalog -- by cloning its rows onto fresh keys. Every Media/Part/Stream shape is ffprobe-derived from real debrid content; only the multiplicity is synthetic, because a one-item section turns the Shuffle, Play Next, Merge and paging checks into no-ops. The debrid links are the example file's placeholder, so a part read fails at the provider rather than serving bytes: test_all.py covers real reads. Extended again for cycle 13: seasons 21 and 22 with an episode each, so a paged season list can return more than one row past the first page, and a second Media on episode 1004, so the Duplicates filter has a duplicate to find on the leaf, its season and the show. Same method -- existing rows cloned onto fresh keys. And three more episodes in the last season, because a shelf's default cap is six and a five-episode library cannot overflow one. The episodes carry no contentRating of their own, because a real PMS gives an episode its show's and a fixture that stores one on every row cannot show it.",
+ "_provenance": "Derived from catalog.example.json -- the redacted copy of a real probe-built catalog -- by cloning its rows onto fresh keys. Every Media/Part/Stream shape is ffprobe-derived from real debrid content; only the multiplicity is synthetic, because a one-item section turns the Shuffle, Play Next, Merge and paging checks into no-ops. The debrid links are the example file's placeholder, so a part read fails at the provider rather than serving bytes: test_all.py covers real reads. Extended again for cycle 13: seasons 21 and 22 with an episode each, so a paged season list can return more than one row past the first page, and a second Media on episode 1004, so the Duplicates filter has a duplicate to find on the leaf, its season and the show. Same method -- existing rows cloned onto fresh keys. And three more episodes in the last season, because a shelf's default cap is six and a five-episode library cannot overflow one. The episodes carry no contentRating of their own, because a real PMS gives an episode its show's and a fixture that stores one on every row cannot show it. Extended for the UI suite's last content skips with three movies built the way build_catalog.py builds a row, from real files in zen's library: each ffprobe'd (8.1.2) over zen's own part URL and run through mediainfo.build_media, the two matched ones identified by metadata.enrich against the TMDB id zen matched and given zen's plex:// guid. \"Trust No One: The Hunt for the Crypto King\" and \"Tuesday\" are zen's Dolby Vision profile 5 rows 967 and 1120, and \"Vinaipayan\" is zen's unmatched local://3763, kept unmatched: a keyed run matches the first movie again, and the checks about an unmatched row need one either way. Their links are the same placeholder.",
  "machineIdentifier": "f1x7u4e0000000000000000000000000000000f1",
  "friendlyName": "plexsim-ui-fixture",
  "sections": [
@@ -571,6 +571,921 @@
     }
    ],
    "Label": [],
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   }
+  },
+  {
+   "ratingKey": "1012",
+   "key": "/library/metadata/1012",
+   "guid": "plex://movie/614ee97b618cd92600cef3e1",
+   "type": "movie",
+   "title": "Trust No One: The Hunt for the Crypto King",
+   "year": 2022,
+   "summary": "When the young founder of a collapsing cryptocurrency exchange dies unexpectedly, irate investors suspect there's more to his death than meets the eye.",
+   "duration": 5456672,
+   "addedAt": 1789180050,
+   "updatedAt": 1789180050,
+   "thumb": "/library/metadata/1012/thumb/1789180050",
+   "art": "/library/metadata/1012/art/1789180050",
+   "Media": [
+    {
+     "id": 101200,
+     "duration": 5456672,
+     "bitrate": 2090,
+     "width": 1920,
+     "height": 1080,
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "eac3",
+     "videoCodec": "hevc",
+     "videoResolution": "1080",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "main 10",
+     "audioProfile": null,
+     "Part": [
+      {
+       "id": 10120,
+       "key": "/library/parts/10120/1789180050/file.mkv",
+       "duration": 5456672,
+       "file": "/plexsim/1/Trust.No.One.The.Hunt.for.the.Crypto.King.2022.1080p.NF.WEB.DL.DDP5.1.DV.HEVC-WiNEY.mkv",
+       "size": 1425792014,
+       "container": "mkv",
+       "videoProfile": "main 10",
+       "audioProfile": null,
+       "Stream": [
+        {
+         "id": 1012001,
+         "streamType": 1,
+         "codec": "hevc",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 1920,
+         "height": 1080,
+         "profile": "main 10",
+         "level": 120,
+         "refFrames": null,
+         "bitDepth": 10,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": "left",
+         "codedHeight": 1080,
+         "codedWidth": 1920,
+         "codecID": null,
+         "colorPrimaries": null,
+         "colorTrc": null,
+         "colorSpace": null,
+         "colorRange": "pc",
+         "frameRate": 23.976,
+         "scanType": null,
+         "DOVIPresent": true,
+         "DOVIProfile": 5,
+         "DOVILevel": 3,
+         "DOVIBLCompatID": 0,
+         "DOVIBLPresent": true,
+         "DOVIELPresent": false,
+         "DOVIRPUPresent": true,
+         "DOVIVersion": "1.0",
+         "default": true,
+         "displayTitle": "1080p DoVi",
+         "extendedDisplayTitle": "1080p DoVi (HEVC Main 10)"
+        },
+        {
+         "id": 1012002,
+         "streamType": 2,
+         "codec": "eac3",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "selected": true,
+         "default": true,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "bitrate": 640,
+         "displayTitle": "English (EAC3 5.1)",
+         "extendedDisplayTitle": "English (EAC3 5.1)"
+        },
+        {
+         "id": 1012003,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 2,
+         "streamIdentifier": null,
+         "language": "العربية",
+         "languageCode": "ara",
+         "languageTag": "ar",
+         "displayTitle": "العربية",
+         "extendedDisplayTitle": "العربية (SRT)"
+        },
+        {
+         "id": 1012004,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 3,
+         "streamIdentifier": null,
+         "language": "Čeština",
+         "languageCode": "ces",
+         "languageTag": "cs",
+         "displayTitle": "Čeština",
+         "extendedDisplayTitle": "Čeština (SRT)"
+        },
+        {
+         "id": 1012005,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 4,
+         "streamIdentifier": null,
+         "language": "Dansk",
+         "languageCode": "dan",
+         "languageTag": "da",
+         "displayTitle": "Dansk",
+         "extendedDisplayTitle": "Dansk (SRT)"
+        },
+        {
+         "id": 1012006,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 5,
+         "streamIdentifier": null,
+         "language": "Deutsch",
+         "languageCode": "deu",
+         "languageTag": "de",
+         "displayTitle": "Deutsch",
+         "extendedDisplayTitle": "Deutsch (SRT)"
+        },
+        {
+         "id": 1012007,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 6,
+         "streamIdentifier": null,
+         "language": "Ελληνικά",
+         "languageCode": "ell",
+         "languageTag": "el",
+         "displayTitle": "Ελληνικά",
+         "extendedDisplayTitle": "Ελληνικά (SRT)"
+        },
+        {
+         "id": 1012008,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 7,
+         "streamIdentifier": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "title": "SDH",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "SDH (English SRT)"
+        },
+        {
+         "id": 1012009,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 8,
+         "streamIdentifier": null,
+         "language": "Español",
+         "languageCode": "spa",
+         "languageTag": "es",
+         "title": "Latin American",
+         "displayTitle": "Español",
+         "extendedDisplayTitle": "Latin American (Español SRT)"
+        },
+        {
+         "id": 1012010,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 9,
+         "streamIdentifier": null,
+         "language": "Español",
+         "languageCode": "spa",
+         "languageTag": "es",
+         "title": "European",
+         "displayTitle": "Español",
+         "extendedDisplayTitle": "European (Español SRT)"
+        },
+        {
+         "id": 1012011,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 10,
+         "streamIdentifier": null,
+         "language": "Suomi",
+         "languageCode": "fin",
+         "languageTag": "fi",
+         "displayTitle": "Suomi",
+         "extendedDisplayTitle": "Suomi (SRT)"
+        },
+        {
+         "id": 1012012,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 11,
+         "streamIdentifier": null,
+         "language": "Français",
+         "languageCode": "fra",
+         "languageTag": "fr",
+         "displayTitle": "Français",
+         "extendedDisplayTitle": "Français (SRT)"
+        },
+        {
+         "id": 1012013,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 12,
+         "streamIdentifier": null,
+         "language": "עברית",
+         "languageCode": "heb",
+         "languageTag": "he",
+         "displayTitle": "עברית",
+         "extendedDisplayTitle": "עברית (SRT)"
+        },
+        {
+         "id": 1012014,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 13,
+         "streamIdentifier": null,
+         "language": "Hrvatski",
+         "languageCode": "hrv",
+         "languageTag": "hr",
+         "displayTitle": "Hrvatski",
+         "extendedDisplayTitle": "Hrvatski (SRT)"
+        },
+        {
+         "id": 1012015,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 14,
+         "streamIdentifier": null,
+         "language": "magyar",
+         "languageCode": "hun",
+         "languageTag": "hu",
+         "displayTitle": "magyar",
+         "extendedDisplayTitle": "magyar (SRT)"
+        },
+        {
+         "id": 1012016,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 15,
+         "streamIdentifier": null,
+         "language": "Indonesia",
+         "languageCode": "ind",
+         "languageTag": "id",
+         "displayTitle": "Indonesia",
+         "extendedDisplayTitle": "Indonesia (SRT)"
+        },
+        {
+         "id": 1012017,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 16,
+         "streamIdentifier": null,
+         "language": "Italiano",
+         "languageCode": "ita",
+         "languageTag": "it",
+         "displayTitle": "Italiano",
+         "extendedDisplayTitle": "Italiano (SRT)"
+        },
+        {
+         "id": 1012018,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 17,
+         "streamIdentifier": null,
+         "language": "日本語",
+         "languageCode": "jpn",
+         "languageTag": "ja",
+         "displayTitle": "日本語",
+         "extendedDisplayTitle": "日本語 (SRT)"
+        },
+        {
+         "id": 1012019,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 18,
+         "streamIdentifier": null,
+         "language": "한국어",
+         "languageCode": "kor",
+         "languageTag": "ko",
+         "displayTitle": "한국어",
+         "extendedDisplayTitle": "한국어 (SRT)"
+        },
+        {
+         "id": 1012020,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 19,
+         "streamIdentifier": null,
+         "language": "Melayu",
+         "languageCode": "msa",
+         "languageTag": "ms",
+         "displayTitle": "Melayu",
+         "extendedDisplayTitle": "Melayu (SRT)"
+        },
+        {
+         "id": 1012021,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 20,
+         "streamIdentifier": null,
+         "language": "norsk bokmål",
+         "languageCode": "nob",
+         "languageTag": "nb",
+         "displayTitle": "norsk bokmål",
+         "extendedDisplayTitle": "norsk bokmål (SRT)"
+        },
+        {
+         "id": 1012022,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 21,
+         "streamIdentifier": null,
+         "language": "Nederlands",
+         "languageCode": "nld",
+         "languageTag": "nl",
+         "displayTitle": "Nederlands",
+         "extendedDisplayTitle": "Nederlands (SRT)"
+        },
+        {
+         "id": 1012023,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 22,
+         "streamIdentifier": null,
+         "language": "polski",
+         "languageCode": "pol",
+         "languageTag": "pl",
+         "displayTitle": "polski",
+         "extendedDisplayTitle": "polski (SRT)"
+        },
+        {
+         "id": 1012024,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 23,
+         "streamIdentifier": null,
+         "language": "Português",
+         "languageCode": "por",
+         "languageTag": "pt",
+         "title": "Brazilian",
+         "displayTitle": "Português",
+         "extendedDisplayTitle": "Brazilian (Português SRT)"
+        },
+        {
+         "id": 1012025,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 24,
+         "streamIdentifier": null,
+         "language": "Português",
+         "languageCode": "por",
+         "languageTag": "pt",
+         "title": "European",
+         "displayTitle": "Português",
+         "extendedDisplayTitle": "European (Português SRT)"
+        },
+        {
+         "id": 1012026,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 25,
+         "streamIdentifier": null,
+         "language": "română",
+         "languageCode": "ron",
+         "languageTag": "ro",
+         "displayTitle": "română",
+         "extendedDisplayTitle": "română (SRT)"
+        },
+        {
+         "id": 1012027,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 26,
+         "streamIdentifier": null,
+         "language": "Русский",
+         "languageCode": "rus",
+         "languageTag": "ru",
+         "displayTitle": "Русский",
+         "extendedDisplayTitle": "Русский (SRT)"
+        },
+        {
+         "id": 1012028,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 27,
+         "streamIdentifier": null,
+         "language": "Svenska",
+         "languageCode": "swe",
+         "languageTag": "sv",
+         "displayTitle": "Svenska",
+         "extendedDisplayTitle": "Svenska (SRT)"
+        },
+        {
+         "id": 1012029,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 28,
+         "streamIdentifier": null,
+         "language": "ไทย",
+         "languageCode": "tha",
+         "languageTag": "th",
+         "displayTitle": "ไทย",
+         "extendedDisplayTitle": "ไทย (SRT)"
+        },
+        {
+         "id": 1012030,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 29,
+         "streamIdentifier": null,
+         "language": "Türkçe",
+         "languageCode": "tur",
+         "languageTag": "tr",
+         "displayTitle": "Türkçe",
+         "extendedDisplayTitle": "Türkçe (SRT)"
+        },
+        {
+         "id": 1012031,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 30,
+         "streamIdentifier": null,
+         "language": "Українська",
+         "languageCode": "ukr",
+         "languageTag": "uk",
+         "displayTitle": "Українська",
+         "extendedDisplayTitle": "Українська (SRT)"
+        },
+        {
+         "id": 1012032,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 31,
+         "streamIdentifier": null,
+         "language": "Tiếng Việt",
+         "languageCode": "vie",
+         "languageTag": "vi",
+         "displayTitle": "Tiếng Việt",
+         "extendedDisplayTitle": "Tiếng Việt (SRT)"
+        },
+        {
+         "id": 1012033,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 32,
+         "streamIdentifier": null,
+         "language": "中文",
+         "languageCode": "zho",
+         "languageTag": "zh",
+         "title": "Simplified",
+         "displayTitle": "中文",
+         "extendedDisplayTitle": "Simplified (中文 SRT)"
+        },
+        {
+         "id": 1012034,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 33,
+         "streamIdentifier": null,
+         "language": "中文",
+         "languageCode": "zho",
+         "languageTag": "zh",
+         "title": "Traditional",
+         "displayTitle": "中文",
+         "extendedDisplayTitle": "Traditional (中文 SRT)"
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false
+    }
+   ],
+   "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+   "originallyAvailableAt": "2022-03-30",
+   "audienceRating": 6.1,
+   "contentRating": "R",
+   "studio": "Minnow Films",
+   "Genre": [
+    {
+     "tag": "Documentary"
+    },
+    {
+     "tag": "Crime"
+    }
+   ],
+   "Country": [
+    {
+     "tag": "United Kingdom"
+    }
+   ],
+   "Director": [
+    {
+     "tag": "Luke Sewell",
+     "tagKey": "bd3c729eba4ef29893cda118"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt15479902"
+    },
+    {
+     "id": "tmdb://946327"
+    }
+   ],
+   "_poster_url": "https://image.tmdb.org/t/p/w342/2ZzllPVrYmBn28Kc7PZaQ0PrQat.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/poL87RE9mtvfiAKas8DHtdqA6nG.jpg",
+   "librarySectionID": 1,
+   "librarySectionTitle": "Debrid Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "trust-no-one-the-hunt-for-the-crypto-king",
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "value": 6.1,
+     "type": "audience"
+    }
+   ],
+   "audienceRatingImage": "themoviedb://image.rating",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   }
+  },
+  {
+   "ratingKey": "1013",
+   "key": "/library/metadata/1013",
+   "guid": "plex://movie/60a69a74ba9733002ddf78f6",
+   "type": "movie",
+   "title": "Tuesday",
+   "year": 2024,
+   "summary": "A mother and her teenage daughter must confront Death when it arrives in the form of an astonishing talking bird.",
+   "duration": 6653888,
+   "addedAt": 1789180050,
+   "updatedAt": 1789180050,
+   "thumb": "/library/metadata/1013/thumb/1789180050",
+   "art": "/library/metadata/1013/art/1789180050",
+   "Media": [
+    {
+     "id": 101300,
+     "duration": 6653888,
+     "bitrate": 1710,
+     "width": 1920,
+     "height": 1080,
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "eac3",
+     "videoCodec": "hevc",
+     "videoResolution": "1080",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "main 10",
+     "audioProfile": null,
+     "Part": [
+      {
+       "id": 10130,
+       "key": "/library/parts/10130/1789180050/file.mkv",
+       "duration": 6653888,
+       "file": "/plexsim/1/Tuesday.2022.1080p.NF.WEB.DL.DDP5.1.DV.H.265-PMI.mkv",
+       "size": 1421990771,
+       "container": "mkv",
+       "videoProfile": "main 10",
+       "audioProfile": null,
+       "Stream": [
+        {
+         "id": 1013001,
+         "streamType": 1,
+         "codec": "hevc",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 1920,
+         "height": 1080,
+         "profile": "main 10",
+         "level": 120,
+         "refFrames": null,
+         "bitDepth": 10,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": "left",
+         "codedHeight": 1080,
+         "codedWidth": 1920,
+         "codecID": null,
+         "colorPrimaries": null,
+         "colorTrc": null,
+         "colorSpace": null,
+         "colorRange": "pc",
+         "frameRate": 23.976,
+         "scanType": null,
+         "DOVIPresent": true,
+         "DOVIProfile": 5,
+         "DOVILevel": 3,
+         "DOVIBLCompatID": 0,
+         "DOVIBLPresent": true,
+         "DOVIELPresent": false,
+         "DOVIRPUPresent": true,
+         "DOVIVersion": "1.0",
+         "default": true,
+         "displayTitle": "1080p DoVi",
+         "extendedDisplayTitle": "1080p DoVi (HEVC Main 10)"
+        },
+        {
+         "id": 1013002,
+         "streamType": 2,
+         "codec": "eac3",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "selected": true,
+         "default": true,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "bitrate": 640,
+         "displayTitle": "English (EAC3 5.1)",
+         "extendedDisplayTitle": "English (EAC3 5.1)"
+        },
+        {
+         "id": 1013003,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 2,
+         "streamIdentifier": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "title": "SDH",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "SDH (English SRT)"
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false
+    }
+   ],
+   "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+   "originallyAvailableAt": "2024-06-07",
+   "audienceRating": 6.8,
+   "contentRating": "R",
+   "studio": "A24",
+   "Genre": [
+    {
+     "tag": "Fantasy"
+    },
+    {
+     "tag": "Drama"
+    }
+   ],
+   "Country": [
+    {
+     "tag": "United Kingdom"
+    },
+    {
+     "tag": "United States of America"
+    }
+   ],
+   "Role": [
+    {
+     "tag": "Julia Louis-Dreyfus",
+     "role": "Zora",
+     "thumb": "https://image.tmdb.org/t/p/w185/iEfHQNrVbVFesDPjdySom9nqsFg.jpg",
+     "tagKey": "733bf38732fa9fd0b8da0241"
+    },
+    {
+     "tag": "Lola Petticrew",
+     "role": "Tuesday",
+     "thumb": "https://image.tmdb.org/t/p/w185/wc7o4vu3amWNiXkR88JxniYroAI.jpg",
+     "tagKey": "7b90ea557b492e17f4c85dad"
+    },
+    {
+     "tag": "Arinzé Kene",
+     "role": "Death",
+     "thumb": "https://image.tmdb.org/t/p/w185/bD8kUAc3ZEkz08dWszWnqcAQify.jpg",
+     "tagKey": "93123a95ad496e01775dd254"
+    },
+    {
+     "tag": "Leah Harvey",
+     "role": "Nurse Billie",
+     "thumb": "https://image.tmdb.org/t/p/w185/j5bEw0gtE9RGTq2y4WoQ6HUa9di.jpg",
+     "tagKey": "175f37c8c17eef7d17513fa9"
+    },
+    {
+     "tag": "Jay Simpson",
+     "role": "Spike",
+     "thumb": "https://image.tmdb.org/t/p/w185/4UDQaaRqvMqPwJbUxJVZ7u6P7Wt.jpg",
+     "tagKey": "fa8c18ee028b2729a0667c40"
+    },
+    {
+     "tag": "Ellie James",
+     "role": "Willow",
+     "thumb": "https://image.tmdb.org/t/p/w185/sfWWp69KlcxuIuymP7jOuW49FS7.jpg",
+     "tagKey": "06077964f7c995180fe1b9fe"
+    }
+   ],
+   "Director": [
+    {
+     "tag": "Daina Oniunas-Pusić",
+     "tagKey": "9bae67b86064c2fa629c2e38"
+    }
+   ],
+   "Writer": [
+    {
+     "tag": "Daina Oniunas-Pusić",
+     "tagKey": "9bae67b86064c2fa629c2e38"
+    }
+   ],
+   "Guid": [
+    {
+     "id": "imdb://tt14682800"
+    },
+    {
+     "id": "tmdb://831395"
+    }
+   ],
+   "_poster_url": "https://image.tmdb.org/t/p/w342/zrd6blans3SqghHSxPAl7tqnaOf.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/ebmY8j6bfTsxUdhVtTaoNITch6u.jpg",
+   "librarySectionID": 1,
+   "librarySectionTitle": "Debrid Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "tuesday",
+   "Rating": [
+    {
+     "image": "themoviedb://image.rating",
+     "value": 6.8,
+     "type": "audience"
+    }
+   ],
+   "audienceRatingImage": "themoviedb://image.rating",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   }
+  },
+  {
+   "ratingKey": "1014",
+   "key": "/library/metadata/1014",
+   "guid": "local://1014",
+   "type": "movie",
+   "title": "Vinaipayan",
+   "year": 2026,
+   "summary": "",
+   "duration": 1682218,
+   "addedAt": 1789180050,
+   "updatedAt": 1789180050,
+   "thumb": "/library/metadata/1014/thumb/1789180050",
+   "art": "/library/metadata/1014/art/1789180050",
+   "Media": [
+    {
+     "id": 101400,
+     "duration": 1682218,
+     "bitrate": 5298,
+     "width": 1920,
+     "height": 1080,
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "aac",
+     "videoCodec": "h264",
+     "videoResolution": "1080",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "main",
+     "audioProfile": "lc",
+     "Part": [
+      {
+       "id": 10140,
+       "key": "/library/parts/10140/1789180050/file.mkv",
+       "duration": 1682218,
+       "file": "/plexsim/1/Vinaipayan.2026.1080p.SFLIX.WEB.DL.AAC5.1.H.264-PMi-XDMovies.mkv",
+       "size": 1114087637,
+       "container": "mkv",
+       "videoProfile": "main",
+       "audioProfile": "lc",
+       "Stream": [
+        {
+         "id": 1014001,
+         "streamType": 1,
+         "codec": "h264",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 1920,
+         "height": 1080,
+         "profile": "main",
+         "level": 40,
+         "refFrames": null,
+         "bitDepth": 8,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": "left",
+         "codedHeight": 1088,
+         "codedWidth": 1920,
+         "codecID": null,
+         "colorPrimaries": "bt709",
+         "colorTrc": "bt709",
+         "colorSpace": "bt709",
+         "colorRange": "tv",
+         "frameRate": 23.976,
+         "scanType": "progressive",
+         "default": true,
+         "original": true,
+         "language": "தமிழ்",
+         "languageCode": "tam",
+         "languageTag": "ta",
+         "title": "PMi-XDMovies",
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "PMi-XDMovies (1080p H.264)"
+        },
+        {
+         "id": 1014002,
+         "streamType": 2,
+         "codec": "aac",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "profile": "lc",
+         "selected": true,
+         "default": true,
+         "language": "தமிழ்",
+         "languageCode": "tam",
+         "languageTag": "ta",
+         "title": "Tamil",
+         "displayTitle": "தமிழ் (AAC 5.1)",
+         "extendedDisplayTitle": "Tamil (தமிழ் AAC 5.1)"
+        },
+        {
+         "id": 1014003,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 2,
+         "streamIdentifier": null,
+         "dub": true,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "title": "PMi-XDMovies",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "PMi-XDMovies (English SRT)"
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false
+    }
+   ],
+   "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+   "librarySectionID": 1,
+   "librarySectionTitle": "Debrid Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "vinaipayan",
    "UltraBlurColors": {
     "topLeft": "1a1a1e",
     "topRight": "24242a",
