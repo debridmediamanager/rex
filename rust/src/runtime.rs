@@ -31,6 +31,7 @@ mod framework;
 mod gates;
 mod listing;
 mod resume;
+mod structural;
 mod transcoder;
 use artwork::owns_artwork;
 use resume::{bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param, page_window};
@@ -4346,6 +4347,11 @@ impl Runtime {
         }
         if !self.authorized(&path, &request, &query) {
             return self.unauthorized_route(&path, request);
+        }
+        if matches!(request.method.as_str(), "GET" | "HEAD") {
+            if let Some(status) = self.structural_refusal(&path, &query) {
+                return Response::error(status, "plexsim: bad request");
+            }
         }
         if resource_root_with_slash {
             return self.route_bundled_resource("", request.method == "HEAD");
