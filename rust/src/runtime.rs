@@ -5230,7 +5230,11 @@ impl Runtime {
                     json!({"MediaContainer": {"size": 0, "content": "plugins"}}),
                 )
             }
-            ("GET" | "HEAD", "/") => Response::json(200, self.server_root()),
+            ("GET" | "HEAD", "/") => {
+                let mut body = self.server_root();
+                home_theater_version(&mut body, &query, &request.headers);
+                Response::json(200, body)
+            }
             ("GET" | "HEAD", "/manage") | ("GET" | "HEAD", "/web") => {
                 let host = request.headers.get("host").cloned().unwrap_or_default();
                 Response {
@@ -5356,7 +5360,9 @@ impl Runtime {
                 ),
             ),
             ("GET" | "HEAD", "/media/providers") => {
-                Response::json(200, self.media_providers(&query, &request.headers))
+                let mut body = self.media_providers(&query, &request.headers);
+                home_theater_version(&mut body, &query, &request.headers);
+                Response::json(200, body)
             }
             ("POST", "/media/providers") => Response::error(400, "plexsim: bad request"),
             ("POST", "/player/playback/play") => Response::error(400, "plexsim: bad request"),
@@ -6188,8 +6194,16 @@ impl Runtime {
                 left_title.to_lowercase().cmp(&right_title.to_lowercase())
             })
         });
-        if query.get("unwatched").is_some_and(|value| value == "1") {
-            dated.retain(|(_, row)| row.get("viewCount").is_none());
+        // Cycle 54, measured on kids and zen: `unwatched=` is a 0/1 OPTION here (the
+        // `+?0*[01]` grammar, anything else a 400), and at 1 it drops the watched LEAF
+        // rows before the cap.
+        if let Some(value) = query.get("unwatched") {
+            if !bool_option(value) {
+                return Response::error(400, "plexsim: bad request");
+            }
+            if value.trim_start_matches('+').trim_start_matches('0') == "1" {
+                dated.retain(|(_, row)| !watched_leaf(row));
+            }
         }
         if let Some(limit) = query
             .get("limit")
@@ -14010,7 +14024,22 @@ impl Runtime {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
         };
-        let sort = query.get("sort").map(String::as_str);
+        // Cycle 18/20: the listing refusals (`parentIndex`, a `resolution` outside the
+        // enum, an unparseable `sourceType`).
+        if let Some(status) = listing::listing_refusals(query, &[]) {
+            return Response::error(status, "plexsim: bad request");
+        }
+        // Cycle 55, measured on zen and kids: a `sourceType` other than 1 ORDERS the
+        // grid by id; an explicit `sort=` still wins.
+        let by_id = crate::filters::source_order(query.get("sourceType").map(String::as_str))
+            .ok()
+            .flatten()
+            .is_some();
+        let sort = query
+            .get("sort")
+            .filter(|sort| !sort.is_empty())
+            .map(String::as_str)
+            .or(if by_id { Some("id") } else { None });
         let rows = match self.sort_rows(rows, sort) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
@@ -14038,10 +14067,40 @@ impl Runtime {
             .get("excludeFields")
             .map(|value| value.split(',').collect::<HashSet<_>>())
             .unwrap_or_default();
+        // Measured on kids and zen: `includeStorage=1` puts `durationTotal` and
+        // `storageTotal` -- JSON STRINGS (cycle 27) -- on the library's OWN top-level
+        // type only; a show carries the sum over its episodes.
+        let own_type = if section_type == "show" { 2 } else { 1 };
+        let with_storage = query.get("includeStorage").is_some_and(|value| {
+            bool_option(value) && value.trim_start_matches('+').trim_start_matches('0') == "1"
+        }) && query.get("type").map_or(true, |value| {
+            value.is_empty() || value.trim_start_matches('+').parse::<i64>().ok() == Some(own_type)
+        });
         let rows = rows
             .iter()
             .map(|row| {
                 let mut projected = self.section_listing_row(row);
+                if with_storage {
+                    let leaves = if row.get("Media").is_some() {
+                        vec![row.clone()]
+                    } else {
+                        self.leaves(&key_of(row).unwrap_or_default())
+                    };
+                    let duration = leaves
+                        .iter()
+                        .map(|leaf| leaf.get("duration").and_then(Value::as_i64).unwrap_or(0))
+                        .sum::<i64>();
+                    let storage = leaves
+                        .iter()
+                        .flat_map(|leaf| leaf.get("Media").and_then(Value::as_array).cloned().unwrap_or_default())
+                        .flat_map(|media| media.get("Part").and_then(Value::as_array).cloned().unwrap_or_default())
+                        .filter_map(|part| part.get("size").and_then(Value::as_i64))
+                        .sum::<i64>();
+                    if let Some(object) = projected.as_object_mut() {
+                        object.insert("durationTotal".to_string(), json!(duration.to_string()));
+                        object.insert("storageTotal".to_string(), json!(storage.to_string()));
+                    }
+                }
                 if let Some(object) = projected.as_object_mut() {
                     if exclude_media {
                         let count = row
@@ -15001,28 +15060,7 @@ impl Runtime {
                     // empty OBJECT for an item with none.  Cycle 15: the INLINE block
                     // caps at FIVE rows per hub and says `more`; `includeRelatedCount=N`
                     // sets that cap, and cycle 22: `=0` EMPTIES the hub.
-                    let cap = query
-                        .get("includeRelatedCount")
-                        .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
-                        .and_then(|value| value.parse::<usize>().ok())
-                        .unwrap_or(5);
-                    let trimmed = self
-                        .related_hubs(row, query, true)
-                        .into_iter()
-                        .map(|mut hub| {
-                            let rows = hub.get("Metadata").and_then(Value::as_array).cloned().unwrap_or_default();
-                            let more = rows.len() > cap || hub.get("more").and_then(Value::as_bool) == Some(true);
-                            let kept = rows.into_iter().take(cap).collect::<Vec<_>>();
-                            hub["size"] = json!(kept.len());
-                            hub["more"] = json!(more);
-                            hub["Metadata"] = Value::Array(kept);
-                            hub
-                        })
-                        .collect::<Vec<_>>();
-                    object.insert(
-                        "Related".to_string(),
-                        if trimmed.is_empty() { json!({}) } else { json!({"Hub": trimmed}) },
-                    );
+                    object.insert("Related".to_string(), self.related_block(row, query));
                 }
             }
             // Re-measured against fun and the 1.43.4 reference: the detail container
@@ -15467,9 +15505,20 @@ impl Runtime {
                             .collect::<Vec<_>>(),
                     )
                 } else {
+                    // Cycle 54: `unwatched=` is a 0/1 option on `/allLeaves` too --
+                    // anything else a 400 -- and at 1 it drops the watched episodes.
+                    let mut leaves = self.leaves(key);
+                    if let Some(value) = query.get("unwatched") {
+                        if !bool_option(value) {
+                            return Response::error(400, "plexsim: bad request");
+                        }
+                        if value.trim_start_matches('+').trim_start_matches('0') == "1" {
+                            leaves.retain(|leaf| !watched_leaf(leaf));
+                        }
+                    }
                     (
                         "episode",
-                        self.leaves(key)
+                        leaves
                             .into_iter()
                             .map(|leaf| self.leaf_listing_row(&leaf))
                             .collect::<Vec<_>>(),
@@ -15494,12 +15543,9 @@ impl Runtime {
                     })
                     .map(|(name, value)| (name.clone(), value.clone()))
                     .collect::<Vec<_>>();
-                if !filter_pairs.is_empty() {
-                    rows = match self.filter_rows(rows, &filter_pairs, section_type) {
-                        Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "plexsim: bad request"),
-                    };
-                }
+                // Cycle 54: the listing's filters are ignored on `/allLeaves`; only
+                // `unwatched=` (above) is read.
+                let _ = (&filter_pairs, section_type);
                 if let Some(sort) = query.get("sort") {
                     rows = match self.sort_rows(rows, Some(sort)) {
                         Ok(rows) => rows,
@@ -15560,7 +15606,12 @@ impl Runtime {
                 // NOT /hubs/metadata/{id}/related: this one carries the SAME hub plus
                 // the media-tag pair the hubs form drops, built by hand with
                 // `allowSync: true` said explicitly.
-                let hubs = self.related_hubs(row, query, true);
+                let mut hubs = self.related_hubs(row, query, true);
+                for hub in hubs.iter_mut() {
+                    if let Some(rows) = hub.get_mut("Metadata").and_then(Value::as_array_mut) {
+                        self.expand_full_rows(rows, query);
+                    }
+                }
                 let section = self
                     .section(&string_value(
                         row.get("librarySectionID").unwrap_or(&Value::Null),
@@ -15591,11 +15642,12 @@ impl Runtime {
                 if matches!(row.get("type").and_then(Value::as_str), Some("season" | "episode")) {
                     return Response::error(404, "plexsim: not found");
                 }
-                let rows = self
+                let mut rows = self
                     .similar_rows(row)
                     .iter()
                     .map(|row| self.detail_row(row))
                     .collect::<Vec<_>>();
+                self.expand_full_rows(&mut rows, query);
                 let mut fields = Map::new();
                 fields.insert("size".to_string(), json!(rows.len()));
                 fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
@@ -19395,6 +19447,33 @@ fn unix_year(timestamp: i64) -> i64 {
 /// The account feature names plex.tv reports for the owner (the oracle's
 /// `OWNER_FEATURES` with no claim of its own).
 const OWNER_FEATURES: &str = "adaptive_bitrate,camera_upload,collections,content_filter,download_certificates,dvr,federated-auth,hardware_transcoding,home,hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,music-analysis,music_videos,pass,photosV6-edit,photosV6-tv-albums,premium_music_metadata,radio,server-manager,session_bandwidth_restrictions,session_kick,shared-radio,sync,trailers,tuner-sharing,type-first,unsupportedtuners,webhooks";
+
+/// Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
+/// or an episode with a play recorded.  A parent row is never dropped for it.
+fn watched_leaf(row: &Value) -> bool {
+    matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+        && row.get("viewCount").is_some_and(|count| {
+            !count.is_null() && count.as_i64() != Some(0) && count.as_str().is_none_or(|text| !text.is_empty() && text != "0")
+        })
+}
+
+/// Cycle 64, measured on zen, kids and plexscratch42: `X-Plex-Product: Plex Home
+/// Theater` -- that spelling only, the header beating the query -- gets a FIVE-component
+/// `version` on `/` and `/media/providers` (`1.42.2.10156.0-<build>`).
+fn home_theater_version(body: &mut Value, query: &HashMap<String, String>, headers: &HashMap<String, String>) {
+    let product = headers
+        .get("x-plex-product")
+        .filter(|value| !value.is_empty())
+        .or_else(|| query.get("X-Plex-Product"));
+    if product.map(String::as_str) != Some("Plex Home Theater") {
+        return;
+    }
+    if let Some(version) = body["MediaContainer"].get("version").and_then(Value::as_str) {
+        if let Some((head, tail)) = version.split_once('-') {
+            body["MediaContainer"]["version"] = json!(format!("{head}.0-{tail}"));
+        }
+    }
+}
 
 /// Python's ordering of two JSON scalars for a sort: numbers by value, strings
 /// by code point, anything else as equal.
