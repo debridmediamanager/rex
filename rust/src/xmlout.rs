@@ -708,6 +708,20 @@ fn split(name: &str, row: &Map<String, Value>, container: bool) -> (Vec<String>,
             });
         } else if row.get("_session").is_some() || row.get("_pluginLibrary").is_some() {
             attrs.sort_by_key(|k| (attr_order(name, row, k), k.clone()));
+        } else if row.get("allowSync").is_some_and(|value| !value.is_null()) {
+            // Cycle 19: the rows of `/library/recentlyAdded` and `/library/onDeck` -- the
+            // only rows carrying `allowSync` -- LEAD with it and the librarySection
+            // triple (`personal`, `sourceTitle` inside the same lead on `/search`).
+            let lead = |key: &str| match key {
+                "allowSync" => 0,
+                "librarySectionID" => 1,
+                "librarySectionTitle" => 2,
+                "librarySectionUUID" => 3,
+                "personal" => 4,
+                "sourceTitle" => 5,
+                _ => 6,
+            };
+            attrs.sort_by_key(|k| (lead(k), attr_order(name, row, k)));
         } else {
             attrs.sort_by_key(|k| attr_order(name, row, k));
         }
