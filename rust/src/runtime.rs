@@ -5148,20 +5148,34 @@ impl Runtime {
             }
             ("PATCH", "/myplex/claim") => Response::plain(500, b"500".to_vec()),
             ("PUT", "/myplex/refreshReachability") => Response::empty(200),
-            ("GET" | "HEAD", "/myplex/account") => Response::json(
-                200,
-                json!({"MyPlex":{
-                    "mappingState":"mapped",
-                    "mappingError":"",
-                    "signInState":"ok",
-                    "privateAddress":self.private_address,
-                    "privatePort":self.private_port,
-                    "publicAddress":"",
-                    "publicPort":0,
-                    "username":self.owner_username,
-                    "email":self.owner_email
-                }}),
-            ),
+            ("GET" | "HEAD", "/myplex/account") => {
+                // `server.py` `myplex_account`: the owner's EMAIL as `username`, the
+                // address pair moving together, and (cycle 45) `subscriptionFeatures`
+                // the SAME string as `/`'s `ownerFeatures`.
+                let claimed = self.assert_claimed || self.token.is_some();
+                let features = self
+                    .server_root()
+                    .pointer("/MediaContainer/ownerFeatures")
+                    .cloned()
+                    .unwrap_or(Value::Null);
+                let private = !self.private_address.is_empty();
+                Response::json(
+                    200,
+                    json!({"MyPlex":{
+                        "username": if claimed { json!(self.owner_email) } else { Value::Null },
+                        "mappingState":"mapped",
+                        "mappingError":"",
+                        "signInState": if claimed { "ok" } else { "none" },
+                        "publicAddress": "",
+                        "publicPort":0,
+                        "privateAddress": self.private_address,
+                        "privatePort": if private { self.private_port } else { 0 },
+                        "subscriptionFeatures": features,
+                        "subscriptionActive": claimed,
+                        "subscriptionState": if claimed { "Active" } else { "Unknown" },
+                    }}),
+                )
+            }
             ("GET" | "HEAD", "/security/token") => self.route_security_token(&request, &query),
             ("GET", "/log") => {
                 let valid_level = query
