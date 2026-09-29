@@ -25,6 +25,10 @@ use sha1::{Digest, Sha1};
 
 use crate::{catalog::Catalog, decision, xmlout};
 
+mod butler;
+mod framework;
+mod transcoder;
+
 const VERSION: &str = "1.42.2.10156-plexsim";
 const MEDIA_TAG_PREFIX: &str = "/system/bundle/media/flags/";
 const MEDIA_TAG_VERSION: i64 = 1_655_122_614;
@@ -4711,7 +4715,7 @@ impl Runtime {
             ("GET" | "HEAD", "/player/timeline/poll") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/system/proxy") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/video/:/transcode/universal/subtitles") => Response::error(400, "plexsim: bad request"),
-            ("GET" | "HEAD", "/photo/:/transcode") => self.route_photo_transcode(&query),
+            ("GET" | "HEAD", "/photo/:/transcode") => self.route_photo_transcode(request, &query),
             ("GET" | "HEAD", "/channels") => Response::json(
                 200,
                 self.container(
@@ -8353,48 +8357,6 @@ impl Runtime {
         Response::json(200, self.container(fields, true))
     }
 
-    fn route_photo_transcode(&self, query: &HashMap<String, String>) -> Response {
-        let Some(url) = query.get("url").filter(|value| !value.is_empty()) else {
-            return Response::photo_error(400, "plexsim: bad request");
-        };
-        let Some(width) = query.get("width") else {
-            return Response::photo_error(400, "plexsim: bad request");
-        };
-        let Some(height) = query.get("height") else {
-            return Response::photo_error(400, "plexsim: bad request");
-        };
-        if width.parse::<u32>().is_err() || height.parse::<u32>().is_err() {
-            return Response::photo_error(400, "plexsim: bad request");
-        }
-        if url.starts_with("/:/resources/") {
-            let asset = url.trim_start_matches("/:/resources/");
-            if !matches!(
-                asset,
-                "movie.png" | "video.png" | "actor-icon.png"
-            ) {
-                return Response::photo_error(404, "plexsim: not found");
-            }
-        } else if url.starts_with("/identity") {
-            return Response::photo_error(500, "plexsim: internal error");
-        } else if let Some(start) = url.find("/library/metadata/") {
-            let tail = &url[start + "/library/metadata/".len()..];
-            let key = tail.split(['/', '?']).next().unwrap_or_default();
-            if key.is_empty() || self.catalog.get(key).is_none() {
-                return Response::photo_error(404, "plexsim: not found");
-            }
-        } else {
-            return Response::photo_error(500, "plexsim: internal error");
-        }
-        let mut response = Response::image(jpeg_placeholder());
-        response.headers = vec![
-            ("X-Plex-Protocol".to_string(), "1.0".to_string()),
-            ("Accept-Ranges".to_string(), "bytes".to_string()),
-            ("Cache-Control".to_string(), "no-cache".to_string()),
-            ("Date".to_string(), http_date()),
-        ];
-        response
-    }
-
     fn valid_content_directory(query: &HashMap<String, String>) -> bool {
         query
             .get("contentDirectoryID")
@@ -11489,6 +11451,31 @@ impl Runtime {
         if segments.starts_with(&["library", "sections"]) && segments.len() >= 3 {
             let section_key = segments[2];
             if let Some(section) = self.section(section_key) {
+                if segments.get(3) == Some(&"composite")
+                    && matches!(request.method.as_str(), "GET" | "HEAD")
+                {
+                    // Cycle 16: the BARE path is a 404 on kids and zen; only
+                    // `/composite/{version}` answers, the version all digits (cycle 45)
+                    // and inside int32 (cycle 36's guard, a 400 past it).
+                    let Some(version) = segments.get(4).filter(|_| segments.len() == 5) else {
+                        return Response::error(404, "plexsim: not found");
+                    };
+                    if version.is_empty() || !version.bytes().all(|b| b.is_ascii_digit()) {
+                        return Response::error(404, "plexsim: not found");
+                    }
+                    if version.len() > 10 || version.parse::<u64>().unwrap_or(u64::MAX) >= 1 << 31 {
+                        return Response::error(400, "plexsim: bad request");
+                    }
+                    // A real PMS builds a mosaic of the members' posters; plexsim serves
+                    // one image in its place (`composite_for`), here the placeholder.
+                    let mut response = Response::image(jpeg_placeholder());
+                    response.headers = vec![
+                        ("Cache-Control".to_string(), "no-cache".to_string()),
+                        ("Accept-Ranges".to_string(), "bytes".to_string()),
+                    ];
+                    let _ = section;
+                    return response;
+                }
                 if segments.len() == 3 {
                     if request.method == "GET" || request.method == "HEAD" {
                         return self.route_section_detail(section, query);
