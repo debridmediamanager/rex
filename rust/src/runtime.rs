@@ -12627,47 +12627,7 @@ impl Runtime {
                     return Response::json(200, self.container(fields, true));
                 }
                 if segments.len() == 4 && segments[3] == "categories" {
-                    let mut names = HashSet::new();
-                    let axis_type = query
-                        .get("type")
-                        .and_then(|value| value.parse::<i64>().ok());
-                    for row in self.choose_rows(Some(section_key), axis_type) {
-                        for tag in row
-                            .get("Genre")
-                            .and_then(Value::as_array)
-                            .into_iter()
-                            .flatten()
-                        {
-                            if let Some(name) = tag.get("tag").and_then(Value::as_str) {
-                                names.insert(name.to_string());
-                            }
-                        }
-                    }
-                    let mut names = names.into_iter().collect::<Vec<_>>();
-                    names.sort();
-                    let rows = names
-                        .into_iter()
-                        .map(|name| {
-                            json!({
-                                "type":"directory",
-                                "title":name,
-                                "key":format!("/library/sections/{section_key}/all?genre={name}")
-                            })
-                        })
-                        .collect::<Vec<_>>();
-                    return Response::json(
-                        200,
-                        self.container(
-                            Map::from_iter([
-                                ("Directory".to_string(), Value::Array(rows)),
-                                (
-                                    "Meta".to_string(),
-                                    json!({"Type":[{"type":"genre","title":"Genre"}]}),
-                                ),
-                            ]),
-                            false,
-                        ),
-                    );
+                    return self.route_categories(section_key, section.clone(), request);
                 }
                 if segments.len() == 4 && segments[3] == "folder" {
                     return self.route_section_folder(section_key, section, query, request);
@@ -16648,8 +16608,16 @@ impl Runtime {
             .get("_poster_url")
             .and_then(Value::as_str)
             .map(|url| json!([{"key":url,"source":"tmdb","previewKey":url}]));
+        // Cycle 53: a season's and an episode's background candidates are their own,
+        // never the show's that `hierarchy` copies down -- `/arts` answers none there,
+        // so the row inlines no `Art`.
+        let owns_art = !matches!(
+            object.get("type").and_then(Value::as_str),
+            Some("season" | "episode")
+        );
         let art = object
             .get("_art_url")
+            .filter(|_| owns_art)
             .and_then(Value::as_str)
             .map(|url| json!([{"key":url,"source":"tmdb","previewKey":url}]));
         let theme = object
