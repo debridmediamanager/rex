@@ -337,16 +337,6 @@ pub fn apply_plex_guids_recorded(items: &mut [Value], recorded: &Value) -> usize
     apply_plex_guids_with_provider(items, &mut provider)
 }
 
-fn strip_article(title: &str) -> String {
-    let lower = title.to_lowercase();
-    for article in ["the ", "a ", "an "] {
-        if lower.starts_with(article) {
-            return title[article.len()..].to_string();
-        }
-    }
-    title.to_string()
-}
-
 fn value_truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
@@ -563,7 +553,15 @@ pub fn enrich(
         .unwrap_or_default();
     let date = truthy_string(details, &["release_date", "first_air_date"]).unwrap_or_default();
     put(row, "title", title.clone());
-    put(row, "titleSort", strip_article(&title));
+    // The load-time rule (`hierarchy.sort_title`): titleSort only when the derived
+    // sort title differs from the title. The bare article strip wrote one equal to the
+    // title on every article-less Fix Match, which a real PMS never sends.
+    let derived = crate::hierarchy::sort_title(&title);
+    if !derived.is_empty() && derived != title {
+        put(row, "titleSort", derived);
+    } else {
+        row.shift_remove("titleSort");
+    }
     let summary = details
         .get("overview")
         .filter(|value| value_truthy(value))
