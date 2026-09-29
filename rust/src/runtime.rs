@@ -14797,7 +14797,7 @@ impl Runtime {
             "allLeaves" => {
                 let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
                 let (view_group, mut rows) = if kind == "movie" {
-                    ("movie", vec![self.leaf_listing_row(row)])
+                    ("movie", vec![self.child_list_row(row, query)])
                 } else if kind == "season" {
                     // A season's own allLeaves is an intentionally empty
                     // episode container; the descendants are exposed by its
@@ -14812,7 +14812,7 @@ impl Runtime {
                         "episode",
                         self.children(&parent)
                             .into_iter()
-                            .map(|leaf| self.leaf_listing_row(&leaf))
+                            .map(|leaf| self.child_list_row(&leaf, query))
                             .collect::<Vec<_>>(),
                     )
                 } else {
@@ -14820,7 +14820,7 @@ impl Runtime {
                         "episode",
                         self.leaves(key)
                             .into_iter()
-                            .map(|leaf| self.leaf_listing_row(&leaf))
+                            .map(|leaf| self.child_list_row(&leaf, query))
                             .collect::<Vec<_>>(),
                     )
                 };
@@ -14876,6 +14876,12 @@ impl Runtime {
                     .and_then(Value::as_str)
                     .map(str::to_string);
                 if kind == "show" {
+                    // Cycle 17, measured on kids and zen: this list -- and no other
+                    // container -- stamps each episode's BORROWED artwork with the
+                    // EPISODE's own `addedAt`, so a leaf's cached URL never changes.
+                    for shown in &mut rows {
+                        restamp_borrowed(shown);
+                    }
                     // Measured on kids and zen, 20 rows across five shows: a SHOW's
                     // `/allLeaves` -- and only that list -- gives every episode row the
                     // SHOW's `studio`.
@@ -19559,5 +19565,36 @@ fn exclude_fields_response(request: &Request, response: &mut Response) {
     }
     if let Ok(bytes) = serde_json::to_vec(&document) {
         response.body = bytes;
+    }
+}
+
+/// `_restamped`: a leaf's borrowed artwork versions replaced by its own `addedAt`.
+fn restamp_borrowed(row: &mut Value) {
+    let Some(object) = row.as_object_mut() else {
+        return;
+    };
+    let Some(stamp) = object.get("addedAt").filter(|stamp| !stamp.is_null()).map(string_value) else {
+        return;
+    };
+    let mut borrowed = Vec::new();
+    for field in ["grandparentThumb", "grandparentArt", "grandparentTheme", "art"] {
+        let Some(value) = object.get(field).map(string_value).filter(|value| !value.is_empty()) else {
+            continue;
+        };
+        if let Some((head, _)) = value.rsplit_once('/') {
+            let restamped = format!("{head}/{stamp}");
+            borrowed.push((value.clone(), restamped.clone()));
+            object.insert(field.to_string(), json!(restamped));
+        }
+    }
+    if let Some(images) = object.get_mut("Image").and_then(Value::as_array_mut) {
+        for image in images {
+            let url = image.get("url").map(string_value).unwrap_or_default();
+            if let Some((_, new)) = borrowed.iter().find(|(old, _)| *old == url) {
+                if let Some(image) = image.as_object_mut() {
+                    image.insert("url".to_string(), json!(new));
+                }
+            }
+        }
     }
 }
