@@ -4418,24 +4418,33 @@ impl Runtime {
         }
         match (request.method.as_str(), path.as_str()) {
             (_, "/identity") => self.identity_response(&query),
+            // Cycle 52: the three bundled static resources. No token, `Accept-Ranges`, never
+            // gzipped; the two policies are `text/xml` and the favicon an octet-stream.
             ("GET" | "HEAD", "/crossdomain.xml") => static_sidecar_response(
                 &self.catalog_path,
                 "crossdomain.xml",
-                "application/xml",
+                "text/xml",
                 request.method == "HEAD",
             ),
             ("GET" | "HEAD", "/clientaccesspolicy.xml") => static_sidecar_response(
                 &self.catalog_path,
                 "clientaccesspolicy.xml",
-                "application/xml",
+                "text/xml",
                 request.method == "HEAD",
             ),
             ("GET" | "HEAD", "/favicon.ico") => static_sidecar_response(
                 &self.catalog_path,
                 "favicon.ico",
-                "image/x-icon",
+                "application/octet-stream",
                 request.method == "HEAD",
             ),
+            (_, "/crossdomain.xml" | "/clientaccesspolicy.xml" | "/favicon.ico") => {
+                // A write verb is not the file: the dispatcher's empty listing.
+                Response::json(
+                    200,
+                    json!({"MediaContainer": {"size": 0, "content": "plugins"}}),
+                )
+            }
             ("GET" | "HEAD", "/") => Response::json(200, self.server_root()),
             ("GET" | "HEAD", "/manage") | ("GET" | "HEAD", "/web") => {
                 let host = request.headers.get("host").cloned().unwrap_or_default();
@@ -4787,12 +4796,9 @@ impl Runtime {
             ("GET" | "HEAD", "/:/resources/actor-icon.png") => {
                 self.route_bundled_resource("actor-icon.png", request.method == "HEAD")
             }
-            ("GET" | "HEAD", "/:/resources/favicon.ico") => {
-                Response::error(404, "plexsim: not found")
-            }
             ("GET" | "HEAD", "/:/eventsource/notifications") => Response::sse(),
             ("GET" | "HEAD", "/connections") => {
-                Response::plain(200, b"1 ??? - Uninitialized\n".to_vec())
+                Response::plain(200, connection_lines(&self.owner_username).into_bytes())
             }
             ("GET" | "HEAD", "/server/identity") => self.identity_response(&query),
             ("PUT", "/:/progress") => self.route_progress(&query),
@@ -17525,7 +17531,14 @@ impl Runtime {
                 return Response::error(503, "plexsim: session terminated");
             }
         }
-        if segments.len() != 3 {
+        // Cycle 52: PMS's route table spells this leaf
+        // `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`, so ONE extra segment is a
+        // filename whatever it says, and the digit rule decides the changestamp only when
+        // a filename follows it.
+        if segments.len() > 3
+            || (segments.len() == 3
+                && (segments[1].is_empty() || !segments[1].bytes().all(|b| b.is_ascii_digit())))
+        {
             return Response::error(404, "plexsim: not found");
         }
         let part_id = segments
@@ -18156,7 +18169,12 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                 // first byte.  The timeout is per socket read, so the
                 // already received prefix starts that measured window.
                 let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(20)));
+                let peer = stream
+                    .peer_addr()
+                    .map(|address| address.to_string())
+                    .unwrap_or_else(|_| "???".to_string());
                 thread::spawn(move || {
+                    let _live = LiveConnectionGuard::register(peer);
                     if let Some(config) = tls_config {
                         // A TLS ClientHello is identified by the content-type
                         // byte.  Any other first byte remains the plain HTTP
@@ -18187,6 +18205,111 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Cycle 52: `/connections`' own bookkeeping -- one row per live socket, in slot order.
+struct LiveConnection {
+    slot: u64,
+    peer: String,
+    request: String,
+    number: u64,
+    agent: String,
+}
+
+static LIVE_CONNECTIONS: Mutex<Vec<LiveConnection>> = Mutex::new(Vec::new());
+static NEXT_CONNECTION_SLOT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+static REQUEST_SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+thread_local! {
+    static CONNECTION_SLOT: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+struct LiveConnectionGuard(u64);
+
+impl LiveConnectionGuard {
+    fn register(peer: String) -> Self {
+        let slot = NEXT_CONNECTION_SLOT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        CONNECTION_SLOT.with(|cell| cell.set(slot));
+        if let Ok(mut rows) = LIVE_CONNECTIONS.lock() {
+            rows.push(LiveConnection {
+                slot,
+                peer,
+                request: String::new(),
+                number: 0,
+                agent: String::new(),
+            });
+        }
+        Self(slot)
+    }
+}
+
+impl Drop for LiveConnectionGuard {
+    fn drop(&mut self) {
+        if let Ok(mut rows) = LIVE_CONNECTIONS.lock() {
+            rows.retain(|row| row.slot != self.0);
+        }
+    }
+}
+
+/// Record the request a live connection is routing, as `_dispatch` does before it answers.
+fn note_live_request(request: &Request) {
+    let slot = CONNECTION_SLOT.with(|cell| cell.get());
+    let number = REQUEST_SERIAL.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+    // The client names itself with `X-Plex-Device-Name, X-Plex-Product` when it sends
+    // them and with its `User-Agent` when it does not -- measured on both references.
+    let named = ["x-plex-device-name", "x-plex-product"]
+        .iter()
+        .filter_map(|name| request.headers.get(*name).filter(|value| !value.is_empty()))
+        .cloned()
+        .collect::<Vec<_>>();
+    let agent = if named.is_empty() {
+        request.headers.get("user-agent").cloned().unwrap_or_default()
+    } else {
+        named.join(", ")
+    };
+    if let Ok(mut rows) = LIVE_CONNECTIONS.lock() {
+        if let Some(row) = rows.iter_mut().find(|row| row.slot == slot) {
+            row.request = format!("{} {}", request.method, request.target);
+            row.number = number;
+            row.agent = agent;
+        }
+    }
+}
+
+/// `/connections` -- plexsim's own live connections, in PMS's line grammar.
+fn connection_lines(owner: &str) -> String {
+    let Ok(rows) = LIVE_CONNECTIONS.lock() else {
+        return String::new();
+    };
+    let mut lines = Vec::new();
+    for (index, row) in rows.iter().enumerate() {
+        if row.request.is_empty() {
+            lines.push(format!("{} {} - Uninitialized", index + 1, row.peer));
+            continue;
+        }
+        let label = if owner.is_empty() {
+            String::new()
+        } else {
+            format!(" - Token ({owner})")
+        };
+        let agent = if row.agent.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", row.agent)
+        };
+        lines.push(format!(
+            "{} {} - Routing - {} #{:x}{label}{agent}",
+            index + 1,
+            row.peer,
+            row.request,
+            row.number
+        ));
+    }
+    if lines.is_empty() {
+        String::new()
+    } else {
+        lines.join("\n") + "\n"
+    }
 }
 
 fn handle_connection<S: Read + Write>(
@@ -18248,6 +18371,7 @@ fn handle_connection<S: Read + Write>(
             write_response(&mut stream, &response, true)?;
             continue;
         }
+        note_live_request(&request);
         let close_after_body = !request.body_complete;
         let invalid_absolute_target = if request.target.starts_with("http:") {
             if !request.target.starts_with("http://") {
@@ -18598,7 +18722,10 @@ fn maybe_compress(response: &mut Response, accept_encoding: Option<&String>) {
                 .is_some_and(|encoding| encoding == "gzip")
         })
     });
-    if response.body.is_empty() || !compressible || !offered {
+    // A body path -- a bundled asset, artwork, a `/web` file -- names a range unit and
+    // is never compressed, measured on kids and zen.
+    let ranged = response.headers.iter().any(|(name, _)| name == "Accept-Ranges");
+    if response.body.is_empty() || !compressible || !offered || ranged {
         return;
     }
     let original = response.body.len();
@@ -18718,8 +18845,10 @@ fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option
         let Some((_, value)) = line.split_once(':') else {
             return Err("bad header".to_string());
         };
+        // Cycle 41: the value's length is measured after parsing, so the one optional
+        // separator space does not count against the 4096-byte bound.
         if name.len() > 1024
-            || value.len() > 4096
+            || value.strip_prefix(' ').unwrap_or(value).len() > 4096
             || value.bytes().any(|byte| byte == b'\t' || byte < 0x20)
         {
             return Err("header limit".to_string());
@@ -19541,7 +19670,10 @@ fn static_sidecar_response(catalog: &Path, name: &str, content_type: &str, head:
         status: 200,
         content_type: content_type.to_string(),
         body: if head { Vec::new() } else { body },
-        headers: Vec::new(),
+        headers: vec![
+            ("Cache-Control".to_string(), "no-cache".to_string()),
+            ("Accept-Ranges".to_string(), "bytes".to_string()),
+        ],
         close: false,
     }
 }
