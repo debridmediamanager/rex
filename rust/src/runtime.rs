@@ -33,6 +33,8 @@ mod framework;
 mod gates;
 mod listing;
 mod resume;
+mod search;
+mod spellfix;
 mod transcoder;
 mod wire;
 use artwork::owns_artwork;
@@ -342,6 +344,9 @@ pub struct Runtime {
     viewed_in_session: HashSet<String>,
     /// Uploaded artwork by its `upload://` key: the bytes and their content type.
     uploads: HashMap<String, (Vec<u8>, String)>,
+    /// The spellfix1 vocabularies search falls back on: a SNAPSHOT, built at load and
+    /// rebuilt only by Optimize Database (cycles 37-38), never per edit.
+    spelling: Option<spellfix::SearchIndex>,
     pub terminated_sessions: HashMap<String, String>,
     pub decided_sessions: HashSet<(String, String)>,
     pub web_root: Option<PathBuf>,
@@ -439,6 +444,7 @@ impl Runtime {
             hidden_continue: HashSet::new(),
             viewed_in_session: HashSet::new(),
             uploads: HashMap::new(),
+            spelling: None,
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
             web_root: options.web_root,
@@ -450,6 +456,7 @@ impl Runtime {
             events_dropped: 0,
         };
         runtime.load_state()?;
+        runtime.rebuild_spelling();
         Ok(runtime)
     }
 
@@ -4051,6 +4058,15 @@ impl Runtime {
         }
     }
 
+    /// Rebuild both spellfix vocabularies from the current rows (`rebuild_spelling`).
+    fn rebuild_spelling(&mut self) {
+        let static_tags = load_json_sidecar(&self.catalog_path, "spellfix_static_tags.json")
+            .and_then(|value| value.as_array().cloned())
+            .map(|values| values.iter().filter_map(|v| v.as_str().map(str::to_string)).collect::<Vec<_>>())
+            .unwrap_or_default();
+        self.spelling = Some(spellfix::SearchIndex::build(&self.catalog.items, &static_tags));
+    }
+
     pub fn route(&mut self, request: &Request) -> Response {
         if request.method == "PATCH" {
             // Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not
@@ -4787,9 +4803,23 @@ impl Runtime {
                 Response::error(400, "plexsim: bad request")
             }
             ("GET" | "HEAD", "/hubs") => self.route_hubs(&query),
-            ("GET" | "HEAD", "/hubs/search") => self.route_search(&query),
+            ("GET" | "HEAD", "/hubs/search") => {
+                // Cycle 54/55: a `sectionId` that parses as an int32 and names no
+                // section is a 400; anything else is ignored.
+                let wanted = query.get("sectionId").cloned().unwrap_or_default();
+                if int_param(&wanted, Some(32))
+                    && !wanted.starts_with('-')
+                    && self
+                        .section(&wanted.trim_start_matches('+').parse::<i64>().map(|n| n.to_string()).unwrap_or_default())
+                        .is_none()
+                {
+                    Response::error(400, "plexsim: bad request")
+                } else {
+                    self.hubs_search(&query)
+                }
+            }
             ("GET" | "HEAD", "/search") => self.route_legacy_search(&query),
-            ("GET" | "HEAD", "/library/search") => self.route_library_search(&query),
+            ("GET" | "HEAD", "/library/search") => self.flat_search(&query),
             _ => self.route_dynamic(request, &path, &query, &pairs),
         }
     }
@@ -9688,6 +9718,8 @@ impl Runtime {
         }
         if path == "/library/optimize" {
             return if request.method == "PUT" {
+                // Database optimization is the measured spelling-index rebuild point.
+                self.rebuild_spelling();
                 Response::empty(200)
             } else {
                 Response::error(404, "plexsim: not found")
