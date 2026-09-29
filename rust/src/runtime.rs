@@ -6,7 +6,7 @@
 //! and the route layer works on the same ordered `serde_json` values used by
 //! the phase-two serializers.  No Python process or fixture replay is involved.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::io::{self, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream, UdpSocket};
@@ -5614,68 +5614,161 @@ impl Runtime {
         self.library_all(query)
     }
 
+    /// The Dashboard's view-time keys as `(key, moment)` tests over a history row's
+    /// `viewedAt` (the oracle's `_history_time_filter` with `date=True`).  Cycle 54,
+    /// measured on kids and zen with the client's own encoding: `viewedAt>` is `>=`,
+    /// `viewedAt<` is `<=` and a bare `viewedAt` is `==`; on Top Played and
+    /// `users/top` a value parses like a filter date and a bad one is a 500.
+    fn history_date_tests(query: &HashMap<String, String>) -> Result<Vec<(&'static str, f64)>, u16> {
+        let mut tests = Vec::new();
+        for key in ["viewedAt>", "viewedAt<", "viewedAt"] {
+            if let Some(value) = query.get(key) {
+                let moment = crate::filters::as_epoch(value, None).map_err(|_| 500_u16)?;
+                tests.push((key, moment));
+            }
+        }
+        Ok(tests)
+    }
+
+    fn history_passes(tests: &[(&'static str, f64)], viewed: i64) -> bool {
+        let viewed = viewed as f64;
+        tests.iter().all(|(key, moment)| match *key {
+            "viewedAt>" => viewed >= *moment,
+            "viewedAt<" => viewed <= *moment,
+            _ => viewed == *moment,
+        })
+    }
+
     fn route_top(&self, query: &HashMap<String, String>) -> Response {
-        let Some(type_number) = query
-            .get("type")
-            .and_then(|value| value.parse::<i64>().ok())
-        else {
-            return Response::error(400, "plexsim: bad request");
-        };
-        if !matches!(type_number, 1 | 2) {
+        // Cycle 27, swept over 17 values on kids and zen: any type NUMBER is
+        // answered, and only a value that does not PARSE is a 400.  A type this
+        // server holds no rows of is an empty 200.
+        let raw = query.get("type").map(String::as_str).unwrap_or("");
+        let digits = raw.trim_start_matches(['+', '-']);
+        if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
             return Response::error(400, "plexsim: bad request");
         }
-        let wanted = if type_number == 2 { "show" } else { "movie" };
-        let mut rows = self
-            .catalog
-            .items
-            .iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some(wanted))
-            .map(|row| {
-                let key = key_of(row).unwrap_or_default();
-                let matching = self.history.iter().filter(|history| {
-                    string_value(history.get("ratingKey").unwrap_or(&Value::Null)) == key
-                });
-                let mut plays = 0i64;
-                let mut latest = 0i64;
-                for history in matching {
-                    plays += 1;
-                    latest =
-                        latest.max(history.get("viewedAt").and_then(Value::as_i64).unwrap_or(0));
+        let wanted = match raw.trim_start_matches('+').parse::<i64>().unwrap_or(0) {
+            1 => Some("movie"),
+            2 => Some("show"),
+            3 => Some("season"),
+            4 => Some("episode"),
+            _ => None,
+        };
+        // Cycle 54, measured on kids and zen: `accountID`, `librarySectionID` and the
+        // viewedAt keys filter the HISTORY rows before the plays are counted.  A bad
+        // value in any of them is a 500.
+        let tests = match Self::history_date_tests(query) {
+            Ok(tests) => tests,
+            Err(status) => return Response::error(status, "plexsim: internal error"),
+        };
+        let mut ids: HashMap<&str, f64> = HashMap::new();
+        for name in ["accountID", "librarySectionID"] {
+            if let Some(value) = query.get(name) {
+                // Cycle 55: the id is read as a NUMBER -- `+1` is section 1 and `1.5`
+                // a 200 that matches nothing -- and only a non-number is the 500.
+                let body = value.strip_prefix(['+', '-']).unwrap_or(value);
+                let (whole, fraction) = body.split_once('.').unwrap_or((body, ""));
+                let numeric = !body.is_empty()
+                    && body != "."
+                    && whole.bytes().all(|b| b.is_ascii_digit())
+                    && fraction.bytes().all(|b| b.is_ascii_digit())
+                    && body.matches('.').count() <= 1;
+                if !numeric {
+                    return Response::error(500, "plexsim: internal error");
                 }
-                let mut projected = self.grid_row(row, false, false, false);
-                if let Some(object) = projected.as_object_mut() {
-                    object.insert("globalViewCount".to_string(), json!(plays));
-                    object.insert(
-                        "userCount".to_string(),
-                        json!(if plays > 0 { 1 } else { 0 }),
-                    );
+                ids.insert(name, value.trim_start_matches('+').parse::<f64>().unwrap_or(0.0));
+            }
+        }
+        let mut plays: HashMap<i64, i64> = HashMap::new();
+        let mut viewers: HashMap<i64, BTreeSet<i64>> = HashMap::new();
+        let mut seen_at: HashMap<i64, i64> = HashMap::new();
+        if let Some(wanted) = wanted {
+            for entry in &self.history {
+                let key = string_value(entry.get("ratingKey").unwrap_or(&Value::Null));
+                if key.is_empty() || !key.bytes().all(|b| b.is_ascii_digit()) {
+                    continue;
+                }
+                let Some(row) = self.catalog.get(&key) else { continue };
+                let mut counted = key.clone();
+                if row.get("type").and_then(Value::as_str) != Some(wanted) {
+                    // Cycle 58, measured on zen: a play is counted on the episode's
+                    // SEASON at `type=3` and its SHOW at `type=2`.
+                    let parent = match wanted {
+                        "show" => row.get("grandparentRatingKey").map(string_value),
+                        "season" => row
+                            .get("parentRatingKey")
+                            .or_else(|| row.get("_parentRatingKey"))
+                            .map(string_value),
+                        _ => None,
+                    }
+                    .unwrap_or_default();
+                    if row.get("type").and_then(Value::as_str) != Some("episode")
+                        || parent.is_empty()
+                        || !parent.bytes().all(|b| b.is_ascii_digit())
+                        || self.catalog.get(&parent).is_none()
+                    {
+                        continue;
+                    }
+                    counted = parent;
+                }
+                let viewed = entry.get("viewedAt").and_then(Value::as_i64).unwrap_or(0);
+                if !Self::history_passes(&tests, viewed) {
+                    continue;
+                }
+                let account = entry.get("accountID").and_then(Value::as_i64).unwrap_or(1);
+                if ids.get("accountID").is_some_and(|wanted| account as f64 != *wanted) {
+                    continue;
+                }
+                let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                    .parse::<f64>()
+                    .unwrap_or(0.0);
+                if ids.get("librarySectionID").is_some_and(|wanted| section != *wanted) {
+                    continue;
+                }
+                let number = counted.parse::<i64>().unwrap_or(0);
+                *plays.entry(number).or_default() += 1;
+                viewers.entry(number).or_default().insert(account);
+                let latest = seen_at.entry(number).or_default();
+                *latest = (*latest).max(viewed);
+            }
+        }
+        // Cycle 27, measured on zen's 73 real history rows: a tie in the play count
+        // breaks on the MOST RECENT view, descending, and only then on the ratingKey.
+        let mut ordered = plays.keys().copied().collect::<Vec<_>>();
+        ordered.sort_by_key(|key| (-plays[key], -seen_at.get(key).copied().unwrap_or(0), *key));
+        let limit = query
+            .get("limit")
+            .filter(|value| !value.is_empty())
+            .and_then(|value| value.trim_start_matches('+').parse::<i64>().ok())
+            .map(|value| if value == 0 { 12 } else { value })
+            .unwrap_or(12);
+        let take = if limit < 0 {
+            ordered.len().saturating_sub(limit.unsigned_abs() as usize)
+        } else {
+            limit as usize
+        };
+        let rows = ordered
+            .into_iter()
+            .take(take)
+            .filter_map(|key| {
+                let row = self.catalog.get(&key.to_string())?;
+                let mut shown = self.listing_row(row);
+                if let Some(object) = shown.as_object_mut() {
+                    object.insert("globalViewCount".to_string(), json!(plays[&key]));
+                    object.insert("userCount".to_string(), json!(viewers[&key].len()));
                     object.insert(
                         "User".to_string(),
-                        if plays > 0 {
-                            json!([{"id":1,"title":self.owner_username,"viewCount":plays}])
-                        } else {
-                            json!([])
-                        },
+                        Value::Array(viewers[&key].iter().map(|id| json!({"id": id})).collect()),
                     );
                 }
-                (plays, latest, key, projected)
+                Some(shown)
             })
-            .collect::<Vec<_>>();
-        rows.sort_by(|left, right| {
-            right
-                .0
-                .cmp(&left.0)
-                .then_with(|| right.1.cmp(&left.1))
-                .then_with(|| left.2.cmp(&right.2))
-        });
-        let values = rows
-            .into_iter()
-            .map(|(_, _, _, row)| row)
             .collect::<Vec<_>>();
         Response::json(
             200,
             self.container(
-                Map::from_iter([("Metadata".to_string(), Value::Array(values))]),
+                Map::from_iter([("Metadata".to_string(), Value::Array(rows))]),
                 true,
             ),
         )
@@ -14172,26 +14265,46 @@ impl Runtime {
                 Response::json(200, self.container(fields, false))
             }
             "users" if tail.get(1) == Some(&"top") => {
+                // "Top users" of an item: one Account row per account that has
+                // completed it.  Measured: rows only for an item with views, and a
+                // SEASON is a 500 on the reference.
                 if row.get("type").and_then(Value::as_str) == Some("season") {
                     return Response::error(500, "plexsim: top users unavailable");
                 }
-                let count = self
+                // Cycle 54: the viewedAt keys filter the history counted here too (a
+                // bad value is a 500); `accountID` does not.
+                let tests = match Self::history_date_tests(query) {
+                    Ok(tests) => tests,
+                    Err(status) => return Response::error(status, "plexsim: internal error"),
+                };
+                let views = self
                     .history
                     .iter()
                     .filter(|entry| {
                         string_value(entry.get("ratingKey").unwrap_or(&Value::Null)) == key
+                            && Self::history_passes(
+                                &tests,
+                                entry.get("viewedAt").and_then(Value::as_i64).unwrap_or(0),
+                            )
                     })
                     .count();
-                Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([(
-                            "Account".to_string(),
-                            json!([{"id":1,"title":self.owner_username,"globalViewCount":count}]),
-                        )]),
-                        false,
-                    ),
-                )
+                let accounts = if views > 0 {
+                    json!([{"globalViewCount": views, "id": 1}])
+                } else {
+                    json!([])
+                };
+                // The oracle's `tag_container`: identifier and the media-tag pair, no
+                // `allowSync`.
+                let mut fields = Map::from_iter([
+                    ("size".to_string(), json!(views.min(1))),
+                    ("identifier".to_string(), json!("com.plexapp.plugins.library")),
+                    ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
+                    ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
+                ]);
+                if views > 0 {
+                    fields.insert("Account".to_string(), accounts);
+                }
+                Response::json(200, self.container(fields, false))
             }
             "children" => {
                 if row.get("type").and_then(Value::as_str) == Some("movie") {
