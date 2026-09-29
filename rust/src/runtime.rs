@@ -14463,7 +14463,8 @@ impl Runtime {
         let rows = rows
             .iter()
             .map(|row| {
-                let mut projected = self.section_listing_row(row);
+                // Measured: a LISTING carries `Guid` only under `includeGuids=1`.
+                let mut projected = guid_gate(self.section_listing_row(row), query);
                 if with_storage {
                     let leaves = if row.get("Media").is_some() {
                         vec![row.clone()]
