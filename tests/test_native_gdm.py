@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""Exercise the native Rust GDM responder over its real UDP sockets.
+
+The historical ``tests/test_gdm.py`` imports the Python helper directly.  This
+driver keeps that measured oracle separate and verifies that the Rust server
+answers the same trigger grammar without importing or starting Python server
+code.
+"""
+
+import json
+import os
+import socket
+import subprocess
+import time
+import urllib.request
+
+from server_command import server_command
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+QUERY = b"M-SEARCH * "
+
+
+def wait_http(port):
+    for _ in range(80):
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:%d/identity" % port, timeout=1):
+                return True
+        except Exception:
+            time.sleep(0.1)
+    return False
+
+
+def datagram(port, payload):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(1.0)
+    try:
+        sock.sendto(payload, ("127.0.0.1", port))
+        return sock.recvfrom(4096)
+    except socket.timeout:
+        return None, None
+    finally:
+        sock.close()
+
+
+def free_udp_ports():
+    sockets = []
+    try:
+        for _ in range(2):
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.bind(("127.0.0.1", 0))
+            sockets.append(sock)
+        return tuple(sock.getsockname()[1] for sock in sockets)
+    finally:
+        for sock in sockets:
+            sock.close()
+
+
+def main():
+    catalog = os.path.join(HERE, "catalog_ui.json")
+    catalog_document = json.load(open(catalog, encoding="utf-8"))
+    machine = catalog_document["machineIdentifier"]
+    friendly = catalog_document.get("friendlyName", "plexsim")
+    gdm_ports = free_udp_ports()
+    tcp = 32597
+    proc = subprocess.Popen(
+        server_command("--port", tcp, "--catalog", catalog, "--gdm", "auto",
+                        "--assert-claimed", root=ROOT),
+        cwd=ROOT,
+        env=dict(os.environ, RD_TOKEN="dummy",
+                 PLEXSIM_GDM_PORTS=",".join(str(port) for port in gdm_ports)),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    checks = []
+    try:
+        if not wait_http(tcp):
+            print("FAIL native server did not start")
+            return 1
+        expected_prefix = (
+            b"HTTP/1.0 200 OK\r\n"
+            b"Content-Type: plex/media-server\r\n"
+            b"Name: " + friendly.encode() + b"\r\n"
+            b"Port: %d\r\n" % tcp
+            + b"Resource-Identifier: " + machine.encode() + b"\r\n"
+        )
+        expected_version = b"Version: 1.42.2.10156-plexsim\r\n"
+        for port in gdm_ports:
+            for label, payload, answer in (
+                ("proper query", b"M-SEARCH * HTTP/1.1\r\n", True),
+                ("empty datagram", b"", True),
+                ("proper prefix", QUERY[:1], True),
+                ("wrong eleventh byte", b"M-SEARCH *X", False),
+                ("lower case", b"m-search * HTTP/1.1\r\n", False),
+            ):
+                body, address = datagram(port, payload)
+                ok = (body is not None) == answer
+                if answer:
+                    prefix_ok = body is not None and body.startswith(expected_prefix)
+                    prefix_ok = prefix_ok and expected_version in body
+                    suffix_ok = body is not None and body.endswith(b"\r\n\r\n")
+                    source_ok = address is not None and address[1] == port
+                    ok = ok and prefix_ok and suffix_ok and source_ok
+                checks.append(ok)
+                print("%s udp/%d %s" % ("PASS" if ok else "FAIL", port, label))
+
+        request = urllib.request.Request(
+            "http://127.0.0.1:%d/servers" % tcp,
+            headers={"Accept": "application/json"},
+        )
+        with urllib.request.urlopen(request, timeout=3) as response:
+            body = json.load(response)
+        rows = (body.get("MediaContainer") or {}).get("Server") or []
+        ok = any(row.get("machineIdentifier") == machine for row in rows)
+        checks.append(ok)
+        print("%s /servers includes native self row" % ("PASS" if ok else "FAIL"))
+        print("\n%d/%d native GDM checks passed" % (sum(checks), len(checks)))
+        return 0 if all(checks) else 1
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

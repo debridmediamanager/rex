@@ -1,13 +1,71 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::path::PathBuf;
 use std::process::ExitCode;
 
-use plexsim::{catalog, decision, filters, gate, hierarchy, mediainfo, metadata, xmlout};
+use plexsim::{catalog, decision, filters, gate, hierarchy, mediainfo, metadata, runtime, xmlout};
 use serde_json::json;
 
 fn usage() -> &'static str {
-    "Usage: plexsim <decision|mediainfo|normalize-media|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
+    "Usage: plexsim [server options] | plexsim <decision|mediainfo|normalize-media|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
+}
+
+fn parse_server_args(args: &[String]) -> Result<runtime::RuntimeOptions, String> {
+    let mut options = runtime::RuntimeOptions::default();
+    let mut index = 0;
+    while index < args.len() {
+        let option = args[index].as_str();
+        let value = |index: &mut usize, name: &str| -> Result<String, String> {
+            let value = args
+                .get(*index + 1)
+                .ok_or_else(|| format!("{name} needs a value"))?;
+            if value.starts_with("--") {
+                return Err(format!("{name} needs a value"));
+            }
+            *index += 2;
+            Ok(value.clone())
+        };
+        match option {
+            "--catalog" => options.catalog = PathBuf::from(value(&mut index, option)?),
+            "--port" => {
+                options.port = value(&mut index, option)?
+                    .parse()
+                    .map_err(|_| "bad --port".to_string())?
+            }
+            "--host" => options.host = value(&mut index, option)?,
+            "--part-mode" => options.part_mode = value(&mut index, option)?,
+            "--public-url" => options.public_url = Some(value(&mut index, option)?),
+            "--token" => options.token = Some(value(&mut index, option)?),
+            "--assert-claimed" => {
+                options.assert_claimed = true;
+                index += 1;
+            }
+            "--web-root" => options.web_root = Some(PathBuf::from(value(&mut index, option)?)),
+            "--owner-email" => options.owner_email = value(&mut index, option)?,
+            "--owner-username" => options.owner_username = value(&mut index, option)?,
+            "--tls-cert" => options.tls_cert = Some(PathBuf::from(value(&mut index, option)?)),
+            "--tls-key" => options.tls_key = Some(PathBuf::from(value(&mut index, option)?)),
+            "--gdm" => options.gdm = value(&mut index, option)?,
+            "--state" => options.state = Some(PathBuf::from(value(&mut index, option)?)),
+            "--announce-url" => options.announce_url = Some(value(&mut index, option)?),
+            "--device-id" => options.device_id = Some(value(&mut index, option)?),
+            "--verbose" | "--no-gdm" | "--help" => {
+                index += 1;
+            }
+            "--heartbeat-interval" | "--account-state-interval" | "--plex-direct-host" => {
+                let _ = value(&mut index, option)?;
+            }
+            _ if option.starts_with('-') => return Err(format!("unknown option {option}")),
+            _ => return Err(format!("unexpected argument {option}")),
+        }
+    }
+    Ok(options)
+}
+
+fn run_server(args: &[String]) -> Result<(), String> {
+    let options = parse_server_args(args)?;
+    runtime::serve(options)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -626,6 +684,12 @@ fn main() -> ExitCode {
     let command = args.remove(0);
     let result = if command == "decision" {
         run_decision(&args)
+    } else if command == "serve" {
+        run_server(&args)
+    } else if command.starts_with('-') {
+        let mut server_args = vec![command];
+        server_args.extend(args);
+        run_server(&server_args)
     } else {
         run_core(&command, &args)
     };

@@ -63,6 +63,25 @@ cp run.sh.example run.sh                 # fill in RD_TOKEN
 Then open `http://127.0.0.1:32400/web/index.html` if you are serving a web
 client bundle with `--web-root`, or point any Plex client at the host.
 
+### Native Rust server
+
+The migration server is built from the `rust/` crate and reads the same
+catalog and measured sidecars as the Python server. It has no Python runtime
+dependency:
+
+```bash
+cargo build --manifest-path rust/Cargo.toml --bin plexsim
+rust/target/debug/plexsim --catalog tests/catalog_ui.json --port 32500 \
+  --host 127.0.0.1 --assert-claimed
+```
+
+Use `PLEXSIM_SERVER` when a black-box test starts its own server, for example
+`PLEXSIM_SERVER=$PWD/rust/target/debug/plexsim`. The native binary accepts the
+same server flags used by the test launcher (`--catalog`, `--port`, `--host`,
+`--token`, `--state`, `--web-root`, `--tls-cert`, `--tls-key`, and `--gdm`).
+The default test command remains the Python server when `PLEXSIM_SERVER` is
+unset.
+
 ## Tests
 
 ```bash
