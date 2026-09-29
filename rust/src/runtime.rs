@@ -25,6 +25,7 @@ use sha1::{Digest, Sha1};
 
 use crate::{catalog::Catalog, decision, xmlout};
 
+mod agents;
 mod edit;
 mod frames;
 
@@ -10088,44 +10089,19 @@ impl Runtime {
                 // accepts that legacy spelling as long as the index is 1.
                 || (segments.len() == 4 && segments[3] == "1"))
         {
-            if request.method == "PUT" && segments[2].starts_with("com.plexapp.agents") {
-                let Some(order) = query.get("order") else {
-                    return Response::plain(500, b"takes exactly 4 arguments (3 given)".to_vec());
+            if matches!(request.method.as_str(), "GET" | "HEAD" | "PUT") {
+                let media_type = if segments.len() == 5 {
+                    segments[4]
+                } else {
+                    segments[3]
                 };
-                if order.is_empty() {
-                    return Response::plain(
-                        500,
-                        b"'NoneType' object has no attribute 'split'".to_vec(),
-                    );
+                let identifier = segments[2].to_string();
+                let media_type = media_type.to_string();
+                if let Some(response) =
+                    self.legacy_agent_config(&request.method, &identifier, &media_type, query)
+                {
+                    return response;
                 }
-                let names = order.split(',').collect::<Vec<_>>();
-                let mut body = String::from(
-                    "<?xml version='1.0' encoding='utf-8'?>\n<combine class=\"Movie\">",
-                );
-                for (index, name) in names.iter().enumerate() {
-                    body.push_str(&format!(
-                        "<Agent enabled=\"{}\" hasPrefs=\"{}\" identifier=\"{}\"/>",
-                        if index < 2 { 1 } else { 0 },
-                        if name.contains("none") || name.contains("local") {
-                            0
-                        } else {
-                            1
-                        },
-                        name
-                    ));
-                }
-                body.push_str("</combine>\n");
-                self.prefs.insert(
-                    format!("_agentOrder:{}", segments[2]),
-                    Value::Array(names.iter().map(|name| json!(*name)).collect()),
-                );
-                return Response {
-                    status: 200,
-                    content_type: "application/xml".to_string(),
-                    body: body.into_bytes(),
-                    headers: Vec::new(),
-                    close: false,
-                };
             }
             if request.method != "GET" && request.method != "HEAD" {
                 return Response::error(404, "plexsim: not found");
@@ -10188,6 +10164,16 @@ impl Runtime {
             && segments.len() == 3
             && segments[2] == "contributors"
         {
+            let media_type = query.get("mediaType").cloned().unwrap_or_default();
+            let primary = query.get("primaryAgent").cloned().unwrap_or_default();
+            if !media_type.is_empty() && !primary.is_empty() {
+                // Cycle 19: with BOTH parameters a modern primary agent has no
+                // contributor chain and says so with an empty container.  Cycle 58: a
+                // LEGACY one has one, which is what the Agents page lists under it.
+                if let Some(response) = self.legacy_agent_contributors(&media_type, &primary) {
+                    return response;
+                }
+            }
             if query.get("primaryAgent").is_some() {
                 return Response {
                     status: 200,
