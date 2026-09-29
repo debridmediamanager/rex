@@ -35,6 +35,7 @@ mod gates;
 mod listing;
 mod resume;
 mod structural;
+mod item_hubs;
 mod transcoder;
 mod wire;
 use artwork::owns_artwork;
@@ -5808,7 +5809,8 @@ impl Runtime {
             .take(take)
             .filter_map(|key| {
                 let row = self.catalog.get(&key.to_string())?;
-                let mut shown = self.listing_row(row);
+                // The oracle's `_listing_row` is the FULL detail projection.
+                let mut shown = self.detail_row(row);
                 if let Some(object) = shown.as_object_mut() {
                     object.insert("globalViewCount".to_string(), json!(plays[&key]));
                     object.insert("userCount".to_string(), json!(viewers[&key].len()));
@@ -9018,35 +9020,6 @@ impl Runtime {
         )
     }
 
-    fn related_rows(&self, key: &str, row: &Value) -> Vec<Value> {
-        let names = row
-            .get("Genre")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(|tag| tag.get("tag").and_then(Value::as_str))
-            .collect::<HashSet<_>>();
-        self.catalog
-            .items
-            .iter()
-            .filter(|candidate| {
-                key_of(candidate).as_deref() != Some(key)
-                    && candidate.get("type") == row.get("type")
-                    && candidate
-                        .get("Genre")
-                        .and_then(Value::as_array)
-                        .is_some_and(|tags| {
-                            tags.iter().any(|tag| {
-                                tag.get("tag")
-                                    .and_then(Value::as_str)
-                                    .is_some_and(|name| names.contains(name))
-                            })
-                        })
-            })
-            .map(|candidate| self.detail_row(candidate))
-            .collect()
-    }
-
     fn route_library_search(&self, query: &HashMap<String, String>) -> Response {
         let Some(raw) = query.get("query") else {
             return Response::error(400, "plexsim: bad request");
@@ -10844,76 +10817,9 @@ impl Runtime {
         }
         if segments.first() == Some(&"hubs")
             && segments.get(1) == Some(&"metadata")
-            && segments.len() >= 4
+            && segments.len() == 4
         {
-            let key = segments[2];
-            let Some(row) = self.catalog.get(key) else {
-                return Response::error(404, "plexsim: not found");
-            };
-            let leaf = segments[3];
-            if leaf != "related" && leaf != "postplay" {
-                return Response::error(404, "plexsim: not found");
-            }
-            let names = row
-                .get("Genre")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-                .filter_map(|tag| tag.get("tag").and_then(Value::as_str))
-                .collect::<HashSet<_>>();
-            let related = if leaf == "related" {
-                self.catalog
-                    .items
-                    .iter()
-                    .filter(|candidate| {
-                        key_of(candidate).as_deref() != Some(key)
-                            && candidate.get("type") == row.get("type")
-                            && candidate
-                                .get("Genre")
-                                .and_then(Value::as_array)
-                                .is_some_and(|tags| {
-                                    tags.iter().any(|tag| {
-                                        tag.get("tag")
-                                            .and_then(Value::as_str)
-                                            .is_some_and(|name| names.contains(name))
-                                    })
-                                })
-                    })
-                    .map(|candidate| self.detail_row(candidate))
-                    .collect::<Vec<_>>()
-            } else {
-                Vec::new()
-            };
-            let hub = json!({"hubIdentifier":if leaf == "related" {"movie.similar"} else {"postplay"},"title":if leaf == "related" {"Related Movies"} else {"More Like This"},"key":format!("/library/metadata/{key}/similar"),"context":if leaf == "related" {"hub.movie.similar"} else {"hub.postplay"},"style":"shelf","type":"movie","size":related.len(),"more":false,"Metadata":related});
-            let mut fields = Map::from_iter([
-                ("Hub".to_string(), Value::Array(vec![hub])),
-                ("allowSync".to_string(), json!(leaf == "related")),
-            ]);
-            if leaf == "related" {
-                fields.insert(
-                    "librarySectionID".to_string(),
-                    row.get("librarySectionID").cloned().unwrap_or(Value::Null),
-                );
-                fields.insert(
-                    "librarySectionTitle".to_string(),
-                    self.section(&string_value(
-                        row.get("librarySectionID").unwrap_or(&Value::Null),
-                    ))
-                    .and_then(|section| section.get("title"))
-                    .cloned()
-                    .unwrap_or(Value::Null),
-                );
-                fields.insert(
-                    "librarySectionUUID".to_string(),
-                    self.section(&string_value(
-                        row.get("librarySectionID").unwrap_or(&Value::Null),
-                    ))
-                    .and_then(|section| section.get("uuid"))
-                    .cloned()
-                    .unwrap_or(Value::Null),
-                );
-            }
-            return Response::json(200, self.container(fields, false));
+            return self.route_item_hubs(segments[2], segments[3], query);
         }
         if path.starts_with("/hubs/sections/") && path.ends_with("/continueWatching/items") {
             let section_key = path
@@ -14197,45 +14103,32 @@ impl Runtime {
                     .get("includeRelated")
                     .is_some_and(|value| is_true_option(value))
                 {
-                    let names = row
-                        .get("Genre")
-                        .and_then(Value::as_array)
+                    // Measured: the item's related hubs as `{"Hub": [...]}`, and an
+                    // empty OBJECT for an item with none.  Cycle 15: the INLINE block
+                    // caps at FIVE rows per hub and says `more`; `includeRelatedCount=N`
+                    // sets that cap, and cycle 22: `=0` EMPTIES the hub.
+                    let cap = query
+                        .get("includeRelatedCount")
+                        .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
+                        .and_then(|value| value.parse::<usize>().ok())
+                        .unwrap_or(5);
+                    let trimmed = self
+                        .related_hubs(row, query, true)
                         .into_iter()
-                        .flatten()
-                        .filter_map(|tag| tag.get("tag").and_then(Value::as_str))
-                        .collect::<HashSet<_>>();
-                    let related = self
-                        .catalog
-                        .items
-                        .iter()
-                        .filter(|candidate| {
-                            key_of(candidate).as_deref() != Some(key)
-                                && candidate.get("type") == row.get("type")
-                                && candidate
-                                    .get("Genre")
-                                    .and_then(Value::as_array)
-                                    .is_some_and(|tags| {
-                                        tags.iter().any(|tag| {
-                                            tag.get("tag")
-                                                .and_then(Value::as_str)
-                                                .is_some_and(|name| names.contains(name))
-                                        })
-                                    })
+                        .map(|mut hub| {
+                            let rows = hub.get("Metadata").and_then(Value::as_array).cloned().unwrap_or_default();
+                            let more = rows.len() > cap || hub.get("more").and_then(Value::as_bool) == Some(true);
+                            let kept = rows.into_iter().take(cap).collect::<Vec<_>>();
+                            hub["size"] = json!(kept.len());
+                            hub["more"] = json!(more);
+                            hub["Metadata"] = Value::Array(kept);
+                            hub
                         })
-                        .map(|candidate| self.detail_row(candidate))
                         .collect::<Vec<_>>();
-                    let hub = json!({
-                        "hubIdentifier": "movie.similar",
-                        "title": "Related Movies",
-                        "key": format!("/library/metadata/{key}/similar"),
-                        "context": "hub.movie.similar",
-                        "style": "shelf",
-                        "type": "movie",
-                        "size": related.len(),
-                        "more": false,
-                        "Metadata": related,
-                    });
-                    object.insert("Related".to_string(), json!({"Hub":[hub]}));
+                    object.insert(
+                        "Related".to_string(),
+                        if trimmed.is_empty() { json!({}) } else { json!({"Hub": trimmed}) },
+                    );
                 }
             }
             let mut container = self.container(
@@ -14666,56 +14559,54 @@ impl Runtime {
                 )
             }
             "related" => {
-                let rows = self.related_rows(key, row);
-                let hub = json!({
-                    "hubIdentifier":"movie.similar",
-                    "title":"Related Movies",
-                    "key":format!("/library/metadata/{key}/similar"),
-                    "context":"hub.movie.similar",
-                    "style":"shelf",
-                    "type":"movie",
-                    "size":rows.len(),
-                    "more":false,
-                    "Metadata":rows
-                });
+                // NOT /hubs/metadata/{id}/related: this one carries the SAME hub plus
+                // the media-tag pair the hubs form drops, built by hand with
+                // `allowSync: true` said explicitly.
+                let hubs = self.related_hubs(row, query, true);
                 let section = self
                     .section(&string_value(
                         row.get("librarySectionID").unwrap_or(&Value::Null),
                     ))
                     .cloned()
                     .unwrap_or_default();
-                Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([
-                            ("allowSync".to_string(), json!(true)),
-                            (
-                                "librarySectionID".to_string(),
-                                row.get("librarySectionID").cloned().unwrap_or(Value::Null),
-                            ),
-                            (
-                                "librarySectionTitle".to_string(),
-                                section.get("title").cloned().unwrap_or(Value::Null),
-                            ),
-                            (
-                                "librarySectionUUID".to_string(),
-                                section.get("uuid").cloned().unwrap_or(Value::Null),
-                            ),
-                            ("Hub".to_string(), Value::Array(vec![hub])),
-                        ]),
-                        false,
-                    ),
-                )
+                let mut fields = Map::new();
+                fields.insert("size".to_string(), json!(hubs.len()));
+                fields.insert("Hub".to_string(), Value::Array(hubs));
+                fields.insert("allowSync".to_string(), json!(true));
+                fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+                for (name, value) in [
+                    ("librarySectionID", row.get("librarySectionID").cloned()),
+                    ("librarySectionTitle", section.get("title").cloned()),
+                    ("librarySectionUUID", section.get("uuid").cloned()),
+                ] {
+                    if let Some(value) = value.filter(|value| !value.is_null()) {
+                        fields.insert(name.to_string(), value);
+                    }
+                }
+                fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+                fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
+                Response::json(200, self.container(fields, false))
             }
             "similar" => {
-                let rows = self.related_rows(key, row);
-                Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([("Metadata".to_string(), Value::Array(rows))]),
-                        true,
-                    ),
-                )
+                // Measured: a real PMS 404s this for a season or an episode; for a
+                // movie or a show it is a tag container of the Related rows.
+                if matches!(row.get("type").and_then(Value::as_str), Some("season" | "episode")) {
+                    return Response::error(404, "plexsim: not found");
+                }
+                let rows = self
+                    .similar_rows(row)
+                    .iter()
+                    .map(|row| self.detail_row(row))
+                    .collect::<Vec<_>>();
+                let mut fields = Map::new();
+                fields.insert("size".to_string(), json!(rows.len()));
+                fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+                fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+                fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
+                if !rows.is_empty() {
+                    fields.insert("Metadata".to_string(), Value::Array(rows));
+                }
+                Response::json(200, self.container(fields, false))
             }
             "extras" => {
                 if tail.len() > 1 && tail[1] != "all" {
