@@ -712,3 +712,240 @@ impl Runtime {
         )
     }
 }
+
+/// `COMMON_FIELDS`: the fields a Common compares, in the fixed `mixedFields` order.
+const COMMON_FIELDS: [&str; 12] = [
+    "title", "ratingKey", "parentRatingKey", "titleSort", "tagline", "index", "summary", "year",
+    "studio", "originallyAvailableAt", "contentRating", "userRating",
+];
+
+impl Runtime {
+    /// The secondary container (`secondary_container`): the axes', filters' and Common's.
+    pub(super) fn secondary_container_fields(&self, section: &Value, title2: &str) -> Map<String, Value> {
+        let is_show = section.get("type").and_then(Value::as_str) == Some("show");
+        let mut body = Map::new();
+        body.insert("allowSync".to_string(), json!(false));
+        body.insert(
+            "art".to_string(),
+            json!(if is_show { "/:/resources/show-fanart.jpg" } else { "/:/resources/movie-fanart.jpg" }),
+        );
+        body.insert("content".to_string(), json!("secondary"));
+        body.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        body.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+        body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
+        body.insert(
+            "thumb".to_string(),
+            json!(if is_show { "/:/resources/show.png" } else { "/:/resources/movie.png" }),
+        );
+        body.insert("title1".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+        body.insert("viewGroup".to_string(), json!("secondary"));
+        body.insert("viewMode".to_string(), json!(65592));
+        if is_show {
+            body.insert("nocache".to_string(), json!(true));
+        }
+        body.insert("title2".to_string(), json!(title2));
+        body
+    }
+
+    /// `GET /library/sections/{id}/common` (`common_fields`): what the Edit dialog reads --
+    /// the fields the selected rows SHARE, the differing ones named in `mixedFields`; the
+    /// id list and the select-all set both run the listing's filters (cycle 54).
+    pub(super) fn route_section_common(
+        &self,
+        section_key: &str,
+        query: &HashMap<String, String>,
+        request: &Request,
+    ) -> Response {
+        if request.method != "GET" && request.method != "HEAD" {
+            return Response::error(404, "plexsim: not found");
+        }
+        let Some(section) = self.section(section_key).cloned() else {
+            return Response::error(404, "plexsim: not found");
+        };
+        let Some(asked) = query.get("type").filter(|value| !value.is_empty()) else {
+            return Response::error(400, "plexsim: bad request");
+        };
+        let wanted = match asked.as_str() {
+            "1" => Some("movie"),
+            "2" => Some("show"),
+            "3" => Some("season"),
+            "4" => Some("episode"),
+            _ => None,
+        };
+        let section_type = section.get("type").and_then(Value::as_str).unwrap_or("movie").to_string();
+        let (_, raw) = split_target(&request.target);
+        let pairs = parse_query(&raw)
+            .into_iter()
+            .filter(|(name, _)| {
+                !name.starts_with("X-Plex-")
+                    && !name.starts_with("include")
+                    && !name.starts_with("exclude")
+                    && name != "id"
+            })
+            .collect::<Vec<_>>();
+        let rows = if let Some(ids) = query.get("id") {
+            let keys = ids
+                .split(',')
+                .filter(|key| !key.trim().is_empty() && key.trim().bytes().all(|b| b.is_ascii_digit()))
+                .map(|key| key.trim().trim_start_matches('0').to_string())
+                .collect::<Vec<_>>();
+            keys.iter()
+                .filter_map(|key| self.catalog.get(key).cloned())
+                .filter(|row| row.get("type").and_then(Value::as_str) == wanted)
+                .collect::<Vec<_>>()
+        } else {
+            let typed = asked.parse::<i64>().ok();
+            self.choose_rows(Some(section_key), typed)
+                .into_iter()
+                .filter(|row| row.get("type").and_then(Value::as_str) == wanted)
+                .collect::<Vec<_>>()
+        };
+        let rows = match self.filter_rows(rows, &pairs, &section_type) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad request"),
+        };
+        let value = |row: &Value, field: &str| -> Value {
+            if field == "titleSort" {
+                return row.get("titleSort").or_else(|| row.get("title")).cloned().unwrap_or(Value::Null);
+            }
+            if field == "index" && row.get("type").and_then(Value::as_str) == Some("movie") {
+                return row.get("index").cloned().unwrap_or_else(|| json!(1));
+            }
+            row.get(field).cloned().unwrap_or(Value::Null)
+        };
+        let fields = COMMON_FIELDS
+            .iter()
+            .filter(|field| !(wanted == Some("season") && **field == "title"))
+            .copied()
+            .collect::<Vec<_>>();
+        let mut common = Map::new();
+        common.insert("mixedFields".to_string(), json!(""));
+        let mut mixed = Vec::new();
+        for field in &fields {
+            let distinct = rows
+                .iter()
+                .map(|row| value(row, field).to_string())
+                .collect::<HashSet<_>>();
+            if distinct.len() > 1 {
+                mixed.push(*field);
+            } else if let Some(first) = rows.first() {
+                let shared = value(first, field);
+                if !shared.is_null() {
+                    common.insert(field.to_string(), shared);
+                }
+            }
+        }
+        if rows.len() == 1 {
+            common.insert(
+                "key".to_string(),
+                json!(format!("/library/metadata/{}/children", key_of(&rows[0]).unwrap_or_default())),
+            );
+        }
+        common.insert("type".to_string(), json!("common"));
+        common.insert("guid".to_string(), json!(""));
+        if mixed.contains(&"titleSort") || rows.is_empty() {
+            common.insert("titleSort".to_string(), json!(""));
+        }
+        if wanted == Some("episode") && !rows.is_empty() {
+            let shows = rows
+                .iter()
+                .map(|row| string_value(row.get("grandparentRatingKey").unwrap_or(&Value::Null)))
+                .collect::<HashSet<_>>();
+            if shows.len() == 1 {
+                common.insert(
+                    "grandparentRatingKey".to_string(),
+                    json!(string_value(rows[0].get("grandparentRatingKey").unwrap_or(&Value::Null))),
+                );
+                common.insert(
+                    "grandparentTitle".to_string(),
+                    rows[0].get("grandparentTitle").cloned().unwrap_or(Value::Null),
+                );
+            }
+            common.insert("parentTitle".to_string(), json!(""));
+        }
+        common.insert("mixedFields".to_string(), json!(mixed.join(",")));
+        if let Some(rating) = common.get("userRating").and_then(Value::as_f64) {
+            // Cycle 25: a Common's userRating is a STRING (`"8"`, not `8.0`).
+            let text = if rating.fract() == 0.0 {
+                format!("{}", rating as i64)
+            } else {
+                rating.to_string()
+            };
+            common.insert("userRating".to_string(), json!(text));
+        }
+        if rows.len() == 1 {
+            for key in ["Guid", "Rating", "Field"] {
+                if let Some(entry) = rows[0].get(key).filter(|value| value.as_array().is_some_and(|a| !a.is_empty())) {
+                    common.insert(key.to_string(), entry.clone());
+                }
+            }
+        } else if !rows.is_empty() {
+            let images = |row: &Value| {
+                row.get("Rating")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|rating| rating.get("image").map(string_value))
+                    .collect::<HashSet<_>>()
+            };
+            let mut shared = images(&rows[0]);
+            for row in &rows[1..] {
+                let other = images(row);
+                shared.retain(|image| other.contains(image));
+            }
+            let mut ratings = Vec::new();
+            for first in rows[0].get("Rating").and_then(Value::as_array).into_iter().flatten() {
+                let image = string_value(first.get("image").unwrap_or(&Value::Null));
+                if !shared.contains(&image) {
+                    continue;
+                }
+                let agree = rows.iter().all(|row| {
+                    row.get("Rating")
+                        .and_then(Value::as_array)
+                        .and_then(|list| {
+                            list.iter().find(|r| string_value(r.get("image").unwrap_or(&Value::Null)) == image)
+                        })
+                        == Some(first)
+                });
+                ratings.push(if agree { first.clone() } else { json!({}) });
+            }
+            if !ratings.is_empty() {
+                common.insert("Rating".to_string(), Value::Array(ratings));
+            }
+        }
+        for key in ["Genre", "Country", "Director", "Writer", "Producer", "Role", "Collection", "Label"] {
+            let names = |row: &Value| {
+                row.get(key)
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(|tag| string_value(tag.get("tag").or_else(|| tag.get("id")).unwrap_or(&Value::Null)))
+                    .collect::<HashSet<_>>()
+            };
+            let Some(first) = rows.first() else {
+                continue;
+            };
+            let mut shared = names(first);
+            for row in &rows[1..] {
+                let other = names(row);
+                shared.retain(|name| other.contains(name));
+            }
+            if !shared.is_empty() {
+                let tags = first
+                    .get(key)
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter(|tag| shared.contains(&string_value(tag.get("tag").or_else(|| tag.get("id")).unwrap_or(&Value::Null))))
+                    .cloned()
+                    .collect::<Vec<_>>();
+                common.insert(key.to_string(), Value::Array(tags));
+            }
+        }
+        common.insert("_element".to_string(), json!("Common"));
+        let mut body = self.secondary_container_fields(&section, "Common");
+        body.insert("size".to_string(), json!(1));
+        body.insert("Metadata".to_string(), json!([Value::Object(common)]));
+        Response::json(200, json!({"MediaContainer": body}))
+    }
+}

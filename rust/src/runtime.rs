@@ -1237,6 +1237,10 @@ impl Runtime {
         if !keep_guid {
             object.remove("Guid");
         }
+        // Cycle 19: a LIGHT row orders its children `Media Image UltraBlurColors Guid
+        // Genre ...` where a detail row puts Guid after its tags; only the builder knows
+        // which projection a row is, so it marks it (the writers drop the marker).
+        object.insert("_light".to_string(), json!(true));
         if !keep_section {
             for name in [
                 "librarySectionID",
@@ -13272,10 +13276,30 @@ impl Runtime {
                     if field == "decade" {
                         return Response::error(500, "plexsim: bad request");
                     }
+                    // Cycle 54: the suggestions come from the rows the listing's filters
+                    // leave -- `year=1` suggests nothing, `year=abc` is a 500.
+                    let filter_pairs = pairs
+                        .iter()
+                        .filter(|(name, _)| {
+                            !name.starts_with("X-Plex-")
+                                && !name.ends_with(".query")
+                                && name != "limit"
+                        })
+                        .cloned()
+                        .collect::<Vec<_>>();
+                    let source_type = section.get("type").and_then(Value::as_str).unwrap_or("movie").to_string();
+                    let source_rows = match self.filter_rows(
+                        self.choose_rows(Some(section_key), Some(type_number)),
+                        &filter_pairs,
+                        &source_type,
+                    ) {
+                        Ok(rows) => rows,
+                        Err(status) => return Response::error(status, "plexsim: bad request"),
+                    };
                     let mut fields = Map::new();
                     if field == "title" {
                         let mut rows = Vec::new();
-                        for row in self.choose_rows(Some(section_key), Some(type_number)) {
+                        for row in source_rows.iter().cloned() {
                             let title =
                                 row.get("title").and_then(Value::as_str).unwrap_or_default();
                             let lower_title = title.to_lowercase();
@@ -13325,9 +13349,9 @@ impl Runtime {
                         };
                         let needle = wanted.to_lowercase();
                         let mut seen = HashSet::new();
-                        let rows = self
-                            .choose_rows(Some(section_key), Some(type_number))
-                            .into_iter()
+                        let rows = source_rows
+                            .iter()
+                            .cloned()
                             .flat_map(|row| {
                                 row.get(tag_name)
                                     .and_then(Value::as_array)
@@ -13345,7 +13369,15 @@ impl Runtime {
                             .collect::<Vec<_>>();
                         fields.insert("Directory".to_string(), Value::Array(rows));
                     }
-                    return Response::json(200, self.container(fields, true));
+                    let mut body = self.secondary_container_fields(section, "");
+                    body.remove("title2");
+                    let size = fields
+                        .values()
+                        .find_map(Value::as_array)
+                        .map_or(0, Vec::len);
+                    body.insert("size".to_string(), json!(size));
+                    body.extend(fields);
+                    return Response::json(200, json!({"MediaContainer": body}));
                 }
                 if segments[3] == "all" {
                     return self.route_section_all(
@@ -13736,6 +13768,13 @@ impl Runtime {
         pairs: &[(String, String)],
         request: &Request,
     ) -> Response {
+        // Cycle 20: `sourceType` must parse as a whole number on a listing -- `abc`,
+        // `1.5` and an empty value are 500s -- and otherwise filters nothing.
+        if matches!(request.method.as_str(), "GET" | "HEAD")
+            && query.get("sourceType").is_some_and(|raw| !int_param(raw, Some(32)))
+        {
+            return Response::error(500, "plexsim: bad sourceType");
+        }
         if pairs.iter().filter(|(name, _)| name == "type").count() > 1 {
             return Response::json(
                 200,
@@ -14367,98 +14406,6 @@ impl Runtime {
         let shown = fields.get("Metadata").and_then(Value::as_array).map(Vec::len).unwrap_or(0);
         fields.insert("size".to_string(), json!(shown));
         Response::json(200, json!({"MediaContainer": fields}))
-    }
-
-    fn route_section_common(
-        &self,
-        section_key: &str,
-        query: &HashMap<String, String>,
-        request: &Request,
-    ) -> Response {
-        if request.method != "GET" && request.method != "HEAD" {
-            return Response::error(404, "plexsim: not found");
-        }
-        let Some(type_number) = query
-            .get("type")
-            .and_then(|value| value.parse::<i64>().ok())
-        else {
-            return Response::error(400, "plexsim: bad request");
-        };
-        let ids = query
-            .get("id")
-            .map(|value| value.split(',').map(str::to_string).collect::<Vec<_>>());
-        let mut rows = self.choose_rows(Some(section_key), Some(type_number));
-        if let Some(ids) = ids {
-            rows.retain(|row| key_of(row).is_some_and(|key| ids.contains(&key)));
-        }
-        let compare_fields = [
-            "title",
-            "ratingKey",
-            "parentRatingKey",
-            "titleSort",
-            "tagline",
-            "index",
-            "summary",
-            "year",
-            "studio",
-            "originallyAvailableAt",
-            "contentRating",
-            "userRating",
-        ];
-        let mut mixed_fields = Vec::new();
-        if rows.len() > 1 {
-            for field in compare_fields {
-                let values = rows
-                    .iter()
-                    .map(|row| {
-                        if field == "titleSort" {
-                            row.get("titleSort").or_else(|| row.get("title"))
-                        } else {
-                            row.get(field)
-                        }
-                        .cloned()
-                        .unwrap_or(Value::Null)
-                    })
-                    .collect::<HashSet<_>>();
-                if values.len() > 1 {
-                    mixed_fields.push(field);
-                }
-            }
-        }
-        let mixed = mixed_fields.join(",");
-        let output = rows
-            .first()
-            .map(|row| {
-                let mut common = self.detail_row(row);
-                if let Some(object) = common.as_object_mut() {
-                    object.insert("type".to_string(), json!("common"));
-                    object.insert("mixedFields".to_string(), json!(mixed));
-                    for field in &mixed_fields {
-                        object.remove(*field);
-                    }
-                    object.insert("guid".to_string(), json!(""));
-                    object.remove("key");
-                    if rows.len() == 1 {
-                        object.insert(
-                            "key".to_string(),
-                            json!(format!(
-                                "/library/metadata/{section_key}/children",
-                                section_key = key_of(row).unwrap_or_default()
-                            )),
-                        );
-                    }
-                    object.remove("Media");
-                }
-                common
-            })
-            .into_iter()
-            .collect::<Vec<_>>();
-        let mut fields = Map::from_iter([
-            ("title2".to_string(), json!("Common")),
-            ("Metadata".to_string(), Value::Array(output)),
-        ]);
-        page_fields(&mut fields, query);
-        Response::json(200, self.container(fields, true))
     }
 
     fn route_section_collection_axis(&self, section_key: &str) -> Response {
