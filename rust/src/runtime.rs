@@ -359,6 +359,18 @@ impl Runtime {
         let source_digest = bytes_digest(&raw_catalog);
         catalog.normalize();
         number_catalog_tags(&mut catalog.items);
+        // Cycle 41: `Part.accessible`/`exists` are a DETAIL option (`checkFiles=1`), never
+        // a stored field a listing or a plain read carries; the checked read computes them.
+        for item in &mut catalog.items {
+            for media in item.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
+                for part in media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+                    if let Some(object) = part.as_object_mut() {
+                        object.remove("accessible");
+                        object.remove("exists");
+                    }
+                }
+            }
+        }
         let machine = catalog
             .document
             .get("machineIdentifier")
@@ -9404,6 +9416,9 @@ impl Runtime {
         if segments.first() == Some(&"downloadQueue") {
             return self.route_download_queue(&segments[1..], request);
         }
+        if segments.len() >= 4 && segments[..2] == ["hubs", "sections"] && segments[3] == "popular" {
+            return self.route_popular_hub(&segments, query, request);
+        }
         if segments.first() == Some(&"activities") && segments.len() > 1 && request.method == "PUT" {
             // Cycle 19: a PUT to an activity is a 400, where its DELETE is a 404.
             return Response::error(400, "plexsim: bad request");
@@ -13405,9 +13420,28 @@ impl Runtime {
             // URLs; doing these steps after projection makes `checkFiles` always
             // report false and `includeAlternates` silently omit the measured
             // alternate blocks even when the source data is present.
+            // Cycles 22/29/46: seven 0/1 options take the `+?0*[01]` grammar, a 400
+            // otherwise; three of them report the file state when they are 1.
+            for option in [
+                "checkFiles",
+                "skipRefresh",
+                "asyncCheckFiles",
+                "asyncAugmentMetadata",
+                "asyncRefreshLocalMediaAgent",
+                "asyncRefreshAnalysis",
+                "checkFileAvailability",
+            ] {
+                if query.get(option).is_some_and(|value| !bool_option(value)) {
+                    return Response::error(400, "plexsim: bad request");
+                }
+            }
             let checks_requested = ["checkFiles", "asyncCheckFiles", "checkFileAvailability"]
                 .iter()
-                .any(|option| query.contains_key(*option));
+                .any(|option| {
+                    query
+                        .get(*option)
+                        .is_some_and(|value| value.trim_start_matches(['+', '0']) == "1")
+                });
             let prepared = if checks_requested {
                 self.annotate_file_checks(row)
             } else {
