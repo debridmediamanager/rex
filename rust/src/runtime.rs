@@ -14433,81 +14433,204 @@ impl Runtime {
         else {
             return Response::error(400, "plexsim: bad request");
         };
-        let ids = query
-            .get("id")
-            .map(|value| value.split(',').map(str::to_string).collect::<Vec<_>>());
-        let mut rows = self.choose_rows(Some(section_key), Some(type_number));
-        if let Some(ids) = ids {
-            rows.retain(|row| key_of(row).is_some_and(|key| ids.contains(&key)));
-        }
-        let compare_fields = [
-            "title",
-            "ratingKey",
-            "parentRatingKey",
-            "titleSort",
-            "tagline",
-            "index",
-            "summary",
-            "year",
-            "studio",
-            "originallyAvailableAt",
-            "contentRating",
-            "userRating",
-        ];
-        let mut mixed_fields = Vec::new();
-        if rows.len() > 1 {
-            for field in compare_fields {
-                let values = rows
-                    .iter()
-                    .map(|row| {
-                        if field == "titleSort" {
-                            row.get("titleSort").or_else(|| row.get("title"))
-                        } else {
-                            row.get(field)
-                        }
-                        .cloned()
-                        .unwrap_or(Value::Null)
-                    })
-                    .collect::<HashSet<_>>();
-                if values.len() > 1 {
-                    mixed_fields.push(field);
+        // server.py's `common_fields`: the fields the selected rows SHARE, the
+        // differing ones named in `mixedFields` (a FIXED order, "" when none).
+        let wanted = match type_number {
+            1 => "movie",
+            2 => "show",
+            3 => "season",
+            4 => "episode",
+            _ => "",
+        };
+        let section = self.section(section_key).cloned().unwrap_or(Value::Null);
+        let section_type = section.get("type").and_then(Value::as_str).unwrap_or("movie").to_string();
+        let filter_pairs = query
+            .iter()
+            .filter(|(name, _)| {
+                !name.starts_with("X-Plex-") && !matches!(name.as_str(), "type" | "sort" | "includeGuids")
+            })
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect::<Vec<_>>();
+        let mut rows = if let Some(ids) = query.get("id") {
+            // An id of the wrong TYPE is simply not part of the set.
+            ids.split(',')
+                .filter(|key| !key.trim().is_empty() && key.trim().bytes().all(|b| b.is_ascii_digit()))
+                .filter_map(|key| self.catalog.get(key.trim()).cloned())
+                .filter(|row| row.get("type").and_then(Value::as_str) == Some(wanted))
+                .collect::<Vec<_>>()
+        } else {
+            self.choose_rows(Some(section_key), Some(type_number))
+        };
+        rows = match self.filter_rows(rows, &filter_pairs, &section_type) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad request"),
+        };
+        rows.retain(|row| row.get("type").and_then(Value::as_str) == Some(wanted));
+        // An episode carries no Genre, studio, tagline or Country of its own (the
+        // show's are the catalog's copy; the detail row drops them too).
+        for row in rows.iter_mut() {
+            if row.get("type").and_then(Value::as_str) == Some("episode") {
+                if let Some(object) = row.as_object_mut() {
+                    for field in ["Genre", "studio", "tagline", "Country"] {
+                        object.remove(field);
+                    }
                 }
             }
         }
-        let mixed = mixed_fields.join(",");
-        let output = rows
-            .first()
-            .map(|row| {
-                let mut common = self.detail_row(row);
-                if let Some(object) = common.as_object_mut() {
-                    object.insert("type".to_string(), json!("common"));
-                    object.insert("mixedFields".to_string(), json!(mixed));
-                    for field in &mixed_fields {
-                        object.remove(*field);
-                    }
-                    object.insert("guid".to_string(), json!(""));
-                    object.remove("key");
-                    if rows.len() == 1 {
-                        object.insert(
-                            "key".to_string(),
-                            json!(format!(
-                                "/library/metadata/{section_key}/children",
-                                section_key = key_of(row).unwrap_or_default()
-                            )),
-                        );
-                    }
-                    object.remove("Media");
+        let value = |row: &Value, field: &str| -> Value {
+            match field {
+                "titleSort" => row
+                    .get("titleSort")
+                    .filter(|value| !string_value(value).is_empty())
+                    .or_else(|| row.get("title"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+                "index" if row.get("type").and_then(Value::as_str) == Some("movie") => {
+                    row.get("index").cloned().filter(|v| !v.is_null()).unwrap_or(json!(1))
                 }
-                common
-            })
-            .into_iter()
-            .collect::<Vec<_>>();
-        let mut fields = Map::from_iter([
-            ("title2".to_string(), json!("Common")),
-            ("Metadata".to_string(), Value::Array(output)),
-        ]);
-        page_fields(&mut fields, query);
-        Response::json(200, self.container(fields, true))
+                _ => row.get(field).cloned().unwrap_or(Value::Null),
+            }
+        };
+        let mut fields_list = vec![
+            "title", "ratingKey", "parentRatingKey", "titleSort", "tagline", "index", "summary",
+            "year", "studio", "originallyAvailableAt", "contentRating", "userRating",
+        ];
+        if wanted == "season" {
+            fields_list.retain(|field| *field != "title");
+        }
+        let mut common = Map::new();
+        common.insert("mixedFields".to_string(), json!(""));
+        let mut mixed = Vec::new();
+        for field in &fields_list {
+            let distinct = rows
+                .iter()
+                .map(|row| serde_json::to_string(&value(row, field)).unwrap_or_default())
+                .collect::<HashSet<_>>();
+            if distinct.len() > 1 {
+                mixed.push(*field);
+            } else if let Some(first) = rows.first() {
+                let v = value(first, field);
+                if !v.is_null() {
+                    common.insert(field.to_string(), v);
+                }
+            }
+        }
+        if rows.len() == 1 {
+            common.insert(
+                "key".to_string(),
+                json!(format!("/library/metadata/{}/children", key_of(&rows[0]).unwrap_or_default())),
+            );
+        }
+        common.insert("type".to_string(), json!("common"));
+        common.insert("guid".to_string(), json!(""));
+        if mixed.contains(&"titleSort") || rows.is_empty() {
+            common.insert("titleSort".to_string(), json!(""));
+        }
+        if wanted == "episode" && !rows.is_empty() {
+            let shows = rows
+                .iter()
+                .map(|row| row.get("grandparentRatingKey").map(string_value).unwrap_or_default())
+                .collect::<HashSet<_>>();
+            if shows.len() == 1 {
+                let show = rows[0].get("grandparentRatingKey").map(string_value).unwrap_or_default();
+                common.insert("grandparentRatingKey".to_string(), json!(show.clone()));
+                let title = self
+                    .catalog
+                    .get(&show)
+                    .and_then(|row| row.get("title"))
+                    .cloned()
+                    .or_else(|| rows[0].get("grandparentTitle").cloned())
+                    .unwrap_or(Value::Null);
+                common.insert("grandparentTitle".to_string(), title);
+            }
+            common.insert("parentTitle".to_string(), json!(""));
+        }
+        common.insert("mixedFields".to_string(), json!(mixed.join(",")));
+        if let Some(rating) = common.get("userRating").and_then(Value::as_f64) {
+            // Cycle 25, measured on plexscratch: a Common's `userRating` is a STRING
+            // (`"8"`, not `8.0`); the item row keeps the float.
+            let text = if rating.fract() == 0.0 { format!("{}", rating as i64) } else { rating.to_string() };
+            common.insert("userRating".to_string(), json!(text));
+        }
+        if rows.len() == 1 {
+            for key in ["Guid", "Rating", "Field"] {
+                if let Some(v) = rows[0].get(key).filter(|v| v.as_array().is_some_and(|a| !a.is_empty())) {
+                    common.insert(key.to_string(), v.clone());
+                }
+            }
+        } else if !rows.is_empty() {
+            let mut shared: Option<HashSet<String>> = None;
+            for row in &rows {
+                let images = row
+                    .get("Rating")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(|r| r.get("image").map(string_value).unwrap_or_default())
+                    .collect::<HashSet<_>>();
+                shared = Some(match shared {
+                    None => images,
+                    Some(prev) => prev.intersection(&images).cloned().collect(),
+                });
+            }
+            let shared = shared.unwrap_or_default();
+            let mut ratings = Vec::new();
+            for first in rows[0].get("Rating").and_then(Value::as_array).into_iter().flatten() {
+                let image = first.get("image").map(string_value).unwrap_or_default();
+                if !shared.contains(&image) {
+                    continue;
+                }
+                let entries = rows
+                    .iter()
+                    .filter_map(|row| {
+                        row.get("Rating")
+                            .and_then(Value::as_array)
+                            .and_then(|list| list.iter().find(|r| r.get("image").map(string_value).as_deref() == Some(image.as_str())))
+                            .cloned()
+                    })
+                    .collect::<Vec<_>>();
+                ratings.push(if entries.iter().all(|e| e == first) { first.clone() } else { json!({}) });
+            }
+            if !ratings.is_empty() {
+                common.insert("Rating".to_string(), Value::Array(ratings));
+            }
+        }
+        for key in ["Genre", "Country", "Director", "Writer", "Producer", "Role", "Collection", "Label"] {
+            let name_of = |tag: &Value| {
+                tag.get("tag").or_else(|| tag.get("id")).map(string_value).unwrap_or_default()
+            };
+            let mut shared: Option<HashSet<String>> = None;
+            for row in &rows {
+                let names = row
+                    .get(key)
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(name_of)
+                    .collect::<HashSet<_>>();
+                shared = Some(match shared {
+                    None => names,
+                    Some(prev) => prev.intersection(&names).cloned().collect(),
+                });
+            }
+            if let Some(shared) = shared.filter(|set| !set.is_empty()) {
+                let tags = rows[0]
+                    .get(key)
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter(|tag| shared.contains(&name_of(tag)))
+                    .cloned()
+                    .collect::<Vec<_>>();
+                common.insert(key.to_string(), Value::Array(tags));
+            }
+        }
+        // The row is written as a `Common` element (the handler's `_xml` override).
+        common.insert("_element".to_string(), json!("Common"));
+        let mut fields = Map::new();
+        fields.insert("Metadata".to_string(), json!([Value::Object(common)]));
+        let body = self.secondary_body(&section, Some("Common"), fields);
+        Response::json(200, json!({"MediaContainer": body}))
     }
 
     fn route_section_collection_axis(&self, section_key: &str) -> Response {
