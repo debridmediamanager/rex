@@ -25,8 +25,9 @@ use sha1::{Digest, Sha1};
 
 use crate::{catalog::Catalog, decision, xmlout};
 
-mod artwork;
 mod edit;
+mod frames;
+mod artwork;
 mod notify;
 mod showprefs;
 mod butler;
@@ -35,6 +36,7 @@ mod gates;
 mod listing;
 mod resume;
 mod transcoder;
+mod wire;
 use artwork::owns_artwork;
 use resume::{bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param, page_window};
 
@@ -322,9 +324,6 @@ pub struct Runtime {
     playlists: HashMap<String, Playlist>,
     collections: HashMap<String, Collection>,
     list_artwork: HashMap<String, (String, Vec<u8>)>,
-    /// The tag TABLE a real PMS keeps beside the rows: (element, lowercased name) ->
-    /// the tag, so a tag cleared from every row keeps its spelling and id.
-    tag_table: HashMap<(String, String), Value>,
     metadata_provider_groups: HashMap<String, MetadataProviderGroup>,
     next_metadata_provider_group: i64,
     queues: HashMap<String, Queue>,
@@ -354,10 +353,14 @@ pub struct Runtime {
     /// can take a snapshot without a mutable callback into the route thread.
     /// This is bounded in `push_event`; it is runtime state, never persisted.
     events: Vec<(String, Value)>,
-    /// How many events `push_event` has dropped off the front of `events`. A
-    /// subscriber's cursor is an absolute sequence number, so it stays valid after
-    /// the bounded buffer starts shedding -- an index into `events` alone froze at
-    /// the cap and every channel opened after the 512th event received nothing.
+    /// The tag TABLE: a tag outlives its removal from every row, so a re-add keeps
+    /// its canonical spelling and id (keyed by row key and lowercased tag).
+    tag_table: HashMap<(String, String), Value>,
+    /// Per library, the last finished (5) or removed (9) frame of each item, in
+    /// insertion order -- what `/library/sections/{id}/timeline` lists.
+    section_timeline: HashMap<String, Vec<(String, Value)>>,
+    /// How many events the bound has drained from the front of `events`, so a
+    /// subscriber's cursor stays a sequence number once the buffer is full.
     events_dropped: usize,
     activity_serial: u64,
 }
@@ -446,6 +449,7 @@ impl Runtime {
             bandwidth_bytes: 0,
             dirty: false,
             events: Vec::new(),
+            section_timeline: HashMap::new(),
             events_dropped: 0,
             activity_serial: 0,
         };
@@ -1547,6 +1551,41 @@ impl Runtime {
         rows
     }
 
+    /// The `Preferences` block a library row carries under `includePreferences=1`.
+    ///
+    /// Measured on kids and zen: `/library/sections?includePreferences=1` and
+    /// `/media/providers?includePreferences=1` answer the same block for the same
+    /// library, byte for byte -- including the show library's `episodeSort`, which is
+    /// the per-SHOW variant here (`Library default` in its enum and "for this show" in
+    /// its summary) rather than the library leaf's own.
+    fn section_preference_rows(&self, section_key: &str, kind: &str) -> Vec<Value> {
+        let mut rows = self.section_pref_rows(section_key, kind);
+        if kind == "show" {
+            let own = load_json_sidecar(&self.catalog_path, "item_prefs.json")
+                .and_then(|value| value.get("show").cloned())
+                .and_then(|value| value.as_array().cloned())
+                .unwrap_or_default()
+                .into_iter()
+                .find(|setting| setting.get("id").and_then(Value::as_str) == Some("episodeSort"));
+            if let Some(own) = own {
+                for row in &mut rows {
+                    if row.get("id").and_then(Value::as_str) != Some("episodeSort") {
+                        continue;
+                    }
+                    if let Some(object) = row.as_object_mut() {
+                        for field in ["summary", "enumValues"] {
+                            object.insert(
+                                field.to_string(),
+                                own.get(field).cloned().unwrap_or(Value::Null),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        rows
+    }
+
     fn section_directory(&self, section: &Value) -> Value {
         let key = string_value(section.get("key").unwrap_or(&Value::Null));
         let kind = section
@@ -1623,7 +1662,13 @@ impl Runtime {
         if !explicit_size {
             for key in ["Metadata", "Directory", "Hub", "Video", "Device"] {
                 if let Some(array) = body.get(key).and_then(Value::as_array) {
-                    body.insert("size".to_string(), json!(array.len()));
+                    // `size` leads the container on a real PMS whatever it counts.
+                    let size = array.len();
+                    body.remove("size");
+                    let mut sized = Map::new();
+                    sized.insert("size".to_string(), json!(size));
+                    sized.extend(body);
+                    body = sized;
                     break;
                 }
             }
@@ -1965,7 +2010,7 @@ impl Runtime {
                 if let Some(object) = row.as_object_mut() {
                     object.insert(
                         "Preferences".to_string(),
-                        json!({"Setting": self.section_pref_rows(&section_id, kind)}),
+                        json!({"Setting": self.section_preference_rows(&section_id, kind)}),
                     );
                 }
             }
@@ -2668,13 +2713,12 @@ impl Runtime {
         self.events_dropped + self.events.len()
     }
 
-    /// Every retained event at or after `cursor`, and the cursor after them.
-    fn events_since(&self, cursor: usize) -> (Vec<(String, Value)>, usize) {
-        let skip = cursor.saturating_sub(self.events_dropped);
-        (
-            self.events.iter().skip(skip).cloned().collect(),
-            self.event_cursor(),
-        )
+    fn events_since(&self, cursor: usize) -> Vec<(String, Value)> {
+        self.events
+            .iter()
+            .skip(cursor.saturating_sub(self.events_dropped))
+            .cloned()
+            .collect()
     }
 
     fn push_event(&mut self, kind: &str, value: Value) {
@@ -2687,10 +2731,12 @@ impl Runtime {
     }
 
     fn push_timeline(&mut self, key: &str, state: i64, metadata_state: Option<&str>) {
-        let Some(row) = self.catalog.get(key).cloned() else {
-            return;
-        };
-        self.notify_timeline(&row, state, metadata_state);
+        let row = self
+            .catalog
+            .get(key)
+            .cloned()
+            .unwrap_or_else(|| json!({"ratingKey": key}));
+        self.push_timeline_row(&row, state, metadata_state, None);
     }
 
     fn push_refresh_events_named(&mut self, key: &str, subtitle: &str) {
@@ -3927,6 +3973,39 @@ impl Runtime {
         Response::json(200, self.container(fields, false))
     }
 
+    /// The CORS preflight (`server.py` `do_OPTIONS`): with an `Origin` the echoed
+    /// origin, `Vary`, the method list, the requested headers ECHOED only when asked
+    /// (cycle 34) and a two-week `Max-Age`; with none, no CORS headers at all (cycle
+    /// 16). Always `text/plain`, empty, naming its connection state and `no-cache`
+    /// (cycle 33).
+    fn preflight(request: &Request) -> Response {
+        let mut headers = vec![(wire::RAW_MARK.to_string(), "preflight".to_string())];
+        if let Some(origin) = request.headers.get("origin") {
+            headers.push(("Access-Control-Allow-Origin".to_string(), origin.clone()));
+            headers.push(("Vary".to_string(), "Origin, X-Plex-Token".to_string()));
+            headers.push((
+                "Access-Control-Allow-Methods".to_string(),
+                "POST, GET, OPTIONS, DELETE, PUT, HEAD".to_string(),
+            ));
+            if let Some(asked) = request
+                .headers
+                .get("access-control-request-headers")
+                .filter(|asked| !asked.is_empty())
+            {
+                headers.push(("Access-Control-Allow-Headers".to_string(), asked.clone()));
+            }
+            headers.push(("Access-Control-Max-Age".to_string(), "1209600".to_string()));
+        }
+        headers.push(("Cache-Control".to_string(), "no-cache".to_string()));
+        Response {
+            status: 200,
+            content_type: "text/plain".to_string(),
+            body: Vec::new(),
+            headers,
+            close: false,
+        }
+    }
+
     pub fn route(&mut self, request: &Request) -> Response {
         if request.method == "PATCH" {
             // Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not
@@ -3937,6 +4016,7 @@ impl Runtime {
         }
         self.mark_device(&request.headers);
         let mut response = self.request_route(request);
+        exclude_fields_response(request, &mut response);
         let (raw_path, _) = split_target(&request.target);
         if let Some(cookie) = Self::framework_cookie(&request.method, &raw_path) {
             // Cycle 33/52: the plug-in framework's session cookie rides every response it
@@ -3947,14 +4027,7 @@ impl Runtime {
             }
         }
         self.localize_response(request, &mut response);
-        if let Some(origin) = request.headers.get("origin") {
-            response
-                .headers
-                .push(("Access-Control-Allow-Origin".to_string(), origin.clone()));
-            response
-                .headers
-                .push(("Vary".to_string(), "Origin".to_string()));
-        }
+        // The CORS trio is the envelope's (`wire.rs`), written for every response.
         self.save_if_dirty();
         response
     }
@@ -4248,6 +4321,13 @@ impl Runtime {
         if path.len() > 1 && path.ends_with('/') && !path.starts_with("/web/") {
             path.pop();
         }
+        if request.method == "OPTIONS"
+            && request.headers.contains_key("access-control-request-method")
+        {
+            // A genuine preflight is answered before routing and before the token
+            // (`server.py` `do_OPTIONS`); a bare OPTIONS is routed like any verb.
+            return Self::preflight(request);
+        }
         let pairs = parse_query(&raw_query);
         let mut query = pairs.iter().fold(HashMap::new(), |mut map, (key, value)| {
             map.insert(key.clone(), value.clone());
@@ -4265,9 +4345,7 @@ impl Runtime {
                 query.insert("X-Plex-Language".to_string(), value.clone());
             }
         }
-        let preflight = request.method == "OPTIONS"
-            && request.headers.contains_key("access-control-request-method");
-        if !preflight {
+        {
             // `server.py` `_dispatch`: the query grammar and the read-only verb gates
             // are refused before the token is even looked at.
             let refusal = gates::query_grammar_refusal(&request.method, &path, &query);
@@ -4320,14 +4398,7 @@ impl Runtime {
                 | "/services"
                 | "/security"
         );
-        if framework_prefix
-            && !matches!(request.method.as_str(), "GET" | "HEAD")
-            && !(request.method == "OPTIONS"
-                && request.headers.contains_key("origin")
-                && request
-                    .headers
-                    .contains_key("access-control-request-method"))
-        {
+        if framework_prefix && !matches!(request.method.as_str(), "GET" | "HEAD") {
             return if path == "/security" {
                 Response::json(200, self.container(Map::new(), false))
             } else if let Some(response) = self.route_plugin_prefix(&path) {
@@ -4337,10 +4408,6 @@ impl Runtime {
             };
         }
         if request.method == "OPTIONS" {
-            if !request.headers.contains_key("origin")
-                || !request
-                    .headers
-                    .contains_key("access-control-request-method")
             {
                 return match path.as_str() {
                     "/identity" => self.identity_response(&query),
@@ -4348,41 +4415,7 @@ impl Runtime {
                     _ => Response::error(404, "plexsim: not found"),
                 };
             }
-            let origin = request
-                .headers
-                .get("origin")
-                .cloned()
-                .unwrap_or_else(|| "*".to_string());
-            let requested_headers = request
-                .headers
-                .get("access-control-request-headers")
-                .cloned()
-                .unwrap_or_default();
-            let mut headers = vec![
-                ("Access-Control-Allow-Origin".to_string(), origin),
-                (
-                    "Access-Control-Allow-Methods".to_string(),
-                    "GET, HEAD, POST, PUT, DELETE, OPTIONS".to_string(),
-                ),
-                ("Access-Control-Max-Age".to_string(), "86400".to_string()),
-                ("Vary".to_string(), "Origin".to_string()),
-            ];
-            if !requested_headers.is_empty() {
-                headers.insert(
-                    1,
-                    (
-                        "Access-Control-Allow-Headers".to_string(),
-                        requested_headers,
-                    ),
-                );
-            }
-            return Response {
-                status: 200,
-                content_type: String::new(),
-                body: Vec::new(),
-                headers,
-                close: false,
-            };
+            return Self::preflight(request);
         }
         // These are library read projections.  PMS rejects writes at the
         // route envelope before the projection handler runs; returning the
@@ -4641,7 +4674,10 @@ impl Runtime {
             ),
             ("GET" | "HEAD", "/library/sections") => self.route_sections(&query),
             ("GET" | "HEAD", "/library/sections/all") => self.route_sections(&query),
-            ("GET" | "HEAD", "/library/all") => self.route_all(&query),
+            ("GET" | "HEAD", "/library/all") => {
+                let pairs = Self::request_pairs(request);
+                self.library_all_pairs(&query, &pairs)
+            }
             ("GET" | "HEAD", "/library/recentlyAdded") => self.route_recently_added(&query),
             ("GET" | "HEAD", "/library/onDeck") => self.route_on_deck(&query),
             ("GET" | "HEAD", "/devices") => self.route_devices(),
@@ -4826,7 +4862,7 @@ impl Runtime {
                     if let Some(object) = row.as_object_mut() {
                         object.insert(
                             "Preferences".to_string(),
-                            json!({"Setting": self.section_pref_rows(
+                            json!({"Setting": self.section_preference_rows(
                                 &string_value(section.get("key").unwrap_or(&Value::Null)),
                                 section.get("type").and_then(Value::as_str).unwrap_or("movie"),
                             )}),
@@ -6211,7 +6247,10 @@ impl Runtime {
                 Response::json(
                     200,
                     self.container(
-                        Map::from_iter([("Setting".to_string(), Value::Array(vec![row]))]),
+                        Map::from_iter([
+                            ("size".to_string(), json!(1)),
+                            ("Setting".to_string(), Value::Array(vec![row])),
+                        ]),
                         false,
                     ),
                 )
@@ -7423,7 +7462,11 @@ impl Runtime {
         });
 
         let (genre, genre_rows) = if !is_show {
-            let mut counts: HashMap<String, (Value, Vec<Value>)> = HashMap::new();
+            // Insertion-ordered, and the FIRST genre with the most rows wins, the
+            // way Python's `max` over a dict picks it: a hash map's order made the
+            // shelf's genre (and so its hubIdentifier) change from one read to the
+            // next, and `count=1` then named a different hub than the full read.
+            let mut counts: Vec<(String, (Value, Vec<Value>))> = Vec::new();
             for row in &items {
                 for tag in row
                     .get("Genre")
@@ -7434,15 +7477,24 @@ impl Runtime {
                     let Some(name) = tag.get("tag").and_then(Value::as_str) else {
                         continue;
                     };
-                    let entry = counts
-                        .entry(name.to_string())
-                        .or_insert_with(|| (tag.clone(), Vec::new()));
-                    entry.1.push(row.clone());
+                    if name.is_empty() {
+                        continue;
+                    }
+                    if let Some(entry) = counts.iter_mut().find(|(known, _)| known == name) {
+                        entry.1 .1.push(row.clone());
+                    } else {
+                        counts.push((name.to_string(), (tag.clone(), vec![row.clone()])));
+                    }
                 }
             }
+            let best = counts
+                .iter()
+                .map(|(_, (_, rows))| rows.len())
+                .max()
+                .unwrap_or(0);
             counts
                 .into_iter()
-                .max_by_key(|(_, (_, rows))| rows.len())
+                .find(|(_, (_, rows))| rows.len() == best)
                 .map(|(name, (tag, rows))| {
                     let mut filtered = rows;
                     filtered.retain(|row| {
@@ -7632,7 +7684,12 @@ impl Runtime {
                 false,
             );
             if !genre.0.is_empty() {
-                let genre_id = tag_id("Genre", &genre.0);
+                let genre_id = genre
+                    .1
+                    .get("id")
+                    .map(string_value)
+                    .filter(|id| !id.is_empty())
+                    .unwrap_or_else(|| tag_id("Genre", &genre.0).to_string());
                 make_shelf(
                     format!("movie.genre.{section_key}.{genre_id}"),
                     format!("Top Movies in {}", genre.0),
@@ -8141,18 +8198,16 @@ impl Runtime {
                     ("filter".to_string(), json!(format!("{kind}={id}"))),
                     ("tag".to_string(), json!(name)),
                     ("tagType".to_string(), json!(tag_type)),
-                    ("count".to_string(), json!(count)),
                 ]);
-                if tag_type == 6 {
-                    if let Some(tag_key) = tag_key {
-                        row.insert("tagKey".to_string(), json!(tag_key));
-                    } else {
-                        row.insert(
-                            "tagKey".to_string(),
-                            json!(format!("{:024x}", tag_id(element, &name))),
-                        );
-                    }
+                // Cycle 28, measured on kids and zen: a PERSON search tag row carries
+                // its 24-hex `tagKey` directly after `tagType`, with `count` LAST, and
+                // a `Genre` row carries none.
+                if matches!(tag_type, 4..=7) {
+                    let tag_key =
+                        tag_key.unwrap_or_else(|| crate::hierarchy::person_tag_key(&name));
+                    row.insert("tagKey".to_string(), json!(tag_key));
                 }
+                row.insert("count".to_string(), json!(count));
                 out.push((kind.to_string(), Value::Object(row)));
             }
         }
@@ -9240,7 +9295,10 @@ impl Runtime {
             );
         }
         if path == "/neighborhood/devices" && matches!(request.method.as_str(), "GET" | "HEAD") {
-            return Response::json(200, self.container(Map::new(), false));
+            return Response::json(
+                200,
+                self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
+            );
         }
         if path == "/media/subscriptions/template" && request.method == "GET" {
             return Response::error(400, "plexsim: bad request");
@@ -9819,15 +9877,31 @@ impl Runtime {
                     if typed.is_empty() {
                         continue;
                     }
+                    // Measured: a voice hub carries `hubKey` and NO `key`, and both
+                    // the hub and every row carry a `distance`.  The reference's
+                    // distance is its own fuzzy-match cost; plexsim reports the
+                    // query's length, which is what an exact word-prefix hit costs.
+                    let distance = raw.trim().chars().count();
+                    let keys = typed.iter().filter_map(key_of).collect::<Vec<_>>();
+                    let typed = typed
+                        .into_iter()
+                        .map(|mut row| {
+                            if let Some(object) = row.as_object_mut() {
+                                object.insert("distance".to_string(), json!(distance));
+                            }
+                            row
+                        })
+                        .collect::<Vec<_>>();
                     hubs.push(json!({
-                        "hubIdentifier": format!("results.search.{number}"),
+                        "hubKey": format!("/library/metadata/{}", keys.join(",")),
                         "title": kind,
-                        "context": "hub.results.search",
                         "type": kind,
-                        "style": "shelf",
-                        "distance": 0.3,
+                        "hubIdentifier": format!("results.search.{number}"),
+                        "context": "hub.results.search",
                         "size": typed.len(),
                         "more": false,
+                        "style": "shelf",
+                        "distance": distance,
                         "Metadata": typed,
                     }));
                 }
@@ -9846,7 +9920,7 @@ impl Runtime {
                 ("context".to_string(), json!("hub.results.search")),
                 ("type".to_string(), json!(wanted.unwrap_or("movie"))),
                 ("style".to_string(), json!("shelf")),
-                ("distance".to_string(), json!(0.3)),
+                ("distance".to_string(), json!(raw.trim().chars().count())),
                 ("size".to_string(), json!(rows.len())),
                 ("more".to_string(), json!(false)),
                 ("Metadata".to_string(), Value::Array(rows)),
@@ -10499,39 +10573,8 @@ impl Runtime {
                         .unwrap_or("movie");
                     let leaf = segments[3];
                     if leaf == "timeline" {
-                        let section_rows = self
-                            .events
-                            .iter()
-                            .filter_map(|(event, value)| {
-                                if event != "timeline" {
-                                    return None;
-                                }
-                                let entry = value.get("TimelineEntry")?.clone();
-                                let item_id = entry.get("itemID").map(string_value)?;
-                                self.catalog.get(&item_id).filter(|row| {
-                                    string_value(
-                                        row.get("librarySectionID").unwrap_or(&Value::Null),
-                                    ) == section_key
-                                })?;
-                                Some(entry)
-                            })
-                            .collect::<Vec<_>>();
-                        let latest = section_rows
-                            .iter()
-                            .filter_map(|row| row.get("updatedAt").and_then(Value::as_i64))
-                            .max()
-                            .unwrap_or(0);
-                        return Response::json(
-                            200,
-                            self.container(
-                                Map::from_iter([
-                                    ("latestEntryTime".to_string(), json!(latest)),
-                                    ("updateQueueSize".to_string(), json!(0)),
-                                    ("Metadata".to_string(), Value::Array(section_rows)),
-                                ]),
-                                false,
-                            ),
-                        );
+                        let section = section.clone();
+                        return self.section_timeline_response(section_key, &section);
                     }
                     if leaf == "nearest" {
                         return Response::error(400, "plexsim: bad request");
@@ -10727,50 +10770,52 @@ impl Runtime {
                         rows = roots;
                         fields.remove("mixedParents");
                     }
-                    if kind == "show" && leaf == "recentlyAdded" {
-                        rows.sort_by(|left, right| {
-                            right
-                                .get("addedAt")
-                                .and_then(Value::as_i64)
+                    if !matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
+                        // The subsets start from the listing's default order, titleSort,
+                        // and each re-sorts stably on its own key.
+                        rows = self.sort_rows(rows, Some("titleSort")).unwrap_or_default();
+                        let stamp = |row: &Value, name: &str| {
+                            row.get(name)
+                                .and_then(|value| {
+                                    value.as_i64().or_else(|| string_value(value).parse().ok())
+                                })
                                 .unwrap_or(0)
-                                .cmp(&left.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
-                        });
-                    } else if kind == "show" && leaf == "newest" {
-                        rows.sort_by(|left, right| {
-                            string_value(right.get("originallyAvailableAt").unwrap_or(&Value::Null))
-                                .cmp(&string_value(
-                                    left.get("originallyAvailableAt").unwrap_or(&Value::Null),
-                                ))
-                        });
-                    } else if kind == "show" && leaf == "recentlyViewed" {
-                        rows.retain(|row| row.get("lastViewedAt").is_some());
-                        rows.sort_by(|left, right| {
-                            right
-                                .get("lastViewedAt")
-                                .and_then(Value::as_i64)
-                                .unwrap_or(0)
-                                .cmp(
-                                    &left
-                                        .get("lastViewedAt")
-                                        .and_then(Value::as_i64)
-                                        .unwrap_or(0),
-                                )
-                        });
-                    } else if kind != "show" && leaf == "newest" {
-                        rows.sort_by(|left, right| {
-                            string_value(right.get("originallyAvailableAt").unwrap_or(&Value::Null))
-                                .cmp(&string_value(
-                                    left.get("originallyAvailableAt").unwrap_or(&Value::Null),
-                                ))
-                        });
-                    } else {
-                        rows.sort_by(|left, right| {
-                            right
-                                .get("addedAt")
-                                .and_then(Value::as_i64)
-                                .unwrap_or(0)
-                                .cmp(&left.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
-                        });
+                        };
+                        let rating_key = |row: &Value| stamp(row, "ratingKey");
+                        match leaf {
+                            "recentlyViewed" => {
+                                // Cycle 55, from `order by metadata_item_settings.updated_at
+                                // desc` and measured on zen (`viewUpdatedAt` descending,
+                                // ties by ratingKey) and plexscratch42: the ORDER is the
+                                // view-state write time, falling back to the view time.
+                                rows.retain(|row| stamp(row, "lastViewedAt") != 0);
+                                rows.sort_by_key(|row| {
+                                    let written = stamp(row, "viewUpdatedAt");
+                                    let viewed = stamp(row, "lastViewedAt");
+                                    (-(if written != 0 { written } else { viewed }), rating_key(row))
+                                });
+                                rows.truncate(100);
+                            }
+                            "recentlyAdded" | "recentlyAddedGrandparents" => {
+                                // Cycle 54: only the LITERAL `unwatched=1` drops the
+                                // watched rows here, before the cap.
+                                if query.get("unwatched").is_some_and(|value| value == "1") {
+                                    rows.retain(|row| stamp(row, "viewCount") == 0);
+                                }
+                                rows.sort_by_key(|row| -stamp(row, "addedAt"));
+                                rows.truncate(100);
+                            }
+                            _ => {
+                                rows.sort_by(|left, right| {
+                                    string_value(
+                                        right.get("originallyAvailableAt").unwrap_or(&Value::Null),
+                                    )
+                                    .cmp(&string_value(
+                                        left.get("originallyAvailableAt").unwrap_or(&Value::Null),
+                                    ))
+                                });
+                            }
+                        }
                     }
                     let rows = rows
                         .iter()
@@ -10784,8 +10829,10 @@ impl Runtime {
                         fields.insert("nocache".to_string(), json!(true));
                     }
                     if leaf == "recentlyViewedShows" || leaf == "recentlyViewedGrandparents" {
+                        // Measured on both servers: it is the one subset with
+                        // `allowSync` false, on a movie library as on a show one.
+                        fields.insert("allowSync".to_string(), json!(false));
                         if kind == "show" {
-                            fields.insert("allowSync".to_string(), json!(false));
                             fields.insert("viewGroup".to_string(), json!("show"));
                         } else {
                             fields.insert("viewGroup".to_string(), json!("movie"));
@@ -11956,15 +12003,16 @@ impl Runtime {
                 {
                     return Response::error(400, "plexsim: bad request");
                 }
-                // Measured: a batch EDIT over the members the library holds.
                 let keys = key
                     .split(',')
-                    .filter(|value| {
-                        value.bytes().all(|b| b.is_ascii_digit()) && self.catalog.get(value).is_some()
-                    })
+                    .filter(|value| !value.is_empty())
                     .map(str::to_string)
                     .collect::<Vec<_>>();
-                return self.apply_edit(&keys, pairs, false, "loading");
+                if keys.iter().any(|child| self.catalog.get(child).is_none()) {
+                    return Response::error(404, "plexsim: not found");
+                }
+                let pairs = Self::request_pairs(request);
+                return self.apply_edit(&keys, &pairs, false, "loading");
             }
             if key.contains(',') && request.method == "GET" && segments.len() > 3 {
                 let members = key
@@ -12302,105 +12350,68 @@ impl Runtime {
             return Response::error(404, "plexsim: not found");
         }
         if request.method == "PUT" {
-            // THE Edit dialog's save path (`MultiMetadataModel.saveUrl`). Measured:
-            // `id=` scopes it to those rows, with no `id` the whole FILTERED set is
-            // edited, and no `type` -- or one that does not parse (cycle 16) -- is a 400.
-            let Some(type_number) = query
-                .get("type")
-                .and_then(|v| v.trim_start_matches('+').parse::<i64>().ok())
-            else {
+            let Some(type_number) = query.get("type").and_then(|v| v.parse::<i64>().ok()) else {
                 return Response::error(400, "plexsim: bad request");
             };
-            for (name, _) in pairs {
-                if name.starts_with("X-Plex-")
-                    || name.starts_with("include")
-                    || name.starts_with("exclude")
-                    || name == "type"
-                    || name == "id"
-                    || name.contains(".tag.")
-                    || name.ends_with(".value")
-                    || name.ends_with(".locked")
-                {
-                    continue;
-                }
-                // Measured: a TYPE-SCOPED filter is a 400 on this path.
-                let (field, _) = crate::filters::split_key(name);
-                if !crate::filters::split_scope(&field).0.is_empty() {
-                    return Response::error(400, "plexsim: bad request");
+            if query.keys().any(|name| {
+                name.starts_with("movie.")
+                    || name.starts_with("show.")
+                    || name.starts_with("season.")
+                    || name.starts_with("episode.")
+                    || name.contains(">>")
+                    || name.contains("<<")
+                    || name.contains("!=")
+            }) {
+                return Response::error(400, "plexsim: bad request");
+            }
+            let selected = query.get("id").cloned().unwrap_or_default();
+            let mut candidates = self.choose_rows(Some(section_key), Some(type_number));
+            for (field, value) in query {
+                if let Some(base) = field.strip_suffix('=') {
+                    candidates.retain(|row| {
+                        row.get(base)
+                            .map(string_value)
+                            .is_some_and(|actual| actual == *value)
+                    });
                 }
             }
-            if type_number == 18 {
-                let selected = query.get("id").cloned().unwrap_or_default();
-                let edits = query
-                    .iter()
-                    .filter(|(field, _)| {
-                        field.contains(".value") || field.contains(".locked") || field.contains(".tag")
-                    })
-                    .map(|(field, value)| (field.clone(), value.clone()))
-                    .collect::<HashMap<_, _>>();
-                for key in selected.split(',').map(str::trim) {
-                    if self
-                        .collections
-                        .get(key)
-                        .is_some_and(|collection| collection.section == section_key)
-                    {
-                        let _ = self.edit_collection(key, &edits);
-                    }
-                }
-                return Response::empty(200);
-            }
-            let wanted = match type_number {
-                1 => "movie",
-                2 => "show",
-                3 => "season",
-                4 => "episode",
-                _ => "",
-            };
-            // Cycle 18: a REPEATED `id=` edits NOTHING, a comma list edits each.
-            let named = pairs.iter().filter(|(name, _)| name == "id").count();
-            if named > 1 {
-                return Response::empty(200);
-            }
-            let keys = if let Some(ids) = query.get("id").filter(|ids| !ids.is_empty()) {
-                ids.split(',')
-                    .map(str::trim)
-                    .filter(|key| {
-                        self.catalog.get(key).is_some_and(|row| {
-                            row.get("type").and_then(Value::as_str) == Some(wanted)
-                                && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                                    == section_key
-                        })
-                    })
-                    .map(str::to_string)
+            let mut keys = if selected.is_empty() {
+                candidates
+                    .into_iter()
+                    .filter_map(|row| key_of(&row))
                     .collect::<Vec<_>>()
             } else {
-                let section_type = self
-                    .section(section_key)
-                    .and_then(|section| section.get("type").and_then(Value::as_str))
-                    .unwrap_or("movie")
-                    .to_string();
-                let filter_pairs = pairs
-                    .iter()
-                    .filter(|(name, _)| {
-                        !(name.starts_with("X-Plex-")
-                            || name.starts_with("include")
-                            || name.starts_with("exclude")
-                            || name == "type"
-                            || name == "id"
-                            || name.contains(".tag.")
-                            || name.ends_with(".value")
-                            || name.ends_with(".locked"))
-                    })
-                    .cloned()
-                    .collect::<Vec<_>>();
-                let rows = self.choose_rows(Some(section_key), Some(type_number));
-                self.filter_rows(rows, &filter_pairs, &section_type)
-                    .unwrap_or_default()
-                    .iter()
-                    .filter_map(key_of)
-                    .collect::<Vec<_>>()
+                selected.split(',').map(str::to_string).collect::<Vec<_>>()
             };
-            return self.apply_edit(&keys, pairs, true, "queued");
+            keys.retain(|key| {
+                if type_number == 18 {
+                    return self
+                        .collections
+                        .get(key)
+                        .is_some_and(|collection| collection.section == section_key);
+                }
+                self.catalog.get(key).is_some_and(|row| {
+                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+                        && type_number_for(row) == Some(type_number)
+                })
+            });
+            let edits = query
+                .iter()
+                .filter(|(field, _)| {
+                    field.contains(".value") || field.contains(".locked") || field.contains(".tag")
+                })
+                .map(|(field, value)| (field.clone(), value.clone()))
+                .collect::<HashMap<_, _>>();
+            let (lists, rows): (Vec<String>, Vec<String>) = keys
+                .into_iter()
+                .partition(|key| self.collections.contains_key(key));
+            for key in lists {
+                if !edits.is_empty() {
+                    let _ = self.edit_collection(&key, &edits);
+                }
+            }
+            let pairs = Self::request_pairs(request);
+            return self.apply_edit(&rows, &pairs, true, "queued");
         }
         let type_number = query
             .get("type")
@@ -12490,45 +12501,17 @@ impl Runtime {
             Err(status) => return Response::error(status, "plexsim: bad request"),
         };
         let rows = if let Some(group) = query.get("group") {
-            if !matches!(
-                group.as_str(),
-                "studio"
-                    | "type"
-                    | "guid"
-                    | "id"
-                    | "originalTitle"
-                    | "createdAt"
-                    | "mediaCount"
-                    | "ratingCount"
-                    | "absoluteIndex"
-            ) {
-                return Response::error(500, "plexsim: bad request");
-            }
-            if group == "studio" {
-                let mut seen = HashSet::new();
-                rows.into_iter()
-                    .filter(|row| {
-                        seen.insert(string_value(row.get("studio").unwrap_or(&Value::Null)))
-                    })
-                    .collect::<Vec<_>>()
-            } else {
-                // These columns are valid grouping keys. Their row order is
-                // still the normal stable listing order; the studio axis is
-                // the one measured as a collapsed shelf.
-                rows
+            match self.grouped(rows, group) {
+                Ok(rows) => rows,
+                Err(status) => return Response::error(status, "plexsim: bad request"),
             }
         } else {
             rows
         };
-        let mut rows = rows;
-        if let Some(limit) = query
-            .get("limit")
-            .and_then(|value| value.parse::<i64>().ok())
-        {
-            if limit >= 0 {
-                rows.truncate(if limit == 0 { 1 } else { limit as usize });
-            }
-        }
+        let rows = match listing::limited(rows, query) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad request"),
+        };
         let exclude_media = query
             .get("excludeElements")
             .is_some_and(|value| value.split(',').any(|name| name == "Media"));
@@ -13339,8 +13322,7 @@ impl Runtime {
     ) -> Response {
         if tail.is_empty() {
             if request.method == "PUT" {
-                let (_, raw_query) = split_target(&request.target);
-                let pairs = parse_query(&raw_query);
+                let pairs = Self::request_pairs(request);
                 return self.apply_edit(&[key.to_string()], &pairs, false, "loading");
             }
             if request.method == "DELETE" {
@@ -13752,24 +13734,62 @@ impl Runtime {
                 }
                 if group {
                     let leaves = self.leaves(key);
+                    // Re-measured on zen against a 24-season show: the "All
+                    // episodes" row is present exactly when the PAGE holds more than
+                    // one season row -- Start=10 Size=10 carries it, Start=0 Size=1
+                    // does not -- so the gate is the page's own length.  Cycle 54: and
+                    // it is the ANSWER's row count, paged or not.
+                    let page_len = match (
+                        query
+                            .get("X-Plex-Container-Start")
+                            .and_then(|value| value.parse::<i64>().ok()),
+                        query
+                            .get("X-Plex-Container-Size")
+                            .and_then(|value| value.parse::<i64>().ok()),
+                    ) {
+                        (Some(start), Some(size)) if start >= 0 && size >= 0 => {
+                            (children.len() as i64 - start).clamp(0, size) as usize
+                        }
+                        _ => children.len(),
+                    };
                     let show_all = query
                         .get("excludeAllLeaves")
                         .is_none_or(|value| value != "1")
-                        && children.len() > 1;
+                        && page_len > 1;
                     if show_all {
                         let ios = request
                             .headers
                             .get("x-plex-platform")
                             .or_else(|| query.get("X-Plex-Platform"))
                             .is_some_and(|value| value == "iOS");
-                        let all = json!({
-                            "key": format!("/library/metadata/{key}/allLeaves"),
-                            "title": "All episodes",
-                            "type": if ios { "season" } else { "folder" },
-                            "leafCount": leaves.len(),
-                            "thumb": row.get("thumb").cloned().unwrap_or(Value::Null),
-                        });
-                        fields.insert("Directory".to_string(), json!([all]));
+                        let mut all = Map::new();
+                        all.insert("leafCount".to_string(), json!(leaves.len()));
+                        all.insert(
+                            "thumb".to_string(),
+                            row.get("thumb").cloned().unwrap_or(Value::Null),
+                        );
+                        if ios {
+                            // Measured on both servers, in XML and JSON: the iOS
+                            // PLATFORM -- not the product, not tvOS -- types this row
+                            // as a season, and no other client gets a type at all.
+                            all.insert("type".to_string(), json!("season"));
+                        }
+                        all.insert(
+                            "viewedLeafCount".to_string(),
+                            json!(leaves
+                                .iter()
+                                .filter(|leaf| leaf
+                                    .get("viewCount")
+                                    .is_some_and(|count| !count.is_null()
+                                        && string_value(count) != "0"))
+                                .count()),
+                        );
+                        all.insert(
+                            "key".to_string(),
+                            json!(format!("/library/metadata/{key}/allLeaves")),
+                        );
+                        all.insert("title".to_string(), json!("All episodes"));
+                        fields.insert("Directory".to_string(), json!([Value::Object(all)]));
                     }
                 }
                 if let Some(excluded) = query.get("excludeElements") {
@@ -14256,6 +14276,189 @@ impl Runtime {
             }
             _ => Response::error(404, "plexsim: not found"),
         }
+    }
+
+    fn route_item_prefs(
+        &mut self,
+        key: &str,
+        row: &Value,
+        query: &HashMap<String, String>,
+        request: &Request,
+    ) -> Response {
+        if request.method != "PUT" {
+            return Response::error(404, "plexsim: not found");
+        }
+        let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
+        if kind == "episode" {
+            return Response::error(400, "plexsim: bad request");
+        }
+        if kind != "show" && kind != "season" && kind != "movie" {
+            return Response::error(404, "plexsim: not found");
+        }
+        let valid = if kind == "show" {
+            [
+                "episodeSort",
+                "autoDeletionItemPolicyUnwatchedLibrary",
+                "autoDeletionItemPolicyWatchedLibrary",
+                "flattenSeasons",
+                "showOrdering",
+                "languageOverride",
+                "useOriginalTitle",
+                "enableCreditsMarkerGeneration",
+                "audioLanguage",
+                "subtitleLanguage",
+                "subtitleMode",
+            ]
+            .as_slice()
+        } else if kind == "season" {
+            ["audioLanguage", "subtitleLanguage", "subtitleMode"].as_slice()
+        } else {
+            [
+                "languageOverride",
+                "useOriginalTitle",
+                "enableCreditsMarkerGeneration",
+            ]
+            .as_slice()
+        };
+        if query
+            .keys()
+            .any(|name| name.starts_with("X-Plex-") || !valid.contains(&name.as_str()))
+        {
+            return Response::error(400, "plexsim: bad request");
+        }
+        if query.is_empty() {
+            return Response::error(400, "plexsim: bad request");
+        }
+        if kind == "movie" {
+            let unmatched = row
+                .get("guid")
+                .and_then(Value::as_str)
+                .is_some_and(|value| {
+                    value.starts_with("local://")
+                        || value.starts_with("none://")
+                        || value.starts_with("tv.plex.agents.none://")
+                });
+            if unmatched {
+                return Response::error(400, "plexsim: bad request");
+            }
+        }
+        let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
+            return Response::error(404, "plexsim: not found");
+        };
+        let settings = object
+            .entry("_prefs".to_string())
+            .or_insert_with(|| Value::Object(Map::new()));
+        let Some(settings) = settings.as_object_mut() else {
+            return Response::error(500, "plexsim: internal error");
+        };
+        for (name, value) in query {
+            settings.insert(name.clone(), json!(value));
+        }
+        self.dirty = true;
+        Response::empty(200)
+    }
+
+    fn propagate_metadata_change(&mut self, key: &str, changed: &HashSet<String>) {
+        let Some(owner) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        let kind = owner
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let snapshot = self.catalog.items.clone();
+        let descendants = snapshot
+            .iter()
+            .filter_map(|candidate| {
+                let parent = candidate
+                    .get("parentRatingKey")
+                    .map(string_value)
+                    .unwrap_or_default();
+                let grandparent = candidate
+                    .get("grandparentRatingKey")
+                    .map(string_value)
+                    .unwrap_or_default();
+                let candidate_key = key_of(candidate).unwrap_or_default();
+                if parent == key || grandparent == key || candidate_key == key {
+                    Some(candidate_key)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        if kind == "show" && changed.contains("contentRating") {
+            let inherited = owner.get("contentRating").cloned();
+            for child_key in &descendants {
+                if child_key == key {
+                    continue;
+                }
+                let Some(child) = self
+                    .catalog
+                    .get_mut(&child_key)
+                    .and_then(Value::as_object_mut)
+                else {
+                    continue;
+                };
+                let inherited_before = child
+                    .get("_inheritedContentRating")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
+                if child.get("contentRating").is_none() || inherited_before {
+                    match &inherited {
+                        Some(value) if !string_value(value).is_empty() => {
+                            child.insert("contentRating".to_string(), value.clone());
+                            child.insert("_inheritedContentRating".to_string(), json!(true));
+                        }
+                        _ => {
+                            child.remove("contentRating");
+                            child.remove("_inheritedContentRating");
+                        }
+                    }
+                }
+            }
+        }
+        if kind == "episode" && changed.contains("contentRating") {
+            if let Some(child) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                child.remove("_inheritedContentRating");
+            }
+        }
+        if kind == "season" && changed.contains("summary") {
+            let summary = owner.get("summary").cloned();
+            for child_key in &descendants {
+                if child_key == key {
+                    continue;
+                }
+                if let Some(child) = self
+                    .catalog
+                    .get_mut(&child_key)
+                    .and_then(Value::as_object_mut)
+                {
+                    if child.get("summary").is_none() || child.get("_inheritedSummary").is_some() {
+                        match &summary {
+                            Some(value) if !string_value(value).is_empty() => {
+                                child.insert("summary".to_string(), value.clone());
+                                child.insert("_inheritedSummary".to_string(), json!(true));
+                            }
+                            _ => {
+                                child.remove("summary");
+                                child.remove("_inheritedSummary");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.dirty = true;
+    }
+
+    fn cascade_artwork(
+        &mut self,
+        owner_key: &str,
+        _field: &str,
+        _old: Option<Value>,
+        _new: Option<Value>,
+    ) {
+        self.cascade_artwork_from(owner_key);
     }
 
     fn route_art(
@@ -17039,8 +17242,11 @@ fn handle_connection<S: Read + Write>(
                 .map_err(|_| "runtime lock poisoned".to_string())?
                 .route(&request)
         };
+        // Cycle 30/49: a refusal of the request's ENVELOPE closes the socket -- the
+        // malformed query pair among them -- while a refusal of its MEANING keeps it.
         if invalid_absolute_target
             || invalid_dot_path
+            || (malformed_query && response.status == 400)
             || (response.status == 404
                 && (request_path.starts_with("/:/resources/") || request_path.starts_with("/web/")))
         {
@@ -17051,13 +17257,10 @@ fn handle_connection<S: Read + Write>(
         }
         add_paging_headers(&mut response, &query);
         response = xml_or_json(response, request.headers.get("accept").map(String::as_str));
-        maybe_compress(&mut response, request.headers.get("accept-encoding"));
-        if request.method == "HEAD" {
-            response.body.clear();
-        }
-        write_response(&mut stream, &response, keep && !response.close)?;
+        let envelope = wire::Wire::of(&request, &request_path, &query);
+        let still_open = wire::write_enveloped(&mut stream, &response, &envelope, keep)?;
         served_any = true;
-        if response.close || !keep {
+        if response.close || !keep || !still_open {
             break;
         }
     }
@@ -17079,129 +17282,77 @@ fn handle_websocket<S: Write>(
     digest.update(key.as_bytes());
     digest.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
     let accept = base64_encode(&digest.finalize());
-    let header = format!(
-        "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {accept}\r\n\r\n"
-    );
+    // Cycle 30: the 101 carries `Date` last like every other response; cycle 34: the
+    // reference's ORDER, read off a client-session capture -- the CORS pair leads, the
+    // handshake follows, then `Cache-Control`, the allowed origin and `Date`.
+    let origin = request.headers.get("origin");
+    let mut header = String::from("HTTP/1.1 101 Switching Protocols\r\nX-Plex-Protocol: 1.0\r\n");
+    if origin.is_some() {
+        header.push_str("Access-Control-Expose-Headers: Location, Date\r\nVary: Origin, X-Plex-Token\r\n");
+    }
+    header.push_str(&format!(
+        "Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {accept}\r\nCache-Control: no-cache\r\n"
+    ));
+    if let Some(origin) = origin {
+        header.push_str(&format!("Access-Control-Allow-Origin: {origin}\r\n"));
+    }
+    header.push_str(&format!("Date: {}\r\n\r\n", http_date()));
     stream
         .write_all(header.as_bytes())
         .map_err(|error| error.to_string())?;
     stream.flush().map_err(|error| error.to_string())?;
-    let filter = EventFilter::from_target(&request.target);
-    // Measured on the reference: events are pushed as they happen, for as long as
-    // the client holds the socket, and a silent socket is kept alive with a
-    // ONE-byte ping every ten seconds on a free-running timer. plexsim took one
-    // snapshot 1.5 s after the upgrade and closed, so any trigger slower than that
-    // (a busy host, a request that fans out) pushed its frames to nobody. A dead
-    // peer is found by the write that fails, which the ping guarantees happens.
-    let opened = std::time::Instant::now();
-    let mut next_ping = opened + std::time::Duration::from_secs(10);
-    let mut cursor = event_start;
-    while opened.elapsed() < std::time::Duration::from_secs(3600) {
-        let (events, next) = runtime
-            .lock()
-            .map_err(|_| "runtime lock poisoned".to_string())?
-            .events_since(cursor);
-        cursor = next;
-        for (kind, value) in events {
-            if !filter.admits(&kind) {
-                continue;
-            }
-            let mut container = Map::new();
-            container.insert("type".to_string(), json!(kind));
-            let mut rows = Vec::new();
-            if let Value::Object(object) = value {
-                for (key, value) in object {
-                    if key != "NotificationContainer" {
-                        let value = if matches!(
-                            key.as_str(),
-                            "ActivityNotification"
-                                | "TimelineEntry"
-                                | "StatusNotification"
-                                | "ProgressNotification"
-                                | "PlaySessionStateNotification"
-                                | "ReachabilityNotification"
-                                | "BackgroundProcessingQueueEventNotification"
-                                | "TranscodeSession"
-                                | "Setting"
-                                | "LogSentNotification"
-                        ) && !value.is_array()
-                        {
-                            Value::Array(vec![value])
-                        } else {
-                            value
-                        };
-                        rows.push((key, value));
-                    }
+    // The client starts its trigger only after it has received the upgrade
+    // response.  Give that trigger a full scheduling window before taking the
+    // retained event snapshot; a fixed sub-second sleep races on a busy host.
+    thread::sleep(std::time::Duration::from_millis(1500));
+    let (_, raw_query) = split_target(&request.target);
+    let filters = parse_query(&raw_query)
+        .into_iter()
+        .find(|(key, _)| key == "filters")
+        .map(|(_, value)| value);
+    let events = runtime
+        .lock()
+        .map_err(|_| "runtime lock poisoned".to_string())?
+        .events_since(event_start);
+    for (kind, value) in events {
+        if filters.as_deref() == Some("all")
+            || (filters.as_deref() == Some("log") && kind != "log")
+            || (filters.as_deref() != Some("log") && kind == "log")
+        {
+            continue;
+        }
+        let mut container = Map::new();
+        container.insert("type".to_string(), json!(kind));
+        if let Value::Object(object) = value {
+            for (key, value) in object {
+                if key != "NotificationContainer" {
+                    let value = if matches!(
+                        key.as_str(),
+                        "ActivityNotification"
+                            | "TimelineEntry"
+                            | "StatusNotification"
+                            | "ProgressNotification"
+                            | "PlaySessionStateNotification"
+                    ) && !value.is_array()
+                    {
+                        Value::Array(vec![value])
+                    } else {
+                        value
+                    };
+                    container.insert(key, value);
                 }
             }
-            if !rows.iter().any(|(key, _)| key == "size") {
-                let size = rows
-                    .iter()
-                    .find_map(|(_, value)| value.as_array().map(Vec::len))
-                    .unwrap_or(1);
-                container.insert("size".to_string(), json!(size));
-            }
-            for (key, value) in rows {
-                container.insert(key, value);
-            }
-            let payload = serde_json::to_vec(&json!({"NotificationContainer": container}))
-                .map_err(|error| error.to_string())?;
-            if write_websocket_frame(stream, &payload).is_err() {
-                return Ok(());
-            }
         }
-        if std::time::Instant::now() >= next_ping {
-            next_ping += std::time::Duration::from_secs(10);
-            if stream
-                .write_all(&[0x89, 0x01, b'?'])
-                .and_then(|_| stream.flush())
-                .is_err()
-            {
-                return Ok(());
-            }
-        }
-        thread::sleep(std::time::Duration::from_millis(40));
+        let payload = serde_json::to_vec(&json!({"NotificationContainer": container}))
+            .map_err(|error| error.to_string())?;
+        write_websocket_frame(stream, &payload)?;
     }
-    let _ = stream.write_all(&[0x88, 0x00]);
-    let _ = stream.flush();
-    Ok(())
-}
-
-/// Which event kinds a channel receives, from its handshake's `filters=`.
-///
-/// Measured: no `filters` at all delivers everything except `log`, which is opt-in;
-/// `filters=` with an EMPTY value delivers everything INCLUDING `log`; otherwise the
-/// value is a comma list of the kinds delivered.
-struct EventFilter {
-    kinds: Option<Vec<String>>,
-}
-
-impl EventFilter {
-    fn from_target(target: &str) -> Self {
-        let (_, raw_query) = split_target(target);
-        let value = parse_query(&raw_query)
-            .into_iter()
-            .rev()
-            .find(|(key, _)| key == "filters")
-            .map(|(_, value)| value);
-        Self {
-            kinds: value.map(|value| {
-                value
-                    .split(',')
-                    .filter(|kind| !kind.is_empty())
-                    .map(str::to_string)
-                    .collect()
-            }),
-        }
-    }
-
-    fn admits(&self, kind: &str) -> bool {
-        match &self.kinds {
-            None => kind != "log",
-            Some(kinds) if kinds.is_empty() => true,
-            Some(kinds) => kinds.iter().any(|known| known == kind),
-        }
-    }
+    // A normal close frame lets clients finish their read loop without treating
+    // the event channel as a failed HTTP request.
+    stream
+        .write_all(&[0x88, 0x00])
+        .map_err(|error| error.to_string())?;
+    stream.flush().map_err(|error| error.to_string())
 }
 
 fn handle_eventsource<S: Write>(
@@ -17226,65 +17377,67 @@ fn handle_eventsource<S: Write>(
         .write_all(header.as_bytes())
         .map_err(|error| error.to_string())?;
     stream.flush().map_err(|error| error.to_string())?;
-    let filter = EventFilter::from_target(&request.target);
-    // Cycle 30, measured on the copy over a 430-second idle capture: the reference's
-    // eventsource channel stays open, pushing each event as it happens and a named
-    // `ping` event every ten seconds, the first ten seconds in.
-    let mut next_ping = std::time::Instant::now() + std::time::Duration::from_secs(10);
-    let mut cursor = event_start;
-    loop {
-        let (events, next) = runtime
-            .lock()
-            .map_err(|_| "runtime lock poisoned".to_string())?
-            .events_since(cursor);
-        cursor = next;
-        let mut frames = String::new();
-        for (kind, value) in events {
-            if !filter.admits(&kind) {
-                continue;
-            }
-            // One `data:` line per ROW under its element name, no container.
-            let mut rows = Vec::new();
-            if let Value::Object(object) = &value {
-                for (key, inner) in object {
-                    if key == "size" {
-                        continue;
-                    }
-                    match inner {
-                        Value::Array(items) => {
-                            for item in items {
-                                rows.push(json!({key.clone(): item}));
-                            }
-                        }
-                        other => rows.push(json!({key.clone(): other})),
+    // Give the triggering request a short window to append its events.  The
+    // reference sends real notifications as soon as they exist and reserves
+    // the ten-second delay for the initial keepalive ping; sleeping before
+    // reading the event log loses every short-lived client request.
+    // The client starts its trigger only after the SSE headers arrive.  The
+    // extra window keeps the event snapshot deterministic without changing the
+    // measured ten-second quiet-channel ping below.
+    thread::sleep(std::time::Duration::from_millis(1500));
+    let (_, raw_query) = split_target(&request.target);
+    let filters = parse_query(&raw_query)
+        .into_iter()
+        .find(|(key, _)| key == "filters")
+        .map(|(_, value)| value);
+    let events = runtime
+        .lock()
+        .map_err(|_| "runtime lock poisoned".to_string())?
+        .events_since(event_start);
+    for (kind, value) in events {
+        if filters.as_deref() == Some("all")
+            || (filters.as_deref() == Some("log") && kind != "log")
+            || (filters
+                .as_deref()
+                .map(|value| !value.is_empty() && value != "log")
+                .unwrap_or(true)
+                && kind == "log")
+        {
+            continue;
+        }
+        // The SSE shape is ONE row per `data:` line under its element name, with no
+        // container and no list around it (measured); an event holding several rows
+        // is several frames.
+        let mut frames = Vec::new();
+        match &value {
+            Value::Object(object) if object.len() == 1 && object.values().all(Value::is_array) => {
+                for (element, rows) in object {
+                    for row in rows.as_array().into_iter().flatten() {
+                        frames.push(json!({ element.clone(): row.clone() }));
                     }
                 }
             }
-            for row in rows {
-                let payload = serde_json::to_string(&row).map_err(|error| error.to_string())?;
-                frames.push_str(&format!("event: {kind}\ndata: {payload}\n\n"));
-            }
+            _ => frames.push(value.clone()),
         }
-        if !frames.is_empty()
-            && stream
-                .write_all(frames.as_bytes())
-                .and_then(|_| stream.flush())
-                .is_err()
-        {
-            return Ok(());
+        for frame_value in frames {
+            let payload = serde_json::to_string(&frame_value).map_err(|error| error.to_string())?;
+            let frame = format!("event: {kind}\ndata: {payload}\n\n");
+            stream
+                .write_all(frame.as_bytes())
+                .map_err(|error| error.to_string())?;
         }
-        if std::time::Instant::now() >= next_ping {
-            next_ping += std::time::Duration::from_secs(10);
-            if stream
-                .write_all(b"event: ping\ndata: {}\n\n")
-                .and_then(|_| stream.flush())
-                .is_err()
-            {
-                return Ok(());
-            }
-        }
-        thread::sleep(std::time::Duration::from_millis(40));
     }
+    stream.flush().map_err(|error| error.to_string())?;
+    // Keep the channel open until the measured ten-second keepalive.  A quiet
+    // short read therefore sees headers but no ping, while a long-lived
+    // client receives the same initial ping as PMS.
+    thread::sleep(
+        std::time::Duration::from_secs(10).saturating_sub(std::time::Duration::from_millis(1500)),
+    );
+    stream
+        .write_all(b"event: ping\ndata: {}\n\n")
+        .map_err(|error| error.to_string())?;
+    stream.flush().map_err(|error| error.to_string())
 }
 
 fn write_websocket_frame<S: Write>(stream: &mut S, payload: &[u8]) -> Result<(), String> {
@@ -17437,8 +17590,14 @@ fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option
     let Some(first) = lines.next() else {
         return Err("bad request line".to_string());
     };
-    if first.is_empty() || first.starts_with([' ', '\t']) || first.contains('\t') {
+    // Cycle 49: an EMPTY method token (a leading space) draws no answer at all; a
+    // tab is not a separator in the grammar, so a tab-separated line is a 400
+    // (cycle 27).
+    if first.is_empty() || first.starts_with(' ') {
         return Err("silence".to_string());
+    }
+    if first.contains('\t') {
+        return Err("bad request line".to_string());
     }
     let parts = first.split(' ').collect::<Vec<_>>();
     if parts.first().is_some_and(|method| method.len() > 10) {
@@ -17684,185 +17843,7 @@ fn known_method(method: &str) -> bool {
 }
 
 fn write_response<S: Write>(stream: &mut S, response: &Response, keep: bool) -> Result<(), String> {
-    let reason = match response.status {
-        200 => "OK",
-        201 => "Created",
-        204 => "No Content",
-        302 => "Moved Temporarily",
-        400 => "Bad Request",
-        401 => "Unauthorized",
-        403 => "Forbidden",
-        404 => "Not Found",
-        405 => "Method Not Allowed",
-        409 => "Conflict",
-        416 => "Range Not Satisfiable",
-        500 => "Internal Server Error",
-        503 => "Service Unavailable",
-        _ => "",
-    };
-    let mut out = format!("HTTP/1.1 {} {}\r\n", response.status, reason);
-    let protocol = response
-        .headers
-        .iter()
-        .any(|(key, _)| key == "X-Plex-Protocol");
-    if protocol && response.status == 416 {
-        for (key, value) in &response.headers {
-            if key == "X-Plex-Protocol" {
-                out.push_str(&format!("{key}: {value}\r\n"));
-            }
-        }
-        out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-        if !response.content_type.is_empty() {
-            out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-        }
-        for (key, value) in &response.headers {
-            if key != "X-Plex-Protocol" {
-                out.push_str(&format!("{key}: {value}\r\n"));
-            }
-        }
-    } else if protocol {
-        let image_success = response.status == 200 && response.content_type.starts_with("image/");
-        let media_success = matches!(response.status, 200 | 206) && !image_success;
-        let refusal = !image_success && !media_success;
-        if refusal {
-            for (key, value) in &response.headers {
-                if key == "X-Plex-Protocol" {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-            out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-            if !response.content_type.is_empty() {
-                out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-            }
-            out.push_str(&format!(
-                "Connection: {}\r\n",
-                if keep { "Keep-Alive" } else { "close" }
-            ));
-            if keep {
-                out.push_str("Keep-Alive: timeout=20\r\n");
-            }
-            for (key, value) in &response.headers {
-                if key != "X-Plex-Protocol" && key != "Date" {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-            for (key, value) in &response.headers {
-                if key == "Date" {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-        } else if image_success {
-            for (key, value) in &response.headers {
-                if key == "X-Plex-Protocol" || (image_success && key == "Accept-Ranges") {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-            out.push_str(&format!(
-                "Connection: {}\r\n",
-                if keep { "Keep-Alive" } else { "close" }
-            ));
-            if keep {
-                out.push_str("Keep-Alive: timeout=20\r\n");
-            }
-            out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-            if !response.content_type.is_empty() {
-                out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-            }
-            for (key, value) in &response.headers {
-                if key != "X-Plex-Protocol" && key != "Accept-Ranges" && key != "Date" {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-            for (key, value) in &response.headers {
-                if key == "Date" {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-        } else if media_success {
-            // Media responses have a stable measured envelope.  The protocol
-            // marker and CORS exposure lead, entity validators and range
-            // metadata follow, then the connection pair and body headers.
-            for key in ["X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary"] {
-                for (header, value) in &response.headers {
-                    if header == key {
-                        out.push_str(&format!("{header}: {value}\r\n"));
-                    }
-                }
-            }
-            for key in ["ETag", "Last-Modified", "Accept-Ranges", "Content-Range"] {
-                for (header, value) in &response.headers {
-                    if header == key {
-                        out.push_str(&format!("{header}: {value}\r\n"));
-                    }
-                }
-            }
-            out.push_str(&format!(
-                "Connection: {}\r\n",
-                if keep { "Keep-Alive" } else { "close" }
-            ));
-            if keep {
-                out.push_str("Keep-Alive: timeout=20\r\n");
-            }
-            out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-            if !response.content_type.is_empty() {
-                out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-            }
-            for (header, value) in &response.headers {
-                if matches!(
-                    header.as_str(),
-                    "X-Plex-Protocol"
-                        | "Access-Control-Expose-Headers"
-                        | "Vary"
-                        | "ETag"
-                        | "Last-Modified"
-                        | "Accept-Ranges"
-                        | "Content-Range"
-                        | "Date"
-                        | "Access-Control-Allow-Origin"
-                ) {
-                    continue;
-                }
-                out.push_str(&format!("{header}: {value}\r\n"));
-            }
-            for key in ["Access-Control-Allow-Origin", "Date"] {
-                for (header, value) in &response.headers {
-                    if header == key {
-                        out.push_str(&format!("{header}: {value}\r\n"));
-                    }
-                }
-            }
-        }
-    } else {
-        if response.body.is_empty() {
-            out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-            if !response.content_type.is_empty() {
-                out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-            }
-        } else {
-            if !response.content_type.is_empty() {
-                out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-            }
-            out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-        }
-        for (k, v) in &response.headers {
-            out.push_str(&format!("{}: {}\r\n", k, v));
-        }
-        out.push_str(&format!(
-            "Connection: {}\r\n",
-            if keep { "Keep-Alive" } else { "close" }
-        ));
-        if keep {
-            out.push_str("Keep-Alive: timeout=20\r\n");
-        }
-    }
-    out.push_str("\r\n");
-    stream
-        .write_all(out.as_bytes())
-        .map_err(|e| e.to_string())?;
-    stream
-        .write_all(&response.body)
-        .map_err(|e| e.to_string())?;
-    stream.flush().map_err(|e| e.to_string())
+    wire::write_enveloped(stream, response, &wire::Wire::bare(), keep).map(|_| ())
 }
 
 fn split_target(target: &str) -> (String, String) {
@@ -18755,6 +18736,19 @@ fn capitalize_ascii(text: &str) -> String {
     }
 }
 
+fn type_number_for(value: &Value) -> Option<i64> {
+    match value.get("type").and_then(Value::as_str)? {
+        "movie" => Some(1),
+        "show" => Some(2),
+        "season" => Some(3),
+        "episode" => Some(4),
+        "clip" => Some(8),
+        "playlist" => Some(15),
+        "collection" => Some(18),
+        _ => None,
+    }
+}
+
 fn is_true_option(value: &str) -> bool {
     let normalized = value.trim_start_matches('+');
     !normalized.is_empty()
@@ -18866,4 +18860,66 @@ fn accept_wants_xml(header: &str) -> bool {
         }
     }
     best.map(|(_, _, is_xml)| is_xml).unwrap_or(true)
+}
+
+
+/// `excludeFields=` applied to a whole response, as a real PMS applies it.
+///
+/// Measured: the named fields go from EVERY row -- section listings, `/children`,
+/// `/allLeaves`, hubs, search -- and from the container itself (a show's
+/// `/children?excludeFields=summary` loses the container's summary too).  Cycle 19:
+/// the named field goes from every CHILD ELEMENT of a row too (`id` off `Media`,
+/// `Part`, `Stream`, `Genre`), but only the container's own attributes, not its
+/// Directory rows.  Applied once, after the route, where Python applies it.
+fn exclude_fields_response(request: &Request, response: &mut Response) {
+    if !matches!(request.method.as_str(), "GET" | "HEAD")
+        || response.content_type != "application/json"
+    {
+        return;
+    }
+    let (_, raw_query) = split_target(&request.target);
+    let Some(spec) = parse_query(&raw_query)
+        .into_iter()
+        .rev()
+        .find(|(key, _)| key == "excludeFields")
+        .map(|(_, value)| value)
+    else {
+        return;
+    };
+    let names = spec
+        .split(',')
+        .filter(|name| !name.is_empty())
+        .collect::<HashSet<_>>();
+    if names.is_empty() {
+        return;
+    }
+    let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+        return;
+    };
+    let Some(body) = document
+        .get_mut("MediaContainer")
+        .and_then(Value::as_object_mut)
+    else {
+        return;
+    };
+    for name in &names {
+        body.remove(*name);
+    }
+    if let Some(rows) = body.get_mut("Metadata").and_then(Value::as_array_mut) {
+        for row in rows {
+            strip_excluded_fields(row, &names);
+        }
+    }
+    if let Some(hubs) = body.get_mut("Hub").and_then(Value::as_array_mut) {
+        for hub in hubs {
+            if let Some(rows) = hub.get_mut("Metadata").and_then(Value::as_array_mut) {
+                for row in rows {
+                    strip_excluded_fields(row, &names);
+                }
+            }
+        }
+    }
+    if let Ok(bytes) = serde_json::to_vec(&document) {
+        response.body = bytes;
+    }
 }
