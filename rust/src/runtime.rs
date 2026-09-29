@@ -14917,47 +14917,62 @@ impl Runtime {
                 if request.method != "PUT" {
                     return Response::error(404, "plexsim: not found");
                 }
-                let Some(ids) = query.get("ids") else {
-                    return Response::error(400, "plexsim: ids required");
-                };
-                let mut merged = Vec::new();
-                for other in ids.split(',').filter(|value| !value.is_empty()) {
-                    if other == key {
-                        continue;
-                    }
+                // Measured on a writable copy: no `ids` is a 400, an id the server
+                // does not have a 404, a row of another type a 400.
+                let ids = query
+                    .get("ids")
+                    .map(|ids| ids.split(',').filter(|id| !id.is_empty()).map(str::to_string).collect::<Vec<_>>())
+                    .unwrap_or_default();
+                if ids.is_empty() {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                let mut others = Vec::new();
+                for other in &ids {
                     let Some(value) = self.catalog.get(other).cloned() else {
                         return Response::error(404, "plexsim: no such item");
                     };
                     if value.get("type") != row.get("type") {
-                        return Response::error(400, "plexsim: item type mismatch");
+                        return Response::error(400, "plexsim: bad request");
                     }
-                    merged.push((other.to_string(), value));
+                    others.push((other.clone(), value));
                 }
-                if merged.is_empty() {
-                    return Response::error(404, "plexsim: no such item");
+                if row.get("type").and_then(Value::as_str) == Some("show") {
+                    return self.merge_shows(key, &others);
                 }
-                let mut media = row
-                    .get("Media")
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default();
-                for (other, value) in merged {
-                    media.extend(
-                        value
-                            .get("Media")
-                            .and_then(Value::as_array)
-                            .cloned()
-                            .unwrap_or_default(),
-                    );
+                // Cycle 14, the one DATA-LOSS bug: a merge whose target has no Media of
+                // its OWN (a season) absorbs nothing -- a 200, no frames, the tree
+                // unchanged.
+                if !row.get("Media").is_some_and(truthy) {
+                    return Response::empty(200);
+                }
+                let mut media = row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
+                let mut merged = Vec::new();
+                for (other, value) in others {
+                    if other == key {
+                        continue;
+                    }
+                    media.extend(value.get("Media").and_then(Value::as_array).cloned().unwrap_or_default());
                     self.catalog.remove(&other);
                     self.deleted.insert(other.clone());
-                    self.push_delete_event(&other);
+                    merged.push(value);
+                }
+                if merged.is_empty() {
+                    return Response::empty(200);
                 }
                 if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
                     object.insert("Media".to_string(), Value::Array(media));
+                    object.insert("updatedAt".to_string(), json!(now()));
+                }
+                // Measured: the absorbed row is deleted (state 9, untitled) and the
+                // survivor refreshed under type -1, state 3 then 5.
+                for gone in &merged {
+                    self.push_timeline_entry(gone, 9, Some("deleted"), None, None, Some(""));
+                }
+                if let Some(survivor) = self.catalog.get(key).cloned() {
+                    self.push_timeline_entry(&survivor, 3, None, None, Some(-1), None);
+                    self.push_timeline_entry(&survivor, 5, None, None, Some(-1), None);
                 }
                 self.dirty = true;
-                self.push_edit_events(key);
                 self.save_if_dirty();
                 Response::empty(200)
             }
@@ -15231,6 +15246,86 @@ impl Runtime {
         _new: Option<Value>,
     ) {
         self.cascade_artwork_from(owner_key);
+    }
+
+    /// Merge identical show hierarchies, combining each episode's Media (cycle 41):
+    /// the absorbed episode's Media precede the survivor's, the absorbed show, seasons
+    /// and episodes disappear, and a shape whose leaves cannot be paired by season and
+    /// episode index is left alone. Frames: every removed row state 9 untitled, then
+    /// each changed episode state 3/5 under type -1.
+    fn merge_shows(&mut self, key: &str, others: &[(String, Value)]) -> Response {
+        let target_leaves = self.leaves(key);
+        let pair_key = |leaf: &Value| {
+            (
+                leaf.get("parentIndex").map(py_str).unwrap_or_default(),
+                leaf.get("index").map(py_str).unwrap_or_default(),
+            )
+        };
+        let mut changed: Vec<String> = Vec::new();
+        let mut removed_rows: Vec<Value> = Vec::new();
+        for (other_key, other) in others {
+            if other_key == key {
+                continue;
+            }
+            let source_leaves = self.leaves(other_key);
+            if source_leaves.is_empty() {
+                continue;
+            }
+            let mut pairs = Vec::new();
+            for source in &source_leaves {
+                match target_leaves.iter().find(|target| pair_key(target) == pair_key(source)) {
+                    Some(target) => pairs.push((key_of(target).unwrap_or_default(), source.clone())),
+                    None => {
+                        pairs.clear();
+                        break;
+                    }
+                }
+            }
+            if pairs.len() != source_leaves.len() {
+                continue;
+            }
+            for (target_key, source) in &pairs {
+                if let Some(object) = self.catalog.get_mut(target_key).and_then(Value::as_object_mut) {
+                    let mut media = source.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
+                    media.extend(object.get("Media").and_then(Value::as_array).cloned().unwrap_or_default());
+                    object.insert("Media".to_string(), Value::Array(media));
+                    object.insert("updatedAt".to_string(), json!(now()));
+                }
+                if !changed.contains(target_key) {
+                    changed.push(target_key.clone());
+                }
+            }
+            let mut source_rows = vec![other.clone()];
+            for season in self.children(other_key) {
+                let season_key = key_of(&season).unwrap_or_default();
+                source_rows.push(season);
+                source_rows.extend(self.children(&season_key));
+            }
+            for gone in &source_rows {
+                if let Some(gone_key) = key_of(gone) {
+                    self.catalog.remove(&gone_key);
+                    self.deleted.insert(gone_key);
+                }
+            }
+            removed_rows.extend(source_rows);
+        }
+        for gone in &removed_rows {
+            self.push_timeline_entry(gone, 9, Some("deleted"), None, None, Some(""));
+        }
+        for episode in &changed {
+            if let Some(row) = self.catalog.get(episode).cloned() {
+                self.push_timeline_entry(&row, 3, None, None, Some(-1), None);
+                self.push_timeline_entry(&row, 5, None, None, Some(-1), None);
+            }
+        }
+        if !removed_rows.is_empty() {
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                object.insert("updatedAt".to_string(), json!(now()));
+            }
+        }
+        self.dirty = true;
+        self.save_if_dirty();
+        Response::empty(200)
     }
 
     fn route_art(
