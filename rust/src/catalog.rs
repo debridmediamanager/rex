@@ -115,31 +115,46 @@ impl Catalog {
             if let Some(media) = item.get_mut("Media").and_then(Value::as_array_mut) {
                 for media in media.iter_mut() {
                     mediainfo::normalize_media(media);
-                    // `_retitle_streams`: every Stream's display titles recomputed from
-                    // the row's own fields, so a catalog built before a title rule was
-                    // measured is corrected rather than needing a rebuild.
-                    for part in media
-                        .get_mut("Part")
-                        .and_then(Value::as_array_mut)
-                        .into_iter()
-                        .flatten()
-                    {
-                        for stream in part
-                            .get_mut("Stream")
-                            .and_then(Value::as_array_mut)
-                            .into_iter()
-                            .flatten()
-                        {
-                            if let Some(stream) = stream.as_object_mut() {
-                                mediainfo::stream_titles(stream, None, None);
-                            }
-                        }
-                    }
                 }
             }
         }
         hierarchy::normalize_rows(&mut self.items);
         self.rebuild_index();
+    }
+
+    /// `server.py` `_retitle_streams`: every Stream's display titles recomputed from
+    /// the row's own fields, so a catalog built before a title rule was measured is
+    /// corrected rather than needing a rebuild. A server-load step, not part of
+    /// `normalize`: Python runs it in `Catalog.__init__` after `normalize_media` and
+    /// `normalize_rows`, and the `catalog-normalize` parity command mirrors only those
+    /// two, which leave the stored titles alone.
+    pub fn retitle_streams(&mut self) {
+        for item in self.items.iter_mut() {
+            for media in item
+                .get_mut("Media")
+                .and_then(Value::as_array_mut)
+                .into_iter()
+                .flatten()
+            {
+                for part in media
+                    .get_mut("Part")
+                    .and_then(Value::as_array_mut)
+                    .into_iter()
+                    .flatten()
+                {
+                    for stream in part
+                        .get_mut("Stream")
+                        .and_then(Value::as_array_mut)
+                        .into_iter()
+                        .flatten()
+                    {
+                        if let Some(stream) = stream.as_object_mut() {
+                            mediainfo::stream_titles(stream, None, None);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

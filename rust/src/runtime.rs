@@ -418,6 +418,7 @@ impl Runtime {
         let mut catalog = Catalog::load(&options.catalog)?;
         let source_digest = bytes_digest(&raw_catalog);
         catalog.normalize();
+        catalog.retitle_streams();
         number_catalog_tags(&mut catalog.items);
         // Cycle 41: `Part.accessible`/`exists` are a DETAIL option (`checkFiles=1`), never
         // a stored field a listing or a plain read carries; the checked read computes them.
