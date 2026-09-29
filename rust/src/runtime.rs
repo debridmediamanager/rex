@@ -8935,6 +8935,11 @@ impl Runtime {
                                 .and_then(Value::as_f64)
                                 .is_some_and(|value| value >= 7.0)
                     });
+                    // Cycle 55, re-measured on zen: the shelf is the HEAD of its own key
+                    // listing, so its rows come in that listing's default order.
+                    let filtered = self
+                        .sort_rows(filtered.clone(), Some("titleSort"))
+                        .unwrap_or(filtered);
                     ((name, tag), filtered)
                 })
                 .unwrap_or_else(|| ((String::new(), Value::Null), Vec::new()))
@@ -10894,7 +10899,8 @@ impl Runtime {
             }
             self.hidden_continue.insert(key);
             self.dirty = true;
-            return Response::empty(200);
+            // Measured: the answer is a bare `size 0` container, not an empty body.
+            return Response::json(200, json!({"MediaContainer": {"size": 0}}));
         }
         if segments.first() == Some(&"downloadQueue") {
             return self.route_download_queue(&segments[1..], request);
@@ -12160,8 +12166,15 @@ impl Runtime {
                             Ok(rows) => rows,
                             Err(status) => return Response::error(status, "plexsim: bad request"),
                         };
-                        if let Some(sort) = query.get("sort") {
-                            rows = match self.sort_rows(rows, Some(sort)) {
+                        // A movie library's leaves default to titleSort; a show
+                        // library's keep the show order they arrive in.
+                        let sort = query
+                            .get("sort")
+                            .filter(|sort| !sort.is_empty())
+                            .map(String::as_str)
+                            .or(if is_show { None } else { Some("titleSort") });
+                        if sort.is_some() {
+                            rows = match self.sort_rows(rows, sort) {
                                 Ok(rows) => rows,
                                 Err(status) => {
                                     return Response::error(status, "plexsim: bad request")
@@ -12176,9 +12189,31 @@ impl Runtime {
                                 Err(status) => return Response::error(status, "plexsim: bad request"),
                             };
                         }
+                        // Measured on kids and zen: `limit=` applies here as on `/all`.
+                        let rows = match listing::limited(rows, query) {
+                            Ok(rows) => rows,
+                            Err(status) => return Response::error(status, "plexsim: bad request"),
+                        };
+                        let exclude_media = query
+                            .get("excludeElements")
+                            .is_some_and(|value| value.split(',').any(|name| name == "Media"));
                         let shown = rows
                             .iter()
-                            .map(|candidate| self.grid_row(candidate, false, true, false))
+                            .map(|candidate| {
+                                let mut shown = self.child_list_row(candidate, query);
+                                if exclude_media {
+                                    if let Some(object) = shown.as_object_mut() {
+                                        let count = object
+                                            .get("Media")
+                                            .and_then(Value::as_array)
+                                            .map_or(0, Vec::len);
+                                        object.remove("Media");
+                                        object.insert("mediaCount".to_string(), json!(count));
+                                        object.insert("mediaCountOptimized".to_string(), json!(0));
+                                    }
+                                }
+                                shown
+                            })
                             .collect::<Vec<_>>();
                         fields.insert(
                             "viewGroup".to_string(),
@@ -14519,7 +14554,8 @@ impl Runtime {
         let rows = rows
             .iter()
             .map(|row| {
-                let mut projected = self.section_listing_row(row);
+                // Measured: a LISTING carries `Guid` only under `includeGuids=1`.
+                let mut projected = guid_gate(self.section_listing_row(row), query);
                 if with_storage {
                     let leaves = if row.get("Media").is_some() {
                         vec![row.clone()]
@@ -15522,10 +15558,20 @@ impl Runtime {
                         .get("includeChildren")
                         .is_some_and(|value| is_true_option(value))
                 {
+                    // Cycle 16, measured on kids and zen: an INLINED child row is the
+                    // full row without `librarySectionID`, `librarySectionKey` or
+                    // `librarySectionTitle`, which the same row through `/children`
+                    // carries.
                     let children = self
                         .children(key)
                         .into_iter()
-                        .map(|child| self.listing_row(&child))
+                        .map(|child| {
+                            let mut shown = self.detail_row(&child);
+                            if let Some(object) = shown.as_object_mut() {
+                                object.retain(|name, _| !name.starts_with("librarySection"));
+                            }
+                            shown
+                        })
                         .collect::<Vec<_>>();
                     object.insert(
                         "Children".to_string(),
@@ -17386,6 +17432,30 @@ impl Runtime {
         if tail.len() == 1 && matches!(tail[0], "posters" | "arts" | "clearLogos" | "themes") {
             return self.list_artwork_response(&playlist.id, false, tail[0], request);
         }
+        if tail.len() == 1 && matches!(tail[0], "thumbs" | "banners") {
+            // Cycle 16, measured on plexscratch: a list answers these two the way an
+            // ITEM does -- 200 with an empty candidate container.
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 0, "identifier": "com.plexapp.plugins.library",
+                                          "mediaTagPrefix": MEDIA_TAG_PREFIX,
+                                          "mediaTagVersion": MEDIA_TAG_VERSION}}),
+            );
+        }
+        if tail == ["tree"] {
+            // Cycle 16: a list has a `/tree` too, a single `MetadataItem` naming itself.
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 1, "MetadataItem": [
+                    {"id": playlist.id.parse::<i64>().unwrap_or(0)}]}}),
+            );
+        }
         if tail == ["items"] && request.method == "PUT" && playlist.smart {
             return self.save_smart_playlist(&playlist.id, query);
         }
@@ -17625,6 +17695,14 @@ impl Runtime {
                 } else {
                     Response::error(404, "plexsim: no such playlist item")
                 };
+            }
+            // Cycle 16, measured on plexscratch: a playlist's artwork lives under
+            // `/library/metadata/{ratingKey}/`; under `/playlists/{id}/` `posters`,
+            // `arts`, `thumb`, `art` and the UNVERSIONED `composite` are 404s.
+            if (segments.len() == 2 && matches!(segments[1], "posters" | "arts" | "thumb" | "art" | "composite"))
+                || matches!(segments.get(1), Some(&"thumbs" | &"banners" | &"tree"))
+            {
+                return Response::error(404, "plexsim: not found");
             }
             return self.route_playlist_metadata(&p, &segments[1..], query, request);
         }
