@@ -712,3 +712,209 @@ impl Runtime {
         )
     }
 }
+
+/// Cycle 52: thirteen genre names carry a FIXED Categories colour (zen and kids agree).
+fn category_colour(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "action" => "2B717E",
+        "animation" => "347431",
+        "comedy" => "51284C",
+        "crime" => "33486E",
+        "documentary" => "884624",
+        "drama" => "846E49",
+        "history" => "37397A",
+        "horror" => "7A281A",
+        "musical" => "3B8265",
+        "romance" => "892959",
+        "science fiction" => "673E8B",
+        "thriller" => "57222B",
+        "western" => "704A23",
+        _ => return None,
+    })
+}
+/// ...and every other genre takes the next of this cycle, walked in TAG-ID order.
+const CATEGORY_COLOUR_CYCLE: [&str; 7] = ["494616", "91293D", "4C561B", "883E7D", "8B6122", "8B4D43", "23533C"];
+
+impl Runtime {
+    /// `/library/sections/{id}/categories` (cycle 52): one tile per genre of the genre
+    /// axis, its thumb FIRST -- an art transcode tinted with the genre's `blendColor`,
+    /// the art the highest-rated not-yet-taken item carrying the genre and `art` --
+    /// then `type`, `key` (the axis's fastKey) and `title`.
+    pub(super) fn route_categories(&mut self, section_key: &str, section: Value, request: &Request) -> Response {
+        if !matches!(request.method.as_str(), "GET" | "HEAD") {
+            return Response::error(404, "plexsim: not found");
+        }
+        let mut headers = request.headers.clone();
+        headers.insert("accept".to_string(), "application/json".to_string());
+        let axis = self.request_route(&Request {
+            method: "GET".to_string(),
+            target: format!("/library/sections/{section_key}/genre"),
+            version: request.version.clone(),
+            headers,
+            body: Vec::new(),
+            body_complete: true,
+        });
+        let entries = serde_json::from_slice::<Value>(&axis.body)
+            .ok()
+            .and_then(|doc| doc.get("MediaContainer")?.get("Directory")?.as_array().cloned())
+            .unwrap_or_default();
+        let id_of = |entry: &Value| string_value(entry.get("key").unwrap_or(&Value::Null)).parse::<i64>().unwrap_or(0);
+        let mut by_id = entries.clone();
+        by_id.sort_by_key(|entry| id_of(entry));
+        let mut colours = HashMap::new();
+        let mut unknown = 0;
+        for entry in &by_id {
+            let name = string_value(entry.get("title").unwrap_or(&Value::Null)).to_lowercase();
+            let colour = match category_colour(&name) {
+                Some(colour) => colour,
+                None => {
+                    let colour = CATEGORY_COLOUR_CYCLE[unknown % CATEGORY_COLOUR_CYCLE.len()];
+                    unknown += 1;
+                    colour
+                }
+            };
+            colours.insert(id_of(entry), colour);
+        }
+        let items = self.section_rows(section_key);
+        let mut taken = HashSet::new();
+        let mut arts = HashMap::new();
+        for entry in &by_id {
+            let id = id_of(entry);
+            let mut candidates = items
+                .iter()
+                .filter(|row| {
+                    row.get("art").is_some_and(|art| !art.is_null() && string_value(art) != "")
+                        && row
+                            .get("Genre")
+                            .and_then(Value::as_array)
+                            .is_some_and(|tags| {
+                                tags.iter().any(|tag| string_value(tag.get("id").unwrap_or(&Value::Null)) == id.to_string())
+                            })
+                })
+                .collect::<Vec<_>>();
+            candidates.sort_by(|a, b| {
+                let rating = |row: &Value| row.get("audienceRating").and_then(Value::as_f64).unwrap_or(0.0);
+                let key = |row: &Value| key_of(row).unwrap_or_default().parse::<i64>().unwrap_or(0);
+                rating(b).partial_cmp(&rating(a)).unwrap_or(std::cmp::Ordering::Equal).then(key(a).cmp(&key(b)))
+            });
+            let fresh = candidates
+                .iter()
+                .find(|row| !taken.contains(&key_of(row).unwrap_or_default()))
+                .or_else(|| candidates.first());
+            if let Some(pick) = fresh {
+                taken.insert(key_of(pick).unwrap_or_default());
+                arts.insert(id, string_value(pick.get("art").unwrap_or(&Value::Null)));
+            }
+        }
+        let tiles = entries
+            .iter()
+            .map(|entry| {
+                let id = id_of(entry);
+                let mut tile = Map::new();
+                if let Some(art) = arts.get(&id) {
+                    tile.insert(
+                        "thumb".to_string(),
+                        json!(format!(
+                            "/photo/:/transcode?blendColor={}&width=2560&height=1440&url={}",
+                            colours.get(&id).copied().unwrap_or(CATEGORY_COLOUR_CYCLE[0]),
+                            quote_component(art)
+                        )),
+                    );
+                }
+                tile.insert("type".to_string(), json!("directory"));
+                tile.insert("key".to_string(), entry.get("fastKey").cloned().unwrap_or(Value::Null));
+                tile.insert("title".to_string(), entry.get("title").cloned().unwrap_or(Value::Null));
+                Value::Object(tile)
+            })
+            .collect::<Vec<_>>();
+        let mut fields = Map::new();
+        fields.insert("Directory".to_string(), Value::Array(tiles));
+        fields.insert(
+            "Meta".to_string(),
+            json!({"Type": [{"key": format!("/library/sections/{section_key}/categories"),
+                             "type": "directory", "title": "Categories", "active": true}]}),
+        );
+        let body = self.secondary_body(&section, Some(""), fields);
+        Response::json(200, json!({"MediaContainer": body}))
+    }
+}
+
+/// `urllib.parse.quote(value, safe="")`.
+fn quote_component(value: &str) -> String {
+    let mut out = String::new();
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'.' | b'-' | b'~') {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
+}
+
+impl Runtime {
+    /// Cycle 46: `/hubs` applies the detail expansions to its FULL rows -- Children,
+    /// OnDeck and Preferences on a full SHOW row, Extras and Related on a full row or any
+    /// row of the On Deck shelf -- where a light grid row stays light.
+    pub(super) fn expand_global_hub_rows(&self, hubs: &mut [Value], query: &HashMap<String, String>) {
+        let include_int = |name: &str| {
+            query.get(name).is_some_and(|value| {
+                int_param(value, Some(32)) && value.trim_start_matches('+').parse::<i64>().unwrap_or(0) != 0
+            })
+        };
+        let children = include_int("includeChildren");
+        let extras = include_int("includeExtras");
+        let on_deck = include_int("includeOnDeck");
+        let related = include_int("includeRelated");
+        let prefs = query.get("includePreferences").map(String::as_str) == Some("1");
+        if !(children || extras || on_deck || related || prefs) {
+            return;
+        }
+        let mut related_query = HashMap::new();
+        if let Some(count) = query.get("includeRelatedCount") {
+            related_query.insert("includeRelatedCount".to_string(), count.clone());
+        }
+        for hub in hubs.iter_mut() {
+            let ondeck_shelf = hub.get("hubIdentifier").and_then(Value::as_str) == Some("home.ondeck");
+            let Some(rows) = hub.get_mut("Metadata").and_then(Value::as_array_mut) else {
+                continue;
+            };
+            for projected in rows.iter_mut() {
+                let light = projected.get("_light").is_some();
+                let Some(key) = key_of(projected) else { continue };
+                let Some(stored) = self.catalog.get(&key).cloned() else { continue };
+                let show = projected.get("type").and_then(Value::as_str) == Some("show");
+                if children && show && !light {
+                    let inlined = self
+                        .children(&key)
+                        .iter()
+                        .map(|child| {
+                            let mut shown = self.detail_row(child);
+                            if let Some(object) = shown.as_object_mut() {
+                                object.retain(|name, _| !name.starts_with("librarySection"));
+                            }
+                            shown
+                        })
+                        .collect::<Vec<_>>();
+                    projected["Children"] = json!({"size": inlined.len(), "Metadata": inlined});
+                }
+                let mut blocks = HashMap::new();
+                if extras && (!light || ondeck_shelf) {
+                    blocks.insert("includeExtras".to_string(), "1".to_string());
+                }
+                if on_deck && show && !light {
+                    blocks.insert("includeOnDeck".to_string(), "1".to_string());
+                }
+                if prefs && show && !light {
+                    blocks.insert("includePreferences".to_string(), "1".to_string());
+                }
+                if !blocks.is_empty() {
+                    self.apply_detail_blocks(&stored, projected, &blocks);
+                }
+                if related && (!light || ondeck_shelf) {
+                    projected["Related"] = self.related_block(&stored, &related_query);
+                }
+            }
+        }
+    }
+}

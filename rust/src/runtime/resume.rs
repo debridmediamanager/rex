@@ -630,6 +630,7 @@ impl Runtime {
             };
             hubs.push(self.home_hub(identifier, title, key, &rows, query, kind, style, true));
         }
+        self.expand_global_hub_rows(&mut hubs, query);
         if query.get("includeGuids").map(String::as_str) == Some("1") {
             for hub in &mut hubs {
                 if let Some(rows) = hub.get_mut("Metadata").and_then(Value::as_array_mut) {
