@@ -10816,7 +10816,8 @@ impl Runtime {
             }
             self.hidden_continue.insert(key);
             self.dirty = true;
-            return Response::empty(200);
+            // Measured: the answer is a bare `size 0` container, not an empty body.
+            return Response::json(200, json!({"MediaContainer": {"size": 0}}));
         }
         if segments.first() == Some(&"downloadQueue") {
             return self.route_download_queue(&segments[1..], request);
