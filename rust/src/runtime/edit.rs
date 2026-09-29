@@ -1199,7 +1199,7 @@ impl Runtime {
     /// Measured: a season's title and studio land on its episodes' `parentTitle` and
     /// `parentStudio`, and a show's on its seasons' and every episode's
     /// `grandparentTitle`.  An EMPTY show title removes them rather than sending "".
-    fn follow_parent(&mut self, row: &Value, written: &HashSet<String>) {
+    pub(super) fn follow_parent(&mut self, row: &Value, written: &HashSet<String>) {
         let kind = row
             .get("type")
             .and_then(Value::as_str)

@@ -15024,11 +15024,11 @@ impl Runtime {
                     false,
                 ),
             ),
-            "match" => Response::error(400, "plexsim: bad request"),
+            "match" => self.match_item(key, row, query, request),
             "refresh" | "analyze" | "unmatch" => {
-                // Measured: `GET .../refresh` and `/analyze` are 404s; PUT and
-                // POST both run the action, each an EMPTY 200.
-                if request.method != "PUT" && request.method != "POST" {
+                // Measured: `GET .../refresh` and `/analyze` are 404s, and cycle 17:
+                // a POST on an item ACTION leaf is a 404 too -- only PUT runs it.
+                if request.method != "PUT" {
                     return Response::error(404, "plexsim: not found");
                 }
                 let kind = row.get("type").and_then(Value::as_str).unwrap_or_default().to_string();
@@ -15262,6 +15262,84 @@ impl Runtime {
     /// and episodes disappear, and a shape whose leaves cannot be paired by season and
     /// episode index is left alone. Frames: every removed row state 9 untitled, then
     /// each changed episode state 3/5 under type -1.
+    /// `PUT /library/metadata/{id}/match?guid=&name=&year=`. Measured on a writable
+    /// copy: the NAME is what it requires -- every verb without one is this leaf's own
+    /// 400 (cycle 17) -- and an empty guid with a name renames and refreshes. Matching
+    /// to a guid another row of the library already carries MERGES this row into that
+    /// one. Every match runs the refresh sequence, activity and all.
+    fn match_item(
+        &mut self,
+        key: &str,
+        row: &Value,
+        query: &HashMap<String, String>,
+        request: &Request,
+    ) -> Response {
+        let Some(name) = query.get("name").filter(|_| matches!(request.method.as_str(), "PUT" | "POST")) else {
+            return Response::error(400, "plexsim: match needs a name");
+        };
+        let guid = query.get("guid").cloned().unwrap_or_default();
+        let section = row.get("librarySectionID").map(string_value).unwrap_or_default();
+        let existing = (!guid.is_empty())
+            .then(|| {
+                self.catalog.items.iter().find(|other| {
+                    key_of(other).as_deref() != Some(key)
+                        && other.get("guid").and_then(Value::as_str) == Some(guid.as_str())
+                        && other.get("librarySectionID").map(string_value).as_deref() == Some(section.as_str())
+                })
+            })
+            .flatten()
+            .cloned();
+        self.push_timeline_entry(row, 3, None, None, None, None);
+        if let Some(existing) = existing {
+            let existing_key = key_of(&existing).unwrap_or_default();
+            let mut media = existing.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
+            media.extend(row.get("Media").and_then(Value::as_array).cloned().unwrap_or_default());
+            if let Some(object) = self.catalog.get_mut(&existing_key).and_then(Value::as_object_mut) {
+                object.insert("Media".to_string(), Value::Array(media));
+                object.insert("updatedAt".to_string(), json!(now()));
+            }
+            self.catalog.remove(key);
+            self.deleted.insert(key.to_string());
+            let mut gone = row.clone();
+            gone["title"] = json!("");
+            if let Some(object) = gone.as_object_mut() {
+                object.remove("year");
+            }
+            self.push_timeline_entry(&gone, 9, Some("deleted"), None, None, None);
+            if let Some(survivor) = self.catalog.get(&existing_key).cloned() {
+                self.push_timeline_entry(&survivor, 3, None, None, Some(-1), None);
+                self.push_timeline_entry(&survivor, 5, None, None, Some(-1), None);
+            }
+            self.notify_refreshed(&existing_key);
+        } else {
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                if !guid.is_empty() {
+                    object.insert("guid".to_string(), json!(guid));
+                }
+                if !name.is_empty() {
+                    object.insert("title".to_string(), json!(name));
+                }
+                if let Some(year) = query
+                    .get("year")
+                    .filter(|year| !year.is_empty())
+                    .and_then(|year| year.parse::<i64>().ok())
+                {
+                    object.insert("year".to_string(), json!(year));
+                }
+                object.insert("updatedAt".to_string(), json!(now()));
+            }
+            // Cycle 59: a rename here reaches the children as an edit's does.
+            if let Some(updated) = self.catalog.get(key).cloned() {
+                let written = ["title".to_string(), "studio".to_string()].into_iter().collect::<HashSet<_>>();
+                self.follow_parent(&updated, &written);
+            }
+            self.notify_refreshed(key);
+        }
+        self.dirty = true;
+        self.save_if_dirty();
+        Response::empty(200)
+    }
+
     fn merge_shows(&mut self, key: &str, others: &[(String, Value)]) -> Response {
         let target_leaves = self.leaves(key);
         let pair_key = |leaf: &Value| {
