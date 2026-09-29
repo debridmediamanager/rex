@@ -11535,6 +11535,22 @@ impl Runtime {
                 ),
             );
         }
+        if segments.len() == 4
+            && segments[..2] == ["hubs", "sections"]
+            && segments[3] == "extras"
+        {
+            // Measured on both servers: an empty hub list -- `size 0`, `allowSync` and
+            // the identifier, nothing else -- for a movie library, a show library and a
+            // section id the server does not have alike.
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 0, "allowSync": true,
+                                          "identifier": "com.plexapp.plugins.library"}}),
+            );
+        }
         if path.starts_with("/hubs/sections/") {
             let section_key = path
                 .trim_start_matches("/hubs/sections/")
