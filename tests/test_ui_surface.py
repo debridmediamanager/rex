@@ -1373,6 +1373,12 @@ def main():
         check("match applies the chosen guid",
               is_empty_200(status, body) and row.get("guid") == chosen["guid"],
               row.get("guid"))
+        # A real PMS sends titleSort only when it differs from the title. The Fix
+        # Match path stripped a leading article by its own regex and always set the
+        # field, so "Tears of Steel" came back sorting as "Tears of Steel".
+        check("a matched row sends titleSort only when it differs from its title",
+              "titleSort" not in row or row["titleSort"] != row.get("title"),
+              "title=%r titleSort=%r" % (row.get("title"), row.get("titleSort")))
     else:
         skip("match applies the chosen guid", "no candidates to choose from")
 
