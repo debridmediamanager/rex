@@ -30,6 +30,7 @@ mod frames;
 mod artwork;
 mod axes;
 mod collections;
+mod i18n;
 mod notify;
 mod showprefs;
 mod butler;
@@ -3936,108 +3937,56 @@ impl Runtime {
             return;
         }
         let pairs = parse_query(&raw_query);
-        let requested = pairs
+        // `/:/prefs` has complete version-specific regional catalogues, selected by
+        // X-Plex-Language alone (cycle 50); the generic table must not run over them.
+        let explicit = pairs
             .iter()
             .rev()
             .find(|(key, _)| key == "X-Plex-Language")
             .map(|(_, value)| value.clone())
-            .or_else(|| request.headers.get("x-plex-language").cloned());
-        let Some(requested) = requested else {
-            return;
-        };
-        let language = requested.replace('_', "-");
-        let language = if language.eq_ignore_ascii_case("pt-pt") {
-            "pt-PT".to_string()
-        } else if language.eq_ignore_ascii_case("pt-br") {
-            "pt-BR".to_string()
-        } else {
-            language
-        };
-        // `/:/prefs` has complete version-specific regional catalogues.  The
-        // generic translation table is an earlier, sparse overlay and would
-        // overwrite six measured Hungarian cells (and the Portuguese aliases)
-        // if it ran after the regional projection.
-        if path == "/:/prefs" && matches!(language.as_str(), "pt-PT" | "pt-BR" | "hu-HU") {
+            .or_else(|| request.headers.get("x-plex-language").cloned())
+            .unwrap_or_default()
+            .replace('_', "-")
+            .to_lowercase();
+        if path == "/:/prefs" && matches!(explicit.as_str(), "pt-pt" | "pt-br" | "hu-hu") {
             return;
         }
-        let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
-            return;
-        };
         let Some(strings) = load_json_sidecar(&self.catalog_path, "translations.json")
             .and_then(|value| value.get("strings").cloned())
         else {
             return;
         };
-        let primary = language
-            .split('-')
-            .next()
-            .unwrap_or(language.as_str())
-            .to_string();
-        self.localize_value(&mut document, false, &language, &primary, &strings);
+        let languages = i18n::Languages::from_strings_pub(&strings);
+        // Cycle 16/45: X-Plex-Language > X-Plex-Accept-Language > Accept-Language.
+        let Some(language) = i18n::request_language(&pairs, &request.headers, false, &languages) else {
+            return;
+        };
+        if !languages.localised.contains(&language) {
+            return;
+        }
+        let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+            return;
+        };
+        // Cycle 25: the plug-in framework's own container (its signature is
+        // `noHistory`) is not localised.
+        if document
+            .get("MediaContainer")
+            .is_some_and(|body| body.get("noHistory").is_some())
+        {
+            return;
+        }
+        let templates = load_json_sidecar(&self.catalog_path, "title_templates.json");
+        let enum_hook = |text: &str| self.localized_language_enum(text, &language, &strings);
+        let localiser = i18n::Localiser {
+            strings: &strings,
+            templates: templates.as_ref().and_then(|doc| doc.get("templates")),
+            enum_leads: templates.as_ref().and_then(|doc| doc.get("enum_leads")),
+            language: &language,
+            language_enum: &enum_hook,
+        };
+        localiser.walk(&mut document, None, false);
         if let Ok(body) = serde_json::to_vec(&document) {
             response.body = body;
-        }
-    }
-
-    fn localize_value(
-        &self,
-        value: &mut Value,
-        in_row: bool,
-        language: &str,
-        primary: &str,
-        strings: &Value,
-    ) {
-        match value {
-            Value::Object(object) => {
-                let row = in_row || object.contains_key("ratingKey");
-                let keys = object.keys().cloned().collect::<Vec<_>>();
-                for key in keys {
-                    let child_in_row = if key == "Preferences" || key == "Related" {
-                        false
-                    } else {
-                        row
-                    };
-                    if let Some(child) = object.get_mut(&key) {
-                        self.localize_value(child, child_in_row, language, primary, strings);
-                        if let Value::String(text) = child {
-                            if key == "enumValues" {
-                                if let Some(localized) =
-                                    self.localized_language_enum(text, language, strings)
-                                {
-                                    *text = localized;
-                                    continue;
-                                }
-                            }
-                            if !child_in_row {
-                                if let Some(translated) =
-                                    Self::translation_for(strings, &key, text, language, primary)
-                                {
-                                    *text = translated;
-                                }
-                            } else if key == "title" || key == "parentTitle" {
-                                // The only row titles the reference translates
-                                // are generated Season/Episode labels.
-                                if let Some(translated) =
-                                    Self::translation_for(strings, &key, text, language, primary)
-                                {
-                                    if text.starts_with("Season ")
-                                        || text.starts_with("Episode ")
-                                        || text == "Specials"
-                                    {
-                                        *text = translated;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Value::Array(values) => {
-                for child in values {
-                    self.localize_value(child, in_row, language, primary, strings);
-                }
-            }
-            _ => {}
         }
     }
 
@@ -4134,21 +4083,6 @@ impl Runtime {
             result.push_str(&label);
         }
         Some(result)
-    }
-
-    fn translation_for(
-        strings: &Value,
-        attribute: &str,
-        source: &str,
-        language: &str,
-        primary: &str,
-    ) -> Option<String> {
-        let table = strings.get(attribute)?.get(source)?;
-        table
-            .get(language)
-            .or_else(|| table.get(primary))
-            .and_then(Value::as_str)
-            .map(str::to_string)
     }
 
     fn request_route(&mut self, request: &Request) -> Response {
