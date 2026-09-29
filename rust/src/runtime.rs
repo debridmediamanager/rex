@@ -1735,7 +1735,8 @@ impl Runtime {
             "allowSync": false,
             "content": true,
             "directory": true,
-            "hidden": 0,
+            // Cycle 58: the library's Visibility setting, 0, 1 or 2.
+            "hidden": self.section_visibility(&key),
             "Location": [{"id": key.parse::<i64>().unwrap_or(1), "path": format!("/plexsim/{key}")}]
         });
         row
@@ -6177,6 +6178,10 @@ impl Runtime {
                 .or_insert((stamp, season.clone()));
         }
         dated.extend(seasons.into_values());
+        // Cycle 58: a library kept off Home (Visibility 1 or 2) drops out of this list.
+        dated.retain(|(_, row)| {
+            self.section_visibility(&string_value(row.get("librarySectionID").unwrap_or(&Value::Null))) < 1
+        });
         dated.sort_by(|left, right| {
             right.0.cmp(&left.0).then_with(|| {
                 let left_title = left
