@@ -8089,7 +8089,11 @@ impl Runtime {
         });
 
         let (genre, genre_rows) = if !is_show {
-            let mut counts: HashMap<String, (Value, Vec<Value>)> = HashMap::new();
+            // Insertion-ordered, and the FIRST genre with the most rows wins, the
+            // way Python's `max` over a dict picks it: a hash map's order made the
+            // shelf's genre (and so its hubIdentifier) change from one read to the
+            // next, and `count=1` then named a different hub than the full read.
+            let mut counts: Vec<(String, (Value, Vec<Value>))> = Vec::new();
             for row in &items {
                 for tag in row
                     .get("Genre")
@@ -8100,15 +8104,24 @@ impl Runtime {
                     let Some(name) = tag.get("tag").and_then(Value::as_str) else {
                         continue;
                     };
-                    let entry = counts
-                        .entry(name.to_string())
-                        .or_insert_with(|| (tag.clone(), Vec::new()));
-                    entry.1.push(row.clone());
+                    if name.is_empty() {
+                        continue;
+                    }
+                    if let Some(entry) = counts.iter_mut().find(|(known, _)| known == name) {
+                        entry.1 .1.push(row.clone());
+                    } else {
+                        counts.push((name.to_string(), (tag.clone(), vec![row.clone()])));
+                    }
                 }
             }
+            let best = counts
+                .iter()
+                .map(|(_, (_, rows))| rows.len())
+                .max()
+                .unwrap_or(0);
             counts
                 .into_iter()
-                .max_by_key(|(_, (_, rows))| rows.len())
+                .find(|(_, (_, rows))| rows.len() == best)
                 .map(|(name, (tag, rows))| {
                     let mut filtered = rows;
                     filtered.retain(|row| {
@@ -8290,7 +8303,12 @@ impl Runtime {
                 false,
             );
             if !genre.0.is_empty() {
-                let genre_id = tag_id("Genre", &genre.0);
+                let genre_id = genre
+                    .1
+                    .get("id")
+                    .map(string_value)
+                    .filter(|id| !id.is_empty())
+                    .unwrap_or_else(|| tag_id("Genre", &genre.0).to_string());
                 make_shelf(
                     format!("movie.genre.{section_key}.{genre_id}"),
                     format!("Top Movies in {}", genre.0),
