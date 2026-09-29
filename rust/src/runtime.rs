@@ -28,6 +28,7 @@ use crate::{catalog::Catalog, decision, xmlout};
 mod edit;
 mod frames;
 mod artwork;
+mod axes;
 mod notify;
 mod showprefs;
 mod butler;
@@ -11307,6 +11308,27 @@ impl Runtime {
                             false,
                         ),
                     );
+                }
+                if matches!(request.method.as_str(), "GET" | "HEAD") {
+                    // The secondary axes and the bucket listings behind them, ported
+                    // whole from server.py (see runtime/axes.rs).
+                    if segments.len() == 4 {
+                        if let Some(response) =
+                            self.route_section_axis(section_key, section, segments[3], query, pairs)
+                        {
+                            return response;
+                        }
+                    }
+                    if segments.len() == 5 && segments[3] == "firstCharacter" {
+                        return self.first_character_listing(section_key, section, segments[4], query, pairs);
+                    }
+                    if segments.len() == 5 && segments[4] != "top" && !segments[4].is_empty() {
+                        if let Some(response) =
+                            self.axis_bucket(section_key, section, segments[3], segments[4], query, pairs)
+                        {
+                            return response;
+                        }
+                    }
                 }
                 if segments.len() == 4
                     && matches!(
