@@ -13561,7 +13561,22 @@ impl Runtime {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
         };
-        let sort = query.get("sort").map(String::as_str);
+        // Cycle 18/20: the listing refusals (`parentIndex`, a `resolution` outside the
+        // enum, an unparseable `sourceType`).
+        if let Some(status) = listing::listing_refusals(query, &[]) {
+            return Response::error(status, "plexsim: bad request");
+        }
+        // Cycle 55, measured on zen and kids: a `sourceType` other than 1 ORDERS the
+        // grid by id; an explicit `sort=` still wins.
+        let by_id = crate::filters::source_order(query.get("sourceType").map(String::as_str))
+            .ok()
+            .flatten()
+            .is_some();
+        let sort = query
+            .get("sort")
+            .filter(|sort| !sort.is_empty())
+            .map(String::as_str)
+            .or(if by_id { Some("id") } else { None });
         let rows = match self.sort_rows(rows, sort) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
