@@ -5401,6 +5401,11 @@ impl Runtime {
             "sections".to_string(),
             Value::Array(self.catalog.sections.clone()),
         );
+        // Cycle 35, measured on both copies frame for frame: a create SCANS, and the
+        // scan's skeleton survives a location holding no files at all; cycle 15: it
+        // ends in ONE `backgroundProcessingQueue` `queueRegenerated` frame.
+        self.notify_section_scan(&key.to_string());
+        self.notify_queue_regenerated();
         for (name, value) in query {
             if let Some(pref) = name
                 .strip_prefix("prefs[")
