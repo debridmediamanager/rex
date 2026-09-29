@@ -2175,10 +2175,10 @@ impl Runtime {
                 }
             }
         }
-        if query
-            .get("includeStorage")
-            .is_some_and(|value| value == "1")
-        {
+        let mut storage_totals: Option<(i64, i64)> = None;
+        // Cycle 55: the 0/1 option grammar (`01`, `+1` turn it on).
+        if query.get("includeStorage").is_some_and(|value| is_true_option(value)) {
+            storage_totals = Some((0, 0));
             for row in dirs.iter_mut().skip(1) {
                 let section_id = row.get("id").map(string_value).unwrap_or_default();
                 let mut duration = 0i64;
@@ -2215,6 +2215,11 @@ impl Runtime {
                     object.insert("durationTotal".to_string(), json!(duration));
                     object.insert("storageTotal".to_string(), json!(storage));
                 }
+                // Cycle 46: and the `content` FEATURE carries the sum over every library.
+                if let Some((all_duration, all_storage)) = storage_totals.as_mut() {
+                    *all_duration += duration;
+                    *all_storage += storage;
+                }
             }
         }
         let pivots = json!([
@@ -2242,7 +2247,11 @@ impl Runtime {
             json!({"type":"metadata"}),
             json!({"type":"match"}),
             json!({"type":"search"}),
-            json!({"type":"content", "Directory":directories}),
+            match storage_totals {
+                Some((duration, storage)) => json!({"type":"content", "durationTotal": duration,
+                    "storageTotal": storage, "Directory":directories}),
+                None => json!({"type":"content", "Directory":directories}),
+            },
             json!({"type":"imagetranscoder"}),
             json!({"type":"promoted"}),
             json!({"type":"continuewatching", "Action":[{"id":"removeFromContinueWatching"}]}),
