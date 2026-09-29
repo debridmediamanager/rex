@@ -1067,9 +1067,16 @@ impl Runtime {
                     } else {
                         object.remove("grandparentTitle");
                     }
-                    for field in ["thumb", "art"] {
-                        if let Some(value) = show.get(field) {
-                            object.insert(format!("grandparent{field}"), value.clone());
+                    // The show's artwork as the cascade hands it down: `grandparentThumb`
+                    // and `grandparentArt`, gone when the show has none.
+                    for (field, target) in [("thumb", "grandparentThumb"), ("art", "grandparentArt")] {
+                        match show.get(field).filter(|value| !value.is_null()) {
+                            Some(value) => {
+                                object.insert(target.to_string(), value.clone());
+                            }
+                            None => {
+                                object.remove(target);
+                            }
                         }
                     }
                     for (source, destination) in
