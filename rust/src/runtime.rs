@@ -35,13 +35,16 @@ mod notify;
 mod showprefs;
 mod butler;
 mod children;
+mod detail;
 mod framework;
 mod gates;
 mod listing;
 mod resume;
+mod streams;
 mod search;
 mod spellfix;
 mod structural;
+mod item_hubs;
 mod transcoder;
 mod wire;
 use artwork::owns_artwork;
@@ -349,12 +352,18 @@ pub struct Runtime {
     timeline_offsets: HashMap<(String, String), i64>,
     completed_sessions: HashSet<(String, String)>,
     completion_pending_stop: HashSet<(String, String)>,
+    /// The (session, ratingKey) pairs whose session has reported a position past
+    /// the minute: only those delete the resume point with a sub-minute beat.
+    progressed: HashSet<(String, String)>,
     pub hidden_continue: HashSet<String>,
     /// Leaves completed in a PLAYBACK SESSION (Python's `_viewedInSession`): history,
     /// not view state, so a later scrobble or unscrobble leaves it standing.
     viewed_in_session: HashSet<String>,
     /// Uploaded artwork by its `upload://` key: the bytes and their content type.
     uploads: HashMap<String, (Vec<u8>, String)>,
+    /// Track rows the theme metadata leaf minted, by request path and by ratingKey.
+    theme_rows: HashMap<String, Value>,
+    theme_next: i64,
     /// The spellfix1 vocabularies search falls back on: a SNAPSHOT, built at load and
     /// rebuilt only by Optimize Database (cycles 37-38), never per edit.
     spelling: Option<spellfix::SearchIndex>,
@@ -376,6 +385,9 @@ pub struct Runtime {
     /// How many events the bound has drained from the front of `events`, so a
     /// subscriber's cursor stays a sequence number once the buffer is full.
     events_dropped: usize,
+    /// Per-user view state written to a COLLECTION or a PLAYLIST through the
+    /// `/:/` state writes (cycle 21): both take every write in the family.
+    pub list_state: HashMap<String, Map<String, Value>>,
     activity_serial: u64,
 }
 
@@ -467,8 +479,11 @@ impl Runtime {
             timeline_offsets: HashMap::new(),
             completed_sessions: HashSet::new(),
             completion_pending_stop: HashSet::new(),
+            progressed: HashSet::new(),
             hidden_continue: HashSet::new(),
             viewed_in_session: HashSet::new(),
+            theme_rows: HashMap::new(),
+            theme_next: 0,
             spelling: None,
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
@@ -478,6 +493,7 @@ impl Runtime {
             events: Vec::new(),
             section_timeline: HashMap::new(),
             events_dropped: 0,
+            list_state: HashMap::new(),
             activity_serial: 0,
         };
         runtime.load_state()?;
@@ -542,7 +558,7 @@ impl Runtime {
                             "lastViewedAt",
                             "lastRatedAt",
                             "userRating",
-                            "viewUpdatedAt",
+                            "_viewUpdatedAt",
                             "lastSkippedAt",
                         ] {
                             match patch.get(field) {
@@ -764,7 +780,7 @@ impl Runtime {
                 "lastViewedAt",
                 "lastRatedAt",
                 "userRating",
-                "viewUpdatedAt",
+                "_viewUpdatedAt",
                 "lastSkippedAt",
             ] {
                 if let Some(value) = row.get(field) {
@@ -927,26 +943,20 @@ impl Runtime {
             let leaves = self.leaves(&key);
             object.insert("childCount".to_string(), json!(seasons.len()));
             object.insert("leafCount".to_string(), json!(leaves.len()));
-            let duration = leaves
-                .iter()
-                .filter_map(|leaf| leaf.get("duration").and_then(Value::as_i64))
-                .sum::<i64>();
-            object.insert("duration".to_string(), json!(duration));
-            if let Some(first_air) = leaves
-                .iter()
-                .filter_map(|leaf| leaf.get("originallyAvailableAt").and_then(Value::as_str))
-                .min()
-            {
-                object.insert("originallyAvailableAt".to_string(), json!(first_air));
-                // The show keeps its OWN year (1989 on the fixture while its first
-                // listed episode airs in 2007); only a show with none derives one.
-                if !object.get("year").is_some_and(truthy) {
-                    if let Some(year) = first_air
-                        .get(..4)
-                        .and_then(|value| value.parse::<i64>().ok())
-                    {
-                        object.insert("year".to_string(), json!(year));
-                    }
+            // A show's own `duration`, `year` and `originallyAvailableAt` are the
+            // STORED columns (measured: The Simpsons stays 1989 and its typical
+            // episode length); the detail read only fills them when absent
+            // (`show_detail`), which is done by the route, not by every projection.
+            // The first air date is the exception: the catalog load gives a show
+            // without one its earliest episode's, so every projection carries it.
+            if object.get("originallyAvailableAt").is_none() {
+                if let Some(first_air) = leaves
+                    .iter()
+                    .filter_map(|leaf| leaf.get("originallyAvailableAt").and_then(Value::as_str))
+                    .filter(|date| !date.is_empty())
+                    .min()
+                {
+                    object.insert("originallyAvailableAt".to_string(), json!(first_air));
                 }
             }
             object.insert(
@@ -963,21 +973,11 @@ impl Runtime {
                         .or_insert(value.clone());
                 }
             }
-            if let Some(section) = self.section(&string_value(
-                object.get("librarySectionID").unwrap_or(&Value::Null),
-            )) {
-                object.insert(
-                    "librarySectionUUID".to_string(),
-                    section.get("uuid").cloned().unwrap_or(Value::Null),
-                );
-            }
-            let preferences = self.item_preferences("show", original);
-            object.insert("Preferences".to_string(), json!({"Setting": preferences}));
+            // `Preferences`, `OnDeck` and `Extras` are DETAIL blocks the route adds
+            // under their include options (`apply_detail_blocks`); no projection
+            // carries them unasked, and a show row names its library by id only.
             // Cycle 15: the EFFECTIVE flattenSeasons -- the item's unless it inherits.
             self.apply_flatten_projection(object);
-            if let Some(on_deck) = self.on_deck_for(&leaves) {
-                object.insert("OnDeck".to_string(), json!({"Metadata": on_deck}));
-            }
         } else if kind == "season" {
             let children = self.children(&key);
             object.insert("leafCount".to_string(), json!(children.len()));
@@ -994,7 +994,6 @@ impl Runtime {
                         ("title", "parentTitle"),
                         ("studio", "parentStudio"),
                         ("thumb", "parentThumb"),
-                        ("art", "parentArt"),
                         ("year", "parentYear"),
                         ("index", "parentIndex"),
                     ] {
@@ -1011,30 +1010,6 @@ impl Runtime {
                             object.remove(destination);
                         }
                     }
-                }
-            }
-            object.insert("Extras".to_string(), json!({"Metadata": []}));
-            object.insert(
-                "Preferences".to_string(),
-                json!({"Setting": self.item_preferences("season", original)}),
-            );
-            // OnDeck is selected at show level, then exposed only by the season
-            // owning that candidate.  The reference does not put the same row on
-            // every season in a show with multiple seasons.
-            if let Some(parent_key) = object.get("parentRatingKey").map(string_value) {
-                if let Some(parent) = self.catalog.get(&parent_key) {
-                    let leaves = self.leaves(&parent_key);
-                    if let Some(candidate) = self.on_deck_for(&leaves) {
-                        if candidate
-                            .get("parentRatingKey")
-                            .map(string_value)
-                            .as_deref()
-                            == Some(key.as_str())
-                        {
-                            object.insert("OnDeck".to_string(), json!({"Metadata": candidate}));
-                        }
-                    }
-                    let _ = parent;
                 }
             }
         } else if kind == "episode" {
@@ -1060,11 +1035,6 @@ impl Runtime {
                     } else {
                         object.remove("parentStudio");
                     }
-                    if let Some(value) = parent.get("year") {
-                        object.insert("parentYear".to_string(), value.clone());
-                    } else {
-                        object.remove("parentYear");
-                    }
                     if object.get("summary").is_none() {
                         if let Some(value) = parent.get("summary") {
                             object.insert("summary".to_string(), value.clone());
@@ -1082,20 +1052,6 @@ impl Runtime {
                     } else {
                         object.remove("grandparentTitle");
                     }
-                    for field in ["thumb", "art"] {
-                        if let Some(value) = show.get(field) {
-                            object.insert(format!("grandparent{field}"), value.clone());
-                        }
-                    }
-                    for (source, destination) in
-                        [("studio", "grandparentStudio"), ("year", "grandparentYear")]
-                    {
-                        if let Some(value) = show.get(source) {
-                            object.insert(destination.to_string(), value.clone());
-                        } else {
-                            object.remove(destination);
-                        }
-                    }
                     if object.get("summary").is_none() {
                         if let Some(value) = self
                             .catalog
@@ -1110,8 +1066,6 @@ impl Runtime {
             for field in ["Genre", "studio", "tagline", "Country"] {
                 object.remove(field);
             }
-            object.insert("Extras".to_string(), json!({"Metadata": []}));
-            object.remove("Preferences");
             // Cycle 14/15: a flattened show's episodes skip the season level.
             self.apply_flatten_projection(object);
         }
@@ -1142,19 +1096,15 @@ impl Runtime {
                         || value.starts_with("none://")
                         || value.starts_with("tv.plex.agents.none://")
                 });
-            if unmatched {
-                object.remove("Preferences");
-            } else {
-                object.insert(
-                    "Preferences".to_string(),
-                    json!({"Setting": self.item_preferences("movie", original)}),
-                );
-            }
+            let _ = unmatched;
         }
         object.insert(
             "ratingKey".to_string(),
             original.get("ratingKey").cloned().unwrap_or(Value::Null),
         );
+        // Stream titles are the catalog's own, recomputed at load
+        // (`Catalog::normalize`); a response localises and suffixes them per client
+        // (`stream_titles_response`).  Only the private stream content is dropped.
         // Cycle 15: a member's `Collection` tag carries the collection's own guid.
         self.stamp_collection_tags(&key, object);
         if let Some(media_rows) = object.get_mut("Media").and_then(Value::as_array_mut) {
@@ -1171,54 +1121,8 @@ impl Runtime {
                         .into_iter()
                         .flatten()
                     {
-                        let Some(stream_object) = stream.as_object_mut() else {
-                            continue;
-                        };
-                        stream_object.remove("_content");
-                        let stream_type = stream_object
-                            .get("streamType")
-                            .and_then(Value::as_i64)
-                            .unwrap_or(0);
-                        if stream_type == 1 {
-                            let codec = stream_object
-                                .get("codec")
-                                .and_then(Value::as_str)
-                                .map(|value| value.to_ascii_uppercase())
-                                .unwrap_or_default();
-                            let height = stream_object
-                                .get("height")
-                                .and_then(Value::as_i64)
-                                .map(|value| format!("{value}p"));
-                            let title = stream_object
-                                .get("displayTitle")
-                                .and_then(Value::as_str)
-                                .map(str::to_string)
-                                .or_else(|| height.map(|value| format!("{value} ({codec})")))
-                                .unwrap_or_else(|| codec.clone());
-                            stream_object.insert("displayTitle".to_string(), json!(title.clone()));
-                            stream_object.insert("extendedDisplayTitle".to_string(), json!(title));
-                        } else if stream_type == 3 {
-                            let language = stream_object
-                                .get("language")
-                                .and_then(Value::as_str)
-                                .unwrap_or("Unknown")
-                                .to_string();
-                            let display = stream_object
-                                .get("displayTitle")
-                                .and_then(Value::as_str)
-                                .filter(|value| !value.is_empty())
-                                .unwrap_or(&language)
-                                .to_string();
-                            stream_object
-                                .insert("displayTitle".to_string(), json!(display.clone()));
-                            let extended = stream_object
-                                .get("title")
-                                .and_then(Value::as_str)
-                                .filter(|value| !value.is_empty())
-                                .map(|title| format!("{display} ({title})"))
-                                .unwrap_or(display);
-                            stream_object
-                                .insert("extendedDisplayTitle".to_string(), json!(extended));
+                        if let Some(stream_object) = stream.as_object_mut() {
+                            stream_object.remove("_content");
                         }
                     }
                 }
@@ -1246,7 +1150,9 @@ impl Runtime {
         } else if let Some(url) = object.get("thumb").and_then(Value::as_str) {
             images.push(json!({"alt": title, "type": "coverPoster", "url": url}));
         }
-        if kind != "episode" && kind != "clip" {
+        // An episode's background is the art it borrows (measured on both servers,
+        // detail and listing alike); a clip's borrowed art is no Image row.
+        if kind != "clip" {
             if let Some(url) = object.get("art").and_then(Value::as_str) {
                 images.push(json!({"alt": title, "type": "background", "url": url}));
             }
@@ -1482,7 +1388,7 @@ impl Runtime {
             .max_by_key(|(index, row)| {
                 (
                     row.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0),
-                    row.get("viewUpdatedAt")
+                    row.get("_viewUpdatedAt")
                         .and_then(Value::as_i64)
                         .unwrap_or(0),
                     *index,
@@ -2180,145 +2086,236 @@ impl Runtime {
         )
     }
 
-    fn media_providers(&self, query: &HashMap<String, String>) -> Value {
-        let mut dirs = self
-            .catalog
-            .sections
-            .iter()
-            .map(|section| {
-                let mut row = self.section_directory(section);
-                if let Some(object) = row.as_object_mut() {
-                    let section_id = string_value(section.get("key").unwrap_or(&Value::Null));
-                    // The provider directory is keyed by the section id while
-                    // its navigation key points at the grid.  Keeping those
-                    // identities separate is load-bearing: Plex Web indexes
-                    // this response by `id` before it reads the pivots.
-                    object.insert("id".to_string(), json!(section_id));
-                    object.insert(
-                        "key".to_string(),
-                        json!(format!("/library/sections/{}/all", section_id)),
-                    );
-                }
-                row
-            })
-            .collect::<Vec<_>>();
-        dirs.insert(0, json!({"title":"Home", "hubKey":"/hubs"}));
-        if query
-            .get("includePreferences")
-            .is_some_and(|value| value == "1")
-        {
-            for row in dirs.iter_mut().skip(1) {
-                let section_id = row.get("id").map(string_value).unwrap_or_default();
-                let Some(section) = self.section(&section_id) else {
-                    continue;
-                };
-                let kind = section
-                    .get("type")
-                    .and_then(Value::as_str)
-                    .unwrap_or("movie");
-                if let Some(object) = row.as_object_mut() {
-                    object.insert(
-                        "Preferences".to_string(),
-                        json!({"Setting": self.section_preference_rows(&section_id, kind)}),
-                    );
-                }
-            }
+    /// Cycle 66, measured identically on kids, zen and plexscratch42: whether a Roku at
+    /// `version` is one a real PMS withholds library pivots from -- an absent or
+    /// unparseable version, or one below 6.4.2 on the components it carries.
+    fn roku_predates_pivots(version: Option<&str>) -> bool {
+        let text = version.unwrap_or("");
+        let (core, _suffix) = match text.split_once('-') {
+            Some((core, suffix)) => (core, Some(suffix)),
+            None => (text, None),
+        };
+        let parts = core.split('.').collect::<Vec<_>>();
+        let digits = |part: &str| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit());
+        // `(\d+)\.(\d+)(?:\.(\d+)(?:\.\d+)*(?:-.*)?)?`: a suffix only after three parts.
+        if parts.len() < 2 || !parts.iter().all(|part| digits(part)) || (parts.len() == 2 && _suffix.is_some()) {
+            return true;
         }
-        if query
-            .get("includeStorage")
-            .is_some_and(|value| value == "1")
-        {
-            for row in dirs.iter_mut().skip(1) {
-                let section_id = row.get("id").map(string_value).unwrap_or_default();
-                let mut duration = 0i64;
-                let mut storage = 0i64;
-                for item in self.section_rows(&section_id) {
+        let major = parts[0].parse::<u64>().unwrap_or(0);
+        let minor = parts[1].parse::<u64>().unwrap_or(0);
+        if (major, minor) != (6, 4) {
+            return (major, minor) < (6, 4);
+        }
+        parts.get(2).is_some_and(|patch| patch.parse::<u64>().unwrap_or(0) < 2)
+    }
+
+    /// `/media/providers` -- the first call a modern client makes (the oracle's
+    /// `media_providers`, `media_provider_rows` and `server_info`, in the order its
+    /// JSON writer emits them).
+    fn media_providers(&self, query: &HashMap<String, String>, headers: &HashMap<String, String>) -> Value {
+        let claimed = self.assert_claimed;
+        let mut directories = vec![json!({"hubKey": "/hubs", "title": "Home"})];
+        let option_on = |name: &str| query.get(name).is_some_and(|value| bool_option(value) && value.trim_start_matches('+').trim_start_matches('0') == "1");
+        let storage = option_on("includeStorage");
+        let preferences = option_on("includePreferences");
+        let mut duration_sum = 0i64;
+        let mut storage_sum = 0i64;
+        for section in &self.catalog.sections {
+            let key = string_value(section.get("key").unwrap_or(&Value::Null));
+            let kind = section.get("type").and_then(Value::as_str).unwrap_or("movie");
+            let show = kind == "show";
+            let mut pivots = vec![
+                json!({"id": "recommended", "key": format!("/hubs/sections/{key}"), "type": "hub",
+                       "title": "Recommended", "context": "content.discover", "symbol": "star"}),
+                json!({"id": "library", "key": format!("/library/sections/{key}/all?type={}", if show { 2 } else { 1 }),
+                       "type": "list", "title": "Library", "context": "content.library", "symbol": "library"}),
+            ];
+            // Cycle 59, measured on fun and both copies: a library that HOLDS a
+            // collection gains this tab after Library; one that holds none does not.
+            if self.collections.values().any(|collection| collection.section == key) {
+                pivots.push(json!({"id": "collections", "key": format!("/library/sections/{key}/collections"),
+                                   "type": "list", "title": "Collections", "context": "content.collections",
+                                   "symbol": "stack"}));
+            }
+            pivots.push(json!({"id": "categories", "key": format!("/library/sections/{key}/categories"),
+                               "type": "list", "title": "Categories", "context": "content.categories",
+                               "symbol": "stack"}));
+            let mut row = Map::new();
+            row.insert("agent".to_string(), json!(if show { "tv.plex.agents.series" } else { "tv.plex.agents.movie" }));
+            row.insert("language".to_string(), section.get("language").cloned().filter(|v| !v.is_null() && v != "").unwrap_or_else(|| json!("en-US")));
+            row.insert("refreshing".to_string(), json!(false));
+            row.insert("scanner".to_string(), json!(if show { "Plex TV Series" } else { "Plex Movie" }));
+            row.insert("uuid".to_string(), section.get("uuid").cloned().unwrap_or(Value::Null));
+            row.insert("id".to_string(), json!(key));
+            row.insert("key".to_string(), json!(format!("/library/sections/{key}")));
+            row.insert("hubKey".to_string(), json!(format!("/hubs/sections/{key}")));
+            row.insert("type".to_string(), json!(kind));
+            row.insert("title".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+            row.insert("updatedAt".to_string(), json!(1757500000));
+            row.insert("scannedAt".to_string(), json!(1757500000));
+            if preferences {
+                // Cycle 25: the block `/library/sections?includePreferences=1` answers,
+                // the FIRST child of the library `Directory`, before `Pivot`.
+                row.insert("Preferences".to_string(), json!({"Setting": self.section_preference_rows(&key, kind)}));
+            }
+            if storage {
+                // Cycle 46: each library `Directory` gains its own totals as JSON
+                // NUMBERS; cycle 56: a SHOW library's totals are its EPISODES'.
+                let mut own_duration = 0i64;
+                let mut own_storage = 0i64;
+                for item in self.section_rows(&key) {
                     let owners = if item.get("Media").is_some() {
                         vec![item]
                     } else {
                         self.leaves(&key_of(&item).unwrap_or_default())
                     };
-                    for owner in owners {
-                        duration = duration.saturating_add(
-                            owner.get("duration").and_then(Value::as_i64).unwrap_or(0),
-                        );
-                        storage = storage.saturating_add(
-                            owner
-                                .get("Media")
-                                .and_then(Value::as_array)
-                                .into_iter()
-                                .flatten()
-                                .flat_map(|media| {
-                                    media
-                                        .get("Part")
-                                        .and_then(Value::as_array)
-                                        .into_iter()
-                                        .flatten()
-                                })
-                                .filter_map(|part| part.get("size").and_then(Value::as_i64))
-                                .sum::<i64>(),
-                        );
+                    for owner in owners.iter().filter(|owner| owner.get("Media").is_some()) {
+                        own_duration += owner.get("duration").and_then(Value::as_i64).unwrap_or(0);
+                        own_storage += owner
+                            .get("Media")
+                            .and_then(Value::as_array)
+                            .into_iter()
+                            .flatten()
+                            .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+                            .filter_map(|part| part.get("size").and_then(Value::as_i64))
+                            .sum::<i64>();
                     }
                 }
-                if let Some(object) = row.as_object_mut() {
-                    object.insert("durationTotal".to_string(), json!(duration));
-                    object.insert("storageTotal".to_string(), json!(storage));
+                row.insert("durationTotal".to_string(), json!(own_duration));
+                row.insert("storageTotal".to_string(), json!(own_storage));
+                duration_sum += own_duration;
+                storage_sum += own_storage;
+            }
+            row.insert("Pivot".to_string(), Value::Array(pivots));
+            directories.push(Value::Object(row));
+        }
+        // Cycle 59, measured on plexscratch42 and plexscratch: a server holding a
+        // VIDEO playlist lists this source LAST, with one pivot.
+        if self
+            .playlists
+            .values()
+            .any(|playlist| self.dynamic_playlist_row(playlist).get("playlistType").and_then(Value::as_str) == Some("video"))
+        {
+            directories.push(json!({
+                "id": "playlists", "key": "/playlists", "type": "playlist", "title": "Playlists",
+                "Pivot": [{"id": "playlists.video", "key": "/playlists?playlistType=video", "type": "list",
+                           "title": "Video", "context": "content.playlists.video", "symbol": "playlist"}]
+            }));
+        }
+        // Cycle 16/66: an OLD Roku (`X-Plex-Platform: Roku`, header or query, and a
+        // version below 6.4.2) is handed no `id` and no `Pivot` on the library rows;
+        // cycle 59: the Playlists source keeps its `id` and loses only its pivot.
+        let platform = headers
+            .get("x-plex-platform")
+            .or_else(|| query.get("X-Plex-Platform"))
+            .map(String::as_str);
+        let version = headers
+            .get("x-plex-version")
+            .or_else(|| query.get("X-Plex-Version"))
+            .map(String::as_str);
+        if platform == Some("Roku") && Self::roku_predates_pivots(version) {
+            for row in directories.iter_mut() {
+                let Some(object) = row.as_object_mut() else { continue };
+                let key = object.get("key").map(string_value).unwrap_or_default();
+                if key.starts_with("/library/sections/") {
+                    object.remove("id");
+                    object.remove("Pivot");
+                } else if key == "/playlists" {
+                    object.remove("Pivot");
                 }
             }
         }
-        let pivots = json!([
-            {"id":"recommended", "key":"recommended", "title":"Recommended"},
-            {"id":"library", "key":"library", "title":"Library"},
-            {"id":"categories", "key":"categories", "title":"Categories"}
-        ]);
-        let directories = dirs
-            .into_iter()
-            .map(|mut row| {
-                if let Some(object) = row.as_object_mut() {
-                    object.insert("Pivot".to_string(), pivots.clone());
-                }
-                row
-            })
-            .collect::<Vec<_>>();
+        let mut content = Map::new();
+        content.insert("key".to_string(), json!("/library/sections"));
+        content.insert("type".to_string(), json!("content"));
+        if storage {
+            // ...and the `content` FEATURE gains the sum over every library.
+            content.insert("durationTotal".to_string(), json!(duration_sum));
+            content.insert("storageTotal".to_string(), json!(storage_sum));
+        }
+        content.insert("Directory".to_string(), Value::Array(directories));
         let features = vec![
-            json!({"type":"manage"}),
-            json!({"type":"playlist"}),
-            json!({"type":"collection"}),
-            json!({"type":"rate"}),
-            json!({"type":"actions", "Action":[{"id":"removeFromContinueWatching"}]}),
-            json!({"type":"timeline", "scrobbleKey":"/:/scrobble", "unscrobbleKey":"/:/unscrobble"}),
-            json!({"type":"playqueue"}),
-            json!({"type":"metadata"}),
-            json!({"type":"match"}),
-            json!({"type":"search"}),
-            json!({"type":"content", "Directory":directories}),
-            json!({"type":"imagetranscoder"}),
-            json!({"type":"promoted"}),
-            json!({"type":"continuewatching", "Action":[{"id":"removeFromContinueWatching"}]}),
-            json!({"type":"queryParser"}),
-            json!({"type":"subscribe"}),
-            json!({"type":"universalsearch"}),
+            Value::Object(content),
+            json!({"key": "/hubs/search", "type": "search"}),
+            json!({"key": "/library/matches", "type": "match"}),
+            json!({"key": "/library/metadata", "type": "metadata"}),
+            json!({"key": "/:/rate", "type": "rate"}),
+            json!({"key": "/photo/:/transcode", "type": "imagetranscoder"}),
+            json!({"key": "/hubs/promoted", "type": "promoted"}),
+            json!({"key": "/hubs/continueWatching", "type": "continuewatching"}),
+            json!({"key": "/actions", "type": "actions",
+                   "Action": [{"id": "removeFromContinueWatching", "key": "/actions/removeFromContinueWatching"}]}),
+            json!({"flavor": "universal", "key": "/playlists", "type": "playlist"}),
+            json!({"flavor": "universal", "key": "/playQueues", "type": "playqueue"}),
+            json!({"key": "/library/collections", "type": "collection"}),
+            json!({"scrobbleKey": "/:/scrobble", "unscrobbleKey": "/:/unscrobble", "key": "/:/timeline", "type": "timeline"}),
+            json!({"type": "manage"}),
+            json!({"type": "queryParser"}),
+            json!({"flavor": "download", "type": "subscribe"}),
+            json!({"key": "/library/search", "type": "universalsearch"}),
         ];
-        self.container(
-            Map::from_iter([
-                (
-                    "MediaProvider".to_string(),
-                    json!([{
-                        "identifier":"com.plexapp.plugins.library",
-                        "title":"Plex Library",
-                        "types":"video,audio,photo",
-                        "protocols":"stream,download",
-                        "Feature":features
-                    }]),
-                ),
-                ("livetv".to_string(), json!(7)),
-                ("allowMediaDeletion".to_string(), json!(true)),
-                ("allowSync".to_string(), json!(false)),
-                ("transcoderVideo".to_string(), json!(false)),
-                ("diagnostics".to_string(), json!("logs")),
-            ]),
-            false,
-        )
+        let mut body = Map::new();
+        for (name, value) in [
+            ("size", json!(1)),
+            ("allowCameraUpload", json!(false)),
+            ("allowChannelAccess", json!(true)),
+            ("allowMediaDeletion", json!(true)),
+            ("allowSharing", json!(true)),
+            ("allowSync", json!(false)),
+            ("allowTuners", json!(false)),
+            ("apiVersion", json!("1.1.1")),
+            ("backgroundProcessing", json!(true)),
+            ("certificate", json!(true)),
+            ("companionProxy", json!(true)),
+            ("countryCode", json!("deu")),
+            ("diagnostics", json!("logs,streaminglogs")),
+            ("eventStream", json!(true)),
+            ("friendlyName", json!(self.friendly)),
+            ("livetv", json!(7)),
+            ("machineIdentifier", json!(self.machine)),
+            ("musicAnalysis", json!(2)),
+            ("myPlex", json!(true)),
+            ("myPlexMappingState", json!("mapped")),
+            ("myPlexSigninState", json!(if claimed { "ok" } else { "none" })),
+            ("myPlexSubscription", json!(claimed)),
+            ("myPlexUsername", if claimed { json!(self.owner_email) } else { Value::Null }),
+            ("ownerFeatures", json!(OWNER_FEATURES)),
+            ("platform", json!("Linux")),
+            ("platformVersion", json!("6.1")),
+            ("pluginHost", json!(true)),
+            ("pushNotifications", json!(false)),
+            ("readOnlyLibraries", json!(false)),
+            ("streamingBrainABRVersion", json!(3)),
+            ("streamingBrainVersion", json!(2)),
+            ("sync", json!(true)),
+            ("transcoderActiveVideoSessions", json!(0)),
+            ("transcoderAudio", json!(false)),
+            ("transcoderLyrics", json!(false)),
+            ("transcoderSubtitles", json!(false)),
+            ("transcoderVideo", json!(false)),
+            ("transcoderVideoBitrates", json!("64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000")),
+            ("transcoderVideoQualities", json!("0,1,2,3,4,5,6,7,8,9,10,11,12")),
+            ("transcoderVideoResolutions", json!("128,128,160,240,320,480,768,720,720,1080,1080,1080,1080")),
+            ("updatedAt", json!(1789127123)),
+            ("updater", json!(true)),
+            ("version", json!(VERSION)),
+            ("voiceSearch", json!(true)),
+        ] {
+            if !value.is_null() {
+                body.insert(name.to_string(), value);
+            }
+        }
+        body.insert(
+            "MediaProvider".to_string(),
+            json!([{
+                "identifier": "com.plexapp.plugins.library",
+                "title": "Library",
+                "types": "video,audio,photo",
+                "protocols": "stream,download",
+                "Feature": features,
+            }]),
+        );
+        json!({"MediaContainer": body})
     }
 
     fn metadata_provider_rows(&self) -> Vec<Value> {
@@ -2411,15 +2408,45 @@ impl Runtime {
         query: &HashMap<String, String>,
         request: &Request,
     ) -> Response {
+        // Cycle 31: creating a provider needs an external provider object; a POST to
+        // either listing is a 400.
+        if request.method == "POST" && (segments.len() == 3 || (segments.len() == 4 && segments[3] == "group")) {
+            return Response::error(400, "plexsim: bad request");
+        }
         if segments.len() == 3 {
             if request.method == "GET" || request.method == "HEAD" {
+                let mut rows = self.metadata_provider_rows();
+                if let Some(raw) = query.get("metadataTypes").filter(|raw| !raw.is_empty()) {
+                    // Cycle 54, measured on kids and zen: a comma list of int32 media
+                    // types (a 400 otherwise), keeping the providers that serve EVERY
+                    // one of them -- `0` answers none, `1` the movie agent and the no-op
+                    // agent.  An empty value is every provider.
+                    let parts = raw.split(',').collect::<Vec<_>>();
+                    if !parts.iter().all(|part| int_param(part, Some(32))) {
+                        return Response::error(400, "plexsim: bad request");
+                    }
+                    let wanted = parts
+                        .iter()
+                        .map(|part| part.trim_start_matches('+').parse::<i64>().unwrap_or(0))
+                        .collect::<HashSet<_>>();
+                    rows.retain(|row| {
+                        let served = row
+                            .get("MetadataType")
+                            .and_then(Value::as_array)
+                            .into_iter()
+                            .flatten()
+                            .map(|kind| kind.get("type").and_then(Value::as_i64).unwrap_or(0))
+                            .collect::<HashSet<_>>();
+                        wanted.is_subset(&served)
+                    });
+                }
                 return Response::json(
                     200,
                     self.container(
-                        Map::from_iter([(
-                            "MetadataAgentProvider".to_string(),
-                            Value::Array(self.metadata_provider_rows()),
-                        )]),
+                        Map::from_iter([
+                            ("size".to_string(), json!(rows.len())),
+                            ("MetadataAgentProvider".to_string(), Value::Array(rows)),
+                        ]),
                         false,
                     ),
                 );
@@ -2738,22 +2765,57 @@ impl Runtime {
         Response::json(200, self.container(fields, false))
     }
 
-    fn route_library_arts(&self, section_filter: Option<&str>) -> Response {
+    /// `/library/arts` (cycle 45): every row that OWNS an `art`, and a listing QUERY --
+    /// the filters constrain it, a bad sort or limit is a 500, and it refuses the
+    /// fifteen keys `/hubs` refuses.
+    fn route_library_arts(&self, section_filter: Option<&str>, query: &HashMap<String, String>) -> Response {
+        if let Some(refusal) = hub_refusal(query) {
+            return refusal;
+        }
+        if let Some(status) = listing::listing_refusals(query, &[]) {
+            return Response::error(status, "plexsim: refused");
+        }
+        let pairs = query
+            .iter()
+            .filter(|(key, _)| !matches!(key.as_str(), "type" | "limit"))
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect::<Vec<_>>();
         let mut rows = Vec::new();
         for section in &self.catalog.sections {
             let section_key = string_value(section.get("key").unwrap_or(&Value::Null));
             if section_filter.is_some_and(|wanted| wanted != section_key) {
                 continue;
             }
-            let mut members = self
-                .catalog
-                .items
-                .iter()
-                .filter(|row| {
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
-                })
-                .cloned()
-                .collect::<Vec<_>>();
+            let section_type = section.get("type").and_then(Value::as_str).unwrap_or("movie");
+            let members = if section_filter.is_some() {
+                self.catalog
+                    .items
+                    .iter()
+                    .filter(|row| {
+                        string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>()
+            } else {
+                self.section_rows(&section_key)
+            };
+            let mut members = match self.filter_rows(members, &pairs, section_type) {
+                Ok(rows) => rows,
+                Err(status) => return Response::error(status, "plexsim: bad request"),
+            };
+            if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
+                if self.sort_rows(Vec::new(), Some(sort)).is_err() {
+                    return Response::error(500, "plexsim: unsupported sort key");
+                }
+            }
+            if section_filter.is_none() {
+                members.retain(|row| {
+                    let key = key_of(row).unwrap_or_default();
+                    row.get("art")
+                        .and_then(Value::as_str)
+                        .is_some_and(|art| art.starts_with(&format!("/library/metadata/{key}/")))
+                });
+            }
             members.sort_by_key(|row| {
                 string_value(row.get("ratingKey").unwrap_or(&Value::Null))
                     .parse::<i64>()
@@ -3474,7 +3536,9 @@ impl Runtime {
             ("id".to_string(), "id".to_string()),
             ("guid".to_string(), "string".to_string()),
             ("type".to_string(), "string".to_string()),
-            ("parent".to_string(), "string".to_string()),
+            // Cycle 15/55: `parent=` is a NUMBER column -- `+<show>` is that show's
+            // seasons and `1.5` an empty 200.
+            ("parent".to_string(), "integer".to_string()),
             ("parentIndex".to_string(), "integer".to_string()),
             ("originalTitle".to_string(), "string".to_string()),
             ("createdAt".to_string(), "date".to_string()),
@@ -3560,17 +3624,7 @@ impl Runtime {
 
     fn filter_value(&self, row: &Value, field: &str) -> Value {
         if field == "title" {
-            // Cycle 18/32: the bare `title=` matcher reads the title, the stored SORT
-            // title (its folded pass) and the original title; every other operator
-            // reads the title alone. The two extra strings travel with the value
-            // (`server.py` `_TitleValue`), unwrapped by `filters::compare`.
-            if let Some(object) = row.as_object() {
-                return json!({
-                    "__title": crate::hierarchy::stored_title(object),
-                    "__sort": crate::hierarchy::stored_sort_title(object),
-                    "__original": row.get("originalTitle").and_then(Value::as_str).unwrap_or(""),
-                });
-            }
+            return json!(crate::hierarchy::stored_title(row.as_object().unwrap_or(&Map::new())));
         }
         // A few query columns intentionally do not appear on the row itself.
         // They are projections over hierarchy, view state, tags, or Media and
@@ -3772,6 +3826,18 @@ impl Runtime {
         if field == "createdAt" {
             return row.get("addedAt").cloned().unwrap_or(Value::Null);
         }
+        if field == "viewUpdatedAt" {
+            // Cycle 54: the per-user write stamp, kept private on the row.
+            return row.get("_viewUpdatedAt").cloned().unwrap_or(Value::Null);
+        }
+        if matches!(field, "viewCount" | "skipCount") && row.get(field).is_none() {
+            // Cycle 56, measured on plexscratch42 and on zen and kids: ANY per-user
+            // write creates the row's settings record with both counters at 0, and
+            // the counter filters read it; a row never written has no record,
+            // which is `viewCount`'s null-as-zero half and a null `skipCount` that
+            // matches nothing.
+            return if has_settings(row) { json!(0) } else { Value::Null };
+        }
         if matches!(field, "audioLanguage" | "subtitleLanguage") {
             let stream_type = if field == "audioLanguage" { 2 } else { 3 };
             return Value::Array(
@@ -3822,13 +3888,29 @@ impl Runtime {
             "parent" => row
                 .get("parentRatingKey")
                 .or_else(|| row.get("grandparentRatingKey")),
-            "file" => row
-                .get("Media")
-                .and_then(Value::as_array)
-                .and_then(|media| media.iter().find_map(|media| media.get("Part")))
-                .and_then(Value::as_array)
-                .and_then(|parts| parts.first())
-                .and_then(|part| part.get("file")),
+            "file" => {
+                // Cycle 15: a case-insensitive substring of ANY Part path, the
+                // paths joined on a newline so no match spans two; cycle 20: a
+                // SEASON with no Media reads its leaves'.
+                let files = |row: &Value| {
+                    row.get("Media")
+                        .and_then(Value::as_array)
+                        .into_iter()
+                        .flatten()
+                        .flat_map(|media| media.get("Part").and_then(Value::as_array).cloned().unwrap_or_default())
+                        .map(|part| part.get("file").map(string_value).unwrap_or_default())
+                        .collect::<Vec<_>>()
+                };
+                let mut paths = files(row);
+                if paths.is_empty() && row.get("type").and_then(Value::as_str) == Some("season") {
+                    paths = self
+                        .leaves(&key_of(row).unwrap_or_default())
+                        .iter()
+                        .flat_map(|leaf| files(leaf))
+                        .collect();
+                }
+                return json!(paths.join("\n"));
+            }
             "titleSort" => row.get("titleSort").or_else(|| row.get("title")),
             _ => row.get(field),
         };
@@ -4078,6 +4160,12 @@ impl Runtime {
             };
             self.catalog.get(&key)
         };
+        if bare == "viewUpdatedAt" {
+            return target
+                .and_then(|target| target.get("_viewUpdatedAt"))
+                .cloned()
+                .unwrap_or(Value::Null);
+        }
         if bare == "mediaCount" {
             return target
                 .and_then(|target| target.get("Media"))
@@ -4413,6 +4501,167 @@ impl Runtime {
         }
     }
 
+    /// `/library/metadata/{id}/theme/{v}/metadata` -- the track row a real PMS MINTS
+    /// (cycle 45): `guid` is `library://` + the SHA-1 of the request path, idempotent per
+    /// (item, version), kept beside the catalog so no listing sees it.
+    fn theme_metadata(&mut self, key: &str, version: &str) -> Response {
+        let path = format!("/library/metadata/{key}/theme/{version}/metadata");
+        let minted = match self.theme_rows.get(&path) {
+            Some(row) => row.clone(),
+            None => {
+                let highest = self
+                    .catalog
+                    .items
+                    .iter()
+                    .filter_map(|row| key_of(row).and_then(|k| k.parse::<i64>().ok()))
+                    .max()
+                    .unwrap_or(0);
+                self.theme_next = self.theme_next.max(highest + 1);
+                let id = self.theme_next;
+                self.theme_next += 1;
+                let mut digest = Sha1::new();
+                digest.update(path.as_bytes());
+                let hash = digest.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
+                let row = json!({
+                    "ratingKey": id.to_string(),
+                    "key": format!("/library/metadata/{id}"),
+                    "guid": format!("library://{hash}"),
+                    "type": "track",
+                    "title": "",
+                    "summary": "",
+                    "index": 1,
+                    "addedAt": now(),
+                    "genuineMediaAnalysis": "1",
+                });
+                self.theme_rows.insert(path, row.clone());
+                self.theme_rows.insert(id.to_string(), row.clone());
+                row
+            }
+        };
+        Response::json(
+            200,
+            json!({"MediaContainer": {"size": 1, "identifier": "com.plexapp.plugins.library",
+                "mediaTagPrefix": MEDIA_TAG_PREFIX, "mediaTagVersion": MEDIA_TAG_VERSION,
+                "Metadata": [minted]}}),
+        )
+    }
+
+    /// `/library/shared` and every one-segment leaf below it (cycle 45): the bare path
+    /// is the tab bar, EVERY second segment answers the same library list, and a
+    /// third segment is a 404.
+    fn library_shared(&self, segments: &[&str], query: &HashMap<String, String>) -> Response {
+        const TYPES: [(&str, &str); 7] = [
+            ("/library/shared/all", "All Shared"),
+            ("/library/shared/all?type=1", "Movies"),
+            ("/library/shared/all?type=2,3,4", "TV"),
+            ("/library/shared/all?type=8,9,10", "Music"),
+            ("/library/shared/all?type=13,14,12", "Photos"),
+            ("/library/shared/all?type=15", "Playlists"),
+            ("/library/shared/libraries", "Libraries"),
+        ];
+        let sorts = || {
+            vec![
+                json!({"default": "asc", "defaultDirection": "asc", "descKey": "titleSort:desc",
+                       "key": "titleSort", "title": "Title"}),
+                json!({"defaultDirection": "asc", "descKey": "taggingCreatedAt:desc",
+                       "key": "taggingCreatedAt", "title": "Date Shared"}),
+            ]
+        };
+        if segments.len() == 2 {
+            let rows = TYPES
+                .iter()
+                .map(|(key, title)| json!({"key": key, "type": "mixed", "title": title, "active": false, "Sort": sorts()}))
+                .collect::<Vec<_>>();
+            return Response::json(200, json!({"MediaContainer": {"size": rows.len(),
+                "identifier": "com.plexapp.plugins.library.shared", "Type": rows}}));
+        }
+        if segments.len() > 3 {
+            return Response::error(404, "plexsim: not found");
+        }
+        let mut rows = self
+            .catalog
+            .sections
+            .iter()
+            .map(|section| {
+                let key = string_value(section.get("key").unwrap_or(&Value::Null));
+                let is_show = section.get("type").and_then(Value::as_str) == Some("show");
+                let mut out = Map::new();
+                out.insert("art".to_string(), json!(""));
+                out.insert("key".to_string(), json!(format!("/library/sections/{key}/all?type={}", if is_show { 2 } else { 1 })));
+                out.insert("thumb".to_string(), json!(""));
+                if let Some(object) = self.section_directory(section).as_object() {
+                    for (name, value) in object {
+                        if !matches!(name.as_str(), "key" | "allowSync" | "filters" | "refreshing") {
+                            out.insert(name.clone(), value.clone());
+                        }
+                    }
+                }
+                if query.get("includePreferences").map(String::as_str) == Some("1") {
+                    out.insert(
+                        "Preferences".to_string(),
+                        json!({"Setting": self.section_pref_rows(&key, if is_show { "show" } else { "movie" })}),
+                    );
+                }
+                if query.get("includeSummary").map(String::as_str) == Some("1") {
+                    out.insert("Summary".to_string(), self.section_summary(section));
+                }
+                Value::Object(out)
+            })
+            .collect::<Vec<_>>();
+        if let Some(wanted) = query.get("type").filter(|v| !v.is_empty()) {
+            // A type that PARSES selects nothing; one that does not is a 400.
+            let parses = wanted.split(',').all(|part| {
+                let digits = part.trim_matches('-');
+                !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
+            });
+            if !parses {
+                return Response::error(400, "plexsim: bad request");
+            }
+            rows.clear();
+        }
+        let title = |row: &Value| row.get("title").and_then(Value::as_str).unwrap_or("").to_string();
+        match query.get("sort").filter(|v| !v.is_empty()) {
+            Some(spec) => {
+                let first = spec.split(',').next().unwrap_or("");
+                let (key, modifiers) = first.split_once(':').unwrap_or((first, ""));
+                if key != "titleSort" && key != "taggingCreatedAt" {
+                    return Response::error(500, "plexsim: unsupported sort key");
+                }
+                let descending = modifiers.split(':').any(|m| m == "desc");
+                if key == "titleSort" {
+                    rows.sort_by_key(|row| title(row));
+                } else {
+                    rows.sort_by_key(|row| row.get("createdAt").and_then(Value::as_i64).unwrap_or(0));
+                }
+                if descending {
+                    rows.reverse();
+                }
+            }
+            None => rows.sort_by_key(|row| title(row)),
+        }
+        let mut body = Map::new();
+        body.insert("size".to_string(), json!(rows.len()));
+        body.insert("allowSync".to_string(), json!(false));
+        body.insert("identifier".to_string(), json!("com.plexapp.plugins.library.shared"));
+        body.insert("Metadata".to_string(), Value::Array(rows));
+        if segments[2] == "all" && query.get("includeMeta").map(String::as_str) == Some("1") {
+            let types = TYPES
+                .iter()
+                .map(|(key, title)| {
+                    let mut sort_rows = sorts();
+                    let active = *key == "/library/shared/all";
+                    if active {
+                        sort_rows[0]["active"] = json!(true);
+                        sort_rows[0]["activeDirection"] = json!("asc");
+                    }
+                    json!({"key": key, "type": "mixed", "title": title, "active": active, "Sort": sort_rows})
+                })
+                .collect::<Vec<_>>();
+            body.insert("Meta".to_string(), json!({"Type": types}));
+        }
+        Response::json(200, Value::Object(Map::from_iter([("MediaContainer".to_string(), Value::Object(body))])))
+    }
+
     /// Rebuild both spellfix vocabularies from the current rows (`rebuild_spelling`).
     fn rebuild_spelling(&mut self) {
         let static_tags = load_json_sidecar(&self.catalog_path, "spellfix_static_tags.json")
@@ -4434,6 +4683,7 @@ impl Runtime {
         let mut response = self.request_route(request);
         exclude_fields_response(request, &mut response);
         exclude_elements_response(request, &mut response);
+        self.stream_titles_response(request, &mut response);
         let (raw_path, _) = split_target(&request.target);
         if let Some(cookie) = Self::framework_cookie(&request.method, &raw_path) {
             // Cycle 33/52: the plug-in framework's session cookie rides every response it
@@ -4949,20 +5199,34 @@ impl Runtime {
             }
             ("PATCH", "/myplex/claim") => Response::plain(500, b"500".to_vec()),
             ("PUT", "/myplex/refreshReachability") => Response::empty(200),
-            ("GET" | "HEAD", "/myplex/account") => Response::json(
-                200,
-                json!({"MyPlex":{
-                    "mappingState":"mapped",
-                    "mappingError":"",
-                    "signInState":"ok",
-                    "privateAddress":self.private_address,
-                    "privatePort":self.private_port,
-                    "publicAddress":"",
-                    "publicPort":0,
-                    "username":self.owner_username,
-                    "email":self.owner_email
-                }}),
-            ),
+            ("GET" | "HEAD", "/myplex/account") => {
+                // `server.py` `myplex_account`: the owner's EMAIL as `username`, the
+                // address pair moving together, and (cycle 45) `subscriptionFeatures`
+                // the SAME string as `/`'s `ownerFeatures`.
+                let claimed = self.assert_claimed || self.token.is_some();
+                let features = self
+                    .server_root()
+                    .pointer("/MediaContainer/ownerFeatures")
+                    .cloned()
+                    .unwrap_or(Value::Null);
+                let private = !self.private_address.is_empty();
+                Response::json(
+                    200,
+                    json!({"MyPlex":{
+                        "username": if claimed { json!(self.owner_email) } else { Value::Null },
+                        "mappingState":"mapped",
+                        "mappingError":"",
+                        "signInState": if claimed { "ok" } else { "none" },
+                        "publicAddress": "",
+                        "publicPort":0,
+                        "privateAddress": self.private_address,
+                        "privatePort": if private { self.private_port } else { 0 },
+                        "subscriptionFeatures": features,
+                        "subscriptionActive": claimed,
+                        "subscriptionState": if claimed { "Active" } else { "Unknown" },
+                    }}),
+                )
+            }
             ("GET" | "HEAD", "/security/token") => self.route_security_token(&request, &query),
             ("GET", "/log") => {
                 let valid_level = query
@@ -5008,7 +5272,7 @@ impl Runtime {
                 ),
             ),
             ("GET" | "HEAD", "/media/providers") => {
-                Response::json(200, self.media_providers(&query))
+                Response::json(200, self.media_providers(&query, &request.headers))
             }
             ("POST", "/media/providers") => Response::error(400, "plexsim: bad request"),
             ("POST", "/player/playback/play") => Response::error(400, "plexsim: bad request"),
@@ -5770,7 +6034,8 @@ impl Runtime {
             .take(take)
             .filter_map(|key| {
                 let row = self.catalog.get(&key.to_string())?;
-                let mut shown = self.listing_row(row);
+                // The oracle's `_listing_row` is the FULL detail projection.
+                let mut shown = self.detail_row(row);
                 if let Some(object) = shown.as_object_mut() {
                     object.insert("globalViewCount".to_string(), json!(plays[&key]));
                     object.insert("userCount".to_string(), json!(viewers[&key].len()));
@@ -5861,7 +6126,8 @@ impl Runtime {
         }
         let mut rows = Vec::with_capacity(dated.len());
         for (added_at, row) in dated {
-            let mut projected = self.listing_row(&row);
+            // Cycle 46: the grid row keeping its Guid for the `includeGuids` gate.
+            let mut projected = guid_gate(self.grid_row(&row, true, true, false), query);
             if row.get("type").and_then(Value::as_str) == Some("season") {
                 if let Some(parent) = row
                     .get("parentRatingKey")
@@ -7060,127 +7326,392 @@ impl Runtime {
         Response::empty(200)
     }
 
-    fn route_progress(&mut self, query: &HashMap<String, String>) -> Response {
-        let Some(key) = query.get("key").map(|v| extract_key(v)) else {
-            return Response::error(400, "plexsim: bad request");
+    /// The row a `key=` parameter names, or the refusal a real PMS answers.
+    ///
+    /// Measured on every one of the `/:/` state writes: a MISSING key is a 400
+    /// and an unknown one a 404, and the checks run in a FIXED order -- a missing
+    /// key, then (cycle 21) an EMPTY key on scrobble/unscrobble/progress, then a
+    /// missing identifier, then the write's own parameter (`validate`, before the
+    /// identifier on `rate`), then a foreign identifier.  Cycle 21: the key is a
+    /// BARE ratingKey -- an optional sign then digits -- and `rate`/`progress`
+    /// int-parse it (a 500 for anything else) where scrobble just looks it up.
+    fn keyed_row(
+        &self,
+        query: &HashMap<String, String>,
+        validate: Option<&dyn Fn() -> Option<Response>>,
+        numeric_key: bool,
+        any_key: bool,
+        validate_first: bool,
+        empty_key_ok: bool,
+    ) -> Result<Option<String>, Response> {
+        let Some(raw) = query.get("key") else {
+            return Err(Response::error(400, "plexsim: bad request"));
         };
-        let Some(time) = query.get("time").and_then(|v| v.parse::<i64>().ok()) else {
-            return Response::error(500, "plexsim: bad request");
-        };
-        if time <= 60000 {
-            return Response::empty(200);
+        if raw.is_empty() && !empty_key_ok {
+            return Err(Response::error(400, "plexsim: bad request"));
         }
-        if !self.update_view(&key, "viewOffset", Some(json!(time))) {
-            return Response::error(404, "plexsim: not found");
+        if query.get("identifier").is_none_or(String::is_empty) {
+            return Err(Response::error(400, "plexsim: bad request"));
+        }
+        if validate_first {
+            if let Some(refusal) = validate.and_then(|check| check()) {
+                return Err(refusal);
+            }
+        }
+        if query.get("identifier").map(String::as_str) != Some("com.plexapp.plugins.library") {
+            return Err(Response::error(404, "plexsim: no such item"));
+        }
+        if !validate_first {
+            if let Some(refusal) = validate.and_then(|check| check()) {
+                return Err(refusal);
+            }
+        }
+        let digits = raw.strip_prefix(['+', '-']).unwrap_or(raw);
+        let parsed = (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
+            .then(|| raw.parse::<i64>().ok())
+            .flatten();
+        if numeric_key && parsed.is_none() {
+            return Err(Response::error(500, "plexsim: bad key"));
+        }
+        let found = parsed.map(|number| number.to_string()).filter(|key| {
+            self.catalog.get(key).is_some()
+                || self.collections.contains_key(key)
+                || self.playlists.contains_key(key)
+        });
+        if found.is_none() && !any_key {
+            return Err(Response::error(404, "plexsim: no such item"));
+        }
+        Ok(found)
+    }
+
+    /// Cycle 54: `viewUpdatedAt`, the time a row's per-user view state was
+    /// written -- a rating, a scrobble, an unscrobble, a stored progress.
+    fn stamp_view(&mut self, keys: &[String]) {
+        let stamp = now();
+        for key in keys {
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                object.insert("_viewUpdatedAt".to_string(), json!(stamp));
+            }
+        }
+    }
+
+    fn descendant_keys(&self, key: &str) -> Vec<String> {
+        let mut out = Vec::new();
+        for child in self.children(key) {
+            if let Some(child_key) = key_of(&child) {
+                out.push(child_key.clone());
+                out.extend(self.descendant_keys(&child_key));
+            }
+        }
+        out
+    }
+
+    fn parent_keys(&self, key: &str) -> Vec<String> {
+        let Some(row) = self.catalog.get(key) else {
+            return Vec::new();
+        };
+        ["parentRatingKey", "_parentRatingKey", "grandparentRatingKey"]
+            .iter()
+            .filter_map(|name| row.get(*name).map(string_value))
+            .filter(|key| self.catalog.get(key).is_some())
+            .collect()
+    }
+
+    fn route_progress(&mut self, query: &HashMap<String, String>) -> Response {
+        // `/:/progress?key=&time=&state=`: a missing or unparseable `time` is a
+        // 500 (cycle 21: a sign is fine, `1.5`/`0x10`/a space are not); an
+        // integer key naming NO row is a 200 that stores nothing.
+        let time = query.get("time").cloned().unwrap_or_default();
+        let digits = time.strip_prefix(['+', '-']).unwrap_or(&time).to_string();
+        let position = (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
+            .then(|| time.parse::<i64>().ok())
+            .flatten();
+        let check = || position.is_none().then(|| Response::error(500, "plexsim: bad time"));
+        let key = match self.keyed_row(query, Some(&check), true, true, false, false) {
+            Ok(key) => key,
+            Err(refusal) => return refusal,
+        };
+        let position = position.unwrap_or(0);
+        if let Some(key) = key {
+            if position >= 0 {
+                self.store_progress(&key, position);
+            }
         }
         self.save_if_dirty();
         Response::empty(200)
     }
 
+    /// library.progress with `completes=True` -- a `/:/timeline` beat's
+    /// view-state half, measured on half-hour media.
+    ///
+    /// The resume point: a position past a minute and outside the last tenth is
+    /// stored (a beat with no `duration` stores nothing), and a beat at or under
+    /// a minute DELETES it, but only inside a session that already passed the
+    /// minute (cycle 58).  A beat at exactly the stored position writes nothing.
+    /// The completion is a CROSSING (cycles 45/70): this session's previous
+    /// non-zero position was under 90% and this one is at `(duration * 9) // 10`
+    /// or past -- then the view counts once per session, stamps `lastViewedAt`,
+    /// writes a history row, bumps the parents, and (cycle 57) records that the
+    /// view came from a playback session.
+    fn library_progress(
+        &mut self,
+        key: &str,
+        offset: Option<i64>,
+        total: i64,
+        device_id: i64,
+        session: &str,
+        completes: bool,
+    ) {
+        let Some(row) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        let pair = (session.to_string(), key.to_string());
+        let stored = row.get("viewOffset").and_then(Value::as_i64);
+        let unmoved = offset.is_some() && stored.is_some() && offset == stored;
+        if let Some(offset) = offset.filter(|_| !unmoved) {
+            self.hidden_continue.remove(key);
+            if row.get("type").and_then(Value::as_str) == Some("episode") {
+                let show = row.get("grandparentRatingKey").map(string_value);
+                let siblings = self
+                    .catalog
+                    .items
+                    .iter()
+                    .filter(|other| other.get("grandparentRatingKey").map(string_value) == show)
+                    .filter_map(key_of)
+                    .collect::<Vec<_>>();
+                for sibling in siblings {
+                    self.hidden_continue.remove(&sibling);
+                }
+            }
+            let near_end = completes && total > 0 && (offset as f64) >= total as f64 * 0.9;
+            if (total > 0 || !completes) && offset > 60000 && !near_end {
+                let stamp = now();
+                self.update_view(key, "viewOffset", Some(json!(offset)));
+                self.update_view(key, "lastViewedAt", Some(json!(stamp)));
+                let mut stamped = vec![key.to_string()];
+                stamped.extend(self.parent_keys(key));
+                self.stamp_view(&stamped);
+                for name in ["parentRatingKey", "grandparentRatingKey"] {
+                    if let Some(parent) = row.get(name).map(string_value) {
+                        self.update_view(&parent, "lastViewedAt", Some(json!(stamp)));
+                    }
+                }
+            } else if total > 0 && offset <= 60000 && self.progressed.contains(&pair) {
+                self.update_view(key, "viewOffset", None);
+            }
+        }
+        let position = offset.or(stored).unwrap_or(0);
+        let seen = self.timeline_offsets.get(&pair).copied();
+        if offset.is_some() && total > 0 {
+            self.timeline_offsets.insert(pair.clone(), position);
+            if position > 60000 {
+                self.progressed.insert(pair.clone());
+            }
+        }
+        let crossed = seen.is_some_and(|seen| seen > 0 && (seen as f64) < total as f64 * 0.9) && total > 0;
+        if completes && crossed && position >= total.saturating_mul(9) / 10 {
+            let completed = self.catalog.get(key).and_then(|row| row.get("_completed")).and_then(Value::as_str).map(str::to_string);
+            if completed.as_deref() != Some(session) {
+                let stamp = now();
+                let count = self.catalog.get(key).and_then(|row| row.get("viewCount")).and_then(Value::as_i64).unwrap_or(0);
+                if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                    object.insert("_completed".to_string(), json!(session));
+                    object.remove("_completionStopped");
+                }
+                self.update_view(key, "viewCount", Some(json!(count + 1)));
+                self.viewed_in_session.insert(key.to_string());
+                self.update_view(key, "viewOffset", None);
+                self.update_view(key, "lastViewedAt", Some(json!(stamp)));
+                let mut stamped = vec![key.to_string()];
+                stamped.extend(self.parent_keys(key));
+                self.stamp_view(&stamped);
+                if let Some(current) = self.catalog.get(key).cloned() {
+                    self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
+                    let history = self.history_row_for_device(&current, device_id);
+                    self.history.push(history);
+                }
+                for name in ["parentRatingKey", "grandparentRatingKey"] {
+                    let Some(parent) = row.get(name).map(string_value) else {
+                        continue;
+                    };
+                    if self.catalog.get(&parent).is_none() {
+                        continue;
+                    }
+                    let previous = self.catalog.get(&parent).and_then(|p| p.get("viewCount")).and_then(Value::as_i64).unwrap_or(0);
+                    self.update_view(&parent, "viewCount", Some(json!(previous + 1)));
+                    self.update_view(&parent, "lastViewedAt", Some(json!(stamp)));
+                }
+            }
+        } else if offset.is_some_and(|offset| total > 0 && (offset as f64) < total as f64 * 0.9) {
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                object.remove("_completed");
+                object.remove("_completionStopped");
+            }
+        }
+    }
+
+    /// library.progress with `completes=False`: `/:/progress` never completes a
+    /// play, and stores any position past a minute as the resume point.  A beat
+    /// at exactly the stored position writes nothing (cycle 58).
+    fn store_progress(&mut self, key: &str, position: i64) {
+        if self.catalog.get(key).is_none() {
+            let state = self.list_state.entry(key.to_string()).or_default();
+            if state.get("viewOffset").and_then(Value::as_i64) == Some(position) {
+                return;
+            }
+            if position > 60000 {
+                state.insert("viewOffset".to_string(), json!(position));
+                state.insert("lastViewedAt".to_string(), json!(now()));
+            }
+            self.dirty = true;
+            return;
+        }
+        self.library_progress(key, Some(position), 0, 1, "", false);
+    }
+
+    /// `/:/scrobble` and `/:/unscrobble` -- Mark as Played / Unplayed, an EMPTY
+    /// 200.  A show or season marks every leaf beneath it; cycle 25: a scrobble
+    /// writes one history row per LEAF it marks; an EPISODE scrobble adds one to
+    /// its season's and show's own counter, and unscrobbling a season or show
+    /// removes its own.  Cycle 21: a COLLECTION's scrobble is a 200 that changes
+    /// nothing, its unscrobble clears; a playlist counts both halves.
     fn route_scrobble(&mut self, query: &HashMap<String, String>, watched: bool) -> Response {
-        let Some(key) = query.get("key").map(|v| extract_key(v)) else {
-            return Response::error(400, "plexsim: bad request");
+        let key = match self.keyed_row(query, None, false, false, false, false) {
+            Ok(Some(key)) => key,
+            Ok(None) => return Response::error(404, "plexsim: no such item"),
+            Err(refusal) => return refusal,
         };
-        let Some(index) = self.catalog.by_id.get(&key).copied() else {
-            return Response::error(404, "plexsim: not found");
-        };
-        let kind = self.catalog.items[index]
-            .get("type")
+        if self.catalog.get(&key).is_none() {
+            let is_collection = self.collections.contains_key(&key);
+            if watched && is_collection {
+                return Response::empty(200);
+            }
+            let state = self.list_state.entry(key.clone()).or_default();
+            if watched {
+                let count = state.get("viewCount").and_then(Value::as_i64).unwrap_or(1);
+                state.insert("viewCount".to_string(), json!(count + 1));
+                state.insert("lastViewedAt".to_string(), json!(now()));
+                state.remove("viewOffset");
+            } else {
+                state.remove("viewCount");
+                state.remove("viewOffset");
+                state.remove("lastViewedAt");
+            }
+            self.dirty = true;
+            self.save_if_dirty();
+            return Response::empty(200);
+        }
+        let kind = self
+            .catalog
+            .get(&key)
+            .and_then(|row| row.get("type"))
             .and_then(Value::as_str)
             .unwrap_or("")
             .to_string();
-        let keys = if kind == "show" {
-            self.leaves(&key)
-                .into_iter()
-                .filter_map(|row| key_of(&row))
-                .collect()
+        let targets = if matches!(kind.as_str(), "show" | "season") {
+            self.leaves(&key).into_iter().filter_map(|row| key_of(&row)).collect::<Vec<_>>()
         } else {
             vec![key.clone()]
         };
         let stamp = now();
-        for row_key in &keys {
+        for leaf in &targets {
             if watched {
-                self.update_view(row_key, "viewCount", Some(json!(1)));
-                self.update_view(row_key, "lastViewedAt", Some(json!(stamp)));
-                self.update_view(row_key, "viewOffset", None);
-            } else {
-                self.update_view(row_key, "viewCount", None);
-                self.update_view(row_key, "lastViewedAt", None);
-                self.update_view(row_key, "viewOffset", None);
-            }
-        }
-        if watched && kind == "episode" {
-            let parent = self.catalog.items[index]
-                .get("parentRatingKey")
-                .map(string_value);
-            let grandparent = self.catalog.items[index]
-                .get("grandparentRatingKey")
-                .map(string_value);
-            for aggregate in [parent, grandparent].into_iter().flatten() {
-                let previous = self
+                let count = self
                     .catalog
-                    .get(&aggregate)
+                    .get(leaf)
                     .and_then(|row| row.get("viewCount"))
                     .and_then(Value::as_i64)
                     .unwrap_or(0);
-                self.update_view(
-                    &aggregate,
-                    "viewCount",
-                    Some(json!(previous.saturating_add(1))),
-                );
-                self.update_view(&aggregate, "lastViewedAt", Some(json!(stamp)));
+                self.update_view(leaf, "viewCount", Some(json!(count + 1)));
+                self.update_view(leaf, "lastViewedAt", Some(json!(stamp)));
+                self.update_view(leaf, "viewOffset", None);
+                if let Some(row) = self.catalog.get(leaf).cloned() {
+                    self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
+                    let mut history = self.history_row(&row);
+                    if let Some(object) = history.as_object_mut() {
+                        object.insert("viewType".to_string(), json!(1));
+                    }
+                    self.history.push(history);
+                }
+            } else {
+                self.update_view(leaf, "viewCount", None);
+                self.update_view(leaf, "viewOffset", None);
+                self.update_view(leaf, "lastViewedAt", None);
             }
+        }
+        if watched && kind == "episode" {
+            for name in ["parentRatingKey", "grandparentRatingKey"] {
+                let Some(parent) = self.catalog.get(&key).and_then(|row| row.get(name)).map(string_value) else {
+                    continue;
+                };
+                let previous = self
+                    .catalog
+                    .get(&parent)
+                    .and_then(|row| row.get("viewCount"))
+                    .and_then(Value::as_i64)
+                    .unwrap_or(0);
+                self.update_view(&parent, "viewCount", Some(json!(previous + 1)));
+                self.update_view(&parent, "lastViewedAt", Some(json!(stamp)));
+            }
+        } else if !watched && matches!(kind.as_str(), "show" | "season") {
+            self.update_view(&key, "viewCount", None);
+            self.update_view(&key, "lastViewedAt", None);
+        }
+        if !targets.is_empty() {
+            let mut stamped = vec![key.clone()];
+            stamped.extend(self.descendant_keys(&key));
+            if watched && kind == "episode" {
+                stamped.extend(self.parent_keys(&key));
+            }
+            self.stamp_view(&stamped);
         }
         if !watched {
             self.completed_sessions.retain(|(_, item)| item != &key);
-            self.completion_pending_stop
-                .retain(|(_, item)| item != &key);
-        }
-        if watched {
-            for row_key in keys {
-                let Some(row) = self.catalog.get(&row_key).cloned() else {
-                    continue;
-                };
-                self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
-                let mut history = self.history_row(&row);
-                if let Some(object) = history.as_object_mut() {
-                    object.insert("viewType".to_string(), json!(1));
-                }
-                self.history.push(history);
-            }
+            self.completion_pending_stop.retain(|(_, item)| item != &key);
         }
         self.save_if_dirty();
         Response::empty(200)
     }
 
+    /// `/:/rate?key=&identifier=&rating=` -- the star rating.  An unparseable
+    /// rating is a 400 refused BEFORE a foreign identifier; -1 clears both the
+    /// stars and `lastRatedAt`; any other negative clears the stars and STAMPS
+    /// `lastRatedAt` (cycle 54).  Every rating stamps `viewUpdatedAt`.
     fn route_rate(&mut self, query: &HashMap<String, String>) -> Response {
-        let Some(key) = query.get("key").map(|v| extract_key(v)) else {
-            return Response::error(400, "plexsim: bad request");
+        let rating = query.get("rating").and_then(|value| value.trim().parse::<f64>().ok()).filter(|value| value.is_finite());
+        let check = || rating.is_none().then(|| Response::error(400, "plexsim: bad request"));
+        let key = match self.keyed_row(query, Some(&check), true, false, true, true) {
+            Ok(Some(key)) => key,
+            Ok(None) => return Response::error(404, "plexsim: no such item"),
+            Err(refusal) => return refusal,
         };
+        let rating = rating.unwrap_or(-1.0);
         if self.catalog.get(&key).is_none() {
-            return Response::error(404, "plexsim: not found");
-        }
-        let Some(rating) = query.get("rating").and_then(|v| v.parse::<f64>().ok()) else {
-            return Response::error(400, "plexsim: bad request");
-        };
-        // PMS reserves -1 for clearing both the star value and its timestamp;
-        // other negative values (the UI uses -5) clear only the stars and keep
-        // a fresh lastRatedAt marker.
-        if rating < -5.0 || rating > 10.0 {
-            return Response::error(400, "plexsim: bad request");
-        }
-        if rating < 0.0 {
-            self.update_view(&key, "userRating", None);
+            let state = self.list_state.entry(key.clone()).or_default();
             if rating == -1.0 {
-                self.update_view(&key, "lastRatedAt", None);
+                state.remove("userRating");
+                state.remove("lastRatedAt");
+            } else if rating < 0.0 {
+                state.remove("userRating");
+                state.insert("lastRatedAt".to_string(), json!(now()));
             } else {
-                self.update_view(&key, "lastRatedAt", Some(json!(now())));
+                state.insert("userRating".to_string(), json!(rating));
+                state.insert("lastRatedAt".to_string(), json!(now()));
             }
+            self.dirty = true;
+            self.save_if_dirty();
+            return Response::empty(200);
+        }
+        self.stamp_view(&[key.clone()]);
+        if rating == -1.0 {
+            self.update_view(&key, "userRating", None);
+            self.update_view(&key, "lastRatedAt", None);
+        } else if rating < 0.0 {
+            self.update_view(&key, "userRating", None);
+            self.update_view(&key, "lastRatedAt", Some(json!(now())));
         } else {
-            let stamp = now();
             self.update_view(&key, "userRating", Some(json!(rating)));
-            self.update_view(&key, "lastRatedAt", Some(json!(stamp)));
-            self.update_view(&key, "viewUpdatedAt", Some(json!(stamp)));
+            self.update_view(&key, "lastRatedAt", Some(json!(now())));
         }
         self.save_if_dirty();
         Response::empty(200)
@@ -7431,6 +7962,11 @@ impl Runtime {
                 protocol,
                 true,
             );
+            if answer.outcome == decision::Outcome::Refuse {
+                // Xbox 360's one video target is an asf with no protocol, and both
+                // references answer a 400 for every row it cannot direct play.
+                return Response::error(400, "plexsim: bad request");
+            }
             if answer.outcome != decision::Outcome::DirectPlay {
                 refusal = answer.text;
             }
@@ -7711,105 +8247,55 @@ impl Runtime {
             .or_else(|| headers.get("x-plex-session-identifier").cloned())
             .unwrap_or_else(|| client.clone());
         let session_pair = (session_identifier.clone(), key.clone());
-        let previous_offset = self.timeline_offsets.get(&session_pair).copied();
-        let previously_completed = self.completed_sessions.contains(&session_pair);
         let decided_for_response = self.decided_sessions.contains(&session_pair);
-        let mut completed_now = false;
-        let crossed_completion = time > 60000
-            && duration > 0
-            && time >= duration.saturating_mul(9) / 10
-            && !previously_completed
-            && (state == "playing"
-                || previous_offset.is_some_and(|previous| {
-                    previous > 0 && previous < duration.saturating_mul(9) / 10
-                }));
-        if state == "playing"
-            && !self.sessions.contains_key(&client)
-            && time < duration.saturating_mul(9) / 10
-        {
-            self.completed_sessions.remove(&session_pair);
-            self.completion_pending_stop.remove(&session_pair);
-        }
-        if time > 60000 {
-            self.started_sessions.insert(session_identifier.clone());
-        }
-        // A timeline puts the row back in Continue Watching -- for an episode that
-        // row is its SHOW's, which any of the show's episodes hides and brings back.
-        // A beat at EXACTLY the stored position writes nothing (cycle 58).
-        let unmoved = self
-            .catalog
-            .get(&key)
-            .and_then(|row| row.get("viewOffset"))
-            .and_then(Value::as_i64)
-            == Some(time);
-        if !key.is_empty() && query.contains_key("time") && !unmoved {
-            self.hidden_continue.remove(&key);
-            if let Some(show) = self
+        // The play's session tag, as `_completed` stores it (`session or True`).
+        let session_tag = if session_identifier.is_empty() { "\u{1}".to_string() } else { session_identifier.clone() };
+        let completed_by = |runtime: &Self| {
+            runtime
                 .catalog
                 .get(&key)
-                .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-                .and_then(|row| row.get("grandparentRatingKey"))
-                .map(string_value)
-            {
-                let siblings = self
-                    .catalog
-                    .items
-                    .iter()
-                    .filter(|row| {
-                        row.get("grandparentRatingKey").map(string_value).as_deref() == Some(show.as_str())
-                    })
-                    .filter_map(key_of)
-                    .collect::<Vec<_>>();
-                for sibling in siblings {
-                    self.hidden_continue.remove(&sibling);
+                .and_then(|row| row.get("_completed"))
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        };
+        // A completed play answers `complete` to every beat past 90% until a
+        // `stopped` beat has closed it, and `ignore` to every beat after that.
+        let already = !key.is_empty()
+            && completed_by(self).as_deref() == Some(session_tag.as_str())
+            && self.catalog.get(&key).is_some_and(|row| row.get("_completionStopped").is_some());
+        let total = if query.get("duration").is_some() { duration } else { 0 };
+        if !key.is_empty() {
+            let device_id = self.device_id(&client);
+            let offset = query.get("time").map(|_| time);
+            self.library_progress(&key, offset, total, device_id, &session_tag, true);
+            if state == "stopped" && completed_by(self).as_deref() == Some(session_tag.as_str()) {
+                if let Some(object) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+                    object.insert("_completionStopped".to_string(), json!(true));
                 }
             }
         }
-        if !key.is_empty() && time > 60000 {
-            self.update_view(&key, "viewOffset", Some(json!(time)));
+        // Cycle 50: `progress` is sticky within the playback SESSION once one of
+        // its beats passes the minute gate.
+        if time > 60000 {
+            self.started_sessions.insert(session_identifier.clone());
         }
-        if state != "stopped" {
-            self.timeline_offsets.insert(session_pair.clone(), time);
-        }
-        let stopped_at_completion = state == "stopped"
-            && time > 60000
-            && duration > 0
-            && time >= duration.saturating_mul(9) / 10;
-        if (crossed_completion || stopped_at_completion) && !previously_completed {
-            let count = self
-                .catalog
-                .get(&key)
-                .and_then(|row| row.get("viewCount"))
-                .and_then(Value::as_i64)
-                .unwrap_or(0)
-                .saturating_add(1);
-            self.update_view(&key, "viewCount", Some(json!(count)));
-            self.update_view(&key, "lastViewedAt", Some(json!(now())));
-            self.update_view(&key, "viewOffset", None);
-            self.completed_sessions.insert(session_pair.clone());
-            // Cycle 57: the view came from a PLAYBACK SESSION.
-            self.viewed_in_session.insert(key.clone());
-            completed_now = true;
-            if let Some(row) = self.catalog.get(&key).cloned() {
-                let device_id = self.device_id(&client);
-                self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
-                self.history
-                    .push(self.history_row_for_device(&row, device_id));
+        let mut playback_state = "ignore";
+        if total > 0 {
+            playback_state = if self.started_sessions.contains(&session_identifier) {
+                "progress"
+            } else {
+                "ignore"
+            };
+            if time >= total.saturating_mul(9) / 10 {
+                // Past 90% it is never `progress`: `complete` for the beat that
+                // completed the play and every one after it until a `stopped`
+                // closes it, `ignore` for a beat that completed nothing.
+                let finished = completed_by(self).as_deref() == Some(session_tag.as_str());
+                playback_state = if finished && !already { "complete" } else { "ignore" };
             }
-        }
-        if state == "playing" && crossed_completion {
-            self.completion_pending_stop.insert(session_pair.clone());
         }
         if state == "stopped" {
-            self.timeline_offsets.remove(&session_pair);
             self.started_sessions.remove(&session_identifier);
-            if previously_completed {
-                // A player often sends one final stopped beat with its last
-                // position after the completion beat.  PMS keeps the item
-                // completed and clears that replayed position instead of
-                // resurrecting viewOffset.
-                self.update_view(&key, "viewOffset", None);
-            }
         }
         if let Some(item_id) = query
             .get("playQueueItemID")
@@ -7871,22 +8357,6 @@ impl Runtime {
             );
         }
         self.save_if_dirty();
-        let stop_after_completed_play =
-            state == "stopped" && self.completion_pending_stop.remove(&session_pair);
-        let pending_completed_play = state == "playing"
-            && previously_completed
-            && self.completion_pending_stop.contains(&session_pair);
-        let playback_state = if completed_now || stop_after_completed_play {
-            "complete"
-        } else if pending_completed_play {
-            "complete"
-        } else if previously_completed {
-            "ignore"
-        } else if time > 60000 || self.started_sessions.contains(&session_identifier) {
-            "progress"
-        } else {
-            "ignore"
-        };
         let stored = self
             .catalog
             .get(&key)
@@ -8980,35 +9450,6 @@ impl Runtime {
         )
     }
 
-    fn related_rows(&self, key: &str, row: &Value) -> Vec<Value> {
-        let names = row
-            .get("Genre")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(|tag| tag.get("tag").and_then(Value::as_str))
-            .collect::<HashSet<_>>();
-        self.catalog
-            .items
-            .iter()
-            .filter(|candidate| {
-                key_of(candidate).as_deref() != Some(key)
-                    && candidate.get("type") == row.get("type")
-                    && candidate
-                        .get("Genre")
-                        .and_then(Value::as_array)
-                        .is_some_and(|tags| {
-                            tags.iter().any(|tag| {
-                                tag.get("tag")
-                                    .and_then(Value::as_str)
-                                    .is_some_and(|name| names.contains(name))
-                            })
-                        })
-            })
-            .map(|candidate| self.detail_row(candidate))
-            .collect()
-    }
-
     fn route_library_search(&self, query: &HashMap<String, String>) -> Response {
         let Some(raw) = query.get("query") else {
             return Response::error(400, "plexsim: bad request");
@@ -9388,6 +9829,39 @@ impl Runtime {
             == Some("show")
         {
             fields.insert("nocache".to_string(), json!(true));
+        }
+        if query.get("includeMeta").map(String::as_str) == Some("1") && type_number == Some(18) {
+            // Cycle 46: the FULL section descriptor -- one `Type` row for the collection
+            // view with a single `titleSort` Sort scoped `?type=18`, plus the section's
+            // own `FieldType` rows.
+            let kind = self
+                .section(section_key)
+                .and_then(|s| s.get("type"))
+                .and_then(Value::as_str)
+                .unwrap_or("movie")
+                .to_string();
+            let field_types = self
+                .section_meta(section_key, &kind, false)
+                .and_then(|meta| meta.get("FieldType").cloned())
+                .unwrap_or_else(|| json!([]));
+            fields.insert(
+                "Meta".to_string(),
+                json!({
+                    "Type": [{
+                        "key": format!("/library/sections/{section_key}/all?type=18"),
+                        "type": "collection",
+                        "title": "Collections",
+                        "active": true,
+                        "Sort": [{
+                            "active": true, "activeDirection": "asc", "default": "asc",
+                            "defaultDirection": "asc", "descKey": "titleSort:desc",
+                            "key": "titleSort", "title": "Title",
+                            "firstCharacterKey": format!("/library/sections/{section_key}/firstCharacter?type=18"),
+                        }],
+                    }],
+                    "FieldType": field_types,
+                }),
+            );
         }
         page_fields(&mut fields, query);
         Response::json(200, self.container(fields, true))
@@ -9960,8 +10434,17 @@ impl Runtime {
         if segments.starts_with(&["media", "providers", "metadata"]) {
             return self.route_metadata_providers(&segments, query, request);
         }
+        if path == "/:/viewChange" {
+            // Cycle 45: a routed state-write leaf that answers its own 400 to every verb.
+            return Response::error(400, "plexsim: bad request");
+        }
+        if segments.len() == 4 && segments[0] == "hubs" && segments[1] == "sections" && segments[3] == "newReleases" {
+            // Cycle 45: `{size: 0, allowSync: false, identifier}` and nothing more.
+            return Response::json(200, json!({"MediaContainer": {"size": 0, "allowSync": false,
+                "identifier": "com.plexapp.plugins.library"}}));
+        }
         if segments.first() == Some(&"web") {
-            return self.route_web(&segments[1..], request.method == "HEAD");
+            return self.route_web(&segments[1..], request.method == "HEAD", path.ends_with('/'));
         }
         if path.starts_with("/:/resources/") {
             return self.route_bundled_resource(
@@ -10105,7 +10588,7 @@ impl Runtime {
             return self.route_library_tags(query);
         }
         if path == "/library/arts" && matches!(request.method.as_str(), "GET" | "HEAD") {
-            return self.route_library_arts(None);
+            return self.route_library_arts(None, query);
         }
         if path == "/library/randomArtwork" && matches!(request.method.as_str(), "GET" | "HEAD") {
             let Some(sections) = query.get("sections") else {
@@ -10132,7 +10615,7 @@ impl Runtime {
             }
             // Reuse the stable Photo projection from the arts route while
             // retaining the randomArtwork container's ordinary JSON shape.
-            let arts = self.route_library_arts(Some(wanted[0]));
+            let arts = self.route_library_arts(Some(wanted[0]), &HashMap::new());
             let value = serde_json::from_slice::<Value>(&arts.body).unwrap_or_else(|_| {
                 self.container(
                     Map::from_iter([("Metadata".to_string(), Value::Array(Vec::new()))]),
@@ -10224,80 +10707,8 @@ impl Runtime {
                 ),
             );
         }
-        if path == "/library/shared/all" {
-            if let Some(value) = query.get("type") {
-                if value.parse::<i64>().is_err() {
-                    return Response::error(400, "plexsim: bad request");
-                }
-            }
-            let mut rows = if query.contains_key("type") {
-                Vec::new()
-            } else {
-                self.catalog
-                    .sections
-                    .iter()
-                    .map(|section| {
-                        let mut row = self.section_directory(section);
-                        if let Some(object) = row.as_object_mut() {
-                            object.insert(
-                                "key".to_string(),
-                                json!(format!(
-                                    "/library/sections/{}/all?type={}",
-                                    string_value(section.get("key").unwrap_or(&Value::Null)),
-                                    if section.get("type").and_then(Value::as_str) == Some("show") {
-                                        2
-                                    } else {
-                                        1
-                                    }
-                                )),
-                            );
-                            object.insert("art".to_string(), json!(""));
-                            object.insert("thumb".to_string(), json!(""));
-                            object.remove("allowSync");
-                            object.remove("filters");
-                            object.remove("refreshing");
-                            if query
-                                .get("includePreferences")
-                                .is_some_and(|value| is_true_option(value))
-                            {
-                                object.insert(
-                                    "Preferences".to_string(),
-                                    json!({"Setting": self.section_pref_rows(
-                                        &string_value(section.get("key").unwrap_or(&Value::Null)),
-                                        section.get("type").and_then(Value::as_str).unwrap_or("movie"),
-                                    )}),
-                                );
-                            }
-                            if query
-                                .get("includeSummary")
-                                .is_some_and(|value| is_true_option(value))
-                            {
-                                object.insert("Summary".to_string(), self.section_summary(section));
-                            }
-                        }
-                        row
-                    })
-                    .collect::<Vec<_>>()
-            };
-            rows.sort_by(|left, right| {
-                string_value(left.get("title").unwrap_or(&Value::Null))
-                    .cmp(&string_value(right.get("title").unwrap_or(&Value::Null)))
-            });
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([
-                        (
-                            "identifier".to_string(),
-                            json!("com.plexapp.plugins.library.shared"),
-                        ),
-                        ("allowSync".to_string(), json!(false)),
-                        ("Metadata".to_string(), Value::Array(rows.clone())),
-                        ("size".to_string(), json!(rows.len())),
-                    ]),
-                    false,
-                ),
-            );
+        if path == "/library/shared" || path.starts_with("/library/shared/") {
+            return self.library_shared(&segments, query);
         }
         if path == "/updater/check" {
             return Response::error(404, "plexsim: not found");
@@ -10808,76 +11219,9 @@ impl Runtime {
         }
         if segments.first() == Some(&"hubs")
             && segments.get(1) == Some(&"metadata")
-            && segments.len() >= 4
+            && segments.len() == 4
         {
-            let key = segments[2];
-            let Some(row) = self.catalog.get(key) else {
-                return Response::error(404, "plexsim: not found");
-            };
-            let leaf = segments[3];
-            if leaf != "related" && leaf != "postplay" {
-                return Response::error(404, "plexsim: not found");
-            }
-            let names = row
-                .get("Genre")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-                .filter_map(|tag| tag.get("tag").and_then(Value::as_str))
-                .collect::<HashSet<_>>();
-            let related = if leaf == "related" {
-                self.catalog
-                    .items
-                    .iter()
-                    .filter(|candidate| {
-                        key_of(candidate).as_deref() != Some(key)
-                            && candidate.get("type") == row.get("type")
-                            && candidate
-                                .get("Genre")
-                                .and_then(Value::as_array)
-                                .is_some_and(|tags| {
-                                    tags.iter().any(|tag| {
-                                        tag.get("tag")
-                                            .and_then(Value::as_str)
-                                            .is_some_and(|name| names.contains(name))
-                                    })
-                                })
-                    })
-                    .map(|candidate| self.detail_row(candidate))
-                    .collect::<Vec<_>>()
-            } else {
-                Vec::new()
-            };
-            let hub = json!({"hubIdentifier":if leaf == "related" {"movie.similar"} else {"postplay"},"title":if leaf == "related" {"Related Movies"} else {"More Like This"},"key":format!("/library/metadata/{key}/similar"),"context":if leaf == "related" {"hub.movie.similar"} else {"hub.postplay"},"style":"shelf","type":"movie","size":related.len(),"more":false,"Metadata":related});
-            let mut fields = Map::from_iter([
-                ("Hub".to_string(), Value::Array(vec![hub])),
-                ("allowSync".to_string(), json!(leaf == "related")),
-            ]);
-            if leaf == "related" {
-                fields.insert(
-                    "librarySectionID".to_string(),
-                    row.get("librarySectionID").cloned().unwrap_or(Value::Null),
-                );
-                fields.insert(
-                    "librarySectionTitle".to_string(),
-                    self.section(&string_value(
-                        row.get("librarySectionID").unwrap_or(&Value::Null),
-                    ))
-                    .and_then(|section| section.get("title"))
-                    .cloned()
-                    .unwrap_or(Value::Null),
-                );
-                fields.insert(
-                    "librarySectionUUID".to_string(),
-                    self.section(&string_value(
-                        row.get("librarySectionID").unwrap_or(&Value::Null),
-                    ))
-                    .and_then(|section| section.get("uuid"))
-                    .cloned()
-                    .unwrap_or(Value::Null),
-                );
-            }
-            return Response::json(200, self.container(fields, false));
+            return self.route_item_hubs(segments[2], segments[3], query);
         }
         if path.starts_with("/hubs/sections/") && path.ends_with("/continueWatching/items") {
             let section_key = path
@@ -11169,6 +11513,12 @@ impl Runtime {
                     if request.method != "GET" && request.method != "HEAD" {
                         return Response::error(404, "plexsim: not found");
                     }
+                    // Cycle 20/55: `/onDeck` parses `type=` the way a listing does --
+                    // `abc` and an empty value are 500s -- where the added subsets
+                    // ignore it.
+                    if let Err(status) = listing::parsed_type(query, 500, None) {
+                        return Response::error(status, "plexsim: bad type");
+                    }
                     // Cycle 28: the FULL detail row; cycle 55: ordered by the
                     // view-state write time, then index and id; cycle 30: no `Field`
                     // and no `librarySectionKey`.
@@ -11188,7 +11538,7 @@ impl Runtime {
                         .collect::<Vec<_>>();
                     rows.sort_by_key(|row| {
                         let stamp = row
-                            .get("viewUpdatedAt")
+                            .get("_viewUpdatedAt")
                             .and_then(Value::as_i64)
                             .filter(|stamp| *stamp != 0)
                             .or_else(|| row.get("lastViewedAt").and_then(Value::as_i64))
@@ -11225,11 +11575,28 @@ impl Runtime {
                 if segments.len() >= 4 && segments[3] == "extras" {
                     return self.section_extras(section_key, &segments[4..], query);
                 }
+                if segments.len() == 5 && segments[3] == "stations" {
+                    // Cycle 45: an EMPTY container carrying `art`, `thumb` and `title1`
+                    // and nothing else, for exactly four names.
+                    if !matches!(segments[4], "genre" | "mood" | "style" | "decade") {
+                        return Response::error(404, "plexsim: not found");
+                    }
+                    let is_show = section.get("type").and_then(Value::as_str) == Some("show");
+                    return Response::json(200, json!({"MediaContainer": {
+                        "size": 0,
+                        "art": if is_show { "/:/resources/show-fanart.jpg" } else { "/:/resources/movie-fanart.jpg" },
+                        "identifier": "com.plexapp.plugins.library",
+                        "mediaTagPrefix": MEDIA_TAG_PREFIX,
+                        "mediaTagVersion": MEDIA_TAG_VERSION,
+                        "thumb": if is_show { "/:/resources/show.png" } else { "/:/resources/movie.png" },
+                        "title1": section.get("title").cloned().unwrap_or(Value::Null),
+                    }}));
+                }
                 if segments.len() == 4 && segments[3] == "arts" {
                     if request.method != "GET" && request.method != "HEAD" {
                         return Response::error(404, "plexsim: not found");
                     }
-                    return self.route_library_arts(Some(section_key));
+                    return self.route_library_arts(Some(section_key), &HashMap::new());
                 }
                 if segments.len() == 4
                     && matches!(
@@ -11376,6 +11743,13 @@ impl Runtime {
                         .and_then(Value::as_str)
                         .unwrap_or("movie");
                     let leaf = segments[3];
+                    // Cycle 55: the added subsets answer their ordinary list to a bad
+                    // `type=`, while the recently-viewed-shows pair refuses it (500).
+                    if matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
+                        if let Err(status) = listing::parsed_type(query, 500, None) {
+                            return Response::error(status, "plexsim: bad type");
+                        }
+                    }
                     let mut fields = Map::from_iter([
                         (
                             "title2".to_string(),
@@ -11391,11 +11765,13 @@ impl Runtime {
                         ),
                         ("allowSync".to_string(), json!(true)),
                     ]);
-                    if kind == "show"
-                        && matches!(leaf, "recentlyAdded" | "recentlyViewed" | "newest")
-                    {
-                        fields.insert("viewGroup".to_string(), json!("episode"));
-                    }
+                    // A show library's subsets are EPISODE lists (its Grandparents
+                    // roll-up keeps `viewGroup: "episode"`, cycle 45); a movie
+                    // library's stay movies.
+                    fields.insert(
+                        "viewGroup".to_string(),
+                        json!(if kind == "show" { "episode" } else { "movie" }),
+                    );
                     let mut rows =
                         if leaf == "recentlyViewedShows" || leaf == "recentlyViewedGrandparents" {
                             let mut roots = self.section_rows(section_key);
@@ -11469,7 +11845,7 @@ impl Runtime {
                                 // view-state write time, falling back to the view time.
                                 rows.retain(|row| stamp(row, "lastViewedAt") != 0);
                                 rows.sort_by_key(|row| {
-                                    let written = stamp(row, "viewUpdatedAt");
+                                    let written = stamp(row, "_viewUpdatedAt");
                                     let viewed = stamp(row, "lastViewedAt");
                                     (-(if written != 0 { written } else { viewed }), rating_key(row))
                                 });
@@ -11498,7 +11874,7 @@ impl Runtime {
                     }
                     let rows = rows
                         .iter()
-                        .map(|row| self.section_listing_row(row))
+                        .map(|row| guid_gate(self.section_listing_row(row), query))
                         .collect::<Vec<_>>();
                     if kind == "show"
                         && leaf != "recentlyViewedShows"
@@ -11875,42 +12251,77 @@ impl Runtime {
                     return self.unwatched_listing(section_key, section, query, pairs);
                 }
                 if segments.len() == 4 && segments[3] == "unwatched" {
+                    // Cycle 20, measured on kids and zen: typed like a listing, it
+                    // answers ONLY the library's own top-level type -- any other
+                    // `type=` is an EMPTY container whose viewGroup flips to
+                    // `episode` on a show library -- and an unparseable or empty
+                    // `type=` is a 500.  Cycle 54: it runs the listing's filters;
+                    // cycle 50: ordered by titleSort, and a row with children
+                    // carries `?unwatched=1` in its key.
                     let kind = section
                         .get("type")
                         .and_then(Value::as_str)
-                        .unwrap_or("movie");
-                    let rows = self
-                        .section_rows(section_key)
-                        .into_iter()
-                        .filter(|row| row.get("viewCount").is_none())
+                        .unwrap_or("movie")
+                        .to_string();
+                    let asked = match listing::parsed_type(query, 500, None) {
+                        Ok(asked) => asked,
+                        Err(status) => return Response::error(status, "plexsim: bad request"),
+                    };
+                    let own = if kind == "show" { 2 } else { 1 };
+                    let asked = asked.unwrap_or(own);
+                    let rows = if asked != own {
+                        Vec::new()
+                    } else {
+                        self.choose_rows(Some(section_key), Some(own))
+                            .into_iter()
+                            .filter(|row| {
+                                row.get("viewCount").is_none_or(|value| {
+                                    value.is_null() || value.as_i64() == Some(0)
+                                })
+                            })
+                            .collect::<Vec<_>>()
+                    };
+                    let filter_pairs = pairs
+                        .iter()
+                        .filter(|(name, _)| {
+                            !matches!(
+                                name.as_str(),
+                                "sort" | "includeGuids" | "X-Plex-Container-Start"
+                                    | "X-Plex-Container-Size" | "X-Plex-Language"
+                            )
+                        })
+                        .cloned()
+                        .collect::<Vec<_>>();
+                    let rows = match self.filter_rows(rows, &filter_pairs, &kind) {
+                        Ok(rows) => rows,
+                        Err(status) => return Response::error(status, "plexsim: bad request"),
+                    };
+                    if let Some(sort) = query.get("sort") {
+                        // Cycle 55: the leaf VALIDATES `sort=` and then ignores it.
+                        if let Err(status) = self.sort_rows(Vec::new(), Some(sort)) {
+                            return Response::error(status, "plexsim: bad request");
+                        }
+                    }
+                    let rows = self.sort_rows(rows, Some("titleSort")).unwrap_or_default();
+                    let listed = rows
+                        .iter()
                         .map(|row| {
-                            let mut listed = self.listing_row(&row);
-                            if kind == "show" {
-                                if let Some(object) = listed.as_object_mut() {
-                                    if let Some(rating_key) = key_of(&row) {
-                                        object.insert(
-                                            "key".to_string(),
-                                            json!(format!(
-                                                "/library/metadata/{rating_key}/children?unwatched=1"
-                                            )),
-                                        );
+                            let mut listed = self.section_listing_row(row);
+                            if let Some(object) = listed.as_object_mut() {
+                                if let Some(key) = object.get("key").and_then(Value::as_str).map(str::to_string) {
+                                    if key.ends_with("/children") {
+                                        object.insert("key".to_string(), json!(format!("{key}?unwatched=1")));
                                     }
                                 }
                             }
                             listed
                         })
                         .collect::<Vec<_>>();
-                    return Response::json(
-                        200,
-                        self.container(
-                            Map::from_iter([
-                                ("title2".to_string(), json!("Unplayed")),
-                                ("viewGroup".to_string(), json!(kind)),
-                                ("Metadata".to_string(), Value::Array(rows)),
-                            ]),
-                            true,
-                        ),
-                    );
+                    let view_group = if kind == "show" && asked != own { "episode".to_string() } else { kind.clone() };
+                    let mut fields = self.listing_fields(section_key, &kind, &view_group, "Unplayed");
+                    fields.insert("Metadata".to_string(), Value::Array(listed));
+                    page_fields(&mut fields, query);
+                    return Response::json(200, self.container(fields, true));
                 }
                 if segments.len() == 4 && segments[3] == "categories" {
                     let mut names = HashSet::new();
@@ -12322,14 +12733,14 @@ impl Runtime {
                         .iter()
                         .map(|row| self.section_listing_row(row))
                         .collect::<Vec<_>>();
-                    let mut fields = Map::from_iter([
-                        ("title2".to_string(), json!(format!("Start with '{wanted}'"))),
-                        ("Metadata".to_string(), Value::Array(projected)),
-                        ("viewGroup".to_string(), json!(section_type.clone())),
-                    ]);
-                    if section_type == "show" {
-                        fields.insert("nocache".to_string(), json!(true));
-                    }
+                    let mut fields = self.listing_fields(
+                        section_key,
+                        &section_type,
+                        &section_type,
+                        &format!("Start with '{wanted}'"),
+                    );
+                    fields.insert("Metadata".to_string(), Value::Array(projected));
+                    page_fields(&mut fields, query);
                     return Response::json(200, self.container(fields, true));
                 }
                 if segments.len() == 4 && segments[3] == "firstCharacter" {
@@ -12950,6 +13361,17 @@ impl Runtime {
             if let Some(row) = self.catalog.get(&key).cloned() {
                 return self.route_metadata(&key, &row, &segments[3..], query, request);
             }
+            if let Some(minted) = self.theme_rows.get(&key).cloned() {
+                // Cycle 45: a row the theme metadata leaf minted is readable at its own
+                // key, and only as a bare read.
+                if segments.len() > 3 || !matches!(request.method.as_str(), "GET" | "HEAD") {
+                    return Response::error(404, "plexsim: not found");
+                }
+                return Response::json(200, self.container(Map::from_iter([
+                    ("size".to_string(), json!(1)),
+                    ("Metadata".to_string(), json!([minted])),
+                ]), true));
+            }
             if let Some(playlist) = self.playlists.get(&key).cloned() {
                 if segments.len() == 3 && request.method == "DELETE" {
                     // Cycle 18, measured on plexscratch: `DELETE
@@ -13174,6 +13596,45 @@ impl Runtime {
         Some(Response::json(200, plugin_container(rows)))
     }
 
+    /// The fields a section LISTING's container carries (server.py's
+    /// `listing_container`): the librarySection triple, `title1`, `title2`,
+    /// `viewGroup`, `viewMode`, the library-type art and thumb, `allowSync` true,
+    /// and `nocache` on a SHOW library whatever the paging (re-measured on both
+    /// servers).
+    fn listing_fields(&self, section_key: &str, section_type: &str, view_group: &str, title2: &str) -> Map<String, Value> {
+        let section = self.section(section_key);
+        let title = section.and_then(|section| section.get("title")).cloned().unwrap_or(Value::Null);
+        let mut fields = Map::new();
+        fields.insert(
+            "librarySectionID".to_string(),
+            section_key.parse::<i64>().map(|id| json!(id)).unwrap_or_else(|_| json!(section_key)),
+        );
+        fields.insert("librarySectionTitle".to_string(), title.clone());
+        fields.insert(
+            "librarySectionUUID".to_string(),
+            section.and_then(|section| section.get("uuid")).cloned().unwrap_or(Value::Null),
+        );
+        fields.insert("title1".to_string(), title);
+        fields.insert("title2".to_string(), json!(title2));
+        fields.insert("viewGroup".to_string(), json!(view_group));
+        fields.insert("viewMode".to_string(), json!(65592));
+        let show = section_type == "show";
+        fields.insert(
+            "art".to_string(),
+            json!(if show { "/:/resources/show-fanart.jpg" } else { "/:/resources/movie-fanart.jpg" }),
+        );
+        fields.insert(
+            "thumb".to_string(),
+            json!(if show { "/:/resources/show.png" } else { "/:/resources/movie.png" }),
+        );
+        fields.insert("allowSync".to_string(), json!(true));
+        if show {
+            fields.insert("nocache".to_string(), json!(true));
+        }
+        fields.retain(|_, value| !value.is_null());
+        fields
+    }
+
     fn route_section_all(
         &mut self,
         section_key: &str,
@@ -13206,8 +13667,37 @@ impl Runtime {
                 return Response::error(500, "plexsim: bad request");
             }
         }
+        if matches!(request.method.as_str(), "GET" | "HEAD") && tail.is_empty() {
+            // Cycle 45: `file=` is refused by the QUERY's type -- on a section listing
+            // `type=2`, and a SHOW library's bare listing is that type.
+            let default_type = self
+                .section(section_key)
+                .and_then(|section| section.get("type"))
+                .and_then(Value::as_str)
+                .map(|kind| if kind == "show" { "2" } else { "1" });
+            if let Some(status) = listing::file_filter_refusal(query, false, default_type) {
+                return Response::error(status, "plexsim: cannot filter on file");
+            }
+        }
         if tail.first() == Some(&"refresh") {
             return Response::empty(200);
+        }
+        if tail.is_empty() && matches!(request.method.as_str(), "GET" | "HEAD") {
+            // Cycle 45: `file=` refuses at type=2 on a section listing -- and a SHOW
+            // library's bare listing is the type=2 case.
+            let default_type = if self
+                .section(section_key)
+                .and_then(|section| section.get("type"))
+                .and_then(Value::as_str)
+                == Some("show")
+            {
+                "2"
+            } else {
+                "1"
+            };
+            if let Some(status) = listing::file_filter_refusal(query, false, Some(default_type)) {
+                return Response::error(status, "plexsim: cannot filter on file");
+            }
         }
         if tail.first() == Some(&"collections") {
             if !matches!(request.method.as_str(), "GET" | "HEAD") {
@@ -13642,6 +14132,15 @@ impl Runtime {
         if size.is_some() {
             fields.insert("offset".to_string(), json!(start));
             fields.insert("totalSize".to_string(), json!(total));
+        }
+        if query.get("includeMeta").map(String::as_str) == Some("1") {
+            // Cycle 46: the section's complete descriptor with only its folder Type
+            // active.
+            let kind = section.get("type").and_then(Value::as_str).unwrap_or("movie").to_string();
+            if let Some(mut meta) = self.section_meta(section_key, &kind, false) {
+                meta_active(&mut meta, Some("folder"), None);
+                fields.insert("Meta".to_string(), meta);
+            }
         }
         Response::json(200, self.container(fields, true))
     }
@@ -14195,6 +14694,7 @@ impl Runtime {
                 prepared
             };
             let mut detail = self.detail_row(&prepared);
+            self.apply_detail_blocks(row, &mut detail, query);
             let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
             if let Some(excluded) = query.get("excludeFields") {
                 let names = excluded.split(',').collect::<HashSet<_>>();
@@ -14232,51 +14732,55 @@ impl Runtime {
                     .get("includeRelated")
                     .is_some_and(|value| is_true_option(value))
                 {
-                    let names = row
-                        .get("Genre")
-                        .and_then(Value::as_array)
+                    // Measured: the item's related hubs as `{"Hub": [...]}`, and an
+                    // empty OBJECT for an item with none.  Cycle 15: the INLINE block
+                    // caps at FIVE rows per hub and says `more`; `includeRelatedCount=N`
+                    // sets that cap, and cycle 22: `=0` EMPTIES the hub.
+                    let cap = query
+                        .get("includeRelatedCount")
+                        .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
+                        .and_then(|value| value.parse::<usize>().ok())
+                        .unwrap_or(5);
+                    let trimmed = self
+                        .related_hubs(row, query, true)
                         .into_iter()
-                        .flatten()
-                        .filter_map(|tag| tag.get("tag").and_then(Value::as_str))
-                        .collect::<HashSet<_>>();
-                    let related = self
-                        .catalog
-                        .items
-                        .iter()
-                        .filter(|candidate| {
-                            key_of(candidate).as_deref() != Some(key)
-                                && candidate.get("type") == row.get("type")
-                                && candidate
-                                    .get("Genre")
-                                    .and_then(Value::as_array)
-                                    .is_some_and(|tags| {
-                                        tags.iter().any(|tag| {
-                                            tag.get("tag")
-                                                .and_then(Value::as_str)
-                                                .is_some_and(|name| names.contains(name))
-                                        })
-                                    })
+                        .map(|mut hub| {
+                            let rows = hub.get("Metadata").and_then(Value::as_array).cloned().unwrap_or_default();
+                            let more = rows.len() > cap || hub.get("more").and_then(Value::as_bool) == Some(true);
+                            let kept = rows.into_iter().take(cap).collect::<Vec<_>>();
+                            hub["size"] = json!(kept.len());
+                            hub["more"] = json!(more);
+                            hub["Metadata"] = Value::Array(kept);
+                            hub
                         })
-                        .map(|candidate| self.detail_row(candidate))
                         .collect::<Vec<_>>();
-                    let hub = json!({
-                        "hubIdentifier": "movie.similar",
-                        "title": "Related Movies",
-                        "key": format!("/library/metadata/{key}/similar"),
-                        "context": "hub.movie.similar",
-                        "style": "shelf",
-                        "type": "movie",
-                        "size": related.len(),
-                        "more": false,
-                        "Metadata": related,
-                    });
-                    object.insert("Related".to_string(), json!({"Hub":[hub]}));
+                    object.insert(
+                        "Related".to_string(),
+                        if trimmed.is_empty() { json!({}) } else { json!({"Hub": trimmed}) },
+                    );
                 }
             }
-            let mut container = self.container(
-                Map::from_iter([("Metadata".to_string(), Value::Array(vec![detail]))]),
-                true,
-            );
+            // Re-measured against fun and the 1.43.4 reference: the detail container
+            // says `allowSync` (not for a clip) and names the row's library by id,
+            // title and UUID beside the identifier and the media-tag pair.
+            let mut detail_fields = Map::new();
+            detail_fields.insert("size".to_string(), json!(1));
+            detail_fields.insert("allowSync".to_string(), json!(kind != "clip"));
+            if kind != "clip" {
+                let section_id = row.get("librarySectionID").cloned().unwrap_or(Value::Null);
+                let section = self.section(&string_value(&section_id)).cloned().unwrap_or_default();
+                detail_fields.insert("librarySectionID".to_string(), section_id);
+                detail_fields.insert(
+                    "librarySectionTitle".to_string(),
+                    section.get("title").cloned().unwrap_or(Value::Null),
+                );
+                detail_fields.insert(
+                    "librarySectionUUID".to_string(),
+                    section.get("uuid").cloned().unwrap_or(Value::Null),
+                );
+            }
+            detail_fields.insert("Metadata".to_string(), Value::Array(vec![detail]));
+            let mut container = self.container(detail_fields, true);
             if query
                 .get("asyncCheckFiles")
                 .is_some_and(|value| is_true_option(value))
@@ -14294,6 +14798,37 @@ impl Runtime {
                 }
             }
             return Response::json(200, container);
+        }
+        // Cycle 45: `theme` is the one artwork leaf with a `/metadata` sub-leaf, and it
+        // MINTS a track row.
+        if tail.len() == 3 && tail[0] == "theme" && tail[2] == "metadata" {
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return self.theme_metadata(key, tail[1]);
+        }
+        // Cycle 45: an item leaf with an EXTRA path segment is a 404, except the
+        // artwork leaves (whose second segment is the version) and the two real
+        // two-segment leaves, `/extras/all` and `/users/top`.
+        if tail.len() > 1
+            && !matches!(tail[0], "thumb" | "art" | "poster" | "banner" | "theme" | "clearLogo")
+            && !(tail.len() == 2 && matches!((tail[0], tail[1]), ("extras", "all") | ("users", "top")))
+        {
+            return Response::error(404, "plexsim: not found");
+        }
+        if matches!(tail[0], "thumb" | "art" | "poster" | "banner" | "theme" | "clearLogo")
+            && tail.len() > 2
+        {
+            return Response::error(404, "plexsim: not found");
+        }
+        // Cycle 45: the SINGULAR artwork leaf is routed for six names and answers its
+        // own 400 to a PUT with no `url`.
+        if request.method == "PUT"
+            && tail.len() == 1
+            && matches!(tail[0], "poster" | "art" | "thumb" | "banner" | "theme" | "clearLogo")
+            && query.get("url").map_or(true, |url| url.is_empty())
+        {
+            return Response::error(400, "plexsim: bad request");
         }
         if request.method == "POST" && tail.len() == 1 {
             match tail[0] {
@@ -14735,60 +15270,62 @@ impl Runtime {
                 )
             }
             "related" => {
-                let rows = self.related_rows(key, row);
-                let hub = json!({
-                    "hubIdentifier":"movie.similar",
-                    "title":"Related Movies",
-                    "key":format!("/library/metadata/{key}/similar"),
-                    "context":"hub.movie.similar",
-                    "style":"shelf",
-                    "type":"movie",
-                    "size":rows.len(),
-                    "more":false,
-                    "Metadata":rows
-                });
+                // NOT /hubs/metadata/{id}/related: this one carries the SAME hub plus
+                // the media-tag pair the hubs form drops, built by hand with
+                // `allowSync: true` said explicitly.
+                let hubs = self.related_hubs(row, query, true);
                 let section = self
                     .section(&string_value(
                         row.get("librarySectionID").unwrap_or(&Value::Null),
                     ))
                     .cloned()
                     .unwrap_or_default();
-                Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([
-                            ("allowSync".to_string(), json!(true)),
-                            (
-                                "librarySectionID".to_string(),
-                                row.get("librarySectionID").cloned().unwrap_or(Value::Null),
-                            ),
-                            (
-                                "librarySectionTitle".to_string(),
-                                section.get("title").cloned().unwrap_or(Value::Null),
-                            ),
-                            (
-                                "librarySectionUUID".to_string(),
-                                section.get("uuid").cloned().unwrap_or(Value::Null),
-                            ),
-                            ("Hub".to_string(), Value::Array(vec![hub])),
-                        ]),
-                        false,
-                    ),
-                )
+                let mut fields = Map::new();
+                fields.insert("size".to_string(), json!(hubs.len()));
+                fields.insert("Hub".to_string(), Value::Array(hubs));
+                fields.insert("allowSync".to_string(), json!(true));
+                fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+                for (name, value) in [
+                    ("librarySectionID", row.get("librarySectionID").cloned()),
+                    ("librarySectionTitle", section.get("title").cloned()),
+                    ("librarySectionUUID", section.get("uuid").cloned()),
+                ] {
+                    if let Some(value) = value.filter(|value| !value.is_null()) {
+                        fields.insert(name.to_string(), value);
+                    }
+                }
+                fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+                fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
+                Response::json(200, self.container(fields, false))
             }
             "similar" => {
-                let rows = self.related_rows(key, row);
-                Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([("Metadata".to_string(), Value::Array(rows))]),
-                        true,
-                    ),
-                )
+                // Measured: a real PMS 404s this for a season or an episode; for a
+                // movie or a show it is a tag container of the Related rows.
+                if matches!(row.get("type").and_then(Value::as_str), Some("season" | "episode")) {
+                    return Response::error(404, "plexsim: not found");
+                }
+                let rows = self
+                    .similar_rows(row)
+                    .iter()
+                    .map(|row| self.detail_row(row))
+                    .collect::<Vec<_>>();
+                let mut fields = Map::new();
+                fields.insert("size".to_string(), json!(rows.len()));
+                fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+                fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+                fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
+                if !rows.is_empty() {
+                    fields.insert("Metadata".to_string(), Value::Array(rows));
+                }
+                Response::json(200, self.container(fields, false))
             }
             "extras" => {
                 if tail.len() > 1 && tail[1] != "all" {
                     return Response::error(404, "plexsim: not found");
+                }
+                // Cycle 16: a POST here is a 400 whatever the body.
+                if request.method == "POST" {
+                    return Response::error(400, "plexsim: bad request");
                 }
                 Response::json(
                     200,
@@ -16794,7 +17331,7 @@ impl Runtime {
         Response {
             status: 200,
             content_type,
-            body: if head { Vec::new() } else { body },
+            body: { let _ = head; body },
             headers: vec![
                 ("Cache-Control".to_string(), "no-cache".to_string()),
                 ("Accept-Ranges".to_string(), "bytes".to_string()),
@@ -16803,7 +17340,7 @@ impl Runtime {
         }
     }
 
-    fn route_web(&self, segments: &[&str], head: bool) -> Response {
+    fn route_web(&self, segments: &[&str], head: bool, trailing_slash: bool) -> Response {
         let Some(root) = &self.web_root else {
             return Response::error(404, "plexsim: not found");
         };
@@ -16822,11 +17359,23 @@ impl Runtime {
         if !canonical.starts_with(&canonical_root) {
             return Response::error(404, "plexsim: not found");
         }
-        let Ok(body) = fs::read(canonical) else {
+        let mut response = if canonical.is_dir() {
+            // Cycle 29: a DIRECTORY is an empty `application/octet-stream` 200 on both
+            // references, never the index page.
+            Response::bytes(200, "application/octet-stream")
+        } else if trailing_slash && !segments.is_empty() {
+            // Cycle 29: a trailing slash after a FILE is a 404.
             return Response::error(404, "plexsim: not found");
+        } else {
+            let Ok(body) = fs::read(&canonical) else {
+                return Response::error(404, "plexsim: not found");
+            };
+            let mut response = Response::bytes(200, content_type(path.to_string_lossy().as_ref()));
+            // The envelope drops a HEAD's body and keeps its length.
+            let _ = head;
+            response.body = body;
+            response
         };
-        let mut response = Response::bytes(200, content_type(path.to_string_lossy().as_ref()));
-        response.body = if head { Vec::new() } else { body };
         response
             .headers
             .push(("Cache-Control".to_string(), "no-cache".to_string()));
@@ -16861,7 +17410,7 @@ pub struct Response {
 
 impl Response {
     fn json(status: u16, value: Value) -> Self {
-        let body = serde_json::to_vec(&drop_empty_value(&value)).unwrap_or_default();
+        let body = upper_json_escapes(serde_json::to_vec(&drop_empty_value(&value)).unwrap_or_default());
         Self {
             status,
             content_type: "application/json".to_string(),
@@ -16962,6 +17511,27 @@ impl Response {
             .push(("Cache-Control".to_string(), "no-cache".to_string()));
         response
     }
+}
+
+/// Cycle 32: a real PMS writes a C0 control as `\u00XX` in UPPER-case hex, where
+/// serde_json writes lower-case; every other byte of the compact form already matches.
+fn upper_json_escapes(mut body: Vec<u8>) -> Vec<u8> {
+    let mut index = 0;
+    while index + 1 < body.len() {
+        if body[index] == b'\\' {
+            if body[index + 1] == b'u' && index + 5 < body.len() {
+                for byte in &mut body[index + 2..index + 6] {
+                    byte.make_ascii_uppercase();
+                }
+                index += 6;
+            } else {
+                index += 2;
+            }
+        } else {
+            index += 1;
+        }
+    }
+    body
 }
 
 /// The reference's refusal document, Python's `http.HTTPStatus(status).phrase` spelling.
@@ -17515,9 +18085,49 @@ fn handle_connection<S: Read + Write>(
         if close_after_body {
             response.close = true;
         }
+        // Cycle 45: `X-Plex-Container-Focus-Key` (header or query) supplies the START as
+        // `max(0, index - (size - 1) // 2)` when it names `/library/metadata/...`, a Size
+        // is given and no explicit Start is; a key naming no row starts at 0.
+        let focus = request
+            .headers
+            .get("x-plex-container-focus-key")
+            .or_else(|| query.get("X-Plex-Container-Focus-Key"))
+            .cloned();
+        if let Some(focus) = focus.filter(|focus| focus.starts_with("/library/metadata/")) {
+            if query.contains_key("X-Plex-Container-Size") && !query.contains_key("X-Plex-Container-Start") {
+                let wanted = focus.trim_end_matches('/').rsplit('/').next().unwrap_or("").to_string();
+                let index = serde_json::from_slice::<Value>(&response.body)
+                    .ok()
+                    .and_then(|document| {
+                        let body = document.get("MediaContainer")?.as_object()?.clone();
+                        let longest = body
+                            .values()
+                            .filter_map(Value::as_array)
+                            .max_by_key(|rows| rows.len())
+                            .cloned()
+                            .unwrap_or_default();
+                        longest.iter().position(|row| key_of(row).as_deref() == Some(wanted.as_str()))
+                    })
+                    .unwrap_or(0) as i64;
+                let size = query
+                    .get("X-Plex-Container-Size")
+                    .and_then(|value| value.trim().parse::<i64>().ok())
+                    .unwrap_or(0);
+                query.insert(
+                    "X-Plex-Container-Start".to_string(),
+                    (index - (size - 1).div_euclid(2)).max(0).to_string(),
+                );
+            }
+        }
+        wire::exclude_container(&mut response, &query, &request_path);
         page_container(&mut response, &query, &request_path);
+        if response.content_type.starts_with("application/json") {
+            // The post-passes re-serialise; keep the upper-case control escapes.
+            response.body = upper_json_escapes(std::mem::take(&mut response.body));
+        }
         add_paging_headers(&mut response, &query);
         response = xml_or_json(response, request.headers.get("accept").map(String::as_str));
+        order_json_body(&mut response, &request_path);
         let envelope = wire::Wire::of(&request, &request_path, &query);
         let still_open = wire::write_enveloped(&mut stream, &response, &envelope, keep)?;
         served_any = true;
@@ -18201,10 +18811,12 @@ fn split_target(target: &str) -> (String, String) {
             return split_target(origin_form);
         }
     }
+    // A `+` in the PATH is a literal plus (cycle 36's `+1` id); only a query decodes
+    // it as a space.
     if let Some((path, query)) = target.split_once('?') {
-        (percent_decode(path), query.to_string())
+        (percent_decode(&path.replace('+', "%2B")), query.to_string())
     } else {
-        (percent_decode(target), String::new())
+        (percent_decode(&target.replace('+', "%2B")), String::new())
     }
 }
 fn parse_query(query: &str) -> Vec<(String, String)> {
@@ -18501,6 +19113,10 @@ fn unix_year(timestamp: i64) -> i64 {
     year + if month < 10 { 0 } else { 1 }
 }
 
+/// The account feature names plex.tv reports for the owner (the oracle's
+/// `OWNER_FEATURES` with no claim of its own).
+const OWNER_FEATURES: &str = "adaptive_bitrate,camera_upload,collections,content_filter,download_certificates,dvr,federated-auth,hardware_transcoding,home,hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,music-analysis,music_videos,pass,photosV6-edit,photosV6-tv-albums,premium_music_metadata,radio,server-manager,session_bandwidth_restrictions,session_kick,shared-radio,sync,trailers,tuner-sharing,type-first,unsupportedtuners,webhooks";
+
 /// Python's ordering of two JSON scalars for a sort: numbers by value, strings
 /// by code point, anything else as equal.
 /// The two-letter codes Python's `locale.locale_alias` names, which is the set the
@@ -18687,7 +19303,7 @@ fn static_sidecar_response(catalog: &Path, name: &str, content_type: &str, head:
     Response {
         status: 200,
         content_type: content_type.to_string(),
-        body: if head { Vec::new() } else { body },
+        body: { let _ = head; body },
         headers: vec![
             ("Cache-Control".to_string(), "no-cache".to_string()),
             ("Accept-Ranges".to_string(), "bytes".to_string()),
@@ -18890,6 +19506,17 @@ fn advanced_sort_order(entry_type: &str) -> Option<&'static [&'static str]> {
         ],
         _ => return None,
     })
+}
+
+/// Cycle 56: whether a row carries a per-user settings record -- any view-state
+/// write stamps `_viewUpdatedAt`, and a catalog row may arrive with state already.
+fn has_settings(row: &Value) -> bool {
+    [
+        "_viewUpdatedAt", "viewCount", "viewOffset", "lastViewedAt", "userRating",
+        "lastRatedAt", "skipCount",
+    ]
+    .iter()
+    .any(|name| row.get(*name).is_some_and(|value| !value.is_null() && value.as_str() != Some("")))
 }
 
 fn page_fields(fields: &mut Map<String, Value>, query: &HashMap<String, String>) {
@@ -19239,11 +19866,34 @@ fn is_true_option(value: &str) -> bool {
         && normalized.parse::<u64>().ok() == Some(1)
 }
 
+/// The current time in the IMF-fixdate form every response's `Date` carries
+/// (`BaseHTTPRequestHandler.date_time_string`).
 fn http_date() -> String {
-    // The conformance contract only depends on the presence and position of
-    // Date.  Keep this deterministic; the source part has no real filesystem
-    // mtime to expose.
-    "Thu, 01 Jan 1970 00:00:00 GMT".to_string()
+    let seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs() as i64)
+        .unwrap_or(0);
+    let days = seconds.div_euclid(86_400);
+    let rest = seconds.rem_euclid(86_400);
+    // Howard Hinnant's civil-from-days.
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    let weekday = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"][days.rem_euclid(7) as usize];
+    let month_name = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        [(month - 1) as usize];
+    format!(
+        "{weekday}, {day:02} {month_name} {year} {:02}:{:02}:{:02} GMT",
+        rest / 3600,
+        rest % 3600 / 60,
+        rest % 60
+    )
 }
 
 pub fn xml_or_json(response: Response, accept: Option<&str>) -> Response {
@@ -19261,6 +19911,38 @@ pub fn xml_or_json(response: Response, accept: Option<&str>) -> Response {
         body,
         headers: response.headers,
         close: response.close,
+    }
+}
+
+/// A JSON body in the order the XML writer emits, with every private marker
+/// dropped (server.py's `json_body`).
+///
+/// Cycle 19, measured on kids and zen: a real PMS's JSON object keys come out
+/// in exactly its XML order -- the container's attributes, then its child keys;
+/// a row's attributes in the row's attribute order, then its child element
+/// keys.  Cycle 22: a LIGHT row's JSON child order is the light order, read off
+/// the row's own `_light` marker -- so the markers are dropped AFTER ordering.
+/// The plug-in framework's subtrees write their own bodies and are left alone.
+fn order_json_body(response: &mut Response, path: &str) {
+    if !response.content_type.starts_with("application/json")
+        || path == "/system"
+        || path.starts_with("/system/")
+        || path.starts_with("/:/plugins")
+    {
+        return;
+    }
+    let Ok(document) = serde_json::from_slice::<Value>(&response.body) else {
+        return;
+    };
+    let Some(object) = document.as_object() else {
+        return;
+    };
+    if object.len() != 1 || !object.values().next().is_some_and(Value::is_object) {
+        return;
+    }
+    let ordered = strip_private_value(&xmlout::ordered(&document, None));
+    if let Ok(body) = serde_json::to_vec(&ordered) {
+        response.body = body;
     }
 }
 

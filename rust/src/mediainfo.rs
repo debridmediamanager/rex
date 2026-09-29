@@ -401,7 +401,7 @@ fn dynamic_range(row: &Row) -> Option<String> {
     }
 }
 
-fn video_codec_label(row: &Row) -> Option<String> {
+pub fn video_codec_label(row: &Row) -> Option<String> {
     let codec = str_value(row, "codec")?.to_ascii_lowercase();
     let mut label = match codec.as_str() {
         "h264" => "H.264".to_string(),
@@ -472,7 +472,7 @@ fn channel_label(row: &Row) -> Option<String> {
     })
 }
 
-fn subtitle_codec_label(row: &Row, external: &str) -> String {
+pub fn subtitle_codec_label(row: &Row, external: &str) -> String {
     let codec = str_value(row, "codec")
         .unwrap_or_default()
         .to_ascii_uppercase();
@@ -496,7 +496,7 @@ fn subtitle_codec_label(row: &Row, external: &str) -> String {
     }
 }
 
-fn stream_titles(row: &mut Row, stand_in: Option<&str>, words: Option<&Row>) {
+pub fn stream_titles(row: &mut Row, stand_in: Option<&str>, words: Option<&Row>) {
     let words = words.cloned().unwrap_or_default();
     let unknown = str_value(&words, "Unknown").unwrap_or_else(|| "Unknown".to_string());
     let kind = int_value(row, "streamType");
