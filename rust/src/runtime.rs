@@ -12082,8 +12082,15 @@ impl Runtime {
                             Ok(rows) => rows,
                             Err(status) => return Response::error(status, "plexsim: bad request"),
                         };
-                        if let Some(sort) = query.get("sort") {
-                            rows = match self.sort_rows(rows, Some(sort)) {
+                        // A movie library's leaves default to titleSort; a show
+                        // library's keep the show order they arrive in.
+                        let sort = query
+                            .get("sort")
+                            .filter(|sort| !sort.is_empty())
+                            .map(String::as_str)
+                            .or(if is_show { None } else { Some("titleSort") });
+                        if sort.is_some() {
+                            rows = match self.sort_rows(rows, sort) {
                                 Ok(rows) => rows,
                                 Err(status) => {
                                     return Response::error(status, "plexsim: bad request")
@@ -12098,9 +12105,31 @@ impl Runtime {
                                 Err(status) => return Response::error(status, "plexsim: bad request"),
                             };
                         }
+                        // Measured on kids and zen: `limit=` applies here as on `/all`.
+                        let rows = match listing::limited(rows, query) {
+                            Ok(rows) => rows,
+                            Err(status) => return Response::error(status, "plexsim: bad request"),
+                        };
+                        let exclude_media = query
+                            .get("excludeElements")
+                            .is_some_and(|value| value.split(',').any(|name| name == "Media"));
                         let shown = rows
                             .iter()
-                            .map(|candidate| self.grid_row(candidate, false, true, false))
+                            .map(|candidate| {
+                                let mut shown = self.child_list_row(candidate, query);
+                                if exclude_media {
+                                    if let Some(object) = shown.as_object_mut() {
+                                        let count = object
+                                            .get("Media")
+                                            .and_then(Value::as_array)
+                                            .map_or(0, Vec::len);
+                                        object.remove("Media");
+                                        object.insert("mediaCount".to_string(), json!(count));
+                                        object.insert("mediaCountOptimized".to_string(), json!(0));
+                                    }
+                                }
+                                shown
+                            })
                             .collect::<Vec<_>>();
                         fields.insert(
                             "viewGroup".to_string(),
