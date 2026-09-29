@@ -68,52 +68,6 @@ impl Runtime {
         }
     }
 
-    /// The string a row's frames -- and its activity's subtitle -- carry. Measured on
-    /// a writable copy: a movie's and a show's frames title them with the year
-    /// (`Elephants Dream (2006)`, and an emptied title still gets it: ` (2010)`),
-    /// while a SEASON's say `Firefly S01` and an EPISODE's `Firefly S01 E07`, from
-    /// the SHOW's title and the current indexes.
-    pub(super) fn frame_title(&self, row: &Value) -> String {
-        let mut title = row
-            .get("title")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string();
-        let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
-        let year = row.get("year").filter(|value| truthy(value));
-        if matches!(kind, "movie" | "show") {
-            if let Some(year) = year {
-                return format!("{title} ({})", string_value(year));
-            }
-        }
-        if matches!(kind, "season" | "episode") {
-            let show_key = row
-                .get(if kind == "season" {
-                    "parentRatingKey"
-                } else {
-                    "grandparentRatingKey"
-                })
-                .map(string_value)
-                .unwrap_or_default();
-            let show_title = self
-                .catalog
-                .get(&show_key)
-                .and_then(|show| show.get("title"))
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .to_string();
-            let index = row
-                .get(if kind == "season" { "index" } else { "parentIndex" })
-                .and_then(value_as_i64)
-                .unwrap_or(0);
-            title = format!("{show_title} S{index:02}");
-            if kind == "episode" {
-                let own = row.get("index").and_then(value_as_i64).unwrap_or(0);
-                title.push_str(&format!(" E{own:02}"));
-            }
-        }
-        title
-    }
 
     pub(super) fn notify_timeline(&mut self, row: &Value, state: i64, metadata_state: Option<&str>) {
         self.notify_timeline_full(row, state, metadata_state, None, None, None);
@@ -174,20 +128,7 @@ impl Runtime {
         self.push_event("timeline", json!({"TimelineEntry": Value::Object(entry)}));
     }
 
-    pub(super) fn notify_status(&mut self, title: &str, description: &str) {
-        self.push_event(
-            "status",
-            json!({"StatusNotification": [{"title": title, "description": description,
-                "notificationName": "LIBRARY_UPDATE"}]}),
-        );
-    }
 
-    pub(super) fn notify_progress(&mut self, message: &str) {
-        self.push_event(
-            "progress",
-            json!({"ProgressNotification": [{"message": message}]}),
-        );
-    }
 
     /// Shape measured on fun mid-refresh: uuid, type, cancellable, userID, title,
     /// subtitle, progress. Pushes the `started` frame.
@@ -372,126 +313,8 @@ impl Runtime {
         self.notify_timeline(row, 5, None);
     }
 
-    /// The frames a library scan pushes, measured on a writable copy: one
-    /// `library.update.section` activity steps through the items (a MOVIE library
-    /// per movie, a SHOW library per SEASON after the show's own progress row), then
-    /// ends inside a nested pair of `provider.subscriptions.process` activities.
-    pub(super) fn notify_section_scan(&mut self, section_id: &str) {
-        let Some(section) = self.section(section_id).cloned() else {
-            return;
-        };
-        let title = section.get("title").and_then(Value::as_str).unwrap_or_default().to_string();
-        let uuid = self.activity_uuid();
-        let mut activity = json!({"uuid": uuid, "type": "library.update.section",
-            "cancellable": false, "userID": 1, "title": "Scanning", "subtitle": "",
-            "progress": 0});
-        self.push_activity(&activity, "started");
-        self.notify_status(&format!("Scanning the \"{title}\" section"), "");
-        activity["title"] = json!(format!("Scanning {title}"));
-        self.push_activity(&activity, "updated");
-        let mut steps: Vec<(String, Option<String>)> = Vec::new();
-        for row in self.section_items(section_id) {
-            let own = row.get("title").and_then(Value::as_str).unwrap_or_default();
-            let label = match row.get("year").filter(|value| truthy(value)) {
-                Some(year) => format!("{own} ({})", string_value(year)),
-                None => own.to_string(),
-            };
-            match row.get("type").and_then(Value::as_str) {
-                Some("movie") => steps.push((label.clone(), Some(label))),
-                Some("show") => {
-                    steps.push((label.clone(), None));
-                    let mut seasons = self.children(&key_of(&row).unwrap_or_default());
-                    seasons.sort_by_key(|season| {
-                        -season.get("index").and_then(value_as_i64).unwrap_or(0)
-                    });
-                    for season in &seasons {
-                        let name = format!(
-                            "Season {:02}",
-                            season.get("index").and_then(value_as_i64).unwrap_or(0)
-                        );
-                        steps.push((format!("{label}/{name}"), Some(format!("{label} - {name}"))));
-                    }
-                    if seasons.is_empty() {
-                        steps.push((label.clone(), Some(label)));
-                    }
-                }
-                _ => {}
-            }
-        }
-        let counted = steps.iter().filter(|step| step.1.is_some()).count();
-        let mut number = 0;
-        for (message, subtitle) in &steps {
-            self.notify_progress(&format!("Scanning {message}"));
-            let Some(subtitle) = subtitle else { continue };
-            number += 1;
-            activity["subtitle"] = json!(subtitle);
-            activity["progress"] = json!(py_round(number as f64 * 99.0 / counted as f64));
-            activity["Context"] = json!({"librarySectionID": section_id});
-            self.push_activity(&activity, "updated");
-        }
-        if counted == 0 {
-            activity["progress"] = json!(99);
-            activity["Context"] = json!({"librarySectionID": section_id});
-            self.push_activity(&activity, "updated");
-        }
-        activity["progress"] = json!(100);
-        activity["Context"] = json!({"librarySectionID": section_id});
-        self.push_activity(&activity, "updated");
-        let outer_uuid = self.activity_uuid();
-        let mut outer = json!({"uuid": outer_uuid, "type": "provider.subscriptions.process",
-            "cancellable": true, "userID": 1, "title": "Processing subscriptions",
-            "subtitle": "", "progress": 0});
-        self.push_activity(&outer, "started");
-        self.push_activity(&activity, "ended");
-        self.notify_status(
-            "Library scan complete",
-            "Extra information may still be downloading from the Internet",
-        );
-        let mut inner = outer.clone();
-        inner["uuid"] = json!(self.activity_uuid());
-        self.push_activity(&inner, "started");
-        inner["progress"] = json!(100);
-        self.push_activity(&inner, "ended");
-        outer["progress"] = json!(100);
-        self.push_activity(&outer, "ended");
-    }
 
-    /// Cycle 19: a scan of a path the library does not hold -- the same activity and
-    /// subscriptions pair with NO progress rows and an empty subtitle.
-    pub(super) fn notify_empty_section_scan(&mut self, section_id: &str) {
-        let Some(section) = self.section(section_id).cloned() else {
-            return;
-        };
-        let title = section.get("title").and_then(Value::as_str).unwrap_or_default().to_string();
-        let uuid = self.activity_uuid();
-        let mut activity = json!({"uuid": uuid, "type": "library.update.section",
-            "cancellable": false, "userID": 1, "title": "Scanning", "subtitle": "",
-            "progress": 0});
-        self.push_activity(&activity, "started");
-        self.notify_status(&format!("Scanning the \"{title}\" section"), "");
-        activity["title"] = json!(format!("Scanning {title}"));
-        self.push_activity(&activity, "updated");
-        activity["progress"] = json!(100);
-        activity["Context"] = json!({"librarySectionID": section_id});
-        self.push_activity(&activity, "updated");
-        let outer_uuid = self.activity_uuid();
-        let mut outer = json!({"uuid": outer_uuid, "type": "provider.subscriptions.process",
-            "cancellable": true, "userID": 1, "title": "Processing subscriptions",
-            "subtitle": "", "progress": 0});
-        self.push_activity(&outer, "started");
-        self.push_activity(&activity, "ended");
-        self.notify_status(
-            "Library scan complete",
-            "Extra information may still be downloading from the Internet",
-        );
-        outer["progress"] = json!(100);
-        self.push_activity(&outer, "ended");
-    }
 
-    /// The rows a section holds, in catalog order (movies or shows).
-    pub(super) fn section_items(&self, section_id: &str) -> Vec<Value> {
-        self.section_rows(section_id)
-    }
 
     /// Strip the agent's identity, the way `PUT .../unmatch` does. Measured on the
     /// reference by diffing the row's keys across the call: a movie's or a show's guid
@@ -723,31 +546,7 @@ impl Runtime {
                     self.notify_refreshed(key);
                 }
             }
-            "analyze" => {
-                // Cycle 15, re-measured on the copy: per LEAF and in tree order, three
-                // `state 5` frames carrying `mediaState` analyzing, thumbnailing and
-                // none, then ONE `media.generate.chapter.thumbs` activity whose
-                // subtitle is the TARGET's frame title, started then ended.
-                let leaves = if kind == "show" || kind == "season" {
-                    self.leaves(key)
-                } else {
-                    vec![row.clone()]
-                };
-                for leaf in &leaves {
-                    for media_state in [Some("analyzing"), Some("thumbnailing"), None] {
-                        self.notify_timeline_full(leaf, 5, None, media_state, None, None);
-                    }
-                }
-                let subtitle = self.frame_title(&row);
-                let mut activity = self.add_activity(
-                    &subtitle,
-                    "Generating video chapter thumbnails",
-                    "media.generate.chapter.thumbs",
-                    -1,
-                );
-                activity["progress"] = json!(100);
-                self.end_activity_quietly(&mut activity);
-            }
+            "analyze" => self.analyze_item(key, &row),
             "unmatch" => {
                 self.unmatch_row(key);
                 let Some(row) = self.catalog.get(key).cloned() else {
