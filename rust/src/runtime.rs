@@ -11530,10 +11530,12 @@ impl Runtime {
                 }
                 if segments.len() == 4 && (segments[3] == "sorts" || segments[3] == "filters") {
                     let number = if let Some(value) = query.get("type") {
-                        let Ok(number) = value.parse::<i64>() else {
+                        // Cycle 55: a signed 32-bit integer (`2147483648` is a 400, `+1`
+                        // the movie list), measured on zen and kids.
+                        if !int_param(value, Some(32)) {
                             return Response::error(400, "plexsim: bad request");
-                        };
-                        number
+                        }
+                        value.trim_start_matches('+').parse::<i64>().unwrap_or(0)
                     } else if section.get("type").and_then(Value::as_str) == Some("show") {
                         2
                     } else {
@@ -12394,7 +12396,9 @@ impl Runtime {
             );
         }
         if let Some(value) = query.get("type") {
-            if value.parse::<i64>().is_err() {
+            // Cycle 55, measured on zen and kids: the type is a SIGNED 32-BIT integer --
+            // `type=2147483648` is refused with the same status as `abc`.
+            if !int_param(value.trim(), Some(32)) {
                 return Response::error(
                     if request.method == "PUT" { 400 } else { 500 },
                     "plexsim: bad request",
