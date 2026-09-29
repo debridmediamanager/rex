@@ -2694,22 +2694,57 @@ impl Runtime {
         Response::json(200, self.container(fields, false))
     }
 
-    fn route_library_arts(&self, section_filter: Option<&str>) -> Response {
+    /// `/library/arts` (cycle 45): every row that OWNS an `art`, and a listing QUERY --
+    /// the filters constrain it, a bad sort or limit is a 500, and it refuses the
+    /// fifteen keys `/hubs` refuses.
+    fn route_library_arts(&self, section_filter: Option<&str>, query: &HashMap<String, String>) -> Response {
+        if let Some(refusal) = hub_refusal(query) {
+            return refusal;
+        }
+        if let Some(status) = listing::listing_refusals(query, &[]) {
+            return Response::error(status, "plexsim: refused");
+        }
+        let pairs = query
+            .iter()
+            .filter(|(key, _)| !matches!(key.as_str(), "type" | "limit"))
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect::<Vec<_>>();
         let mut rows = Vec::new();
         for section in &self.catalog.sections {
             let section_key = string_value(section.get("key").unwrap_or(&Value::Null));
             if section_filter.is_some_and(|wanted| wanted != section_key) {
                 continue;
             }
-            let mut members = self
-                .catalog
-                .items
-                .iter()
-                .filter(|row| {
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
-                })
-                .cloned()
-                .collect::<Vec<_>>();
+            let section_type = section.get("type").and_then(Value::as_str).unwrap_or("movie");
+            let members = if section_filter.is_some() {
+                self.catalog
+                    .items
+                    .iter()
+                    .filter(|row| {
+                        string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>()
+            } else {
+                self.section_rows(&section_key)
+            };
+            let mut members = match self.filter_rows(members, &pairs, section_type) {
+                Ok(rows) => rows,
+                Err(status) => return Response::error(status, "plexsim: bad request"),
+            };
+            if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
+                if self.sort_rows(Vec::new(), Some(sort)).is_err() {
+                    return Response::error(500, "plexsim: unsupported sort key");
+                }
+            }
+            if section_filter.is_none() {
+                members.retain(|row| {
+                    let key = key_of(row).unwrap_or_default();
+                    row.get("art")
+                        .and_then(Value::as_str)
+                        .is_some_and(|art| art.starts_with(&format!("/library/metadata/{key}/")))
+                });
+            }
             members.sort_by_key(|row| {
                 string_value(row.get("ratingKey").unwrap_or(&Value::Null))
                     .parse::<i64>()
@@ -10264,7 +10299,7 @@ impl Runtime {
             return self.route_library_tags(query);
         }
         if path == "/library/arts" && matches!(request.method.as_str(), "GET" | "HEAD") {
-            return self.route_library_arts(None);
+            return self.route_library_arts(None, query);
         }
         if path == "/library/randomArtwork" && matches!(request.method.as_str(), "GET" | "HEAD") {
             let Some(sections) = query.get("sections") else {
@@ -10291,7 +10326,7 @@ impl Runtime {
             }
             // Reuse the stable Photo projection from the arts route while
             // retaining the randomArtwork container's ordinary JSON shape.
-            let arts = self.route_library_arts(Some(wanted[0]));
+            let arts = self.route_library_arts(Some(wanted[0]), &HashMap::new());
             let value = serde_json::from_slice::<Value>(&arts.body).unwrap_or_else(|_| {
                 self.container(
                     Map::from_iter([("Metadata".to_string(), Value::Array(Vec::new()))]),
@@ -11388,7 +11423,7 @@ impl Runtime {
                     if request.method != "GET" && request.method != "HEAD" {
                         return Response::error(404, "plexsim: not found");
                     }
-                    return self.route_library_arts(Some(section_key));
+                    return self.route_library_arts(Some(section_key), &HashMap::new());
                 }
                 if segments.len() == 4
                     && matches!(
