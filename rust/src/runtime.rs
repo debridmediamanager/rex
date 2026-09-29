@@ -4390,6 +4390,64 @@ impl Runtime {
         if path.len() > 1 && path.ends_with('/') && !path.starts_with("/web/") {
             path.pop();
         }
+        {
+            // Cycle 45: the `+` form is a 404 in a VALIDATED VERSION position (a part's
+            // changestamp before a filename, a section composite's version), checked on
+            // the raw segment; cycle 36: every other padded or plus-signed id segment
+            // (`\+?0*[0-9]+`) names the same row as its number.
+            let pieces = path.split('/').map(str::to_string).collect::<Vec<_>>();
+            let digits = |text: &str| !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit());
+            if pieces.len() > 5 && pieces[1] == "library" && pieces[2] == "parts" && !digits(&pieces[4]) {
+                return Response::error(404, "plexsim: not found");
+            }
+            if pieces.len() > 5
+                && pieces[1] == "library"
+                && pieces[2] == "sections"
+                && pieces[4] == "composite"
+                && !digits(&pieces[5])
+            {
+                return Response::error(404, "plexsim: not found");
+            }
+            let padded = |text: &str| {
+                let rest = text.strip_prefix('+').unwrap_or(text);
+                digits(rest)
+            };
+            if pieces.iter().any(|piece| padded(piece) && piece.as_str() != piece.trim_start_matches(['+', '0']) ) {
+                path = pieces
+                    .iter()
+                    .map(|piece| {
+                        if padded(piece) {
+                            let stripped = piece.trim_start_matches('+').trim_start_matches('0');
+                            if stripped.is_empty() { "0".to_string() } else { stripped.to_string() }
+                        } else {
+                            piece.clone()
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("/");
+            }
+            // Cycle 36: four paths bound their id to a signed 32-bit integer -- past the
+            // range a 400, a negative inside it a 404.
+            let segments = path.split('/').filter(|p| !p.is_empty()).collect::<Vec<_>>();
+            let bounded = match segments.as_slice() {
+                ["playQueues" | "devices" | "accounts", id, ..] => Some(*id),
+                ["system", "scanners", id, ..] => Some(*id),
+                _ => None,
+            };
+            if let Some(id) = bounded {
+                let body = id.strip_prefix('-').unwrap_or(id);
+                if digits(body) {
+                    match id.parse::<i64>() {
+                        Ok(number) if (-2_147_483_648..=2_147_483_647).contains(&number) => {
+                            if number < 0 {
+                                return Response::error(404, "plexsim: not found");
+                            }
+                        }
+                        _ => return Response::error(400, "plexsim: bad request"),
+                    }
+                }
+            }
+        }
         if request.method == "OPTIONS"
             && request.headers.contains_key("access-control-request-method")
         {
