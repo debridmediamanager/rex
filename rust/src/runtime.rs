@@ -9975,7 +9975,10 @@ impl Runtime {
             );
         }
         if path == "/neighborhood/devices" && matches!(request.method.as_str(), "GET" | "HEAD") {
-            return Response::json(200, self.container(Map::new(), false));
+            return Response::json(
+                200,
+                self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
+            );
         }
         if path == "/media/subscriptions/template" && request.method == "GET" {
             return Response::error(400, "plexsim: bad request");
