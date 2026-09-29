@@ -32,6 +32,7 @@ mod gates;
 mod listing;
 mod resume;
 mod transcoder;
+mod wire;
 use artwork::owns_artwork;
 use resume::{bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param, page_window};
 
@@ -3993,6 +3994,39 @@ impl Runtime {
         Response::json(200, self.container(fields, false))
     }
 
+    /// The CORS preflight (`server.py` `do_OPTIONS`): with an `Origin` the echoed
+    /// origin, `Vary`, the method list, the requested headers ECHOED only when asked
+    /// (cycle 34) and a two-week `Max-Age`; with none, no CORS headers at all (cycle
+    /// 16). Always `text/plain`, empty, naming its connection state and `no-cache`
+    /// (cycle 33).
+    fn preflight(request: &Request) -> Response {
+        let mut headers = vec![(wire::RAW_MARK.to_string(), "preflight".to_string())];
+        if let Some(origin) = request.headers.get("origin") {
+            headers.push(("Access-Control-Allow-Origin".to_string(), origin.clone()));
+            headers.push(("Vary".to_string(), "Origin, X-Plex-Token".to_string()));
+            headers.push((
+                "Access-Control-Allow-Methods".to_string(),
+                "POST, GET, OPTIONS, DELETE, PUT, HEAD".to_string(),
+            ));
+            if let Some(asked) = request
+                .headers
+                .get("access-control-request-headers")
+                .filter(|asked| !asked.is_empty())
+            {
+                headers.push(("Access-Control-Allow-Headers".to_string(), asked.clone()));
+            }
+            headers.push(("Access-Control-Max-Age".to_string(), "1209600".to_string()));
+        }
+        headers.push(("Cache-Control".to_string(), "no-cache".to_string()));
+        Response {
+            status: 200,
+            content_type: "text/plain".to_string(),
+            body: Vec::new(),
+            headers,
+            close: false,
+        }
+    }
+
     pub fn route(&mut self, request: &Request) -> Response {
         if request.method == "PATCH" {
             // Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not
@@ -4013,14 +4047,7 @@ impl Runtime {
             }
         }
         self.localize_response(request, &mut response);
-        if let Some(origin) = request.headers.get("origin") {
-            response
-                .headers
-                .push(("Access-Control-Allow-Origin".to_string(), origin.clone()));
-            response
-                .headers
-                .push(("Vary".to_string(), "Origin".to_string()));
-        }
+        // The CORS trio is the envelope's (`wire.rs`), written for every response.
         self.save_if_dirty();
         response
     }
@@ -4314,6 +4341,13 @@ impl Runtime {
         if path.len() > 1 && path.ends_with('/') && !path.starts_with("/web/") {
             path.pop();
         }
+        if request.method == "OPTIONS"
+            && request.headers.contains_key("access-control-request-method")
+        {
+            // A genuine preflight is answered before routing and before the token
+            // (`server.py` `do_OPTIONS`); a bare OPTIONS is routed like any verb.
+            return Self::preflight(request);
+        }
         let pairs = parse_query(&raw_query);
         let mut query = pairs.iter().fold(HashMap::new(), |mut map, (key, value)| {
             map.insert(key.clone(), value.clone());
@@ -4331,9 +4365,7 @@ impl Runtime {
                 query.insert("X-Plex-Language".to_string(), value.clone());
             }
         }
-        let preflight = request.method == "OPTIONS"
-            && request.headers.contains_key("access-control-request-method");
-        if !preflight {
+        {
             // `server.py` `_dispatch`: the query grammar and the read-only verb gates
             // are refused before the token is even looked at.
             let refusal = gates::query_grammar_refusal(&request.method, &path, &query);
@@ -4386,14 +4418,7 @@ impl Runtime {
                 | "/services"
                 | "/security"
         );
-        if framework_prefix
-            && !matches!(request.method.as_str(), "GET" | "HEAD")
-            && !(request.method == "OPTIONS"
-                && request.headers.contains_key("origin")
-                && request
-                    .headers
-                    .contains_key("access-control-request-method"))
-        {
+        if framework_prefix && !matches!(request.method.as_str(), "GET" | "HEAD") {
             return if path == "/security" {
                 Response::json(200, self.container(Map::new(), false))
             } else if let Some(response) = self.route_plugin_prefix(&path) {
@@ -4403,10 +4428,6 @@ impl Runtime {
             };
         }
         if request.method == "OPTIONS" {
-            if !request.headers.contains_key("origin")
-                || !request
-                    .headers
-                    .contains_key("access-control-request-method")
             {
                 return match path.as_str() {
                     "/identity" => self.identity_response(&query),
@@ -4414,41 +4435,7 @@ impl Runtime {
                     _ => Response::error(404, "plexsim: not found"),
                 };
             }
-            let origin = request
-                .headers
-                .get("origin")
-                .cloned()
-                .unwrap_or_else(|| "*".to_string());
-            let requested_headers = request
-                .headers
-                .get("access-control-request-headers")
-                .cloned()
-                .unwrap_or_default();
-            let mut headers = vec![
-                ("Access-Control-Allow-Origin".to_string(), origin),
-                (
-                    "Access-Control-Allow-Methods".to_string(),
-                    "GET, HEAD, POST, PUT, DELETE, OPTIONS".to_string(),
-                ),
-                ("Access-Control-Max-Age".to_string(), "86400".to_string()),
-                ("Vary".to_string(), "Origin".to_string()),
-            ];
-            if !requested_headers.is_empty() {
-                headers.insert(
-                    1,
-                    (
-                        "Access-Control-Allow-Headers".to_string(),
-                        requested_headers,
-                    ),
-                );
-            }
-            return Response {
-                status: 200,
-                content_type: String::new(),
-                body: Vec::new(),
-                headers,
-                close: false,
-            };
+            return Self::preflight(request);
         }
         // These are library read projections.  PMS rejects writes at the
         // route envelope before the projection handler runs; returning the
@@ -17636,8 +17623,11 @@ fn handle_connection<S: Read + Write>(
                 .map_err(|_| "runtime lock poisoned".to_string())?
                 .route(&request)
         };
+        // Cycle 30/49: a refusal of the request's ENVELOPE closes the socket -- the
+        // malformed query pair among them -- while a refusal of its MEANING keeps it.
         if invalid_absolute_target
             || invalid_dot_path
+            || (malformed_query && response.status == 400)
             || (response.status == 404
                 && (request_path.starts_with("/:/resources/") || request_path.starts_with("/web/")))
         {
@@ -17648,13 +17638,10 @@ fn handle_connection<S: Read + Write>(
         }
         add_paging_headers(&mut response, &query);
         response = xml_or_json(response, request.headers.get("accept").map(String::as_str));
-        maybe_compress(&mut response, request.headers.get("accept-encoding"));
-        if request.method == "HEAD" {
-            response.body.clear();
-        }
-        write_response(&mut stream, &response, keep && !response.close)?;
+        let envelope = wire::Wire::of(&request, &request_path, &query);
+        let still_open = wire::write_enveloped(&mut stream, &response, &envelope, keep)?;
         served_any = true;
-        if response.close || !keep {
+        if response.close || !keep || !still_open {
             break;
         }
     }
@@ -17676,9 +17663,21 @@ fn handle_websocket<S: Write>(
     digest.update(key.as_bytes());
     digest.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
     let accept = base64_encode(&digest.finalize());
-    let header = format!(
-        "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {accept}\r\n\r\n"
-    );
+    // Cycle 30: the 101 carries `Date` last like every other response; cycle 34: the
+    // reference's ORDER, read off a client-session capture -- the CORS pair leads, the
+    // handshake follows, then `Cache-Control`, the allowed origin and `Date`.
+    let origin = request.headers.get("origin");
+    let mut header = String::from("HTTP/1.1 101 Switching Protocols\r\nX-Plex-Protocol: 1.0\r\n");
+    if origin.is_some() {
+        header.push_str("Access-Control-Expose-Headers: Location, Date\r\nVary: Origin, X-Plex-Token\r\n");
+    }
+    header.push_str(&format!(
+        "Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {accept}\r\nCache-Control: no-cache\r\n"
+    ));
+    if let Some(origin) = origin {
+        header.push_str(&format!("Access-Control-Allow-Origin: {origin}\r\n"));
+    }
+    header.push_str(&format!("Date: {}\r\n\r\n", http_date()));
     stream
         .write_all(header.as_bytes())
         .map_err(|error| error.to_string())?;
@@ -17787,11 +17786,27 @@ fn handle_eventsource<S: Write>(
         {
             continue;
         }
-        let payload = serde_json::to_string(&value).map_err(|error| error.to_string())?;
-        let frame = format!("event: {kind}\ndata: {payload}\n\n");
-        stream
-            .write_all(frame.as_bytes())
-            .map_err(|error| error.to_string())?;
+        // The SSE shape is ONE row per `data:` line under its element name, with no
+        // container and no list around it (measured); an event holding several rows
+        // is several frames.
+        let mut frames = Vec::new();
+        match &value {
+            Value::Object(object) if object.len() == 1 && object.values().all(Value::is_array) => {
+                for (element, rows) in object {
+                    for row in rows.as_array().into_iter().flatten() {
+                        frames.push(json!({ element.clone(): row.clone() }));
+                    }
+                }
+            }
+            _ => frames.push(value.clone()),
+        }
+        for frame_value in frames {
+            let payload = serde_json::to_string(&frame_value).map_err(|error| error.to_string())?;
+            let frame = format!("event: {kind}\ndata: {payload}\n\n");
+            stream
+                .write_all(frame.as_bytes())
+                .map_err(|error| error.to_string())?;
+        }
     }
     stream.flush().map_err(|error| error.to_string())?;
     // Keep the channel open until the measured ten-second keepalive.  A quiet
@@ -17956,8 +17971,14 @@ fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option
     let Some(first) = lines.next() else {
         return Err("bad request line".to_string());
     };
-    if first.is_empty() || first.starts_with([' ', '\t']) || first.contains('\t') {
+    // Cycle 49: an EMPTY method token (a leading space) draws no answer at all; a
+    // tab is not a separator in the grammar, so a tab-separated line is a 400
+    // (cycle 27).
+    if first.is_empty() || first.starts_with(' ') {
         return Err("silence".to_string());
+    }
+    if first.contains('\t') {
+        return Err("bad request line".to_string());
     }
     let parts = first.split(' ').collect::<Vec<_>>();
     if parts.first().is_some_and(|method| method.len() > 10) {
@@ -18203,185 +18224,7 @@ fn known_method(method: &str) -> bool {
 }
 
 fn write_response<S: Write>(stream: &mut S, response: &Response, keep: bool) -> Result<(), String> {
-    let reason = match response.status {
-        200 => "OK",
-        201 => "Created",
-        204 => "No Content",
-        302 => "Moved Temporarily",
-        400 => "Bad Request",
-        401 => "Unauthorized",
-        403 => "Forbidden",
-        404 => "Not Found",
-        405 => "Method Not Allowed",
-        409 => "Conflict",
-        416 => "Range Not Satisfiable",
-        500 => "Internal Server Error",
-        503 => "Service Unavailable",
-        _ => "",
-    };
-    let mut out = format!("HTTP/1.1 {} {}\r\n", response.status, reason);
-    let protocol = response
-        .headers
-        .iter()
-        .any(|(key, _)| key == "X-Plex-Protocol");
-    if protocol && response.status == 416 {
-        for (key, value) in &response.headers {
-            if key == "X-Plex-Protocol" {
-                out.push_str(&format!("{key}: {value}\r\n"));
-            }
-        }
-        out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-        if !response.content_type.is_empty() {
-            out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-        }
-        for (key, value) in &response.headers {
-            if key != "X-Plex-Protocol" {
-                out.push_str(&format!("{key}: {value}\r\n"));
-            }
-        }
-    } else if protocol {
-        let image_success = response.status == 200 && response.content_type.starts_with("image/");
-        let media_success = matches!(response.status, 200 | 206) && !image_success;
-        let refusal = !image_success && !media_success;
-        if refusal {
-            for (key, value) in &response.headers {
-                if key == "X-Plex-Protocol" {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-            out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-            if !response.content_type.is_empty() {
-                out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-            }
-            out.push_str(&format!(
-                "Connection: {}\r\n",
-                if keep { "Keep-Alive" } else { "close" }
-            ));
-            if keep {
-                out.push_str("Keep-Alive: timeout=20\r\n");
-            }
-            for (key, value) in &response.headers {
-                if key != "X-Plex-Protocol" && key != "Date" {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-            for (key, value) in &response.headers {
-                if key == "Date" {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-        } else if image_success {
-            for (key, value) in &response.headers {
-                if key == "X-Plex-Protocol" || (image_success && key == "Accept-Ranges") {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-            out.push_str(&format!(
-                "Connection: {}\r\n",
-                if keep { "Keep-Alive" } else { "close" }
-            ));
-            if keep {
-                out.push_str("Keep-Alive: timeout=20\r\n");
-            }
-            out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-            if !response.content_type.is_empty() {
-                out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-            }
-            for (key, value) in &response.headers {
-                if key != "X-Plex-Protocol" && key != "Accept-Ranges" && key != "Date" {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-            for (key, value) in &response.headers {
-                if key == "Date" {
-                    out.push_str(&format!("{key}: {value}\r\n"));
-                }
-            }
-        } else if media_success {
-            // Media responses have a stable measured envelope.  The protocol
-            // marker and CORS exposure lead, entity validators and range
-            // metadata follow, then the connection pair and body headers.
-            for key in ["X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary"] {
-                for (header, value) in &response.headers {
-                    if header == key {
-                        out.push_str(&format!("{header}: {value}\r\n"));
-                    }
-                }
-            }
-            for key in ["ETag", "Last-Modified", "Accept-Ranges", "Content-Range"] {
-                for (header, value) in &response.headers {
-                    if header == key {
-                        out.push_str(&format!("{header}: {value}\r\n"));
-                    }
-                }
-            }
-            out.push_str(&format!(
-                "Connection: {}\r\n",
-                if keep { "Keep-Alive" } else { "close" }
-            ));
-            if keep {
-                out.push_str("Keep-Alive: timeout=20\r\n");
-            }
-            out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-            if !response.content_type.is_empty() {
-                out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-            }
-            for (header, value) in &response.headers {
-                if matches!(
-                    header.as_str(),
-                    "X-Plex-Protocol"
-                        | "Access-Control-Expose-Headers"
-                        | "Vary"
-                        | "ETag"
-                        | "Last-Modified"
-                        | "Accept-Ranges"
-                        | "Content-Range"
-                        | "Date"
-                        | "Access-Control-Allow-Origin"
-                ) {
-                    continue;
-                }
-                out.push_str(&format!("{header}: {value}\r\n"));
-            }
-            for key in ["Access-Control-Allow-Origin", "Date"] {
-                for (header, value) in &response.headers {
-                    if header == key {
-                        out.push_str(&format!("{header}: {value}\r\n"));
-                    }
-                }
-            }
-        }
-    } else {
-        if response.body.is_empty() {
-            out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-            if !response.content_type.is_empty() {
-                out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-            }
-        } else {
-            if !response.content_type.is_empty() {
-                out.push_str(&format!("Content-Type: {}\r\n", response.content_type));
-            }
-            out.push_str(&format!("Content-Length: {}\r\n", response.body.len()));
-        }
-        for (k, v) in &response.headers {
-            out.push_str(&format!("{}: {}\r\n", k, v));
-        }
-        out.push_str(&format!(
-            "Connection: {}\r\n",
-            if keep { "Keep-Alive" } else { "close" }
-        ));
-        if keep {
-            out.push_str("Keep-Alive: timeout=20\r\n");
-        }
-    }
-    out.push_str("\r\n");
-    stream
-        .write_all(out.as_bytes())
-        .map_err(|e| e.to_string())?;
-    stream
-        .write_all(&response.body)
-        .map_err(|e| e.to_string())?;
-    stream.flush().map_err(|e| e.to_string())
+    wire::write_enveloped(stream, response, &wire::Wire::bare(), keep).map(|_| ())
 }
 
 fn split_target(target: &str) -> (String, String) {
