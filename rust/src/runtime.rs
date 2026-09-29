@@ -8857,6 +8857,11 @@ impl Runtime {
                                 .and_then(Value::as_f64)
                                 .is_some_and(|value| value >= 7.0)
                     });
+                    // Cycle 55, re-measured on zen: the shelf is the HEAD of its own key
+                    // listing, so its rows come in that listing's default order.
+                    let filtered = self
+                        .sort_rows(filtered.clone(), Some("titleSort"))
+                        .unwrap_or(filtered);
                     ((name, tag), filtered)
                 })
                 .unwrap_or_else(|| ((String::new(), Value::Null), Vec::new()))
