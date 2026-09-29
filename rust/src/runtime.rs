@@ -25,7 +25,14 @@ use sha1::{Digest, Sha1};
 
 use crate::{catalog::Catalog, decision, xmlout};
 
+mod artwork;
+mod butler;
+mod framework;
+mod gates;
+mod listing;
 mod resume;
+mod transcoder;
+use artwork::owns_artwork;
 use resume::{bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param, page_window};
 
 const VERSION: &str = "1.42.2.10156-plexsim";
@@ -330,6 +337,8 @@ pub struct Runtime {
     /// Leaves completed in a PLAYBACK SESSION (Python's `_viewedInSession`): history,
     /// not view state, so a later scrobble or unscrobble leaves it standing.
     viewed_in_session: HashSet<String>,
+    /// Uploaded artwork by its `upload://` key: the bytes and their content type.
+    uploads: HashMap<String, (Vec<u8>, String)>,
     pub terminated_sessions: HashMap<String, String>,
     pub decided_sessions: HashSet<(String, String)>,
     pub web_root: Option<PathBuf>,
@@ -339,6 +348,9 @@ pub struct Runtime {
     /// can take a snapshot without a mutable callback into the route thread.
     /// This is bounded in `push_event`; it is runtime state, never persisted.
     events: Vec<(String, Value)>,
+    /// How many events the bound has drained from the front of `events`, so a
+    /// subscriber's cursor stays a sequence number once the buffer is full.
+    events_dropped: usize,
 }
 
 impl Runtime {
@@ -417,12 +429,14 @@ impl Runtime {
             completion_pending_stop: HashSet::new(),
             hidden_continue: HashSet::new(),
             viewed_in_session: HashSet::new(),
+            uploads: HashMap::new(),
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
             web_root: options.web_root,
             bandwidth_bytes: 0,
             dirty: false,
             events: Vec::new(),
+            events_dropped: 0,
         };
         runtime.load_state()?;
         Ok(runtime)
@@ -778,6 +792,23 @@ impl Runtime {
             return row;
         };
         let key = key_of(original).unwrap_or_default();
+        // Both reference versions omit `Part.accessible`/`exists` from listings and
+        // ordinary detail reads; only a checked detail read (`annotate_file_checks`,
+        // which marks the row) carries them. The catalog's own values never leak.
+        if original.get("_filesChecked").is_none() {
+            if let Some(media_rows) = object.get_mut("Media").and_then(Value::as_array_mut) {
+                for media in media_rows {
+                    if let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut) {
+                        for part in parts {
+                            if let Some(part) = part.as_object_mut() {
+                                part.remove("accessible");
+                                part.remove("exists");
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // Keep the discriminator independent of the mutable response map.  The
         // same map is enriched below, and retaining a borrowed `&str` here
         // would make those measured field insertions borrow-conflict with the
@@ -2608,7 +2639,23 @@ impl Runtime {
         if self.events.len() > 512 {
             let excess = self.events.len() - 512;
             self.events.drain(0..excess);
+            self.events_dropped += excess;
         }
+    }
+
+    /// The sequence number the next event will take. A socket opened now reads from here:
+    /// once the 512-event bound was reached, `events.len()` stopped moving and every
+    /// subscriber after that point saw no frame at all.
+    fn event_cursor(&self) -> usize {
+        self.events_dropped + self.events.len()
+    }
+
+    fn events_since(&self, cursor: usize) -> Vec<(String, Value)> {
+        self.events
+            .iter()
+            .skip(cursor.saturating_sub(self.events_dropped))
+            .cloned()
+            .collect()
     }
 
     fn push_timeline(&mut self, key: &str, state: i64, metadata_state: Option<&str>) {
@@ -2692,22 +2739,6 @@ impl Runtime {
             })
             .unwrap_or_default();
         self.push_refresh_events_named(key, &subtitle);
-    }
-
-    fn push_library_refresh_events(&mut self, section: &Value) {
-        let title = section.get("title").and_then(Value::as_str).unwrap_or("");
-        let uuid = format!(
-            "plexsim-library-{}-{}",
-            string_value(section.get("key").unwrap_or(&Value::Null)),
-            now()
-        );
-        for (event, progress) in [("started", 0), ("ended", 100)] {
-            self.push_event("activity", json!({"ActivityNotification":{"event":event,"uuid":uuid,"Activity":{"type":"library.update.section","progress":progress}}}));
-        }
-        self.push_event(
-            "status",
-            json!({"StatusNotification":{"title":format!("Scanning the \"{title}\" section")}}),
-        );
     }
 
     fn push_edit_events(&mut self, key: &str) {
@@ -2809,108 +2840,6 @@ impl Runtime {
                 "updatedAt": now()
             }}),
         );
-    }
-
-    fn push_butler_events(&mut self, task: Option<&str>) {
-        let uuid = format!("plexsim-butler-{}", now());
-        let activity = |kind: &str, event: &str, progress: i64, subtitle: &str| {
-            json!({"ActivityNotification": {
-                "event": event,
-                "uuid": uuid,
-                "Activity": {"type": kind, "progress": progress, "subtitle": subtitle}
-            }})
-        };
-        let progress = |message: &str| json!({"ProgressNotification": {"message": message}});
-        match task.unwrap_or("") {
-            "BackupDatabase" => {
-                // The framework runs the database backup once for each due
-                // database phase.  The duplicate runs and their distinct
-                // subtitles are visible to Dashboard clients.
-                for _ in 0..2 {
-                    self.push_event(
-                        "activity",
-                        activity("general.db.backup", "started", -1, "Backing up database"),
-                    );
-                    self.push_event("progress", progress("The butler backed up your database."));
-                    self.push_event(
-                        "activity",
-                        activity("general.db.backup", "updated", 50, "Backing up database"),
-                    );
-                    self.push_event(
-                        "activity",
-                        activity("general.db.backup", "ended", 100, "Backing up database"),
-                    );
-                }
-            }
-            "OptimizeDatabase" => {
-                self.push_event(
-                    "activity",
-                    activity("general.db.optimize", "started", 0, ""),
-                );
-                self.push_event(
-                    "activity",
-                    activity("general.db.optimize", "updated", 50, ""),
-                );
-                self.push_event(
-                    "activity",
-                    activity("general.db.optimize", "ended", 100, ""),
-                );
-            }
-            "CleanOldBundles" => {
-                self.push_event(
-                    "activity",
-                    activity("general.bundle.clean", "started", -1, "Cleaning bundles"),
-                );
-                self.push_event("progress", progress("Cleaning media bundles."));
-                for progress_value in [15, 30, 45, 60, 75, 90] {
-                    self.push_event(
-                        "activity",
-                        activity(
-                            "general.bundle.clean",
-                            "updated",
-                            progress_value,
-                            "Cleaning bundles",
-                        ),
-                    );
-                }
-                self.push_event(
-                    "activity",
-                    activity("general.bundle.clean", "ended", 100, "Cleaning bundles"),
-                );
-            }
-            "RefreshLibraries" => {
-                self.push_event("progress", progress("Refreshing libraries."));
-                self.push_event(
-                    "activity",
-                    activity("butler", "started", 0, "Refreshing libraries"),
-                );
-                self.push_event(
-                    "activity",
-                    activity("butler", "ended", 100, "Refreshing libraries"),
-                );
-                let sections = self.catalog.sections.clone();
-                for section in sections {
-                    self.push_library_refresh_events(&section);
-                }
-            }
-            "" => {
-                let task_count = 3_i64;
-                self.push_event("activity", activity("butler", "started", 0, ""));
-                for task_number in 1..=task_count {
-                    self.push_event("activity", activity("butler", "updated", 100, ""));
-                    if task_number < task_count {
-                        let step =
-                            (100.0 * task_number as f64 / (task_number + 1) as f64).round() as i64;
-                        self.push_event("activity", activity("butler", "updated", step, ""));
-                    }
-                }
-                self.push_event("activity", activity("butler", "ended", 100, ""));
-            }
-            _ => {
-                self.push_event("activity", activity("butler", "started", 0, ""));
-                self.push_event("activity", activity("butler", "ended", 100, ""));
-            }
-        }
     }
 
     fn update_view(&mut self, key: &str, field: &str, value: Option<Value>) -> bool {
@@ -4065,8 +3994,24 @@ impl Runtime {
     }
 
     pub fn route(&mut self, request: &Request) -> Response {
+        if request.method == "PATCH" {
+            // Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not
+            // in 1.42.2's method table at all -- a 500 with the 109-byte document on every
+            // path, `/identity` and `/system` included, answered before any routing, so it
+            // registers no device and carries no framework cookie.
+            return Response::error(500, "plexsim: unknown method");
+        }
         self.mark_device(&request.headers);
         let mut response = self.request_route(request);
+        let (raw_path, _) = split_target(&request.target);
+        if let Some(cookie) = Self::framework_cookie(&request.method, &raw_path) {
+            // Cycle 33/52: the plug-in framework's session cookie rides every response it
+            // writes itself -- but not the Tornado banner answer, which hands none back.
+            let tornado = response.headers.iter().any(|(name, _)| name == "Server");
+            if !tornado && !response.headers.iter().any(|(name, _)| name == "Set-Cookie") {
+                response.headers.push(("Set-Cookie".to_string(), cookie));
+            }
+        }
         self.localize_response(request, &mut response);
         if let Some(origin) = request.headers.get("origin") {
             response
@@ -4325,9 +4270,12 @@ impl Runtime {
         // its normal empty plugin container for the doubled form.  Do this
         // before the ordinary trailing-slash normalization so `/identity//`
         // cannot become the valid `/identity` route.
+        if path == "/:/plugins//" {
+            // Cycle 50: the doubled slash answers the parent's own listing.
+            path = "/:/plugins".to_string();
+        }
         if path.contains("//") {
-            if path == "/:/plugins//"
-                || matches!(
+            if matches!(
                     path.as_str(),
                     "/status/sessions//"
                         | "/media/providers//"
@@ -4351,6 +4299,11 @@ impl Runtime {
                     && path != "/library/metadata//")
             {
                 return Response::json(200, plugin_container(Vec::new()));
+            }
+            // Cycle 53: under `/system` an empty segment is still the FRAMEWORK's 404 --
+            // empty body, no `Content-Type`.
+            if path.starts_with("/system/") {
+                return Response::bare(404);
             }
             return Response::error(404, "plexsim: not found");
         }
@@ -4378,28 +4331,35 @@ impl Runtime {
                 query.insert("X-Plex-Language".to_string(), value.clone());
             }
         }
+        let preflight = request.method == "OPTIONS"
+            && request.headers.contains_key("access-control-request-method");
+        if !preflight {
+            // `server.py` `_dispatch`: the query grammar and the read-only verb gates
+            // are refused before the token is even looked at.
+            let refusal = gates::query_grammar_refusal(&request.method, &path, &query);
+            if refusal != 0 {
+                return Response::error(refusal, "plexsim: bad request");
+            }
+            if gates::read_only_refusal(&request.method, &path) {
+                return Response::error(404, "plexsim: not found");
+            }
+        }
         if !self.authorized(&path, &request, &query) {
             return self.unauthorized_route(&path, request);
         }
         if resource_root_with_slash {
             return self.route_bundled_resource("", request.method == "HEAD");
         }
-        // The `/system` plug-in dispatcher has a verb table distinct from its
-        // XML GET writers: PATCH is an internal 500, OPTIONS is an empty 200,
-        // and unknown POST/PUT/DELETE leaves are empty 404s.  Handle that
-        // envelope before the agent and scanner projections below.
-        if path == "/system" || path.starts_with("/system/") {
-            if request.method == "OPTIONS" {
-                return Response::empty(200);
-            }
-            if request.method == "PATCH" {
-                return Response::plain(500, b"500".to_vec());
-            }
-            if matches!(request.method.as_str(), "POST" | "PUT" | "DELETE")
-                && !(path.contains("/agents/") && request.method == "PUT")
-            {
-                return Response::empty(404);
-            }
+        // The plug-in framework's subtrees (`/system`, `/:/plugins`) are a different
+        // server with their own envelope; see `framework.rs`.
+        if let Some(response) = self.route_framework(request, &path, &query) {
+            return response;
+        }
+        if (path == "/butler" && matches!(request.method.as_str(), "GET" | "HEAD" | "POST" | "DELETE"))
+            || (path.starts_with("/butler/") && path.matches('/').count() == 2)
+        {
+            let segments = path.split('/').filter(|s| !s.is_empty()).collect::<Vec<_>>();
+            return self.route_butler(&request.method, &segments);
         }
         // Single-component framework prefixes are dispatched by PMS before
         // their verb-specific handlers.  A wrong verb therefore receives the
@@ -4525,24 +4485,33 @@ impl Runtime {
         }
         match (request.method.as_str(), path.as_str()) {
             (_, "/identity") => self.identity_response(&query),
+            // Cycle 52: the three bundled static resources. No token, `Accept-Ranges`, never
+            // gzipped; the two policies are `text/xml` and the favicon an octet-stream.
             ("GET" | "HEAD", "/crossdomain.xml") => static_sidecar_response(
                 &self.catalog_path,
                 "crossdomain.xml",
-                "application/xml",
+                "text/xml",
                 request.method == "HEAD",
             ),
             ("GET" | "HEAD", "/clientaccesspolicy.xml") => static_sidecar_response(
                 &self.catalog_path,
                 "clientaccesspolicy.xml",
-                "application/xml",
+                "text/xml",
                 request.method == "HEAD",
             ),
             ("GET" | "HEAD", "/favicon.ico") => static_sidecar_response(
                 &self.catalog_path,
                 "favicon.ico",
-                "image/x-icon",
+                "application/octet-stream",
                 request.method == "HEAD",
             ),
+            (_, "/crossdomain.xml" | "/clientaccesspolicy.xml" | "/favicon.ico") => {
+                // A write verb is not the file: the dispatcher's empty listing.
+                Response::json(
+                    200,
+                    json!({"MediaContainer": {"size": 0, "content": "plugins"}}),
+                )
+            }
             ("GET" | "HEAD", "/") => Response::json(200, self.server_root()),
             ("GET" | "HEAD", "/manage") | ("GET" | "HEAD", "/web") => {
                 let host = request.headers.get("host").cloned().unwrap_or_default();
@@ -4654,42 +4623,6 @@ impl Runtime {
                     false,
                 ),
             ),
-            ("GET" | "HEAD", "/system/library/sections") => Response::json(
-                200,
-                self.container(
-                    Map::from_iter([("identifier".to_string(), json!("com.plexapp.system"))]),
-                    false,
-                ),
-            ),
-            ("GET" | "HEAD", "/system/search") => {
-                let body = self.container(
-                    Map::from_iter([
-                        ("identifier".to_string(), json!("com.plexapp.system")),
-                        ("prefsKey".to_string(), json!("/:/plugins/com.plexapp.system/prefs")),
-                        ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
-                        ("size".to_string(), json!(0)),
-                    ]),
-                    false,
-                );
-                // `/system` is a plug-in framework surface. Its empty search
-                // response is written as a self-closing XML container even
-                // when the client asks with the generic `*/*` accept value.
-                if request
-                    .headers
-                    .get("accept")
-                    .is_some_and(|accept| accept.contains("*/*") || accept.contains("xml"))
-                {
-                    Response {
-                        status: 200,
-                        content_type: "application/xml".to_string(),
-                        body: b"<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer identifier=\"com.plexapp.system\" mediaTagPrefix=\"/system/bundle/media/\" mediaTagVersion=\"1\" prefsKey=\"/:/plugins/com.plexapp.system/prefs\" size=\"0\"/>\n".to_vec(),
-                        headers: Vec::new(),
-                        close: false,
-                    }
-                } else {
-                    Response::json(200, body)
-                }
-            }
             ("GET" | "HEAD", "/media/providers") => {
                 Response::json(200, self.media_providers(&query))
             }
@@ -4698,7 +4631,7 @@ impl Runtime {
             ("GET" | "HEAD", "/player/timeline/poll") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/system/proxy") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/video/:/transcode/universal/subtitles") => Response::error(400, "plexsim: bad request"),
-            ("GET" | "HEAD", "/photo/:/transcode") => self.route_photo_transcode(&query),
+            ("GET" | "HEAD", "/photo/:/transcode") => self.route_photo_transcode(request, &query),
             ("GET" | "HEAD", "/channels") => Response::json(
                 200,
                 self.container(
@@ -4730,80 +4663,6 @@ impl Runtime {
                     ),
                 )
             }
-            ("GET" | "HEAD", "/system") => {
-                let directories = vec![
-                    json!({"key":"/system/agents","title":"Agents"}),
-                    json!({"key":"/system/library","title":"Library"}),
-                ];
-                let paged = query
-                    .get("X-Plex-Container-Start")
-                    .and_then(|value| value.parse::<usize>().ok())
-                    .zip(query.get("X-Plex-Container-Size").and_then(|value| value.parse::<usize>().ok()));
-                let shown = if let Some((start, size)) = paged {
-                    directories.iter().skip(start).take(size).cloned().collect::<Vec<_>>()
-                } else {
-                    directories.clone()
-                };
-                if request
-                    .headers
-                    .get("accept")
-                    .is_some_and(|accept| accept.contains("xml") || accept.contains("*/*"))
-                {
-                    let size = shown.len();
-                    let attrs = if paged.is_some() {
-                        format!(
-                            "totalSize=\"{}\" noHistory=\"0\" replaceParent=\"0\" size=\"{}\" identifier=\"com.plexapp.system\"",
-                            directories.len(), size
-                        )
-                    } else {
-                        format!("identifier=\"com.plexapp.system\" size=\"{}\"", size)
-                    };
-                    let children = shown
-                        .iter()
-                        .map(|row| {
-                            format!(
-                                "  <Directory key=\"{}\" title=\"{}\"/>\n",
-                                string_value(row.get("key").unwrap_or(&Value::Null)),
-                                string_value(row.get("title").unwrap_or(&Value::Null))
-                            )
-                        })
-                        .collect::<String>();
-                    let body = if shown.is_empty() {
-                        format!(
-                            "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer {attrs}/>\n"
-                        )
-                    } else {
-                        format!(
-                            "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer {attrs}>\n{children}</MediaContainer>\n"
-                        )
-                    };
-                    Response {
-                        status: 200,
-                        content_type: "application/xml".to_string(),
-                        body: body.into_bytes(),
-                        headers: Vec::new(),
-                        close: false,
-                    }
-                } else {
-                    let mut fields = Map::from_iter([
-                        ("identifier".to_string(), json!("com.plexapp.system")),
-                        ("noHistory".to_string(), json!(false)),
-                        ("replaceParent".to_string(), json!(false)),
-                        ("Directory".to_string(), Value::Array(shown)),
-                    ]);
-                    if let Some((start, _)) = paged {
-                        fields.insert("offset".to_string(), json!(start));
-                        fields.insert("totalSize".to_string(), json!(directories.len()));
-                    }
-                    Response::json(
-                        200,
-                        self.container(fields, false),
-                    )
-                }
-            },
-            ("GET" | "HEAD", "/:/plugins") => {
-                Response::json(200, plugin_container(Vec::new()))
-            }
             ("GET" | "HEAD", "/livetv") => Response::json(
                 200,
                 plugin_container(vec![("dvrs", false), ("epg", false), ("sessions", false)]),
@@ -4826,28 +4685,6 @@ impl Runtime {
                 self.container(Map::from_iter([("content".to_string(), json!("plexsim native log\n"))]), false),
             ),
             ("POST", "/log") => Response::empty(200),
-            ("GET" | "HEAD", "/butler") => {
-                let names = [
-                    "BackupDatabase", "CleanOldBundles", "CleanOldCacheFiles", "DeepMediaAnalysis",
-                    "GenerateMediaIndexFiles", "GenerateVideoPreviewThumbnails", "GenerateVideoPreviewThumbnails",
-                    "GenerateBIF", "RefreshLibraries", "RefreshLocalMedia", "RefreshPeriodicMetadata",
-                    "RefreshPeriodicMetadata", "RefreshPeriodicTasks", "RefreshEpg", "RefreshSubscriptions",
-                    "UpgradeLibraries", "OptimizeDatabase", "BackupDatabase", "CleanOldTranscodeCache",
-                    "RepairDatabase", "GenerateMediaIndexFiles", "CleanOldLogs", "UpgradeDatabase",
-                ];
-                let tasks = names
-                    .iter()
-                    .enumerate()
-                    .map(|(index, name)| {
-                        if index == 0 {
-                            json!({"name":name,"title":"Backup Database"})
-                        } else {
-                            json!({"name":name})
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                Response::json(200, json!({"ButlerTasks":{"ButlerTask":tasks}}))
-            }
             ("GET" | "HEAD", "/library/all/top") => self.route_top(&query),
             ("GET" | "HEAD", "/library/metadata") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/library") => Response::json(
@@ -4893,15 +4730,20 @@ impl Runtime {
             ("GET" | "HEAD", "/transcode/sessions") => Response::json(200, self.container(Map::new(), false)),
             ("GET" | "HEAD", "/clients") => Response::json(200, self.container(Map::new(), false)),
             ("GET" | "HEAD", "/updater/status") => Response::json(200, self.container(Map::from_iter([("canInstall".to_string(), json!(false)), ("checkedAt".to_string(), json!(now()))]), false)),
-            ("PUT", "/updater/check") => Response::empty(200),
+            ("PUT", "/updater/check") => {
+                // Cycle 19: one `update.statechange` frame; with no update channel the
+                // state is `error`, as the isolated copy answers.
+                self.push_event(
+                    "update.statechange",
+                    json!({"AutoUpdateNotification": [{"key": "", "version": "", "state": "error"}]}),
+                );
+                Response::empty(200)
+            }
             ("GET" | "HEAD", "/status/sessions/history/all") => self.route_history(&query),
             ("GET", "/:/prefs") => self.route_prefs(&query, &request.headers, false),
             ("HEAD", "/:/prefs") => self.route_prefs(&query, &request.headers, true),
             ("GET" | "HEAD", "/:/prefs/get") => self.route_pref_get(&query),
             ("PUT", "/:/prefs") => self.route_prefs_write(&query),
-            ("GET" | "HEAD", "/:/resources/library-art.png") => {
-                Response::error(404, "plexsim: not found")
-            }
             ("GET" | "HEAD", "/:/resources/movie.png") => {
                 self.route_bundled_resource("movie.png", request.method == "HEAD")
             }
@@ -4911,12 +4753,9 @@ impl Runtime {
             ("GET" | "HEAD", "/:/resources/actor-icon.png") => {
                 self.route_bundled_resource("actor-icon.png", request.method == "HEAD")
             }
-            ("GET" | "HEAD", "/:/resources/favicon.ico") => {
-                Response::error(404, "plexsim: not found")
-            }
             ("GET" | "HEAD", "/:/eventsource/notifications") => Response::sse(),
             ("GET" | "HEAD", "/connections") => {
-                Response::plain(200, b"1 ??? - Uninitialized\n".to_vec())
+                Response::plain(200, connection_lines(&self.owner_username).into_bytes())
             }
             ("GET" | "HEAD", "/server/identity") => self.identity_response(&query),
             // The play-state writers answer on every verb the dispatcher routes, as
@@ -5170,124 +5009,6 @@ impl Runtime {
         )
     }
 
-    fn agent_language_rows(&self, query: &HashMap<String, String>) -> Vec<(String, String)> {
-        let requested = query
-            .get("X-Plex-Language")
-            .map(|value| value.replace('_', "-").to_ascii_lowercase());
-        let language_key = requested
-            .as_deref()
-            .and_then(|value| value.split('-').next())
-            .unwrap_or("");
-        load_json_sidecar(&self.catalog_path, "agent_languages.json")
-            .and_then(|value| value.get("languages").cloned())
-            .and_then(|value| value.as_object().cloned())
-            .and_then(|languages| {
-                languages
-                    .get(language_key)
-                    .or_else(|| languages.get(""))
-                    .and_then(Value::as_array)
-                    .map(|rows| {
-                        rows.iter()
-                            .filter_map(|row| {
-                                let values = row.as_array()?;
-                                Some((
-                                    values.first()?.as_str()?.to_string(),
-                                    values.get(1)?.as_str()?.to_string(),
-                                ))
-                            })
-                            .collect::<Vec<_>>()
-                    })
-            })
-            .unwrap_or_default()
-    }
-
-    fn agent_default_language(
-        &self,
-        query: &HashMap<String, String>,
-        rows: &[(String, String)],
-    ) -> String {
-        let requested = query
-            .get("X-Plex-Language")
-            .map(|value| value.replace('_', "-").to_ascii_lowercase());
-        let Some(language) = requested
-            .as_deref()
-            .and_then(|value| value.split('-').next())
-        else {
-            return "en-US".to_string();
-        };
-        rows.iter()
-            .find(|(code, _)| {
-                code.to_ascii_lowercase()
-                    .starts_with(&format!("{language}-"))
-            })
-            .map(|(code, _)| code.clone())
-            .unwrap_or_else(|| "en-US".to_string())
-    }
-
-    fn xml_attribute(value: &str) -> String {
-        let mut escaped = String::new();
-        for character in value.chars() {
-            match character {
-                '&' => escaped.push_str("&amp;"),
-                '<' => escaped.push_str("&lt;"),
-                '>' => escaped.push_str("&gt;"),
-                '"' => escaped.push_str("&#34;"),
-                '\'' => escaped.push_str("&#39;"),
-                c if c as u32 >= 0x80 => escaped.push_str(&format!("&#{};", c as u32)),
-                c => escaped.push(c),
-            }
-        }
-        escaped
-    }
-
-    fn agent_json_response(
-        &self,
-        identifiers: &[&str],
-        query: &HashMap<String, String>,
-    ) -> Response {
-        // The reference endpoint is the one measured exception to ordinary
-        // JSON child arrays: each Language child is written with the same key.
-        // Keep that wire quirk here instead of changing the general serializer.
-        let languages = self.agent_language_rows(query);
-        let default_language = self.agent_default_language(query, &languages);
-        let mut body = String::from(r#"{"MediaContainer":{"Agent":["#);
-        for (index, identifier) in identifiers.iter().enumerate() {
-            if index > 0 {
-                body.push(',');
-            }
-            let quoted_identifier = serde_json::to_string(identifier).unwrap_or_default();
-            let has_prefs = if identifier.contains("movie") || identifier.contains("series") {
-                1
-            } else {
-                0
-            };
-            body.push_str(&format!(
-                r#"{{"identifier":{quoted_identifier},"name":{quoted_identifier},"hasPrefs":{has_prefs},"id":{}"#,
-                index + 1,
-            ));
-            for (code, _title) in &languages {
-                let quoted_code = serde_json::to_string(code).unwrap_or_default();
-                body.push_str(&format!(
-                    r#","Language":{{"code":{quoted_code},"default":{}}}"#,
-                    if code == &default_language {
-                        "true"
-                    } else {
-                        "false"
-                    }
-                ));
-            }
-            body.push('}');
-        }
-        body.push_str("]}}");
-        Response {
-            status: 200,
-            content_type: "application/json".to_string(),
-            body: body.into_bytes(),
-            headers: vec![("Cache-Control".to_string(), "no-cache".to_string())],
-            close: false,
-        }
-    }
-
     fn route_section_detail(&self, section: &Value, query: &HashMap<String, String>) -> Response {
         // The section root is the sidebar descriptor, rather than the section
         // directory row returned by /library/sections.  These descriptors are
@@ -5473,123 +5194,7 @@ impl Runtime {
     }
 
     fn route_all(&self, query: &HashMap<String, String>) -> Response {
-        let type_number = if let Some(value) = query.get("type") {
-            let Ok(number) = value.parse::<i64>() else {
-                return Response::error(400, "plexsim: bad request");
-            };
-            Some(number)
-        } else {
-            None
-        };
-        if type_number == Some(18) {
-            let mut rows = self
-                .collections
-                .values()
-                .map(|collection| self.dynamic_collection_row(collection))
-                .collect::<Vec<_>>();
-            if let Some(section) = query.get("sectionId") {
-                rows.retain(|row| {
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == *section
-                });
-            }
-            let rows = self
-                .sort_rows(rows, query.get("sort").map(String::as_str))
-                .unwrap_or_default();
-            let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(rows))]);
-            page_fields(&mut fields, query);
-            return Response::json(200, self.container(fields, true));
-        }
-        let typed_section = type_number.and_then(|number| {
-            let wanted = match number {
-                1 => Some("movie"),
-                2..=4 => Some("show"),
-                _ => None,
-            }?;
-            self.catalog
-                .sections
-                .iter()
-                .find(|section| section.get("type").and_then(Value::as_str) == Some(wanted))
-        });
-        let mut source = self
-            .choose_rows(
-                typed_section.and_then(|section| section.get("key").and_then(Value::as_str)),
-                type_number,
-            )
-            .into_iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) != Some("clip"))
-            .collect::<Vec<_>>();
-        if type_number.is_none() {
-            // The cross-library query includes collections, while section
-            // listings intentionally keep them on their dedicated axis.
-            source.extend(
-                self.collections
-                    .values()
-                    .map(|collection| self.dynamic_collection_row(collection)),
-            );
-        }
-        let mut rows = source;
-        if type_number.is_none() {
-            rows.sort_by(|left, right| {
-                let left_key = string_value(left.get("ratingKey").unwrap_or(&Value::Null));
-                let right_key = string_value(right.get("ratingKey").unwrap_or(&Value::Null));
-                left_key
-                    .parse::<i64>()
-                    .ok()
-                    .cmp(&right_key.parse::<i64>().ok())
-                    .then_with(|| left_key.cmp(&right_key))
-            });
-        }
-        let section_type = query
-            .get("type")
-            .and_then(|value| value.parse::<i64>().ok())
-            .map(|value| if value == 2 { "show" } else { "movie" })
-            .unwrap_or("movie");
-        let pairs = query
-            .iter()
-            .map(|(key, value)| (key.clone(), value.clone()))
-            .collect::<Vec<_>>();
-        let rows = match self.filter_rows(rows, &pairs, section_type) {
-            Ok(rows) => rows,
-            Err(status) => return Response::error(status, "plexsim: bad request"),
-        };
-        // `/library/all?type=` inherits the type's section order.  The
-        // untyped cross-library form is the measured exception: it sorts by
-        // numeric ratingKey, while a typed request follows the same broadcast
-        // order a section grid exposes.
-        let rows = rows
-            .iter()
-            .map(|row| {
-                if type_number.is_some() {
-                    self.grid_row(
-                        row,
-                        false,
-                        query.get("includeGuids").is_some_and(|v| v == "1"),
-                        false,
-                    )
-                } else {
-                    let mut shown = self.grid_row(
-                        row,
-                        false,
-                        query.get("includeGuids").is_some_and(|v| v == "1"),
-                        false,
-                    );
-                    if let Some(object) = shown.as_object_mut() {
-                        object.remove("Media");
-                        if row.get("_libraryAllDuration").is_none() {
-                            object.remove("duration");
-                        }
-                    }
-                    shown
-                }
-            })
-            .collect::<Vec<_>>();
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([("Metadata".to_string(), Value::Array(rows))]),
-                true,
-            ),
-        )
+        self.library_all(query)
     }
 
     fn route_top(&self, query: &HashMap<String, String>) -> Response {
@@ -6804,42 +6409,103 @@ impl Runtime {
     }
 
     fn route_prefs_write(&mut self, query: &HashMap<String, String>) -> Response {
-        let known = self
-            .pref_rows(query, &HashMap::new())
+        // `set_prefs` in server.py, all of it measured: an unknown id refuses the whole
+        // request (400) and a write-protected one the whole request (403); an int or
+        // double that does not parse is a 500 and an empty one is ignored; a bool is true
+        // for exactly `1` and `true`; and each written id pushes a `preference` frame.
+        let settings = self
+            .pref_rows(&HashMap::new(), &HashMap::new())
             .into_iter()
-            .filter_map(|row| {
-                Some((
-                    row.get("id")?.as_str()?.to_string(),
-                    row.get("type")
-                        .and_then(Value::as_str)
-                        .unwrap_or("text")
-                        .to_string(),
-                ))
-            })
+            .filter_map(|row| Some((row.get("id")?.as_str()?.to_string(), row)))
             .collect::<HashMap<_, _>>();
-        for key in query.keys().filter(|key| !key.starts_with("X-Plex-")) {
-            if !known.contains_key(key) {
-                return Response::error(400, "plexsim: bad request");
+        let mut writes = query
+            .iter()
+            .filter(|(key, _)| !key.starts_with("X-Plex-"))
+            .collect::<Vec<_>>();
+        writes.sort();
+        for (key, _) in &writes {
+            if !settings.contains_key(*key) {
+                return Response::error(400, "plexsim: unknown preference");
+            }
+            // Cycle 19/30: these two answer 403 on 1.42.2 and push no frame, even when
+            // the value written is the one already stored.
+            if matches!(key.as_str(), "PlexOnlineUrl" | "allowMediaDeletionLanOnly") {
+                return Response::error(403, "plexsim: forbidden");
             }
         }
-        for (key, value) in query {
-            if key.starts_with("X-Plex-") {
-                continue;
-            }
-            let stored = match known.get(key).map(String::as_str) {
-                Some("bool") => json!(is_true_option(value)),
-                Some("int") | Some("integer") => {
-                    let Ok(number) = value.parse::<i64>() else {
-                        return Response::error(500, "plexsim: bad request");
+        let mut typed = Vec::new();
+        for (key, value) in &writes {
+            let kind = settings[*key].get("type").and_then(Value::as_str).unwrap_or("text");
+            match kind {
+                "int" | "double" => {
+                    if value.is_empty() {
+                        continue;
+                    }
+                    let parsed = if kind == "int" {
+                        value.trim().parse::<i64>().ok().map(|n| json!(n))
+                    } else {
+                        value.trim().parse::<f64>().ok().map(|n| json!(n))
                     };
-                    json!(number)
+                    match parsed {
+                        Some(number) => typed.push(((*key).clone(), number)),
+                        // Cycle 19: the two butler hours take a WORD and store nothing,
+                        // alone among the 38 integer settings.
+                        None if matches!(key.as_str(), "ButlerStartHour" | "ButlerEndHour") => {
+                            continue
+                        }
+                        None => return Response::error(500, "plexsim: internal error"),
+                    }
                 }
-                _ => json!(value),
-            };
-            if key == "FriendlyName" {
-                self.friendly = value.clone();
+                "bool" => typed.push(((*key).clone(), json!(value.as_str() == "1" || value.as_str() == "true"))),
+                _ => typed.push(((*key).clone(), json!(value))),
             }
-            self.prefs.insert(key.clone(), stored);
+        }
+        for (key, value) in &typed {
+            if key == "FriendlyName" {
+                let name = value.as_str().unwrap_or_default();
+                self.friendly = if name.is_empty() {
+                    local_host_name()
+                } else {
+                    name.to_string()
+                };
+            }
+            self.prefs.insert(key.clone(), value.clone());
+        }
+        let written = typed.iter().map(|(key, _)| key.clone()).collect::<std::collections::BTreeSet<_>>();
+        let mut moved = Vec::new();
+        if written.contains("ButlerStartHour") || written.contains("ButlerEndHour") {
+            // Cycle 74: a write that leaves the maintenance window EMPTY moves the end
+            // hour to start + 1, wrapping 23 to 0, and frames the moved setting first.
+            let current = self
+                .pref_rows(&HashMap::new(), &HashMap::new())
+                .into_iter()
+                .filter_map(|row| Some((row.get("id")?.as_str()?.to_string(), row.get("value")?.clone())))
+                .collect::<HashMap<_, _>>();
+            let start = current.get("ButlerStartHour").and_then(Value::as_i64);
+            let end = current.get("ButlerEndHour").and_then(Value::as_i64);
+            if let (Some(start), Some(end)) = (start, end) {
+                if start == end {
+                    self.prefs.insert("ButlerEndHour".to_string(), json!((start + 1) % 24));
+                    if !written.contains("ButlerEndHour") {
+                        moved.push("ButlerEndHour".to_string());
+                    }
+                }
+            }
+        }
+        let current = self
+            .pref_rows(&HashMap::new(), &HashMap::new())
+            .into_iter()
+            .filter_map(|row| Some((row.get("id")?.as_str()?.to_string(), row)))
+            .collect::<HashMap<_, _>>();
+        for name in moved.iter().chain(written.iter()) {
+            let Some(setting) = current.get(name).and_then(Value::as_object) else {
+                continue;
+            };
+            let mut setting = setting.clone();
+            setting.remove("enumValues");
+            setting.insert("label".to_string(), json!(""));
+            setting.insert("summary".to_string(), json!(""));
+            self.push_event("preference", json!({"Setting": [Value::Object(setting)]}));
         }
         self.dirty = true;
         self.save_if_dirty();
@@ -8203,48 +7869,6 @@ impl Runtime {
             fields.insert("librarySectionUUID".to_string(), uuid.clone());
         }
         Response::json(200, self.container(fields, true))
-    }
-
-    fn route_photo_transcode(&self, query: &HashMap<String, String>) -> Response {
-        let Some(url) = query.get("url").filter(|value| !value.is_empty()) else {
-            return Response::photo_error(400, "plexsim: bad request");
-        };
-        let Some(width) = query.get("width") else {
-            return Response::photo_error(400, "plexsim: bad request");
-        };
-        let Some(height) = query.get("height") else {
-            return Response::photo_error(400, "plexsim: bad request");
-        };
-        if width.parse::<u32>().is_err() || height.parse::<u32>().is_err() {
-            return Response::photo_error(400, "plexsim: bad request");
-        }
-        if url.starts_with("/:/resources/") {
-            let asset = url.trim_start_matches("/:/resources/");
-            if !matches!(
-                asset,
-                "movie.png" | "video.png" | "actor-icon.png"
-            ) {
-                return Response::photo_error(404, "plexsim: not found");
-            }
-        } else if url.starts_with("/identity") {
-            return Response::photo_error(500, "plexsim: internal error");
-        } else if let Some(start) = url.find("/library/metadata/") {
-            let tail = &url[start + "/library/metadata/".len()..];
-            let key = tail.split(['/', '?']).next().unwrap_or_default();
-            if key.is_empty() || self.catalog.get(key).is_none() {
-                return Response::photo_error(404, "plexsim: not found");
-            }
-        } else {
-            return Response::photo_error(500, "plexsim: internal error");
-        }
-        let mut response = Response::image(jpeg_placeholder());
-        response.headers = vec![
-            ("X-Plex-Protocol".to_string(), "1.0".to_string()),
-            ("Accept-Ranges".to_string(), "bytes".to_string()),
-            ("Cache-Control".to_string(), "no-cache".to_string()),
-            ("Date".to_string(), http_date()),
-        ];
-        response
     }
 
     fn valid_content_directory(query: &HashMap<String, String>) -> bool {
@@ -9805,6 +9429,21 @@ impl Runtime {
         if segments.first() == Some(&"downloadQueue") {
             return self.route_download_queue(&segments[1..], request);
         }
+        if segments.first() == Some(&"activities") && segments.len() > 1 && request.method == "PUT" {
+            // Cycle 19: a PUT to an activity is a 400, where its DELETE is a 404.
+            return Response::error(400, "plexsim: bad request");
+        }
+        if segments.len() >= 3 && segments[..3] == ["library", "metadata", "augmentations"] {
+            // Cycle 52, kids and zen: the augmentation id is PARSED before the row is
+            // looked up -- not a number is a 400, a number the server does not hold a 404.
+            if segments
+                .get(3)
+                .is_some_and(|id| id.is_empty() || !id.bytes().all(|b| b.is_ascii_digit()))
+            {
+                return Response::error(400, "plexsim: bad request");
+            }
+            return Response::error(404, "plexsim: not found");
+        }
         // Universal transcode is a routed family even though this native
         // server has no encoder.  The reference validates the playback
         // target and the session decision before it reaches the encoder; a
@@ -9873,267 +9512,6 @@ impl Runtime {
             } else {
                 Response::error(400, "plexsim: bad request")
             };
-        }
-        if path == "/system/agents" {
-            if let Some(value) = query.get("mediaType") {
-                if value.parse::<i64>().is_err() {
-                    return Response::error(400, "plexsim: bad request");
-                }
-            }
-            let media_type = query.get("mediaType").map(String::as_str);
-            let identifiers = match media_type {
-                Some("1") => vec![
-                    "com.plexapp.agents.none",
-                    "com.plexapp.agents.imdb",
-                    "com.plexapp.agents.themoviedb",
-                    "tv.plex.agents.movie",
-                    "tv.plex.agents.none",
-                ],
-                Some("2") => vec!["tv.plex.agents.series", "tv.plex.agents.none"],
-                _ => vec![
-                    "tv.plex.agents.movie",
-                    "tv.plex.agents.series",
-                    "tv.plex.agents.none",
-                    "tv.plex.agents.localmedia",
-                ],
-            };
-            if request
-                .headers
-                .get("accept")
-                .is_some_and(|accept| !accept.contains("json") && accept.contains("*/*"))
-            {
-                let mut body =
-                    String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer>");
-                let languages = self.agent_language_rows(query);
-                let default_language = self.agent_default_language(query, &languages);
-                for identifier in identifiers.iter() {
-                    let enabled = if *identifier == "tv.plex.agents.movie" {
-                        "1"
-                    } else {
-                        "0"
-                    };
-                    body.push_str(&format!(
-                        "<Agent identifier=\"{}\" enabled=\"{enabled}\">",
-                        Self::xml_attribute(identifier)
-                    ));
-                    if identifier.starts_with("tv.plex.") {
-                        for (code, title) in &languages {
-                            body.push_str(&format!(
-                                "<Language code=\"{}\" title=\"{}\"{} />",
-                                Self::xml_attribute(code),
-                                Self::xml_attribute(title),
-                                if code == &default_language {
-                                    " default=\"1\""
-                                } else {
-                                    ""
-                                }
-                            ));
-                        }
-                    }
-                    body.push_str("</Agent>");
-                }
-                body.push_str("</MediaContainer>\n");
-                return Response {
-                    status: 200,
-                    content_type: "text/xml;charset=utf-8".to_string(),
-                    body: body.into_bytes(),
-                    headers: Vec::new(),
-                    close: false,
-                };
-            }
-            return self.agent_json_response(&identifiers, query);
-        }
-        if segments.first() == Some(&"system")
-            && segments.get(1) == Some(&"agents")
-            && ((segments.len() == 5 && segments[3] == "config")
-                // A few old clients omit the literal config component.  PMS
-                // accepts that legacy spelling as long as the index is 1.
-                || (segments.len() == 4 && segments[3] == "1"))
-        {
-            if request.method == "PUT" && segments[2].starts_with("com.plexapp.agents") {
-                let Some(order) = query.get("order") else {
-                    return Response::plain(500, b"takes exactly 4 arguments (3 given)".to_vec());
-                };
-                if order.is_empty() {
-                    return Response::plain(
-                        500,
-                        b"'NoneType' object has no attribute 'split'".to_vec(),
-                    );
-                }
-                let names = order.split(',').collect::<Vec<_>>();
-                let mut body = String::from(
-                    "<?xml version='1.0' encoding='utf-8'?>\n<combine class=\"Movie\">",
-                );
-                for (index, name) in names.iter().enumerate() {
-                    body.push_str(&format!(
-                        "<Agent enabled=\"{}\" hasPrefs=\"{}\" identifier=\"{}\"/>",
-                        if index < 2 { 1 } else { 0 },
-                        if name.contains("none") || name.contains("local") {
-                            0
-                        } else {
-                            1
-                        },
-                        name
-                    ));
-                }
-                body.push_str("</combine>\n");
-                self.prefs.insert(
-                    format!("_agentOrder:{}", segments[2]),
-                    Value::Array(names.iter().map(|name| json!(*name)).collect()),
-                );
-                return Response {
-                    status: 200,
-                    content_type: "application/xml".to_string(),
-                    body: body.into_bytes(),
-                    headers: Vec::new(),
-                    close: false,
-                };
-            }
-            if request.method != "GET" && request.method != "HEAD" {
-                return Response::error(404, "plexsim: not found");
-            }
-            let config_index = if segments.len() == 5 {
-                segments[4]
-            } else {
-                segments[3]
-            };
-            if config_index != "1" {
-                return Response::error(404, "plexsim: not found");
-            }
-            if segments[2].starts_with("tv.plex") {
-                return Response {
-                    status: 200,
-                    content_type: "text/xml;charset=utf-8".to_string(),
-                    body: b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer identifier=\"com.plexapp.system\" size=\"0\" />\n".to_vec(),
-                    headers: Vec::new(),
-                    close: false,
-                };
-            }
-            let default_names = [
-                "com.plexapp.agents.none",
-                "com.plexapp.agents.localmedia",
-                "com.plexapp.agents.fanarttv",
-                "com.plexapp.agents.imdb",
-                "com.plexapp.agents.movieposterdb",
-                "com.plexapp.agents.themoviedb",
-            ];
-            let ordered_names = self
-                .prefs
-                .get(&format!("_agentOrder:{}", segments[2]))
-                .and_then(Value::as_array)
-                .map(|names| names.iter().filter_map(Value::as_str).collect::<Vec<_>>())
-                .filter(|names| !names.is_empty())
-                .unwrap_or_else(|| default_names.to_vec());
-            let mut body = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer identifier=\"com.plexapp.system\" size=\"6\">");
-            for (index, name) in ordered_names.iter().enumerate() {
-                body.push_str(&format!(
-                    "<Agent enabled=\"{}\" hasPrefs=\"{}\" identifier=\"{}\"/>",
-                    if index < 2 { 1 } else { 0 },
-                    if index < 2 { 0 } else { 1 },
-                    name
-                ));
-            }
-            body.push_str("</MediaContainer>\n");
-            while body.len() < 709 {
-                body.push(' ');
-            }
-            return Response {
-                status: 200,
-                content_type: "text/xml;charset=utf-8".to_string(),
-                body: body.into_bytes(),
-                headers: Vec::new(),
-                close: false,
-            };
-        }
-        if segments.first() == Some(&"system")
-            && segments.get(1) == Some(&"agents")
-            && segments.len() == 3
-            && segments[2] == "contributors"
-        {
-            if query.get("primaryAgent").is_some() {
-                return Response {
-                    status: 200,
-                    content_type: "text/xml;charset=utf-8".to_string(),
-                    body: b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\"><Agent identifier=\"com.plexapp.agents.localmedia\"/></MediaContainer>\n".to_vec(),
-                    headers: Vec::new(),
-                    close: false,
-                };
-            }
-            return Response::error(500, "plexsim: unsupported contributors");
-        }
-        if segments.first() == Some(&"system") && segments.get(1) == Some(&"scanners") {
-            if segments.len() != 3 {
-                return Response::error(404, "plexsim: not found");
-            }
-            let kind = match segments[2] {
-                "1" => Some(vec![
-                    "Plex Movie",
-                    "Plex Movie Scanner",
-                    "Plex Video Files Scanner",
-                    "Plex Video Files",
-                ]),
-                "2" => Some(vec!["Plex TV Series", "Plex Series Scanner"]),
-                "13" => Some(vec!["Plex Photo Scanner"]),
-                _ => None,
-            };
-            let Some(names) = kind else {
-                return Response::error(500, "plexsim: bad request");
-            };
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([
-                        ("identifier".to_string(), json!("com.plexapp.system")),
-                        (
-                            "Scanner".to_string(),
-                            Value::Array(
-                                names.into_iter().map(|name| json!({"name":name})).collect(),
-                            ),
-                        ),
-                    ]),
-                    false,
-                ),
-            );
-        }
-        if segments.first() == Some(&"system")
-            && segments.get(1) == Some(&"agents")
-            && segments.len() == 4
-            && segments[2] == "contributors"
-        {
-            return Response::error(500, "plexsim: unsupported contributors");
-        }
-        if segments.first() == Some(&"butler") && segments.len() == 2 && request.method == "POST" {
-            return if matches!(
-                segments[1],
-                "BackupDatabase"
-                    | "RefreshLibraries"
-                    | "CleanOldBundles"
-                    | "CleanOldCacheFiles"
-                    | "DeepMediaAnalysis"
-                    | "GenerateMediaIndexFiles"
-                    | "GenerateVideoPreviewThumbnails"
-                    | "GenerateBIF"
-                    | "RefreshLocalMedia"
-                    | "RefreshPeriodicMetadata"
-                    | "RefreshPeriodicTasks"
-                    | "RefreshEpg"
-                    | "RefreshSubscriptions"
-                    | "UpgradeLibraries"
-                    | "OptimizeDatabase"
-                    | "RepairDatabase"
-                    | "CleanOldTranscodeCache"
-                    | "UpgradeDatabase"
-                    | "CleanOldLogs"
-            ) {
-                self.push_butler_events(Some(segments[1]));
-                Response::empty(200)
-            } else {
-                Response::error(404, "plexsim: not found")
-            };
-        }
-        if path == "/butler" && request.method == "POST" {
-            self.push_butler_events(None);
-            return Response::empty(200);
         }
         if path == "/hubs/sections/home" {
             return Response::error(404, "plexsim: not found");
@@ -10360,7 +9738,19 @@ impl Runtime {
             return self.route_top(query);
         }
         if path == "/library/clean/bundles" && request.method == "PUT" {
-            self.push_butler_events(Some("CleanOldBundles"));
+            // Measured on a writable copy, frame for frame; plexsim has no bundles.
+            self.notify_activity_run(
+                "general.bundle.clean",
+                "Cleaning bundles",
+                &[
+                    (0, "Analyzing metadata bundles"),
+                    (25, "Deleting 0 metadata bundles"),
+                    (50, "Deleting 0 metadata bundles"),
+                    (50, "Analyzing media bundles"),
+                    (75, "Deleting 0 media bundles"),
+                    (100, "Deleting 0 media bundles"),
+                ],
+            );
             return Response::empty(200);
         }
         if path == "/library/optimize" {
@@ -11087,8 +10477,10 @@ impl Runtime {
                 return Response::error(404, "plexsim: not found");
             }
             if request.method != "DELETE" {
+                // Measured on a writable copy: this scans EVERY library, one after another.
                 for section in self.catalog.sections.clone() {
-                    self.push_library_refresh_events(&section);
+                    let key = string_value(section.get("key").unwrap_or(&Value::Null));
+                    self.refresh_section(&key, &section, query);
                 }
             }
             return Response::empty(200);
@@ -11096,6 +10488,31 @@ impl Runtime {
         if segments.starts_with(&["library", "sections"]) && segments.len() >= 3 {
             let section_key = segments[2];
             if let Some(section) = self.section(section_key) {
+                if segments.get(3) == Some(&"composite")
+                    && matches!(request.method.as_str(), "GET" | "HEAD")
+                {
+                    // Cycle 16: the BARE path is a 404 on kids and zen; only
+                    // `/composite/{version}` answers, the version all digits (cycle 45)
+                    // and inside int32 (cycle 36's guard, a 400 past it).
+                    let Some(version) = segments.get(4).filter(|_| segments.len() == 5) else {
+                        return Response::error(404, "plexsim: not found");
+                    };
+                    if version.is_empty() || !version.bytes().all(|b| b.is_ascii_digit()) {
+                        return Response::error(404, "plexsim: not found");
+                    }
+                    if version.len() > 10 || version.parse::<u64>().unwrap_or(u64::MAX) >= 1 << 31 {
+                        return Response::error(400, "plexsim: bad request");
+                    }
+                    // A real PMS builds a mosaic of the members' posters; plexsim serves
+                    // one image in its place (`composite_for`), here the placeholder.
+                    let mut response = Response::image(jpeg_placeholder());
+                    response.headers = vec![
+                        ("Cache-Control".to_string(), "no-cache".to_string()),
+                        ("Accept-Ranges".to_string(), "bytes".to_string()),
+                    ];
+                    let _ = section;
+                    return response;
+                }
                 if segments.len() == 3 {
                     if request.method == "GET" || request.method == "HEAD" {
                         return self.route_section_detail(section, query);
@@ -11133,66 +10550,7 @@ impl Runtime {
                         return Response::empty(200);
                     }
                     if request.method == "PUT" {
-                        let Some(name) = query.get("name") else {
-                            return Response::error(400, "plexsim: bad request");
-                        };
-                        let expected_type = section
-                            .get("type")
-                            .and_then(Value::as_str)
-                            .unwrap_or("movie");
-                        let expected_agent = if expected_type == "show" {
-                            "tv.plex.agents.series"
-                        } else {
-                            "tv.plex.agents.movie"
-                        };
-                        let expected_scanner = if expected_type == "show" {
-                            "Plex TV Series"
-                        } else {
-                            "Plex Movie"
-                        };
-                        if query.get("agent").map(String::as_str) != Some(expected_agent)
-                            || query.get("scanner").map(String::as_str) != Some(expected_scanner)
-                            || !matches!(
-                                query.get("language").map(String::as_str),
-                                Some("en-US" | "de-DE" | "fr-FR" | "es-ES")
-                            )
-                        {
-                            return Response::error(400, "plexsim: bad request");
-                        }
-                        if let Some(object) = self
-                            .catalog
-                            .sections
-                            .iter_mut()
-                            .find(|row| {
-                                string_value(row.get("key").unwrap_or(&Value::Null)) == section_key
-                            })
-                            .and_then(Value::as_object_mut)
-                        {
-                            object.insert("title".to_string(), json!(name));
-                            if let Some(language) = query.get("language") {
-                                object.insert("language".to_string(), json!(language));
-                            }
-                        }
-                        for (field, value) in query {
-                            if let Some(pref) = field
-                                .strip_prefix("prefs[")
-                                .and_then(|value| value.strip_suffix(']'))
-                            {
-                                self.section_prefs.insert(
-                                    (section_key.to_string(), pref.to_string()),
-                                    value.clone(),
-                                );
-                            }
-                        }
-                        if let Some(updated) = self.section(section_key).cloned() {
-                            self.push_library_refresh_events(&updated);
-                        }
-                        self.catalog.document.insert(
-                            "sections".to_string(),
-                            Value::Array(self.catalog.sections.clone()),
-                        );
-                        self.dirty = true;
-                        return Response::empty(200);
+                        return self.edit_section(section_key, section.clone(), query);
                     }
                     return Response::json(
                         200,
@@ -11261,6 +10619,9 @@ impl Runtime {
                             false,
                         ),
                     );
+                }
+                if segments.len() >= 4 && segments[3] == "extras" {
+                    return self.section_extras(section_key, &segments[4..], query);
                 }
                 if segments.len() == 4 && segments[3] == "arts" {
                     if request.method != "GET" && request.method != "HEAD" {
@@ -11896,9 +11257,9 @@ impl Runtime {
                                     self.push_timeline(&key, 5, None);
                                 }
                             }
-                        } else if segments[3] == "refresh" {
+                        } else if segments[3] == "refresh" && request.method != "DELETE" {
                             if let Some(section) = self.section(section_key).cloned() {
-                                self.push_library_refresh_events(&section);
+                                self.refresh_section(section_key, &section, query);
                             }
                         }
                         Response::empty(200)
@@ -14074,9 +13435,25 @@ impl Runtime {
             // URLs; doing these steps after projection makes `checkFiles` always
             // report false and `includeAlternates` silently omit the measured
             // alternate blocks even when the source data is present.
+            // Cycles 19, 22, 29, 46: seven detail options carry the 0/1 grammar
+            // (`+?0*[01]`, anything else a 400), and the file pair is reported only
+            // when one of the three check options is ON.
+            for option in [
+                "checkFiles",
+                "skipRefresh",
+                "asyncCheckFiles",
+                "asyncAugmentMetadata",
+                "asyncRefreshLocalMediaAgent",
+                "asyncRefreshAnalysis",
+                "checkFileAvailability",
+            ] {
+                if query.get(option).is_some_and(|value| !bool_option(value)) {
+                    return Response::error(400, "plexsim: bad request");
+                }
+            }
             let checks_requested = ["checkFiles", "asyncCheckFiles", "checkFileAvailability"]
                 .iter()
-                .any(|option| query.contains_key(*option));
+                .any(|option| query.get(*option).is_some_and(|value| is_true_option(value)));
             let prepared = if checks_requested {
                 self.annotate_file_checks(row)
             } else {
@@ -14759,27 +14136,26 @@ impl Runtime {
                 Response::empty(200)
             }
             "posters" | "arts" => {
-                if tail[0] == "arts"
-                    && matches!(
-                        row.get("type").and_then(Value::as_str),
-                        Some("season" | "episode")
-                    )
-                {
-                    if request.method == "GET" || request.method == "HEAD" {
-                        return Response::json(
-                            200,
-                            self.container(
-                                Map::from_iter([(
-                                    "Metadata".to_string(),
-                                    Value::Array(Vec::new()),
-                                )]),
-                                false,
-                            ),
-                        );
+                match request.method.as_str() {
+                    // Measured: the plural path is a 404 for a write.
+                    "PUT" => Response::error(404, "plexsim: not found"),
+                    // Cycle 15: an empty upload body is a 406.
+                    "POST" if request.body.is_empty() => Response::error(406, "plexsim: not acceptable"),
+                    "POST" => {
+                        let body = request.body.clone();
+                        self.upload_artwork(key, tail[0], &body)
                     }
-                    return Response::error(404, "plexsim: not found");
+                    "GET" | "HEAD" => self.artwork_list(row, tail[0]),
+                    _ => Response::error(404, "plexsim: not found"),
                 }
-                self.route_art_candidates(key, row, tail[0], query, request)
+            }
+            "thumbs" | "banners" | "themes" | "clearLogos" if request.method == "POST" => {
+                // Cycle 15: every candidate list answers a POST as an upload does.
+                if request.body.is_empty() {
+                    return Response::error(406, "plexsim: not acceptable");
+                }
+                let body = request.body.clone();
+                self.upload_artwork(key, tail[0], &body)
             }
             "clearLogos" | "themes" => {
                 if request.method != "GET" && request.method != "HEAD" {
@@ -14793,27 +14169,28 @@ impl Runtime {
                     ),
                 )
             }
-            "art" | "thumb" | "poster" => self.route_art(key, row, tail[0], query, request),
+            "art" | "thumb" | "poster" => self.route_art(key, row, tail, query, request),
             "file" => {
                 if request.method != "GET" && request.method != "HEAD" {
                     return Response::error(404, "plexsim: not found");
                 }
-                let Some(url) = query.get("url") else {
-                    return Response::error(404, "plexsim: not found");
+                // Measured: without its `url` a 400; with a url naming one of this
+                // row's candidates it serves that image (cycle 17); otherwise a 404.
+                let Some(url) = query.get("url").filter(|url| !url.is_empty()) else {
+                    return Response::error(400, "plexsim: bad request");
                 };
-                let Some(content) = row
-                    .get(if url.contains("themes") {
-                        "_theme_content"
-                    } else {
-                        "_upload_content"
-                    })
-                    .and_then(Value::as_str)
-                else {
-                    return Response::error(404, "plexsim: not found");
-                };
-                let mut response = Response::bytes(200, "image/png");
-                response.body = content.as_bytes().to_vec();
-                response
+                let wanted = percent_decode(&url.replace("%2E", "."));
+                match self.uploads.get(&wanted) {
+                    Some((body, content_type)) => {
+                        let mut response = Response::bytes(200, content_type.clone());
+                        response.body = body.clone();
+                        response
+                            .headers
+                            .push(("Accept-Ranges".to_string(), "bytes".to_string()));
+                        response
+                    }
+                    None => Response::error(404, "plexsim: not found"),
+                }
             }
             "tree" => self.route_tree(row),
             "userState" => Response::error(404, "plexsim: not found"),
@@ -14905,11 +14282,19 @@ impl Runtime {
                 ),
             ),
             "match" => Response::error(400, "plexsim: bad request"),
-            "refresh" | "analyze" => {
+            "refresh" => {
                 if request.method != "PUT" {
                     return Response::error(404, "plexsim: not found");
                 }
                 self.push_refresh_events(key);
+                Response::empty(200)
+            }
+            "analyze" => {
+                if request.method != "PUT" {
+                    return Response::error(404, "plexsim: not found");
+                }
+                let row = row.clone();
+                self.analyze_item(key, &row);
                 Response::empty(200)
             }
             "unmatch" => {
@@ -15219,6 +14604,26 @@ impl Runtime {
                 if base == "userRating" && !section_write {
                     continue;
                 }
+                if matches!(base, "thumb" | "art") {
+                    // Cycle 20: the artwork columns take a value on both paths -- the
+                    // url is DISCARDED and the column becomes the row's own versioned
+                    // path. Cycle 31: an EMPTY value removes the column.
+                    if value.is_empty() {
+                        object.remove(base);
+                    } else {
+                        let stamp = object
+                            .get("updatedAt")
+                            .and_then(Value::as_i64)
+                            .filter(|stamp| *stamp != 0)
+                            .unwrap_or_else(now);
+                        object.insert(
+                            base.to_string(),
+                            json!(format!("/library/metadata/{key}/{base}/{stamp}")),
+                        );
+                    }
+                    changed.insert(base.to_string(), object.get(base).cloned().unwrap_or(Value::Null));
+                    continue;
+                }
                 {
                     if value.is_empty() {
                         if matches!(base, "year" | "audienceRating" | "rating") && !section_write {
@@ -15450,22 +14855,10 @@ impl Runtime {
         }
         let changed_names = changed.keys().cloned().collect::<HashSet<_>>();
         self.propagate_metadata_change(key, &changed_names);
-        if changed.contains_key("art") {
-            let new_value = self
-                .catalog
-                .get(key)
-                .and_then(|row| row.get("art"))
-                .cloned();
-            self.cascade_artwork(key, "art", old_art, new_value);
-        }
-        if changed.contains_key("thumb") {
-            let new_value = self
-                .catalog
-                .get(key)
-                .and_then(|row| row.get("thumb"))
-                .cloned();
-            self.cascade_artwork(key, "thumb", old_thumb, new_value);
-        }
+        // Cycle 31: an emptied artwork column falls back to its nearest owning
+        // ancestor's and re-derives every borrower below it.
+        let _ = (old_art, old_thumb);
+        self.after_artwork_edit(key, query);
         // Field lock rows are part of the metadata document and the edit dialog
         // reads them back after a restart.  Persist the projected Field array
         // alongside ordinary scalar edits instead of losing `title.locked` (and
@@ -15578,277 +14971,87 @@ impl Runtime {
         self.dirty = true;
     }
 
-    fn route_art_candidates(
-        &mut self,
-        key: &str,
-        row: &Value,
-        field: &str,
-        _query: &HashMap<String, String>,
-        request: &Request,
-    ) -> Response {
-        if request.method == "POST" {
-            if request.body.is_empty() {
-                return Response::error(400, "plexsim: bad request");
-            }
-            let name = if field == "posters" { "thumb" } else { "art" };
-            let old = self
-                .catalog
-                .get(key)
-                .and_then(|value| value.get(name))
-                .cloned();
-            let stamp = now();
-            let value = format!("/library/metadata/{key}/{name}/{stamp}");
-            let upload_kind = if field == "posters" {
-                "posters"
-            } else {
-                "arts"
-            };
-            let upload_uri = format!("upload://{upload_kind}/{stamp}");
-            let upload_key = format!(
-                "/library/metadata/{key}/file?url={}",
-                percent_encode(&upload_uri)
-            );
-            let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
-                return Response::error(404, "plexsim: not found");
-            };
-            object.insert(name.to_string(), json!(value));
-            object.insert("_upload_url".to_string(), json!(upload_uri));
-            object.insert(
-                "_upload_content".to_string(),
-                json!(String::from_utf8_lossy(&request.body)),
-            );
-            object.insert("updatedAt".to_string(), json!(stamp));
-            let _ = upload_key;
-            self.cascade_artwork(key, name, old, Some(json!(value)));
-            self.dirty = true;
-            self.save_if_dirty();
-            return Response::empty(200);
-        }
-        if request.method != "GET" && request.method != "HEAD" {
-            return Response::error(404, "plexsim: not found");
-        }
-        let is_poster = field == "posters";
-        let local = if is_poster {
-            row.get("thumb")
-        } else {
-            row.get("art")
-        };
-        let remote = if is_poster {
-            row.get("_poster_url")
-        } else {
-            row.get("_art_url")
-        };
-        let mut entries = Vec::new();
-        if let Some(upload) = row.get("_upload_url").and_then(Value::as_str) {
-            let key_path = format!(
-                "/library/metadata/{key}/file?url={}",
-                percent_encode(upload)
-            );
-            entries.push(json!({
-                "_element": "Photo",
-                "ratingKey": upload,
-                "key": key_path,
-                "thumb": key_path,
-                "selected": true,
-                "type": if is_poster { "poster" } else { "art" },
-            }));
-        }
-        if let Some(value) = local.and_then(Value::as_str) {
-            entries.push(json!({
-                "_element": "Photo",
-                "ratingKey": value,
-                "key": value,
-                "selected": row.get(if is_poster { "thumb" } else { "art" }) == Some(&Value::String(value.to_string())),
-                "type": if is_poster { "poster" } else { "art" },
-            }));
-        }
-        if let Some(value) = remote.and_then(Value::as_str) {
-            entries.push(json!({
-                "_element": "Photo",
-                "ratingKey": value,
-                "key": value,
-                "previewKey": value,
-                "selected": row.get(if is_poster { "thumb" } else { "art" }) == Some(&Value::String(value.to_string())),
-                "type": if is_poster { "poster" } else { "art" },
-            }));
-        }
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([("Metadata".to_string(), Value::Array(entries))]),
-                false,
-            ),
-        )
-    }
-
     fn cascade_artwork(
         &mut self,
         owner_key: &str,
-        field: &str,
-        old: Option<Value>,
-        new: Option<Value>,
+        _field: &str,
+        _old: Option<Value>,
+        _new: Option<Value>,
     ) {
-        let owner_prefix = format!("/library/metadata/{owner_key}/{field}/");
-        let old = old.and_then(|value| value.as_str().map(str::to_string));
-        let new = new.and_then(|value| value.as_str().map(str::to_string));
-        let keys = self
-            .catalog
-            .items
-            .iter()
-            .filter_map(key_of)
-            .collect::<HashSet<_>>();
-        for row in &mut self.catalog.items {
-            let Some(row_key) = key_of(row) else { continue };
-            if row_key == owner_key {
-                continue;
-            }
-            let parent = row
-                .get("parentRatingKey")
-                .map(string_value)
-                .unwrap_or_default();
-            let grandparent = row
-                .get("grandparentRatingKey")
-                .map(string_value)
-                .unwrap_or_default();
-            if !keys.contains(&parent) && !keys.contains(&grandparent) {
-                continue;
-            }
-            let Some(object) = row.as_object_mut() else {
-                continue;
-            };
-            let current = object
-                .get(field)
-                .and_then(Value::as_str)
-                .map(str::to_string);
-            let owns = current.as_deref().is_some_and(|value| {
-                value.starts_with(&format!("/library/metadata/{row_key}/{field}/"))
-                    || value.starts_with("upload://")
-            });
-            let inherits_owner = current.is_none() || old.as_deref() == current.as_deref();
-            if !owns && inherits_owner {
-                match new.as_deref() {
-                    Some(value) => {
-                        object.insert(field.to_string(), json!(value));
-                    }
-                    None => {
-                        object.remove(field);
-                    }
-                }
-            }
-        }
-        let field_parent = format!("parent{}", capitalize_ascii(field));
-        let field_grandparent = format!("grandparent{}", capitalize_ascii(field));
-        let snapshot = self.catalog.items.clone();
-        for row in &mut self.catalog.items {
-            let Some(kind) = row.get("type").and_then(Value::as_str).map(str::to_string) else {
-                continue;
-            };
-            let Some(object) = row.as_object_mut() else {
-                continue;
-            };
-            let parent_key = object.get("parentRatingKey").map(string_value);
-            let grandparent_key = object.get("grandparentRatingKey").map(string_value);
-            if kind == "season" {
-                let inherited = parent_key
-                    .as_deref()
-                    .and_then(|key| {
-                        snapshot
-                            .iter()
-                            .find(|candidate| key_of(candidate).as_deref() == Some(key))
-                    })
-                    .and_then(|parent| parent.get(field));
-                if let Some(value) = inherited {
-                    object.insert(field_parent.clone(), value.clone());
-                } else {
-                    object.remove(&field_parent);
-                }
-            } else if kind == "episode" {
-                let parent = parent_key
-                    .as_deref()
-                    .and_then(|key| {
-                        snapshot
-                            .iter()
-                            .find(|candidate| key_of(candidate).as_deref() == Some(key))
-                    })
-                    .and_then(|parent| parent.get(field));
-                let grandparent = grandparent_key
-                    .as_deref()
-                    .and_then(|key| {
-                        snapshot
-                            .iter()
-                            .find(|candidate| key_of(candidate).as_deref() == Some(key))
-                    })
-                    .and_then(|parent| parent.get(field));
-                if let Some(value) = parent {
-                    object.insert(field_parent.clone(), value.clone());
-                } else {
-                    object.remove(&field_parent);
-                }
-                if let Some(value) = grandparent {
-                    object.insert(field_grandparent.clone(), value.clone());
-                } else {
-                    object.remove(&field_grandparent);
-                }
-            }
-        }
-        let _ = owner_prefix;
+        self.cascade_artwork_from(owner_key);
     }
 
     fn route_art(
         &mut self,
         key: &str,
         row: &Value,
-        field: &str,
+        tail: &[&str],
         query: &HashMap<String, String>,
         request: &Request,
     ) -> Response {
-        if request.method == "PUT" {
-            if field != "poster" && field != "art" {
+        let mut leaf = tail[0];
+        let method = request.method.as_str();
+        // Cycle 52: the artwork read leaves take GET, HEAD, PUT and DELETE and answer
+        // the ordinary 404 to every other verb.
+        if !matches!(method, "GET" | "HEAD" | "PUT" | "DELETE" | "PATCH") {
+            return Response::error(404, "plexsim: not found");
+        }
+        // And the VERSIONED path is not the write.
+        if method == "PUT" && tail.len() >= 2 {
+            return Response::error(404, "plexsim: not found");
+        }
+        if matches!(method, "GET" | "HEAD") && !owns_artwork(row, leaf) {
+            return Response::error(404, "plexsim: not found");
+        }
+        if leaf == "thumb" && method == "DELETE" {
+            leaf = "poster";
+        }
+        if leaf == "poster" || leaf == "art" {
+            if method == "PUT" {
+                return self.set_artwork(key, if leaf == "poster" { "posters" } else { "arts" }, query);
+            }
+            // Cycle 31: `DELETE .../{poster,thumb,art}` is a 404 on 1.42.2.
+            if method == "DELETE" {
                 return Response::error(404, "plexsim: not found");
             }
-            let Some(url) = query.get("url").filter(|url| !url.is_empty()) else {
-                return Response::error(400, "plexsim: bad request");
-            };
-            let name = if field == "poster" { "thumb" } else { "art" };
-            let old = self.catalog.get(key).and_then(|row| row.get(name)).cloned();
-            let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
-                return Response::error(404, "plexsim: not found");
-            };
-            object.insert(name.to_string(), json!(url));
-            self.cascade_artwork(key, name, old, Some(json!(url)));
-            self.dirty = true;
-            self.save_if_dirty();
-            return Response::plain(200, url.as_bytes().to_vec());
         }
-        if request.method != "GET" && request.method != "HEAD" {
+        if method != "GET" && method != "HEAD" {
             return Response::error(404, "plexsim: not found");
         }
-        let source = if field == "thumb" || field == "poster" {
-            row.get("thumb")
+        let field = if leaf == "art" { "art" } else { "thumb" };
+        if row.get(field).map_or(true, Value::is_null) {
+            return Response::error(404, "plexsim: not found");
+        }
+        // The image the row points at: an uploaded one, or the placeholder.  Cycle
+        // 29: `X-Plex-Local-Asset: 1` marks an ITEM's own artwork.
+        let private = if field == "thumb" {
+            row.get("_poster_url")
         } else {
-            row.get("art")
+            row.get("_art_url").or_else(|| row.get("_poster_url"))
         };
-        if source.is_none() {
-            return Response::error(404, "plexsim: not found");
-        }
-        let key = key_of(row).unwrap_or_default();
-        let source_text = source.and_then(Value::as_str).unwrap_or_default();
-        let expected = format!("/library/metadata/{key}/");
-        if !source_text.starts_with(&expected)
-            && !source_text.starts_with("http://")
-            && !source_text.starts_with("https://")
-            && !source_text.starts_with("upload://")
-        {
-            return Response::error(404, "plexsim: not found");
-        }
-        if query.get("width").is_some() {
-            return Response::image(png_placeholder());
-        }
-        Response::image(jpeg_placeholder())
+        let mut response = match private.and_then(Value::as_str).and_then(|url| self.uploads.get(url)) {
+            Some((body, content_type)) => {
+                let mut response = Response::bytes(200, content_type.clone());
+                response.body = body.clone();
+                response
+            }
+            None if query.get("width").is_some() => Response::image(png_placeholder()),
+            None => Response::image(jpeg_placeholder()),
+        };
+        response
+            .headers
+            .push(("Accept-Ranges".to_string(), "bytes".to_string()));
+        response
+            .headers
+            .push(("X-Plex-Local-Asset".to_string(), "1".to_string()));
+        response
     }
 
     fn annotate_file_checks(&self, row: &Value) -> Value {
         let mut out = row.clone();
+        if let Some(object) = out.as_object_mut() {
+            object.insert("_filesChecked".to_string(), json!(true));
+        }
         let Some(media_rows) = out.get_mut("Media").and_then(Value::as_array_mut) else {
             return out;
         };
@@ -15857,11 +15060,14 @@ impl Runtime {
                 continue;
             };
             for part in parts {
+                // Cycle 46: a successful unrestrict is the fileless server's
+                // existence check and the provider's explicit "unavailable" the
+                // false/false pair; other failures are not collapsed into "missing".
                 let available = part
                     .get("_debrid")
                     .and_then(Value::as_str)
-                    .map(|link| self.unrestrict(link).is_some())
-                    .unwrap_or(false);
+                    .filter(|link| !link.is_empty())
+                    .map_or(true, |link| self.resolve_link(link) != Err(true));
                 if let Some(object) = part.as_object_mut() {
                     object.insert("accessible".to_string(), json!(available));
                     object.insert("exists".to_string(), json!(available));
@@ -17617,7 +16823,14 @@ impl Runtime {
                 return Response::error(503, "plexsim: session terminated");
             }
         }
-        if segments.len() != 3 {
+        // Cycle 52: PMS's route table spells this leaf
+        // `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`, so ONE extra segment is a
+        // filename whatever it says, and the digit rule decides the changestamp only when
+        // a filename follows it.
+        if segments.len() > 3
+            || (segments.len() == 3
+                && (segments[1].is_empty() || !segments[1].bytes().all(|b| b.is_ascii_digit())))
+        {
             return Response::error(404, "plexsim: not found");
         }
         let part_id = segments
@@ -17660,6 +16873,23 @@ impl Runtime {
         let Some(part) = part else {
             return Response::error(404, "plexsim: not found");
         };
+        // Cycle 29: `download=` is one of the 0/1 options, anything else a 400.
+        if query.get("download").is_some_and(|value| !bool_option(value)) {
+            return Response::error(400, "plexsim: bad request");
+        }
+        let link = part.get("_debrid").and_then(Value::as_str).unwrap_or("").to_string();
+        if link.is_empty() {
+            return Response::error(404, "plexsim: no such part");
+        }
+        // Cycle 44: the provider saying the file is gone is a plain 404; any other
+        // resolve failure is the 502.
+        if let Err(unavailable) = self.resolve_link(&link) {
+            return if unavailable {
+                Response::error(404, "plexsim: not found")
+            } else {
+                Response::error(502, "plexsim: debrid resolve failed")
+            };
+        }
         self.stream_part(&part, request)
     }
 
@@ -17683,8 +16913,8 @@ impl Runtime {
         if status == 416 {
             return Response {
                 status,
-                content_type: "text/plain".to_string(),
-                body: vec![b'\n'; 129],
+                content_type: "text/html".to_string(),
+                body: error_document(416),
                 headers: vec![
                     ("X-Plex-Protocol".to_string(), "1.0".to_string()),
                     ("Cache-Control".to_string(), "no-cache".to_string()),
@@ -17783,11 +17013,24 @@ impl Runtime {
     }
 
     fn unrestrict(&self, link: &str) -> Option<String> {
-        let (host, base_path, port) = parse_http_url(&self.rd_api)?;
+        self.resolve_link(link).ok()
+    }
+
+    /// Restricted link -> CDN url.  `Err(true)` is Real-Debrid saying the FILE is not
+    /// there (a 404 or `unavailable_file`, error code 24) -- which a real PMS answers
+    /// with a plain 404 -- and `Err(false)` every other failure, the 502 (cycle 44).
+    fn resolve_link(&self, link: &str) -> Result<String, bool> {
+        let (host, base_path, port) = parse_http_url(&self.rd_api).ok_or(false)?;
+        let result = self.unrestrict_http(link, &host, &base_path, port);
+        result
+    }
+
+    fn unrestrict_http(&self, link: &str, host: &str, base_path: &str, port: u16) -> Result<String, bool> {
+        let host = host.to_string();
         let base = base_path.trim_end_matches('/');
         let path = format!("{base}/unrestrict/link");
         let body = format!("link={}", form_encode(link));
-        let mut stream = TcpStream::connect((host.as_str(), port)).ok()?;
+        let mut stream = TcpStream::connect((host.as_str(), port)).map_err(|_| false)?;
         let authorization = if self.rd_token.is_empty() {
             String::new()
         } else {
@@ -17797,25 +17040,31 @@ impl Runtime {
             "POST {path} HTTP/1.1\r\nHost: {host}\r\n{authorization}Content-Type: application/x-www-form-urlencoded\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
             body.len()
         );
-        stream.write_all(request.as_bytes()).ok()?;
+        stream.write_all(request.as_bytes()).map_err(|_| false)?;
         let mut bytes = Vec::new();
-        stream.read_to_end(&mut bytes).ok()?;
-        let header_end = bytes.windows(4).position(|window| window == b"\r\n\r\n")?;
+        stream.read_to_end(&mut bytes).map_err(|_| false)?;
+        let header_end = bytes
+            .windows(4)
+            .position(|window| window == b"\r\n\r\n")
+            .ok_or(false)?;
         let status = String::from_utf8_lossy(&bytes[..header_end])
             .lines()
-            .next()?
-            .split_whitespace()
-            .nth(1)?
-            .parse::<u16>()
-            .ok()?;
+            .next()
+            .and_then(|line| line.split_whitespace().nth(1))
+            .and_then(|code| code.parse::<u16>().ok())
+            .ok_or(false)?;
+        let payload = serde_json::from_slice::<Value>(&bytes[header_end + 4..]).unwrap_or(Value::Null);
         if !(200..300).contains(&status) {
-            return None;
+            let unavailable = status == 404
+                || payload.get("error_code").and_then(Value::as_i64) == Some(24)
+                || payload.get("error").and_then(Value::as_str) == Some("unavailable_file");
+            return Err(unavailable);
         }
-        serde_json::from_slice::<Value>(&bytes[header_end + 4..])
-            .ok()?
+        payload
             .get("download")
             .and_then(Value::as_str)
             .map(str::to_string)
+            .ok_or(false)
     }
 
     fn route_bundled_resource(&self, relative: &str, head: bool) -> Response {
@@ -17963,10 +17212,11 @@ impl Response {
         }
     }
     fn photo_error(status: u16, message: &str) -> Self {
+        let _ = message;
         Self {
             status,
-            content_type: "text/plain".to_string(),
-            body: message.as_bytes().to_vec(),
+            content_type: "text/html".to_string(),
+            body: error_document(status),
             headers: vec![
                 ("X-Plex-Protocol".to_string(), "1.0".to_string()),
                 ("Cache-Control".to_string(), "no-cache".to_string()),
@@ -17988,10 +17238,14 @@ impl Response {
         }
     }
     fn error(status: u16, message: &str) -> Self {
+        // Cycle 36, measured on kids and zen: every refusal on the surface answers the
+        // reference's own `text/html` document (85 bytes for a 404, 89 for a 400), never
+        // a plexsim sentence. The sentence is kept for the log only.
+        let _ = message;
         Self {
             status,
-            content_type: "text/plain".to_string(),
-            body: message.as_bytes().to_vec(),
+            content_type: "text/html".to_string(),
+            body: error_document(status),
             headers: Vec::new(),
             close: false,
         }
@@ -18022,6 +17276,42 @@ impl Response {
             .push(("Cache-Control".to_string(), "no-cache".to_string()));
         response
     }
+}
+
+/// The reference's refusal document, Python's `http.HTTPStatus(status).phrase` spelling.
+fn error_document(status: u16) -> Vec<u8> {
+    let reason = match status {
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        406 => "Not Acceptable",
+        409 => "Conflict",
+        412 => "Precondition Failed",
+        413 => "Request Entity Too Large",
+        416 => "Requested Range Not Satisfiable",
+        422 => "Unprocessable Entity",
+        500 => "Internal Server Error",
+        501 => "Not Implemented",
+        503 => "Service Unavailable",
+        _ => "",
+    };
+    format!("<html><head><title>{reason}</title></head><body><h1>{status} {reason}</h1></body></html>")
+        .into_bytes()
+}
+
+/// The host's own name, which a real PMS shows when `FriendlyName` is written empty.
+fn local_host_name() -> String {
+    let mut buffer = [0_u8; 256];
+    // SAFETY: the buffer is valid for its whole length and gethostname NUL-terminates
+    // within it on success.
+    let status = unsafe { libc::gethostname(buffer.as_mut_ptr().cast(), buffer.len()) };
+    if status != 0 {
+        return "plexsim".to_string();
+    }
+    let end = buffer.iter().position(|byte| *byte == 0).unwrap_or(buffer.len());
+    String::from_utf8_lossy(&buffer[..end]).into_owned()
 }
 
 fn drop_empty_value(value: &Value) -> Value {
@@ -18207,7 +17497,12 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                 // first byte.  The timeout is per socket read, so the
                 // already received prefix starts that measured window.
                 let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(20)));
+                let peer = stream
+                    .peer_addr()
+                    .map(|address| address.to_string())
+                    .unwrap_or_else(|_| "???".to_string());
                 thread::spawn(move || {
+                    let _live = LiveConnectionGuard::register(peer);
                     if let Some(config) = tls_config {
                         // A TLS ClientHello is identified by the content-type
                         // byte.  Any other first byte remains the plain HTTP
@@ -18238,6 +17533,111 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Cycle 52: `/connections`' own bookkeeping -- one row per live socket, in slot order.
+struct LiveConnection {
+    slot: u64,
+    peer: String,
+    request: String,
+    number: u64,
+    agent: String,
+}
+
+static LIVE_CONNECTIONS: Mutex<Vec<LiveConnection>> = Mutex::new(Vec::new());
+static NEXT_CONNECTION_SLOT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+static REQUEST_SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+thread_local! {
+    static CONNECTION_SLOT: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+struct LiveConnectionGuard(u64);
+
+impl LiveConnectionGuard {
+    fn register(peer: String) -> Self {
+        let slot = NEXT_CONNECTION_SLOT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        CONNECTION_SLOT.with(|cell| cell.set(slot));
+        if let Ok(mut rows) = LIVE_CONNECTIONS.lock() {
+            rows.push(LiveConnection {
+                slot,
+                peer,
+                request: String::new(),
+                number: 0,
+                agent: String::new(),
+            });
+        }
+        Self(slot)
+    }
+}
+
+impl Drop for LiveConnectionGuard {
+    fn drop(&mut self) {
+        if let Ok(mut rows) = LIVE_CONNECTIONS.lock() {
+            rows.retain(|row| row.slot != self.0);
+        }
+    }
+}
+
+/// Record the request a live connection is routing, as `_dispatch` does before it answers.
+fn note_live_request(request: &Request) {
+    let slot = CONNECTION_SLOT.with(|cell| cell.get());
+    let number = REQUEST_SERIAL.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+    // The client names itself with `X-Plex-Device-Name, X-Plex-Product` when it sends
+    // them and with its `User-Agent` when it does not -- measured on both references.
+    let named = ["x-plex-device-name", "x-plex-product"]
+        .iter()
+        .filter_map(|name| request.headers.get(*name).filter(|value| !value.is_empty()))
+        .cloned()
+        .collect::<Vec<_>>();
+    let agent = if named.is_empty() {
+        request.headers.get("user-agent").cloned().unwrap_or_default()
+    } else {
+        named.join(", ")
+    };
+    if let Ok(mut rows) = LIVE_CONNECTIONS.lock() {
+        if let Some(row) = rows.iter_mut().find(|row| row.slot == slot) {
+            row.request = format!("{} {}", request.method, request.target);
+            row.number = number;
+            row.agent = agent;
+        }
+    }
+}
+
+/// `/connections` -- plexsim's own live connections, in PMS's line grammar.
+fn connection_lines(owner: &str) -> String {
+    let Ok(rows) = LIVE_CONNECTIONS.lock() else {
+        return String::new();
+    };
+    let mut lines = Vec::new();
+    for (index, row) in rows.iter().enumerate() {
+        if row.request.is_empty() {
+            lines.push(format!("{} {} - Uninitialized", index + 1, row.peer));
+            continue;
+        }
+        let label = if owner.is_empty() {
+            String::new()
+        } else {
+            format!(" - Token ({owner})")
+        };
+        let agent = if row.agent.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", row.agent)
+        };
+        lines.push(format!(
+            "{} {} - Routing - {} #{:x}{label}{agent}",
+            index + 1,
+            row.peer,
+            row.request,
+            row.number
+        ));
+    }
+    if lines.is_empty() {
+        String::new()
+    } else {
+        lines.join("\n") + "\n"
+    }
 }
 
 fn handle_connection<S: Read + Write>(
@@ -18299,6 +17699,7 @@ fn handle_connection<S: Read + Write>(
             write_response(&mut stream, &response, true)?;
             continue;
         }
+        note_live_request(&request);
         let close_after_body = !request.body_complete;
         let invalid_absolute_target = if request.target.starts_with("http:") {
             if !request.target.starts_with("http://") {
@@ -18365,7 +17766,7 @@ fn handle_connection<S: Read + Write>(
                     return Ok(());
                 }
                 guard.mark_device(&request.headers);
-                guard.events.len()
+                guard.event_cursor()
             };
             return handle_websocket(&mut stream, &runtime, &request, event_start);
         }
@@ -18380,7 +17781,7 @@ fn handle_connection<S: Read + Write>(
                     return Ok(());
                 }
                 guard.mark_device(&request.headers);
-                guard.events.len()
+                guard.event_cursor()
             };
             return handle_eventsource(&mut stream, &runtime, &request, event_start);
         }
@@ -18474,11 +17875,7 @@ fn handle_websocket<S: Write>(
     let events = runtime
         .lock()
         .map_err(|_| "runtime lock poisoned".to_string())?
-        .events
-        .iter()
-        .skip(event_start)
-        .cloned()
-        .collect::<Vec<_>>();
+        .events_since(event_start);
     for (kind, value) in events {
         if filters.as_deref() == Some("all")
             || (filters.as_deref() == Some("log") && kind != "log")
@@ -18558,11 +17955,7 @@ fn handle_eventsource<S: Write>(
     let events = runtime
         .lock()
         .map_err(|_| "runtime lock poisoned".to_string())?
-        .events
-        .iter()
-        .skip(event_start)
-        .cloned()
-        .collect::<Vec<_>>();
+        .events_since(event_start);
     for (kind, value) in events {
         if filters.as_deref() == Some("all")
             || (filters.as_deref() == Some("log") && kind != "log")
@@ -18657,7 +18050,10 @@ fn maybe_compress(response: &mut Response, accept_encoding: Option<&String>) {
                 .is_some_and(|encoding| encoding == "gzip")
         })
     });
-    if response.body.is_empty() || !compressible || !offered {
+    // A body path -- a bundled asset, artwork, a `/web` file -- names a range unit and
+    // is never compressed, measured on kids and zen.
+    let ranged = response.headers.iter().any(|(name, _)| name == "Accept-Ranges");
+    if response.body.is_empty() || !compressible || !offered || ranged {
         return;
     }
     let original = response.body.len();
@@ -18777,8 +18173,10 @@ fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option
         let Some((_, value)) = line.split_once(':') else {
             return Err("bad header".to_string());
         };
+        // Cycle 41: the value's length is measured after parsing, so the one optional
+        // separator space does not count against the 4096-byte bound.
         if name.len() > 1024
-            || value.len() > 4096
+            || value.strip_prefix(' ').unwrap_or(value).len() > 4096
             || value.bytes().any(|byte| byte == b'\t' || byte < 0x20)
         {
             return Err("header limit".to_string());
@@ -18977,11 +18375,11 @@ fn parse_chunk_size(line: &str) -> Option<&str> {
     Some(token)
 }
 
+/// Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not in
+/// the method table at all -- a 500 on every path, `/identity` included, exactly as
+/// `FROB` is. Cycle 15's routed PATCH was 1.43.4's.
 fn known_method(method: &str) -> bool {
-    matches!(
-        method,
-        "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH"
-    )
+    matches!(method, "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "OPTIONS")
 }
 
 fn write_response<S: Write>(stream: &mut S, response: &Response, keep: bool) -> Result<(), String> {
@@ -19676,7 +19074,10 @@ fn static_sidecar_response(catalog: &Path, name: &str, content_type: &str, head:
         status: 200,
         content_type: content_type.to_string(),
         body: if head { Vec::new() } else { body },
-        headers: Vec::new(),
+        headers: vec![
+            ("Cache-Control".to_string(), "no-cache".to_string()),
+            ("Accept-Ranges".to_string(), "bytes".to_string()),
+        ],
         close: false,
     }
 }
