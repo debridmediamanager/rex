@@ -27,6 +27,7 @@ use crate::{catalog::Catalog, decision, xmlout};
 
 mod artwork;
 mod gates;
+mod listing;
 mod resume;
 use artwork::owns_artwork;
 use resume::{bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param, page_window};
@@ -5503,123 +5504,7 @@ impl Runtime {
     }
 
     fn route_all(&self, query: &HashMap<String, String>) -> Response {
-        let type_number = if let Some(value) = query.get("type") {
-            let Ok(number) = value.parse::<i64>() else {
-                return Response::error(400, "plexsim: bad request");
-            };
-            Some(number)
-        } else {
-            None
-        };
-        if type_number == Some(18) {
-            let mut rows = self
-                .collections
-                .values()
-                .map(|collection| self.dynamic_collection_row(collection))
-                .collect::<Vec<_>>();
-            if let Some(section) = query.get("sectionId") {
-                rows.retain(|row| {
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == *section
-                });
-            }
-            let rows = self
-                .sort_rows(rows, query.get("sort").map(String::as_str))
-                .unwrap_or_default();
-            let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(rows))]);
-            page_fields(&mut fields, query);
-            return Response::json(200, self.container(fields, true));
-        }
-        let typed_section = type_number.and_then(|number| {
-            let wanted = match number {
-                1 => Some("movie"),
-                2..=4 => Some("show"),
-                _ => None,
-            }?;
-            self.catalog
-                .sections
-                .iter()
-                .find(|section| section.get("type").and_then(Value::as_str) == Some(wanted))
-        });
-        let mut source = self
-            .choose_rows(
-                typed_section.and_then(|section| section.get("key").and_then(Value::as_str)),
-                type_number,
-            )
-            .into_iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) != Some("clip"))
-            .collect::<Vec<_>>();
-        if type_number.is_none() {
-            // The cross-library query includes collections, while section
-            // listings intentionally keep them on their dedicated axis.
-            source.extend(
-                self.collections
-                    .values()
-                    .map(|collection| self.dynamic_collection_row(collection)),
-            );
-        }
-        let mut rows = source;
-        if type_number.is_none() {
-            rows.sort_by(|left, right| {
-                let left_key = string_value(left.get("ratingKey").unwrap_or(&Value::Null));
-                let right_key = string_value(right.get("ratingKey").unwrap_or(&Value::Null));
-                left_key
-                    .parse::<i64>()
-                    .ok()
-                    .cmp(&right_key.parse::<i64>().ok())
-                    .then_with(|| left_key.cmp(&right_key))
-            });
-        }
-        let section_type = query
-            .get("type")
-            .and_then(|value| value.parse::<i64>().ok())
-            .map(|value| if value == 2 { "show" } else { "movie" })
-            .unwrap_or("movie");
-        let pairs = query
-            .iter()
-            .map(|(key, value)| (key.clone(), value.clone()))
-            .collect::<Vec<_>>();
-        let rows = match self.filter_rows(rows, &pairs, section_type) {
-            Ok(rows) => rows,
-            Err(status) => return Response::error(status, "plexsim: bad request"),
-        };
-        // `/library/all?type=` inherits the type's section order.  The
-        // untyped cross-library form is the measured exception: it sorts by
-        // numeric ratingKey, while a typed request follows the same broadcast
-        // order a section grid exposes.
-        let rows = rows
-            .iter()
-            .map(|row| {
-                if type_number.is_some() {
-                    self.grid_row(
-                        row,
-                        false,
-                        query.get("includeGuids").is_some_and(|v| v == "1"),
-                        false,
-                    )
-                } else {
-                    let mut shown = self.grid_row(
-                        row,
-                        false,
-                        query.get("includeGuids").is_some_and(|v| v == "1"),
-                        false,
-                    );
-                    if let Some(object) = shown.as_object_mut() {
-                        object.remove("Media");
-                        if row.get("_libraryAllDuration").is_none() {
-                            object.remove("duration");
-                        }
-                    }
-                    shown
-                }
-            })
-            .collect::<Vec<_>>();
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([("Metadata".to_string(), Value::Array(rows))]),
-                true,
-            ),
-        )
+        self.library_all(query)
     }
 
     fn route_top(&self, query: &HashMap<String, String>) -> Response {
