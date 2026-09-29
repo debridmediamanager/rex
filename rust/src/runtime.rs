@@ -8428,17 +8428,50 @@ impl Runtime {
                 query,
                 decided,
             );
+            let session_key = session
+                .get("sessionKey")
+                .map(string_value)
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| client.clone());
+            let player = session
+                .get("Player")
+                .and_then(|player| player.get("machineIdentifier"))
+                .map(string_value)
+                .or_else(|| query.get("X-Plex-Client-Identifier").cloned())
+                .or_else(|| headers.get("x-plex-client-identifier").cloned())
+                .unwrap_or_default();
             self.sessions.insert(client.clone(), session);
+            let mut frame = Map::new();
+            frame.insert("sessionKey".to_string(), json!(session_key));
+            frame.insert("clientIdentifier".to_string(), json!(player));
+            frame.insert("guid".to_string(), json!(""));
+            frame.insert("ratingKey".to_string(), json!(key));
+            frame.insert("url".to_string(), json!(""));
+            frame.insert("key".to_string(), json!(format!("/library/metadata/{key}")));
+            frame.insert("viewOffset".to_string(), json!(time));
+            frame.insert("state".to_string(), json!(state));
+            // Measured on a writable copy of the reference: every frame of a session
+            // driven from a play queue carries `playQueueItemID` and `playQueueID`, and a
+            // session with no queue carries neither.
+            if let Some(item_id) = query
+                .get("playQueueItemID")
+                .and_then(|value| value.parse::<i64>().ok())
+            {
+                if let Some(queue) = self
+                    .queues
+                    .values()
+                    .find(|queue| queue.items.iter().any(|item| item.id == item_id))
+                {
+                    frame.insert("playQueueItemID".to_string(), json!(item_id));
+                    frame.insert(
+                        "playQueueID".to_string(),
+                        json!(queue.id.parse::<i64>().unwrap_or(0)),
+                    );
+                }
+            }
             self.push_event(
                 "playing",
-                json!({"PlaySessionStateNotification": {
-                    "sessionKey": client,
-                    "clientIdentifier": headers.get("x-plex-client-identifier").cloned().unwrap_or_default(),
-                    "ratingKey": key,
-                    "key": format!("/library/metadata/{key}"),
-                    "viewOffset": time,
-                    "state": state,
-                }}),
+                json!({"PlaySessionStateNotification": Value::Object(frame)}),
             );
         }
         self.save_if_dirty();
