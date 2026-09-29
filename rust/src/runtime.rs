@@ -2362,6 +2362,11 @@ impl Runtime {
         query: &HashMap<String, String>,
         request: &Request,
     ) -> Response {
+        // Cycle 31: creating a provider needs an external provider object; a POST to
+        // either listing is a 400.
+        if request.method == "POST" && (segments.len() == 3 || (segments.len() == 4 && segments[3] == "group")) {
+            return Response::error(400, "plexsim: bad request");
+        }
         if segments.len() == 3 {
             if request.method == "GET" || request.method == "HEAD" {
                 return Response::json(
