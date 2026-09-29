@@ -5875,8 +5875,16 @@ impl Runtime {
                 left_title.to_lowercase().cmp(&right_title.to_lowercase())
             })
         });
-        if query.get("unwatched").is_some_and(|value| value == "1") {
-            dated.retain(|(_, row)| row.get("viewCount").is_none());
+        // Cycle 54, measured on kids and zen: `unwatched=` is a 0/1 OPTION here (the
+        // `+?0*[01]` grammar, anything else a 400), and at 1 it drops the watched LEAF
+        // rows before the cap.
+        if let Some(value) = query.get("unwatched") {
+            if !bool_option(value) {
+                return Response::error(400, "plexsim: bad request");
+            }
+            if value.trim_start_matches('+').trim_start_matches('0') == "1" {
+                dated.retain(|(_, row)| !watched_leaf(row));
+            }
         }
         if let Some(limit) = query
             .get("limit")
@@ -14857,9 +14865,20 @@ impl Runtime {
                             .collect::<Vec<_>>(),
                     )
                 } else {
+                    // Cycle 54: `unwatched=` is a 0/1 option on `/allLeaves` too --
+                    // anything else a 400 -- and at 1 it drops the watched episodes.
+                    let mut leaves = self.leaves(key);
+                    if let Some(value) = query.get("unwatched") {
+                        if !bool_option(value) {
+                            return Response::error(400, "plexsim: bad request");
+                        }
+                        if value.trim_start_matches('+').trim_start_matches('0') == "1" {
+                            leaves.retain(|leaf| !watched_leaf(leaf));
+                        }
+                    }
                     (
                         "episode",
-                        self.leaves(key)
+                        leaves
                             .into_iter()
                             .map(|leaf| self.leaf_listing_row(&leaf))
                             .collect::<Vec<_>>(),
@@ -14884,12 +14903,9 @@ impl Runtime {
                     })
                     .map(|(name, value)| (name.clone(), value.clone()))
                     .collect::<Vec<_>>();
-                if !filter_pairs.is_empty() {
-                    rows = match self.filter_rows(rows, &filter_pairs, section_type) {
-                        Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "plexsim: bad request"),
-                    };
-                }
+                // Cycle 54: the listing's filters are ignored on `/allLeaves`; only
+                // `unwatched=` (above) is read.
+                let _ = (&filter_pairs, section_type);
                 if let Some(sort) = query.get("sort") {
                     rows = match self.sort_rows(rows, Some(sort)) {
                         Ok(rows) => rows,
@@ -18548,6 +18564,15 @@ fn unix_year(timestamp: i64) -> i64 {
 /// The account feature names plex.tv reports for the owner (the oracle's
 /// `OWNER_FEATURES` with no claim of its own).
 const OWNER_FEATURES: &str = "adaptive_bitrate,camera_upload,collections,content_filter,download_certificates,dvr,federated-auth,hardware_transcoding,home,hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,music-analysis,music_videos,pass,photosV6-edit,photosV6-tv-albums,premium_music_metadata,radio,server-manager,session_bandwidth_restrictions,session_kick,shared-radio,sync,trailers,tuner-sharing,type-first,unsupportedtuners,webhooks";
+
+/// Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
+/// or an episode with a play recorded.  A parent row is never dropped for it.
+fn watched_leaf(row: &Value) -> bool {
+    matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+        && row.get("viewCount").is_some_and(|count| {
+            !count.is_null() && count.as_i64() != Some(0) && count.as_str().is_none_or(|text| !text.is_empty() && text != "0")
+        })
+}
 
 /// Python's ordering of two JSON scalars for a sort: numbers by value, strings
 /// by code point, anything else as equal.
