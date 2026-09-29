@@ -7,6 +7,8 @@
 //! bytes -- so the transcoder never serves a picture the direct path refuses.
 
 use super::*;
+use regex::Regex;
+use std::sync::OnceLock;
 
 /// `_photo_int`: `0`, `1`, `01` and `+1` parse; `1.5`, empty, `abc` and a space do not.
 fn photo_int(value: &str) -> bool {
@@ -126,9 +128,17 @@ impl Runtime {
         }
         let mut headers = request.headers.clone();
         headers.insert("accept".to_string(), "application/json".to_string());
+        // The transcoder's own width picks the composite's upstream variant, as the
+        // oracle's `_at_width` does on the fetched image.
+        let mut inner_target = target.clone();
+        if inner.starts_with("/library/sections/") && inner.contains("/composite/") && !target.contains('?') {
+            if let Some(width) = query.get("width") {
+                inner_target = format!("{inner}?width={width}");
+            }
+        }
         let inner_request = Request {
             method: "GET".to_string(),
-            target: target.clone(),
+            target: inner_target,
             version: request.version.clone(),
             headers,
             body: Vec::new(),
@@ -155,4 +165,123 @@ impl Runtime {
             close: false,
         })
     }
+}
+
+/// `_at_width` (`TMDB_WIDTHS`): plexsim cannot resize, so a TMDB url is re-pointed at the
+/// smallest published variant at least as wide as the client asked for.
+pub(super) fn tmdb_at_width(url: &str, width: Option<&str>) -> String {
+    const TMDB_WIDTHS: [i64; 7] = [92, 154, 185, 342, 500, 780, 1280];
+    let Some(wanted) = width.and_then(|value| value.trim().parse::<i64>().ok()) else {
+        return url.to_string();
+    };
+    if !url.contains("image.tmdb.org") {
+        return url.to_string();
+    }
+    let target = TMDB_WIDTHS
+        .iter()
+        .find(|variant| **variant >= wanted)
+        .map(|variant| format!("w{variant}"))
+        .unwrap_or_else(|| "original".to_string());
+    let Ok(pattern) = Regex::new(r"/t/p/(w\d+|original)/") else {
+        return url.to_string();
+    };
+    pattern
+        .replace(url, format!("/t/p/{target}/").as_str())
+        .into_owned()
+}
+
+/// `_serve_image`'s upstream half: fetch a remote artwork url once, cached in memory
+/// (bounded, as the oracle's is), over plain HTTP or TLS against the system roots.
+pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
+    static CACHE: OnceLock<Mutex<HashMap<String, (Vec<u8>, String)>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(hit) = cache.lock().ok().and_then(|map| map.get(url).cloned()) {
+        return Some(hit);
+    }
+    let (tls, rest) = if let Some(rest) = url.strip_prefix("https://") {
+        (true, rest)
+    } else if let Some(rest) = url.strip_prefix("http://") {
+        (false, rest)
+    } else {
+        return None;
+    };
+    let (authority, path) = match rest.find('/') {
+        Some(index) => (&rest[..index], &rest[index..]),
+        None => (rest, "/"),
+    };
+    let (host, port) = match authority.rsplit_once(':') {
+        Some((host, port)) => (host.to_string(), port.parse::<u16>().ok()?),
+        None => (authority.to_string(), if tls { 443 } else { 80 }),
+    };
+    let request = format!(
+        "GET {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: plexsim/0.1\r\nAccept: */*\r\nConnection: close\r\n\r\n"
+    );
+    let mut stream = TcpStream::connect((host.as_str(), port)).ok()?;
+    let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(20)));
+    let mut raw = Vec::new();
+    if tls {
+        let mut roots = rustls::RootCertStore::empty();
+        let bundle = fs::read("/etc/ssl/certs/ca-certificates.crt").ok()?;
+        for cert in certs(&mut bundle.as_slice()).flatten() {
+            let _ = roots.add(cert);
+        }
+        let config = rustls::ClientConfig::builder()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+        let name = rustls::pki_types::ServerName::try_from(host.clone()).ok()?;
+        let connection = rustls::ClientConnection::new(Arc::new(config), name).ok()?;
+        let mut tls_stream = rustls::StreamOwned::new(connection, stream);
+        tls_stream.write_all(request.as_bytes()).ok()?;
+        let _ = tls_stream.read_to_end(&mut raw);
+    } else {
+        stream.write_all(request.as_bytes()).ok()?;
+        let _ = stream.read_to_end(&mut raw);
+    }
+    let split = raw.windows(4).position(|window| window == b"\r\n\r\n")?;
+    let head = String::from_utf8_lossy(&raw[..split]).to_string();
+    if !head.split_whitespace().nth(1).is_some_and(|status| status == "200") {
+        return None;
+    }
+    let mut body = raw[split + 4..].to_vec();
+    let lower = head.to_ascii_lowercase();
+    if lower.contains("transfer-encoding: chunked") {
+        let mut decoded = Vec::new();
+        let mut rest = body.as_slice();
+        loop {
+            let line_end = rest.windows(2).position(|w| w == b"\r\n")?;
+            let size = usize::from_str_radix(
+                String::from_utf8_lossy(&rest[..line_end]).split(';').next()?.trim(),
+                16,
+            )
+            .ok()?;
+            if size == 0 {
+                break;
+            }
+            let start = line_end + 2;
+            decoded.extend_from_slice(rest.get(start..start + size)?);
+            rest = rest.get(start + size + 2..)?;
+        }
+        body = decoded;
+    } else if let Some(length) = lower
+        .lines()
+        .find_map(|line| line.strip_prefix("content-length:"))
+        .and_then(|value| value.trim().parse::<usize>().ok())
+    {
+        body.truncate(length);
+    }
+    let content_type = head
+        .lines()
+        .find_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            name.eq_ignore_ascii_case("content-type").then(|| value.trim().to_string())
+        })
+        .unwrap_or_else(|| "image/jpeg".to_string());
+    let hit = (body, content_type);
+    if let Ok(mut map) = cache.lock() {
+        if map.len() > 512 {
+            map.clear();
+        }
+        map.insert(url.to_string(), hit.clone());
+    }
+    Some(hit)
 }
