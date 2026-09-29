@@ -11106,7 +11106,12 @@ impl Runtime {
                     projection.insert(name.to_string(), value.clone());
                 }
             }
-            projection.insert("viewType".to_string(), json!(1));
+            // Cycle 70: only a scrobble's row carries `viewType`; cycle 27: the single
+            // read is its own projection, which the `_history1` marker orders.
+            if let Some(view_type) = row.get("viewType").filter(|v| !v.is_null()) {
+                projection.insert("viewType".to_string(), view_type.clone());
+            }
+            projection.insert("_history1".to_string(), json!(true));
             return Response::json(
                 200,
                 self.container(
