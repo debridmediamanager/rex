@@ -346,6 +346,9 @@ pub struct Runtime {
     viewed_in_session: HashSet<String>,
     /// Uploaded artwork by its `upload://` key: the bytes and their content type.
     uploads: HashMap<String, (Vec<u8>, String)>,
+    /// Track rows the theme metadata leaf minted, by request path and by ratingKey.
+    theme_rows: HashMap<String, Value>,
+    theme_next: i64,
     /// The spellfix1 vocabularies search falls back on: a SNAPSHOT, built at load and
     /// rebuilt only by Optimize Database (cycles 37-38), never per edit.
     spelling: Option<spellfix::SearchIndex>,
@@ -458,6 +461,8 @@ impl Runtime {
             hidden_continue: HashSet::new(),
             viewed_in_session: HashSet::new(),
             uploads: HashMap::new(),
+            theme_rows: HashMap::new(),
+            theme_next: 0,
             spelling: None,
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
@@ -4454,6 +4459,51 @@ impl Runtime {
             headers,
             close: false,
         }
+    }
+
+    /// `/library/metadata/{id}/theme/{v}/metadata` -- the track row a real PMS MINTS
+    /// (cycle 45): `guid` is `library://` + the SHA-1 of the request path, idempotent per
+    /// (item, version), kept beside the catalog so no listing sees it.
+    fn theme_metadata(&mut self, key: &str, version: &str) -> Response {
+        let path = format!("/library/metadata/{key}/theme/{version}/metadata");
+        let minted = match self.theme_rows.get(&path) {
+            Some(row) => row.clone(),
+            None => {
+                let highest = self
+                    .catalog
+                    .items
+                    .iter()
+                    .filter_map(|row| key_of(row).and_then(|k| k.parse::<i64>().ok()))
+                    .max()
+                    .unwrap_or(0);
+                self.theme_next = self.theme_next.max(highest + 1);
+                let id = self.theme_next;
+                self.theme_next += 1;
+                let mut digest = Sha1::new();
+                digest.update(path.as_bytes());
+                let hash = digest.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
+                let row = json!({
+                    "ratingKey": id.to_string(),
+                    "key": format!("/library/metadata/{id}"),
+                    "guid": format!("library://{hash}"),
+                    "type": "track",
+                    "title": "",
+                    "summary": "",
+                    "index": 1,
+                    "addedAt": now(),
+                    "genuineMediaAnalysis": "1",
+                });
+                self.theme_rows.insert(path, row.clone());
+                self.theme_rows.insert(id.to_string(), row.clone());
+                row
+            }
+        };
+        Response::json(
+            200,
+            json!({"MediaContainer": {"size": 1, "identifier": "com.plexapp.plugins.library",
+                "mediaTagPrefix": MEDIA_TAG_PREFIX, "mediaTagVersion": MEDIA_TAG_VERSION,
+                "Metadata": [minted]}}),
+        )
     }
 
     /// Rebuild both spellfix vocabularies from the current rows (`rebuild_spelling`).
@@ -13005,6 +13055,17 @@ impl Runtime {
             if let Some(row) = self.catalog.get(&key).cloned() {
                 return self.route_metadata(&key, &row, &segments[3..], query, request);
             }
+            if let Some(minted) = self.theme_rows.get(&key).cloned() {
+                // Cycle 45: a row the theme metadata leaf minted is readable at its own
+                // key, and only as a bare read.
+                if segments.len() > 3 || !matches!(request.method.as_str(), "GET" | "HEAD") {
+                    return Response::error(404, "plexsim: not found");
+                }
+                return Response::json(200, self.container(Map::from_iter([
+                    ("size".to_string(), json!(1)),
+                    ("Metadata".to_string(), json!([minted])),
+                ]), true));
+            }
             if let Some(playlist) = self.playlists.get(&key).cloned() {
                 if segments.len() == 3 && request.method == "DELETE" {
                     // Cycle 18, measured on plexscratch: `DELETE
@@ -14315,6 +14376,37 @@ impl Runtime {
             }
             return Response::json(200, container);
         }
+        // Cycle 45: `theme` is the one artwork leaf with a `/metadata` sub-leaf, and it
+        // MINTS a track row.
+        if tail.len() == 3 && tail[0] == "theme" && tail[2] == "metadata" {
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return self.theme_metadata(key, tail[1]);
+        }
+        // Cycle 45: an item leaf with an EXTRA path segment is a 404, except the
+        // artwork leaves (whose second segment is the version) and the two real
+        // two-segment leaves, `/extras/all` and `/users/top`.
+        if tail.len() > 1
+            && !matches!(tail[0], "thumb" | "art" | "poster" | "banner" | "theme" | "clearLogo")
+            && !(tail.len() == 2 && matches!((tail[0], tail[1]), ("extras", "all") | ("users", "top")))
+        {
+            return Response::error(404, "plexsim: not found");
+        }
+        if matches!(tail[0], "thumb" | "art" | "poster" | "banner" | "theme" | "clearLogo")
+            && tail.len() > 2
+        {
+            return Response::error(404, "plexsim: not found");
+        }
+        // Cycle 45: the SINGULAR artwork leaf is routed for six names and answers its
+        // own 400 to a PUT with no `url`.
+        if request.method == "PUT"
+            && tail.len() == 1
+            && matches!(tail[0], "poster" | "art" | "thumb" | "banner" | "theme" | "clearLogo")
+            && query.get("url").map_or(true, |url| url.is_empty())
+        {
+            return Response::error(400, "plexsim: bad request");
+        }
         match tail[0] {
             "prefs" => self.route_item_prefs(key, row, query, request),
             "grandchildren" => {
@@ -14775,6 +14867,10 @@ impl Runtime {
             "extras" => {
                 if tail.len() > 1 && tail[1] != "all" {
                     return Response::error(404, "plexsim: not found");
+                }
+                // Cycle 16: a POST here is a 400 whatever the body.
+                if request.method == "POST" {
+                    return Response::error(400, "plexsim: bad request");
                 }
                 Response::json(
                     200,
