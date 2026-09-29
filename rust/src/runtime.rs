@@ -6069,7 +6069,8 @@ impl Runtime {
         }
         let mut rows = Vec::with_capacity(dated.len());
         for (added_at, row) in dated {
-            let mut projected = self.listing_row(&row);
+            // Cycle 46: the grid row keeping its Guid for the `includeGuids` gate.
+            let mut projected = guid_gate(self.grid_row(&row, true, true, false), query);
             if row.get("type").and_then(Value::as_str) == Some("season") {
                 if let Some(parent) = row
                     .get("parentRatingKey")
@@ -11739,7 +11740,7 @@ impl Runtime {
                     }
                     let rows = rows
                         .iter()
-                        .map(|row| self.section_listing_row(row))
+                        .map(|row| guid_gate(self.section_listing_row(row), query))
                         .collect::<Vec<_>>();
                     if kind == "show"
                         && leaf != "recentlyViewedShows"
