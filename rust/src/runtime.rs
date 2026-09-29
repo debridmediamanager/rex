@@ -15473,6 +15473,10 @@ impl Runtime {
                         .get("includeChildren")
                         .is_some_and(|value| is_true_option(value))
                 {
+                    // Cycle 16, measured on kids and zen: an INLINED child row is the
+                    // full row without `librarySectionID`, `librarySectionKey` or
+                    // `librarySectionTitle`, which the same row through `/children`
+                    // carries.
                     let children = self
                         .children(key)
                         .into_iter()
