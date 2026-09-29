@@ -17576,6 +17576,19 @@ impl Runtime {
         if tail.first() == Some(&"items") && request.method == "POST" {
             return Response::error(404, "plexsim: not found");
         }
+        if tail.len() == 1
+            && matches!(
+                tail[0],
+                "analyze" | "match" | "extras" | "related" | "allLeaves" | "grandchildren"
+                    | "refresh" | "unmatch" | "poster" | "art" | "thumb"
+            )
+            && !(matches!(tail[0], "poster" | "art" | "thumb")
+                && matches!(request.method.as_str(), "GET" | "HEAD"))
+        {
+            if let Some(response) = self.playlist_action_leaf(playlist, tail[0], query, request) {
+                return response;
+            }
+        }
         // The metadata alias still resolves a playlist's `/prefs` spelling
         // through the ordinary item writer.  It is a malformed field write,
         // so PMS returns the writer's 400 rather than treating it as a

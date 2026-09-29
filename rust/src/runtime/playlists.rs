@@ -448,3 +448,125 @@ impl Runtime {
         )
     }
 }
+
+impl Runtime {
+    /// A type-15 frame for a playlist, `sectionID "-1"` (`notify_timeline` on the
+    /// stored list row, which carries no `type` of its own).
+    fn push_timeline_playlist(&mut self, playlist: &Playlist, state: i64, metadata_state: Option<&str>) {
+        let row = json!({"ratingKey": playlist.id, "title": playlist.title});
+        self.push_timeline_entry(&row, state, metadata_state, None, Some(15), Some(&playlist.title));
+    }
+
+    /// `/library/metadata/{playlist}/{leaf}` for the ITEM action leaves
+    /// (`library_list_item`). Cycle 21, measured on plexscratch over a fresh playlist:
+    /// it answers them the way a collection does except where the row type splits
+    /// them -- `/analyze` is a 400 here, `/allLeaves` and `/grandchildren` are 404s, and
+    /// `/related` is an empty container with neither the librarySection triple nor
+    /// `allowSync`. plexsim 404'd every one, so Change Poster, Refresh Metadata and Fix
+    /// Match on a playlist page did nothing at all. `None` leaves a GET of the artwork
+    /// to the ordinary path.
+    pub(super) fn playlist_action_leaf(
+        &mut self,
+        playlist: &Playlist,
+        leaf: &str,
+        query: &HashMap<String, String>,
+        request: &Request,
+    ) -> Option<Response> {
+        let method = request.method.as_str();
+        if !matches!(method, "GET" | "HEAD" | "PUT" | "DELETE") {
+            return Some(Response::error(404, "plexsim: not found"));
+        }
+        if matches!(leaf, "poster" | "art" | "thumb") {
+            return match method {
+                // `set_artwork(row, leaf + "s")`: only `posters` is the thumb, so a PUT
+                // on `/thumb` picks the ART, exactly as the Python path does.
+                "PUT" => Some(self.set_playlist_artwork(playlist, leaf == "poster", query)),
+                // Cycle 31: a 404 on 1.42.2, like the item path.
+                "DELETE" => Some(Response::error(404, "plexsim: not found")),
+                _ => None,
+            };
+        }
+        if !matches!(method, "GET" | "HEAD" | "PUT") {
+            return Some(Response::error(404, "plexsim: not found"));
+        }
+        Some(match leaf {
+            // The same no-parameters 400 the item path answers, and a playlist's
+            // analyze splits from a collection's 200.
+            "match" | "extras" | "analyze" => Response::error(400, "plexsim: bad request"),
+            "related" => Response::json(
+                200,
+                json!({"MediaContainer": {"size": 0, "identifier": "com.plexapp.plugins.library",
+                    "mediaTagPrefix": MEDIA_TAG_PREFIX, "mediaTagVersion": MEDIA_TAG_VERSION}}),
+            ),
+            "refresh" | "unmatch" => {
+                // Cycle 23, measured twice on plexscratch: a playlist never runs the
+                // activity block. Its refresh is four frames -- 2/matching, 5,
+                // 3/queued, 5 -- and its unmatch two, 2/matching and 5. Cycle 26: the
+                // unmatch moves `guid` to `local://{rk}` and drops `duration`.
+                self.push_timeline_playlist(playlist, 2, Some("matching"));
+                if leaf == "refresh" {
+                    self.push_timeline_playlist(playlist, 5, None);
+                    self.push_timeline_playlist(playlist, 3, Some("queued"));
+                }
+                self.push_timeline_playlist(playlist, 5, None);
+                if leaf == "unmatch" {
+                    self.edits
+                        .entry(playlist.id.clone())
+                        .or_default()
+                        .insert("_unmatched".to_string(), json!(true));
+                    self.dirty = true;
+                    self.save_if_dirty();
+                }
+                Response::empty(200)
+            }
+            // A playlist has no leaf view of its own.
+            _ => Response::error(404, "plexsim: not found"),
+        })
+    }
+
+    /// `PUT /library/metadata/{playlist}/{poster,art}?url=` (`set_artwork` on the
+    /// stored list row): the owned artwork re-versions onto one new stamp, the picked
+    /// field is locked, `updatedAt` moves, one `state 5` frame goes out as type 15 with
+    /// `sectionID "-1"` (cycle 22), and the body is the new path.
+    fn set_playlist_artwork(&mut self, playlist: &Playlist, poster: bool, query: &HashMap<String, String>) -> Response {
+        let chosen = query.get("url").map(|value| percent_decode(value)).unwrap_or_default();
+        if chosen.is_empty() {
+            return Response::error(400, "plexsim: no url");
+        }
+        let field = if poster { "thumb" } else { "art" };
+        let private = if poster { "_poster_url" } else { "_art_url" };
+        let key = playlist.id.clone();
+        let placeholder = format!("/library/metadata/{key}/{field}/1");
+        let stamp = now();
+        let columns = self.edits.entry(key.clone()).or_default();
+        if chosen == placeholder {
+            columns.shift_remove(private);
+        } else {
+            columns.insert(private.to_string(), json!(chosen));
+        }
+        for name in ["thumb", "art", "theme"] {
+            let value = columns.get(name).map(string_value).unwrap_or_default();
+            let owned = value.starts_with(&format!("/library/metadata/{key}/"));
+            if !value.is_empty() && (name == field || owned) {
+                columns.insert(name.to_string(), json!(format!("/library/metadata/{key}/{name}/{stamp}")));
+            }
+        }
+        if columns.get(field).is_none_or(Value::is_null) {
+            columns.insert(field.to_string(), json!(format!("/library/metadata/{key}/{field}/{stamp}")));
+        }
+        columns.insert("updatedAt".to_string(), json!(stamp));
+        let mut fields = columns
+            .get("Field")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        fields.retain(|entry| entry.get("name").and_then(Value::as_str) != Some(field));
+        fields.push(json!({"locked": true, "name": field}));
+        columns.insert("Field".to_string(), Value::Array(fields));
+        let body = columns.get(field).map(string_value).unwrap_or_default();
+        self.push_timeline_playlist(playlist, 5, None);
+        self.dirty = true;
+        self.save_if_dirty();
+        Response::plain(200, body.into_bytes())
+    }
+}
