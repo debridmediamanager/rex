@@ -4924,7 +4924,11 @@ impl Runtime {
                     json!({"MediaContainer": {"size": 0, "content": "plugins"}}),
                 )
             }
-            ("GET" | "HEAD", "/") => Response::json(200, self.server_root()),
+            ("GET" | "HEAD", "/") => {
+                let mut body = self.server_root();
+                home_theater_version(&mut body, &query, &request.headers);
+                Response::json(200, body)
+            }
             ("GET" | "HEAD", "/manage") | ("GET" | "HEAD", "/web") => {
                 let host = request.headers.get("host").cloned().unwrap_or_default();
                 Response {
@@ -5036,7 +5040,9 @@ impl Runtime {
                 ),
             ),
             ("GET" | "HEAD", "/media/providers") => {
-                Response::json(200, self.media_providers(&query, &request.headers))
+                let mut body = self.media_providers(&query, &request.headers);
+                home_theater_version(&mut body, &query, &request.headers);
+                Response::json(200, body)
             }
             ("POST", "/media/providers") => Response::error(400, "plexsim: bad request"),
             ("POST", "/player/playback/play") => Response::error(400, "plexsim: bad request"),
@@ -18572,6 +18578,24 @@ fn watched_leaf(row: &Value) -> bool {
         && row.get("viewCount").is_some_and(|count| {
             !count.is_null() && count.as_i64() != Some(0) && count.as_str().is_none_or(|text| !text.is_empty() && text != "0")
         })
+}
+
+/// Cycle 64, measured on zen, kids and plexscratch42: `X-Plex-Product: Plex Home
+/// Theater` -- that spelling only, the header beating the query -- gets a FIVE-component
+/// `version` on `/` and `/media/providers` (`1.42.2.10156.0-<build>`).
+fn home_theater_version(body: &mut Value, query: &HashMap<String, String>, headers: &HashMap<String, String>) {
+    let product = headers
+        .get("x-plex-product")
+        .filter(|value| !value.is_empty())
+        .or_else(|| query.get("X-Plex-Product"));
+    if product.map(String::as_str) != Some("Plex Home Theater") {
+        return;
+    }
+    if let Some(version) = body["MediaContainer"].get("version").and_then(Value::as_str) {
+        if let Some((head, tail)) = version.split_once('-') {
+            body["MediaContainer"]["version"] = json!(format!("{head}.0-{tail}"));
+        }
+    }
 }
 
 /// Python's ordering of two JSON scalars for a sort: numbers by value, strings
