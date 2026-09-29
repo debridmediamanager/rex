@@ -15040,13 +15040,53 @@ impl Runtime {
                 return self.apply_edit(&[key.to_string()], &pairs, false, "loading");
             }
             if request.method == "DELETE" {
-                if self.catalog.remove(key).is_some() {
-                    self.deleted.insert(key.to_string());
-                    self.push_delete_event(key);
-                    self.dirty = true;
-                    return Response::empty(200);
+                if query.get("proxy").map(String::as_str) == Some("1") {
+                    // Delete Version: plexsim has no optimized versions, and a real
+                    // PMS answers 400 when there are none to delete.
+                    return Response::error(400, "plexsim: no optimized versions");
                 }
-                return Response::error(404, "plexsim: not found");
+                let Some(row) = self.catalog.get(key).cloned() else {
+                    return Response::error(404, "plexsim: not found");
+                };
+                // `library.delete`: the row AND its descendants go -- a season takes
+                // its episodes -- and removing a season's LAST episode removes the
+                // season too, measured through the reference's scanner.
+                let mut doomed = vec![key.to_string()];
+                let mut index = 0;
+                while index < doomed.len() {
+                    let parent = doomed[index].clone();
+                    for item in &self.catalog.items {
+                        let child = item.get("parentRatingKey").map(string_value);
+                        if child.as_deref() == Some(parent.as_str()) {
+                            if let Some(child_key) = key_of(item) {
+                                if !doomed.contains(&child_key) {
+                                    doomed.push(child_key);
+                                }
+                            }
+                        }
+                    }
+                    index += 1;
+                }
+                if row.get("type").and_then(Value::as_str) == Some("episode") {
+                    let season = row.get("parentRatingKey").map(string_value).unwrap_or_default();
+                    let siblings = self
+                        .catalog
+                        .items
+                        .iter()
+                        .filter(|item| item.get("parentRatingKey").map(string_value).as_deref() == Some(season.as_str()))
+                        .count();
+                    if siblings <= 1 && self.catalog.get(&season).is_some() {
+                        doomed.push(season);
+                    }
+                }
+                for gone in &doomed {
+                    if self.catalog.remove(gone).is_some() {
+                        self.deleted.insert(gone.clone());
+                    }
+                }
+                self.push_delete_event(key);
+                self.dirty = true;
+                return Response::empty(200);
             }
             if request.method != "GET" && request.method != "HEAD" {
                 return Response::error(404, "plexsim: not found");
