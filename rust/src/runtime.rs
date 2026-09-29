@@ -14771,24 +14771,62 @@ impl Runtime {
                 }
                 if group {
                     let leaves = self.leaves(key);
+                    // Re-measured on zen against a 24-season show: the "All
+                    // episodes" row is present exactly when the PAGE holds more than
+                    // one season row -- Start=10 Size=10 carries it, Start=0 Size=1
+                    // does not -- so the gate is the page's own length.  Cycle 54: and
+                    // it is the ANSWER's row count, paged or not.
+                    let page_len = match (
+                        query
+                            .get("X-Plex-Container-Start")
+                            .and_then(|value| value.parse::<i64>().ok()),
+                        query
+                            .get("X-Plex-Container-Size")
+                            .and_then(|value| value.parse::<i64>().ok()),
+                    ) {
+                        (Some(start), Some(size)) if start >= 0 && size >= 0 => {
+                            (children.len() as i64 - start).clamp(0, size) as usize
+                        }
+                        _ => children.len(),
+                    };
                     let show_all = query
                         .get("excludeAllLeaves")
                         .is_none_or(|value| value != "1")
-                        && children.len() > 1;
+                        && page_len > 1;
                     if show_all {
                         let ios = request
                             .headers
                             .get("x-plex-platform")
                             .or_else(|| query.get("X-Plex-Platform"))
                             .is_some_and(|value| value == "iOS");
-                        let all = json!({
-                            "key": format!("/library/metadata/{key}/allLeaves"),
-                            "title": "All episodes",
-                            "type": if ios { "season" } else { "folder" },
-                            "leafCount": leaves.len(),
-                            "thumb": row.get("thumb").cloned().unwrap_or(Value::Null),
-                        });
-                        fields.insert("Directory".to_string(), json!([all]));
+                        let mut all = Map::new();
+                        all.insert("leafCount".to_string(), json!(leaves.len()));
+                        all.insert(
+                            "thumb".to_string(),
+                            row.get("thumb").cloned().unwrap_or(Value::Null),
+                        );
+                        if ios {
+                            // Measured on both servers, in XML and JSON: the iOS
+                            // PLATFORM -- not the product, not tvOS -- types this row
+                            // as a season, and no other client gets a type at all.
+                            all.insert("type".to_string(), json!("season"));
+                        }
+                        all.insert(
+                            "viewedLeafCount".to_string(),
+                            json!(leaves
+                                .iter()
+                                .filter(|leaf| leaf
+                                    .get("viewCount")
+                                    .is_some_and(|count| !count.is_null()
+                                        && string_value(count) != "0"))
+                                .count()),
+                        );
+                        all.insert(
+                            "key".to_string(),
+                            json!(format!("/library/metadata/{key}/allLeaves")),
+                        );
+                        all.insert("title".to_string(), json!("All episodes"));
+                        fields.insert("Directory".to_string(), json!([Value::Object(all)]));
                     }
                 }
                 if let Some(excluded) = query.get("excludeElements") {
