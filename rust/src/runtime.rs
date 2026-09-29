@@ -11684,8 +11684,12 @@ impl Runtime {
                         return Response::error(400, "plexsim: bad request");
                     }
                     // A real PMS builds a mosaic of the members' posters; plexsim serves
-                    // one image in its place (`composite_for`), here the placeholder.
-                    let mut response = Response::image(jpeg_placeholder());
+                    // one image in its place (`composite_for`), here the placeholder. It
+                    // is a real-sized PNG: `server.py` serves a member's TMDB poster,
+                    // which this server cannot fetch, and a 4-byte "jpeg" read as that
+                    // poster fails the size the check holds a real image to.
+                    let mut response = Response::image(generated_png(400, 600, [32, 34, 38]));
+                    response.content_type = "image/png".to_string();
                     response.headers = vec![
                         ("Cache-Control".to_string(), "no-cache".to_string()),
                         ("Accept-Ranges".to_string(), "bytes".to_string()),
