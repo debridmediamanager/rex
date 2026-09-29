@@ -1,19 +1,52 @@
 //! The listing query's shared grammar -- `type=`, the refused filter fields,
 //! `limit=`, `group=` -- and `/library/all`, ported from `server.py`.
 
-use super::*;
 use super::resume::int_param;
+use super::*;
 
 /// Filter names every listing refuses with a 500 (cycles 15, 18, 45, 53).
-const REFUSED_FILTER_FIELDS: &[&str] =
-    &["parentIndex", "theme", "banner", "art", "thumb", "slug", "extraType", "userFields"];
-const RESOLUTIONS: &[&str] = &["sd", "480", "576", "720", "1080", "2k", "2.7k", "4k", "8k", "16k"];
+const REFUSED_FILTER_FIELDS: &[&str] = &[
+    "parentIndex",
+    "theme",
+    "banner",
+    "art",
+    "thumb",
+    "slug",
+    "extraType",
+    "userFields",
+];
+const RESOLUTIONS: &[&str] = &[
+    "sd", "480", "576", "720", "1080", "2k", "2.7k", "4k", "8k", "16k",
+];
 /// The fields `group=` accepts, probed one at a time against the reference.
 const GROUPABLE: &[&str] = &[
-    "title", "titleSort", "studio", "contentRating", "year", "decade", "addedAt", "updatedAt",
-    "originallyAvailableAt", "audienceRating", "rating", "editionTitle", "index", "summary",
-    "tagline", "contentRatingAge", "type", "guid", "id", "originalTitle", "createdAt",
-    "mediaCount", "ratingCount", "absoluteIndex", "remote", "isAdult", "resourcesChangedAt",
+    "title",
+    "titleSort",
+    "studio",
+    "contentRating",
+    "year",
+    "decade",
+    "addedAt",
+    "updatedAt",
+    "originallyAvailableAt",
+    "audienceRating",
+    "rating",
+    "editionTitle",
+    "index",
+    "summary",
+    "tagline",
+    "contentRatingAge",
+    "type",
+    "guid",
+    "id",
+    "originalTitle",
+    "createdAt",
+    "mediaCount",
+    "ratingCount",
+    "absoluteIndex",
+    "remote",
+    "isAdult",
+    "resourcesChangedAt",
 ];
 
 fn bare_key(key: &str) -> &str {
@@ -42,10 +75,9 @@ pub(super) fn parsed_type(
 /// The refusals a listing answers wherever it consumes a query (cycle 18); `allow` is
 /// the section extras leaf's exemption for `extraType` (cycle 45).
 pub(super) fn listing_refusals(query: &HashMap<String, String>, allow: &[&str]) -> Option<u16> {
-    if query
-        .keys()
-        .any(|key| REFUSED_FILTER_FIELDS.contains(&bare_key(key)) && !allow.contains(&bare_key(key)))
-    {
+    if query.keys().any(|key| {
+        REFUSED_FILTER_FIELDS.contains(&bare_key(key)) && !allow.contains(&bare_key(key))
+    }) {
         return Some(500);
     }
     for (key, value) in query {
@@ -63,7 +95,10 @@ pub(super) fn listing_refusals(query: &HashMap<String, String>, allow: &[&str]) 
 
 /// Cycle 45: `unmatched=` is a 500 on `/library/all`.
 pub(super) fn whole_library_refusal(query: &HashMap<String, String>) -> Option<u16> {
-    query.keys().any(|key| bare_key(key) == "unmatched").then_some(500)
+    query
+        .keys()
+        .any(|key| bare_key(key) == "unmatched")
+        .then_some(500)
 }
 
 /// Cycle 45: the 500 `file=` gets, decided by the QUERY's type.
@@ -75,7 +110,10 @@ pub(super) fn file_filter_refusal(
     if !query.keys().any(|key| bare_key(key) == "file") {
         return None;
     }
-    let mut kind = query.get("type").map(|value| value.trim().to_string()).unwrap_or_default();
+    let mut kind = query
+        .get("type")
+        .map(|value| value.trim().to_string())
+        .unwrap_or_default();
     if kind.is_empty() && !whole_library {
         kind = default_type.unwrap_or("").trim().to_string();
     }
@@ -85,7 +123,10 @@ pub(super) fn file_filter_refusal(
 
 /// `?limit=N` caps the rows the QUERY returns: `0` is one row and a negative one
 /// every row; anything but a signed 32-bit integer is a 500 (cycle 55).
-pub(super) fn limited(rows: Vec<Value>, query: &HashMap<String, String>) -> Result<Vec<Value>, u16> {
+pub(super) fn limited(
+    rows: Vec<Value>,
+    query: &HashMap<String, String>,
+) -> Result<Vec<Value>, u16> {
     let Some(raw) = query.get("limit") else {
         return Ok(rows);
     };
@@ -112,7 +153,9 @@ impl Runtime {
             let marker = string_value(&self.filter_value(row, field));
             let rank = (
                 row.get("addedAt").and_then(Value::as_i64).unwrap_or(0),
-                key_of(row).and_then(|key| key.parse::<i64>().ok()).unwrap_or(0),
+                key_of(row)
+                    .and_then(|key| key.parse::<i64>().ok())
+                    .unwrap_or(0),
             );
             match best.get(&marker) {
                 Some((current, _)) if *current <= rank => {}
@@ -121,7 +164,10 @@ impl Runtime {
                 }
             }
         }
-        let chosen = best.values().map(|(_, index)| *index).collect::<HashSet<_>>();
+        let chosen = best
+            .values()
+            .map(|(_, index)| *index)
+            .collect::<HashSet<_>>();
         Ok(rows
             .into_iter()
             .enumerate()
@@ -168,7 +214,10 @@ impl Runtime {
                     string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == *section
                 });
             }
-            let rows = match self.sort_rows(rows, Some(query.get("sort").map(String::as_str).unwrap_or("titleSort"))) {
+            let rows = match self.sort_rows(
+                rows,
+                Some(query.get("sort").map(String::as_str).unwrap_or("titleSort")),
+            ) {
                 Ok(rows) => rows,
                 Err(status) => return Response::error(status, "plexsim: unsupported sort"),
             };
@@ -187,7 +236,9 @@ impl Runtime {
             .catalog
             .items
             .iter()
-            .filter(|row| type_number.is_some() || row.get("type").and_then(Value::as_str) != Some("clip"))
+            .filter(|row| {
+                type_number.is_some() || row.get("type").and_then(Value::as_str) != Some("clip")
+            })
             .cloned()
             .collect::<Vec<_>>();
         let scoped = |scope: &str, field: &str| {
@@ -220,9 +271,15 @@ impl Runtime {
                 row
             }));
         }
-        source.sort_by_key(|row| key_of(row).and_then(|key| key.parse::<i64>().ok()).unwrap_or(i64::MAX));
+        source.sort_by_key(|row| {
+            key_of(row)
+                .and_then(|key| key.parse::<i64>().ok())
+                .unwrap_or(i64::MAX)
+        });
         if type_number.is_some() && query.get("sort").map_or(true, |sort| sort.is_empty()) {
-            source = self.sort_rows(source, Some("titleSort")).unwrap_or_default();
+            source = self
+                .sort_rows(source, Some("titleSort"))
+                .unwrap_or_default();
         }
         if let Some(number) = type_number {
             let wanted = match number {
@@ -232,9 +289,15 @@ impl Runtime {
                 4 => "episode",
                 _ => "",
             };
-            source.retain(|row| !wanted.is_empty() && row.get("type").and_then(Value::as_str) == Some(wanted));
+            source.retain(|row| {
+                !wanted.is_empty() && row.get("type").and_then(Value::as_str) == Some(wanted)
+            });
         }
-        let section_type = if type_number == Some(2) { "show" } else { "movie" };
+        let section_type = if type_number == Some(2) {
+            "show"
+        } else {
+            "movie"
+        };
         // A plain `guid=` is the listing's own prefix match below; the grammar reads
         // `guid` only when a scoped guid asks for it (`parse_only`).
         let filter_pairs = pairs
@@ -299,7 +362,13 @@ impl Runtime {
                 shown
             })
             .collect::<Vec<_>>();
-        Response::json(200, self.container(Map::from_iter([("Metadata".to_string(), Value::Array(rows))]), true))
+        Response::json(
+            200,
+            self.container(
+                Map::from_iter([("Metadata".to_string(), Value::Array(rows))]),
+                true,
+            ),
+        )
     }
 }
 
@@ -346,33 +415,53 @@ impl Runtime {
             }) {
                 return Response::error(500, "plexsim: server error");
             }
-            if query
-                .keys()
-                .any(|key| matches!(bare_key(key).trim(), "duration" | "resolution" | "mediaSize" | "file"))
-            {
+            if query.keys().any(|key| {
+                matches!(
+                    bare_key(key).trim(),
+                    "duration" | "resolution" | "mediaSize" | "file"
+                )
+            }) {
                 return Response::error(500, "plexsim: server error");
             }
             if query.get("index").is_some_and(|raw| !int_param(raw, None)) {
                 return Response::error(500, "plexsim: bad index");
             }
-            if query.get("sourceType").is_some_and(|raw| !int_param(raw, Some(32))) {
+            if query
+                .get("sourceType")
+                .is_some_and(|raw| !int_param(raw, Some(32)))
+            {
                 return Response::error(500, "plexsim: bad sourceType");
             }
         }
         let is_show = section.get("type").and_then(Value::as_str) == Some("show");
-        let title = section.get("title").and_then(Value::as_str).unwrap_or("").to_string();
+        let title = section
+            .get("title")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string();
         let mut fields = Map::new();
         fields.insert("size".to_string(), json!(0));
         fields.insert(
             "art".to_string(),
-            json!(if is_show { "/:/resources/show-fanart.jpg" } else { "/:/resources/movie-fanart.jpg" }),
+            json!(if is_show {
+                "/:/resources/show-fanart.jpg"
+            } else {
+                "/:/resources/movie-fanart.jpg"
+            }),
         );
-        fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        fields.insert(
+            "identifier".to_string(),
+            json!("com.plexapp.plugins.library"),
+        );
         fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
         fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
         fields.insert(
             "thumb".to_string(),
-            json!(if is_show { "/:/resources/show.png" } else { "/:/resources/movie.png" }),
+            json!(if is_show {
+                "/:/resources/show.png"
+            } else {
+                "/:/resources/movie.png"
+            }),
         );
         fields.insert("title1".to_string(), json!(title));
         if is_show {
@@ -380,8 +469,17 @@ impl Runtime {
         }
         if rest.is_empty() {
             fields.insert("size".to_string(), json!(1));
-            fields.insert("Directory".to_string(), json!([{"key": "all", "title": format!("All {title}")}]));
-            return Response::json(200, Value::Object(Map::from_iter([("MediaContainer".to_string(), Value::Object(fields))])));
+            fields.insert(
+                "Directory".to_string(),
+                json!([{"key": "all", "title": format!("All {title}")}]),
+            );
+            return Response::json(
+                200,
+                Value::Object(Map::from_iter([(
+                    "MediaContainer".to_string(),
+                    Value::Object(fields),
+                )])),
+            );
         }
         // The library's clips: every clip owned by a parent in this section.
         let mut rows = self
@@ -390,7 +488,8 @@ impl Runtime {
             .iter()
             .filter(|row| {
                 row.get("type").and_then(Value::as_str) == Some("clip")
-                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                        == section_key
             })
             .cloned()
             .collect::<Vec<_>>();
@@ -400,7 +499,9 @@ impl Runtime {
             }
         }
         if let Some(wanted) = query.get("extraType") {
-            rows.retain(|row| row.get("extraType").map(string_value).as_deref() == Some(wanted.as_str()));
+            rows.retain(|row| {
+                row.get("extraType").map(string_value).as_deref() == Some(wanted.as_str())
+            });
         }
         let pairs = query
             .iter()
@@ -411,7 +512,16 @@ impl Runtime {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
         };
-        let rows = match self.sort_rows(rows, Some(query.get("sort").map(String::as_str).filter(|s| !s.is_empty()).unwrap_or("index"))) {
+        let rows = match self.sort_rows(
+            rows,
+            Some(
+                query
+                    .get("sort")
+                    .map(String::as_str)
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("index"),
+            ),
+        ) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: unsupported sort key"),
         };
@@ -431,9 +541,19 @@ impl Runtime {
         if !page.is_empty() {
             fields.insert(
                 "Metadata".to_string(),
-                Value::Array(page.iter().map(|row| self.grid_row(row, false, false, false)).collect()),
+                Value::Array(
+                    page.iter()
+                        .map(|row| self.grid_row(row, false, false, false))
+                        .collect(),
+                ),
             );
         }
-        Response::json(200, Value::Object(Map::from_iter([("MediaContainer".to_string(), Value::Object(fields))])))
+        Response::json(
+            200,
+            Value::Object(Map::from_iter([(
+                "MediaContainer".to_string(),
+                Value::Object(fields),
+            )])),
+        )
     }
 }

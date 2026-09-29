@@ -111,15 +111,31 @@ const FRAMEWORK_AGENT_STATUS: &[u8] = b"AgentService Status\n-------------------
 /// The four actions under `/system/agents`: the Python function, its declared argument
 /// count, the names it declares, and whether it lacks `**kwargs` (so an undeclared name
 /// raises). Read out of `agentservice.py`; `runtime.py:843` calls `f(**d)`.
-fn framework_agent_action(action: &str) -> Option<(&'static str, usize, &'static [&'static str], bool)> {
+fn framework_agent_action(
+    action: &str,
+) -> Option<(&'static str, usize, &'static [&'static str], bool)> {
     Some(match action {
-        "search" => ("search", 4, &["identifier", "mediaType", "lang", "manual"], false),
+        "search" => (
+            "search",
+            4,
+            &["identifier", "mediaType", "lang", "manual"],
+            false,
+        ),
         "update" => (
             "update",
             3,
             &[
-                "mediaType", "guid", "id", "parentGUID", "force", "agent", "async", "parentID",
-                "libraryAgent", "periodic", "respectTags",
+                "mediaType",
+                "guid",
+                "id",
+                "parentGUID",
+                "force",
+                "agent",
+                "async",
+                "parentID",
+                "libraryAgent",
+                "periodic",
+                "respectTags",
             ],
             true,
         ),
@@ -129,7 +145,12 @@ fn framework_agent_action(action: &str) -> Option<(&'static str, usize, &'static
             &["mediaType", "primaryAgent", "primary_only"],
             true,
         ),
-        "media/get" => ("media_get", 4, &["mediaType", "guid", "url", "parentGUID"], true),
+        "media/get" => (
+            "media_get",
+            4,
+            &["mediaType", "guid", "url", "parentGUID"],
+            true,
+        ),
         _ => return None,
     })
 }
@@ -300,7 +321,10 @@ fn container_window(query: &HashMap<String, String>) -> Option<(usize, usize)> {
         }
         digits.parse::<usize>().ok()
     };
-    Some((read("X-Plex-Container-Start")?, read("X-Plex-Container-Size")?))
+    Some((
+        read("X-Plex-Container-Start")?,
+        read("X-Plex-Container-Size")?,
+    ))
 }
 
 /// Cycle 53: slice a captured framework document to the window the client asked for,
@@ -324,7 +348,12 @@ fn page_framework_document(document: &str, query: &HashMap<String, String>) -> R
         container.truncate(container.len() - 2);
         container.push('>');
     }
-    let page = rows.iter().skip(start).take(size).copied().collect::<Vec<_>>();
+    let page = rows
+        .iter()
+        .skip(start)
+        .take(size)
+        .copied()
+        .collect::<Vec<_>>();
     let size_re = Regex::new(r#"size="\d+""#).expect("static regex");
     container = size_re
         .replacen(&container, 1, format!("size=\"{}\"", page.len()).as_str())
@@ -337,7 +366,10 @@ fn page_framework_document(document: &str, query: &HashMap<String, String>) -> R
     let text = if page.is_empty() {
         format!("{head}\n{}\n", container.replacen('>', "/>", 1))
     } else {
-        format!("{head}\n{container}\n{}\n</MediaContainer>\n", page.join("\n"))
+        format!(
+            "{head}\n{container}\n{}\n</MediaContainer>\n",
+            page.join("\n")
+        )
     };
     let mut response = Response::framework_document(200, text.into_bytes());
     response
@@ -358,18 +390,23 @@ pub(super) fn request_language(
     headers: &HashMap<String, String>,
 ) -> Option<String> {
     const TRANSLATED: [&str; 35] = [
-        "af", "ar", "ca", "cs", "da", "de", "en", "es", "es-419", "et", "fi", "fr", "fr-CA",
-        "he", "hr", "hu", "it", "ja", "ko", "lt", "nb", "nl", "no", "pl", "pt", "pt-BR",
-        "pt-PT", "ro", "ru", "sk", "sl", "sr", "sv", "uk", "zh",
+        "af", "ar", "ca", "cs", "da", "de", "en", "es", "es-419", "et", "fi", "fr", "fr-CA", "he",
+        "hr", "hu", "it", "ja", "ko", "lt", "nb", "nl", "no", "pl", "pt", "pt-BR", "pt-PT", "ro",
+        "ru", "sk", "sl", "sr", "sv", "uk", "zh",
     ];
-    const LOCALISED_EXTRA: [&str; 10] =
-        ["bg", "el", "en-GB", "fa", "is", "my", "th", "tr", "vi", "zh-TW"];
+    const LOCALISED_EXTRA: [&str; 10] = [
+        "bg", "el", "en-GB", "fa", "is", "my", "th", "tr", "vi", "zh-TW",
+    ];
     let translated = |code: &str| TRANSLATED.contains(&code);
     let localised = |code: &str| translated(code) || LOCALISED_EXTRA.contains(&code);
     let wanted = query
         .get("X-Plex-Language")
         .filter(|value| !value.is_empty())
-        .or_else(|| headers.get("x-plex-language").filter(|value| !value.is_empty()));
+        .or_else(|| {
+            headers
+                .get("x-plex-language")
+                .filter(|value| !value.is_empty())
+        });
     let Some(text) = wanted else {
         for source in [
             headers.get("x-plex-accept-language"),
@@ -498,7 +535,11 @@ fn accept_language_order(value: &str) -> Option<Vec<String>> {
         }
         ranked.push((weight, index, tag.to_string()));
     }
-    ranked.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal).then(a.1.cmp(&b.1)));
+    ranked.sort_by(|a, b| {
+        b.0.partial_cmp(&a.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.1.cmp(&b.1))
+    });
     Some(ranked.into_iter().map(|(_, _, tag)| tag).collect())
 }
 
@@ -623,13 +664,19 @@ impl Runtime {
 
     /// `_stale_framework_cookie`: a framework route whose state cookie will not unpack
     /// answers the plug-in's own Tornado server's empty 200.
-    fn stale_framework_cookie(&self, route: &str, headers: &HashMap<String, String>) -> Option<Response> {
+    fn stale_framework_cookie(
+        &self,
+        route: &str,
+        headers: &HashMap<String, String>,
+    ) -> Option<Response> {
         let cookie = headers.get("cookie")?;
         if cookie.is_empty() {
             return None;
         }
         let owner = if route == "/system" || route.starts_with("/system/") {
-            if matches!(route, "/system/agents" | "/system/proxy") || route.starts_with("/system/scanners/") {
+            if matches!(route, "/system/agents" | "/system/proxy")
+                || route.starts_with("/system/scanners/")
+            {
                 return None;
             }
             "com.plexapp.system"
@@ -675,7 +722,10 @@ impl Runtime {
             return None;
         }
         let method = request.method.as_str();
-        let segments = path.split('/').filter(|s| !s.is_empty()).collect::<Vec<_>>();
+        let segments = path
+            .split('/')
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>();
         if segments.len() >= 2 && segments[..2] == ["system", "proxy"] {
             // Cycle 22: every verb, GET included, answers its own 400.
             return Some(Response::error(400, "plexsim: bad request"));
@@ -775,7 +825,10 @@ impl Runtime {
         }
         if segments.len() >= 3
             && segments[..2] == ["system", "messaging"]
-            && matches!(segments[2], "clear_events" | "register_for_event" | "broadcast_event")
+            && matches!(
+                segments[2],
+                "clear_events" | "register_for_event" | "broadcast_event"
+            )
         {
             return Response::framework_string(200, Vec::new(), "text/plain");
         }
@@ -804,15 +857,24 @@ impl Runtime {
                         return Response::plugin_xml(500, framework_unexpected(name, &keyword));
                     }
                 }
-                let given = 1 + known.iter().filter(|key| names.iter().any(|n| n == *key)).count();
+                let given = 1 + known
+                    .iter()
+                    .filter(|key| names.iter().any(|n| n == *key))
+                    .count();
                 return Response::plugin_xml(500, framework_error(name, least, given));
             }
         }
-        if matches!(route, "/system/agents/attribution" | "/system/agents/attribution/image") {
+        if matches!(
+            route,
+            "/system/agents/attribution" | "/system/agents/attribution/image"
+        ) {
             if let Some(identifier) = identifier {
                 let entry = tables.attributions.get(identifier.as_str());
                 if route.ends_with("/image") {
-                    let Some(size) = entry.and_then(|entry| entry.get("image")).and_then(Value::as_array) else {
+                    let Some(size) = entry
+                        .and_then(|entry| entry.get("image"))
+                        .and_then(Value::as_array)
+                    else {
                         return Response::error(404, "plexsim: not found");
                     };
                     let width = size.first().and_then(Value::as_u64).unwrap_or(1) as u32;
@@ -821,9 +883,16 @@ impl Runtime {
                         .and_then(|entry| entry.get("imageType"))
                         .and_then(Value::as_str)
                         .unwrap_or("image/png");
-                    return Response::asset(kind, generated_png(width, height, [32, 34, 38]), false);
+                    return Response::asset(
+                        kind,
+                        generated_png(width, height, [32, 34, 38]),
+                        false,
+                    );
                 }
-                let Some(text) = entry.and_then(|entry| entry.get("text")).and_then(Value::as_str) else {
+                let Some(text) = entry
+                    .and_then(|entry| entry.get("text"))
+                    .and_then(Value::as_str)
+                else {
                     return Response::error(404, "plexsim: not found");
                 };
                 let kind = entry
@@ -975,7 +1044,11 @@ impl Runtime {
             };
             let width = size.first().and_then(Value::as_u64).unwrap_or(1) as u32;
             let height = size.get(1).and_then(Value::as_u64).unwrap_or(1) as u32;
-            return Response::asset("image/png", generated_png(width, height, [32, 34, 38]), false);
+            return Response::asset(
+                "image/png",
+                generated_png(width, height, [32, 34, 38]),
+                false,
+            );
         }
         if rest == ["prefs"] || rest == ["prefs", "list"] {
             let Some(document) = tables.prefs.get(owner).and_then(Value::as_str) else {
@@ -1031,13 +1104,21 @@ impl Runtime {
         response
     }
 
-    fn system_library_sections(&self, request: &Request, query: &HashMap<String, String>) -> Response {
+    fn system_library_sections(
+        &self,
+        request: &Request,
+        query: &HashMap<String, String>,
+    ) -> Response {
         let host = if self.private_address.is_empty() {
             "127.0.0.1".to_string()
         } else {
             self.private_address.clone()
         };
-        let port = if self.private_port == 0 { 32400 } else { self.private_port };
+        let port = if self.private_port == 0 {
+            32400
+        } else {
+            self.private_port
+        };
         let titles = self
             .catalog
             .sections
@@ -1081,7 +1162,15 @@ impl Runtime {
 
     fn system_scanners(&self, type_id: &str, request: &Request) -> Response {
         let (size, names): (usize, &[&str]) = match type_id {
-            "1" => (4, &["Plex Movie", "Plex Movie Scanner", "Plex Video Files Scanner", "Plex Video Files"]),
+            "1" => (
+                4,
+                &[
+                    "Plex Movie",
+                    "Plex Movie Scanner",
+                    "Plex Video Files Scanner",
+                    "Plex Video Files",
+                ],
+            ),
             "2" => (2, &["Plex TV Series", "Plex Series Scanner"]),
             "8" | "9" => (3, &["Plex Music", "Plex Music Scanner"]),
             "13" => (1, &["Plex Photo Scanner"]),
@@ -1099,8 +1188,16 @@ impl Runtime {
 
     fn media_flag(&self, relative: &str, tables: &FrameworkTables) -> Response {
         const TYPES: [&str; 10] = [
-            "aspectRatio", "audioChannels", "audioCodec", "contentRating", "media", "recordLabel",
-            "studio", "videoCodec", "videoFrameRate", "videoResolution",
+            "aspectRatio",
+            "audioChannels",
+            "audioCodec",
+            "contentRating",
+            "media",
+            "recordLabel",
+            "studio",
+            "videoCodec",
+            "videoFrameRate",
+            "videoResolution",
         ];
         let (kind, value) = relative.split_once('/').unwrap_or((relative, ""));
         if !TYPES.contains(&kind) || value.is_empty() || value.matches('/').count() > 1 {
@@ -1108,7 +1205,8 @@ impl Runtime {
         }
         let mut name = value.to_string();
         if let Some(rules) = tables.substitutions.get(kind) {
-            if let Some((_, substitute)) = rules.iter().find(|(pattern, _)| pattern.is_match(value)) {
+            if let Some((_, substitute)) = rules.iter().find(|(pattern, _)| pattern.is_match(value))
+            {
                 name = substitute.clone();
             }
         }
@@ -1123,7 +1221,11 @@ impl Runtime {
         };
         let width = size.first().and_then(Value::as_u64).unwrap_or(1) as u32;
         let height = size.get(1).and_then(Value::as_u64).unwrap_or(1) as u32;
-        Response::asset("image/png", generated_png(width, height, [32, 34, 38]), false)
+        Response::asset(
+            "image/png",
+            generated_png(width, height, [32, 34, 38]),
+            false,
+        )
     }
 
     fn legacy_agent_document(rows: &[Value]) -> String {
@@ -1145,7 +1247,15 @@ impl Runtime {
                     } else {
                         ""
                     },
-                    if row.get("hasPrefs").and_then(Value::as_bool).unwrap_or(false) { 1 } else { 0 },
+                    if row
+                        .get("hasPrefs")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false)
+                    {
+                        1
+                    } else {
+                        0
+                    },
                     xml_quote(&string_value(row.get("identifier").unwrap_or(&Value::Null))),
                 )
             })
@@ -1153,7 +1263,11 @@ impl Runtime {
         format!("{head}>\n{}\n</MediaContainer>\n", lines.join("\n"))
     }
 
-    fn legacy_agent_error(tables: &FrameworkTables, key: &str, values: &[(&str, String)]) -> Response {
+    fn legacy_agent_error(
+        tables: &FrameworkTables,
+        key: &str,
+        values: &[(&str, String)],
+    ) -> Response {
         let mut body = tables
             .legacy_config
             .get("errors")
@@ -1179,7 +1293,11 @@ impl Runtime {
         let Ok(number) = media_type.trim().parse::<i64>() else {
             return Self::legacy_agent_error(
                 tables,
-                if method == "PUT" { "valueerror_put" } else { "valueerror_config" },
+                if method == "PUT" {
+                    "valueerror_put"
+                } else {
+                    "valueerror_config"
+                },
                 &[("value", python_repr(media_type))],
             );
         };
@@ -1191,7 +1309,9 @@ impl Runtime {
             let Some(order) = query.get("order") else {
                 return Response::plugin_xml(
                     500,
-                    framework_traceback("set_agent_configuration() takes exactly 4 arguments (3 given)"),
+                    framework_traceback(
+                        "set_agent_configuration() takes exactly 4 arguments (3 given)",
+                    ),
                 );
             };
             if order.is_empty() {
@@ -1229,11 +1349,19 @@ impl Runtime {
                     &[("identifier", identifier.to_string())],
                 );
             }
-            return Response::framework_document(200, Self::legacy_agent_document(&[]).into_bytes());
+            return Response::framework_document(
+                200,
+                Self::legacy_agent_document(&[]).into_bytes(),
+            );
         };
         let mut agents = default
             .iter()
-            .map(|row| (string_value(row.get("identifier").unwrap_or(&Value::Null)), row.clone()))
+            .map(|row| {
+                (
+                    string_value(row.get("identifier").unwrap_or(&Value::Null)),
+                    row.clone(),
+                )
+            })
             .collect::<Vec<_>>();
         let mut order = self
             .prefs
@@ -1305,7 +1433,10 @@ impl Runtime {
         query: &HashMap<String, String>,
         tables: &FrameworkTables,
     ) -> Response {
-        let mut wanted = query.get("mediaType").filter(|value| !value.is_empty()).cloned();
+        let mut wanted = query
+            .get("mediaType")
+            .filter(|value| !value.is_empty())
+            .cloned();
         if let Some(value) = &wanted {
             let digits = value.strip_prefix('+').unwrap_or(value);
             let parsed = if let Some(negative) = digits.strip_prefix('-') {
@@ -1354,8 +1485,15 @@ impl Runtime {
                 .map(|rows| {
                     rows.iter()
                         .map(|row| {
-                            let mut object = row.get("attrs").and_then(Value::as_object).cloned().unwrap_or_default();
-                            object.insert("Language".to_string(), row.get("Language").cloned().unwrap_or(Value::Null));
+                            let mut object = row
+                                .get("attrs")
+                                .and_then(Value::as_object)
+                                .cloned()
+                                .unwrap_or_default();
+                            object.insert(
+                                "Language".to_string(),
+                                row.get("Language").cloned().unwrap_or(Value::Null),
+                            );
                             Value::Object(object)
                         })
                         .collect::<Vec<_>>()
@@ -1368,8 +1506,16 @@ impl Runtime {
                 .map(|rows| {
                     rows.iter()
                         .map(|row| {
-                            let mut object = row.get("attrs").and_then(Value::as_object).cloned().unwrap_or_default();
-                            if row.get("MediaType").and_then(Value::as_array).is_some_and(|m| !m.is_empty()) {
+                            let mut object = row
+                                .get("attrs")
+                                .and_then(Value::as_object)
+                                .cloned()
+                                .unwrap_or_default();
+                            if row
+                                .get("MediaType")
+                                .and_then(Value::as_array)
+                                .is_some_and(|m| !m.is_empty())
+                            {
                                 object.insert("MediaType".to_string(), row["MediaType"].clone());
                             }
                             Value::Object(object)
@@ -1412,7 +1558,13 @@ impl Runtime {
         let agents = legacy.into_iter().chain(modern).collect::<Vec<_>>();
         let container = json!({"MediaContainer": {"size": agents.len(), "Agent": agents}});
         let ordered = xmlout::ordered(&container, None);
-        if accept_wants_xml(request.headers.get("accept").map(String::as_str).unwrap_or("")) {
+        if accept_wants_xml(
+            request
+                .headers
+                .get("accept")
+                .map(String::as_str)
+                .unwrap_or(""),
+        ) {
             let mut response = Response::bytes(200, "text/xml;charset=utf-8");
             response.body = xmlout::to_xml(&ordered, None);
             response
@@ -1432,8 +1584,16 @@ impl Runtime {
 
 /// `page_window` from `server.py`: both parameters, non-negative integers.
 fn page_window(query: &HashMap<String, String>) -> Option<(usize, usize)> {
-    let start = query.get("X-Plex-Container-Start")?.trim().parse::<i64>().ok()?;
-    let size = query.get("X-Plex-Container-Size")?.trim().parse::<i64>().ok()?;
+    let start = query
+        .get("X-Plex-Container-Start")?
+        .trim()
+        .parse::<i64>()
+        .ok()?;
+    let size = query
+        .get("X-Plex-Container-Size")?
+        .trim()
+        .parse::<i64>()
+        .ok()?;
     if start < 0 || size < 0 {
         return None;
     }
@@ -1443,7 +1603,13 @@ fn page_window(query: &HashMap<String, String>) -> Option<(usize, usize)> {
 /// A framework container in the client's format: the framework serialiser for XML
 /// (`application/xml`, no charset) and ordinary JSON otherwise.
 fn system_body(request: &Request, container: &Value) -> Response {
-    if accept_wants_xml(request.headers.get("accept").map(String::as_str).unwrap_or("")) {
+    if accept_wants_xml(
+        request
+            .headers
+            .get("accept")
+            .map(String::as_str)
+            .unwrap_or(""),
+    ) {
         return Response::framework_document(200, xmlout::to_system_xml(container, None));
     }
     // `json_body` orders the keys the way the XML writer would, on every container.

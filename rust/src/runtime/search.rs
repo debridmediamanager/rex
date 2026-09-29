@@ -4,20 +4,36 @@
 //! `search`, `library_search` and their helpers; the measurements are in their
 //! docstrings (cycles 12-59).
 
-use super::*;
 use super::resume::int_param;
+use super::*;
 use crate::hierarchy::{fold_query, fold_title};
 
 /// The seventeen hubs `/hubs/search` answers, in the reference's base order.
 const SEARCH_HUBS: &[(&str, &str)] = &[
-    ("show", "Shows"), ("artist", "Artists"), ("album", "Albums"), ("episode", "Episodes"),
-    ("movie", "Movies"), ("track", "Tracks"), ("photoalbum", "Photo Albums"),
-    ("autotag", "Automatic Tags"), ("photo", "Photos"), ("tag", "Tags"), ("actor", "Actors"),
-    ("director", "Directors"), ("genre", "Genres"), ("collection", "Collections"),
-    ("playlist", "Playlists"), ("shared", "Shared"), ("place", "Places"),
+    ("show", "Shows"),
+    ("artist", "Artists"),
+    ("album", "Albums"),
+    ("episode", "Episodes"),
+    ("movie", "Movies"),
+    ("track", "Tracks"),
+    ("photoalbum", "Photo Albums"),
+    ("autotag", "Automatic Tags"),
+    ("photo", "Photos"),
+    ("tag", "Tags"),
+    ("actor", "Actors"),
+    ("director", "Directors"),
+    ("genre", "Genres"),
+    ("collection", "Collections"),
+    ("playlist", "Playlists"),
+    ("shared", "Shared"),
+    ("place", "Places"),
 ];
 /// The tag hubs, and which of a row's tag lists each searches.
-const SEARCH_TAG_HUBS: &[(&str, &str)] = &[("actor", "Role"), ("director", "Director"), ("genre", "Genre")];
+const SEARCH_TAG_HUBS: &[(&str, &str)] = &[
+    ("actor", "Role"),
+    ("director", "Director"),
+    ("genre", "Genre"),
+];
 
 fn tier_drop(tier: &str) -> f64 {
     match tier {
@@ -52,7 +68,12 @@ fn words(text: &str) -> Vec<String> {
 /// The partial/first-token score pass's token view (cycle 39): marks dropped, the
 /// title table applied, ASCII case folded.
 fn tier_words(text: &str) -> Vec<String> {
-    words(&fold_title(text).chars().map(|c| c.to_ascii_lowercase()).collect::<String>())
+    words(
+        &fold_title(text)
+            .chars()
+            .map(|c| c.to_ascii_lowercase())
+            .collect::<String>(),
+    )
 }
 
 /// Cycle 39's whole-title equality pass.
@@ -61,7 +82,10 @@ fn whole_title_equal(title: &str, query: &str) -> bool {
     if raw_terms.iter().any(|word| word == "ōf" || word == "Ōf") {
         return false;
     }
-    if raw_terms.iter().any(|word| word.chars().skip(1).any(|c| c == 'ſ')) {
+    if raw_terms
+        .iter()
+        .any(|word| word.chars().skip(1).any(|c| c == 'ſ'))
+    {
         return false;
     }
     let left = words(&fold_query(&title.to_lowercase()));
@@ -84,7 +108,11 @@ pub(super) fn search_tier(row: &Value, query: &str) -> &'static str {
     if title_words.is_empty() {
         return "fuzzy";
     }
-    let sort = row.get("titleSort").and_then(Value::as_str).filter(|s| !s.is_empty()).unwrap_or(text_of(row, "title"));
+    let sort = row
+        .get("titleSort")
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())
+        .unwrap_or(text_of(row, "title"));
     let anchored = tier_words(sort);
     if anchored.first() == terms.first() && !anchored.is_empty() {
         return "anchored";
@@ -113,7 +141,11 @@ pub(super) fn tag_tier(name: &str, terms: &[String]) -> Option<&'static str> {
     {
         return Some("prefix");
     }
-    if terms.len() == 1 && name_words[1..].iter().any(|word| word.starts_with(terms[0].as_str())) {
+    if terms.len() == 1
+        && name_words[1..]
+            .iter()
+            .any(|word| word.starts_with(terms[0].as_str()))
+    {
         return Some("fuzzy");
     }
     None
@@ -138,7 +170,11 @@ pub(super) fn search_score_value(row: &Value, needle: &str) -> f64 {
     let tier = search_tier(row, needle);
     let tail = row
         .get("audienceRating")
-        .and_then(|value| value.as_f64().or_else(|| value.as_str().and_then(|s| s.parse::<f64>().ok())))
+        .and_then(|value| {
+            value
+                .as_f64()
+                .or_else(|| value.as_str().and_then(|s| s.parse::<f64>().ok()))
+        })
         .map_or(0.0, |rating| rating.clamp(0.0, 10.0) / 10000.0);
     (base - tier_drop(tier) + tail).clamp(0.0, 1.0)
 }
@@ -176,7 +212,13 @@ pub(super) fn comparison_sort<T>(rows: &mut Vec<T>, score: &dyn Fn(&T) -> f64) {
         }
         changes
     }
-    fn insertion<T>(rows: &mut [T], score: &dyn Fn(&T) -> f64, first: usize, last: usize, incomplete: bool) -> bool {
+    fn insertion<T>(
+        rows: &mut [T],
+        score: &dyn Fn(&T) -> f64,
+        first: usize,
+        last: usize,
+        incomplete: bool,
+    ) -> bool {
         if last - first <= 5 {
             let indices = (first..last).collect::<Vec<_>>();
             small(rows, score, &indices);
@@ -212,7 +254,13 @@ pub(super) fn comparison_sort<T>(rows: &mut Vec<T>, score: &dyn Fn(&T) -> f64) {
             let points = if count < 1000 {
                 vec![first, middle, last_index]
             } else {
-                vec![first, first + count / 4, middle, middle + count / 4, last_index]
+                vec![
+                    first,
+                    first + count / 4,
+                    middle,
+                    middle + count / 4,
+                    last_index,
+                ]
             };
             let mut swaps = small(rows, score, &points);
             let mut left = first;
@@ -343,7 +391,10 @@ impl Runtime {
             return Vec::new();
         }
         let searchable = |row: &&Value| {
-            matches!(row.get("type").and_then(Value::as_str), Some("movie" | "show" | "season" | "episode"))
+            matches!(
+                row.get("type").and_then(Value::as_str),
+                Some("movie" | "show" | "season" | "episode")
+            )
         };
         if needle.chars().count() == 1 {
             return self
@@ -357,10 +408,17 @@ impl Runtime {
         }
         let hit = |text: &str| -> bool {
             let title_words = words(&fold_query(text));
-            if title_words.iter().any(|word| word.starts_with(needle.as_str())) || title_words.join(" ").starts_with(needle.as_str()) {
+            if title_words
+                .iter()
+                .any(|word| word.starts_with(needle.as_str()))
+                || title_words.join(" ").starts_with(needle.as_str())
+            {
                 return true;
             }
-            let terms = needle.split(' ').filter(|t| !t.is_empty()).collect::<Vec<_>>();
+            let terms = needle
+                .split(' ')
+                .filter(|t| !t.is_empty())
+                .collect::<Vec<_>>();
             if terms.len() < 2 {
                 return false;
             }
@@ -379,7 +437,9 @@ impl Runtime {
             if in_order {
                 return true;
             }
-            terms.iter().all(|term| title_words.iter().any(|word| word.starts_with(term)))
+            terms
+                .iter()
+                .all(|term| title_words.iter().any(|word| word.starts_with(term)))
         };
         self.catalog
             .items
@@ -392,11 +452,19 @@ impl Runtime {
 
     /// Every playlist row, smart first, then by sort title (`library.playlists`).
     fn playlist_rows(&self) -> Vec<Value> {
-        let mut rows = self.playlists.values().map(|p| self.playlist_row(p, false, true)).collect::<Vec<_>>();
+        let mut rows = self
+            .playlists
+            .values()
+            .map(|p| self.playlist_row(p, false, true))
+            .collect::<Vec<_>>();
         rows.sort_by_key(|row| {
             (
                 !row.get("smart").and_then(Value::as_bool).unwrap_or(false),
-                row.get("titleSort").and_then(Value::as_str).filter(|s| !s.is_empty()).unwrap_or(text_of(row, "title")).to_string(),
+                row.get("titleSort")
+                    .and_then(Value::as_str)
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or(text_of(row, "title"))
+                    .to_string(),
             )
         });
         rows
@@ -412,12 +480,16 @@ impl Runtime {
                     self.playlist_keys(playlist)
                         .iter()
                         .filter_map(|key| self.catalog.get(key))
-                        .map(|member| string_value(member.get("librarySectionID").unwrap_or(&Value::Null)))
+                        .map(|member| {
+                            string_value(member.get("librarySectionID").unwrap_or(&Value::Null))
+                        })
                         .collect()
                 })
                 .unwrap_or_default();
         }
-        HashSet::from([string_value(row.get("librarySectionID").unwrap_or(&Value::Null))])
+        HashSet::from([string_value(
+            row.get("librarySectionID").unwrap_or(&Value::Null),
+        )])
     }
 
     fn spelling_index(&self) -> crate::runtime::spellfix::SearchIndex {
@@ -425,7 +497,12 @@ impl Runtime {
     }
 
     /// (typed row lists, tag hits) for one query, both ranked (`search_matches`).
-    pub(super) fn search_matches(&self, text: &str, limit: Option<usize>, tagged_items: bool) -> (Typed, Tags) {
+    pub(super) fn search_matches(
+        &self,
+        text: &str,
+        limit: Option<usize>,
+        tagged_items: bool,
+    ) -> (Typed, Tags) {
         let mut rows = self.catalog_search(text);
         let score_query = text.trim().to_string();
         let needle = score_query.to_lowercase();
@@ -448,7 +525,12 @@ impl Runtime {
         let mut direct_tags: Vec<(&str, Value, Value, String, &'static str)> = Vec::new();
         for (hub, field) in SEARCH_TAG_HUBS {
             for row in &self.catalog.items {
-                for tag in row.get(*field).and_then(Value::as_array).into_iter().flatten() {
+                for tag in row
+                    .get(*field)
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                {
                     let name = text_of(tag, "tag").to_string();
                     if let Some(tier) = tag_tier(&name, &needle_terms) {
                         if needle.chars().count() >= 2 {
@@ -466,15 +548,26 @@ impl Runtime {
                     .flatten()
                     .any(|tag| tag_tier(text_of(tag, "tag"), &needle_terms).is_some())
             });
-        let normal_gate = rows.iter().any(|row| matches!(row.get("type").and_then(Value::as_str), Some("movie" | "show")))
-            || !playlist_rows.is_empty()
+        let normal_gate = rows.iter().any(|row| {
+            matches!(
+                row.get("type").and_then(Value::as_str),
+                Some("movie" | "show")
+            )
+        }) || !playlist_rows.is_empty()
             || collection_hit
             || !direct_tags.is_empty();
-        let spelling = if normal_gate { None } else { Some(self.spelling_index()) };
+        let spelling = if normal_gate {
+            None
+        } else {
+            Some(self.spelling_index())
+        };
         if let Some(spelling) = &spelling {
             let mut seen = rows.iter().filter_map(key_of).collect::<HashSet<_>>();
             for row in &self.catalog.items {
-                if !matches!(row.get("type").and_then(Value::as_str), Some("movie" | "show")) {
+                if !matches!(
+                    row.get("type").and_then(Value::as_str),
+                    Some("movie" | "show")
+                ) {
                     continue;
                 }
                 let key = key_of(row).unwrap_or_default();
@@ -493,14 +586,30 @@ impl Runtime {
                 let direct_keys = direct_tags
                     .iter()
                     .map(|(hub, row, _, name, _)| {
-                        (hub.to_string(), name.clone(), string_value(row.get("librarySectionID").unwrap_or(&Value::Null)))
+                        (
+                            hub.to_string(),
+                            name.clone(),
+                            string_value(row.get("librarySectionID").unwrap_or(&Value::Null)),
+                        )
                     })
                     .collect::<HashSet<_>>();
-                for (hub, field) in SEARCH_TAG_HUBS.iter().filter(|(hub, _)| matches!(*hub, "actor" | "director")) {
+                for (hub, field) in SEARCH_TAG_HUBS
+                    .iter()
+                    .filter(|(hub, _)| matches!(*hub, "actor" | "director"))
+                {
                     for row in &self.catalog.items {
-                        for tag in row.get(*field).and_then(Value::as_array).into_iter().flatten() {
+                        for tag in row
+                            .get(*field)
+                            .and_then(Value::as_array)
+                            .into_iter()
+                            .flatten()
+                        {
                             let name = text_of(tag, "tag").to_string();
-                            let key = (hub.to_string(), name.clone(), string_value(row.get("librarySectionID").unwrap_or(&Value::Null)));
+                            let key = (
+                                hub.to_string(),
+                                name.clone(),
+                                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)),
+                            );
                             if direct_keys.contains(&key) {
                                 continue;
                             }
@@ -519,19 +628,32 @@ impl Runtime {
                 if matched != hub {
                     continue;
                 }
-                let key = (name.clone(), string_value(row.get("librarySectionID").unwrap_or(&Value::Null)));
-                let entry = seen.entry(key, || TagEntry { tag: tag.clone(), rows: Vec::new(), row: row.clone(), tier, count: 0 });
+                let key = (
+                    name.clone(),
+                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)),
+                );
+                let entry = seen.entry(key, || TagEntry {
+                    tag: tag.clone(),
+                    rows: Vec::new(),
+                    row: row.clone(),
+                    tier,
+                    count: 0,
+                });
                 entry.rows.push(row.clone());
             }
             let mut kept = Vec::new();
             for (_key, mut entry) in seen.into_sorted() {
                 let section_type = self
-                    .section(&string_value(entry.row.get("librarySectionID").unwrap_or(&Value::Null)))
+                    .section(&string_value(
+                        entry.row.get("librarySectionID").unwrap_or(&Value::Null),
+                    ))
                     .and_then(|section| section.get("type"))
                     .and_then(Value::as_str)
                     .unwrap_or("")
                     .to_string();
-                if !entry.rows.iter().any(|row| row.get("type").and_then(Value::as_str) == Some(section_type.as_str())) {
+                if !entry.rows.iter().any(|row| {
+                    row.get("type").and_then(Value::as_str) == Some(section_type.as_str())
+                }) {
                     continue;
                 }
                 entry.count = entry.rows.len();
@@ -546,7 +668,15 @@ impl Runtime {
         }
         let mut typed: Typed = HashMap::new();
         for row in &rows {
-            typed.entry(row.get("type").and_then(Value::as_str).unwrap_or("").to_string()).or_default().push(row.clone());
+            typed
+                .entry(
+                    row.get("type")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                )
+                .or_default()
+                .push(row.clone());
         }
         if !playlist_rows.is_empty() {
             typed.insert("playlist".to_string(), playlist_rows);
@@ -562,22 +692,42 @@ impl Runtime {
                 if let Some(object) = reasoned.as_object_mut() {
                     object.insert("_searchReason".to_string(), json!([hub, tag]));
                 }
-                typed.entry(row.get("type").and_then(Value::as_str).unwrap_or("").to_string()).or_default().push(reasoned);
+                typed
+                    .entry(
+                        row.get("type")
+                            .and_then(Value::as_str)
+                            .unwrap_or("")
+                            .to_string(),
+                    )
+                    .or_default()
+                    .push(reasoned);
                 seen.insert(key);
             }
         }
         for (kind, candidates) in typed.iter_mut() {
             if matches!(kind.as_str(), "movie" | "show" | "episode") {
-                let mut title_hits = candidates.iter().filter(|r| r.get("_searchReason").is_none()).cloned().collect::<Vec<_>>();
-                let associated = candidates.iter().filter(|r| r.get("_searchReason").is_some()).cloned().collect::<Vec<_>>();
+                let mut title_hits = candidates
+                    .iter()
+                    .filter(|r| r.get("_searchReason").is_none())
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let associated = candidates
+                    .iter()
+                    .filter(|r| r.get("_searchReason").is_some())
+                    .cloned()
+                    .collect::<Vec<_>>();
                 title_hits.sort_by(|a, b| {
                     let key = |row: &Value| {
-                        (text_of(row, "title").as_bytes().to_vec(), key_of(row).and_then(|k| k.parse::<i64>().ok()).unwrap_or(0))
+                        (
+                            text_of(row, "title").as_bytes().to_vec(),
+                            key_of(row).and_then(|k| k.parse::<i64>().ok()).unwrap_or(0),
+                        )
                     };
                     key(b).cmp(&key(a))
                 });
-                let (exact, rest): (Vec<_>, Vec<_>) =
-                    title_hits.into_iter().partition(|row| search_tier(row, &score_query) == "exact");
+                let (exact, rest): (Vec<_>, Vec<_>) = title_hits
+                    .into_iter()
+                    .partition(|row| search_tier(row, &score_query) == "exact");
                 *candidates = exact.into_iter().chain(rest).chain(associated).collect();
             }
             let query = score_query.clone();
@@ -619,7 +769,11 @@ impl Runtime {
             .map(|(hub, rows)| {
                 let kept = rows
                     .into_iter()
-                    .filter(|entry| !hidden.contains(&string_value(entry.row.get("librarySectionID").unwrap_or(&Value::Null))))
+                    .filter(|entry| {
+                        !hidden.contains(&string_value(
+                            entry.row.get("librarySectionID").unwrap_or(&Value::Null),
+                        ))
+                    })
                     .collect();
                 (hub, kept)
             })
@@ -628,29 +782,59 @@ impl Runtime {
     }
 
     fn tag_result(&self, entry: &TagEntry, hub: &str) -> Map<String, Value> {
-        let section_id = entry.row.get("librarySectionID").cloned().unwrap_or(Value::Null);
+        let section_id = entry
+            .row
+            .get("librarySectionID")
+            .cloned()
+            .unwrap_or(Value::Null);
         let section_key = string_value(&section_id);
         let section = self.section(&section_key).cloned().unwrap_or(Value::Null);
         let id = entry.tag.get("id").cloned().unwrap_or(Value::Null);
         let id_text = string_value(&id);
-        let section_number = section_key.parse::<i64>().map(Value::from).unwrap_or(section_id.clone());
+        let section_number = section_key
+            .parse::<i64>()
+            .map(Value::from)
+            .unwrap_or(section_id.clone());
         let mut result = Map::new();
-        result.insert("key".to_string(), json!(format!("/library/sections/{section_key}/all?{hub}={id_text}")));
+        result.insert(
+            "key".to_string(),
+            json!(format!(
+                "/library/sections/{section_key}/all?{hub}={id_text}"
+            )),
+        );
         result.insert("librarySectionID".to_string(), section_id.clone());
-        result.insert("librarySectionKey".to_string(), json!(format!("/library/sections/{section_key}")));
-        result.insert("librarySectionTitle".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+        result.insert(
+            "librarySectionKey".to_string(),
+            json!(format!("/library/sections/{section_key}")),
+        );
+        result.insert(
+            "librarySectionTitle".to_string(),
+            section.get("title").cloned().unwrap_or(Value::Null),
+        );
         result.insert(
             "librarySectionType".to_string(),
-            json!(if section.get("type").and_then(Value::as_str) == Some("show") { 2 } else { 1 }),
+            json!(
+                if section.get("type").and_then(Value::as_str) == Some("show") {
+                    2
+                } else {
+                    1
+                }
+            ),
         );
         result.insert("reason".to_string(), json!("section"));
         result.insert("reasonID".to_string(), section_number);
-        result.insert("reasonTitle".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+        result.insert(
+            "reasonTitle".to_string(),
+            section.get("title").cloned().unwrap_or(Value::Null),
+        );
         result.insert("score".to_string(), json!(tag_score(entry.tier)));
         result.insert("type".to_string(), json!("tag"));
         result.insert("id".to_string(), id);
         result.insert("filter".to_string(), json!(format!("{hub}={id_text}")));
-        result.insert("tag".to_string(), entry.tag.get("tag").cloned().unwrap_or(Value::Null));
+        result.insert(
+            "tag".to_string(),
+            entry.tag.get("tag").cloned().unwrap_or(Value::Null),
+        );
         result.insert(
             "tagType".to_string(),
             json!(match hub {
@@ -662,7 +846,10 @@ impl Runtime {
         if let Some(key) = entry.tag.get("tagKey").filter(|v| !v.is_null() && *v != "") {
             result.insert("tagKey".to_string(), key.clone());
         } else if hub == "actor" || hub == "director" {
-            result.insert("tagKey".to_string(), json!(crate::hierarchy::person_tag_key(text_of(&entry.tag, "tag"))));
+            result.insert(
+                "tagKey".to_string(),
+                json!(crate::hierarchy::person_tag_key(text_of(&entry.tag, "tag"))),
+            );
         }
         if let Some(thumb) = entry.tag.get("thumb").filter(|v| !v.is_null() && *v != "") {
             result.insert("thumb".to_string(), thumb.clone());
@@ -672,7 +859,11 @@ impl Runtime {
     }
 
     /// The collections a query matches, as `tagType: 2` tag rows (cycles 15, 28, 30, 57).
-    fn collection_matches(&self, needle: &str, section_filter: Option<&str>) -> Vec<Map<String, Value>> {
+    fn collection_matches(
+        &self,
+        needle: &str,
+        section_filter: Option<&str>,
+    ) -> Vec<Map<String, Value>> {
         let terms = words(&fold_query(needle));
         let mut found = Vec::new();
         for section in &self.catalog.sections {
@@ -684,21 +875,38 @@ impl Runtime {
             let mut seen: BTreeMap<String, (Value, Vec<String>, &'static str)> = BTreeMap::new();
             if needle.chars().count() >= 2 {
                 for row in &self.catalog.items {
-                    if string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) != section_key {
+                    if string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                        != section_key
+                    {
                         continue;
                     }
-                    for tag in row.get("Collection").and_then(Value::as_array).into_iter().flatten() {
+                    for tag in row
+                        .get("Collection")
+                        .and_then(Value::as_array)
+                        .into_iter()
+                        .flatten()
+                    {
                         let name = text_of(tag, "tag").to_string();
-                        let Some(tier) = tag_tier(&name, &terms) else { continue };
-                        let entry = seen.entry(name).or_insert_with(|| (tag.clone(), Vec::new(), tier));
+                        let Some(tier) = tag_tier(&name, &terms) else {
+                            continue;
+                        };
+                        let entry = seen
+                            .entry(name)
+                            .or_insert_with(|| (tag.clone(), Vec::new(), tier));
                         let key = key_of(row).unwrap_or_default();
                         if !entry.1.contains(&key) {
                             entry.1.push(key);
                         }
                     }
                 }
-                for collection in self.collections.values().filter(|c| c.section == section_key) {
-                    let Some(tier) = tag_tier(&collection.title, &terms) else { continue };
+                for collection in self
+                    .collections
+                    .values()
+                    .filter(|c| c.section == section_key)
+                {
+                    let Some(tier) = tag_tier(&collection.title, &terms) else {
+                        continue;
+                    };
                     let row = self.dynamic_collection_row(collection);
                     let entry = seen.entry(collection.title.clone()).or_insert_with(|| {
                         (json!({"tag": collection.title, "id": row.get("index").cloned().unwrap_or(Value::Null)}), Vec::new(), tier)
@@ -713,19 +921,42 @@ impl Runtime {
             for (name, (tag, rows, tier)) in seen {
                 let id = tag.get("id").cloned().unwrap_or(Value::Null);
                 let id_text = string_value(&id);
-                let section_number = section_key.parse::<i64>().map(Value::from).unwrap_or(json!(section_key));
+                let section_number = section_key
+                    .parse::<i64>()
+                    .map(Value::from)
+                    .unwrap_or(json!(section_key));
                 let mut result = Map::new();
-                result.insert("key".to_string(), json!(format!("/library/sections/{section_key}/all?collection={id_text}")));
+                result.insert(
+                    "key".to_string(),
+                    json!(format!(
+                        "/library/sections/{section_key}/all?collection={id_text}"
+                    )),
+                );
                 result.insert("librarySectionID".to_string(), section_number.clone());
-                result.insert("librarySectionKey".to_string(), json!(format!("/library/sections/{section_key}")));
-                result.insert("librarySectionTitle".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+                result.insert(
+                    "librarySectionKey".to_string(),
+                    json!(format!("/library/sections/{section_key}")),
+                );
+                result.insert(
+                    "librarySectionTitle".to_string(),
+                    section.get("title").cloned().unwrap_or(Value::Null),
+                );
                 result.insert(
                     "librarySectionType".to_string(),
-                    json!(if section.get("type").and_then(Value::as_str) == Some("show") { 2 } else { 1 }),
+                    json!(
+                        if section.get("type").and_then(Value::as_str) == Some("show") {
+                            2
+                        } else {
+                            1
+                        }
+                    ),
                 );
                 result.insert("reason".to_string(), json!("section"));
                 result.insert("reasonID".to_string(), section_number);
-                result.insert("reasonTitle".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+                result.insert(
+                    "reasonTitle".to_string(),
+                    section.get("title").cloned().unwrap_or(Value::Null),
+                );
                 result.insert("score".to_string(), json!(tag_score(tier)));
                 result.insert("type".to_string(), json!("tag"));
                 result.insert("id".to_string(), id);
@@ -733,7 +964,11 @@ impl Runtime {
                 result.insert("tag".to_string(), json!(name));
                 result.insert("tagType".to_string(), json!(2));
                 result.insert("count".to_string(), json!(rows.len()));
-                if let Some(collection) = self.collections.values().find(|c| c.section == section_key && c.title == name) {
+                if let Some(collection) = self
+                    .collections
+                    .values()
+                    .find(|c| c.section == section_key && c.title == name)
+                {
                     if let Some(guid) = self.dynamic_collection_row(collection).get("guid") {
                         result.insert("guid".to_string(), guid.clone());
                     }
@@ -745,13 +980,21 @@ impl Runtime {
     }
 
     /// A search hit row, led by `librarySectionTitle` and then its `score` (cycle 25).
-    fn search_hit_row(&self, row: &Value, query: &HashMap<String, String>, score: Option<String>, flat: bool) -> Value {
+    fn search_hit_row(
+        &self,
+        row: &Value,
+        query: &HashMap<String, String>,
+        score: Option<String>,
+        flat: bool,
+    ) -> Value {
         let is_show = row.get("type").and_then(Value::as_str) == Some("show");
         let mut shown = self.grid_row(row, true, !flat, is_show);
         if !flat {
             shown = guid_gate(shown, query);
         }
-        let Some(object) = shown.as_object_mut() else { return shown };
+        let Some(object) = shown.as_object_mut() else {
+            return shown;
+        };
         if flat && !is_show {
             object.shift_remove("librarySectionID");
             object.shift_remove("librarySectionKey");
@@ -779,7 +1022,10 @@ impl Runtime {
         let wanted_section = match query.get("contentDirectoryID").filter(|v| !v.is_empty()) {
             Some(raw) => {
                 let normal = if int_param(raw, None) {
-                    raw.trim_start_matches('+').parse::<i64>().map(|n| n.to_string()).unwrap_or(raw.clone())
+                    raw.trim_start_matches('+')
+                        .parse::<i64>()
+                        .map(|n| n.to_string())
+                        .unwrap_or(raw.clone())
                 } else {
                     raw.clone()
                 };
@@ -810,16 +1056,25 @@ impl Runtime {
                 rows.retain(|row| self.search_row_sections(kind, row).contains(section));
             }
             for entries in tags.values_mut() {
-                entries.retain(|entry| &string_value(entry.row.get("librarySectionID").unwrap_or(&Value::Null)) == section);
+                entries.retain(|entry| {
+                    &string_value(entry.row.get("librarySectionID").unwrap_or(&Value::Null))
+                        == section
+                });
             }
         }
         let score_query = text.trim().to_string();
         let needle = score_query.to_lowercase();
         let mut order = SEARCH_HUBS.to_vec();
         if query.get("includeCollections").map(String::as_str) == Some("1") {
-            let position = order.iter().position(|(kind, _)| *kind == "collection").unwrap_or(0);
+            let position = order
+                .iter()
+                .position(|(kind, _)| *kind == "collection")
+                .unwrap_or(0);
             let collection = order.remove(position);
-            let track = order.iter().position(|(kind, _)| *kind == "track").unwrap_or(0);
+            let track = order
+                .iter()
+                .position(|(kind, _)| *kind == "track")
+                .unwrap_or(0);
             order.insert(track + 1, collection);
         }
         let mut hubs: Vec<(i64, Value)> = Vec::new();
@@ -829,22 +1084,45 @@ impl Runtime {
             for row in typed.get(kind).cloned().unwrap_or_default() {
                 let tier = search_tier(&row, &score_query);
                 classes.push(tier_class(tier));
-                let mut entry = self.search_hit_row(&row, query, Some(score_text(search_score_value(&row, &score_query))), false);
+                let mut entry = self.search_hit_row(
+                    &row,
+                    query,
+                    Some(score_text(search_score_value(&row, &score_query))),
+                    false,
+                );
                 if tier == "fuzzy" {
                     if let Some(object) = entry.as_object_mut() {
                         let reason = row.get("_searchReason").and_then(Value::as_array).cloned();
                         if let Some(reason) = reason {
                             object.insert("reason".to_string(), reason[0].clone());
-                            object.insert("reasonID".to_string(), reason[1].get("id").cloned().unwrap_or(Value::Null));
-                            object.insert("reasonTitle".to_string(), reason[1].get("tag").cloned().unwrap_or(Value::Null));
+                            object.insert(
+                                "reasonID".to_string(),
+                                reason[1].get("id").cloned().unwrap_or(Value::Null),
+                            );
+                            object.insert(
+                                "reasonTitle".to_string(),
+                                reason[1].get("tag").cloned().unwrap_or(Value::Null),
+                            );
                         } else {
                             let key = key_of(&row).unwrap_or_default();
                             'outer: for (hub, _) in SEARCH_TAG_HUBS {
                                 for entry_tag in tags.get(*hub).into_iter().flatten() {
-                                    if entry_tag.rows.iter().any(|tagged| key_of(tagged).as_deref() == Some(key.as_str())) {
+                                    if entry_tag.rows.iter().any(|tagged| {
+                                        key_of(tagged).as_deref() == Some(key.as_str())
+                                    }) {
                                         object.insert("reason".to_string(), json!(hub));
-                                        object.insert("reasonID".to_string(), entry_tag.tag.get("id").cloned().unwrap_or(Value::Null));
-                                        object.insert("reasonTitle".to_string(), entry_tag.tag.get("tag").cloned().unwrap_or(Value::Null));
+                                        object.insert(
+                                            "reasonID".to_string(),
+                                            entry_tag.tag.get("id").cloned().unwrap_or(Value::Null),
+                                        );
+                                        object.insert(
+                                            "reasonTitle".to_string(),
+                                            entry_tag
+                                                .tag
+                                                .get("tag")
+                                                .cloned()
+                                                .unwrap_or(Value::Null),
+                                        );
                                         break 'outer;
                                     }
                                 }
@@ -869,14 +1147,32 @@ impl Runtime {
                 let found = self.collection_matches(&needle, wanted_section.as_deref());
                 if !found.is_empty() {
                     for entry in &found {
-                        let score = entry.get("score").and_then(Value::as_str).and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
-                        classes.push(if score >= 0.9 { 0 } else if score >= 0.7 { 1 } else if score >= 0.5 { 2 } else { 3 });
+                        let score = entry
+                            .get("score")
+                            .and_then(Value::as_str)
+                            .and_then(|s| s.parse::<f64>().ok())
+                            .unwrap_or(0.0);
+                        classes.push(if score >= 0.9 {
+                            0
+                        } else if score >= 0.7 {
+                            1
+                        } else if score >= 0.5 {
+                            2
+                        } else {
+                            3
+                        });
                     }
                     hub.insert("size".to_string(), json!(found.len()));
-                    hub.insert("Directory".to_string(), Value::Array(found.into_iter().map(Value::Object).collect()));
+                    hub.insert(
+                        "Directory".to_string(),
+                        Value::Array(found.into_iter().map(Value::Object).collect()),
+                    );
                 }
             } else if let Some(entries) = tags.get(kind) {
-                let directory = entries.iter().map(|entry| Value::Object(self.tag_result(entry, kind))).collect::<Vec<_>>();
+                let directory = entries
+                    .iter()
+                    .map(|entry| Value::Object(self.tag_result(entry, kind)))
+                    .collect::<Vec<_>>();
                 classes.extend(entries.iter().map(|entry| tier_class(entry.tier)));
                 hub.insert("size".to_string(), json!(directory.len()));
                 hub.insert("Directory".to_string(), Value::Array(directory));
@@ -885,11 +1181,19 @@ impl Runtime {
         }
         comparison_sort(&mut hubs, &|hub: &(i64, Value)| hub.0 as f64);
         let hubs = hubs.into_iter().map(|(_, hub)| hub).collect::<Vec<_>>();
-        Response::json(200, json!({"MediaContainer": {"size": hubs.len(), "Hub": hubs}}))
+        Response::json(
+            200,
+            json!({"MediaContainer": {"size": hubs.len(), "Hub": hubs}}),
+        )
     }
 
     /// Whether one `searchTypes=` value selects this hit (cycle 28).
-    fn search_type_selects(&self, tokens: &Option<HashSet<String>>, kind: &str, row: &Value) -> bool {
+    fn search_type_selects(
+        &self,
+        tokens: &Option<HashSet<String>>,
+        kind: &str,
+        row: &Value,
+    ) -> bool {
         let Some(tokens) = tokens else { return true };
         if matches!(kind, "actor" | "director") {
             return tokens.contains("people");
@@ -902,7 +1206,11 @@ impl Runtime {
         }
         let mut families = HashSet::new();
         for section_id in self.search_row_sections(kind, row) {
-            let is_show = self.section(&section_id).and_then(|s| s.get("type")).and_then(Value::as_str) == Some("show");
+            let is_show = self
+                .section(&section_id)
+                .and_then(|s| s.get("type"))
+                .and_then(Value::as_str)
+                == Some("show");
             if is_show {
                 families.insert("tv");
             } else {
@@ -948,7 +1256,9 @@ impl Runtime {
                 if !self.search_type_selects(&tokens, kind, row) {
                     continue;
                 }
-                let score = score_text(search_score_value(row, &score_query)).parse::<f64>().unwrap_or(0.0);
+                let score = score_text(search_score_value(row, &score_query))
+                    .parse::<f64>()
+                    .unwrap_or(0.0);
                 results.push(json!({"score": score, "Metadata": self.search_hit_row(row, query, None, true)}));
             }
         };
@@ -972,7 +1282,16 @@ impl Runtime {
                 results.push(flat_tag(self.tag_result(entry, kind)));
             }
         };
-        for kind in ["movie", "show", "episode", "artist", "album", "track", "collection", "photoalbum"] {
+        for kind in [
+            "movie",
+            "show",
+            "episode",
+            "artist",
+            "album",
+            "track",
+            "collection",
+            "photoalbum",
+        ] {
             metadata(&mut results, kind);
         }
         tag_rows(&mut results, "autotag");
@@ -992,7 +1311,10 @@ impl Runtime {
             metadata(&mut results, kind);
         }
         results.truncate(limit);
-        Response::json(200, json!({"MediaContainer": {"size": results.len(), "SearchResult": results}}))
+        Response::json(
+            200,
+            json!({"MediaContainer": {"size": results.len(), "SearchResult": results}}),
+        )
     }
 }
 
@@ -1037,12 +1359,21 @@ impl Runtime {
                 // `allowSync` nor the `librarySectionUUID` a client keys a hit to its
                 // library by.
                 let section_id = row.get("librarySectionID").cloned().unwrap_or(Value::Null);
-                let section = self.section(&string_value(&section_id)).cloned().unwrap_or(Value::Null);
+                let section = self
+                    .section(&string_value(&section_id))
+                    .cloned()
+                    .unwrap_or(Value::Null);
                 let mut lead = Map::new();
                 lead.insert("allowSync".to_string(), json!(true));
                 lead.insert("librarySectionID".to_string(), section_id);
-                lead.insert("librarySectionTitle".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
-                lead.insert("librarySectionUUID".to_string(), section.get("uuid").cloned().unwrap_or(Value::Null));
+                lead.insert(
+                    "librarySectionTitle".to_string(),
+                    section.get("title").cloned().unwrap_or(Value::Null),
+                );
+                lead.insert(
+                    "librarySectionUUID".to_string(),
+                    section.get("uuid").cloned().unwrap_or(Value::Null),
+                );
                 lead.insert("personal".to_string(), json!(true));
                 lead.insert("sourceTitle".to_string(), json!(self.friendly));
                 let body = if key_of(row).is_some_and(|key| self.catalog.get(&key).is_some()) {
@@ -1050,7 +1381,11 @@ impl Runtime {
                 } else {
                     let mut plain = row.clone();
                     if let Some(object) = plain.as_object_mut() {
-                        for name in ["librarySectionID", "librarySectionTitle", "librarySectionKey"] {
+                        for name in [
+                            "librarySectionID",
+                            "librarySectionTitle",
+                            "librarySectionKey",
+                        ] {
                             object.shift_remove(name);
                         }
                     }

@@ -41,10 +41,17 @@ impl Runtime {
                 key_of(other).unwrap_or_default() != key && other.get("type") == row.get("type")
             })
             .filter_map(|other| {
-                let shared = genres.intersection(&tag_names(other.get("Genre"), None)).count()
-                    + roles.intersection(&tag_names(other.get("Role"), None)).count();
+                let shared = genres
+                    .intersection(&tag_names(other.get("Genre"), None))
+                    .count()
+                    + roles
+                        .intersection(&tag_names(other.get("Role"), None))
+                        .count();
                 (shared >= 2).then(|| {
-                    let released = other.get("originallyAvailableAt").map(string_value).unwrap_or_default();
+                    let released = other
+                        .get("originallyAvailableAt")
+                        .map(string_value)
+                        .unwrap_or_default();
                     (shared, released, other.clone())
                 })
             })
@@ -56,7 +63,11 @@ impl Runtime {
                 .then_with(|| left.1.is_empty().cmp(&right.1.is_empty()))
                 .then_with(|| right.1.cmp(&left.1))
         });
-        scored.into_iter().take(SIMILAR_CAP).map(|(_, _, row)| row).collect()
+        scored
+            .into_iter()
+            .take(SIMILAR_CAP)
+            .map(|(_, _, row)| row)
+            .collect()
     }
 
     /// Cycle 57, measured on plexscratch42 and plexscratch: the
@@ -64,7 +75,11 @@ impl Runtime {
     /// while the collection has TWO members or more, and while it exists it REPLACES
     /// `movie.similar`.  An item in two such collections answers the earlier-created
     /// collection's; a smart collection contributes no shelf.
-    fn collection_related_hub(&self, row: &Value, query: &HashMap<String, String>) -> Option<Value> {
+    fn collection_related_hub(
+        &self,
+        row: &Value,
+        query: &HashMap<String, String>,
+    ) -> Option<Value> {
         let key = key_of(row)?;
         let mut collections = self.collections.values().collect::<Vec<_>>();
         collections.sort_by_key(|collection| collection.id.parse::<i64>().unwrap_or(i64::MAX));
@@ -82,18 +97,29 @@ impl Runtime {
             }
             // Release date, then year with nulls last (3, 1, 4 for 2006, 2008, 2010).
             rows.sort_by_key(|row| {
-                let released = row.get("originallyAvailableAt").map(string_value).unwrap_or_default();
+                let released = row
+                    .get("originallyAvailableAt")
+                    .map(string_value)
+                    .unwrap_or_default();
                 let year = row.get("year").and_then(Value::as_i64);
                 (
                     !released.is_empty(),
                     released,
                     year.is_none(),
                     year.unwrap_or(0),
-                    string_value(row.get("titleSort").or_else(|| row.get("title")).unwrap_or(&Value::Null))
-                        .to_lowercase(),
+                    string_value(
+                        row.get("titleSort")
+                            .or_else(|| row.get("title"))
+                            .unwrap_or(&Value::Null),
+                    )
+                    .to_lowercase(),
                 )
             });
-            let kind = if collection.subtype.is_empty() { "movie" } else { collection.subtype.as_str() };
+            let kind = if collection.subtype.is_empty() {
+                "movie"
+            } else {
+                collection.subtype.as_str()
+            };
             let type_number = match kind {
                 "show" => 2,
                 "season" => 3,
@@ -102,7 +128,11 @@ impl Runtime {
             };
             let tag = tag_id(
                 "Collection",
-                if collection.tag.is_empty() { &collection.title } else { &collection.tag },
+                if collection.tag.is_empty() {
+                    &collection.title
+                } else {
+                    &collection.tag
+                },
             );
             let section = &collection.section;
             let mut built = self.hub(
@@ -127,7 +157,10 @@ impl Runtime {
                 .and_then(Value::as_array)
                 .map(|rows| rows.iter().filter_map(key_of).collect::<Vec<_>>())
                 .unwrap_or_default();
-            built.insert("hubKey".to_string(), json!(format!("/library/metadata/{}", keys.join(","))));
+            built.insert(
+                "hubKey".to_string(),
+                json!(format!("/library/metadata/{}", keys.join(","))),
+            );
             return Some(Value::Object(built));
         }
         None
@@ -136,7 +169,12 @@ impl Runtime {
     /// An item's related shelves, shared by every endpoint that carries them: the
     /// collection shelf when there is one, else the FULL-row `movie.similar` (or
     /// `show.similar`) hub.
-    pub(super) fn related_hubs(&self, row: &Value, query: &HashMap<String, String>, collections: bool) -> Vec<Value> {
+    pub(super) fn related_hubs(
+        &self,
+        row: &Value,
+        query: &HashMap<String, String>,
+        collections: bool,
+    ) -> Vec<Value> {
         if collections {
             if let Some(shelf) = self.collection_related_hub(row, query) {
                 return vec![shelf];
@@ -154,7 +192,11 @@ impl Runtime {
         let identifier = format!("{kind}.similar");
         let mut built = self.hub(
             &identifier,
-            if kind == "show" { "Related Shows" } else { "Related Movies" },
+            if kind == "show" {
+                "Related Shows"
+            } else {
+                "Related Movies"
+            },
             &rows,
             query.get("count"),
             kind,
@@ -173,19 +215,28 @@ impl Runtime {
         if keys.is_empty() {
             built.shift_remove("hubKey");
         } else {
-            built.insert("hubKey".to_string(), json!(format!("/library/metadata/{}", keys.join(","))));
+            built.insert(
+                "hubKey".to_string(),
+                json!(format!("/library/metadata/{}", keys.join(","))),
+            );
         }
         vec![Value::Object(built)]
     }
 
     /// `/hubs/metadata/{id}/{related,postplay}` -- the preplay page's shelves.
-    pub(super) fn route_item_hubs(&self, rating_key: &str, leaf: &str, query: &HashMap<String, String>) -> Response {
+    pub(super) fn route_item_hubs(
+        &self,
+        rating_key: &str,
+        leaf: &str,
+        query: &HashMap<String, String>,
+    ) -> Response {
         if leaf != "related" && leaf != "postplay" {
             return Response::error(404, "plexsim: not found");
         }
         let row = if !rating_key.is_empty() && rating_key.bytes().all(|b| b.is_ascii_digit()) {
             let trimmed = rating_key.trim_start_matches('0');
-            self.catalog.get(if trimmed.is_empty() { "0" } else { trimmed })
+            self.catalog
+                .get(if trimmed.is_empty() { "0" } else { trimmed })
         } else {
             None
         };
@@ -248,8 +299,14 @@ impl Runtime {
         let mut fields = Map::from_iter([("Hub".to_string(), Value::Array(hubs))]);
         for (name, value) in [
             ("librarySectionID", row.get("librarySectionID").cloned()),
-            ("librarySectionTitle", section.and_then(|s| s.get("title")).cloned()),
-            ("librarySectionUUID", section.and_then(|s| s.get("uuid")).cloned()),
+            (
+                "librarySectionTitle",
+                section.and_then(|s| s.get("title")).cloned(),
+            ),
+            (
+                "librarySectionUUID",
+                section.and_then(|s| s.get("uuid")).cloned(),
+            ),
         ] {
             if let Some(value) = value.filter(|value| !value.is_null()) {
                 fields.insert(name.to_string(), value);
@@ -272,8 +329,13 @@ impl Runtime {
             .related_hubs(row, query, true)
             .into_iter()
             .map(|mut hub| {
-                let rows = hub.get("Metadata").and_then(Value::as_array).cloned().unwrap_or_default();
-                let more = rows.len() > cap || hub.get("more").and_then(Value::as_bool) == Some(true);
+                let rows = hub
+                    .get("Metadata")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                let more =
+                    rows.len() > cap || hub.get("more").and_then(Value::as_bool) == Some(true);
                 let kept = rows.into_iter().take(cap).collect::<Vec<_>>();
                 hub["size"] = json!(kept.len());
                 hub["more"] = json!(more);
@@ -296,7 +358,8 @@ impl Runtime {
     pub(super) fn expand_full_rows(&self, rows: &mut [Value], query: &HashMap<String, String>) {
         let include_int = |name: &str| {
             query.get(name).is_some_and(|value| {
-                int_param(value, Some(32)) && value.trim_start_matches('+').parse::<i64>().unwrap_or(0) != 0
+                int_param(value, Some(32))
+                    && value.trim_start_matches('+').parse::<i64>().unwrap_or(0) != 0
             })
         };
         let related = include_int("includeRelated");
@@ -319,8 +382,12 @@ impl Runtime {
             related_query.insert("includeRelatedCount".to_string(), count.clone());
         }
         for projected in rows.iter_mut() {
-            let Some(key) = key_of(projected) else { continue };
-            let Some(stored) = self.catalog.get(&key).cloned() else { continue };
+            let Some(key) = key_of(projected) else {
+                continue;
+            };
+            let Some(stored) = self.catalog.get(&key).cloned() else {
+                continue;
+            };
             if !blocks.is_empty() {
                 self.apply_detail_blocks(&stored, projected, &blocks);
             }

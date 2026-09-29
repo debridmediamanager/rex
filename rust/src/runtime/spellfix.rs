@@ -647,7 +647,10 @@ fn transliterate(text: &str) -> String {
             out.push_str(special);
             continue;
         }
-        let decomposed = nfkd_base(ch).chars().filter(|c| (*c as u32) < 128).collect::<String>();
+        let decomposed = nfkd_base(ch)
+            .chars()
+            .filter(|c| (*c as u32) < 128)
+            .collect::<String>();
         if decomposed.is_empty() {
             out.push('?');
         } else {
@@ -679,12 +682,20 @@ fn phonehash(value: &str) -> String {
                 index += 1;
                 continue;
             }
-            if index + 2 < chars.len() && ch == 't' && chars[index + 1] == 'c' && chars[index + 2] == 'h' {
+            if index + 2 < chars.len()
+                && ch == 't'
+                && chars[index + 1] == 'c'
+                && chars[index + 2] == 'h'
+            {
                 index += 1;
                 continue;
             }
         }
-        let current = if initial { init_class(ch) } else { mid_class(ch) };
+        let current = if initial {
+            init_class(ch)
+        } else {
+            mid_class(ch)
+        };
         index += 1;
         if current == SPACE {
             continue;
@@ -745,7 +756,10 @@ fn substitute_cost(previous: Option<char>, source: char, target: char) -> i64 {
     if source == target {
         return 0;
     }
-    if source.is_alphabetic() && target.is_alphabetic() && source.to_lowercase().eq(target.to_lowercase()) {
+    if source.is_alphabetic()
+        && target.is_alphabetic()
+        && source.to_lowercase().eq(target.to_lowercase())
+    {
         return 0;
     }
     let source_class = character_class(previous, source);
@@ -883,7 +897,13 @@ impl Vocabulary {
             .map(|(index, (word, rank))| {
                 let k1 = transliterate(&word).to_lowercase();
                 let k2 = phonehash(&k1);
-                Word { rowid: index + 1, word, rank, k1, k2 }
+                Word {
+                    rowid: index + 1,
+                    word,
+                    rank,
+                    k1,
+                    k2,
+                }
             })
             .collect::<Vec<_>>();
         rows.sort_by(|a, b| a.k2.cmp(&b.k2).then(a.rowid.cmp(&b.rowid)));
@@ -896,7 +916,11 @@ impl Vocabulary {
         let hashed = phonehash(&pattern);
         let mut scope = 3;
         if hashed.len() <= scope {
-            scope = if hashed.len() > 2 { hashed.len() - 1 } else { hashed.len() };
+            scope = if hashed.len() > 2 {
+                hashed.len() - 1
+            } else {
+                hashed.len()
+            };
         }
         let prefix = &hashed[..scope];
         let mut selected: Vec<(i64, String)> = Vec::new();
@@ -959,9 +983,14 @@ impl Vocabulary {
         if groups.is_empty() {
             return false;
         }
-        let haystack = tokens(text).into_iter().map(|word| collation_key(&word)).collect::<Vec<_>>();
+        let haystack = tokens(text)
+            .into_iter()
+            .map(|word| collation_key(&word))
+            .collect::<Vec<_>>();
         groups.iter().all(|(candidates, prefix)| {
-            haystack.iter().any(|word| candidates.contains(word) || word.starts_with(prefix.as_str()))
+            haystack
+                .iter()
+                .any(|word| candidates.contains(word) || word.starts_with(prefix.as_str()))
         })
     }
 }
@@ -974,7 +1003,17 @@ pub struct SearchIndex {
 }
 
 const TAG_FIELDS: &[&str] = &[
-    "Genre", "Collection", "Director", "Writer", "Producer", "Role", "Country", "Label", "Similar", "Mood", "Style",
+    "Genre",
+    "Collection",
+    "Director",
+    "Writer",
+    "Producer",
+    "Role",
+    "Country",
+    "Label",
+    "Similar",
+    "Mood",
+    "Style",
 ];
 const TAG_CHILDREN: &[&str] = &["Chapter", "Review", "Marker", "CommonSenseMedia", "Network"];
 
@@ -986,18 +1025,35 @@ impl SearchIndex {
         let mut tags: Vec<String> = static_tags.to_vec();
         for row in rows {
             if let Some(title) = text(row.get("title")) {
-                let sort = text(row.get("titleSort")).filter(|s| !s.is_empty()).unwrap_or_else(|| title.clone());
+                let sort = text(row.get("titleSort"))
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or_else(|| title.clone());
                 titles.push(format!("{title} {sort}"));
             }
             for field in TAG_FIELDS.iter().chain(TAG_CHILDREN) {
-                for child in row.get(*field).and_then(Value::as_array).into_iter().flatten() {
+                for child in row
+                    .get(*field)
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                {
                     tags.extend(text(child.get("tag")));
                 }
             }
-            for child in row.get("Guid").and_then(Value::as_array).into_iter().flatten() {
+            for child in row
+                .get("Guid")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
                 tags.extend(text(child.get("id")));
             }
-            for child in row.get("Rating").and_then(Value::as_array).into_iter().flatten() {
+            for child in row
+                .get("Rating")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
                 tags.extend(text(child.get("image")));
             }
             tags.extend(text(row.get("studio")));
@@ -1019,7 +1075,11 @@ impl SearchIndex {
     pub fn metadata_matches(&self, row: &serde_json::Value, query: &str) -> bool {
         let text = ["title", "titleSort", "originalTitle"]
             .iter()
-            .map(|field| row.get(*field).and_then(serde_json::Value::as_str).unwrap_or(""))
+            .map(|field| {
+                row.get(*field)
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+            })
             .collect::<Vec<_>>()
             .join(" ");
         self.metadata.matches(&text, query)

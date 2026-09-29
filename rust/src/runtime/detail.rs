@@ -9,13 +9,11 @@
 use super::*;
 
 fn unmatched_guid(row: &Value) -> bool {
-    row.get("guid")
-        .and_then(Value::as_str)
-        .is_some_and(|guid| {
-            guid.starts_with("local://")
-                || guid.starts_with("tv.plex.agents.none://")
-                || guid.starts_with("none://")
-        })
+    row.get("guid").and_then(Value::as_str).is_some_and(|guid| {
+        guid.starts_with("local://")
+            || guid.starts_with("tv.plex.agents.none://")
+            || guid.starts_with("none://")
+    })
 }
 
 impl Runtime {
@@ -26,7 +24,11 @@ impl Runtime {
         query: &HashMap<String, String>,
     ) {
         let include = |name: &str| query.get(name).is_some_and(|value| is_true_option(value));
-        let kind = row.get("type").and_then(Value::as_str).unwrap_or_default().to_string();
+        let kind = row
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
         let key = key_of(row).unwrap_or_default();
         let Some(object) = detail.as_object_mut() else {
             return;
@@ -56,7 +58,10 @@ impl Runtime {
                 }
             }
             if object.get("Guid").is_none() {
-                if let Some(guid) = row.get("guid").filter(|guid| !string_value(guid).is_empty()) {
+                if let Some(guid) = row
+                    .get("guid")
+                    .filter(|guid| !string_value(guid).is_empty())
+                {
                     object.insert("Guid".to_string(), json!([{"id": guid}]));
                 }
             }
@@ -98,21 +103,20 @@ impl Runtime {
             // show (no view state at all) carries the first episode the library
             // holds, specials last.
             let show_key = if kind == "season" {
-                row.get("parentRatingKey").map(string_value).unwrap_or_default()
+                row.get("parentRatingKey")
+                    .map(string_value)
+                    .unwrap_or_default()
             } else {
                 key.clone()
             };
-            let mut pick = self
-                .continue_watching(false)
-                .into_iter()
-                .find(|candidate| {
-                    candidate.get("type").and_then(Value::as_str) == Some("episode")
-                        && candidate
-                            .get("grandparentRatingKey")
-                            .map(string_value)
-                            .as_deref()
-                            == Some(show_key.as_str())
-                });
+            let mut pick = self.continue_watching(false).into_iter().find(|candidate| {
+                candidate.get("type").and_then(Value::as_str) == Some("episode")
+                    && candidate
+                        .get("grandparentRatingKey")
+                        .map(string_value)
+                        .as_deref()
+                        == Some(show_key.as_str())
+            });
             if pick.is_none() {
                 let leaves = self
                     .leaves(&show_key)
@@ -121,19 +125,19 @@ impl Runtime {
                     .collect::<Vec<_>>();
                 let number = |leaf: &Value, name: &str| {
                     leaf.get(name)
-                        .and_then(|value| value.as_i64().or_else(|| string_value(value).parse().ok()))
+                        .and_then(|value| {
+                            value.as_i64().or_else(|| string_value(value).parse().ok())
+                        })
                         .unwrap_or(0)
                 };
                 let untouched = !leaves
                     .iter()
                     .any(|leaf| number(leaf, "viewCount") != 0 || number(leaf, "viewOffset") != 0);
                 if untouched {
-                    pick = leaves
-                        .into_iter()
-                        .min_by_key(|leaf| {
-                            let season = number(leaf, "parentIndex");
-                            (season == 0, season, number(leaf, "index"))
-                        });
+                    pick = leaves.into_iter().min_by_key(|leaf| {
+                        let season = number(leaf, "parentIndex");
+                        (season == 0, season, number(leaf, "index"))
+                    });
                 }
             }
             if let Some(chosen) = pick {

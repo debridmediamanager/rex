@@ -378,7 +378,10 @@ fn field_locked(row: &Map<String, Value>, field: &str) -> bool {
         .flatten()
         .any(|entry| {
             entry.get("name").and_then(Value::as_str) == Some(field)
-                && entry.get("locked").and_then(Value::as_bool).unwrap_or(false)
+                && entry
+                    .get("locked")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
         })
 }
 
@@ -468,8 +471,16 @@ fn empty_title(row: &mut Map<String, Value>, old_title: &str) {
     if kind == "season" || kind == "episode" {
         row.insert("_generatedTitle".to_string(), json!(true));
         let index = row.get("index").map(string_value).unwrap_or_default();
-        let label = if kind == "season" { "Season" } else { "Episode" };
-        let index = if index.is_empty() { "None".to_string() } else { index };
+        let label = if kind == "season" {
+            "Season"
+        } else {
+            "Episode"
+        };
+        let index = if index.is_empty() {
+            "None".to_string()
+        } else {
+            index
+        };
         row.insert("title".to_string(), json!(format!("{label} {index}")));
     }
 }
@@ -867,10 +878,7 @@ impl Runtime {
             return Err(refuse(400, "bad request"));
         }
         let mut outcome = EditOutcome::default();
-        let old_title = row
-            .get("title")
-            .map(string_value)
-            .unwrap_or_default();
+        let old_title = row.get("title").map(string_value).unwrap_or_default();
         let sort_touched = items.iter().any(|(name, _)| {
             matches!(
                 name.as_str(),
@@ -1020,7 +1028,10 @@ impl Runtime {
                 row.shift_remove("year");
             }
         }
-        let mut tag_types = adding.iter().map(|(name, _)| name.clone()).collect::<Vec<_>>();
+        let mut tag_types = adding
+            .iter()
+            .map(|(name, _)| name.clone())
+            .collect::<Vec<_>>();
         for (name, _) in &removing {
             if !tag_types.contains(name) {
                 tag_types.push(name.clone());
@@ -1084,7 +1095,11 @@ impl Runtime {
             written.insert("title".to_string());
         } else if written.contains("index") && row.get("_generatedTitle").is_some() {
             // Measured: a generated title follows the index.
-            let label = if kind == "season" { "Season" } else { "Episode" };
+            let label = if kind == "season" {
+                "Season"
+            } else {
+                "Episode"
+            };
             let index = row.get("index").map(string_value).unwrap_or_default();
             row.insert("title".to_string(), json!(format!("{label} {index}")));
             written.insert("title".to_string());
@@ -1117,7 +1132,11 @@ impl Runtime {
             self.follow_parent(&row, written);
         }
         if kind == "episode" && written.contains("contentRating") {
-            let empty = row.get("contentRating").map(string_value).unwrap_or_default().is_empty();
+            let empty = row
+                .get("contentRating")
+                .map(string_value)
+                .unwrap_or_default()
+                .is_empty();
             if empty {
                 // Cycle 20: the inheritance is a READ-TIME fallback -- clearing an
                 // episode's own rating makes it read the show's AT ONCE.
@@ -1142,7 +1161,10 @@ impl Runtime {
         if kind == "season" && written.contains("year") {
             // Cycle 16: a season with no year of its own carries the show's as
             // `parentYear`, and one that LOSES its year gains it in the same read.
-            let parent_key = row.get("parentRatingKey").map(string_value).unwrap_or_default();
+            let parent_key = row
+                .get("parentRatingKey")
+                .map(string_value)
+                .unwrap_or_default();
             let parent_year = self
                 .catalog
                 .get(&parent_key)
@@ -1164,7 +1186,10 @@ impl Runtime {
                 }
             }
         }
-        let section = row.get("librarySectionID").map(string_value).unwrap_or_default();
+        let section = row
+            .get("librarySectionID")
+            .map(string_value)
+            .unwrap_or_default();
         for title in &outcome.collection_added {
             let lowered = title.to_lowercase();
             if let Some(collection) = self.collections.values_mut().find(|collection| {
@@ -1232,7 +1257,10 @@ impl Runtime {
             let Some(child) = child.as_object_mut() else {
                 continue;
             };
-            let parent = child.get("parentRatingKey").map(string_value).unwrap_or_default();
+            let parent = child
+                .get("parentRatingKey")
+                .map(string_value)
+                .unwrap_or_default();
             let grandparent = child
                 .get("grandparentRatingKey")
                 .map(string_value)

@@ -64,7 +64,10 @@ impl Runtime {
         }
         let at = now();
         let mut entry = Map::new();
-        entry.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        entry.insert(
+            "identifier".to_string(),
+            json!("com.plexapp.plugins.library"),
+        );
         entry.insert("sectionID".to_string(), json!(section_id));
         entry.insert("itemID".to_string(), json!(key));
         entry.insert(
@@ -155,7 +158,14 @@ impl Runtime {
                 };
                 let mut shown = self.grid_row(&row, false, false, false);
                 if let Some(object) = shown.as_object_mut() {
-                    for tag in ["Genre", "Country", "Director", "Writer", "Role", "Collection"] {
+                    for tag in [
+                        "Genre",
+                        "Country",
+                        "Director",
+                        "Writer",
+                        "Role",
+                        "Collection",
+                    ] {
                         object.shift_remove(tag);
                     }
                     object.insert("state".to_string(), json!(state));
@@ -178,7 +188,10 @@ impl Runtime {
             }),
         );
         body.insert("content".to_string(), json!("secondary"));
-        body.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        body.insert(
+            "identifier".to_string(),
+            json!("com.plexapp.plugins.library"),
+        );
         body.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
         body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
         body.insert(

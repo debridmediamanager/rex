@@ -12,7 +12,13 @@ use super::*;
 pub(super) const PLAYLIST_BASE: i64 = 40000;
 
 /// A list's per-user state, spliced in after `composite` (or `playlistType`).
-const LIST_STATE: &[&str] = &["userRating", "viewOffset", "viewCount", "lastViewedAt", "lastRatedAt"];
+const LIST_STATE: &[&str] = &[
+    "userRating",
+    "viewOffset",
+    "viewCount",
+    "lastViewedAt",
+    "lastRatedAt",
+];
 
 impl Runtime {
     pub(super) fn playlist_columns(&self, id: &str) -> Map<String, Value> {
@@ -50,11 +56,17 @@ impl Runtime {
             })
             .sum::<i64>()
             * 1000;
-        let stamp = columns.get("updatedAt").and_then(Value::as_i64).unwrap_or_else(now);
+        let stamp = columns
+            .get("updatedAt")
+            .and_then(Value::as_i64)
+            .unwrap_or_else(now);
         let unmatched = columns.get("_unmatched").is_some();
         let mut row = Map::new();
         row.insert("ratingKey".to_string(), json!(playlist.id));
-        row.insert("key".to_string(), json!(format!("/playlists/{}/items", playlist.id)));
+        row.insert(
+            "key".to_string(),
+            json!(format!("/playlists/{}/items", playlist.id)),
+        );
         row.insert(
             "guid".to_string(),
             json!(if unmatched {
@@ -84,12 +96,22 @@ impl Runtime {
             columns.get("addedAt").cloned().unwrap_or(json!(stamp)),
         );
         row.insert("updatedAt".to_string(), json!(stamp));
-        if let Some(sort) = columns.get("titleSort").filter(|sort| !string_value(sort).is_empty()) {
+        if let Some(sort) = columns
+            .get("titleSort")
+            .filter(|sort| !string_value(sort).is_empty())
+        {
             row.insert("titleSort".to_string(), sort.clone());
         }
         // Cycle 16: `PUT /playlists/{id}` takes the item edit grammar, so the row
         // carries back what it stored.
-        for stored in ["year", "studio", "originallyAvailableAt", "thumb", "art", "Field"] {
+        for stored in [
+            "year",
+            "studio",
+            "originallyAvailableAt",
+            "thumb",
+            "art",
+            "Field",
+        ] {
             if let Some(value) = columns.get(stored).filter(|value| {
                 !value.is_null()
                     && !(value.is_string() && string_value(value).is_empty())
@@ -172,7 +194,10 @@ impl Runtime {
         // Measured on a writable copy of the reference: a create needs a `title`, a
         // `type` and a `uri` (each missing one is a 400), a type outside
         // video/audio/photo is a 500.
-        if ["title", "type", "uri"].iter().any(|name| query.get(*name).is_none()) {
+        if ["title", "type", "uri"]
+            .iter()
+            .any(|name| query.get(*name).is_none())
+        {
             return Response::error(400, "plexsim: bad request");
         }
         let kind = query.get("type").cloned().unwrap_or_default();
@@ -356,9 +381,16 @@ impl Runtime {
                 }
             }
         }
-        let stamp_before = columns.get("updatedAt").map(string_value).unwrap_or_default();
+        let stamp_before = columns
+            .get("updatedAt")
+            .map(string_value)
+            .unwrap_or_default();
         for name in ["thumb", "art"].into_iter().filter(|_| !alias) {
-            if query.get(name).or_else(|| query.get(&format!("{name}.value"))).is_some() {
+            if query
+                .get(name)
+                .or_else(|| query.get(&format!("{name}.value")))
+                .is_some()
+            {
                 // the path a real PMS mints is under the library metadata tree, keyed by
                 // the playlist's own ratingKey -- measured
                 columns.insert(
@@ -369,20 +401,24 @@ impl Runtime {
         }
         // `edit_playlist`: `title=` stores the EMPTY string; an emptied list keeps its
         // old title's sort form, a new title re-derives it.
-        let title = query.get("title.value").or_else(|| query.get("title")).cloned();
+        let title = query
+            .get("title.value")
+            .or_else(|| query.get("title"))
+            .cloned();
         let old_title = playlist.title.clone();
         if let Some(title) = &title {
             columns.insert("title".to_string(), json!(title));
             if title.is_empty() {
                 if !old_title.is_empty() {
-                    let locked = columns
-                        .get("Field")
-                        .and_then(Value::as_array)
-                        .is_some_and(|fields| {
-                            fields.iter().any(|field| {
-                                field.get("name").and_then(Value::as_str) == Some("titleSort")
-                            })
-                        });
+                    let locked =
+                        columns
+                            .get("Field")
+                            .and_then(Value::as_array)
+                            .is_some_and(|fields| {
+                                fields.iter().any(|field| {
+                                    field.get("name").and_then(Value::as_str) == Some("titleSort")
+                                })
+                            });
                     if !locked {
                         columns.insert(
                             "titleSort".to_string(),
@@ -408,7 +444,14 @@ impl Runtime {
         // A playlist's own edit pair: state 3 `loading` then 5, type 15, section -1.
         let frame_row = json!({"ratingKey": id, "type": "playlist", "title": new_title,
                                "librarySectionID": -1});
-        self.push_timeline_entry(&frame_row, 3, Some("loading"), None, Some(15), Some(&new_title));
+        self.push_timeline_entry(
+            &frame_row,
+            3,
+            Some("loading"),
+            None,
+            Some(15),
+            Some(&new_title),
+        );
         self.push_timeline_entry(&frame_row, 5, None, None, Some(15), Some(&new_title));
         self.dirty = true;
         self.save_if_dirty();
@@ -418,7 +461,11 @@ impl Runtime {
     /// `PUT {playlist}/items?uri=` on a smart list: the Edit dialog's Save.  The stored
     /// query is REPLACED by the uri (cycle 31: an item uri too, on 1.42.2) and the row
     /// answers re-evaluated; no uri is a 400.
-    pub(super) fn save_smart_playlist(&mut self, id: &str, query: &HashMap<String, String>) -> Response {
+    pub(super) fn save_smart_playlist(
+        &mut self,
+        id: &str,
+        query: &HashMap<String, String>,
+    ) -> Response {
         let uri = query.get("uri").cloned().unwrap_or_default();
         if uri.is_empty() {
             return Response::error(400, "plexsim: bad request");
@@ -452,9 +499,21 @@ impl Runtime {
 impl Runtime {
     /// A type-15 frame for a playlist, `sectionID "-1"` (`notify_timeline` on the
     /// stored list row, which carries no `type` of its own).
-    fn push_timeline_playlist(&mut self, playlist: &Playlist, state: i64, metadata_state: Option<&str>) {
+    fn push_timeline_playlist(
+        &mut self,
+        playlist: &Playlist,
+        state: i64,
+        metadata_state: Option<&str>,
+    ) {
         let row = json!({"ratingKey": playlist.id, "title": playlist.title});
-        self.push_timeline_entry(&row, state, metadata_state, None, Some(15), Some(&playlist.title));
+        self.push_timeline_entry(
+            &row,
+            state,
+            metadata_state,
+            None,
+            Some(15),
+            Some(&playlist.title),
+        );
     }
 
     /// `/library/metadata/{playlist}/{leaf}` for the ITEM action leaves
@@ -528,8 +587,16 @@ impl Runtime {
     /// stored list row): the owned artwork re-versions onto one new stamp, the picked
     /// field is locked, `updatedAt` moves, one `state 5` frame goes out as type 15 with
     /// `sectionID "-1"` (cycle 22), and the body is the new path.
-    fn set_playlist_artwork(&mut self, playlist: &Playlist, poster: bool, query: &HashMap<String, String>) -> Response {
-        let chosen = query.get("url").map(|value| percent_decode(value)).unwrap_or_default();
+    fn set_playlist_artwork(
+        &mut self,
+        playlist: &Playlist,
+        poster: bool,
+        query: &HashMap<String, String>,
+    ) -> Response {
+        let chosen = query
+            .get("url")
+            .map(|value| percent_decode(value))
+            .unwrap_or_default();
         if chosen.is_empty() {
             return Response::error(400, "plexsim: no url");
         }
@@ -548,11 +615,17 @@ impl Runtime {
             let value = columns.get(name).map(string_value).unwrap_or_default();
             let owned = value.starts_with(&format!("/library/metadata/{key}/"));
             if !value.is_empty() && (name == field || owned) {
-                columns.insert(name.to_string(), json!(format!("/library/metadata/{key}/{name}/{stamp}")));
+                columns.insert(
+                    name.to_string(),
+                    json!(format!("/library/metadata/{key}/{name}/{stamp}")),
+                );
             }
         }
         if columns.get(field).is_none_or(Value::is_null) {
-            columns.insert(field.to_string(), json!(format!("/library/metadata/{key}/{field}/{stamp}")));
+            columns.insert(
+                field.to_string(),
+                json!(format!("/library/metadata/{key}/{field}/{stamp}")),
+            );
         }
         columns.insert("updatedAt".to_string(), json!(stamp));
         let mut fields = columns

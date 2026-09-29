@@ -68,10 +68,15 @@ impl Runtime {
         }
     }
 
-
     /// Shape measured on fun mid-refresh: uuid, type, cancellable, userID, title,
     /// subtitle, progress. Pushes the `started` frame.
-    pub(super) fn add_activity(&mut self, subtitle: &str, title: &str, kind: &str, progress: i64) -> Value {
+    pub(super) fn add_activity(
+        &mut self,
+        subtitle: &str,
+        title: &str,
+        kind: &str,
+        progress: i64,
+    ) -> Value {
         let uuid = self.activity_uuid();
         let activity = json!({"uuid": uuid, "type": kind, "cancellable": false,
             "userID": 1, "title": title, "subtitle": subtitle, "progress": progress});
@@ -80,7 +85,12 @@ impl Runtime {
     }
 
     pub(super) fn add_metadata_activity(&mut self, subtitle: &str) -> Value {
-        self.add_activity(subtitle, "Updating Metadata", "library.update.item.metadata", -1)
+        self.add_activity(
+            subtitle,
+            "Updating Metadata",
+            "library.update.item.metadata",
+            -1,
+        )
     }
 
     /// End an activity the way a real refresh does: an `updated` at 49 unless the
@@ -109,5 +119,4 @@ impl Runtime {
                 [{"queueID": 1, "event": "queueRegenerated"}]}),
         );
     }
-
 }

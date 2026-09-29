@@ -12,7 +12,12 @@ const BUTLER_TASKS: &str = r#"[{"name": "AutomaticUpdates", "interval": 1, "sche
 
 /// Each task's progress messages and, for the three with an activity of their own, its
 /// `(type, title, subtitle)`; a `None` subtitle steps through `BUNDLE_CLEAN_PHASES`.
-fn butler_messages(name: &str) -> (&'static [&'static str], Option<(&'static str, &'static str, Option<&'static str>)>) {
+fn butler_messages(
+    name: &str,
+) -> (
+    &'static [&'static str],
+    Option<(&'static str, &'static str, Option<&'static str>)>,
+) {
     match name {
         "BackupDatabase" => (
             &["The butler backed up your database."],
@@ -20,10 +25,17 @@ fn butler_messages(name: &str) -> (&'static [&'static str], Option<(&'static str
         ),
         "OptimizeDatabase" => (
             &["The butler optimized your database."],
-            Some(("general.db.optimize", "Optimizing database", Some("Optimizing Database"))),
+            Some((
+                "general.db.optimize",
+                "Optimizing database",
+                Some("Optimizing Database"),
+            )),
         ),
         "CleanOldBundles" => (
-            &["The butler cleaned %d media bundles.", "The butler cleaned %d metadata bundles."],
+            &[
+                "The butler cleaned %d media bundles.",
+                "The butler cleaned %d metadata bundles.",
+            ],
             Some(("general.bundle.clean", "Cleaning Bundles", None)),
         ),
         "CleanOldCacheFiles" => (&["The butler deleted 0 old cache files."], None),
@@ -39,14 +51,25 @@ fn butler_messages(name: &str) -> (&'static [&'static str], Option<(&'static str
             None,
         ),
         "UpgradeMediaAnalysis" => (&["The butler analyzed %d items."], None),
-        "LoudnessAnalysis" => (&["The butler performed loudness analysis on 0 albums."], None),
-        "GenerateChapterThumbs" => (&["The butler generated chapter thumbnails for %d files."], None),
+        "LoudnessAnalysis" => (
+            &["The butler performed loudness analysis on 0 albums."],
+            None,
+        ),
+        "GenerateChapterThumbs" => (
+            &["The butler generated chapter thumbnails for %d files."],
+            None,
+        ),
         "DeepMediaAnalysis" => (&["The butler performed deep analysis on %d files."], None),
         "GenerateMediaIndexFiles" => (&["The butler generated %d video preview thumbnails."], None),
         "RefreshLibraries" => (&["The butler refreshed all libraries."], None),
         "ButlerTaskCleanSupplementalLogFiles" => (&["The butler cleaned 0 directories."], None),
-        "ButlerTaskGenerateAdMarkers" => (&["The butler generated ad markers for %d show(s)."], None),
-        "MusicAnalysis" => (&["The butler performed sonic analysis on 0 batches of albums."], None),
+        "ButlerTaskGenerateAdMarkers" => {
+            (&["The butler generated ad markers for %d show(s)."], None)
+        }
+        "MusicAnalysis" => (
+            &["The butler performed sonic analysis on 0 batches of albums."],
+            None,
+        ),
         _ => (&[], None),
     }
 }
@@ -127,7 +150,10 @@ impl Runtime {
     }
 
     pub(super) fn notify_progress(&mut self, message: &str) {
-        self.push_event("progress", json!({"ProgressNotification": {"message": message}}));
+        self.push_event(
+            "progress",
+            json!({"ProgressNotification": {"message": message}}),
+        );
     }
 
     /// The frames a library scan pushes (`notify_section_scan`).
@@ -144,7 +170,10 @@ impl Runtime {
         let mut steps: Vec<(String, Option<String>)> = Vec::new();
         for row in self.section_rows(section_id) {
             let row_title = string_value(row.get("title").unwrap_or(&Value::Null));
-            let label = match row.get("year").filter(|year| !year.is_null() && *year != &json!(0)) {
+            let label = match row
+                .get("year")
+                .filter(|year| !year.is_null() && *year != &json!(0))
+            {
                 Some(year) => format!("{row_title} ({})", string_value(year)),
                 None => row_title,
             };
@@ -171,7 +200,10 @@ impl Runtime {
                 _ => {}
             }
         }
-        let counted = steps.iter().filter(|(_, subtitle)| subtitle.is_some()).count();
+        let counted = steps
+            .iter()
+            .filter(|(_, subtitle)| subtitle.is_some())
+            .count();
         let mut number = 0;
         for (message, subtitle) in &steps {
             self.notify_progress(&format!("Scanning {message}"));
@@ -195,7 +227,11 @@ impl Runtime {
         activity.insert("progress".to_string(), json!(100));
         activity.insert("Context".to_string(), context);
         self.notify_activity(&activity, "updated");
-        let mut outer = new_activity("provider.subscriptions.process", "Processing subscriptions", true);
+        let mut outer = new_activity(
+            "provider.subscriptions.process",
+            "Processing subscriptions",
+            true,
+        );
         self.notify_activity(&outer, "started");
         self.notify_activity(&activity, "ended");
         self.notify_status(
@@ -220,9 +256,16 @@ impl Runtime {
         activity.insert("title".to_string(), json!(format!("Scanning {title}")));
         self.notify_activity(&activity, "updated");
         activity.insert("progress".to_string(), json!(100));
-        activity.insert("Context".to_string(), json!({"librarySectionID": section_id}));
+        activity.insert(
+            "Context".to_string(),
+            json!({"librarySectionID": section_id}),
+        );
         self.notify_activity(&activity, "updated");
-        let mut outer = new_activity("provider.subscriptions.process", "Processing subscriptions", true);
+        let mut outer = new_activity(
+            "provider.subscriptions.process",
+            "Processing subscriptions",
+            true,
+        );
         self.notify_activity(&outer, "started");
         self.notify_activity(&activity, "ended");
         self.notify_status(
@@ -241,7 +284,11 @@ impl Runtime {
                 if method == "POST" {
                     let names = tasks
                         .iter()
-                        .filter(|task| task.get("enabled").and_then(Value::as_bool).unwrap_or(false))
+                        .filter(|task| {
+                            task.get("enabled")
+                                .and_then(Value::as_bool)
+                                .unwrap_or(false)
+                        })
                         .map(|task| string_value(task.get("name").unwrap_or(&Value::Null)))
                         .collect::<Vec<_>>();
                     self.run_butler(&names);
@@ -256,7 +303,10 @@ impl Runtime {
             return Response::json(200, json!({"ButlerTasks": {"ButlerTask": tasks}}));
         }
         let name = segments[1];
-        if !tasks.iter().any(|task| task.get("name").and_then(Value::as_str) == Some(name)) {
+        if !tasks
+            .iter()
+            .any(|task| task.get("name").and_then(Value::as_str) == Some(name))
+        {
             return Response::error(404, "plexsim: no such task");
         }
         if method != "POST" {
@@ -299,9 +349,16 @@ impl Runtime {
                     let mut activity = new_activity(kind, title, false);
                     activity.insert(
                         "subtitle".to_string(),
-                        json!(if opens_empty { "" } else { subtitle.unwrap_or("") }),
+                        json!(if opens_empty {
+                            ""
+                        } else {
+                            subtitle.unwrap_or("")
+                        }),
                     );
-                    activity.insert("progress".to_string(), json!(if opens_empty { 0 } else { -1 }));
+                    activity.insert(
+                        "progress".to_string(),
+                        json!(if opens_empty { 0 } else { -1 }),
+                    );
                     self.notify_activity(&activity, "started");
                     activity.insert("subtitle".to_string(), json!(subtitle.unwrap_or("")));
                     if subtitle.is_none() {
@@ -437,14 +494,21 @@ impl Runtime {
                 .unwrap_or(0)
         };
         match kind {
-            "movie" | "show" => match row.get("year").filter(|year| !year.is_null() && **year != json!(0) && **year != json!("")) {
+            "movie" | "show" => match row
+                .get("year")
+                .filter(|year| !year.is_null() && **year != json!(0) && **year != json!(""))
+            {
                 Some(year) => format!("{title} ({})", string_value(year)),
                 None => title,
             },
             "season" | "episode" => {
                 let show_key = string_value(
-                    row.get(if kind == "season" { "parentRatingKey" } else { "grandparentRatingKey" })
-                        .unwrap_or(&Value::Null),
+                    row.get(if kind == "season" {
+                        "parentRatingKey"
+                    } else {
+                        "grandparentRatingKey"
+                    })
+                    .unwrap_or(&Value::Null),
                 );
                 let show_title = self
                     .catalog
@@ -454,7 +518,11 @@ impl Runtime {
                     .unwrap_or_default();
                 // An episode's `parentIndex` is read off its season at read time,
                 // so a stored row may not carry it: fall back to the season's index.
-                let own_parent_index = row.get(if kind == "season" { "index" } else { "parentIndex" });
+                let own_parent_index = row.get(if kind == "season" {
+                    "index"
+                } else {
+                    "parentIndex"
+                });
                 let index = if own_parent_index.is_none() && kind == "episode" {
                     number(
                         row.get("parentRatingKey")
@@ -480,7 +548,10 @@ impl Runtime {
     /// started then ended, whose subtitle is the target's frame title -- and nothing
     /// else (cycle 19: no `backgroundProcessingQueue` frame).
     pub(super) fn analyze_item(&mut self, key: &str, row: &Value) {
-        let leaves = if matches!(row.get("type").and_then(Value::as_str), Some("show" | "season")) {
+        let leaves = if matches!(
+            row.get("type").and_then(Value::as_str),
+            Some("show" | "season")
+        ) {
             self.leaves(key)
         } else {
             vec![row.clone()]
@@ -490,7 +561,11 @@ impl Runtime {
                 self.push_timeline_row(leaf, 5, None, media_state);
             }
         }
-        let mut activity = new_activity("media.generate.chapter.thumbs", "Generating video chapter thumbnails", false);
+        let mut activity = new_activity(
+            "media.generate.chapter.thumbs",
+            "Generating video chapter thumbnails",
+            false,
+        );
         activity.insert("subtitle".to_string(), json!(self.frame_title(row)));
         activity.insert("progress".to_string(), json!(-1));
         self.notify_activity(&activity, "started");
@@ -501,7 +576,12 @@ impl Runtime {
     /// `GET /library/sections/{id}/refresh`: `?path=` scopes the scan (cycles 19/36) --
     /// the library's own folder or one inside it scans everything, any other path runs
     /// the empty skeleton -- and `force=1` refreshes each item after the scan.
-    pub(super) fn refresh_section(&mut self, section_id: &str, section: &Value, query: &HashMap<String, String>) {
+    pub(super) fn refresh_section(
+        &mut self,
+        section_id: &str,
+        section: &Value,
+        query: &HashMap<String, String>,
+    ) {
         let mut paths = section
             .get("Location")
             .and_then(Value::as_array)
@@ -537,7 +617,12 @@ impl Runtime {
     /// validates it: an `agent` is required and must be known, a `type` must be the
     /// library's own (as a word or its number), a scanner and a language must be known;
     /// the form is applied, and it scans only when it carries `language` or `scanner`.
-    pub(super) fn edit_section(&mut self, section_key: &str, section: Value, query: &HashMap<String, String>) -> Response {
+    pub(super) fn edit_section(
+        &mut self,
+        section_key: &str,
+        section: Value,
+        query: &HashMap<String, String>,
+    ) -> Response {
         let Some(agent) = query.get("agent").filter(|value| !value.is_empty()) else {
             return Response::error(400, "plexsim: bad request");
         };
@@ -586,14 +671,18 @@ impl Runtime {
             }
         }
         for (field, value) in query {
-            if let Some(pref) = field.strip_prefix("prefs[").and_then(|value| value.strip_suffix(']')) {
+            if let Some(pref) = field
+                .strip_prefix("prefs[")
+                .and_then(|value| value.strip_suffix(']'))
+            {
                 self.section_prefs
                     .insert((section_key.to_string(), pref.to_string()), value.clone());
             }
         }
-        self.catalog
-            .document
-            .insert("sections".to_string(), Value::Array(self.catalog.sections.clone()));
+        self.catalog.document.insert(
+            "sections".to_string(),
+            Value::Array(self.catalog.sections.clone()),
+        );
         if ["language", "scanner"]
             .iter()
             .any(|field| query.get(*field).is_some_and(|value| !value.is_empty()))
@@ -668,13 +757,22 @@ impl Runtime {
         let mut body = Map::new();
         body.insert("size".to_string(), json!(rows.len()));
         body.insert("allowSync".to_string(), json!(true));
-        body.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        body.insert(
+            "identifier".to_string(),
+            json!("com.plexapp.plugins.library"),
+        );
         body.insert(
             "librarySectionID".to_string(),
             json!(section_key.parse::<i64>().unwrap_or(0)),
         );
-        body.insert("librarySectionTitle".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
-        body.insert("librarySectionUUID".to_string(), section.get("uuid").cloned().unwrap_or(Value::Null));
+        body.insert(
+            "librarySectionTitle".to_string(),
+            section.get("title").cloned().unwrap_or(Value::Null),
+        );
+        body.insert(
+            "librarySectionUUID".to_string(),
+            section.get("uuid").cloned().unwrap_or(Value::Null),
+        );
         body.insert("Metadata".to_string(), Value::Array(rows));
         Response::json(200, json!({"MediaContainer": body}))
     }
@@ -733,14 +831,21 @@ fn category_colour(name: &str) -> Option<&'static str> {
     })
 }
 /// ...and every other genre takes the next of this cycle, walked in TAG-ID order.
-const CATEGORY_COLOUR_CYCLE: [&str; 7] = ["494616", "91293D", "4C561B", "883E7D", "8B6122", "8B4D43", "23533C"];
+const CATEGORY_COLOUR_CYCLE: [&str; 7] = [
+    "494616", "91293D", "4C561B", "883E7D", "8B6122", "8B4D43", "23533C",
+];
 
 impl Runtime {
     /// `/library/sections/{id}/categories` (cycle 52): one tile per genre of the genre
     /// axis, its thumb FIRST -- an art transcode tinted with the genre's `blendColor`,
     /// the art the highest-rated not-yet-taken item carrying the genre and `art` --
     /// then `type`, `key` (the axis's fastKey) and `title`.
-    pub(super) fn route_categories(&mut self, section_key: &str, section: Value, request: &Request) -> Response {
+    pub(super) fn route_categories(
+        &mut self,
+        section_key: &str,
+        section: Value,
+        request: &Request,
+    ) -> Response {
         if !matches!(request.method.as_str(), "GET" | "HEAD") {
             return Response::error(404, "plexsim: not found");
         }
@@ -756,9 +861,18 @@ impl Runtime {
         });
         let entries = serde_json::from_slice::<Value>(&axis.body)
             .ok()
-            .and_then(|doc| doc.get("MediaContainer")?.get("Directory")?.as_array().cloned())
+            .and_then(|doc| {
+                doc.get("MediaContainer")?
+                    .get("Directory")?
+                    .as_array()
+                    .cloned()
+            })
             .unwrap_or_default();
-        let id_of = |entry: &Value| string_value(entry.get("key").unwrap_or(&Value::Null)).parse::<i64>().unwrap_or(0);
+        let id_of = |entry: &Value| {
+            string_value(entry.get("key").unwrap_or(&Value::Null))
+                .parse::<i64>()
+                .unwrap_or(0)
+        };
         let mut by_id = entries.clone();
         by_id.sort_by_key(|entry| id_of(entry));
         let mut colours = HashMap::new();
@@ -783,19 +897,30 @@ impl Runtime {
             let mut candidates = items
                 .iter()
                 .filter(|row| {
-                    row.get("art").is_some_and(|art| !art.is_null() && string_value(art) != "")
+                    row.get("art")
+                        .is_some_and(|art| !art.is_null() && string_value(art) != "")
                         && row
                             .get("Genre")
                             .and_then(Value::as_array)
                             .is_some_and(|tags| {
-                                tags.iter().any(|tag| string_value(tag.get("id").unwrap_or(&Value::Null)) == id.to_string())
+                                tags.iter().any(|tag| {
+                                    string_value(tag.get("id").unwrap_or(&Value::Null))
+                                        == id.to_string()
+                                })
                             })
                 })
                 .collect::<Vec<_>>();
             candidates.sort_by(|a, b| {
-                let rating = |row: &Value| row.get("audienceRating").and_then(Value::as_f64).unwrap_or(0.0);
+                let rating = |row: &Value| {
+                    row.get("audienceRating")
+                        .and_then(Value::as_f64)
+                        .unwrap_or(0.0)
+                };
                 let key = |row: &Value| key_of(row).unwrap_or_default().parse::<i64>().unwrap_or(0);
-                rating(b).partial_cmp(&rating(a)).unwrap_or(std::cmp::Ordering::Equal).then(key(a).cmp(&key(b)))
+                rating(b)
+                    .partial_cmp(&rating(a))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then(key(a).cmp(&key(b)))
             });
             let fresh = candidates
                 .iter()
@@ -816,14 +941,23 @@ impl Runtime {
                         "thumb".to_string(),
                         json!(format!(
                             "/photo/:/transcode?blendColor={}&width=2560&height=1440&url={}",
-                            colours.get(&id).copied().unwrap_or(CATEGORY_COLOUR_CYCLE[0]),
+                            colours
+                                .get(&id)
+                                .copied()
+                                .unwrap_or(CATEGORY_COLOUR_CYCLE[0]),
                             quote_component(art)
                         )),
                     );
                 }
                 tile.insert("type".to_string(), json!("directory"));
-                tile.insert("key".to_string(), entry.get("fastKey").cloned().unwrap_or(Value::Null));
-                tile.insert("title".to_string(), entry.get("title").cloned().unwrap_or(Value::Null));
+                tile.insert(
+                    "key".to_string(),
+                    entry.get("fastKey").cloned().unwrap_or(Value::Null),
+                );
+                tile.insert(
+                    "title".to_string(),
+                    entry.get("title").cloned().unwrap_or(Value::Null),
+                );
                 Value::Object(tile)
             })
             .collect::<Vec<_>>();
@@ -856,10 +990,15 @@ impl Runtime {
     /// Cycle 46: `/hubs` applies the detail expansions to its FULL rows -- Children,
     /// OnDeck and Preferences on a full SHOW row, Extras and Related on a full row or any
     /// row of the On Deck shelf -- where a light grid row stays light.
-    pub(super) fn expand_global_hub_rows(&self, hubs: &mut [Value], query: &HashMap<String, String>) {
+    pub(super) fn expand_global_hub_rows(
+        &self,
+        hubs: &mut [Value],
+        query: &HashMap<String, String>,
+    ) {
         let include_int = |name: &str| {
             query.get(name).is_some_and(|value| {
-                int_param(value, Some(32)) && value.trim_start_matches('+').parse::<i64>().unwrap_or(0) != 0
+                int_param(value, Some(32))
+                    && value.trim_start_matches('+').parse::<i64>().unwrap_or(0) != 0
             })
         };
         let children = include_int("includeChildren");
@@ -875,14 +1014,19 @@ impl Runtime {
             related_query.insert("includeRelatedCount".to_string(), count.clone());
         }
         for hub in hubs.iter_mut() {
-            let ondeck_shelf = hub.get("hubIdentifier").and_then(Value::as_str) == Some("home.ondeck");
+            let ondeck_shelf =
+                hub.get("hubIdentifier").and_then(Value::as_str) == Some("home.ondeck");
             let Some(rows) = hub.get_mut("Metadata").and_then(Value::as_array_mut) else {
                 continue;
             };
             for projected in rows.iter_mut() {
                 let light = projected.get("_light").is_some();
-                let Some(key) = key_of(projected) else { continue };
-                let Some(stored) = self.catalog.get(&key).cloned() else { continue };
+                let Some(key) = key_of(projected) else {
+                    continue;
+                };
+                let Some(stored) = self.catalog.get(&key).cloned() else {
+                    continue;
+                };
                 let show = projected.get("type").and_then(Value::as_str) == Some("show");
                 if children && show && !light {
                     let inlined = self

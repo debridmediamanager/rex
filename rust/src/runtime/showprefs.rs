@@ -42,7 +42,10 @@ impl Runtime {
         if let Some(stored) = stored.filter(|value| value != "-1") {
             return stored;
         }
-        let section = show.get("librarySectionID").map(string_value).unwrap_or_default();
+        let section = show
+            .get("librarySectionID")
+            .map(string_value)
+            .unwrap_or_default();
         if let Some(value) = self.section_prefs.get(&(section, name.to_string())) {
             return value.clone();
         }
@@ -62,8 +65,7 @@ impl Runtime {
     pub(super) fn show_flattened(&self, show: &Value) -> bool {
         let value = self.show_pref(show, "flattenSeasons");
         value == "1"
-            || (value == "2"
-                && self.children(&key_of(show).unwrap_or_default()).len() <= 1)
+            || (value == "2" && self.children(&key_of(show).unwrap_or_default()).len() <= 1)
     }
 
     /// The row effects of `flattenSeasons=1`, applied where a row is projected: the
@@ -131,12 +133,21 @@ impl Runtime {
         if request.method != "PUT" {
             return Response::error(404, "plexsim: not found");
         }
-        let kind = row.get("type").and_then(Value::as_str).unwrap_or("").to_string();
+        let kind = row
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string();
         let unmatched = unmatched_guid(row);
         let mut settings = self
             .item_pref_settings(&kind)
             .iter()
-            .filter_map(|setting| setting.get("id").and_then(Value::as_str).map(str::to_string))
+            .filter_map(|setting| {
+                setting
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            })
             .collect::<Vec<_>>();
         if unmatched {
             if kind == "movie" {
@@ -172,7 +183,10 @@ impl Runtime {
             }
         }
         self.dirty = true;
-        if !writes.is_empty() && kind == "show" && writes.iter().any(|(name, _)| name == "showOrdering") {
+        if !writes.is_empty()
+            && kind == "show"
+            && writes.iter().any(|(name, _)| name == "showOrdering")
+        {
             if unmatched {
                 self.save_if_dirty();
                 return Response::error(500, "plexsim: internal error");

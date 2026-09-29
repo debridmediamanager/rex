@@ -18,7 +18,9 @@ fn owned_artwork(row: &Value, field: &str) -> Option<Value> {
         "/library/metadata/{}/",
         row.get("ratingKey").map(string_value).unwrap_or_default()
     );
-    string_value(value).starts_with(&prefix).then(|| value.clone())
+    string_value(value)
+        .starts_with(&prefix)
+        .then(|| value.clone())
 }
 
 fn non_null(value: Option<&Value>) -> Option<Value> {
@@ -53,7 +55,10 @@ impl Runtime {
         leaf: &str,
         first_row_type: Option<&str>,
     ) -> Map<String, Value> {
-        let kind = parent.get("type").and_then(Value::as_str).unwrap_or_default();
+        let kind = parent
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
         let section_key = parent
             .get("librarySectionID")
             .map(string_value)
@@ -63,7 +68,13 @@ impl Runtime {
             || (leaf == "allLeaves" && matches!(kind, "season" | "episode"));
         let is_movie_leaves = leaf == "allLeaves" && kind == "movie";
         let mut fields: Vec<(&str, Option<Value>)> = vec![
-            ("key", Some(json!(parent.get("ratingKey").map(string_value).unwrap_or_default()))),
+            (
+                "key",
+                Some(json!(parent
+                    .get("ratingKey")
+                    .map(string_value)
+                    .unwrap_or_default())),
+            ),
             ("nocache", Some(json!(true))),
             // Cycle 50: a MOVIE's own `/allLeaves` is `viewGroup="movie"`, 65592.
             (
@@ -86,23 +97,30 @@ impl Runtime {
                 })),
             ),
             ("librarySectionID", non_null(parent.get("librarySectionID"))),
-            ("librarySectionTitle", non_null(parent.get("librarySectionTitle"))),
+            (
+                "librarySectionTitle",
+                non_null(parent.get("librarySectionTitle")),
+            ),
             ("librarySectionUUID", non_null(section.get("uuid"))),
             ("title1", non_null(parent.get("librarySectionTitle"))),
             (
                 "summary",
-                Some(json!(parent.get("summary").map(string_value).unwrap_or_default())),
+                Some(json!(parent
+                    .get("summary")
+                    .map(string_value)
+                    .unwrap_or_default())),
             ),
             // Measured on both servers: every child list says it can sync.
             ("allowSync", Some(json!(true))),
         ];
-        let mut set = |fields: &mut Vec<(&str, Option<Value>)>, name: &'static str, value: Option<Value>| {
-            if let Some(slot) = fields.iter_mut().find(|(known, _)| *known == name) {
-                slot.1 = value;
-            } else {
-                fields.push((name, value));
-            }
-        };
+        let mut set =
+            |fields: &mut Vec<(&str, Option<Value>)>, name: &'static str, value: Option<Value>| {
+                if let Some(slot) = fields.iter_mut().find(|(known, _)| *known == name) {
+                    slot.1 = value;
+                } else {
+                    fields.push((name, value));
+                }
+            };
         if kind == "season" {
             // An episode list is presented as the SHOW's, with the season as the
             // parent.  `title1` is the SHOW's title, `grandparentRatingKey` a number,
@@ -157,7 +175,11 @@ impl Runtime {
                 );
                 set(&mut fields, "grandparentTitle", non_null(show.get("title")));
                 set(&mut fields, "grandparentThumb", non_null(show.get("thumb")));
-                set(&mut fields, "grandparentStudio", non_null(show.get("studio")));
+                set(
+                    &mut fields,
+                    "grandparentStudio",
+                    non_null(show.get("studio")),
+                );
                 set(
                     &mut fields,
                     "grandparentContentRating",

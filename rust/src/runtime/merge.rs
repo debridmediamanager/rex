@@ -51,10 +51,18 @@ impl Runtime {
         let Some(original) = self.catalog.get(key).cloned() else {
             return Response::error(404, "plexsim: not found");
         };
-        let media = original.get("Media").and_then(Value::as_array).cloned().unwrap_or_default();
+        let media = original
+            .get("Media")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
         let mut created = Vec::new();
         if media.len() >= 2 {
-            let kind = original.get("type").and_then(Value::as_str).unwrap_or("movie").to_string();
+            let kind = original
+                .get("type")
+                .and_then(Value::as_str)
+                .unwrap_or("movie")
+                .to_string();
             if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
                 object.insert("Media".to_string(), json!([media[0].clone()]));
                 object.insert("updatedAt".to_string(), json!(now()));
@@ -66,7 +74,10 @@ impl Runtime {
                     object.insert("Media".to_string(), json!([source.clone()]));
                     object.shift_remove("Field");
                     object.insert("ratingKey".to_string(), json!(new_key));
-                    object.insert("key".to_string(), json!(format!("/library/metadata/{new_key}")));
+                    object.insert(
+                        "key".to_string(),
+                        json!(format!("/library/metadata/{new_key}")),
+                    );
                     object.insert("guid".to_string(), json!(format!("local://{new_key}")));
                 }
                 self.catalog.add(clone.clone());

@@ -8,7 +8,11 @@ impl Runtime {
     /// client (`""`) is 1 and every other one takes the next number the first time the
     /// server sees it, from the header or the query alike.
     pub(super) fn register_device(&mut self, identifier: &str) -> i64 {
-        if let Some(index) = self.device_order.iter().position(|known| known == identifier) {
+        if let Some(index) = self
+            .device_order
+            .iter()
+            .position(|known| known == identifier)
+        {
             return index as i64 + 1;
         }
         self.device_order.push(identifier.to_string());
@@ -20,7 +24,10 @@ impl Runtime {
     pub(super) fn record_play(&mut self, row: &Value, seconds: i64, device: i64) {
         self.plays.push((
             now(),
-            row.get("type").and_then(Value::as_str).unwrap_or("movie").to_string(),
+            row.get("type")
+                .and_then(Value::as_str)
+                .unwrap_or("movie")
+                .to_string(),
             seconds,
             device,
         ));
@@ -80,7 +87,10 @@ impl Runtime {
             .collect()
     }
 
-    pub(super) fn route_media_statistics_ported(&self, query: &HashMap<String, String>) -> Response {
+    pub(super) fn route_media_statistics_ported(
+        &self,
+        query: &HashMap<String, String>,
+    ) -> Response {
         let bare_empty = || Response::json(200, json!({"MediaContainer": {"size": 0}}));
         // Cycle 26: a `timespan` the server does not KEEP is an empty 200.
         let timespan = match query.get("timespan").filter(|value| !value.is_empty()) {
@@ -119,7 +129,8 @@ impl Runtime {
             let (key, direction) = sort.split_once(':').unwrap_or((sort.as_str(), ""));
             rows.sort_by(|left, right| {
                 let value = |row: &Value| row.get(key).and_then(Value::as_i64);
-                let order = (value(left).is_none(), value(left)).cmp(&(value(right).is_none(), value(right)));
+                let order = (value(left).is_none(), value(left))
+                    .cmp(&(value(right).is_none(), value(right)));
                 if direction == "desc" {
                     order.reverse()
                 } else {
@@ -127,7 +138,10 @@ impl Runtime {
                 }
             });
         }
-        if let Some(limit) = query.get("limit").and_then(|value| value.trim_start_matches('+').parse::<i64>().ok()) {
+        if let Some(limit) = query
+            .get("limit")
+            .and_then(|value| value.trim_start_matches('+').parse::<i64>().ok())
+        {
             if limit > 0 {
                 rows.truncate(limit as usize);
             } else {

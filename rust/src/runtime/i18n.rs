@@ -7,16 +7,24 @@ use super::*;
 
 /// Locales the table holds that have NO catalogue of their own (cycle 66): only
 /// their ICU names move, and `Accept-Language` skips them.
-const ICU_ONLY_LOCALES: &[&str] = &["bg", "el", "en-GB", "fa", "is", "my", "th", "tr", "vi", "zh-TW"];
+const ICU_ONLY_LOCALES: &[&str] = &[
+    "bg", "el", "en-GB", "fa", "is", "my", "th", "tr", "vi", "zh-TW",
+];
 
 /// A regional locale that reads another locale's catalogue (cycle 66).
-const CATALOGUE_OF: &[(&str, &str)] = &[("es-419", "es"), ("fr-CA", "fr"), ("pt-PT", "pt-BR"), ("hu-HU", "hu")];
+const CATALOGUE_OF: &[(&str, &str)] = &[
+    ("es-419", "es"),
+    ("fr-CA", "fr"),
+    ("pt-PT", "pt-BR"),
+    ("hu-HU", "hu"),
+];
 
 /// An `Accept-Language` list, best first, or None if the header is malformed (cycle 45):
 /// any malformed member disqualifies the WHOLE header, `q=0` and `*` are dropped, and a
 /// tie goes to the first listed.
 fn accept_language_order(value: &str) -> Option<Vec<String>> {
-    let weight_pattern = regex::Regex::new(r"^(?:0(?:\.[0-9]+)?|1(?:\.0+)?)$").expect("valid regex");
+    let weight_pattern =
+        regex::Regex::new(r"^(?:0(?:\.[0-9]+)?|1(?:\.0+)?)$").expect("valid regex");
     let mut ranked: Vec<(f64, usize, String)> = Vec::new();
     for (index, member) in value.split(',').enumerate() {
         let member = member.trim();
@@ -82,7 +90,10 @@ impl Languages {
             .filter(|code| !ICU_ONLY_LOCALES.contains(&code.as_str()))
             .cloned()
             .collect();
-        Self { localised, translated }
+        Self {
+            localised,
+            translated,
+        }
     }
 }
 
@@ -105,7 +116,12 @@ pub(super) fn request_language(
     };
     let wanted = query_value("X-Plex-Language")
         .filter(|value| !value.is_empty())
-        .or_else(|| headers.get("x-plex-language").cloned().filter(|value| !value.is_empty()));
+        .or_else(|| {
+            headers
+                .get("x-plex-language")
+                .cloned()
+                .filter(|value| !value.is_empty())
+        });
     let Some(text) = wanted else {
         for source in [
             headers.get("x-plex-accept-language").cloned(),
@@ -120,7 +136,9 @@ pub(super) fn request_language(
                         let normal = tag.replace('_', "-").to_lowercase();
                         let subtags = normal.split('-').collect::<Vec<_>>();
                         if subtags[0] == "zh"
-                            && subtags[1..].iter().any(|s| matches!(*s, "hant" | "tw" | "hk" | "mo"))
+                            && subtags[1..]
+                                .iter()
+                                .any(|s| matches!(*s, "hant" | "tw" | "hk" | "mo"))
                         {
                             continue;
                         }
@@ -134,7 +152,9 @@ pub(super) fn request_language(
                         if regional && subtags == ["hu", "hu"] {
                             return Some("hu-HU".to_string());
                         }
-                        if (normal == "pt-br" || normal == "pt-pt") && languages.translated.contains("pt-BR") {
+                        if (normal == "pt-br" || normal == "pt-pt")
+                            && languages.translated.contains("pt-BR")
+                        {
                             return Some("pt-BR".to_string());
                         }
                         let primary = subtags[0];
@@ -159,23 +179,42 @@ pub(super) fn request_language(
         if !first.is_alphanumeric() {
             // Cycle 55: one leading `-`, `_` or space is dropped; anything that then
             // names no language, or another leading character, is ENGLISH.
-            let rest = if matches!(first, '-' | '_' | ' ') { &text[1..] } else { "" };
+            let rest = if matches!(first, '-' | '_' | ' ') {
+                &text[1..]
+            } else {
+                ""
+            };
             let primary = rest.replace('_', "-").to_lowercase();
             let primary = primary.split('-').next().unwrap_or("").to_string();
-            return Some(if languages.translated.contains(&primary) { primary } else { "en".to_string() });
+            return Some(if languages.translated.contains(&primary) {
+                primary
+            } else {
+                "en".to_string()
+            });
         }
     }
     let normalized = text.replace('_', "-").to_lowercase();
     if regional && normalized == "hu-hu" {
         return Some("hu-HU".to_string());
     }
-    let keep = [("zh-tw", "zh-TW"), ("en-gb", "en-GB"), ("es-419", "es-419"), ("fr-ca", "fr-CA"), ("pt-pt", "pt-PT")];
+    let keep = [
+        ("zh-tw", "zh-TW"),
+        ("en-gb", "en-GB"),
+        ("es-419", "es-419"),
+        ("fr-ca", "fr-CA"),
+        ("pt-pt", "pt-PT"),
+    ];
     if let Some((_, full)) = keep.iter().find(|(low, _)| *low == normalized) {
         if languages.localised.contains(*full) {
             return Some(full.to_string());
         }
     }
-    let exact = [("zh-hk", "en"), ("zh-tw", "en"), ("pt-br", "pt-BR"), ("pt-pt", "pt-BR")];
+    let exact = [
+        ("zh-hk", "en"),
+        ("zh-tw", "en"),
+        ("pt-br", "pt-BR"),
+        ("pt-pt", "pt-BR"),
+    ];
     if let Some((_, target)) = exact.iter().find(|(low, _)| *low == normalized) {
         return Some(target.to_string());
     }
@@ -191,7 +230,10 @@ fn cell(entry: &Value, language: &str) -> Option<String> {
     if let Some(text) = entry.get(language).and_then(Value::as_str) {
         return Some(text.to_string());
     }
-    let base = CATALOGUE_OF.iter().find(|(regional, _)| *regional == language).map(|(_, base)| *base)?;
+    let base = CATALOGUE_OF
+        .iter()
+        .find(|(regional, _)| *regional == language)
+        .map(|(_, base)| *base)?;
     entry.get(base).and_then(Value::as_str).map(str::to_string)
 }
 
@@ -209,9 +251,18 @@ impl Localiser<'_> {
     fn hub_title(&self, title: &str) -> Option<String> {
         for (template, languages) in self.templates?.as_object()? {
             let (head, tail) = template.split_once("%s")?;
-            if title.len() > head.len() + tail.len() && title.starts_with(head) && title.ends_with(tail) {
-                if let Some(target) = languages.get(self.language).and_then(Value::as_str).filter(|t| !t.is_empty()) {
-                    return Some(target.replace("%s", &title[head.len()..title.len() - tail.len()]));
+            if title.len() > head.len() + tail.len()
+                && title.starts_with(head)
+                && title.ends_with(tail)
+            {
+                if let Some(target) = languages
+                    .get(self.language)
+                    .and_then(Value::as_str)
+                    .filter(|t| !t.is_empty())
+                {
+                    return Some(
+                        target.replace("%s", &title[head.len()..title.len() - tail.len()]),
+                    );
                 }
             }
         }
@@ -225,7 +276,11 @@ impl Localiser<'_> {
                     return Some(rebuilt);
                 }
             }
-            if let Some(entry) = self.strings.get(attribute).and_then(|table| table.get(text)) {
+            if let Some(entry) = self
+                .strings
+                .get(attribute)
+                .and_then(|table| table.get(text))
+            {
                 if let Some(found) = cell(entry, self.language) {
                     return Some(found);
                 }
@@ -272,7 +327,11 @@ impl Localiser<'_> {
             Value::Object(object) => {
                 let row = object.contains_key("ratingKey") || attribute == Some("MetadataItem");
                 if object.contains_key("hubIdentifier") {
-                    if let Some(title) = object.get("title").and_then(Value::as_str).map(str::to_string) {
+                    if let Some(title) = object
+                        .get("title")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                    {
                         if let Some(localised) = self.hub_title(&title) {
                             object.insert("title".to_string(), json!(localised));
                         }
@@ -280,7 +339,11 @@ impl Localiser<'_> {
                 }
                 let keys = object.keys().cloned().collect::<Vec<_>>();
                 for key in keys {
-                    let child_in_row = if key == "Preferences" || key == "Related" { false } else { row || in_row };
+                    let child_in_row = if key == "Preferences" || key == "Related" {
+                        false
+                    } else {
+                        row || in_row
+                    };
                     if let Some(child) = object.get_mut(&key) {
                         self.walk(child, Some(&key), child_in_row);
                     }
@@ -288,8 +351,12 @@ impl Localiser<'_> {
                 // Cycle 79: a season 0's generated `Specials` is translated like
                 // `Season N`, as the season's `title` and its episodes' `parentTitle`.
                 if row {
-                    for (key, index, kind) in [("title", "index", "season"), ("parentTitle", "parentIndex", "episode")] {
-                        let is_specials = object.get(key).and_then(Value::as_str) == Some("Specials")
+                    for (key, index, kind) in [
+                        ("title", "index", "season"),
+                        ("parentTitle", "parentIndex", "episode"),
+                    ] {
+                        let is_specials = object.get(key).and_then(Value::as_str)
+                            == Some("Specials")
                             && object.get(index).and_then(Value::as_i64) == Some(0)
                             && object.get("type").and_then(Value::as_str) == Some(kind);
                         if is_specials {
@@ -351,8 +418,12 @@ fn activity_text(text: &str, language: &str, table: &Value) -> String {
         return cell(exact, language).unwrap_or_else(|| text.to_string());
     }
     for (msgid, languages) in entries {
-        let Some((head, tail)) = msgid.split_once("{1}") else { continue };
-        let Some(target) = cell(languages, language) else { continue };
+        let Some((head, tail)) = msgid.split_once("{1}") else {
+            continue;
+        };
+        let Some(target) = cell(languages, language) else {
+            continue;
+        };
         if text.len() > head.len() + tail.len() && text.starts_with(head) && text.ends_with(tail) {
             return target.replace("{1}", &text[head.len()..text.len() - tail.len()]);
         }
@@ -364,7 +435,9 @@ fn activity_text(text: &str, language: &str, table: &Value) -> String {
 /// (cycle 65): `X-Plex-Language` in the query, else the handshake's
 /// `Accept-Language` -- all Plex Web sends.
 pub(super) fn socket_language(catalog: &std::path::Path, request: &Request) -> Option<String> {
-    let strings = load_json_sidecar(catalog, "translations.json")?.get("strings").cloned()?;
+    let strings = load_json_sidecar(catalog, "translations.json")?
+        .get("strings")
+        .cloned()?;
     let languages = Languages::from_strings(&strings);
     let (_, raw_query) = split_target(&request.target);
     let pairs = parse_query(&raw_query);
@@ -375,10 +448,16 @@ pub(super) fn socket_language(catalog: &std::path::Path, request: &Request) -> O
 /// `ActivityNotification` rows' titles in the socket's language, and (cycle 66) the
 /// butler's `ProgressNotification` messages, which are catalogue ids too.  Status
 /// frames and a scan's own progress line stay English.
-pub(super) fn localise_notification(value: &mut Value, language: Option<&str>, catalog: &std::path::Path) {
+pub(super) fn localise_notification(
+    value: &mut Value,
+    language: Option<&str>,
+    catalog: &std::path::Path,
+) {
     let Some(language) = language else { return };
     let (strings, progress) = activity_tables(catalog);
-    let Some(object) = value.as_object_mut() else { return };
+    let Some(object) = value.as_object_mut() else {
+        return;
+    };
     for (element, rows) in object.iter_mut() {
         let rows: Vec<&mut Value> = match rows {
             Value::Array(list) => list.iter_mut().collect(),
@@ -389,14 +468,25 @@ pub(super) fn localise_notification(value: &mut Value, language: Option<&str>, c
                 "ActivityNotification" => {
                     if let Some(activity) = row.get_mut("Activity").and_then(Value::as_object_mut) {
                         for field in ["title", "subtitle"] {
-                            if let Some(text) = activity.get(field).and_then(Value::as_str).map(str::to_string) {
-                                activity.insert(field.to_string(), json!(activity_text(&text, language, strings)));
+                            if let Some(text) = activity
+                                .get(field)
+                                .and_then(Value::as_str)
+                                .map(str::to_string)
+                            {
+                                activity.insert(
+                                    field.to_string(),
+                                    json!(activity_text(&text, language, strings)),
+                                );
                             }
                         }
                     }
                 }
                 "ProgressNotification" => {
-                    if let Some(text) = row.get("message").and_then(Value::as_str).map(str::to_string) {
+                    if let Some(text) = row
+                        .get("message")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                    {
                         row["message"] = json!(activity_text(&text, language, progress));
                     }
                 }

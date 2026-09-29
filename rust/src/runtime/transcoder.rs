@@ -73,7 +73,10 @@ impl Runtime {
             if matches!(name, "minSize" | "upscale") && !photo_bool(value) {
                 return Response::photo_error(400, "plexsim: bad request");
             }
-            if name == "blur" && value.starts_with('-') && value.trim_start_matches(['-', '0']) != "" {
+            if name == "blur"
+                && value.starts_with('-')
+                && value.trim_start_matches(['-', '0']) != ""
+            {
                 return Response::photo_error(500, "plexsim: server error");
             }
         }
@@ -84,7 +87,10 @@ impl Runtime {
         let scheme = url_scheme(&target);
         let transcoded = |mut response: Response| {
             response.headers.retain(|(name, _)| {
-                !matches!(name.as_str(), "Cache-Control" | "Accept-Ranges" | "X-Plex-Local-Asset")
+                !matches!(
+                    name.as_str(),
+                    "Cache-Control" | "Accept-Ranges" | "X-Plex-Local-Asset"
+                )
             });
             response
                 .headers
@@ -114,14 +120,19 @@ impl Runtime {
                 return Response::photo_error(response.status, "plexsim: not found");
             }
             let mut response = response;
-            response.headers.insert(0, ("X-Plex-Protocol".to_string(), "1.0".to_string()));
+            response
+                .headers
+                .insert(0, ("X-Plex-Protocol".to_string(), "1.0".to_string()));
             response.headers.push(("Date".to_string(), http_date()));
             return transcoded(response);
         }
         if IN_TRANSCODE.with(|cell| cell.get()) {
             return Response::photo_error(404, "plexsim: not found");
         }
-        let segments = inner.split('/').filter(|s| !s.is_empty()).collect::<Vec<_>>();
+        let segments = inner
+            .split('/')
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>();
         if segments.last() == Some(&"metadata") && segments.contains(&"theme") {
             // A GET that MINTS a row must not run from here.
             return Response::photo_error(500, "plexsim: server error");
@@ -131,7 +142,10 @@ impl Runtime {
         // The transcoder's own width picks the composite's upstream variant, as the
         // oracle's `_at_width` does on the fetched image.
         let mut inner_target = target.clone();
-        if inner.starts_with("/library/sections/") && inner.contains("/composite/") && !target.contains('?') {
+        if inner.starts_with("/library/sections/")
+            && inner.contains("/composite/")
+            && !target.contains('?')
+        {
             if let Some(width) = query.get("width") {
                 inner_target = format!("{inner}?width={width}");
             }
@@ -239,7 +253,11 @@ pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
     }
     let split = raw.windows(4).position(|window| window == b"\r\n\r\n")?;
     let head = String::from_utf8_lossy(&raw[..split]).to_string();
-    if !head.split_whitespace().nth(1).is_some_and(|status| status == "200") {
+    if !head
+        .split_whitespace()
+        .nth(1)
+        .is_some_and(|status| status == "200")
+    {
         return None;
     }
     let mut body = raw[split + 4..].to_vec();
@@ -250,7 +268,10 @@ pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
         loop {
             let line_end = rest.windows(2).position(|w| w == b"\r\n")?;
             let size = usize::from_str_radix(
-                String::from_utf8_lossy(&rest[..line_end]).split(';').next()?.trim(),
+                String::from_utf8_lossy(&rest[..line_end])
+                    .split(';')
+                    .next()?
+                    .trim(),
                 16,
             )
             .ok()?;
@@ -273,7 +294,8 @@ pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
         .lines()
         .find_map(|line| {
             let (name, value) = line.split_once(':')?;
-            name.eq_ignore_ascii_case("content-type").then(|| value.trim().to_string())
+            name.eq_ignore_ascii_case("content-type")
+                .then(|| value.trim().to_string())
         })
         .unwrap_or_else(|| "image/jpeg".to_string());
     let hit = (body, content_type);

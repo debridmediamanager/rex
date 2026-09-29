@@ -111,7 +111,10 @@ impl Runtime {
             // replace only on a strictly greater stamp.
             let mut chosen: Option<Value> = None;
             for row in episodes.iter().filter(|row| truthy(row, "viewOffset")) {
-                if chosen.as_ref().map_or(true, |best| stamp_of(row) > stamp_of(best)) {
+                if chosen
+                    .as_ref()
+                    .map_or(true, |best| stamp_of(row) > stamp_of(best))
+                {
                     chosen = Some(row.clone());
                 }
             }
@@ -219,7 +222,10 @@ impl Runtime {
         let mut body = Map::new();
         body.insert("size".to_string(), json!(0));
         body.insert("allowSync".to_string(), json!(true));
-        body.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        body.insert(
+            "identifier".to_string(),
+            json!("com.plexapp.plugins.library"),
+        );
         let hub_count = fields.get("Hub").and_then(Value::as_array).map(Vec::len);
         for (key, value) in fields {
             body.insert(key, value);
@@ -227,7 +233,10 @@ impl Runtime {
         if let Some(count) = hub_count {
             body.insert("size".to_string(), json!(count));
         }
-        Value::Object(Map::from_iter([("MediaContainer".to_string(), Value::Object(body))]))
+        Value::Object(Map::from_iter([(
+            "MediaContainer".to_string(),
+            Value::Object(body),
+        )]))
     }
 }
 
@@ -239,7 +248,12 @@ pub(super) fn content_directories(query: &HashMap<String, String>) -> Option<Has
     if raw.is_empty() {
         return None;
     }
-    Some(raw.split(',').filter(|value| !value.is_empty()).map(str::to_string).collect())
+    Some(
+        raw.split(',')
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+            .collect(),
+    )
 }
 
 /// Cycle 54: an integer query parameter as a real PMS parses it -- an optional sign
@@ -273,7 +287,10 @@ pub(super) fn bool_option(value: &str) -> bool {
 /// Whether `excludeContinueWatching=` drops the two resume shelves: the value parses
 /// as the integer 1 (cycle 28; `+1` too, cycle 55).
 pub(super) fn exclude_continue_watching(query: &HashMap<String, String>) -> bool {
-    let raw = query.get("excludeContinueWatching").map(String::as_str).unwrap_or("");
+    let raw = query
+        .get("excludeContinueWatching")
+        .map(String::as_str)
+        .unwrap_or("");
     int_param(raw, None)
         && !raw.starts_with('-')
         && raw.trim_start_matches('+').trim_start_matches('0') == "1"
@@ -287,13 +304,55 @@ const TV_RECENT_CAP: usize = 50;
 /// The global hub list, measured identically on both real servers: eight shelves in
 /// this order, all promoted. (identifier, title, key, kind, style)
 const GLOBAL_HUBS: &[(&str, &str, &str, &str, &str)] = &[
-    ("home.continue", "Continue Watching", "/hubs/home/continueWatching", "mixed", "hero"),
-    ("home.ondeck", "On Deck", "/hubs/home/onDeck", "episode", "shelf"),
-    ("home.movies.recent", "Recently Added Movies", "/hubs/home/recentlyAdded?type=1", "movie", "shelf"),
-    ("home.television.recent", "Recently Added TV", "/hubs/home/recentlyAdded?type=2", "mixed", "shelf"),
-    ("home.music.recent", "Recently Added Music", "/hubs/home/recentlyAdded?type=8", "album", "shelf"),
-    ("home.photos.recent", "Recently Added Photos", "/hubs/home/recentlyAdded?type=13", "photo", "shelf"),
-    ("home.videos.recent", "Recently Added Videos", "/hubs/home/recentlyAdded?type=1&personal=1", "clip", "shelf"),
+    (
+        "home.continue",
+        "Continue Watching",
+        "/hubs/home/continueWatching",
+        "mixed",
+        "hero",
+    ),
+    (
+        "home.ondeck",
+        "On Deck",
+        "/hubs/home/onDeck",
+        "episode",
+        "shelf",
+    ),
+    (
+        "home.movies.recent",
+        "Recently Added Movies",
+        "/hubs/home/recentlyAdded?type=1",
+        "movie",
+        "shelf",
+    ),
+    (
+        "home.television.recent",
+        "Recently Added TV",
+        "/hubs/home/recentlyAdded?type=2",
+        "mixed",
+        "shelf",
+    ),
+    (
+        "home.music.recent",
+        "Recently Added Music",
+        "/hubs/home/recentlyAdded?type=8",
+        "album",
+        "shelf",
+    ),
+    (
+        "home.photos.recent",
+        "Recently Added Photos",
+        "/hubs/home/recentlyAdded?type=13",
+        "photo",
+        "shelf",
+    ),
+    (
+        "home.videos.recent",
+        "Recently Added Videos",
+        "/hubs/home/recentlyAdded?type=1&personal=1",
+        "clip",
+        "shelf",
+    ),
     (
         "home.playlists",
         "Recent Playlists",
@@ -334,7 +393,10 @@ impl Runtime {
         // Cycle 55: `count` is a SIGNED 32-BIT integer; cycle 28: a negative count is
         // `len(rows) + count` clamped at zero and always reports the shelf exhausted.
         if let Some(count) = count.filter(|count| int_param(count, Some(32))) {
-            limit = count.trim_start_matches('+').parse::<i64>().unwrap_or(SHELF_COUNT);
+            limit = count
+                .trim_start_matches('+')
+                .parse::<i64>()
+                .unwrap_or(SHELF_COUNT);
             if limit < 0 {
                 limit = (rows.len() as i64 + limit).max(0);
                 exhausted = true;
@@ -358,7 +420,10 @@ impl Runtime {
         body.insert("type".to_string(), json!(kind));
         body.insert("hubKey".to_string(), json!("/library/all"));
         body.insert("size".to_string(), json!(page.len()));
-        body.insert("more".to_string(), json!(!exhausted && rows.len() > page.len()));
+        body.insert(
+            "more".to_string(),
+            json!(!exhausted && rows.len() > page.len()),
+        );
         body.insert("Metadata".to_string(), Value::Array(page));
         for (name, value) in extra {
             body.insert(name.to_string(), value);
@@ -380,7 +445,9 @@ impl Runtime {
         promoted: bool,
     ) -> Value {
         let stem = match identifier.rsplit_once('.') {
-            Some((head, tail)) if !tail.is_empty() && tail.bytes().all(|b| b.is_ascii_digit()) => head,
+            Some((head, tail)) if !tail.is_empty() && tail.bytes().all(|b| b.is_ascii_digit()) => {
+                head
+            }
             _ => identifier,
         };
         let mut extra = vec![
@@ -391,7 +458,15 @@ impl Runtime {
         if promoted {
             extra.push(("promoted", json!(true)));
         }
-        let mut built = self.hub(identifier, title, rows, query.get("count"), kind, false, extra);
+        let mut built = self.hub(
+            identifier,
+            title,
+            rows,
+            query.get("count"),
+            kind,
+            false,
+            extra,
+        );
         let keys = built
             .get("Metadata")
             .and_then(Value::as_array)
@@ -400,7 +475,10 @@ impl Runtime {
         if keys.is_empty() {
             built.shift_remove("hubKey");
         } else {
-            built.insert("hubKey".to_string(), json!(format!("/library/metadata/{}", keys.join(","))));
+            built.insert(
+                "hubKey".to_string(),
+                json!(format!("/library/metadata/{}", keys.join(","))),
+            );
         }
         Value::Object(built)
     }
@@ -418,7 +496,11 @@ impl Runtime {
     /// `/hubs/home/recentlyAdded?type=2` -- a MIXED, rolled-up list (cycle 28): two or
     /// more recently-added siblings collapse into their parent, recursively, and a
     /// parent row is dated by its NEWEST LEAF.
-    pub(super) fn recently_added_tv(&self, section_id: Option<&String>, leaves_in: Option<Vec<Value>>) -> Vec<Value> {
+    pub(super) fn recently_added_tv(
+        &self,
+        section_id: Option<&String>,
+        leaves_in: Option<Vec<Value>>,
+    ) -> Vec<Value> {
         let mut leaves = leaves_in.unwrap_or_else(|| {
             self.catalog
                 .items
@@ -429,7 +511,8 @@ impl Runtime {
         });
         if let Some(section) = section_number(section_id) {
             leaves.retain(|row| {
-                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section.to_string()
+                string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                    == section.to_string()
             });
         }
         let mut season_order: Vec<String> = Vec::new();
@@ -480,7 +563,9 @@ impl Runtime {
         }
         rows.retain(|row| {
             !(row.get("type").and_then(Value::as_str) == Some("episode")
-                && claimed.contains(&string_value(row.get("parentRatingKey").unwrap_or(&Value::Null))))
+                && claimed.contains(&string_value(
+                    row.get("parentRatingKey").unwrap_or(&Value::Null),
+                )))
         });
         let mut dated = rows
             .into_iter()
@@ -535,7 +620,11 @@ impl Runtime {
 
     /// Newest first, by TYPE (1 movies, 2 the TV roll-up); None for every other type
     /// (cycle 21).
-    pub(super) fn recently_added_rows(&self, type_id: Option<&str>, section_id: Option<&String>) -> Option<Vec<Value>> {
+    pub(super) fn recently_added_rows(
+        &self,
+        type_id: Option<&str>,
+        section_id: Option<&String>,
+    ) -> Option<Vec<Value>> {
         match type_id {
             Some("2") => Some(self.recently_added_tv(section_id, None)),
             Some("1") => {
@@ -591,7 +680,13 @@ impl Runtime {
     pub(super) fn global_hubs(&self, query: &HashMap<String, String>) -> Value {
         let wanted = query
             .get("identifier")
-            .map(|value| value.split(',').filter(|v| !v.is_empty()).map(str::to_string).collect::<Vec<_>>())
+            .map(|value| {
+                value
+                    .split(',')
+                    .filter(|v| !v.is_empty())
+                    .map(str::to_string)
+                    .collect::<Vec<_>>()
+            })
             .unwrap_or_default();
         let directories = content_directories(query);
         let watching = self.in_directories(self.continue_watching(false), &directories);
@@ -618,9 +713,11 @@ impl Runtime {
                     .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
                     .cloned()
                     .collect(),
-                "home.movies.recent" => {
-                    self.in_directories(self.recently_added_rows(Some("1"), None).unwrap_or_default(), &directories)
-                }
+                "home.movies.recent" => self.in_directories(
+                    self.recently_added_rows(Some("1"), None)
+                        .unwrap_or_default(),
+                    &directories,
+                ),
                 "home.television.recent" => {
                     let leaves = self.filtered_tv_leaves(query, true).ok().flatten();
                     self.in_directories(self.recently_added_tv(None, leaves), &directories)
@@ -639,11 +736,16 @@ impl Runtime {
                         let Some(stored) = self.catalog.get(&key) else {
                             continue;
                         };
-                        if projected.get("Guid").is_some_and(|g| g.as_array().map_or(true, |a| !a.is_empty())) {
+                        if projected
+                            .get("Guid")
+                            .is_some_and(|g| g.as_array().map_or(true, |a| !a.is_empty()))
+                        {
                             continue;
                         }
                         let guids = match stored.get("Guid") {
-                            Some(Value::Array(list)) if !list.is_empty() => Some(Value::Array(list.clone())),
+                            Some(Value::Array(list)) if !list.is_empty() => {
+                                Some(Value::Array(list.clone()))
+                            }
                             _ => stored
                                 .get("guid")
                                 .and_then(Value::as_str)
@@ -684,11 +786,24 @@ impl Runtime {
                 .into_iter()
                 .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
                 .collect::<Vec<_>>();
-            hubs.push(self.home_hub("home.ondeck", "On Deck", "/hubs/home/onDeck", &rows, query, "episode", "shelf", true));
+            hubs.push(self.home_hub(
+                "home.ondeck",
+                "On Deck",
+                "/hubs/home/onDeck",
+                &rows,
+                query,
+                "episode",
+                "shelf",
+                true,
+            ));
         }
         let wanted = content_directories(query);
         let pinned = query.get("pinnedContentDirectoryID").map(|value| {
-            value.split(',').filter(|v| !v.is_empty()).map(str::to_string).collect::<Vec<_>>()
+            value
+                .split(',')
+                .filter(|v| !v.is_empty())
+                .map(str::to_string)
+                .collect::<Vec<_>>()
         });
         let kinds = self
             .catalog
@@ -697,7 +812,10 @@ impl Runtime {
             .map(|s| {
                 (
                     string_value(s.get("key").unwrap_or(&Value::Null)),
-                    s.get("type").and_then(Value::as_str).unwrap_or("").to_string(),
+                    s.get("type")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
                 )
             })
             .collect::<HashMap<_, _>>();
@@ -725,7 +843,11 @@ impl Runtime {
             let mut rows = self.section_recently_added_rows(section);
             // Cycle 54: with a filter in the request the library's TV shelf is the
             // roll-up of the episodes that pass it.
-            let filtered = if is_show { self.filtered_tv_leaves(query, true).ok().flatten() } else { None };
+            let filtered = if is_show {
+                self.filtered_tv_leaves(query, true).ok().flatten()
+            } else {
+                None
+            };
             if let Some(leaves) = filtered.clone() {
                 rows = self.recently_added_tv(Some(&section_key), Some(leaves));
             }
@@ -733,7 +855,8 @@ impl Runtime {
                 let merged = if is_show {
                     self.recently_added_tv(None, filtered)
                 } else {
-                    self.recently_added_rows(Some("1"), None).unwrap_or_default()
+                    self.recently_added_rows(Some("1"), None)
+                        .unwrap_or_default()
                 };
                 rows = self.in_directories(merged, &Some(same_type.iter().cloned().collect()));
             }
@@ -742,7 +865,10 @@ impl Runtime {
             } else {
                 format!("/library/sections/{section_key}/all?sort=addedAt:desc")
             };
-            let mut identifier = format!("{}.recentlyadded.{section_key}", if is_show { "tv" } else { "movie" });
+            let mut identifier = format!(
+                "{}.recentlyadded.{section_key}",
+                if is_show { "tv" } else { "movie" }
+            );
             let mut shelf_title = format!(
                 "Recently Added in {}",
                 section.get("title").and_then(Value::as_str).unwrap_or("")
@@ -756,7 +882,10 @@ impl Runtime {
                 key = format!(
                     "/hubs/home/recentlyAdded?type={}&pinnedContentDirectoryID={}",
                     if is_show { 2 } else { 1 },
-                    query.get("pinnedContentDirectoryID").cloned().unwrap_or_default()
+                    query
+                        .get("pinnedContentDirectoryID")
+                        .cloned()
+                        .unwrap_or_default()
                 );
             }
             hubs.push(self.home_hub(
@@ -770,7 +899,10 @@ impl Runtime {
                 true,
             ));
         }
-        if wanted.as_ref().map_or(true, |w| w.is_empty() || w.contains("playlists")) {
+        if wanted
+            .as_ref()
+            .map_or(true, |w| w.is_empty() || w.contains("playlists"))
+        {
             let rows = self.recent_playlists();
             hubs.push(self.home_hub(
                 "home.playlists",
@@ -789,9 +921,21 @@ impl Runtime {
 
 /// The fifteen fields a hub request refuses with a value (a 500).
 const HUB_REFUSED_FIELDS: &[&str] = &[
-    "duration", "lastViewedAt", "lastRatedAt", "viewCount", "skipCount", "viewOffset",
-    "userRating", "unwatched", "resolution", "hdr", "mediaSize", "file", "parentIndex",
-    "slug", "group",
+    "duration",
+    "lastViewedAt",
+    "lastRatedAt",
+    "viewCount",
+    "skipCount",
+    "viewOffset",
+    "userRating",
+    "unwatched",
+    "resolution",
+    "hdr",
+    "mediaSize",
+    "file",
+    "parentIndex",
+    "slug",
+    "group",
 ];
 
 /// A 500 if this hub request names one of the fifteen with a value.
@@ -799,7 +943,10 @@ pub(super) fn hub_refusal(query: &HashMap<String, String>) -> Option<Response> {
     for (key, value) in query {
         let bare = key.trim_end_matches(['<', '>', '=', '!']);
         if HUB_REFUSED_FIELDS.contains(&bare) && !value.trim().is_empty() {
-            return Some(Response::error(500, &format!("plexsim: cannot filter a hub on {key}")));
+            return Some(Response::error(
+                500,
+                &format!("plexsim: cannot filter a hub on {key}"),
+            ));
         }
     }
     None
@@ -827,7 +974,11 @@ pub(super) fn page_window(
     if size < 0 || start < 0 {
         return Ok((rows, false, 0, total));
     }
-    let page = rows.into_iter().skip(start as usize).take(size as usize).collect();
+    let page = rows
+        .into_iter()
+        .skip(start as usize)
+        .take(size as usize)
+        .collect();
     Ok((page, true, start as usize, total))
 }
 
@@ -841,7 +992,11 @@ pub(super) fn guid_gate(mut row: Value, query: &HashMap<String, String>) -> Valu
                 guids.is_null() || guids.as_array().is_some_and(Vec::is_empty)
             });
             if empty {
-                if let Some(guid) = object.get("guid").and_then(Value::as_str).filter(|g| !g.is_empty()) {
+                if let Some(guid) = object
+                    .get("guid")
+                    .and_then(Value::as_str)
+                    .filter(|g| !g.is_empty())
+                {
                     let guid = guid.to_string();
                     object.insert("Guid".to_string(), json!([{"id": guid}]));
                 }

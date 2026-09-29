@@ -21,7 +21,13 @@ fn member_type_number(subtype: &str) -> i64 {
 
 /// The per-user state a list row carries, in this order and spliced in after its
 /// `ratingCount` (cycle 21).
-const LIST_STATE: &[&str] = &["userRating", "viewOffset", "viewCount", "lastViewedAt", "lastRatedAt"];
+const LIST_STATE: &[&str] = &[
+    "userRating",
+    "viewOffset",
+    "viewCount",
+    "lastViewedAt",
+    "lastRatedAt",
+];
 
 impl Collection {
     /// The tag the collection's members carry -- the name it was created under, which
@@ -35,7 +41,10 @@ impl Collection {
     }
 
     pub(super) fn stamp(&self) -> i64 {
-        self.extra.get("updatedAt").and_then(Value::as_i64).unwrap_or(1700000000)
+        self.extra
+            .get("updatedAt")
+            .and_then(Value::as_i64)
+            .unwrap_or(1700000000)
     }
 
     fn touch(&mut self) {
@@ -87,7 +96,11 @@ impl Runtime {
                     .to_lowercase()
             });
         } else {
-            rows.sort_by_key(|row| row.get("originallyAvailableAt").map(string_value).unwrap_or_default());
+            rows.sort_by_key(|row| {
+                row.get("originallyAvailableAt")
+                    .map(string_value)
+                    .unwrap_or_default()
+            });
         }
         rows
     }
@@ -130,17 +143,31 @@ impl Runtime {
         row.insert("title".to_string(), json!(collection.title));
         row.insert(
             "subtype".to_string(),
-            json!(if unmatched { "unknown" } else { collection.subtype.as_str() }),
+            json!(if unmatched {
+                "unknown"
+            } else {
+                collection.subtype.as_str()
+            }),
         );
         row.insert(
             "summary".to_string(),
-            collection.extra.get("summary").cloned().unwrap_or_else(|| json!("")),
+            collection
+                .extra
+                .get("summary")
+                .cloned()
+                .unwrap_or_else(|| json!("")),
         );
-        row.insert("index".to_string(), json!(self.collection_tag_id(collection)));
+        row.insert(
+            "index".to_string(),
+            json!(self.collection_tag_id(collection)),
+        );
         if !unmatched {
             row.insert(
                 "ratingCount".to_string(),
-                json!(member_type_number(&collection.subtype) + if collection.smart { 100 } else { 0 }),
+                json!(
+                    member_type_number(&collection.subtype)
+                        + if collection.smart { 100 } else { 0 }
+                ),
             );
         }
         row.insert(
@@ -152,7 +179,11 @@ impl Runtime {
         );
         row.insert(
             "addedAt".to_string(),
-            collection.extra.get("addedAt").cloned().unwrap_or_else(|| json!(stamp)),
+            collection
+                .extra
+                .get("addedAt")
+                .cloned()
+                .unwrap_or_else(|| json!(stamp)),
         );
         row.insert("updatedAt".to_string(), json!(stamp));
         row.insert("childCount".to_string(), json!(rows.len()));
@@ -165,7 +196,10 @@ impl Runtime {
                 .unwrap_or_else(|_| json!(collection.section)),
         );
         if let Some(section) = self.section(&collection.section) {
-            row.insert("librarySectionTitle".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+            row.insert(
+                "librarySectionTitle".to_string(),
+                section.get("title").cloned().unwrap_or(Value::Null),
+            );
             row.insert(
                 "librarySectionKey".to_string(),
                 json!(format!("/library/sections/{}", collection.section)),
@@ -175,7 +209,10 @@ impl Runtime {
             // Measured twice over: a collection's `smart` is the STRING "1".
             row.insert("smart".to_string(), json!("1"));
             if !collection.uri.is_empty() {
-                row.insert("content".to_string(), json!(percent_decode(&collection.uri)));
+                row.insert(
+                    "content".to_string(),
+                    json!(percent_decode(&collection.uri)),
+                );
             }
         }
         for name in ["titleSort", "contentRating"] {
@@ -207,7 +244,11 @@ impl Runtime {
         }
         // Cycle 21: the per-user state sits after `ratingCount` (or `index` once an
         // unmatch removed it) and before `thumb`.
-        let after = if row.contains_key("ratingCount") { "ratingCount" } else { "index" };
+        let after = if row.contains_key("ratingCount") {
+            "ratingCount"
+        } else {
+            "index"
+        };
         // A collection never carries `viewCount` at all, whatever is scrobbled at it.
         let stored_state = self.list_state.get(&collection.id);
         let state = LIST_STATE
@@ -241,7 +282,11 @@ impl Runtime {
     /// plain collection, `collectionSort` -- a smart one carries
     /// `collectionFilterBasedOnUser` in that slot (cycle 15).
     pub(super) fn collection_preferences(&self, collection: &Collection) -> Vec<Value> {
-        let second = if collection.smart { "collectionFilterBasedOnUser" } else { "collectionSort" };
+        let second = if collection.smart {
+            "collectionFilterBasedOnUser"
+        } else {
+            "collectionSort"
+        };
         ["collectionMode", second]
             .iter()
             .map(|name| {
@@ -293,8 +338,14 @@ impl Runtime {
                 .unwrap_or_else(|_| json!(collection.section)),
         );
         if let Some(section) = self.section(&collection.section) {
-            fields.insert("librarySectionTitle".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
-            fields.insert("librarySectionUUID".to_string(), section.get("uuid").cloned().unwrap_or(Value::Null));
+            fields.insert(
+                "librarySectionTitle".to_string(),
+                section.get("title").cloned().unwrap_or(Value::Null),
+            );
+            fields.insert(
+                "librarySectionUUID".to_string(),
+                section.get("uuid").cloned().unwrap_or(Value::Null),
+            );
         }
         fields
     }
@@ -304,7 +355,10 @@ impl Runtime {
     /// (cycle 60).
     fn tag_collection_member(&mut self, key: &str, name: &str) {
         let lowered = name.to_lowercase();
-        let known = self.tag_table.get(&("Collection".to_string(), lowered.clone())).cloned();
+        let known = self
+            .tag_table
+            .get(&("Collection".to_string(), lowered.clone()))
+            .cloned();
         let minted = known.unwrap_or_else(|| {
             let id = tag_id("Collection", name);
             json!({"id": id, "tag": name, "filter": format!("collection={id}")})
@@ -315,9 +369,14 @@ impl Runtime {
         let Some(row) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
             return;
         };
-        let tags = row.entry("Collection".to_string()).or_insert_with(|| json!([]));
+        let tags = row
+            .entry("Collection".to_string())
+            .or_insert_with(|| json!([]));
         if let Some(tags) = tags.as_array_mut() {
-            if !tags.iter().any(|tag| tag.get("tag").and_then(Value::as_str) == Some(name)) {
+            if !tags
+                .iter()
+                .any(|tag| tag.get("tag").and_then(Value::as_str) == Some(name))
+            {
                 tags.push(minted);
             }
         }
@@ -330,7 +389,9 @@ impl Runtime {
         };
         let lowered = name.to_lowercase();
         let empty = if let Some(tags) = row.get_mut("Collection").and_then(Value::as_array_mut) {
-            tags.retain(|tag| tag.get("tag").map(string_value).map(|t| t.to_lowercase()) != Some(lowered.clone()));
+            tags.retain(|tag| {
+                tag.get("tag").map(string_value).map(|t| t.to_lowercase()) != Some(lowered.clone())
+            });
             tags.is_empty()
         } else {
             false
@@ -349,7 +410,12 @@ impl Runtime {
         let name = collection.tag_name();
         let mut added = 0;
         for key in keys {
-            if collection.items.contains(key) || self.collections.get(id).is_some_and(|c| c.items.contains(key)) {
+            if collection.items.contains(key)
+                || self
+                    .collections
+                    .get(id)
+                    .is_some_and(|c| c.items.contains(key))
+            {
                 continue;
             }
             if let Some(stored) = self.collections.get_mut(id) {
@@ -388,7 +454,11 @@ impl Runtime {
         let smart = query.get("smart").map(String::as_str) == Some("1");
         let id = self.next_collection.to_string();
         self.next_collection += 1;
-        let title = if title.is_empty() { "Untitled".to_string() } else { title.clone() };
+        let title = if title.is_empty() {
+            "Untitled".to_string()
+        } else {
+            title.clone()
+        };
         let known = self
             .tag_table
             .get(&("Collection".to_string(), title.to_lowercase()))
@@ -432,26 +502,45 @@ impl Runtime {
         self.push_timeline_collection(&frame_row, 0, Some("created"));
         let mut row = self.dynamic_collection_row(&collection);
         if let Some(object) = row.as_object_mut() {
-            for name in ["librarySectionID", "librarySectionKey", "librarySectionTitle"] {
+            for name in [
+                "librarySectionID",
+                "librarySectionKey",
+                "librarySectionTitle",
+            ] {
                 object.shift_remove(name);
             }
         }
         self.dirty = true;
         self.save_if_dirty();
-        Response::json(200, json!({"MediaContainer": {"size": 1, "Metadata": [row]}}))
+        Response::json(
+            200,
+            json!({"MediaContainer": {"size": 1, "Metadata": [row]}}),
+        )
     }
 
     /// A type-18 frame for a collection row (`sectionID` its library).
     fn push_timeline_collection(&mut self, row: &Value, state: i64, metadata_state: Option<&str>) {
         let mut entry = Map::new();
-        entry.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        entry.insert(
+            "identifier".to_string(),
+            json!("com.plexapp.plugins.library"),
+        );
         entry.insert(
             "sectionID".to_string(),
-            json!(row.get("librarySectionID").map(string_value).unwrap_or_default()),
+            json!(row
+                .get("librarySectionID")
+                .map(string_value)
+                .unwrap_or_default()),
         );
-        entry.insert("itemID".to_string(), json!(row.get("ratingKey").map(string_value).unwrap_or_default()));
+        entry.insert(
+            "itemID".to_string(),
+            json!(row.get("ratingKey").map(string_value).unwrap_or_default()),
+        );
         entry.insert("type".to_string(), json!(18));
-        entry.insert("title".to_string(), json!(row.get("title").map(string_value).unwrap_or_default()));
+        entry.insert(
+            "title".to_string(),
+            json!(row.get("title").map(string_value).unwrap_or_default()),
+        );
         entry.insert("state".to_string(), json!(state));
         entry.insert("updatedAt".to_string(), json!(now()));
         if let Some(metadata_state) = metadata_state {
@@ -463,7 +552,11 @@ impl Runtime {
     /// Run the ITEM edit grammar over a collection's row as a copy (cycle 20/21):
     /// its refusals are the collection's, and the collection writers below stay in
     /// charge of what is stored.
-    fn collection_edit_refusal(&self, collection: &Collection, pairs: &[(String, String)]) -> Option<Response> {
+    fn collection_edit_refusal(
+        &self,
+        collection: &Collection,
+        pairs: &[(String, String)],
+    ) -> Option<Response> {
         let row = self.dynamic_collection_row(collection);
         let map = row.as_object().cloned().unwrap_or_default();
         match self.edit_row_copy(&map, pairs, false) {
@@ -476,8 +569,14 @@ impl Runtime {
     /// rating, a sort-title lock and Labels (`library_list_item` PUT).
     fn write_collection_edit(&mut self, id: &str, pairs: &[(String, String)]) {
         let query = pairs.iter().cloned().collect::<HashMap<_, _>>();
-        let title = query.get("title.value").or_else(|| query.get("title")).cloned();
-        let summary = query.get("summary.value").or_else(|| query.get("summary")).cloned();
+        let title = query
+            .get("title.value")
+            .or_else(|| query.get("title"))
+            .cloned();
+        let summary = query
+            .get("summary.value")
+            .or_else(|| query.get("summary"))
+            .cloned();
         let labels = {
             let pattern = regex::Regex::new(r"^label\[(\d+)\]\.tag\.tag$").expect("valid regex");
             let mut labels = pairs
@@ -491,7 +590,11 @@ impl Runtime {
                 })
                 .collect::<Vec<_>>();
             labels.sort_by_key(|(index, _)| *index);
-            labels.into_iter().map(|(_, value)| value).filter(|value| !value.is_empty()).collect::<Vec<_>>()
+            labels
+                .into_iter()
+                .map(|(_, value)| value)
+                .filter(|value| !value.is_empty())
+                .collect::<Vec<_>>()
         };
         let label_tags = if labels.is_empty() {
             None
@@ -508,7 +611,9 @@ impl Runtime {
                         let id = tag_id("Label", &spelled);
                         json!({"id": id, "tag": spelled, "filter": format!("label={id}")})
                     });
-                self.tag_table.entry(("Label".to_string(), lowered)).or_insert_with(|| tag.clone());
+                self.tag_table
+                    .entry(("Label".to_string(), lowered))
+                    .or_insert_with(|| tag.clone());
                 minted.push(tag);
             }
             Some(minted)
@@ -521,7 +626,10 @@ impl Runtime {
         if let Some(title) = &title {
             if title.is_empty() && !collection.title.is_empty() {
                 let old = collection.title.clone();
-                collection.extra.insert("titleSort".to_string(), json!(crate::hierarchy::sort_title(&old)));
+                collection.extra.insert(
+                    "titleSort".to_string(),
+                    json!(crate::hierarchy::sort_title(&old)),
+                );
                 collection.title = String::new();
             } else if !title.is_empty() && *title != collection.title {
                 if collection.tag.is_empty() {
@@ -531,7 +639,9 @@ impl Runtime {
             }
         }
         if let Some(summary) = summary {
-            collection.extra.insert("summary".to_string(), json!(summary));
+            collection
+                .extra
+                .insert("summary".to_string(), json!(summary));
         }
         collection.touch();
         for name in ["titleSort", "contentRating"] {
@@ -552,11 +662,18 @@ impl Runtime {
             }
         }
         if let Some(tags) = label_tags {
-            collection.extra.insert("Label".to_string(), Value::Array(tags));
+            collection
+                .extra
+                .insert("Label".to_string(), Value::Array(tags));
         }
-        if ["title", "title.value", "titleSort.value", "titleSort.locked"]
-            .iter()
-            .any(|name| query.contains_key(*name))
+        if [
+            "title",
+            "title.value",
+            "titleSort.value",
+            "titleSort.locked",
+        ]
+        .iter()
+        .any(|name| query.contains_key(*name))
         {
             // Measured: a list's Sort Title follows an item's rule.
             let mut map = Map::new();
@@ -570,7 +687,9 @@ impl Runtime {
             edit::derive_title_sort(&mut map);
             match map.get("titleSort") {
                 Some(sort) => {
-                    collection.extra.insert("titleSort".to_string(), sort.clone());
+                    collection
+                        .extra
+                        .insert("titleSort".to_string(), sort.clone());
                 }
                 None => {
                     collection.extra.shift_remove("titleSort");
@@ -610,9 +729,13 @@ impl Runtime {
                 }
             }
             if renamed {
-                let light = row.entry("_collectionLight".to_string()).or_insert_with(|| json!({}));
+                let light = row
+                    .entry("_collectionLight".to_string())
+                    .or_insert_with(|| json!({}));
                 if let Some(light) = light.as_object_mut() {
-                    let first = light.shift_remove(&old.to_lowercase()).unwrap_or_else(|| json!(old));
+                    let first = light
+                        .shift_remove(&old.to_lowercase())
+                        .unwrap_or_else(|| json!(old));
                     light.insert(title.to_lowercase(), first);
                 }
             }
@@ -623,7 +746,9 @@ impl Runtime {
                 json!({"id": tag_id_value, "tag": title, "filter": format!("collection={tag_id_value}")})
             });
         if let Some(stored) = self.collections.get_mut(id) {
-            stored.extra.insert("tagID".to_string(), json!(tag_id_value));
+            stored
+                .extra
+                .insert("tagID".to_string(), json!(tag_id_value));
             stored.tag = title.to_string();
             let mut names = stored
                 .extra
@@ -631,27 +756,46 @@ impl Runtime {
                 .and_then(Value::as_array)
                 .cloned()
                 .unwrap_or_default();
-            if !names.iter().any(|name| name.as_str() == Some(&title.to_lowercase())) {
+            if !names
+                .iter()
+                .any(|name| name.as_str() == Some(&title.to_lowercase()))
+            {
                 names.push(json!(title.to_lowercase()));
             }
-            stored.extra.insert("_names".to_string(), Value::Array(names));
+            stored
+                .extra
+                .insert("_names".to_string(), Value::Array(names));
         }
     }
 
     /// The SECTION path's type=18 save for one collection: the 409 a taken name gets
     /// (cycles 58, 61), the tag rename, the edit, and the `queued`/done frame pair
     /// with the title from BEFORE the write (cycle 36).
-    pub(super) fn edit_collection(&mut self, id: &str, edits: &HashMap<String, String>) -> Response {
-        let pairs = edits.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>();
+    pub(super) fn edit_collection(
+        &mut self,
+        id: &str,
+        edits: &HashMap<String, String>,
+    ) -> Response {
+        let pairs = edits
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect::<Vec<_>>();
         self.section_collection_save(id, &pairs)
     }
 
-    pub(super) fn section_collection_save(&mut self, id: &str, pairs: &[(String, String)]) -> Response {
+    pub(super) fn section_collection_save(
+        &mut self,
+        id: &str,
+        pairs: &[(String, String)],
+    ) -> Response {
         let Some(collection) = self.collections.get(id).cloned() else {
             return Response::empty(200);
         };
         let query = pairs.iter().cloned().collect::<HashMap<_, _>>();
-        let wanted = query.get("title.value").or_else(|| query.get("title")).cloned();
+        let wanted = query
+            .get("title.value")
+            .or_else(|| query.get("title"))
+            .cloned();
         if let Some(wanted) = wanted.as_ref().filter(|title| !title.is_empty()) {
             let lowered = wanted.to_lowercase();
             let mut taken = self
@@ -659,9 +803,15 @@ impl Runtime {
                 .items
                 .iter()
                 .filter(|row| {
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == collection.section
+                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                        == collection.section
                 })
-                .flat_map(|row| row.get("Collection").and_then(Value::as_array).cloned().unwrap_or_default())
+                .flat_map(|row| {
+                    row.get("Collection")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default()
+                })
                 .filter_map(|tag| tag.get("tag").map(string_value).map(|t| t.to_lowercase()))
                 .collect::<HashSet<_>>();
             taken.extend(
@@ -674,7 +824,13 @@ impl Runtime {
                 .extra
                 .get("_names")
                 .and_then(Value::as_array)
-                .map(|names| names.iter().filter_map(Value::as_str).map(str::to_string).collect::<HashSet<_>>())
+                .map(|names| {
+                    names
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_string)
+                        .collect::<HashSet<_>>()
+                })
                 .unwrap_or_default();
             own.insert(collection.title.to_lowercase());
             if taken.contains(&lowered) && !own.contains(&lowered) {
@@ -705,7 +861,11 @@ impl Runtime {
         let Some(collection) = self.collections.get(id).cloned() else {
             return Response::error(404, "plexsim: not found");
         };
-        let members = if collection.smart { Vec::new() } else { self.collection_members(&collection) };
+        let members = if collection.smart {
+            Vec::new()
+        } else {
+            self.collection_members(&collection)
+        };
         self.collections.remove(id);
         let name = collection.tag_name();
         for key in &collection.items {
@@ -787,7 +947,10 @@ impl Runtime {
                     let mut body = Map::new();
                     body.insert("size".to_string(), json!(1));
                     body.insert("allowSync".to_string(), json!(true));
-                    body.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+                    body.insert(
+                        "identifier".to_string(),
+                        json!("com.plexapp.plugins.library"),
+                    );
                     body.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
                     body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
                     body.extend(self.collection_section_fields(&collection));
@@ -813,7 +976,11 @@ impl Runtime {
                 // own composite, `default://`, selected, no `provider`; `/arts` is empty.
                 let mut entries = Vec::new();
                 if leaf == "posters" {
-                    let composite = format!("/library/collections/{}/composite/{}", collection.id, collection.stamp());
+                    let composite = format!(
+                        "/library/collections/{}/composite/{}",
+                        collection.id,
+                        collection.stamp()
+                    );
                     entries.push(json!({"_element": "Photo", "key": format!("{composite}?width=400&height=600"),
                         "ratingKey": "default://", "thumb": format!("{composite}?width=200&height=300"),
                         "selected": true}));
@@ -834,7 +1001,10 @@ impl Runtime {
                 .iter()
                 .map(|row| self.grid_row(row, true, false, false))
                 .collect::<Vec<_>>();
-            return Response::json(200, json!({"MediaContainer": {"size": rows.len(), "Metadata": rows}}));
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": rows.len(), "Metadata": rows}}),
+            );
         }
         if matches!(leaf, "items" | "children") && segments.len() == 3 && method == "DELETE" {
             let member = segments[2];
@@ -843,7 +1013,10 @@ impl Runtime {
                 return Response::error(404, "plexsim: not found");
             }
             let name = collection.tag_name();
-            let removed = self.collections.get(id).is_some_and(|c| c.items.iter().any(|k| k == member));
+            let removed = self
+                .collections
+                .get(id)
+                .is_some_and(|c| c.items.iter().any(|k| k == member));
             if removed {
                 if let Some(stored) = self.collections.get_mut(id) {
                     stored.items.retain(|key| key != member);
@@ -862,7 +1035,10 @@ impl Runtime {
             let after = query.get("after");
             if let Some(after) = after {
                 let digits = after.strip_prefix('-').unwrap_or(after);
-                if after == member || digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                if after == member
+                    || digits.is_empty()
+                    || !digits.bytes().all(|b| b.is_ascii_digit())
+                {
                     return Response::error(400, "plexsim: bad request");
                 }
             }
@@ -872,9 +1048,19 @@ impl Runtime {
             // Measured: a move starts from the order SHOWN and switches the collection
             // to its custom order, `collectionSort` 2; an `after=` naming no member
             // moves the row to the FRONT.
-            let shown = self.collection_members(&collection).iter().filter_map(key_of).collect::<Vec<_>>();
+            let shown = self
+                .collection_members(&collection)
+                .iter()
+                .filter_map(key_of)
+                .collect::<Vec<_>>();
             let mut items = shown.clone();
-            items.extend(collection.items.iter().filter(|key| !shown.contains(key)).cloned());
+            items.extend(
+                collection
+                    .items
+                    .iter()
+                    .filter(|key| !shown.contains(key))
+                    .cloned(),
+            );
             items.retain(|key| key != member);
             let position = after
                 .and_then(|after| items.iter().position(|key| key == after))
@@ -883,7 +1069,9 @@ impl Runtime {
             items.insert(position, member.to_string());
             if let Some(stored) = self.collections.get_mut(id) {
                 stored.items = items;
-                stored.prefs.insert("collectionSort".to_string(), "2".to_string());
+                stored
+                    .prefs
+                    .insert("collectionSort".to_string(), "2".to_string());
                 stored.touch();
             }
             self.dirty = true;
@@ -907,7 +1095,9 @@ impl Runtime {
             let rows = self.rows_for_uri(query.get("uri").map(String::as_str).unwrap_or(""));
             let usable = rows
                 .iter()
-                .filter(|row| row.get("type").and_then(Value::as_str) == Some(collection.subtype.as_str()))
+                .filter(|row| {
+                    row.get("type").and_then(Value::as_str) == Some(collection.subtype.as_str())
+                })
                 .filter_map(key_of)
                 .collect::<Vec<_>>();
             if rows.is_empty() || (rows.len() == 1 && usable.is_empty()) {
@@ -958,7 +1148,10 @@ impl Runtime {
                 .filter(|(name, _)| !name.starts_with("X-Plex-"))
                 .cloned()
                 .collect::<Vec<_>>();
-            if writes.iter().any(|(name, _)| !accepted.contains(&name.as_str())) {
+            if writes
+                .iter()
+                .any(|(name, _)| !accepted.contains(&name.as_str()))
+            {
                 return Response::error(400, "plexsim: bad request");
             }
             if let Some(stored) = self.collections.get_mut(&id) {
@@ -986,8 +1179,14 @@ impl Runtime {
             if !matches!(method, "GET" | "HEAD") {
                 return Response::error(404, "plexsim: not found");
             }
-            let key = id.parse::<i64>().map(|id| json!(id)).unwrap_or_else(|_| json!(id));
-            return Response::json(200, json!({"MediaContainer": {"size": 1, "MetadataItem": [{"id": key}]}}));
+            let key = id
+                .parse::<i64>()
+                .map(|id| json!(id))
+                .unwrap_or_else(|_| json!(id));
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 1, "MetadataItem": [{"id": key}]}}),
+            );
         }
         if tail.len() == 1 && matches!(tail[0], "posters" | "arts") {
             if method == "POST" {
@@ -1001,10 +1200,16 @@ impl Runtime {
             }
             let mut entries = Vec::new();
             if tail[0] == "posters" {
-                let composite = format!("/library/collections/{}/composite/{}", id, collection.stamp());
-                entries.push(json!({"_element": "Photo", "key": format!("{composite}?width=400&height=600"),
+                let composite = format!(
+                    "/library/collections/{}/composite/{}",
+                    id,
+                    collection.stamp()
+                );
+                entries.push(
+                    json!({"_element": "Photo", "key": format!("{composite}?width=400&height=600"),
                     "ratingKey": "default://", "thumb": format!("{composite}?width=200&height=300"),
-                    "selected": true}));
+                    "selected": true}),
+                );
             }
             if let Some((upload, _)) = self.list_artwork.get(&id) {
                 for entry in &mut entries {
@@ -1012,12 +1217,17 @@ impl Runtime {
                         object.shift_remove("selected");
                     }
                 }
-                entries.push(json!({"_element": "Photo", "key": upload, "ratingKey": upload,
-                    "thumb": upload, "selected": true}));
+                entries.push(
+                    json!({"_element": "Photo", "key": upload, "ratingKey": upload,
+                    "thumb": upload, "selected": true}),
+                );
             }
             return Response::json(
                 200,
-                self.tag_container(Map::from_iter([("Metadata".to_string(), Value::Array(entries))])),
+                self.tag_container(Map::from_iter([(
+                    "Metadata".to_string(),
+                    Value::Array(entries),
+                )])),
             );
         }
         if tail.len() == 1 && tail[0] == "children" {
@@ -1026,7 +1236,10 @@ impl Runtime {
             if !matches!(method, "GET" | "HEAD") {
                 return Response::error(404, "plexsim: not found");
             }
-            let section = self.section(&collection.section).cloned().unwrap_or(Value::Null);
+            let section = self
+                .section(&collection.section)
+                .cloned()
+                .unwrap_or(Value::Null);
             let rows = self
                 .collection_members(collection)
                 .iter()
@@ -1045,12 +1258,18 @@ impl Runtime {
                     ("viewGroup".to_string(), view_group),
                 ]),
             );
-            if let Some(body) = container.get_mut("MediaContainer").and_then(Value::as_object_mut) {
+            if let Some(body) = container
+                .get_mut("MediaContainer")
+                .and_then(Value::as_object_mut)
+            {
                 body.shift_remove("content");
                 body.shift_remove("thumb");
                 body.insert("key".to_string(), json!(id));
                 body.insert("nocache".to_string(), json!(true));
-                body.insert("parentIndex".to_string(), json!(self.collection_tag_id(collection)));
+                body.insert(
+                    "parentIndex".to_string(),
+                    json!(self.collection_tag_id(collection)),
+                );
                 body.insert("parentTitle".to_string(), json!(collection.title));
                 body.insert("allowSync".to_string(), json!(true));
                 body.extend(self.collection_section_fields(collection));
@@ -1066,15 +1285,27 @@ impl Runtime {
             }
             return Response::image(jpeg_placeholder());
         }
-        if tail.len() == 1 && matches!(tail[0], "poster" | "art" | "thumb") && matches!(method, "GET" | "HEAD") {
+        if tail.len() == 1
+            && matches!(tail[0], "poster" | "art" | "thumb")
+            && matches!(method, "GET" | "HEAD")
+        {
             // Cycle 52: a collection with no uploaded artwork owns none of these.
             return Response::error(404, "plexsim: not found");
         }
         if tail.len() == 1
             && matches!(
                 tail[0],
-                "analyze" | "match" | "extras" | "related" | "allLeaves" | "grandchildren"
-                    | "refresh" | "unmatch" | "poster" | "art" | "thumb"
+                "analyze"
+                    | "match"
+                    | "extras"
+                    | "related"
+                    | "allLeaves"
+                    | "grandchildren"
+                    | "refresh"
+                    | "unmatch"
+                    | "poster"
+                    | "art"
+                    | "thumb"
             )
         {
             let leaf = tail[0];
@@ -1127,7 +1358,9 @@ impl Runtime {
                 }
                 if leaf == "unmatch" {
                     if let Some(stored) = self.collections.get_mut(&id) {
-                        stored.prefs.insert("_unmatched".to_string(), "1".to_string());
+                        stored
+                            .prefs
+                            .insert("_unmatched".to_string(), "1".to_string());
                     }
                     self.dirty = true;
                 }
@@ -1137,7 +1370,10 @@ impl Runtime {
                 let mut body = Map::new();
                 body.insert("size".to_string(), json!(0));
                 body.insert("allowSync".to_string(), json!(true));
-                body.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+                body.insert(
+                    "identifier".to_string(),
+                    json!("com.plexapp.plugins.library"),
+                );
                 body.extend(self.collection_section_fields(collection));
                 body.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
                 body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
@@ -1145,15 +1381,24 @@ impl Runtime {
             }
             // Cycle 41: allLeaves and grandchildren are real secondary containers but
             // neither is a member view; both stay empty.
-            let section = self.section(&collection.section).cloned().unwrap_or(Value::Null);
+            let section = self
+                .section(&collection.section)
+                .cloned()
+                .unwrap_or(Value::Null);
             let mut body = Map::new();
             body.insert("size".to_string(), json!(0));
             body.insert("allowSync".to_string(), json!(true));
             body.insert("art".to_string(), json!("/:/resources/movie-fanart.jpg"));
-            body.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+            body.insert(
+                "identifier".to_string(),
+                json!("com.plexapp.plugins.library"),
+            );
             body.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
             body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
-            body.insert("title1".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+            body.insert(
+                "title1".to_string(),
+                section.get("title").cloned().unwrap_or(Value::Null),
+            );
             body.insert("viewGroup".to_string(), json!("movie"));
             body.insert("viewMode".to_string(), json!(65592));
             if leaf == "allLeaves" {
@@ -1161,7 +1406,10 @@ impl Runtime {
                 body.extend(self.collection_section_fields(collection));
                 body.insert("mixedParents".to_string(), json!(true));
                 body.insert("nocache".to_string(), json!(true));
-                body.insert("parentIndex".to_string(), json!(self.collection_tag_id(collection)));
+                body.insert(
+                    "parentIndex".to_string(),
+                    json!(self.collection_tag_id(collection)),
+                );
                 body.insert("parentTitle".to_string(), json!(collection.title));
                 body.insert("title2".to_string(), json!(collection.title));
             } else {
@@ -1192,11 +1440,17 @@ impl Runtime {
         let mut body = Map::new();
         body.insert("size".to_string(), json!(1));
         body.insert("allowSync".to_string(), json!(true));
-        body.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        body.insert(
+            "identifier".to_string(),
+            json!("com.plexapp.plugins.library"),
+        );
         body.extend(self.collection_section_fields(collection));
         body.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
         body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
-        body.insert("Metadata".to_string(), json!([self.collection_detail(collection, query)]));
+        body.insert(
+            "Metadata".to_string(),
+            json!([self.collection_detail(collection, query)]),
+        );
         Response::json(200, json!({"MediaContainer": body}))
     }
 
@@ -1221,7 +1475,10 @@ impl Runtime {
             .unwrap_or("movie")
             .to_string();
         let rows = self.filter_rows(rows, pairs, &section_type)?;
-        self.sort_rows(rows, Some(sort.filter(|sort| !sort.is_empty()).unwrap_or("titleSort")))
+        self.sort_rows(
+            rows,
+            Some(sort.filter(|sort| !sort.is_empty()).unwrap_or("titleSort")),
+        )
     }
 
     /// Stamp each member's `Collection` tag with the collection's own guid and drop
@@ -1231,7 +1488,9 @@ impl Runtime {
             return;
         };
         for tag in tags.iter_mut() {
-            let Some(tag_object) = tag.as_object_mut() else { continue };
+            let Some(tag_object) = tag.as_object_mut() else {
+                continue;
+            };
             tag_object.shift_remove("count");
             let name = tag_object.get("tag").map(string_value).unwrap_or_default();
             if let Some(collection) = self.collections.values().find(|collection| {
@@ -1239,7 +1498,10 @@ impl Runtime {
                     && collection.tag_name() == name
                     && collection.items.iter().any(|item| item == key)
             }) {
-                tag_object.insert("guid".to_string(), json!(format!("collection://plexsim-{}", collection.id)));
+                tag_object.insert(
+                    "guid".to_string(),
+                    json!(format!("collection://plexsim-{}", collection.id)),
+                );
             }
         }
     }
@@ -1248,7 +1510,12 @@ impl Runtime {
     /// Measured: the answer is the new versioned path, the field is locked, the row's
     /// `updatedAt` moves, and ONE `state 5` frame goes out carrying the list's own type
     /// (cycle 22: 18 for a collection).
-    fn set_collection_artwork(&mut self, id: &str, leaf: &str, query: &HashMap<String, String>) -> Response {
+    fn set_collection_artwork(
+        &mut self,
+        id: &str,
+        leaf: &str,
+        query: &HashMap<String, String>,
+    ) -> Response {
         if query.get("url").is_none_or(|url| url.is_empty()) {
             return Response::error(400, "plexsim: no url");
         }
@@ -1259,7 +1526,9 @@ impl Runtime {
             return Response::error(404, "plexsim: not found");
         };
         collection.extra.insert(field.to_string(), json!(path));
-        collection.extra.insert("updatedAt".to_string(), json!(stamp));
+        collection
+            .extra
+            .insert("updatedAt".to_string(), json!(stamp));
         let mut map = collection.extra.clone();
         edit::set_lock(&mut map, field, true);
         if let Some(fields) = map.get("Field") {

@@ -2,32 +2,80 @@
 //! route: the read-only verb gates (cycles 15-31) and the `limit=`/`parent=` grammar
 //! (cycle 15, 45, 55).
 
-use super::*;
 use super::resume::int_param;
+use super::*;
 
 /// Routes that answer 404 to every verb but GET and HEAD.
 const READ_ONLY_ROUTES: &[&str] = &[
-    "/", "/library/recentlyAdded", "/library/onDeck", "/library/tags", "/library/matches",
-    "/playlists/all", "/hubs/promoted", "/hubs/continueWatching", "/hubs/search",
-    "/status/sessions/history/all", "/:/plugins", "/channels/all", "/services/browse",
+    "/",
+    "/library/recentlyAdded",
+    "/library/onDeck",
+    "/library/tags",
+    "/library/matches",
+    "/playlists/all",
+    "/hubs/promoted",
+    "/hubs/continueWatching",
+    "/hubs/search",
+    "/status/sessions/history/all",
+    "/:/plugins",
+    "/channels/all",
+    "/services/browse",
     "/updater/status",
     // Cycle 31, swept over OPTIONS, POST, PUT and DELETE on plexscratch42 and
     // plexscratch, which agree on all 44 answers.
-    "/statistics", "/statistics/bandwidth", "/statistics/media", "/status/sessions",
-    "/clients/profiles", "/playlists/sorts", "/library/sections/prefs",
+    "/statistics",
+    "/statistics/bandwidth",
+    "/statistics/media",
+    "/status/sessions",
+    "/clients/profiles",
+    "/playlists/sorts",
+    "/library/sections/prefs",
 ];
 /// Cycle 31: the three whose POST is a real refusal of its own (400).
-const READ_ONLY_EXCEPT_POST: &[&str] = &["/library/sections", "/media/providers", "/media/providers/metadata"];
+const READ_ONLY_EXCEPT_POST: &[&str] = &[
+    "/library/sections",
+    "/media/providers",
+    "/media/providers/metadata",
+];
 /// Item leaves that are pure reads.
-const READ_ONLY_ITEM_LEAVES: &[&str] = &["allLeaves", "tree", "related", "similar", "matches", "grandchildren"];
+const READ_ONLY_ITEM_LEAVES: &[&str] = &[
+    "allLeaves",
+    "tree",
+    "related",
+    "similar",
+    "matches",
+    "grandchildren",
+];
 /// Cycle 17/18: an item ACTION leaf refuses POST with a 404.
 const ITEM_ACTION_LEAVES: &[&str] = &["refresh", "analyze", "unmatch", "split", "merge"];
 /// The section leaves that parse `limit=` (cycle 15).
 const PARSES_LIMIT: &[&str] = &[
-    "all", "allLeaves", "search", "common", "genre", "year", "decade", "contentRating",
-    "studio", "director", "writer", "producer", "country", "actor", "label", "collection",
-    "resolution", "firstCharacter", "userRating", "subtitleLanguage", "audioLanguage", "hdr",
-    "unwatched", "duplicate", "editionTitle", "unmatched",
+    "all",
+    "allLeaves",
+    "search",
+    "common",
+    "genre",
+    "year",
+    "decade",
+    "contentRating",
+    "studio",
+    "director",
+    "writer",
+    "producer",
+    "country",
+    "actor",
+    "label",
+    "collection",
+    "resolution",
+    "firstCharacter",
+    "userRating",
+    "subtitleLanguage",
+    "audioLanguage",
+    "hdr",
+    "unwatched",
+    "duplicate",
+    "editionTitle",
+    "unmatched",
 ];
 
 fn parts_of(route: &str) -> Vec<&str> {
@@ -72,7 +120,11 @@ fn playlist_item_refusal(method: &str, parts: &[&str]) -> bool {
 
 /// 404 for a write to a route that only reads (cycle 15 onward).
 pub(super) fn read_only_refusal(method: &str, route: &str) -> bool {
-    let route = if route.len() > 1 { route.trim_end_matches('/') } else { route };
+    let route = if route.len() > 1 {
+        route.trim_end_matches('/')
+    } else {
+        route
+    };
     let route = if route.is_empty() { "/" } else { route };
     let parts = parts_of(route);
     if collection_item_refusal(method, &parts) || playlist_item_refusal(method, &parts) {
@@ -109,7 +161,10 @@ pub(super) fn read_only_refusal(method: &str, route: &str) -> bool {
     if READ_ONLY_EXCEPT_POST.contains(&route) && method != "POST" {
         return true;
     }
-    if parts.len() == 4 && parts[..2] == ["library", "metadata"] && READ_ONLY_ITEM_LEAVES.contains(&parts[3]) {
+    if parts.len() == 4
+        && parts[..2] == ["library", "metadata"]
+        && READ_ONLY_ITEM_LEAVES.contains(&parts[3])
+    {
         return true;
     }
     // Cycle 29: `/extras/all` is five segments, and read-only like the rest.
@@ -122,7 +177,10 @@ pub(super) fn read_only_refusal(method: &str, route: &str) -> bool {
     }
     if parts.len() == 4
         && parts[..2] == ["library", "metadata"]
-        && matches!(parts[3], "extras" | "themes" | "clearLogos" | "posters" | "arts")
+        && matches!(
+            parts[3],
+            "extras" | "themes" | "clearLogos" | "posters" | "arts"
+        )
         && method != "POST"
     {
         return true;
@@ -138,27 +196,43 @@ pub(super) fn number_param(value: &str) -> bool {
 }
 
 /// The status a malformed `limit=`/`parent=` gets on a GET, or 0 (cycle 15).
-pub(super) fn query_grammar_refusal(method: &str, route: &str, query: &HashMap<String, String>) -> u16 {
+pub(super) fn query_grammar_refusal(
+    method: &str,
+    route: &str,
+    query: &HashMap<String, String>,
+) -> u16 {
     if !matches!(method, "GET" | "HEAD") {
         return 0;
     }
-    let bad_limit = query.get("limit").is_some_and(|value| !int_param(value, None));
-    let bad_parent = query.get("parent").is_some_and(|value| !number_param(value));
+    let bad_limit = query
+        .get("limit")
+        .is_some_and(|value| !int_param(value, None));
+    let bad_parent = query
+        .get("parent")
+        .is_some_and(|value| !number_param(value));
     if !bad_limit && !bad_parent {
         return 0;
     }
-    let route = if route.len() > 1 { route.trim_end_matches('/') } else { route };
+    let route = if route.len() > 1 {
+        route.trim_end_matches('/')
+    } else {
+        route
+    };
     if route == "/status/sessions/history/all" {
         return if bad_limit { 400 } else { 0 };
     }
     let parts = parts_of(route);
-    if parts.len() == 4 && parts[..2] == ["library", "sections"] && PARSES_LIMIT.contains(&parts[3]) {
+    if parts.len() == 4 && parts[..2] == ["library", "sections"] && PARSES_LIMIT.contains(&parts[3])
+    {
         return 500;
     }
     if matches!(route, "/library/all" | "/playlists" | "/library/arts") {
         return 500;
     }
-    if parts.len() == 4 && parts[..2] == ["library", "metadata"] && matches!(parts[3], "children" | "grandchildren") {
+    if parts.len() == 4
+        && parts[..2] == ["library", "metadata"]
+        && matches!(parts[3], "children" | "grandchildren")
+    {
         return 500;
     }
     0

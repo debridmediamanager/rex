@@ -278,7 +278,9 @@ pub fn stored_sort_title(row: &Row) -> String {
     // row storing none (or an empty one) stores the empty string.
     if str_value(row, "type").as_deref() == Some("season")
         && generated_title(&title)
-        && str_value(row, "titleSort").filter(|sort| !sort.is_empty()).is_none()
+        && str_value(row, "titleSort")
+            .filter(|sort| !sort.is_empty())
+            .is_none()
     {
         String::new()
     } else {

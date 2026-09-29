@@ -45,7 +45,10 @@ fn handed_down_from(field: &str, season: Option<&Value>, show: Option<&Value>) -
 
 /// Give a row the ancestor's copy of a handed-down field, or take it away.
 fn hand_down(child: &mut Map<String, Value>, field: &str, owner: Option<&Value>) {
-    match owner.and_then(|owner| owner.get(field)).filter(|value| !value.is_null()) {
+    match owner
+        .and_then(|owner| owner.get(field))
+        .filter(|value| !value.is_null())
+    {
         Some(value) => {
             child.insert(field.to_string(), value.clone());
         }
@@ -99,7 +102,11 @@ pub(super) fn image_type(body: &[u8]) -> &'static str {
 fn sha1_hex(body: &[u8]) -> String {
     let mut hasher = Sha1::new();
     hasher.update(body);
-    hasher.finalize().iter().map(|byte| format!("{byte:02x}")).collect()
+    hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 impl Runtime {
@@ -121,7 +128,11 @@ impl Runtime {
         let Some(row) = self.catalog.get(key).cloned() else {
             return;
         };
-        let kind = row.get("type").and_then(Value::as_str).unwrap_or("").to_string();
+        let kind = row
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string();
         if kind != "show" && kind != "season" {
             return;
         }
@@ -196,12 +207,19 @@ impl Runtime {
         let (field, mut prefix, served) = match kind {
             "posters" => ("thumb", "upload://posters".to_string(), None),
             "themes" => ("theme", "upload://themes".to_string(), Some("audio/mpeg3")),
-            "clearLogos" => ("clearLogo", "upload://clearLogos".to_string(), Some("image/jpeg")),
+            "clearLogos" => (
+                "clearLogo",
+                "upload://clearLogos".to_string(),
+                Some("image/jpeg"),
+            ),
             _ => ("art", "upload://art".to_string(), None),
         };
         match row.get("type").and_then(Value::as_str) {
             Some("season") => {
-                prefix += &format!("/seasons/{}", row.get("index").map(string_value).unwrap_or_default());
+                prefix += &format!(
+                    "/seasons/{}",
+                    row.get("index").map(string_value).unwrap_or_default()
+                );
             }
             Some("episode") => {
                 prefix += &format!(
@@ -215,7 +233,10 @@ impl Runtime {
         let upload = format!("{prefix}/{}", sha1_hex(body));
         self.uploads.insert(
             upload.clone(),
-            (body.to_vec(), served.unwrap_or_else(|| image_type(body)).to_string()),
+            (
+                body.to_vec(),
+                served.unwrap_or_else(|| image_type(body)).to_string(),
+            ),
         );
         let stamp = now();
         let rating_key = key.to_string();
@@ -227,9 +248,14 @@ impl Runtime {
                 .entry("_uploads".to_string())
                 .or_insert_with(|| json!({}));
             if let Some(uploads) = uploads.as_object_mut() {
-                let mine = uploads.entry(field.to_string()).or_insert_with(|| json!([]));
+                let mine = uploads
+                    .entry(field.to_string())
+                    .or_insert_with(|| json!([]));
                 if let Some(mine) = mine.as_array_mut() {
-                    if !mine.iter().any(|value| value.as_str() == Some(upload.as_str())) {
+                    if !mine
+                        .iter()
+                        .any(|value| value.as_str() == Some(upload.as_str()))
+                    {
                         mine.push(json!(upload));
                     }
                 }
@@ -237,7 +263,11 @@ impl Runtime {
         }
         let private = format!("_{}_url", if field == "thumb" { "poster" } else { field });
         let agent = private.replace("_url", "_agent");
-        if let Some(previous) = object.get(&private).and_then(Value::as_str).map(str::to_string) {
+        if let Some(previous) = object
+            .get(&private)
+            .and_then(Value::as_str)
+            .map(str::to_string)
+        {
             if !previous.starts_with("upload://") && !object.contains_key(&agent) {
                 object.insert(agent, json!(previous));
             }
@@ -245,9 +275,14 @@ impl Runtime {
         object.insert(private, json!(upload));
         let snapshot = Value::Object(object.clone());
         for name in ["thumb", "art", "theme"] {
-            let present = object.get(name).is_some_and(|value| !value.is_null() && value != "");
+            let present = object
+                .get(name)
+                .is_some_and(|value| !value.is_null() && value != "");
             if present && (name == field || owns_field(Some(&snapshot), name)) {
-                object.insert(name.to_string(), json!(format!("/library/metadata/{rating_key}/{name}/{stamp}")));
+                object.insert(
+                    name.to_string(),
+                    json!(format!("/library/metadata/{rating_key}/{name}/{stamp}")),
+                );
             }
         }
         if field == "clearLogo" || object.contains_key("_clearLogo") {
@@ -257,7 +292,10 @@ impl Runtime {
             );
         }
         if field != "clearLogo" && !object.contains_key(field) {
-            object.insert(field.to_string(), json!(format!("/library/metadata/{rating_key}/{field}/{stamp}")));
+            object.insert(
+                field.to_string(),
+                json!(format!("/library/metadata/{rating_key}/{field}/{stamp}")),
+            );
         }
         object.insert("updatedAt".to_string(), json!(stamp));
         self.store_row(key, row);
@@ -269,8 +307,16 @@ impl Runtime {
 
     /// `PUT /library/metadata/{id}/{poster,art}?url=` -- pick one (cycles 14, 27).  The
     /// response body is the row's new versioned path.
-    pub(super) fn set_artwork(&mut self, key: &str, kind: &str, query: &HashMap<String, String>) -> Response {
-        let chosen = query.get("url").map(|value| percent_decode(value)).unwrap_or_default();
+    pub(super) fn set_artwork(
+        &mut self,
+        key: &str,
+        kind: &str,
+        query: &HashMap<String, String>,
+    ) -> Response {
+        let chosen = query
+            .get("url")
+            .map(|value| percent_decode(value))
+            .unwrap_or_default();
         if chosen.is_empty() {
             return Response::error(400, "plexsim: no url");
         }
@@ -278,7 +324,11 @@ impl Runtime {
             return Response::error(404, "plexsim: not found");
         };
         let field = if kind == "posters" { "thumb" } else { "art" };
-        let private = if kind == "posters" { "_poster_url" } else { "_art_url" };
+        let private = if kind == "posters" {
+            "_poster_url"
+        } else {
+            "_art_url"
+        };
         let placeholder = format!("/library/metadata/{key}/{field}/1");
         let stamp = now();
         let Some(object) = row.as_object_mut() else {
@@ -290,14 +340,24 @@ impl Runtime {
             object.insert(private.to_string(), json!(chosen));
         }
         for name in ["thumb", "art", "theme"] {
-            let value = object.get(name).and_then(Value::as_str).unwrap_or("").to_string();
+            let value = object
+                .get(name)
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
             let owned = value.starts_with(&format!("/library/metadata/{key}/"));
             if !value.is_empty() && (name == field || owned) {
-                object.insert(name.to_string(), json!(format!("/library/metadata/{key}/{name}/{stamp}")));
+                object.insert(
+                    name.to_string(),
+                    json!(format!("/library/metadata/{key}/{name}/{stamp}")),
+                );
             }
         }
         if !object.contains_key(field) || object.get(field).is_some_and(Value::is_null) {
-            object.insert(field.to_string(), json!(format!("/library/metadata/{key}/{field}/{stamp}")));
+            object.insert(
+                field.to_string(),
+                json!(format!("/library/metadata/{key}/{field}/{stamp}")),
+            );
         }
         object.insert("updatedAt".to_string(), json!(stamp));
         let mut fields = object
@@ -308,7 +368,11 @@ impl Runtime {
         fields.retain(|entry| entry.get("name").and_then(Value::as_str) != Some(field));
         fields.push(json!({"locked": true, "name": field}));
         object.insert("Field".to_string(), Value::Array(fields));
-        let body = object.get(field).and_then(Value::as_str).unwrap_or("").to_string();
+        let body = object
+            .get(field)
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string();
         self.store_row(key, row);
         self.cascade_artwork_from(key);
         self.push_timeline(key, 5, None);
@@ -330,14 +394,25 @@ impl Runtime {
             let Some(mut row) = self.catalog.get(key).cloned() else {
                 return;
             };
-            if row.get(field).is_some_and(|value| !value.is_null() && value != "") {
+            if row
+                .get(field)
+                .is_some_and(|value| !value.is_null() && value != "")
+            {
                 continue;
             }
-            let kind = row.get("type").and_then(Value::as_str).unwrap_or("").to_string();
+            let kind = row
+                .get("type")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
             let season = self.parent_of(&row, "parentRatingKey");
             let show = self.parent_of(&row, "grandparentRatingKey");
             if let Some(object) = row.as_object_mut() {
-                object.shift_remove(if field == "thumb" { "_poster_url" } else { "_art_url" });
+                object.shift_remove(if field == "thumb" {
+                    "_poster_url"
+                } else {
+                    "_art_url"
+                });
                 if field == "thumb" && object.get("parentThumb").is_some_and(|v| !v.is_null()) {
                     let parent = object["parentThumb"].clone();
                     object.insert(field.to_string(), parent);
@@ -347,7 +422,11 @@ impl Runtime {
                     } else {
                         handed_down_from(field, None, season.as_ref())
                     };
-                    if let Some(value) = source.as_ref().and_then(|s| s.get(field)).filter(|v| !v.is_null()) {
+                    if let Some(value) = source
+                        .as_ref()
+                        .and_then(|s| s.get(field))
+                        .filter(|v| !v.is_null())
+                    {
                         object.insert(field.to_string(), value.clone());
                     }
                 }
@@ -385,14 +464,23 @@ impl Runtime {
         let rating_key = row.get("ratingKey").map(string_value).unwrap_or_default();
         let field = if kind == "posters" { "thumb" } else { "art" };
         let mut stored = row
-            .get(if kind == "posters" { "_poster_url" } else { "_art_url" })
+            .get(if kind == "posters" {
+                "_poster_url"
+            } else {
+                "_art_url"
+            })
             .and_then(Value::as_str)
             .map(str::to_string);
         let uploads = row
             .get("_uploads")
             .and_then(|uploads| uploads.get(field))
             .and_then(Value::as_array)
-            .map(|list| list.iter().filter_map(Value::as_str).map(str::to_string).collect::<Vec<_>>())
+            .map(|list| {
+                list.iter()
+                    .filter_map(Value::as_str)
+                    .map(str::to_string)
+                    .collect::<Vec<_>>()
+            })
             .unwrap_or_default();
         let mut entries = uploads
             .iter()
@@ -403,7 +491,11 @@ impl Runtime {
             })
             .collect::<Vec<_>>();
         let agent = row
-            .get(if kind == "posters" { "_poster_agent" } else { "_art_agent" })
+            .get(if kind == "posters" {
+                "_poster_agent"
+            } else {
+                "_art_agent"
+            })
             .and_then(Value::as_str)
             .map(str::to_string);
         let chose_upload = stored.as_ref().is_some_and(|value| uploads.contains(value));
@@ -411,7 +503,9 @@ impl Runtime {
         if chose_upload || stored.is_none() {
             stored = agent;
         }
-        let current = row.get(field).is_some_and(|value| !value.is_null() && value != "");
+        let current = row
+            .get(field)
+            .is_some_and(|value| !value.is_null() && value != "");
         let chose_remote = stored.is_some() && picked == stored;
         let placeholder = format!("/library/metadata/{rating_key}/{field}/1");
         if let Some(stored) = stored {
@@ -421,8 +515,10 @@ impl Runtime {
                        "selected": chose_remote, "provider": "tmdb"}),
             );
         }
-        entries.push(json!({"key": placeholder, "ratingKey": placeholder, "thumb": placeholder,
-            "selected": !chose_remote && !chose_upload && current, "provider": "local"}));
+        entries.push(
+            json!({"key": placeholder, "ratingKey": placeholder, "thumb": placeholder,
+            "selected": !chose_remote && !chose_upload && current, "provider": "local"}),
+        );
         container(entries)
     }
 }

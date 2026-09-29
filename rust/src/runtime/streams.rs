@@ -68,7 +68,9 @@ fn tables(catalog: &Path) -> &'static StreamTables {
                     continue;
                 };
                 for (code, other) in translated {
-                    let other = pairs(&string_value(other)).into_iter().collect::<HashMap<_, _>>();
+                    let other = pairs(&string_value(other))
+                        .into_iter()
+                        .collect::<HashMap<_, _>>();
                     for (key, name) in &english {
                         if key.is_empty() {
                             continue;
@@ -113,7 +115,12 @@ fn tables(catalog: &Path) -> &'static StreamTables {
     })
 }
 
-fn localise_streams(node: &mut Value, names: &HashMap<String, String>, by_tag: &HashMap<String, String>, words: &Map<String, Value>) {
+fn localise_streams(
+    node: &mut Value,
+    names: &HashMap<String, String>,
+    by_tag: &HashMap<String, String>,
+    words: &Map<String, Value>,
+) {
     match node {
         Value::Array(items) => {
             for item in items {
@@ -123,8 +130,14 @@ fn localise_streams(node: &mut Value, names: &HashMap<String, String>, by_tag: &
         Value::Object(object) => {
             let kind = object.get("streamType").and_then(Value::as_i64);
             if matches!(kind, Some(2 | 3)) {
-                let english = object.get("language").and_then(Value::as_str).map(str::to_string);
-                let tag = object.get("languageTag").and_then(Value::as_str).map(str::to_string);
+                let english = object
+                    .get("language")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                let tag = object
+                    .get("languageTag")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
                 let localised = tag
                     .as_ref()
                     .and_then(|tag| by_tag.get(tag))
@@ -170,7 +183,10 @@ fn client_titles(node: &mut Value, external: &str) {
                     crate::mediainfo::subtitle_codec_label(object, external)
                 };
                 if !codec.is_empty() {
-                    object.insert("displayTitle".to_string(), json!(format!("{title} ({codec})")));
+                    object.insert(
+                        "displayTitle".to_string(),
+                        json!(format!("{title} ({codec})")),
+                    );
                 }
             }
             for value in object.values_mut() {
@@ -218,8 +234,12 @@ impl Runtime {
                 }
             }
         }
-        let names = language.as_ref().and_then(|language| tables.names.get(language));
-        let by_tag = language.as_ref().and_then(|language| tables.by_tag.get(language));
+        let names = language
+            .as_ref()
+            .and_then(|language| tables.names.get(language));
+        let by_tag = language
+            .as_ref()
+            .and_then(|language| tables.by_tag.get(language));
         let localise = language.is_some()
             && (names.is_some_and(|map| !map.is_empty())
                 || by_tag.is_some_and(|map| !map.is_empty())
@@ -230,7 +250,10 @@ impl Runtime {
         let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
             return;
         };
-        let segments = path.split('/').filter(|piece| !piece.is_empty()).collect::<Vec<_>>();
+        let segments = path
+            .split('/')
+            .filter(|piece| !piece.is_empty())
+            .collect::<Vec<_>>();
         if segments.len() == 4
             && segments[..2] == ["library", "sections"]
             && matches!(segments[3], "audioLanguage" | "subtitleLanguage")
@@ -240,7 +263,9 @@ impl Runtime {
             // keyed by the value -- the language tag.
             if let (Some(by_tag), Some(rows)) = (
                 by_tag.filter(|map| !map.is_empty()),
-                document["MediaContainer"].get_mut("Directory").and_then(Value::as_array_mut),
+                document["MediaContainer"]
+                    .get_mut("Directory")
+                    .and_then(Value::as_array_mut),
             ) {
                 for row in rows.iter_mut() {
                     let key = row.get("key").map(string_value).unwrap_or_default();
@@ -254,7 +279,11 @@ impl Runtime {
             }
             return;
         }
-        if !response.body.windows(10).any(|window| window == b"streamType") {
+        if !response
+            .body
+            .windows(10)
+            .any(|window| window == b"streamType")
+        {
             return;
         }
         if localise {

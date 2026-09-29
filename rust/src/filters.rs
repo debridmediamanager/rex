@@ -1220,9 +1220,24 @@ mod tests {
     }
     #[test]
     fn title() {
-        assert!(!title_match("Th\u{e9} Zarquon", "The Zarquon Machine", Some("Zarquon Machine"), Some("Le Salaire de la Peur")));
-        assert!(title_match("The Zarquon", "The Zarquon Machine", Some("Zarquon Machine"), Some("")));
-        assert!(title_match("Z\u{e1}rquon Machine", "The Zarquon Machine", Some("Zarquon Machine"), Some("")));
+        assert!(!title_match(
+            "Th\u{e9} Zarquon",
+            "The Zarquon Machine",
+            Some("Zarquon Machine"),
+            Some("Le Salaire de la Peur")
+        ));
+        assert!(title_match(
+            "The Zarquon",
+            "The Zarquon Machine",
+            Some("Zarquon Machine"),
+            Some("")
+        ));
+        assert!(title_match(
+            "Z\u{e1}rquon Machine",
+            "The Zarquon Machine",
+            Some("Zarquon Machine"),
+            Some("")
+        ));
         assert!(title_match("Fire", "Firefly", None, None));
         assert!(!title_match("ire", "Firefly", None, None));
     }
