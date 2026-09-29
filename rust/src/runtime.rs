@@ -26,6 +26,7 @@ use sha1::{Digest, Sha1};
 use crate::{catalog::Catalog, decision, xmlout};
 
 mod artwork;
+mod gates;
 mod resume;
 use artwork::owns_artwork;
 use resume::{bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param, page_window};
@@ -4401,6 +4402,19 @@ impl Runtime {
         if !query.contains_key("X-Plex-Language") {
             if let Some(value) = request.headers.get("x-plex-language") {
                 query.insert("X-Plex-Language".to_string(), value.clone());
+            }
+        }
+        let preflight = request.method == "OPTIONS"
+            && request.headers.contains_key("access-control-request-method");
+        if !preflight {
+            // `server.py` `_dispatch`: the query grammar and the read-only verb gates
+            // are refused before the token is even looked at.
+            let refusal = gates::query_grammar_refusal(&request.method, &path, &query);
+            if refusal != 0 {
+                return Response::error(refusal, "plexsim: bad request");
+            }
+            if gates::read_only_refusal(&request.method, &path) {
+                return Response::error(404, "plexsim: not found");
             }
         }
         if !self.authorized(&path, &request, &query) {
@@ -18735,11 +18749,11 @@ fn parse_chunk_size(line: &str) -> Option<&str> {
     Some(token)
 }
 
+/// Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not in
+/// the method table at all -- a 500 on every path, `/identity` included, exactly as
+/// `FROB` is. Cycle 15's routed PATCH was 1.43.4's.
 fn known_method(method: &str) -> bool {
-    matches!(
-        method,
-        "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH"
-    )
+    matches!(method, "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "OPTIONS")
 }
 
 fn write_response<S: Write>(stream: &mut S, response: &Response, keep: bool) -> Result<(), String> {
