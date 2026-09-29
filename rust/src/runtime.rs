@@ -4247,6 +4247,14 @@ impl Runtime {
             };
             self.catalog.get(&key)
         };
+        if bare == "id" {
+            // The row's id is its ratingKey, ordered as a number.
+            return target
+                .and_then(key_of)
+                .and_then(|key| key.parse::<i64>().ok())
+                .map(|id| json!(id))
+                .unwrap_or(Value::Null);
+        }
         if bare == "viewUpdatedAt" {
             return target
                 .and_then(|target| target.get("_viewUpdatedAt"))
@@ -5078,9 +5086,12 @@ impl Runtime {
         if !self.authorized(&path, &request, &query) {
             return self.unauthorized_route(&path, request);
         }
-        if (path == "/player" || path.starts_with("/player/"))
-            && request.headers.contains_key("x-plex-target-client-identifier")
-        {
+        if path == "/player" || path.starts_with("/player/") {
+            // Player commands go to a PLAYER, not to a server: a real PMS answers 400
+            // for every one of them.
+            if !request.headers.contains_key("x-plex-target-client-identifier") {
+                return Response::error(400, "plexsim: bad request");
+            }
             // Cycle 59, measured on zen, kids and both copies: WITH an
             // `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
             // `PlexClient.sendCommand()` -- the server looks for that player to proxy
@@ -8784,7 +8795,9 @@ impl Runtime {
                     } else {
                         // Cycle 56, measured on zen and kids: `includeGuids=1` carries
                         // `Guid` on a library hub page's rows too.
-                        let mut shown = self.listing_row(&row);
+                        // The oracle's `_grid_row`: a shelf row keeps its `Media` (Parts
+                        // without Streams) and its librarySection fields.
+                        let mut shown = self.grid_row(&row, true, false, false);
                         if include_guids {
                             let guids = row
                                 .get("Guid")
@@ -14182,7 +14195,19 @@ impl Runtime {
             .get("sort")
             .filter(|sort| !sort.is_empty())
             .map(String::as_str)
-            .or(if by_id { Some("id") } else { None });
+            .or(if by_id {
+                Some("id")
+            } else if section_type == "show"
+                && matches!(query.get("type").map(String::as_str), Some("3" | "4"))
+            {
+                // Cycle 16: a show library's season and episode grids keep the SHOW's
+                // order, which the typed rows already come in.
+                None
+            } else {
+                // Measured on both servers: the DEFAULT order of a listing is
+                // `titleSort` ascending.
+                Some("titleSort")
+            });
         let rows = match self.sort_rows(rows, sort) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
