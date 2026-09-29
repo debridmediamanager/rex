@@ -7815,10 +7815,19 @@ impl Runtime {
             Ok(None) => return Response::error(404, "plexsim: no such item"),
             Err(refusal) => return refusal,
         };
+        self.scrobble_key(&key, watched, Some(1));
+        Response::empty(200)
+    }
+
+    /// library.scrobble: mark a row played or unplayed (see `route_scrobble`).
+    /// `view_type` is the history row's `viewType`: 1 for a scrobble, none for a
+    /// play a session completed (cycle 70's offline sync is one).
+    fn scrobble_key(&mut self, key: &str, watched: bool, view_type: Option<i64>) {
+        let key = key.to_string();
         if self.catalog.get(&key).is_none() {
             let is_collection = self.collections.contains_key(&key);
             if watched && is_collection {
-                return Response::empty(200);
+                return;
             }
             let state = self.list_state_mut(&key);
             if watched {
@@ -7833,7 +7842,7 @@ impl Runtime {
             }
             self.dirty = true;
             self.save_if_dirty();
-            return Response::empty(200);
+            return;
         }
         let kind = self
             .catalog
@@ -7862,8 +7871,8 @@ impl Runtime {
                 if let Some(row) = self.catalog.get(leaf).cloned() {
                     self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
                     let mut history = self.history_row(&row);
-                    if let Some(object) = history.as_object_mut() {
-                        object.insert("viewType".to_string(), json!(1));
+                    if let (Some(object), Some(view_type)) = (history.as_object_mut(), view_type) {
+                        object.insert("viewType".to_string(), json!(view_type));
                     }
                     self.history.push(history);
                 }
@@ -7904,7 +7913,6 @@ impl Runtime {
             self.completion_pending_stop.retain(|(_, item)| item != &key);
         }
         self.save_if_dirty();
-        Response::empty(200)
     }
 
     /// `/:/rate?key=&identifier=&rating=` -- the star rating.  An unparseable
@@ -8548,6 +8556,36 @@ impl Runtime {
         }
         if state == "stopped" {
             self.started_sessions.remove(&session_identifier);
+        }
+        // Cycle 70, measured on both writable copies: the OFFLINE form Plex for
+        // Android syncs a downloaded item's view state with marks it watched when
+        // `viewCount` is 1 or more -- one view per sync, a history row of the
+        // SESSION kind, `complete` -- and `viewCount=0` on a watched item clears
+        // it.  A negative or unparseable value is ignored.
+        let offline_count = query
+            .get("viewCount")
+            .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
+            .and_then(|value| value.parse::<i64>().ok());
+        if !key.is_empty()
+            && query.get("offline").map(String::as_str) == Some("1")
+            && playback_state == "ignore"
+        {
+            if let Some(count) = offline_count {
+                if count >= 1 {
+                    self.scrobble_key(&key, true, None);
+                    playback_state = "complete";
+                } else if self
+                    .catalog
+                    .get(&key)
+                    .and_then(|row| row.get("viewCount"))
+                    .and_then(Value::as_i64)
+                    .unwrap_or(0)
+                    > 0
+                {
+                    self.scrobble_key(&key, false, None);
+                    playback_state = "complete";
+                }
+            }
         }
         if let Some(item_id) = query
             .get("playQueueItemID")
