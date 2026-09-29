@@ -450,7 +450,19 @@ impl Runtime {
                     .and_then(|show| show.get("title"))
                     .map(string_value)
                     .unwrap_or_default();
-                let index = number(row.get(if kind == "season" { "index" } else { "parentIndex" }));
+                // An episode's `parentIndex` is read off its season at read time,
+                // so a stored row may not carry it: fall back to the season's index.
+                let own_parent_index = row.get(if kind == "season" { "index" } else { "parentIndex" });
+                let index = if own_parent_index.is_none() && kind == "episode" {
+                    number(
+                        row.get("parentRatingKey")
+                            .map(string_value)
+                            .and_then(|parent| self.catalog.get(&parent))
+                            .and_then(|season| season.get("index")),
+                    )
+                } else {
+                    number(own_parent_index)
+                };
                 let mut text = format!("{show_title} S{index:02}");
                 if kind == "episode" {
                     text.push_str(&format!(" E{:02}", number(row.get("index"))));
