@@ -484,16 +484,8 @@ impl Runtime {
             vec![row.clone()]
         };
         for leaf in &leaves {
-            let leaf_key = key_of(leaf).unwrap_or_default();
             for media_state in [Some("analyzing"), Some("thumbnailing"), None] {
-                self.push_timeline(&leaf_key, 5, None);
-                if let Some(media_state) = media_state {
-                    if let Some((_, value)) = self.events.last_mut() {
-                        if let Some(entry) = value.get_mut("TimelineEntry").and_then(Value::as_object_mut) {
-                            entry.insert("mediaState".to_string(), json!(media_state));
-                        }
-                    }
-                }
+                self.push_timeline_row(leaf, 5, None, media_state);
             }
         }
         let mut activity = new_activity("media.generate.chapter.thumbs", "Generating video chapter thumbnails", false);
@@ -610,5 +602,78 @@ impl Runtime {
         }
         self.dirty = true;
         Response::empty(200)
+    }
+}
+
+impl Runtime {
+    /// `/hubs/sections/{id}/popular` (cycles 52/55): the library's SEASONS ranked by their
+    /// episodes' HISTORY rows, most-played first; a movie library answers the empty
+    /// container; `monthsAgo` must be a whole number, checked before the section.
+    pub(super) fn route_popular_hub(
+        &self,
+        segments: &[&str],
+        query: &HashMap<String, String>,
+        request: &Request,
+    ) -> Response {
+        if let Some(months) = query.get("monthsAgo") {
+            let digits = months.strip_prefix(['+', '-']).unwrap_or(months);
+            if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                return Response::error(400, "plexsim: bad request");
+            }
+        }
+        let Some(section) = self.section(segments[2]).cloned() else {
+            return Response::error(404, "plexsim: not found");
+        };
+        if segments.len() != 4 || !matches!(request.method.as_str(), "GET" | "HEAD") {
+            return Response::error(404, "plexsim: not found");
+        }
+        let section_key = string_value(section.get("key").unwrap_or(&Value::Null));
+        let mut plays: Vec<(String, usize)> = Vec::new();
+        for entry in &self.history {
+            let key = string_value(entry.get("ratingKey").unwrap_or(&Value::Null));
+            let Some(leaf) = self.catalog.get(&key) else {
+                continue;
+            };
+            if leaf.get("type").and_then(Value::as_str) != Some("episode") {
+                continue;
+            }
+            let parent = leaf
+                .get("parentRatingKey")
+                .or_else(|| leaf.get("_parentRatingKey"))
+                .map(string_value)
+                .unwrap_or_default();
+            if parent.is_empty() || !parent.bytes().all(|b| b.is_ascii_digit()) {
+                continue;
+            }
+            match plays.iter_mut().find(|(key, _)| *key == parent) {
+                Some((_, count)) => *count += 1,
+                None => plays.push((parent, 1)),
+            }
+        }
+        let mut seasons = plays
+            .into_iter()
+            .filter_map(|(key, count)| {
+                let row = self.catalog.get(&key)?;
+                (string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key)
+                    .then(|| (count, key.parse::<i64>().unwrap_or(0), row.clone()))
+            })
+            .collect::<Vec<_>>();
+        seasons.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+        let rows = seasons
+            .into_iter()
+            .map(|(_, _, row)| self.detail_row(&row))
+            .collect::<Vec<_>>();
+        let mut body = Map::new();
+        body.insert("size".to_string(), json!(rows.len()));
+        body.insert("allowSync".to_string(), json!(true));
+        body.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        body.insert(
+            "librarySectionID".to_string(),
+            json!(section_key.parse::<i64>().unwrap_or(0)),
+        );
+        body.insert("librarySectionTitle".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+        body.insert("librarySectionUUID".to_string(), section.get("uuid").cloned().unwrap_or(Value::Null));
+        body.insert("Metadata".to_string(), Value::Array(rows));
+        Response::json(200, json!({"MediaContainer": body}))
     }
 }
