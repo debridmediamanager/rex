@@ -4839,6 +4839,81 @@ impl Runtime {
         }
     }
 
+    /// `server.py` `_localise_item_language_enum` (cycle 59): an item's own
+    /// `audioLanguage`/`subtitleLanguage` enum is built at READ time -- its stream
+    /// languages as bare tags, then the regional list -- so it is never in the table
+    /// whole, and localising it by the table's captured entry named this item's head in
+    /// each language's own name (`fr:Français` under `en`). zen localises it piece by
+    /// piece: the head's names and the inherit option are read off zen per language
+    /// (`item_language_names.json`; in da, he, pt and sr the inherit option is not the
+    /// table list's lead), and the regional tail is the table's own list in its own
+    /// ORDER (cycle 45: the order moves with the names). `translations.json` has no `en`
+    /// entry because English is the source, so, as the Python does at load time, the
+    /// table's list for a language it lacks is `agent_languages.json`'s rows.
+    fn localized_item_language_enum(&self, source: &str, language: &str, strings: &Value) -> Option<String> {
+        let (lead, rest) = source.split_once('|')?;
+        if !matches!(lead, ":Account default" | ":Series default") || rest.is_empty() {
+            return None;
+        }
+        let prefix = format!("{lead}|en:English|");
+        let entry = strings
+            .get("enumValues")?
+            .as_object()?
+            .iter()
+            .find(|(key, _)| key.starts_with(&prefix))
+            .map(|(_, entry)| entry)?;
+        let translated = match entry.get(language).and_then(Value::as_str) {
+            Some(text) if !text.is_empty() => text.to_string(),
+            _ if language.is_empty() => return None,
+            _ => {
+                let rows = load_json_sidecar(&self.catalog_path, "agent_languages.json")?
+                    .get("languages")?
+                    .get(language)?
+                    .as_array()?
+                    .iter()
+                    .filter_map(|row| {
+                        let row = row.as_array()?;
+                        Some(format!("{}:{}", row.first()?.as_str()?, row.get(1)?.as_str()?))
+                    })
+                    .collect::<Vec<_>>();
+                if rows.is_empty() {
+                    return None;
+                }
+                format!("{lead}|{}", rows.join("|"))
+            }
+        };
+        let table = load_json_sidecar(&self.catalog_path, "item_language_names.json");
+        let head = table.as_ref().and_then(|t| t.get("names")).and_then(|n| n.get(language));
+        let mut pieces = Vec::new();
+        for pair in rest.split('|') {
+            let (code, name) = pair.split_once(':').map_or((pair, None), |(c, n)| (c, Some(n)));
+            if code.contains('-') {
+                break;
+            }
+            let named = head.and_then(|h| h.get(code)).and_then(Value::as_str).filter(|n| !n.is_empty());
+            pieces.push(match (named, name) {
+                (Some(named), _) => format!("{code}:{named}"),
+                (None, Some(name)) => format!("{code}:{name}"),
+                (None, None) => code.to_string(),
+            });
+        }
+        pieces.extend(
+            translated
+                .split('|')
+                .skip(1)
+                .filter(|pair| pair.split(':').next().unwrap_or("").contains('-'))
+                .map(str::to_string),
+        );
+        let inherit = table
+            .as_ref()
+            .and_then(|t| t.get("leads"))
+            .and_then(|l| l.get(language))
+            .and_then(|l| l.get(lead))
+            .and_then(Value::as_str)
+            .unwrap_or(lead);
+        Some(std::iter::once(inherit.to_string()).chain(pieces).collect::<Vec<_>>().join("|"))
+    }
+
     /// Language pickers are a measured sidecar rather than ordinary enum
     /// translations.  The server keeps the source order for an item's own
     /// audio/subtitle setting, while the library language picker uses the
@@ -4851,6 +4926,9 @@ impl Runtime {
         language: &str,
         strings: &Value,
     ) -> Option<String> {
+        if let Some(rebuilt) = self.localized_item_language_enum(source, language, strings) {
+            return Some(rebuilt);
+        }
         let language_list =
             source.contains("ca-ES:") || source.contains("en-US:") || source.contains("ar-SA:");
         if !language_list {
