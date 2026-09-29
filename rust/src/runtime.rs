@@ -6525,26 +6525,24 @@ impl Runtime {
         {
             return Response::error(500, "plexsim: internal error");
         }
+        // One row per client in the order the server first saw it -- the same ids the
+        // history rows and the statistics series name (`sessions.device_id`).
         let mut rows = self
-            .devices
-            .values()
-            .map(|device| {
+            .device_order
+            .iter()
+            .map(|identifier| {
+                let known = self.devices.get(identifier);
                 json!({
-                    "clientIdentifier": device.client_identifier,
-                    "name": device.name,
-                    "product": device.product,
-                    "platform": device.platform,
-                    "lastSeenAt": device.last_seen,
+                    "clientIdentifier": identifier,
+                    "name": known.map(|device| device.name.clone()).unwrap_or_default(),
+                    "product": known.map(|device| device.product.clone()).unwrap_or_default(),
+                    "platform": known.map(|device| device.platform.clone()).unwrap_or(json!("")),
+                    "lastSeenAt": known.map(|device| device.last_seen)
+                        .unwrap_or_else(|| self.device_first_seen.get(identifier).copied().unwrap_or(self.started_at)),
                     "owned": true,
                 })
             })
             .collect::<Vec<_>>();
-        if let Some(index) = rows
-            .iter()
-            .position(|row| row.get("clientIdentifier").and_then(Value::as_str) == Some(""))
-        {
-            rows.swap(0, index);
-        }
         for (index, row) in rows.iter_mut().enumerate() {
             if let Some(object) = row.as_object_mut() {
                 object.insert("id".to_string(), json!(index + 1));
@@ -6585,26 +6583,24 @@ impl Runtime {
             // The direct read remains available while list serializers hit
             // the same measured numeric-platform cast failure.
         }
+        // One row per client in the order the server first saw it -- the same ids the
+        // history rows and the statistics series name (`sessions.device_id`).
         let mut rows = self
-            .devices
-            .values()
-            .map(|device| {
+            .device_order
+            .iter()
+            .map(|identifier| {
+                let known = self.devices.get(identifier);
                 json!({
-                    "clientIdentifier": device.client_identifier,
-                    "name": device.name,
-                    "product": device.product,
-                    "platform": device.platform,
-                    "lastSeenAt": device.last_seen,
+                    "clientIdentifier": identifier,
+                    "name": known.map(|device| device.name.clone()).unwrap_or_default(),
+                    "product": known.map(|device| device.product.clone()).unwrap_or_default(),
+                    "platform": known.map(|device| device.platform.clone()).unwrap_or(json!("")),
+                    "lastSeenAt": known.map(|device| device.last_seen)
+                        .unwrap_or_else(|| self.device_first_seen.get(identifier).copied().unwrap_or(self.started_at)),
                     "owned": true,
                 })
             })
             .collect::<Vec<_>>();
-        if let Some(index) = rows
-            .iter()
-            .position(|row| row.get("clientIdentifier").and_then(Value::as_str) == Some(""))
-        {
-            rows.swap(0, index);
-        }
         rows.push(json!({"clientIdentifier": self.machine, "name": self.friendly, "product": "Plex Media Server", "platform": "Linux", "owned": true}));
         let index = number as usize - 1;
         let Some(mut row) = rows.get(index).cloned() else {
@@ -10410,15 +10406,36 @@ impl Runtime {
                 .map(|row| self.section_listing_row(&row))
                 .collect::<Vec<_>>()
         };
-        let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(rows))]);
-        if self
+        // Cycle 28: the leaf answers in the section LISTING's container -- the
+        // library's id, title and UUID, `All <library>`, its viewGroup, the resource
+        // artwork and `allowSync` -- and the rows leave the librarySection fields to it.
+        let kind = self
             .section(section_key)
             .and_then(|section| section.get("type"))
             .and_then(Value::as_str)
-            == Some("show")
-        {
-            fields.insert("nocache".to_string(), json!(true));
-        }
+            .unwrap_or("movie")
+            .to_string();
+        let title = self
+            .section(section_key)
+            .and_then(|section| section.get("title"))
+            .map(string_value)
+            .unwrap_or_default();
+        let rows = rows
+            .into_iter()
+            .map(|mut row| {
+                if let Some(object) = row.as_object_mut() {
+                    object.retain(|name, _| {
+                        !matches!(
+                            name.as_str(),
+                            "librarySectionID" | "librarySectionTitle" | "librarySectionKey"
+                        )
+                    });
+                }
+                row
+            })
+            .collect::<Vec<_>>();
+        let mut fields = self.listing_fields(section_key, &kind, &kind, &format!("All {title}"));
+        fields.insert("Metadata".to_string(), Value::Array(rows));
         if query.get("includeMeta").map(String::as_str) == Some("1") && type_number == Some(18) {
             // Cycle 46: the FULL section descriptor -- one `Type` row for the collection
             // view with a single `titleSort` Sort scoped `?type=18`, plus the section's
