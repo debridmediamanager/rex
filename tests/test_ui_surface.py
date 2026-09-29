@@ -5440,7 +5440,16 @@ def main():
     # An item that HAS related titles: earlier edits in this run replace genres, so
     # the first movie may have lost every neighbour it shared one with. Two movies
     # are given one shared genre first, so this cannot pass by comparing nothing.
-    for candidate in grid[:2]:
+    # A Related neighbour needs TWO shared tags (cycle 55), so the pair is chosen by
+    # a shared ROLE as well -- not as the grid's first two, which is an unmatched row
+    # with no roles at all whenever the run has no TMDB key to match it again.
+    roles_c5r = [(r_c5r, {str(t.get("tag")).lower() for t in
+                          ((get(base, "/library/metadata/%s" % r_c5r["ratingKey"])[1]
+                            .get("Metadata") or [{}])[0].get("Role") or [])[:4]})
+                 for r_c5r in grid]
+    pair_c5r = next(([a_c5r[0], b_c5r[0]] for i_c5r, a_c5r in enumerate(roles_c5r)
+                     for b_c5r in roles_c5r[i_c5r + 1:] if a_c5r[1] & b_c5r[1]), grid[:2])
+    for candidate in pair_c5r:
         request(base, "PUT", "/library/metadata/%s?%s=%s"
                 % (candidate["ratingKey"], quote("genre[0].tag.tag"), quote("Cycle5 Related")))
     related_item = wanted_hubs = None
@@ -6763,7 +6772,13 @@ def main():
           "leaves %d/%d, statuses %s" % (len(movie_leaves9.get("Metadata") or []), len(movie_all9),
                                          leaf_statuses9))
 
-    role9 = next((t for t in detail_of(c5_movie).get("Role") or [] if t.get("id")), {})
+    # The row is the first one with a numbered role rather than `c5_movie` itself, which
+    # is the grid's first row and an unmatched one -- no roles at all -- whenever the run
+    # has no TMDB key to match it again.
+    actor_movie9 = next((r.get("ratingKey") for r in movie_all9
+                         if any(t.get("id") for t in detail_of(r.get("ratingKey")).get("Role") or [])),
+                        c5_movie)
+    role9 = next((t for t in detail_of(actor_movie9).get("Role") or [] if t.get("id")), {})
     if role9:
         _, person9, _ = get(base, "/library/people/%s" % role9["id"])
         _, person_media9, _ = get(base, "/library/people/%s/media" % role9["id"])
@@ -6771,7 +6786,7 @@ def main():
         check("a person reads back as its tag row, and /media lists what they are on",
               person_row9.get("tag") == role9.get("tag") and person_row9.get("tagType") == 6
               and person_row9.get("filter") == "actor=%s" % role9["id"]
-              and str(c5_movie) in [str(r.get("ratingKey")) for r in person_media9.get("Metadata") or []]
+              and str(actor_movie9) in [str(r.get("ratingKey")) for r in person_media9.get("Metadata") or []]
               and person_media9.get("viewGroup") == "movie"
               and all(r.get("librarySectionID") for r in person_media9.get("Metadata") or [])
               and get(base, "/library/people/999999999")[0] == 404,
