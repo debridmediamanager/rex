@@ -710,12 +710,12 @@ impl Runtime {
         }
         for member in &members {
             if let Some(row) = key_of(member).and_then(|key| self.catalog.get(&key).cloned()) {
-                self.notify_timeline(&row, 3, Some("queued"));
+                self.notify_timeline(&row, 3, Some("queued"), None, None);
             }
         }
         for member in &members {
             if let Some(row) = key_of(member).and_then(|key| self.catalog.get(&key).cloned()) {
-                self.notify_timeline(&row, 5, None);
+                self.notify_timeline(&row, 5, None, None, None);
             }
         }
         let gone = json!({"ratingKey": id, "type": "collection", "title": "",

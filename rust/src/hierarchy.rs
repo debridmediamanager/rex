@@ -273,13 +273,18 @@ pub fn stored_title(row: &Row) -> String {
 }
 pub fn stored_sort_title(row: &Row) -> String {
     let title = str_value(row, "title").unwrap_or_default();
+    // Python's `if not row.get("titleSort")`: a stored sort title -- even one
+    // equal to the generated title (kids' season 7, cycle 31) -- counts; only a
+    // row storing none (or an empty one) stores the empty string.
     if str_value(row, "type").as_deref() == Some("season")
         && generated_title(&title)
-        && !bool_value(row, "titleSort")
+        && str_value(row, "titleSort").filter(|sort| !sort.is_empty()).is_none()
     {
         String::new()
     } else {
-        str_value(row, "titleSort").unwrap_or(title)
+        str_value(row, "titleSort")
+            .filter(|sort| !sort.is_empty())
+            .unwrap_or(title)
     }
 }
 pub fn person_tag_key(name: &str) -> String {
