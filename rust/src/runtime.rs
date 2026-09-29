@@ -28,6 +28,7 @@ use crate::{catalog::Catalog, decision, xmlout};
 mod artwork;
 mod edit;
 mod notify;
+mod showprefs;
 mod butler;
 mod framework;
 mod gates;
@@ -926,18 +927,8 @@ impl Runtime {
             }
             let preferences = self.preferences_for("show", original.get("_prefs"));
             object.insert("Preferences".to_string(), json!({"Setting": preferences}));
-            if self
-                .section_prefs
-                .get(&(
-                    string_value(object.get("librarySectionID").unwrap_or(&Value::Null)),
-                    "flattenSeasons".to_string(),
-                ))
-                .is_some_and(|value| value == "1")
-            {
-                object.insert("skipChildren".to_string(), json!(true));
-            } else {
-                object.remove("skipChildren");
-            }
+            // Cycle 15: the EFFECTIVE flattenSeasons -- the item's unless it inherits.
+            self.apply_flatten_projection(object);
             if let Some(on_deck) = self.on_deck_for(&leaves) {
                 object.insert("OnDeck".to_string(), json!({"Metadata": on_deck}));
             }
@@ -1075,6 +1066,8 @@ impl Runtime {
             }
             object.insert("Extras".to_string(), json!({"Metadata": []}));
             object.remove("Preferences");
+            // Cycle 14/15: a flattened show's episodes skip the season level.
+            self.apply_flatten_projection(object);
         }
         // Item preferences are represented twice by PMS: as a Preferences block
         // and as string attributes on the row itself.  Keep the private storage
@@ -13518,7 +13511,11 @@ impl Runtime {
             }
         }
         match tail[0] {
-            "prefs" => self.route_item_prefs(key, row, query, request),
+            "prefs" => {
+                let (_, raw_query) = split_target(&request.target);
+                let pairs = parse_query(&raw_query);
+                self.write_item_prefs(key, row, &pairs, request)
+            }
             "banners" | "thumbs" if tail.len() == 1 => {
                 // Cycle 14: two more candidate lists, 200 on kids AND zen: `banners`
                 // is empty on both and `thumbs` lists the media bundle's video
@@ -13637,6 +13634,10 @@ impl Runtime {
                     .and_then(|section| section.get("type").and_then(Value::as_str))
                     .unwrap_or("movie");
                 let mut children = self.children(key);
+                if self.season_children_newest_first(row) {
+                    // Cycle 14: the show's effective episodeSort=1, newest first.
+                    children.reverse();
+                }
                 let filter_pairs = query
                     .iter()
                     .filter(|(name, _)| {
@@ -14255,86 +14256,6 @@ impl Runtime {
             }
             _ => Response::error(404, "plexsim: not found"),
         }
-    }
-
-    fn route_item_prefs(
-        &mut self,
-        key: &str,
-        row: &Value,
-        query: &HashMap<String, String>,
-        request: &Request,
-    ) -> Response {
-        if request.method != "PUT" {
-            return Response::error(404, "plexsim: not found");
-        }
-        let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
-        if kind == "episode" {
-            return Response::error(400, "plexsim: bad request");
-        }
-        if kind != "show" && kind != "season" && kind != "movie" {
-            return Response::error(404, "plexsim: not found");
-        }
-        let valid = if kind == "show" {
-            [
-                "episodeSort",
-                "autoDeletionItemPolicyUnwatchedLibrary",
-                "autoDeletionItemPolicyWatchedLibrary",
-                "flattenSeasons",
-                "showOrdering",
-                "languageOverride",
-                "useOriginalTitle",
-                "enableCreditsMarkerGeneration",
-                "audioLanguage",
-                "subtitleLanguage",
-                "subtitleMode",
-            ]
-            .as_slice()
-        } else if kind == "season" {
-            ["audioLanguage", "subtitleLanguage", "subtitleMode"].as_slice()
-        } else {
-            [
-                "languageOverride",
-                "useOriginalTitle",
-                "enableCreditsMarkerGeneration",
-            ]
-            .as_slice()
-        };
-        if query
-            .keys()
-            .any(|name| name.starts_with("X-Plex-") || !valid.contains(&name.as_str()))
-        {
-            return Response::error(400, "plexsim: bad request");
-        }
-        if query.is_empty() {
-            return Response::error(400, "plexsim: bad request");
-        }
-        if kind == "movie" {
-            let unmatched = row
-                .get("guid")
-                .and_then(Value::as_str)
-                .is_some_and(|value| {
-                    value.starts_with("local://")
-                        || value.starts_with("none://")
-                        || value.starts_with("tv.plex.agents.none://")
-                });
-            if unmatched {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
-        let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
-            return Response::error(404, "plexsim: not found");
-        };
-        let settings = object
-            .entry("_prefs".to_string())
-            .or_insert_with(|| Value::Object(Map::new()));
-        let Some(settings) = settings.as_object_mut() else {
-            return Response::error(500, "plexsim: internal error");
-        };
-        for (name, value) in query {
-            settings.insert(name.clone(), json!(value));
-        }
-        self.dirty = true;
-        Response::empty(200)
     }
 
     fn route_art(
