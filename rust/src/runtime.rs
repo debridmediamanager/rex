@@ -3644,6 +3644,16 @@ impl Runtime {
             "subtitleLanguage".to_string(),
         );
         fields.insert("file".to_string(), "string".to_string());
+        // The Meta's own media Field types (section_meta.json): advertised on
+        // both library types, so a SHOW grid filters on them through its leaves.
+        for (field, kind) in [
+            ("duration", "integer"),
+            ("mediaSize", "integer"),
+            ("mediaBitrate", "integer"),
+            ("hdr", "boolean"),
+        ] {
+            fields.entry(field.to_string()).or_insert_with(|| kind.to_string());
+        }
         fields.insert(
             "resolution".to_string(),
             if section_type == "movie" {
@@ -11851,7 +11861,14 @@ impl Runtime {
                     );
                     let mut rows =
                         if leaf == "recentlyViewedShows" || leaf == "recentlyViewedGrandparents" {
-                            let mut roots = self.section_rows(section_key);
+                            // Cycle 20, measured on kids and zen: a typed QUERY --
+                            // `?type=3` answers the library's seasons and `?type=4` its
+                            // episodes, `type=1` on a show library none.
+                            let own = if kind == "show" { 2 } else { 1 };
+                            let asked = listing::parsed_type(query, 500, None).ok().flatten().unwrap_or(own);
+                            let mut roots = self
+                                .sort_rows(self.choose_rows(Some(section_key), Some(asked)), Some("titleSort"))
+                                .unwrap_or_default();
                             roots.sort_by(|left, right| {
                                 right
                                     .get("lastViewedAt")
@@ -11970,12 +11987,19 @@ impl Runtime {
                         .iter()
                         .map(|row| guid_gate(self.section_listing_row(row), query))
                         .collect::<Vec<_>>();
-                    if kind == "show"
-                        && leaf != "recentlyViewedShows"
-                        && leaf != "recentlyViewedGrandparents"
-                    {
-                        fields.insert("mixedParents".to_string(), json!(true));
+                    if kind == "show" {
+                        // Every subset of a show library carries both, the recently
+                        // viewed shows included (only the grandparents roll-up drops
+                        // `mixedParents`).
+                        if leaf != "recentlyAddedGrandparents" {
+                            fields.insert("mixedParents".to_string(), json!(true));
+                        }
                         fields.insert("nocache".to_string(), json!(true));
+                    }
+                    // The rest of `listing_container`'s fields.
+                    let title2 = fields.get("title2").map(string_value).unwrap_or_default();
+                    for (name, value) in self.listing_fields(section_key, kind, kind, &title2) {
+                        fields.entry(name).or_insert(value);
                     }
                     if leaf == "recentlyViewedShows" || leaf == "recentlyViewedGrandparents" {
                         // Measured on both servers: it is the one subset with
@@ -13175,13 +13199,7 @@ impl Runtime {
                                         "false".to_string()
                                     }
                                 }
-                                _ => {
-                                    if value.contains('%') {
-                                        String::new()
-                                    } else {
-                                        value.replace(':', "%3a").replace('|', "%7c")
-                                    }
-                                }
+                                _ => escaped_pref(value),
                             };
                             self.section_prefs
                                 .insert((section_key.to_string(), name.clone()), stored);
@@ -19699,6 +19717,35 @@ fn tree_stream(stream: &Value) -> Value {
         out.insert(name.to_string(), value);
     }
     Value::Object(out)
+}
+
+/// A text preference as a real PMS stores it (server.py's `_escaped_pref`).
+/// Cycle 21: the value is percent-decoded a SECOND time -- a decode that FAILS
+/// (a `%` not followed by two hex digits, or bytes that are not UTF-8) stores
+/// the empty string -- and then `%`, `:` and `|` are escaped in LOWERCASE hex.
+fn escaped_pref(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' {
+            let hex = |b: u8| (b as char).to_digit(16);
+            match (bytes.get(index + 1).and_then(|b| hex(*b)), bytes.get(index + 2).and_then(|b| hex(*b))) {
+                (Some(high), Some(low)) => {
+                    out.push((high * 16 + low) as u8);
+                    index += 3;
+                    continue;
+                }
+                _ => return String::new(),
+            }
+        }
+        out.push(bytes[index]);
+        index += 1;
+    }
+    let Ok(text) = String::from_utf8(out) else {
+        return String::new();
+    };
+    text.replace('%', "%25").replace(':', "%3a").replace('|', "%7c")
 }
 
 fn page_fields(fields: &mut Map<String, Value>, query: &HashMap<String, String>) {
