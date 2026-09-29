@@ -10159,6 +10159,15 @@ impl Runtime {
         if segments.starts_with(&["media", "providers", "metadata"]) {
             return self.route_metadata_providers(&segments, query, request);
         }
+        if path == "/:/viewChange" {
+            // Cycle 45: a routed state-write leaf that answers its own 400 to every verb.
+            return Response::error(400, "plexsim: bad request");
+        }
+        if segments.len() == 4 && segments[0] == "hubs" && segments[1] == "sections" && segments[3] == "newReleases" {
+            // Cycle 45: `{size: 0, allowSync: false, identifier}` and nothing more.
+            return Response::json(200, json!({"MediaContainer": {"size": 0, "allowSync": false,
+                "identifier": "com.plexapp.plugins.library"}}));
+        }
         if segments.first() == Some(&"web") {
             return self.route_web(&segments[1..], request.method == "HEAD", path.ends_with('/'));
         }
@@ -11424,6 +11433,23 @@ impl Runtime {
                 if segments.len() >= 4 && segments[3] == "extras" {
                     return self.section_extras(section_key, &segments[4..], query);
                 }
+                if segments.len() == 5 && segments[3] == "stations" {
+                    // Cycle 45: an EMPTY container carrying `art`, `thumb` and `title1`
+                    // and nothing else, for exactly four names.
+                    if !matches!(segments[4], "genre" | "mood" | "style" | "decade") {
+                        return Response::error(404, "plexsim: not found");
+                    }
+                    let is_show = section.get("type").and_then(Value::as_str) == Some("show");
+                    return Response::json(200, json!({"MediaContainer": {
+                        "size": 0,
+                        "art": if is_show { "/:/resources/show-fanart.jpg" } else { "/:/resources/movie-fanart.jpg" },
+                        "identifier": "com.plexapp.plugins.library",
+                        "mediaTagPrefix": MEDIA_TAG_PREFIX,
+                        "mediaTagVersion": MEDIA_TAG_VERSION,
+                        "thumb": if is_show { "/:/resources/show.png" } else { "/:/resources/movie.png" },
+                        "title1": section.get("title").cloned().unwrap_or(Value::Null),
+                    }}));
+                }
                 if segments.len() == 4 && segments[3] == "arts" {
                     if request.method != "GET" && request.method != "HEAD" {
                         return Response::error(404, "plexsim: not found");
@@ -11590,11 +11616,13 @@ impl Runtime {
                         ),
                         ("allowSync".to_string(), json!(true)),
                     ]);
-                    if kind == "show"
-                        && matches!(leaf, "recentlyAdded" | "recentlyViewed" | "newest")
-                    {
-                        fields.insert("viewGroup".to_string(), json!("episode"));
-                    }
+                    // A show library's subsets are EPISODE lists (its Grandparents
+                    // roll-up keeps `viewGroup: "episode"`, cycle 45); a movie
+                    // library's stay movies.
+                    fields.insert(
+                        "viewGroup".to_string(),
+                        json!(if kind == "show" { "episode" } else { "movie" }),
+                    );
                     let mut rows =
                         if leaf == "recentlyViewedShows" || leaf == "recentlyViewedGrandparents" {
                             let mut roots = self.section_rows(section_key);
