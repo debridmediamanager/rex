@@ -11966,6 +11966,14 @@ impl Runtime {
                         Ok(rows) => rows,
                         Err(status) => return Response::error(status, "plexsim: bad request"),
                     };
+                    if let Some(group) = query.get("group") {
+                        // Cycle 14: the section `allLeaves` takes `group=` too -- the
+                        // same as the grid's `type=4&group=index`.
+                        rows = match self.grouped(rows, group) {
+                            Ok(rows) => rows,
+                            Err(status) => return Response::error(status, "plexsim: bad request"),
+                        };
+                    }
                     let mut rows = rows
                         .iter()
                         .map(|row| self.leaf_listing_row(row))
