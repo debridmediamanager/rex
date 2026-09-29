@@ -258,6 +258,29 @@ impl Runtime {
         query: &HashMap<String, String>,
         pairs: &[(String, String)],
     ) -> Response {
+        self.edit_playlist_on(id, query, pairs, false)
+    }
+
+    /// `PUT /library/metadata/{playlist}`: cycle 20, measured on plexscratch over 57
+    /// columns -- the ITEM path's whole validation (an unknown name a 400, an
+    /// unparseable number a 500), applied to a COPY, then only the list's own title,
+    /// summary and sort title are written.
+    pub(super) fn edit_playlist_alias(
+        &mut self,
+        id: &str,
+        query: &HashMap<String, String>,
+        pairs: &[(String, String)],
+    ) -> Response {
+        self.edit_playlist_on(id, query, pairs, true)
+    }
+
+    fn edit_playlist_on(
+        &mut self,
+        id: &str,
+        query: &HashMap<String, String>,
+        pairs: &[(String, String)],
+        alias: bool,
+    ) -> Response {
         const STORED: &[&str] = &[
             "title",
             "summary",
@@ -292,10 +315,18 @@ impl Runtime {
             .filter(|(name, _)| !name.starts_with("X-Plex-"))
             .cloned()
             .collect::<Vec<_>>();
+        if alias {
+            let mut probe = self.playlist_columns(id);
+            probe.insert("ratingKey".to_string(), json!(id));
+            probe.insert("title".to_string(), json!(playlist.title));
+            if let Err(error) = self.edit_row_copy(&probe, pairs, false) {
+                return Response::error(error.status, &format!("plexsim: {}", error.detail));
+            }
+        }
         if named.is_empty() {
             return Response::error(400, "plexsim: bad request");
         }
-        for (name, _) in &named {
+        for (name, _) in named.iter().filter(|_| !alias) {
             let field = field_of(name);
             if !STORED.contains(&field.as_str()) && !DISCARDED.contains(&field.as_str()) {
                 return Response::error(400, "plexsim: bad request");
@@ -306,7 +337,14 @@ impl Runtime {
         columns.insert("title".to_string(), json!(playlist.title));
         let stored_pairs = named
             .iter()
-            .filter(|(name, _)| STORED.contains(&field_of(name).as_str()))
+            .filter(|(name, _)| {
+                let field = field_of(name);
+                if alias {
+                    matches!(field.as_str(), "title" | "summary" | "titleSort")
+                } else {
+                    STORED.contains(&field.as_str())
+                }
+            })
             .cloned()
             .collect::<Vec<_>>();
         if !stored_pairs.is_empty() {
@@ -319,7 +357,7 @@ impl Runtime {
             }
         }
         let stamp_before = columns.get("updatedAt").map(string_value).unwrap_or_default();
-        for name in ["thumb", "art"] {
+        for name in ["thumb", "art"].into_iter().filter(|_| !alias) {
             if query.get(name).or_else(|| query.get(&format!("{name}.value"))).is_some() {
                 // the path a real PMS mints is under the library metadata tree, keyed by
                 // the playlist's own ratingKey -- measured
