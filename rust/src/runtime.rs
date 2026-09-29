@@ -334,6 +334,8 @@ pub struct Runtime {
     viewed_in_session: HashSet<String>,
     /// Uploaded artwork by its `upload://` key: the bytes and their content type.
     uploads: HashMap<String, (Vec<u8>, String)>,
+    /// Set while `/photo/:/transcode` fetches its inner path: one level only.
+    in_transcode: bool,
     pub terminated_sessions: HashMap<String, String>,
     pub decided_sessions: HashSet<(String, String)>,
     pub web_root: Option<PathBuf>,
@@ -422,6 +424,7 @@ impl Runtime {
             hidden_continue: HashSet::new(),
             viewed_in_session: HashSet::new(),
             uploads: HashMap::new(),
+            in_transcode: false,
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
             web_root: options.web_root,
@@ -4703,7 +4706,7 @@ impl Runtime {
             ("GET" | "HEAD", "/player/timeline/poll") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/system/proxy") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/video/:/transcode/universal/subtitles") => Response::error(400, "plexsim: bad request"),
-            ("GET" | "HEAD", "/photo/:/transcode") => self.route_photo_transcode(&query),
+            ("GET" | "HEAD", "/photo/:/transcode") => self.route_photo_transcode(request, &query),
             ("GET" | "HEAD", "/channels") => Response::json(
                 200,
                 self.container(
@@ -8109,44 +8112,106 @@ impl Runtime {
         Response::json(200, self.container(fields, true))
     }
 
-    fn route_photo_transcode(&self, query: &HashMap<String, String>) -> Response {
-        let Some(url) = query.get("url").filter(|value| !value.is_empty()) else {
-            return Response::photo_error(400, "plexsim: bad request");
+    fn route_photo_transcode(&mut self, request: &Request, query: &HashMap<String, String>) -> Response {
+        // Measured: both dimensions are MANDATORY and validated first (cycle 29).
+        let photo_int = |text: &str| {
+            let digits = text.trim_start_matches(['+', '-']);
+            !text.is_empty() && !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
+                && text.len() - digits.len() <= 1
         };
-        let Some(width) = query.get("width") else {
-            return Response::photo_error(400, "plexsim: bad request");
-        };
-        let Some(height) = query.get("height") else {
-            return Response::photo_error(400, "plexsim: bad request");
-        };
-        if width.parse::<u32>().is_err() || height.parse::<u32>().is_err() {
-            return Response::photo_error(400, "plexsim: bad request");
+        for name in ["width", "height"] {
+            match query.get(name) {
+                Some(value) if !value.is_empty() && photo_int(value) => {}
+                _ => return Response::photo_error(400, "plexsim: bad request"),
+            }
         }
-        if url.starts_with("/:/resources/") {
-            let asset = url.trim_start_matches("/:/resources/");
-            if !matches!(
-                asset,
-                "movie.png" | "video.png" | "actor-icon.png"
-            ) {
+        // Cycle 27: five more parameters are validated.
+        for name in ["opacity", "quality", "blur", "minSize", "upscale"] {
+            let Some(value) = query.get(name) else { continue };
+            if !photo_int(value) {
+                return Response::photo_error(400, "plexsim: bad request");
+            }
+            if matches!(name, "minSize" | "upscale") && !bool_option(value) {
+                return Response::photo_error(400, "plexsim: bad request");
+            }
+            if name == "blur" && value.starts_with('-') && value.trim_start_matches(['-', '0']) != "" {
+                return Response::photo_error(500, "plexsim: server error");
+            }
+        }
+        // Cycle 29: a missing `url=` is a 400, an empty one a 404, a url with a
+        // SCHEME or no leading slash a 404; an item artwork path answers what the
+        // direct path answers; cycle 52: any other server path is FETCHED, and a
+        // non-200 is a 404 while a 200 that is not an image is a 500.
+        let Some(raw) = query.get("url") else {
+            return Response::photo_error(400, "plexsim: bad request");
+        };
+        let target = percent_decode(raw);
+        let lowered = target.to_ascii_lowercase();
+        if lowered.starts_with("http://") || lowered.starts_with("https://") {
+            let mut response = Response::image(jpeg_placeholder());
+            response.headers = vec![
+                ("Cache-Control".to_string(), "max-age=259200".to_string()),
+                ("Accept-Ranges".to_string(), "bytes".to_string()),
+            ];
+            return response;
+        }
+        let (inner, inner_query) = split_target(&target);
+        let has_scheme = inner
+            .split_once(':')
+            .is_some_and(|(scheme, _)| !scheme.is_empty() && !scheme.contains('/'));
+        if has_scheme || !inner.starts_with('/') {
+            return Response::photo_error(404, "plexsim: not found");
+        }
+        if let Some(asset) = inner.strip_prefix("/:/resources/") {
+            return self.route_bundled_resource(asset, false);
+        }
+        let artwork = regex::Regex::new(r"^/library/metadata/(\d+)/(thumb|art|poster|background)(/|$)")
+            .ok()
+            .and_then(|pattern| {
+                pattern
+                    .captures(&inner)
+                    .map(|found| (found[1].to_string(), found[2].to_string()))
+            });
+        if let Some((rating_key, leaf)) = &artwork {
+            let Some(row) = self.catalog.get(rating_key) else {
+                return Response::photo_error(404, "plexsim: no such item");
+            };
+            let field = match leaf.as_str() {
+                "poster" | "thumb" => "thumb",
+                _ => "art",
+            };
+            if !artwork::owns_field(Some(row), field) {
                 return Response::photo_error(404, "plexsim: not found");
             }
-        } else if url.starts_with("/identity") {
-            return Response::photo_error(500, "plexsim: internal error");
-        } else if let Some(start) = url.find("/library/metadata/") {
-            let tail = &url[start + "/library/metadata/".len()..];
-            let key = tail.split(['/', '?']).next().unwrap_or_default();
-            if key.is_empty() || self.catalog.get(key).is_none() {
-                return Response::photo_error(404, "plexsim: not found");
-            }
-        } else {
-            return Response::photo_error(500, "plexsim: internal error");
         }
-        let mut response = Response::image(jpeg_placeholder());
+        let segments = inner.split('/').filter(|piece| !piece.is_empty()).collect::<Vec<_>>();
+        if self.in_transcode || (segments.last() == Some(&"metadata") && segments.contains(&"theme")) {
+            return Response::photo_error(if self.in_transcode { 404 } else { 500 }, "plexsim: not found");
+        }
+        let mut headers = request.headers.clone();
+        headers.remove("range");
+        let inner_request = Request {
+            method: "GET".to_string(),
+            target: if inner_query.is_empty() { inner.clone() } else { format!("{inner}?{inner_query}") },
+            version: request.version.clone(),
+            headers,
+            body: Vec::new(),
+            body_complete: true,
+        };
+        self.in_transcode = true;
+        let answer = self.request_route(&inner_request);
+        self.in_transcode = false;
+        if answer.status != 200 {
+            return Response::photo_error(404, "plexsim: not found");
+        }
+        if !answer.content_type.starts_with("image/") {
+            return Response::photo_error(500, "plexsim: server error");
+        }
+        let mut response = Response::bytes(200, answer.content_type.clone());
+        response.body = answer.body;
         response.headers = vec![
-            ("X-Plex-Protocol".to_string(), "1.0".to_string()),
+            ("Cache-Control".to_string(), "max-age=259200".to_string()),
             ("Accept-Ranges".to_string(), "bytes".to_string()),
-            ("Cache-Control".to_string(), "no-cache".to_string()),
-            ("Date".to_string(), http_date()),
         ];
         response
     }
