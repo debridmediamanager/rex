@@ -8581,19 +8581,10 @@ impl Runtime {
             .cloned()
             .collect::<Vec<_>>();
 
-        let mut in_progress = if is_show {
-            episodes.clone()
-        } else {
-            items.clone()
-        };
-        in_progress.retain(|row| {
-            row.get("viewOffset")
-                .and_then(Value::as_i64)
-                .is_some_and(|offset| offset > 60000)
-                && key_of(row)
-                    .map(|key| !self.hidden_continue.contains(&key))
-                    .unwrap_or(false)
-        });
+        // Cycle 57/58: the section's Continue Watching shelf is the same list as its
+        // see-all leaf (`section_continue_watching`): the library's resume rows, a
+        // next-up only once its show has a playback completion.
+        let in_progress = self.section_continue_watching_rows(section_key, is_show);
 
         let mut watched = if is_show {
             episodes.clone()
@@ -8849,12 +8840,17 @@ impl Runtime {
                 ("style".to_string(), json!("shelf")),
                 ("context".to_string(), json!(context)),
                 ("key".to_string(), json!(key)),
-                ("promoted".to_string(), json!(promoted)),
-                ("random".to_string(), json!(random)),
                 ("more".to_string(), json!(!exhausted && total > shelf_limit)),
                 ("size".to_string(), json!(rows.len())),
                 ("Metadata".to_string(), Value::Array(rows.clone())),
             ]);
+            // The oracle carries `promoted` and `random` only on the shelves that are.
+            if promoted {
+                hub.insert("promoted".to_string(), json!(true));
+            }
+            if random {
+                hub.insert("random".to_string(), json!(true));
+            }
             if !rows.is_empty() {
                 let keys = rows.iter().filter_map(key_of).collect::<Vec<_>>();
                 if !keys.is_empty() {
@@ -9118,18 +9114,26 @@ impl Runtime {
     /// A SECTION's Continue Watching see-all leaf (cycles 21, 26, 57): a show
     /// library keeps a hidden row, a movie library drops it, and a next-up whose
     /// anchor was only scrobbled is not listed.
+    /// `section_continue_watching`: a show library keeps a hidden row, a movie library
+    /// drops it, and a next-up whose show was never played in a session is not listed.
+    fn section_continue_watching_rows(&self, section_key: &str, is_show: bool) -> Vec<Value> {
+        self.continue_watching(is_show)
+            .into_iter()
+            .filter(|row| {
+                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+                    && row.get("_nextUpFromScrobble").is_none()
+            })
+            .collect()
+    }
+
     fn route_section_continue_watching_items(&self, section_key: &str) -> Response {
         let Some(section) = self.section(section_key) else {
             return Response::error(404, "plexsim: no such section");
         };
         let is_show = section.get("type").and_then(Value::as_str) == Some("show");
         let rows = self
-            .continue_watching(is_show)
+            .section_continue_watching_rows(section_key, is_show)
             .iter()
-            .filter(|row| {
-                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
-                    && row.get("_nextUpFromScrobble").is_none()
-            })
             .map(|row| self.detail_row(row))
             .collect::<Vec<_>>();
         Response::json(
