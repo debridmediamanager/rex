@@ -25354,9 +25354,15 @@ def main():
     # cannot be driven from a single base; the channel's half is the same one-line rule
     # and IS drivable, so it is what this check proves -- with `filters=` repeated, the
     # first value naming no event type at all.
+    # The title is put back afterwards: the two search-ladder checks below read `movie`'s
+    # title and need three words, and a two-word "Repeated Key" left behind here made
+    # both of them skip on every run.
+    title_c36b = (get(base, "/library/metadata/%s" % movie)[1]
+                  .get("Metadata") or [{}])[0].get("title") or ""
     _status_c36b, events_c36b = eventsource(
         base, lambda: request(base, "PUT", "/library/metadata/%s?title.value=Repeated%%20Key"
                               % movie), 8, "?filters=zzz&filters=timeline")
+    request(base, "PUT", "/library/metadata/%s?title.value=%s" % (movie, quote(title_c36b)))
     check("a repeated filters= on a notification channel takes the LAST value",
           any(name_c36b == "timeline" for name_c36b, _data_c36b in events_c36b),
           str([name_c36b for name_c36b, _d_c36b in events_c36b][:6]))
