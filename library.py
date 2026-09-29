@@ -1764,6 +1764,18 @@ class Library:
                     row["title"] = name.rsplit(".", 1)[0]
                     break
         row["updatedAt"] = _now()
+        if row.get("type") == "movie":
+            # Measured on plexscratch (1.43.4) by unmatching a matched movie: `updatedAt`
+            # moves AND the poster the row owns follows it -- `thumb/1790724822` became
+            # `thumb/1790724825` beside `updatedAt 1790724825` -- which is cycle 20's rule
+            # that an owned artwork version IS the row's `updatedAt` (726 of 726 on zen).
+            # plexsim moved the stamp and kept the old version, so an unmatched row's
+            # poster named a version its own row no longer carried.
+            for field in ("thumb", "art"):
+                value = str(row.get(field) or "")
+                owned = "/library/metadata/%s/%s/" % (row["ratingKey"], field)
+                if value.startswith(owned):
+                    row[field] = owned + str(row["updatedAt"])
         # Re-measured on the copy: a movie unmatch runs the full refresh sequence and
         # its activity ENDS -- `/activities` is empty straight afterwards. plexsim
         # opened an `Unmatching` activity at progress 0 and never closed it, so the
