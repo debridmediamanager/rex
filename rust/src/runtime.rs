@@ -3001,11 +3001,8 @@ impl Runtime {
             identifier.clone(),
             Device {
                 client_identifier: identifier,
-                name: headers
-                    .get("x-plex-device-name")
-                    .cloned()
-                    .unwrap_or_default(),
-                product: headers.get("x-plex-product").cloned().unwrap_or_default(),
+                name,
+                product,
                 platform,
                 last_seen: now(),
             },
@@ -4769,6 +4766,26 @@ impl Runtime {
         self.spelling = Some(spellfix::SearchIndex::build(&self.catalog.items, &static_tags));
     }
 
+    /// Every request registers its client -- header or query alike -- in the order the
+    /// server first sees it (`sessions.device_id`), the notification sockets included.
+    fn register_request_device(&mut self, request: &Request) {
+        let (_, raw_query) = split_target(&request.target);
+        let identifier = request
+            .headers
+            .get("x-plex-client-identifier")
+            .cloned()
+            .filter(|value| !value.is_empty())
+            .or_else(|| {
+                parse_query(&raw_query)
+                    .into_iter()
+                    .rev()
+                    .find(|(name, _)| name == "X-Plex-Client-Identifier")
+                    .map(|(_, value)| value)
+            })
+            .unwrap_or_default();
+        self.register_device(&identifier);
+    }
+
     pub fn route(&mut self, request: &Request) -> Response {
         if request.method == "PATCH" {
             // Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not
@@ -4778,25 +4795,7 @@ impl Runtime {
             return Response::error(500, "plexsim: unknown method");
         }
         self.mark_device(&request.headers);
-        {
-            // Every request registers its client -- header or query alike -- in the
-            // order the server first sees it (`sessions.device_id`).
-            let (_, raw_query) = split_target(&request.target);
-            let identifier = request
-                .headers
-                .get("x-plex-client-identifier")
-                .cloned()
-                .filter(|value| !value.is_empty())
-                .or_else(|| {
-                    parse_query(&raw_query)
-                        .into_iter()
-                        .rev()
-                        .find(|(name, _)| name == "X-Plex-Client-Identifier")
-                        .map(|(_, value)| value)
-                })
-                .unwrap_or_default();
-            self.register_device(&identifier);
-        }
+        self.register_request_device(request);
         let mut response = self.request_route(request);
         exclude_fields_response(request, &mut response);
         sync_version_response(request, &mut response);
@@ -18916,6 +18915,7 @@ fn handle_connection<S: Read + Write>(
                     return Ok(());
                 }
                 guard.mark_device(&request.headers);
+                guard.register_request_device(&request);
                 guard.event_cursor()
             };
             return handle_websocket(&mut stream, &runtime, &request, event_start);
@@ -18931,6 +18931,7 @@ fn handle_connection<S: Read + Write>(
                     return Ok(());
                 }
                 guard.mark_device(&request.headers);
+                guard.register_request_device(&request);
                 guard.event_cursor()
             };
             return handle_eventsource(&mut stream, &runtime, &request, event_start);
