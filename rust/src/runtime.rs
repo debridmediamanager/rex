@@ -13572,25 +13572,30 @@ impl Runtime {
         if request.method != "GET" && request.method != "HEAD" {
             return Response::error(404, "plexsim: not found");
         }
-        let Some(raw_type) = query.get("type") else {
-            return Response::error(400, "plexsim: bad request");
-        };
-        let Ok(type_number) = raw_type.parse::<i64>() else {
-            return Response::error(400, "plexsim: bad request");
-        };
-        let Some(raw_query) = query.get("query") else {
-            return Response::error(400, "plexsim: bad request");
-        };
-        if raw_query.trim().is_empty() {
+        // Measured: only the form with NO `type` is a 400; with a type this is a real
+        // listing.  Cycle 20: and the type has to PARSE -- `abc`, `1.5` and a single
+        // space are each a 400 on both references.
+        let raw_type = query.get("type").map(|value| value.trim()).unwrap_or_default();
+        let digits = raw_type.trim_start_matches('-');
+        if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
             return Response::error(400, "plexsim: bad request");
         }
+        let type_number = raw_type.parse::<i64>().unwrap_or(0);
         let mut rows = self.choose_rows(Some(section_key), Some(type_number));
-        let wanted = raw_query.to_lowercase();
-        rows.retain(|row| {
-            row.get("title")
-                .and_then(Value::as_str)
-                .is_some_and(|title| title.to_lowercase().contains(&wanted))
-        });
+        let text = query
+            .get("query")
+            .map(|value| value.trim().to_lowercase())
+            .unwrap_or_default();
+        if !text.is_empty() {
+            // Measured: a SUBSTRING match on the title.  Cycle 18: a GENERATED title
+            // is not in the search index (plexscratch's `Season 2` answers nothing);
+            // cycle 31: this box reads the TITLE alone, never `originalTitle`.
+            rows.retain(|row| {
+                row.as_object().is_some_and(|object| {
+                    crate::hierarchy::stored_title(object).to_lowercase().contains(&text)
+                })
+            });
+        }
         let section_type = section
             .get("type")
             .and_then(Value::as_str)
@@ -13604,88 +13609,85 @@ impl Runtime {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
         };
-        rows.sort_by(|left, right| {
-            string_value(
-                left.get("titleSort")
-                    .or_else(|| left.get("title"))
-                    .unwrap_or(&Value::Null),
-            )
-            .cmp(&string_value(
-                right
-                    .get("titleSort")
-                    .or_else(|| right.get("title"))
-                    .unwrap_or(&Value::Null),
-            ))
-            .then_with(|| {
-                key_of(left)
-                    .unwrap_or_default()
-                    .cmp(&key_of(right).unwrap_or_default())
-            })
-        });
+        let by_id = match crate::filters::source_order(query.get("sourceType").map(String::as_str)) {
+            Ok(order) => order.is_some(),
+            Err(error) => return Response::error(error.status, "plexsim: bad sourceType"),
+        };
+        if by_id {
+            // Cycle 55: `sourceType=0` orders the search box by id too.
+            rows.sort_by_key(|row| key_of(row).and_then(|key| key.parse::<i64>().ok()).unwrap_or(0));
+        } else {
+            rows.sort_by(|left, right| {
+                string_value(
+                    left.get("titleSort")
+                        .or_else(|| left.get("title"))
+                        .unwrap_or(&Value::Null),
+                )
+                .cmp(&string_value(
+                    right
+                        .get("titleSort")
+                        .or_else(|| right.get("title"))
+                        .unwrap_or(&Value::Null),
+                ))
+                .then_with(|| {
+                    key_of(left)
+                        .unwrap_or_default()
+                        .cmp(&key_of(right).unwrap_or_default())
+                })
+            });
+        }
+        // Cycle 15: the LIGHT grid projection; cycle 20: with no librarySection
+        // fields, which are the container's.
         let rows = rows
             .iter()
-            .map(|row| {
-                let mut shown = self.grid_row(row, false, false, false);
-                if let Some(object) = shown.as_object_mut() {
-                    let value = row
-                        .get("title")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                        .to_lowercase();
-                    let at = value.find(&wanted).unwrap_or(0);
-                    object.insert(
-                        "title.queryRange".to_string(),
-                        json!(format!(
-                            "{},{}",
-                            at,
-                            at + wanted.chars().count().saturating_sub(1)
-                        )),
-                    );
-                }
-                shown
-            })
+            .map(|row| guid_gate(self.grid_row(row, false, true, false), query))
             .collect::<Vec<_>>();
-        let mut fields = Map::from_iter([
-            (
-                "title2".to_string(),
-                json!(format!("Search for '{raw_query}'")),
-            ),
-            ("allowSync".to_string(), json!(true)),
-            (
-                "librarySectionID".to_string(),
-                json!(section_key.parse::<i64>().unwrap_or(0)),
-            ),
-            (
-                "librarySectionTitle".to_string(),
-                section.get("title").cloned().unwrap_or(Value::Null),
-            ),
-            (
-                "librarySectionUUID".to_string(),
-                section.get("uuid").cloned().unwrap_or(Value::Null),
-            ),
-            (
-                "title1".to_string(),
-                section.get("title").cloned().unwrap_or(Value::Null),
-            ),
-            (
-                "viewGroup".to_string(),
-                json!(if type_number == 4 {
-                    "episode"
-                } else {
-                    section_type
-                }),
-            ),
-            (
-                "viewMode".to_string(),
-                json!(if type_number == 3 { 65593 } else { 65592 }),
-            ),
-            ("Metadata".to_string(), Value::Array(rows)),
-        ]);
-        if type_number == 4 {
+        // Cycle 18, measured on kids and zen over two movie libraries and three show
+        // ones: this container is typed by the ASKED `type=`, not by the library --
+        // `type=3` answers `viewGroup="season"` and `viewMode` 65593, `type=4`
+        // `viewGroup="episode"` and `mixedParents`.  It is built like a secondary
+        // list (the oracle's `secondary_container`) without its `content`.
+        let typed = match raw_type {
+            "1" => Some("movie"),
+            "2" => Some("show"),
+            "3" => Some("season"),
+            "4" => Some("episode"),
+            _ => None,
+        };
+        let show = section_type == "show";
+        let mut fields = Map::new();
+        fields.insert("size".to_string(), json!(rows.len()));
+        fields.insert("allowSync".to_string(), json!(false));
+        fields.insert(
+            "art".to_string(),
+            json!(if show { "/:/resources/show-fanart.jpg" } else { "/:/resources/movie-fanart.jpg" }),
+        );
+        fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+        fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
+        if typed == Some("episode") {
             fields.insert("mixedParents".to_string(), json!(true));
         }
+        if show {
+            fields.insert("nocache".to_string(), json!(true));
+        }
+        fields.insert(
+            "thumb".to_string(),
+            json!(if show { "/:/resources/show.png" } else { "/:/resources/movie.png" }),
+        );
+        fields.insert(
+            "title1".to_string(),
+            section.get("title").cloned().unwrap_or(Value::Null),
+        );
+        fields.insert("title2".to_string(), json!(format!("Search for '{text}'")));
+        fields.insert("viewGroup".to_string(), json!(typed.unwrap_or(section_type)));
+        fields.insert(
+            "viewMode".to_string(),
+            json!(if typed == Some("season") { 65593 } else { 65592 }),
+        );
+        fields.insert("Metadata".to_string(), Value::Array(rows));
         page_fields(&mut fields, query);
-        Response::json(200, self.container(fields, true))
+        Response::json(200, self.container(fields, false))
     }
 
     fn route_section_common(
