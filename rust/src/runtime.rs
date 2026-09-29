@@ -18303,6 +18303,40 @@ fn handle_connection<S: Read + Write>(
         if close_after_body {
             response.close = true;
         }
+        // Cycle 45: `X-Plex-Container-Focus-Key` (header or query) supplies the START as
+        // `max(0, index - (size - 1) // 2)` when it names `/library/metadata/...`, a Size
+        // is given and no explicit Start is; a key naming no row starts at 0.
+        let focus = request
+            .headers
+            .get("x-plex-container-focus-key")
+            .or_else(|| query.get("X-Plex-Container-Focus-Key"))
+            .cloned();
+        if let Some(focus) = focus.filter(|focus| focus.starts_with("/library/metadata/")) {
+            if query.contains_key("X-Plex-Container-Size") && !query.contains_key("X-Plex-Container-Start") {
+                let wanted = focus.trim_end_matches('/').rsplit('/').next().unwrap_or("").to_string();
+                let index = serde_json::from_slice::<Value>(&response.body)
+                    .ok()
+                    .and_then(|document| {
+                        let body = document.get("MediaContainer")?.as_object()?.clone();
+                        let longest = body
+                            .values()
+                            .filter_map(Value::as_array)
+                            .max_by_key(|rows| rows.len())
+                            .cloned()
+                            .unwrap_or_default();
+                        longest.iter().position(|row| key_of(row).as_deref() == Some(wanted.as_str()))
+                    })
+                    .unwrap_or(0) as i64;
+                let size = query
+                    .get("X-Plex-Container-Size")
+                    .and_then(|value| value.trim().parse::<i64>().ok())
+                    .unwrap_or(0);
+                query.insert(
+                    "X-Plex-Container-Start".to_string(),
+                    (index - (size - 1).div_euclid(2)).max(0).to_string(),
+                );
+            }
+        }
         page_container(&mut response, &query, &request_path);
         add_paging_headers(&mut response, &query);
         response = xml_or_json(response, request.headers.get("accept").map(String::as_str));
