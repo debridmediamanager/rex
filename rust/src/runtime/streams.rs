@@ -230,6 +230,30 @@ impl Runtime {
         let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
             return;
         };
+        let segments = path.split('/').filter(|piece| !piece.is_empty()).collect::<Vec<_>>();
+        if segments.len() == 4
+            && segments[..2] == ["library", "sections"]
+            && matches!(segments[3], "audioLanguage" | "subtitleLanguage")
+        {
+            // Cycle 60, measured on zen: the language AXIS names its values in the
+            // client's language too (`Französisch` under `de`, `French` under `en`),
+            // keyed by the value -- the language tag.
+            if let (Some(by_tag), Some(rows)) = (
+                by_tag.filter(|map| !map.is_empty()),
+                document["MediaContainer"].get_mut("Directory").and_then(Value::as_array_mut),
+            ) {
+                for row in rows.iter_mut() {
+                    let key = row.get("key").map(string_value).unwrap_or_default();
+                    if let Some(title) = by_tag.get(&key).filter(|title| !title.is_empty()) {
+                        row["title"] = json!(title);
+                    }
+                }
+                if let Ok(body) = serde_json::to_vec(&document) {
+                    response.body = body;
+                }
+            }
+            return;
+        }
         if !response.body.windows(10).any(|window| window == b"streamType") {
             return;
         }
