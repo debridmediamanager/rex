@@ -3546,6 +3546,9 @@ impl Runtime {
             ("viewCount".to_string(), "integer".to_string()),
             ("viewOffset".to_string(), "integer".to_string()),
             ("rating".to_string(), "integer".to_string()),
+            // Cycle 15: `audienceRating` is the other agent rating column
+            // (`audienceRating>>=9` is 107 of zen's 3,887, `<<=1` none).
+            ("audienceRating".to_string(), "integer".to_string()),
             ("userRating".to_string(), "integer".to_string()),
             ("lastViewedAt".to_string(), "date".to_string()),
             ("lastRatedAt".to_string(), "date".to_string()),
@@ -4176,6 +4179,8 @@ impl Runtime {
                 "resourcesChangedAt",
                 // Cycle 53: the tenth schema column sorts too.
                 "mediaAnalysisVersion",
+                // Cycle 14: `guid` is one of the thirteen unadvertised sort keys.
+                "guid",
                 "mediaHeight",
                 "type",
                 "index",
