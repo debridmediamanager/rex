@@ -18785,10 +18785,12 @@ fn split_target(target: &str) -> (String, String) {
             return split_target(origin_form);
         }
     }
+    // A `+` in the PATH is a literal plus (cycle 36's `+1` id); only a query decodes
+    // it as a space.
     if let Some((path, query)) = target.split_once('?') {
-        (percent_decode(path), query.to_string())
+        (percent_decode(&path.replace('+', "%2B")), query.to_string())
     } else {
-        (percent_decode(target), String::new())
+        (percent_decode(&target.replace('+', "%2B")), String::new())
     }
 }
 fn parse_query(query: &str) -> Vec<(String, String)> {
