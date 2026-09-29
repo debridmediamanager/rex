@@ -4546,6 +4546,122 @@ impl Runtime {
         )
     }
 
+    /// `/library/shared` and every one-segment leaf below it (cycle 45): the bare path
+    /// is the tab bar, EVERY second segment answers the same library list, and a
+    /// third segment is a 404.
+    fn library_shared(&self, segments: &[&str], query: &HashMap<String, String>) -> Response {
+        const TYPES: [(&str, &str); 7] = [
+            ("/library/shared/all", "All Shared"),
+            ("/library/shared/all?type=1", "Movies"),
+            ("/library/shared/all?type=2,3,4", "TV"),
+            ("/library/shared/all?type=8,9,10", "Music"),
+            ("/library/shared/all?type=13,14,12", "Photos"),
+            ("/library/shared/all?type=15", "Playlists"),
+            ("/library/shared/libraries", "Libraries"),
+        ];
+        let sorts = || {
+            vec![
+                json!({"default": "asc", "defaultDirection": "asc", "descKey": "titleSort:desc",
+                       "key": "titleSort", "title": "Title"}),
+                json!({"defaultDirection": "asc", "descKey": "taggingCreatedAt:desc",
+                       "key": "taggingCreatedAt", "title": "Date Shared"}),
+            ]
+        };
+        if segments.len() == 2 {
+            let rows = TYPES
+                .iter()
+                .map(|(key, title)| json!({"key": key, "type": "mixed", "title": title, "active": false, "Sort": sorts()}))
+                .collect::<Vec<_>>();
+            return Response::json(200, json!({"MediaContainer": {"size": rows.len(),
+                "identifier": "com.plexapp.plugins.library.shared", "Type": rows}}));
+        }
+        if segments.len() > 3 {
+            return Response::error(404, "plexsim: not found");
+        }
+        let mut rows = self
+            .catalog
+            .sections
+            .iter()
+            .map(|section| {
+                let key = string_value(section.get("key").unwrap_or(&Value::Null));
+                let is_show = section.get("type").and_then(Value::as_str) == Some("show");
+                let mut out = Map::new();
+                out.insert("art".to_string(), json!(""));
+                out.insert("key".to_string(), json!(format!("/library/sections/{key}/all?type={}", if is_show { 2 } else { 1 })));
+                out.insert("thumb".to_string(), json!(""));
+                if let Some(object) = self.section_directory(section).as_object() {
+                    for (name, value) in object {
+                        if !matches!(name.as_str(), "key" | "allowSync" | "filters" | "refreshing") {
+                            out.insert(name.clone(), value.clone());
+                        }
+                    }
+                }
+                if query.get("includePreferences").map(String::as_str) == Some("1") {
+                    out.insert(
+                        "Preferences".to_string(),
+                        json!({"Setting": self.section_pref_rows(&key, if is_show { "show" } else { "movie" })}),
+                    );
+                }
+                if query.get("includeSummary").map(String::as_str) == Some("1") {
+                    out.insert("Summary".to_string(), self.section_summary(section));
+                }
+                Value::Object(out)
+            })
+            .collect::<Vec<_>>();
+        if let Some(wanted) = query.get("type").filter(|v| !v.is_empty()) {
+            // A type that PARSES selects nothing; one that does not is a 400.
+            let parses = wanted.split(',').all(|part| {
+                let digits = part.trim_matches('-');
+                !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
+            });
+            if !parses {
+                return Response::error(400, "plexsim: bad request");
+            }
+            rows.clear();
+        }
+        let title = |row: &Value| row.get("title").and_then(Value::as_str).unwrap_or("").to_string();
+        match query.get("sort").filter(|v| !v.is_empty()) {
+            Some(spec) => {
+                let first = spec.split(',').next().unwrap_or("");
+                let (key, modifiers) = first.split_once(':').unwrap_or((first, ""));
+                if key != "titleSort" && key != "taggingCreatedAt" {
+                    return Response::error(500, "plexsim: unsupported sort key");
+                }
+                let descending = modifiers.split(':').any(|m| m == "desc");
+                if key == "titleSort" {
+                    rows.sort_by_key(|row| title(row));
+                } else {
+                    rows.sort_by_key(|row| row.get("createdAt").and_then(Value::as_i64).unwrap_or(0));
+                }
+                if descending {
+                    rows.reverse();
+                }
+            }
+            None => rows.sort_by_key(|row| title(row)),
+        }
+        let mut body = Map::new();
+        body.insert("size".to_string(), json!(rows.len()));
+        body.insert("allowSync".to_string(), json!(false));
+        body.insert("identifier".to_string(), json!("com.plexapp.plugins.library.shared"));
+        body.insert("Metadata".to_string(), Value::Array(rows));
+        if segments[2] == "all" && query.get("includeMeta").map(String::as_str) == Some("1") {
+            let types = TYPES
+                .iter()
+                .map(|(key, title)| {
+                    let mut sort_rows = sorts();
+                    let active = *key == "/library/shared/all";
+                    if active {
+                        sort_rows[0]["active"] = json!(true);
+                        sort_rows[0]["activeDirection"] = json!("asc");
+                    }
+                    json!({"key": key, "type": "mixed", "title": title, "active": active, "Sort": sort_rows})
+                })
+                .collect::<Vec<_>>();
+            body.insert("Meta".to_string(), json!({"Type": types}));
+        }
+        Response::json(200, Value::Object(Map::from_iter([("MediaContainer".to_string(), Value::Object(body))])))
+    }
+
     /// Rebuild both spellfix vocabularies from the current rows (`rebuild_spelling`).
     fn rebuild_spelling(&mut self) {
         let static_tags = load_json_sidecar(&self.catalog_path, "spellfix_static_tags.json")
@@ -10480,80 +10596,8 @@ impl Runtime {
                 ),
             );
         }
-        if path == "/library/shared/all" {
-            if let Some(value) = query.get("type") {
-                if value.parse::<i64>().is_err() {
-                    return Response::error(400, "plexsim: bad request");
-                }
-            }
-            let mut rows = if query.contains_key("type") {
-                Vec::new()
-            } else {
-                self.catalog
-                    .sections
-                    .iter()
-                    .map(|section| {
-                        let mut row = self.section_directory(section);
-                        if let Some(object) = row.as_object_mut() {
-                            object.insert(
-                                "key".to_string(),
-                                json!(format!(
-                                    "/library/sections/{}/all?type={}",
-                                    string_value(section.get("key").unwrap_or(&Value::Null)),
-                                    if section.get("type").and_then(Value::as_str) == Some("show") {
-                                        2
-                                    } else {
-                                        1
-                                    }
-                                )),
-                            );
-                            object.insert("art".to_string(), json!(""));
-                            object.insert("thumb".to_string(), json!(""));
-                            object.remove("allowSync");
-                            object.remove("filters");
-                            object.remove("refreshing");
-                            if query
-                                .get("includePreferences")
-                                .is_some_and(|value| is_true_option(value))
-                            {
-                                object.insert(
-                                    "Preferences".to_string(),
-                                    json!({"Setting": self.section_pref_rows(
-                                        &string_value(section.get("key").unwrap_or(&Value::Null)),
-                                        section.get("type").and_then(Value::as_str).unwrap_or("movie"),
-                                    )}),
-                                );
-                            }
-                            if query
-                                .get("includeSummary")
-                                .is_some_and(|value| is_true_option(value))
-                            {
-                                object.insert("Summary".to_string(), self.section_summary(section));
-                            }
-                        }
-                        row
-                    })
-                    .collect::<Vec<_>>()
-            };
-            rows.sort_by(|left, right| {
-                string_value(left.get("title").unwrap_or(&Value::Null))
-                    .cmp(&string_value(right.get("title").unwrap_or(&Value::Null)))
-            });
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([
-                        (
-                            "identifier".to_string(),
-                            json!("com.plexapp.plugins.library.shared"),
-                        ),
-                        ("allowSync".to_string(), json!(false)),
-                        ("Metadata".to_string(), Value::Array(rows.clone())),
-                        ("size".to_string(), json!(rows.len())),
-                    ]),
-                    false,
-                ),
-            );
+        if path == "/library/shared" || path.starts_with("/library/shared/") {
+            return self.library_shared(&segments, query);
         }
         if path == "/updater/check" {
             return Response::error(404, "plexsim: not found");
