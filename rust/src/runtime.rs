@@ -39,6 +39,8 @@ mod detail;
 mod framework;
 mod gates;
 mod listing;
+mod merge;
+mod playlists;
 mod resume;
 mod streams;
 mod search;
@@ -342,6 +344,9 @@ pub struct Runtime {
     queues: HashMap<String, Queue>,
     download_queues: HashMap<String, Value>,
     pub next_playlist: i64,
+    next_playlist_item: i64,
+    /// Keys a merge or a delete freed: a split never reuses one (measured).
+    retired_keys: Vec<i64>,
     pub next_collection: i64,
     pub next_queue: i64,
     pub next_queue_item: i64,
@@ -462,7 +467,9 @@ impl Runtime {
             next_metadata_provider_group: 5,
             queues: HashMap::new(),
             download_queues: HashMap::new(),
-            next_playlist: 1,
+            next_playlist: playlists::PLAYLIST_BASE + 1,
+            next_playlist_item: 0,
+            retired_keys: Vec::new(),
             next_collection: 1,
             next_queue: 2,
             next_queue_item: 1,
@@ -15117,84 +15124,16 @@ impl Runtime {
             "tree" => self.route_tree(row),
             "userState" => Response::error(404, "plexsim: not found"),
             "merge" => {
-                if request.method != "PUT" {
+                if request.method != "PUT" && request.method != "POST" {
                     return Response::error(404, "plexsim: not found");
                 }
-                let Some(ids) = query.get("ids") else {
-                    return Response::error(400, "plexsim: ids required");
-                };
-                let mut merged = Vec::new();
-                for other in ids.split(',').filter(|value| !value.is_empty()) {
-                    if other == key {
-                        continue;
-                    }
-                    let Some(value) = self.catalog.get(other).cloned() else {
-                        return Response::error(404, "plexsim: no such item");
-                    };
-                    if value.get("type") != row.get("type") {
-                        return Response::error(400, "plexsim: item type mismatch");
-                    }
-                    merged.push((other.to_string(), value));
-                }
-                if merged.is_empty() {
-                    return Response::error(404, "plexsim: no such item");
-                }
-                let mut media = row
-                    .get("Media")
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default();
-                for (other, value) in merged {
-                    media.extend(
-                        value
-                            .get("Media")
-                            .and_then(Value::as_array)
-                            .cloned()
-                            .unwrap_or_default(),
-                    );
-                    self.catalog.remove(&other);
-                    self.deleted.insert(other.clone());
-                    self.push_delete_event(&other);
-                }
-                if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                    object.insert("Media".to_string(), Value::Array(media));
-                }
-                self.dirty = true;
-                self.push_edit_events(key);
-                self.save_if_dirty();
-                Response::empty(200)
+                self.route_merge(key, row, query)
             }
             "split" => {
-                if request.method != "PUT" {
+                if request.method != "PUT" && request.method != "POST" {
                     return Response::error(404, "plexsim: not found");
                 }
-                let Some(original) = self.catalog.get(key).cloned() else {
-                    return Response::error(404, "plexsim: not found");
-                };
-                let Some(media) = original.get("Media").and_then(Value::as_array) else {
-                    return Response::error(400, "plexsim: no media");
-                };
-                if media.len() < 2 {
-                    return Response::error(400, "plexsim: no alternate version");
-                }
-                let new_key = self.next_dynamic_key.to_string();
-                self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
-                let mut extra = original.clone();
-                if let Some(object) = extra.as_object_mut() {
-                    object.insert("ratingKey".to_string(), json!(new_key.clone()));
-                    object.insert(
-                        "key".to_string(),
-                        json!(format!("/library/metadata/{new_key}")),
-                    );
-                    object.insert("Media".to_string(), json!([media[1].clone()]));
-                }
-                if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                    object.insert("Media".to_string(), json!([media[0].clone()]));
-                }
-                self.catalog.add(extra);
-                self.dirty = true;
-                self.save_if_dirty();
-                Response::empty(200)
+                self.route_split(key)
             }
             "matches" => Response::json(
                 200,
@@ -15203,7 +15142,12 @@ impl Runtime {
                     false,
                 ),
             ),
-            "match" => Response::error(400, "plexsim: bad request"),
+            "match" => {
+                if request.method != "PUT" && request.method != "POST" {
+                    return Response::error(404, "plexsim: not found");
+                }
+                self.route_match(key, row, query)
+            }
             "refresh" | "analyze" | "unmatch" => {
                 // Measured: `GET .../refresh` and `/analyze` are 404s; PUT and
                 // POST both run the action, each an EMPTY 200.
