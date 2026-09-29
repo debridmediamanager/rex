@@ -14207,7 +14207,23 @@ impl Runtime {
                     // deletes nothing; only `/playlists/{id}` really removes it.
                     return Response::empty(200);
                 }
-                return self.route_playlist_metadata(&playlist, &segments[3..], query, request);
+                // The ITEM action leaves exist on this path only: `/playlists/{id}/refresh`
+                // and its siblings stay the 404s they are on a real PMS.
+                let tail = &segments[3..];
+                if tail.len() == 1
+                    && matches!(
+                        tail[0],
+                        "analyze" | "match" | "extras" | "related" | "allLeaves" | "grandchildren"
+                            | "refresh" | "unmatch" | "poster" | "art" | "thumb"
+                    )
+                    && !(matches!(tail[0], "poster" | "art" | "thumb")
+                        && matches!(request.method.as_str(), "GET" | "HEAD"))
+                {
+                    if let Some(response) = self.playlist_action_leaf(&playlist, tail[0], query, request) {
+                        return response;
+                    }
+                }
+                return self.route_playlist_metadata(&playlist, tail, query, request);
             }
             if let Some(collection) = self.collections.get(&key).cloned() {
                 return self.route_collection_metadata(&collection, &segments[3..], query, request);
@@ -17559,19 +17575,6 @@ impl Runtime {
         }
         if tail.first() == Some(&"items") && request.method == "POST" {
             return Response::error(404, "plexsim: not found");
-        }
-        if tail.len() == 1
-            && matches!(
-                tail[0],
-                "analyze" | "match" | "extras" | "related" | "allLeaves" | "grandchildren"
-                    | "refresh" | "unmatch" | "poster" | "art" | "thumb"
-            )
-            && !(matches!(tail[0], "poster" | "art" | "thumb")
-                && matches!(request.method.as_str(), "GET" | "HEAD"))
-        {
-            if let Some(response) = self.playlist_action_leaf(playlist, tail[0], query, request) {
-                return response;
-            }
         }
         // The metadata alias still resolves a playlist's `/prefs` spelling
         // through the ordinary item writer.  It is a malformed field write,
