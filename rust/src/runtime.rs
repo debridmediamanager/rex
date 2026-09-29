@@ -14420,28 +14420,7 @@ impl Runtime {
                     // empty OBJECT for an item with none.  Cycle 15: the INLINE block
                     // caps at FIVE rows per hub and says `more`; `includeRelatedCount=N`
                     // sets that cap, and cycle 22: `=0` EMPTIES the hub.
-                    let cap = query
-                        .get("includeRelatedCount")
-                        .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
-                        .and_then(|value| value.parse::<usize>().ok())
-                        .unwrap_or(5);
-                    let trimmed = self
-                        .related_hubs(row, query, true)
-                        .into_iter()
-                        .map(|mut hub| {
-                            let rows = hub.get("Metadata").and_then(Value::as_array).cloned().unwrap_or_default();
-                            let more = rows.len() > cap || hub.get("more").and_then(Value::as_bool) == Some(true);
-                            let kept = rows.into_iter().take(cap).collect::<Vec<_>>();
-                            hub["size"] = json!(kept.len());
-                            hub["more"] = json!(more);
-                            hub["Metadata"] = Value::Array(kept);
-                            hub
-                        })
-                        .collect::<Vec<_>>();
-                    object.insert(
-                        "Related".to_string(),
-                        if trimmed.is_empty() { json!({}) } else { json!({"Hub": trimmed}) },
-                    );
+                    object.insert("Related".to_string(), self.related_block(row, query));
                 }
             }
             // Re-measured against fun and the 1.43.4 reference: the detail container
@@ -14926,7 +14905,12 @@ impl Runtime {
                 // NOT /hubs/metadata/{id}/related: this one carries the SAME hub plus
                 // the media-tag pair the hubs form drops, built by hand with
                 // `allowSync: true` said explicitly.
-                let hubs = self.related_hubs(row, query, true);
+                let mut hubs = self.related_hubs(row, query, true);
+                for hub in hubs.iter_mut() {
+                    if let Some(rows) = hub.get_mut("Metadata").and_then(Value::as_array_mut) {
+                        self.expand_full_rows(rows, query);
+                    }
+                }
                 let section = self
                     .section(&string_value(
                         row.get("librarySectionID").unwrap_or(&Value::Null),
@@ -14957,11 +14941,12 @@ impl Runtime {
                 if matches!(row.get("type").and_then(Value::as_str), Some("season" | "episode")) {
                     return Response::error(404, "plexsim: not found");
                 }
-                let rows = self
+                let mut rows = self
                     .similar_rows(row)
                     .iter()
                     .map(|row| self.detail_row(row))
                     .collect::<Vec<_>>();
+                self.expand_full_rows(&mut rows, query);
                 let mut fields = Map::new();
                 fields.insert("size".to_string(), json!(rows.len()));
                 fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
