@@ -27,7 +27,9 @@ use crate::{catalog::Catalog, decision, xmlout};
 
 mod butler;
 mod framework;
+mod resume;
 mod transcoder;
+use resume::{bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param, page_window};
 
 const VERSION: &str = "1.42.2.10156-plexsim";
 const MEDIA_TAG_PREFIX: &str = "/system/bundle/media/flags/";
@@ -328,6 +330,9 @@ pub struct Runtime {
     completed_sessions: HashSet<(String, String)>,
     completion_pending_stop: HashSet<(String, String)>,
     pub hidden_continue: HashSet<String>,
+    /// Leaves completed in a PLAYBACK SESSION (Python's `_viewedInSession`): history,
+    /// not view state, so a later scrobble or unscrobble leaves it standing.
+    viewed_in_session: HashSet<String>,
     pub terminated_sessions: HashMap<String, String>,
     pub decided_sessions: HashSet<(String, String)>,
     pub web_root: Option<PathBuf>,
@@ -417,6 +422,7 @@ impl Runtime {
             completed_sessions: HashSet::new(),
             completion_pending_stop: HashSet::new(),
             hidden_continue: HashSet::new(),
+            viewed_in_session: HashSet::new(),
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
             web_root: options.web_root,
@@ -5514,23 +5520,43 @@ impl Runtime {
     }
 
     fn route_on_deck(&self, query: &HashMap<String, String>) -> Response {
-        let mut rows = self.on_deck_rows();
-        rows.retain(|row| row.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0);
-        if let Some(section) = query.get("contentDirectoryID") {
-            rows.retain(|row| {
-                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == *section
-            });
+        // Cycle 55: `type=abc` and an empty `type=` are 400s on zen and kids.
+        if query.get("type").is_some_and(|value| !int_param(value, Some(32))) {
+            return Response::error(400, "plexsim: bad request");
         }
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([
-                    ("Metadata".to_string(), Value::Array(rows)),
-                    ("mixedParents".to_string(), json!(true)),
-                ]),
-                true,
-            ),
-        )
+        // Cycle 28 (zen) and cycle 30 (plexscratch42): the FULL detail row minus
+        // `Field` and `librarySectionKey`, led by `allowSync` and the section UUID.
+        let rows = self
+            .on_home(self.continue_watching(false))
+            .iter()
+            .map(|row| {
+                let mut entry = self.detail_row(row);
+                if let Some(object) = entry.as_object_mut() {
+                    object.remove("Field");
+                    object.remove("librarySectionKey");
+                    object.insert("allowSync".to_string(), json!(true));
+                    let uuid = self
+                        .section(&string_value(row.get("librarySectionID").unwrap_or(&Value::Null)))
+                        .and_then(|section| section.get("uuid").cloned())
+                        .unwrap_or(Value::Null);
+                    object.insert("librarySectionUUID".to_string(), uuid);
+                }
+                entry
+            })
+            .collect::<Vec<_>>();
+        let (page, paged, start, total) = match page_window(rows, query) {
+            Ok(window) => window,
+            Err(status) => return Response::error(status, "plexsim: bad container parameter"),
+        };
+        let mut fields = Map::from_iter([
+            ("Metadata".to_string(), Value::Array(page)),
+            ("mixedParents".to_string(), json!(true)),
+        ]);
+        if paged {
+            fields.insert("offset".to_string(), json!(start));
+            fields.insert("totalSize".to_string(), json!(total));
+        }
+        Response::json(200, self.container(fields, true))
     }
 
     fn route_devices(&self) -> Response {
@@ -7137,9 +7163,40 @@ impl Runtime {
         if time > 60000 {
             self.started_sessions.insert(session_identifier.clone());
         }
+        // A timeline puts the row back in Continue Watching -- for an episode that
+        // row is its SHOW's, which any of the show's episodes hides and brings back.
+        // A beat at EXACTLY the stored position writes nothing (cycle 58).
+        let unmoved = self
+            .catalog
+            .get(&key)
+            .and_then(|row| row.get("viewOffset"))
+            .and_then(Value::as_i64)
+            == Some(time);
+        if !key.is_empty() && query.contains_key("time") && !unmoved {
+            self.hidden_continue.remove(&key);
+            if let Some(show) = self
+                .catalog
+                .get(&key)
+                .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+                .and_then(|row| row.get("grandparentRatingKey"))
+                .map(string_value)
+            {
+                let siblings = self
+                    .catalog
+                    .items
+                    .iter()
+                    .filter(|row| {
+                        row.get("grandparentRatingKey").map(string_value).as_deref() == Some(show.as_str())
+                    })
+                    .filter_map(key_of)
+                    .collect::<Vec<_>>();
+                for sibling in siblings {
+                    self.hidden_continue.remove(&sibling);
+                }
+            }
+        }
         if !key.is_empty() && time > 60000 {
             self.update_view(&key, "viewOffset", Some(json!(time)));
-            self.hidden_continue.remove(&key);
         }
         if state != "stopped" {
             self.timeline_offsets.insert(session_pair.clone(), time);
@@ -7160,6 +7217,8 @@ impl Runtime {
             self.update_view(&key, "lastViewedAt", Some(json!(now())));
             self.update_view(&key, "viewOffset", None);
             self.completed_sessions.insert(session_pair.clone());
+            // Cycle 57: the view came from a PLAYBACK SESSION.
+            self.viewed_in_session.insert(key.clone());
             completed_now = true;
             if let Some(row) = self.catalog.get(&key).cloned() {
                 let device_id = self.device_id(&client);
@@ -7321,310 +7380,10 @@ impl Runtime {
     }
 
     fn route_hubs(&self, query: &HashMap<String, String>) -> Response {
-        let selected_sections = query.get("contentDirectoryID").map(|value| {
-            let mut ids = value
-                .split(',')
-                .filter_map(|part| part.parse::<i64>().ok())
-                .map(|number| number.to_string())
-                .collect::<HashSet<_>>();
-            if !value.is_empty() && ids.is_empty() {
-                ids.insert("__invalid__".to_string());
-            }
-            ids
-        });
-        let exclude_continue = query
-            .get("excludeContinueWatching")
-            .is_some_and(|value| is_true_option(value));
-        let mut recent_movies = self
-            .catalog
-            .items
-            .iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
-            .collect::<Vec<_>>();
-        recent_movies.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
-        let mut recent_shows = self
-            .catalog
-            .items
-            .iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some("show"))
-            .collect::<Vec<_>>();
-        if let Some(ids) = selected_sections.as_ref().filter(|ids| !ids.is_empty()) {
-            recent_movies.retain(|row| {
-                ids.contains(&string_value(
-                    row.get("librarySectionID").unwrap_or(&Value::Null),
-                ))
-            });
-            recent_shows.retain(|row| {
-                ids.contains(&string_value(
-                    row.get("librarySectionID").unwrap_or(&Value::Null),
-                ))
-            });
+        if let Some(refusal) = hub_refusal(query) {
+            return refusal;
         }
-        recent_shows.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
-        let recent = |rows: Vec<&Value>| {
-            rows.into_iter()
-                .map(|row| {
-                    // Home's TV shelf is rolled up by the newest leaf.  The
-                    // row remains a light hub projection, but its date comes
-                    // from the latest episode rather than the show's own
-                    // catalog stamp.
-                    if row.get("type").and_then(Value::as_str) == Some("show") {
-                        let mut rolled = row.clone();
-                        let key = key_of(row).unwrap_or_default();
-                        if let Some(newest) = self
-                            .leaves(&key)
-                            .iter()
-                            .filter_map(|leaf| leaf.get("addedAt").and_then(Value::as_i64))
-                            .max()
-                        {
-                            if let Some(object) = rolled.as_object_mut() {
-                                object.insert("addedAt".to_string(), json!(newest));
-                            }
-                        }
-                        self.listing_row(&rolled)
-                    } else {
-                        self.listing_row(row)
-                    }
-                })
-                .collect::<Vec<_>>()
-        };
-        let mut continue_rows = self
-            .catalog
-            .items
-            .iter()
-            .filter(|row| {
-                row.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0
-                    && selected_sections.as_ref().map_or(true, |ids| {
-                        ids.contains(&string_value(
-                            row.get("librarySectionID").unwrap_or(&Value::Null),
-                        ))
-                    })
-            })
-            .map(|row| {
-                let mut projected = self.listing_row(row);
-                if let Some(object) = projected.as_object_mut() {
-                    object.remove("librarySectionUUID");
-                    object.insert(
-                        "librarySectionKey".to_string(),
-                        json!(format!(
-                            "/library/sections/{}",
-                            string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                        )),
-                    );
-                }
-                projected
-            })
-            .collect::<Vec<_>>();
-        let mut on_deck = self.on_deck_rows();
-        if let Some(ids) = selected_sections.as_ref() {
-            on_deck.retain(|row| {
-                ids.contains(&string_value(
-                    row.get("librarySectionID").unwrap_or(&Value::Null),
-                ))
-            });
-        }
-        if exclude_continue {
-            continue_rows.clear();
-            on_deck.clear();
-        }
-        let stem = |identifier: &str| {
-            let mut parts = identifier.rsplitn(2, '.');
-            let tail = parts.next().unwrap_or_default();
-            if tail.chars().all(|ch| ch.is_ascii_digit()) {
-                parts.next().unwrap_or(identifier).to_string()
-            } else {
-                identifier.to_string()
-            }
-        };
-        let make = |identifier: &str,
-                    title: &str,
-                    key: &str,
-                    kind: &str,
-                    mut rows: Vec<Value>,
-                    style: &str| {
-            let total = rows.len();
-            let limit = query
-                .get("count")
-                .and_then(|value| value.parse::<usize>().ok());
-            if let Some(limit) = limit {
-                rows.truncate(limit);
-            }
-            if let Some(excluded) = query.get("excludeFields") {
-                let names = excluded.split(',').collect::<HashSet<_>>();
-                for row in &mut rows {
-                    if let Some(object) = row.as_object_mut() {
-                        for name in &names {
-                            object.remove(*name);
-                        }
-                    }
-                }
-            }
-            let mut hub = Map::from_iter([
-                ("hubIdentifier".to_string(), json!(identifier)),
-                ("title".to_string(), json!(title)),
-                ("type".to_string(), json!(kind)),
-                ("key".to_string(), json!(key)),
-                (
-                    "context".to_string(),
-                    json!(format!("hub.{}", stem(identifier))),
-                ),
-                ("style".to_string(), json!(style)),
-                ("promoted".to_string(), json!(true)),
-                (
-                    "more".to_string(),
-                    json!(limit.is_some_and(|limit| total > limit)),
-                ),
-                ("size".to_string(), json!(rows.len())),
-                ("Metadata".to_string(), Value::Array(rows)),
-            ]);
-            if let Some(values) = hub.get("Metadata").and_then(Value::as_array) {
-                if !values.is_empty() {
-                    let keys = values.iter().filter_map(key_of).collect::<Vec<_>>();
-                    if !keys.is_empty() {
-                        hub.insert(
-                            "hubKey".to_string(),
-                            json!(format!("/library/metadata/{}", keys.join(","))),
-                        );
-                    }
-                }
-            }
-            Value::Object(hub)
-        };
-        if query.get("identifier").is_some() {
-            let wanted = query
-                .get("identifier")
-                .map(String::as_str)
-                .unwrap_or_default();
-            let hubs = match wanted {
-                "home.continue" => vec![make(
-                    "home.continue",
-                    "Continue Watching",
-                    "/hubs/home/continueWatching",
-                    "mixed",
-                    continue_rows,
-                    "hero",
-                )],
-                "home.ondeck" => vec![make(
-                    "home.ondeck",
-                    "On Deck",
-                    "/hubs/home/onDeck",
-                    "episode",
-                    on_deck,
-                    "shelf",
-                )],
-                "home.movies.recent" => vec![make(
-                    "home.movies.recent",
-                    "Recently Added Movies",
-                    "/hubs/home/recentlyAdded?type=1",
-                    "movie",
-                    recent(recent_movies),
-                    "shelf",
-                )],
-                "home.television.recent" => vec![make(
-                    "home.television.recent",
-                    "Recently Added TV",
-                    "/hubs/home/recentlyAdded?type=2",
-                    "mixed",
-                    recent(recent_shows),
-                    "shelf",
-                )],
-                _ => Vec::new(),
-            };
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([
-                        ("Hub".to_string(), Value::Array(hubs)),
-                        ("allowSync".to_string(), json!(true)),
-                    ]),
-                    false,
-                ),
-            );
-        }
-        let mut hubs = vec![
-            make(
-                "home.continue",
-                "Continue Watching",
-                "/hubs/home/continueWatching",
-                "mixed",
-                continue_rows,
-                "hero",
-            ),
-            make(
-                "home.ondeck",
-                "On Deck",
-                "/hubs/home/onDeck",
-                "episode",
-                on_deck,
-                "shelf",
-            ),
-            make(
-                "home.movies.recent",
-                "Recently Added Movies",
-                "/hubs/home/recentlyAdded?type=1",
-                "movie",
-                recent(recent_movies),
-                "shelf",
-            ),
-            make(
-                "home.television.recent",
-                "Recently Added TV",
-                "/hubs/home/recentlyAdded?type=2",
-                "mixed",
-                recent(recent_shows),
-                "shelf",
-            ),
-            make(
-                "home.music.recent",
-                "Recently Added Music",
-                "/hubs/home/recentlyAdded?type=8",
-                "album",
-                Vec::new(),
-                "shelf",
-            ),
-            make(
-                "home.photos.recent",
-                "Recently Added Photos",
-                "/hubs/home/recentlyAdded?type=13",
-                "photo",
-                Vec::new(),
-                "shelf",
-            ),
-            make(
-                "home.videos.recent",
-                "Recently Added Videos",
-                "/hubs/home/recentlyAdded?type=1&personal=1",
-                "clip",
-                Vec::new(),
-                "shelf",
-            ),
-            make(
-                "home.playlists",
-                "Recent Playlists",
-                "/playlists/all?type=15&sort=lastViewedAt:desc&playlistType=video,audio",
-                "playlist",
-                Vec::new(),
-                "shelf",
-            ),
-        ];
-        if selected_sections
-            .as_ref()
-            .is_some_and(|ids| !ids.is_empty())
-        {
-            hubs.retain(|hub| {
-                hub.get("hubIdentifier").and_then(Value::as_str) != Some("home.playlists")
-            });
-        }
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([
-                    ("Hub".to_string(), Value::Array(hubs)),
-                    ("allowSync".to_string(), json!(true)),
-                ]),
-                false,
-            ),
-        )
+        Response::json(200, self.global_hubs(query))
     }
 
     /// Build the Recommended tab for one library.  These shelves are separate
@@ -7642,9 +7401,12 @@ impl Runtime {
             .get("title")
             .and_then(Value::as_str)
             .unwrap_or_default();
+        // Cycle 55: `count` is a SIGNED 32-bit integer with an optional sign; anything
+        // else falls back to the default six.
         let count = query
             .get("count")
-            .and_then(|value| value.parse::<usize>().ok());
+            .filter(|value| int_param(value, Some(32)))
+            .and_then(|value| value.trim_start_matches('+').parse::<i64>().ok());
         let include_playlists = query
             .get("includeLibraryPlaylists")
             .is_some_and(|value| is_true_option(value));
@@ -7865,7 +7627,15 @@ impl Runtime {
                 // deterministic across clients while preserving membership.
                 rows.sort_by_key(|row| key_of(row).unwrap_or_default());
             }
-            let shelf_limit = count.unwrap_or(6);
+            // Cycle 28: a negative count is `len(rows) + count` clamped at zero, and it
+            // always reports the shelf as exhausted.
+            let mut exhausted = false;
+            let mut limit = count.unwrap_or(6);
+            if limit < 0 {
+                limit = (rows.len() as i64 + limit).max(0);
+                exhausted = true;
+            }
+            let shelf_limit = limit as usize;
             rows.truncate(shelf_limit);
             if let Some(excluded) = query.get("excludeFields") {
                 let names = excluded.split(',').collect::<HashSet<_>>();
@@ -7886,7 +7656,7 @@ impl Runtime {
                 ("key".to_string(), json!(key)),
                 ("promoted".to_string(), json!(promoted)),
                 ("random".to_string(), json!(random)),
-                ("more".to_string(), json!(total > shelf_limit)),
+                ("more".to_string(), json!(!exhausted && total > shelf_limit)),
                 ("size".to_string(), json!(rows.len())),
                 ("Metadata".to_string(), Value::Array(rows.clone())),
             ]);
@@ -8096,64 +7866,27 @@ impl Runtime {
         if !Self::valid_content_directory(query) {
             return Response::error(404, "plexsim: not found");
         }
-        let selected = query.get("contentDirectoryID").map(|value| {
-            value
-                .split(',')
-                .filter_map(|part| part.parse::<i64>().ok())
-                .map(|number| number.to_string())
-                .collect::<HashSet<_>>()
-        });
+        // Measured: this hub's identifier is `continueWatching`, its key its OWN items
+        // endpoint, its style `hero`. Cycle 57: the rows are the MERGED list; cycle 53:
+        // stamped `includedAt`.
         let rows = self
-            .catalog
-            .items
-            .iter()
-            .filter(|row| {
-                key_of(row)
-                    .map(|key| !self.hidden_continue.contains(&key))
-                    .unwrap_or(false)
-                    && selected.as_ref().map_or(true, |ids| {
-                        ids.contains(&string_value(
-                            row.get("librarySectionID").unwrap_or(&Value::Null),
-                        ))
-                    })
-                    && row
-                        .get("viewOffset")
-                        .and_then(Value::as_i64)
-                        .is_some_and(|offset| offset > 60000)
-            })
-            .map(|row| {
-                let mut projected = self.listing_row(row);
-                if let Some(object) = projected.as_object_mut() {
-                    object.remove("librarySectionUUID");
-                    object.insert(
-                        "librarySectionKey".to_string(),
-                        json!(format!(
-                            "/library/sections/{}",
-                            string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                        )),
-                    );
-                }
-                projected
-            })
+            .on_home(self.merged_continue_watching())
+            .into_iter()
+            .map(Self::with_included_at)
             .collect::<Vec<_>>();
-        let hub = json!({
-            "hubIdentifier": "continueWatching",
-            "title": "Continue Watching",
-            "key": "/hubs/continueWatching/items",
-            "context": "hub.continueWatching",
-            "style": "hero",
-            "type": "mixed",
-            "promoted": false,
-            "more": false,
-            "size": rows.len(),
-            "Metadata": rows,
-        });
+        let hub = self.home_hub(
+            "continueWatching",
+            "Continue Watching",
+            "/hubs/continueWatching/items",
+            &rows,
+            query,
+            "mixed",
+            "hero",
+            false,
+        );
         Response::json(
             200,
-            self.container(
-                Map::from_iter([("Hub".to_string(), Value::Array(vec![hub]))]),
-                false,
-            ),
+            self.hub_container(Map::from_iter([("Hub".to_string(), Value::Array(vec![hub]))])),
         )
     }
 
@@ -8161,38 +7894,51 @@ impl Runtime {
         if !Self::valid_content_directory(query) {
             return Response::error(404, "plexsim: not found");
         }
-        let selected = query.get("contentDirectoryID").map(|value| {
-            value
-                .split(',')
-                .filter_map(|part| part.parse::<i64>().ok())
-                .map(|number| number.to_string())
-                .collect::<HashSet<_>>()
-        });
+        // Cycle 30: no resume list carries `Field`; cycle 53: `includedAt`.
         let rows = self
-            .catalog
-            .items
+            .on_home(self.merged_continue_watching())
             .iter()
-            .filter(|row| {
-                selected.as_ref().map_or(true, |ids| {
-                    ids.contains(&string_value(
-                        row.get("librarySectionID").unwrap_or(&Value::Null),
-                    ))
-                }) && row
-                    .get("viewOffset")
-                    .and_then(Value::as_i64)
-                    .is_some_and(|offset| offset > 60000)
+            .map(|row| {
+                let mut entry = self.detail_row(row);
+                if let Some(object) = entry.as_object_mut() {
+                    object.remove("Field");
+                }
+                Self::with_included_at(entry)
             })
-            .map(|row| self.listing_row(row))
             .collect::<Vec<_>>();
         Response::json(
             200,
-            self.container(
-                Map::from_iter([
-                    ("size".to_string(), json!(rows.len())),
-                    ("Metadata".to_string(), Value::Array(rows)),
-                ]),
-                true,
-            ),
+            self.hub_container(Map::from_iter([
+                ("size".to_string(), json!(rows.len())),
+                ("Metadata".to_string(), Value::Array(rows)),
+            ])),
+        )
+    }
+
+    /// A SECTION's Continue Watching see-all leaf (cycles 21, 26, 57): a show
+    /// library keeps a hidden row, a movie library drops it, and a next-up whose
+    /// anchor was only scrobbled is not listed.
+    fn route_section_continue_watching_items(&self, section_key: &str) -> Response {
+        let Some(section) = self.section(section_key) else {
+            return Response::error(404, "plexsim: no such section");
+        };
+        let is_show = section.get("type").and_then(Value::as_str) == Some("show");
+        let rows = self
+            .continue_watching(is_show)
+            .iter()
+            .filter(|row| {
+                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+                    && row.get("_nextUpFromScrobble").is_none()
+            })
+            .map(|row| self.detail_row(row))
+            .collect::<Vec<_>>();
+        Response::json(
+            200,
+            Value::Object(Map::from_iter([(
+                "MediaContainer".to_string(),
+                json!({"size": rows.len(), "allowSync": true,
+                       "identifier": "com.plexapp.plugins.library", "Metadata": rows}),
+            )])),
         )
     }
 
@@ -9020,7 +8766,8 @@ impl Runtime {
         }
         let type_number = match query.get("type") {
             None => Some(18),
-            Some(value) if value.is_empty() => Some(18),
+            // Cycle 28: the leaf is the `/all` listing with a DEFAULT `type=18`, so an
+            // empty `type=` is that listing's unparseable type -- a 500.
             Some(value) => match value.parse::<i64>() {
                 Ok(number) => Some(number),
                 Err(_) => return Response::error(500, "plexsim: bad collection type"),
@@ -9627,12 +9374,6 @@ impl Runtime {
                 path.trim_start_matches("/:/resources/"),
                 request.method == "HEAD",
             );
-        }
-        if segments.starts_with(&["hubs", "sections"])
-            && segments.get(3) == Some(&"manage")
-            && request.method == "GET"
-        {
-            return Response::error(400, "plexsim: bad request");
         }
         if path == "/neighborhood/devices" && matches!(request.method.as_str(), "GET" | "HEAD") {
             return Response::json(200, self.container(Map::new(), false));
@@ -10248,398 +9989,153 @@ impl Runtime {
             );
         }
         if path == "/hubs/promoted" {
-            // A promoted request is scoped to one pinned library.  The pinned
-            // form has a distinct home shelf identifier/key even though its
-            // rows are the same catalog projection as the unpinned shelf.
-            let selected = query
-                .get("contentDirectoryID")
-                .or_else(|| query.get("pinnedContentDirectoryID"))
-                .map(|value| {
-                    value
-                        .split(',')
-                        .filter(|value| !value.is_empty())
-                        .collect::<HashSet<_>>()
-                });
-            let pinned = query.get("pinnedContentDirectoryID");
-            let exclude_continue = query
-                .get("excludeContinueWatching")
-                .is_some_and(|value| is_true_option(value));
-            let make_promoted = |identifier: String,
-                                 title: String,
-                                 key: String,
-                                 kind: &str,
-                                 context: String,
-                                 style: &str,
-                                 rows: Vec<Value>| {
-                let keys = rows.iter().filter_map(key_of).collect::<Vec<_>>();
-                let mut hub = Map::from_iter([
-                    ("hubIdentifier".to_string(), json!(identifier)),
-                    ("title".to_string(), json!(title)),
-                    ("key".to_string(), json!(key)),
-                    ("context".to_string(), json!(context)),
-                    ("style".to_string(), json!(style)),
-                    ("promoted".to_string(), json!(true)),
-                    ("type".to_string(), json!(kind)),
-                    ("more".to_string(), json!(false)),
-                    ("size".to_string(), json!(rows.len())),
-                    ("Metadata".to_string(), Value::Array(rows)),
-                ]);
-                if !keys.is_empty() {
-                    hub.insert(
-                        "hubKey".to_string(),
-                        json!(format!("/library/metadata/{}", keys.join(","))),
-                    );
-                }
-                Value::Object(hub)
-            };
-            let mut hubs = Vec::new();
-            if !exclude_continue {
-                let rows = self
-                    .catalog
-                    .items
-                    .iter()
-                    .filter(|row| {
-                        row.get("viewOffset")
-                            .and_then(Value::as_i64)
-                            .is_some_and(|offset| offset > 0)
+            // Cycle 55, measured on zen and kids: the fifteen hub-refused keys are a
+            // 500 here whenever a SHOW library's shelf is in scope -- unscoped, or
+            // `contentDirectoryID` naming a show library -- and a 200 when only a
+            // movie library is.
+            let wanted = content_directories(query);
+            if self.catalog.sections.iter().any(|section| {
+                section.get("type").and_then(Value::as_str) == Some("show")
+                    && wanted.as_ref().map_or(true, |w| {
+                        w.contains(&string_value(section.get("key").unwrap_or(&Value::Null)))
                     })
-                    .map(|row| self.listing_row(row))
-                    .collect::<Vec<_>>();
-                hubs.push(make_promoted(
-                    "home.continue".to_string(),
-                    "Continue Watching".to_string(),
-                    "/hubs/home/continueWatching".to_string(),
-                    "mixed",
-                    "hub.home.continue".to_string(),
-                    "hero",
-                    rows,
-                ));
-            }
-            let rows = self
-                .catalog
-                .items
-                .iter()
-                .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-                .filter(|row| {
-                    row.get("viewOffset")
-                        .and_then(Value::as_i64)
-                        .is_some_and(|offset| offset > 0)
-                })
-                .map(|row| self.listing_row(row))
-                .collect::<Vec<_>>();
-            hubs.push(make_promoted(
-                "home.ondeck".to_string(),
-                "On Deck".to_string(),
-                "/hubs/home/onDeck".to_string(),
-                "episode",
-                "hub.home.ondeck".to_string(),
-                "shelf",
-                rows,
-            ));
-            for section in &self.catalog.sections {
-                let section_key = string_value(section.get("key").unwrap_or(&Value::Null));
-                if selected
-                    .as_ref()
-                    .is_some_and(|values| !values.contains(section_key.as_str()))
-                {
-                    continue;
+            }) {
+                if let Some(refusal) = hub_refusal(query) {
+                    return refusal;
                 }
-                let is_show = section.get("type").and_then(Value::as_str) == Some("show");
-                let mut rows = self.section_rows(&section_key);
-                rows.sort_by(|left, right| {
-                    right
-                        .get("addedAt")
-                        .and_then(Value::as_i64)
-                        .unwrap_or(0)
-                        .cmp(&left.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
-                });
-                let rows = rows
-                    .iter()
-                    .map(|row| {
-                        if is_show {
-                            self.detail_row(row)
-                        } else {
-                            self.listing_row(row)
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                let section_title = section
-                    .get("title")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                let (identifier, key, context) = if let Some(pinned) = pinned {
-                    if is_show {
-                        (
-                            format!("home.television.recent.{section_key}"),
-                            format!(
-                                "/hubs/home/recentlyAdded?type=2&pinnedContentDirectoryID={pinned}"
-                            ),
-                            "hub.home.television.recent".to_string(),
-                        )
-                    } else {
-                        (
-                            format!("home.movies.recent.{section_key}"),
-                            format!(
-                                "/hubs/home/recentlyAdded?type=1&pinnedContentDirectoryID={pinned}"
-                            ),
-                            "hub.home.movies.recent".to_string(),
-                        )
-                    }
-                } else if is_show {
-                    (
-                        format!("tv.recentlyadded.{section_key}"),
-                        format!("/hubs/home/recentlyAdded?type=2&sectionID={section_key}"),
-                        "hub.tv.recentlyadded".to_string(),
-                    )
-                } else {
-                    (
-                        format!("movie.recentlyadded.{section_key}"),
-                        format!("/library/sections/{section_key}/all?sort=addedAt:desc"),
-                        "hub.movie.recentlyadded".to_string(),
-                    )
-                };
-                hubs.push(make_promoted(
-                    identifier,
-                    if is_show {
-                        "Recently Added TV".to_string()
-                    } else {
-                        format!("Recently Added in {section_title}")
-                    },
-                    key,
-                    if is_show { "mixed" } else { "movie" },
-                    context,
-                    "shelf",
-                    rows,
-                ));
             }
-            if selected.is_none() {
-                hubs.push(make_promoted(
-                    "home.playlists".to_string(),
-                    "Recent Playlists".to_string(),
-                    "/playlists/all?type=15&sort=lastViewedAt:desc&playlistType=video,audio"
-                        .to_string(),
-                    "playlist",
-                    "hub.home.playlists".to_string(),
-                    "shelf",
-                    Vec::new(),
-                ));
-            }
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([("Hub".to_string(), Value::Array(hubs))]),
-                    false,
-                ),
-            );
-
-            #[allow(unreachable_code)]
-            let selected = query
-                .get("contentDirectoryID")
-                .or_else(|| query.get("pinnedContentDirectoryID"))
-                .map(|value| {
-                    value
-                        .split(',')
-                        .filter(|value| !value.is_empty())
-                        .collect::<HashSet<_>>()
-                });
-            let continue_rows = self
-                .catalog
-                .items
-                .iter()
-                .filter(|row| row.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0)
-                .map(|row| self.listing_row(row))
-                .collect::<Vec<_>>();
-            let on_deck_rows = self
-                .catalog
-                .items
-                .iter()
-                .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-                .filter(|row| row.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0)
-                .map(|row| self.listing_row(row))
-                .collect::<Vec<_>>();
-            let hub = |identifier: &str,
-                       title: &str,
-                       key: &str,
-                       kind: &str,
-                       rows: Vec<Value>,
-                       style: &str| {
-                json!({"hubIdentifier":identifier,"title":title,"key":key,"context":format!("hub.{identifier}"),"style":style,"promoted":true,"type":kind,"more":false,"size":rows.len(),"Metadata":rows})
-            };
-            let mut hubs = vec![
-                hub(
-                    "home.continue",
-                    "Continue Watching",
-                    "/hubs/home/continueWatching",
-                    "mixed",
-                    continue_rows,
-                    "hero",
-                ),
-                hub(
-                    "home.ondeck",
-                    "On Deck",
-                    "/hubs/home/onDeck",
-                    "episode",
-                    on_deck_rows,
-                    "shelf",
-                ),
-            ];
-            for section in &self.catalog.sections {
-                let key = string_value(section.get("key").unwrap_or(&Value::Null));
-                if selected
-                    .as_ref()
-                    .is_some_and(|values| !values.contains(key.as_str()))
-                {
-                    continue;
-                }
-                let kind = section
-                    .get("type")
-                    .and_then(Value::as_str)
-                    .unwrap_or("movie");
-                let rows = self
-                    .section_rows(&key)
-                    .into_iter()
-                    .filter(|row| {
-                        row.get("type").and_then(Value::as_str)
-                            == Some(if kind == "show" { "show" } else { "movie" })
-                    })
-                    .map(|row| self.listing_row(&row))
-                    .collect::<Vec<_>>();
-                let (identifier, title, hub_kind, shelf_key) = if kind == "show" {
-                    (
-                        format!("tv.recentlyadded.{key}"),
-                        "Recently Added TV".to_string(),
-                        "mixed",
-                        format!("/hubs/home/recentlyAdded?type=2&sectionID={key}"),
-                    )
-                } else {
-                    (
-                        format!("movie.recentlyadded.{key}"),
-                        format!(
-                            "Recently Added in {}",
-                            section.get("title").and_then(Value::as_str).unwrap_or("")
-                        ),
-                        "movie",
-                        format!("/library/sections/{key}/all?sort=addedAt:desc"),
-                    )
-                };
-                hubs.push(hub(
-                    &identifier,
-                    &title,
-                    &shelf_key,
-                    hub_kind,
-                    rows,
-                    "shelf",
-                ));
-            }
-            if selected.is_none() {
-                hubs.push(hub(
-                    "home.playlists",
-                    "Recent Playlists",
-                    "/playlists/all?type=15&sort=lastViewedAt:desc&playlistType=video,audio",
-                    "playlist",
-                    Vec::new(),
-                    "shelf",
-                ));
-            }
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([("Hub".to_string(), Value::Array(hubs))]),
-                    false,
-                ),
-            );
+            return Response::json(200, self.promoted_hubs(query));
         }
         if path == "/hubs/home/onDeck" {
-            if !Self::valid_content_directory(query) {
-                return Response::error(404, "plexsim: not found");
+            // Cycle 28: `contentDirectoryID` scopes this leaf as an exact string and
+            // takes anything (no 404 for a junk value). Cycle 30: the shelf drops
+            // `Field` and KEEPS `librarySectionKey`, which is what separates it from
+            // `/library/onDeck`. Its rows are On Deck's episodes alone.
+            let directories = content_directories(query);
+            let rows = self
+                .in_directories(self.continue_watching(false), &directories)
+                .into_iter()
+                .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+                .map(|row| {
+                    let mut entry = self.detail_row(&row);
+                    if let Some(object) = entry.as_object_mut() {
+                        object.remove("Field");
+                    }
+                    entry
+                })
+                .collect::<Vec<_>>();
+            let mut answer = self.hub_container(Map::from_iter([
+                ("size".to_string(), json!(rows.len())),
+                ("Metadata".to_string(), Value::Array(rows)),
+            ]));
+            if query.get("includeMeta").map(String::as_str) == Some("1") {
+                answer["MediaContainer"]["Meta"] = json!({"Type": [{"key": "/hubs/home/onDeck",
+                    "type": "mixed", "title": "On Deck", "active": true}]});
             }
-            let mut rows = self.on_deck_rows();
-            if let Some(section) = query.get("contentDirectoryID") {
-                let selected = section
-                    .split(',')
-                    .filter_map(|part| part.parse::<i64>().ok())
-                    .map(|number| number.to_string())
-                    .collect::<HashSet<_>>();
-                rows.retain(|row| {
-                    selected.contains(&string_value(
-                        row.get("librarySectionID").unwrap_or(&Value::Null),
-                    ))
-                });
-            }
-            return Response::json(
-                200,
-                Value::Object(Map::from_iter([(
-                    "MediaContainer".to_string(),
-                    Value::Object(Map::from_iter([
-                        (
-                            "identifier".to_string(),
-                            json!("com.plexapp.plugins.library"),
-                        ),
-                        ("allowSync".to_string(), json!(false)),
-                        ("size".to_string(), json!(rows.len())),
-                        ("Metadata".to_string(), Value::Array(rows)),
-                    ])),
-                )])),
-            );
+            return Response::json(200, answer);
         }
         if path == "/hubs/home/recentlyAdded" {
-            let kind = query.get("type").map(String::as_str);
-            let scope = query
-                .get("contentDirectoryID")
-                .or_else(|| query.get("sectionID"))
-                .map(|value| value.split(',').map(str::to_string).collect::<HashSet<_>>());
-            let rows = self
-                .catalog
-                .items
+            // Measured: this endpoint keys on `type`, NOT on `sectionID`. Cycle 54: the
+            // TV list refuses the per-user keys as the hub pages do.
+            let type_id = query.get("type").map(String::as_str).unwrap_or("");
+            if type_id == "2" {
+                if let Some(refusal) = hub_refusal(query) {
+                    return refusal;
+                }
+            }
+            let mut rows = self.recently_added_rows(Some(type_id), query.get("sectionID"));
+            if let Some(personal) = query.get("personal") {
+                // Cycle 54: the 0/1 option; cycle 55: only the movie list (and the
+                // always-empty others) empties at 1, the TV list is unchanged.
+                if !bool_option(personal) {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                if personal.trim_start_matches('+').trim_start_matches('0') == "1" && type_id != "2" {
+                    rows = rows.map(|_| Vec::new());
+                }
+            }
+            // Cycle 59: a non-empty `pinnedContentDirectoryID` REPLACES
+            // `contentDirectoryID` as the scope.
+            let mut scope = content_directories(query);
+            if let Some(pinned) = query.get("pinnedContentDirectoryID").filter(|v| !v.is_empty()) {
+                scope = Some(pinned.split(',').filter(|v| !v.is_empty()).map(str::to_string).collect());
+            }
+            let meta = if query.get("includeMeta").map(String::as_str) == Some("1") {
+                match type_id {
+                    "1" => Some(json!({"Type": [{"key": "/hubs/home/recentlyAdded?type=1",
+                        "type": "movie", "title": "Recently Added", "active": true}]})),
+                    "2" => Some(json!({"Type": [{"key": "/hubs/home/recentlyAdded?type=2",
+                        "type": "mixed", "title": "Recently Added", "active": false}]})),
+                    _ => None,
+                }
+            } else {
+                None
+            };
+            let Some(rows) = rows.map(|rows| self.in_directories(rows, &scope)) else {
+                let mut answer = self.hub_container(Map::new());
+                if let Some(meta) = meta {
+                    answer["MediaContainer"]["Meta"] = meta;
+                }
+                return Response::json(200, answer);
+            };
+            // Measured: a movie or episode row here is the light projection; a show
+            // row is the full one. Cycle 41: the TV type is a listing capped at 50
+            // that pages; the movie type is cut at twelve.
+            let projected = rows
                 .iter()
-                .filter(|row| match kind {
-                    Some("1") => row.get("type").and_then(Value::as_str) == Some("movie"),
-                    Some("2") => matches!(
-                        row.get("type").and_then(Value::as_str),
-                        Some("show" | "season" | "episode")
-                    ),
-                    _ => false,
+                .map(|row| {
+                    if row.get("type").and_then(Value::as_str) == Some("show") {
+                        self.detail_row(row)
+                    } else {
+                        guid_gate(self.grid_row(row, true, true, false), query)
+                    }
                 })
-                .filter(|row| {
-                    scope.as_ref().map_or(true, |ids| {
-                        ids.contains(&string_value(
-                            row.get("librarySectionID").unwrap_or(&Value::Null),
-                        ))
-                    })
-                })
-                .map(|row| self.listing_row(row))
                 .collect::<Vec<_>>();
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([("Metadata".to_string(), Value::Array(rows))]),
-                    true,
-                ),
-            );
+            let mut answer = if type_id == "2" {
+                let (page, paged, start, total) = match page_window(projected, query) {
+                    Ok(window) => window,
+                    Err(status) => return Response::error(status, "plexsim: bad container parameter"),
+                };
+                let mut fields = Map::from_iter([
+                    ("size".to_string(), json!(page.len())),
+                    ("Metadata".to_string(), Value::Array(page)),
+                ]);
+                if paged || query.contains_key("limit") || query.contains_key("count") {
+                    fields.insert("totalSize".to_string(), json!(total));
+                    fields.insert("offset".to_string(), json!(start));
+                }
+                self.hub_container(fields)
+            } else {
+                let page = projected.into_iter().take(12).collect::<Vec<_>>();
+                self.hub_container(Map::from_iter([
+                    ("size".to_string(), json!(page.len())),
+                    ("Metadata".to_string(), Value::Array(page)),
+                ]))
+            };
+            if let Some(meta) = meta {
+                answer["MediaContainer"]["Meta"] = meta;
+            }
+            return Response::json(200, answer);
         }
         if path == "/hubs/home/continueWatching" {
+            // Measured on fun: the light projection. Cycle 25: the list is
+            // `resuming()` -- a next-up with no stored offset is On Deck and not
+            // here. Cycle 28: `contentDirectoryID` scopes it; `sectionID` does not.
+            let directories = content_directories(query);
             let rows = self
-                .catalog
-                .items
+                .in_directories(self.resuming(), &directories)
                 .iter()
-                .filter(|row| row.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0)
-                .map(|row| self.listing_row(row))
+                .map(|row| self.grid_row(row, true, false, false))
                 .collect::<Vec<_>>();
-            return Response::json(
-                200,
-                Value::Object(Map::from_iter([(
-                    "MediaContainer".to_string(),
-                    Value::Object(Map::from_iter([
-                        (
-                            "identifier".to_string(),
-                            json!("com.plexapp.plugins.library"),
-                        ),
-                        ("allowSync".to_string(), json!(false)),
-                        ("size".to_string(), json!(rows.len())),
-                        ("Metadata".to_string(), Value::Array(rows)),
-                    ])),
-                )])),
-            );
+            let mut answer = self.hub_container(Map::from_iter([
+                ("size".to_string(), json!(rows.len())),
+                ("Metadata".to_string(), Value::Array(rows)),
+            ]));
+            if query.get("includeMeta").map(String::as_str) == Some("1") {
+                answer["MediaContainer"]["Meta"] = json!({"Type": [{"key": "/hubs/home/continueWatching",
+                    "type": "mixed", "title": "Continue Watching", "active": true}]});
+            }
+            return Response::json(200, answer);
         }
         if segments.first() == Some(&"hubs")
             && segments.get(1) == Some(&"metadata")
@@ -10764,9 +10260,7 @@ impl Runtime {
             if !Self::valid_content_directory(query) {
                 return Response::error(404, "plexsim: not found");
             }
-            let mut scoped = query.clone();
-            scoped.insert("contentDirectoryID".to_string(), section_key.to_string());
-            return self.route_continue_watching_items(&scoped);
+            return self.route_section_continue_watching_items(section_key);
         }
         if segments.first() == Some(&"hubs")
             && segments.get(1) == Some(&"sections")
@@ -10779,6 +10273,31 @@ impl Runtime {
             };
             if request.method != "GET" && request.method != "HEAD" {
                 return Response::error(404, "plexsim: not found");
+            }
+            if let Some(raw_item) = query.get("metadataItemId") {
+                // Measured on both servers: naming an item -- even with an empty id --
+                // is a 400 on a read.  Cycle 55 refined it on zen and kids: the id is a
+                // signed 32-bit integer and there are THREE answers.  `-1` (and `-01`)
+                // is the bare hub list, a number naming NO item (`0`, `-2`, `999999`,
+                // `+999999`) is an EMPTY 200, and an item the server holds -- in any
+                // library -- is the 400, as are an empty value, a word, `1.5`, ` 1` and
+                // `2147483648`.
+                if !pms_int_param(raw_item, Some(32)) {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                let item = raw_item.parse::<i64>().unwrap_or(0);
+                if item != -1 {
+                    if self.catalog.get(&item.to_string()).is_some() {
+                        return Response::error(400, "plexsim: bad request");
+                    }
+                    return Response::json(
+                        200,
+                        self.container(
+                            Map::from_iter([("size".to_string(), json!(0))]),
+                            false,
+                        ),
+                    );
+                }
             }
             let rows = if section.get("type").and_then(Value::as_str) == Some("show") {
                 vec![
@@ -10821,7 +10340,10 @@ impl Runtime {
             return Response::json(
                 200,
                 self.container(
-                    Map::from_iter([("Hub".to_string(), Value::Array(hubs))]),
+                    Map::from_iter([
+                        ("size".to_string(), json!(hubs.len())),
+                        ("Hub".to_string(), Value::Array(hubs)),
+                    ]),
                     false,
                 ),
             );
@@ -11020,12 +10542,45 @@ impl Runtime {
                     if request.method != "GET" && request.method != "HEAD" {
                         return Response::error(404, "plexsim: not found");
                     }
-                    let rows = self
-                        .on_deck_rows()
+                    // Cycle 28: the FULL detail row; cycle 55: ordered by the
+                    // view-state write time, then index and id; cycle 30: no `Field`
+                    // and no `librarySectionKey`.
+                    let kind = if section.get("type").and_then(Value::as_str) == Some("show") {
+                        "episode"
+                    } else {
+                        "movie"
+                    };
+                    let mut rows = self
+                        .continue_watching(false)
                         .into_iter()
                         .filter(|row| {
                             string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
                                 == section_key
+                                && row.get("type").and_then(Value::as_str) == Some(kind)
+                        })
+                        .collect::<Vec<_>>();
+                    rows.sort_by_key(|row| {
+                        let stamp = row
+                            .get("viewUpdatedAt")
+                            .and_then(Value::as_i64)
+                            .filter(|stamp| *stamp != 0)
+                            .or_else(|| row.get("lastViewedAt").and_then(Value::as_i64))
+                            .unwrap_or(0);
+                        (
+                            -stamp,
+                            row.get("index").and_then(Value::as_i64).unwrap_or(0),
+                            key_of(row).and_then(|key| key.parse::<i64>().ok()).unwrap_or(0),
+                        )
+                    });
+                    let rows = rows
+                        .iter()
+                        .map(|row| {
+                            let mut entry = self.detail_row(row);
+                            if let Some(object) = entry.as_object_mut() {
+                                object.remove("Field");
+                                object.remove("librarySectionKey");
+                            }
+                            entry
                         })
                         .collect::<Vec<_>>();
                     return Response::json(
@@ -19359,6 +18914,23 @@ fn unix_year(timestamp: i64) -> i64 {
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
     let month = (5 * doy + 2).div_euclid(153);
     year + if month < 10 { 0 } else { 1 }
+}
+
+/// Cycle 54: an integer query parameter as a real PMS parses it -- an optional
+/// sign and digits, nothing else (no space, no `0x`, no fraction), inside the
+/// signed range of `bits`; `None` takes any size.  Measured on kids and zen over
+/// fifteen values.
+fn pms_int_param(value: &str, bits: Option<u32>) -> bool {
+    let digits = value.strip_prefix(['+', '-']).unwrap_or(value);
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return false;
+    }
+    let Some(bits) = bits else { return true };
+    let limit = 1i128 << (bits - 1);
+    match value.trim_start_matches('+').parse::<i128>() {
+        Ok(number) => -limit <= number && number < limit,
+        Err(_) => false,
+    }
 }
 
 fn local_interface_address() -> Option<String> {
