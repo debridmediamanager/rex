@@ -5057,6 +5057,8 @@ impl Runtime {
                 return match path.as_str() {
                     "/identity" => self.identity_response(&query),
                     "/hubs" | "/playlists" => Response::json(200, plugin_container(Vec::new())),
+                    // Cycle 45: its own 400 to every verb.
+                    "/:/viewChange" => Response::error(400, "plexsim: bad request"),
                     _ => Response::error(404, "plexsim: not found"),
                 };
             }
@@ -17554,10 +17556,10 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                                 Err(_) => {}
                             }
                         } else {
-                            let _ = handle_connection(&mut { stream }, shared);
+                            serve_plain(stream, shared);
                         }
                     } else {
-                        let _ = handle_connection(&mut { stream }, shared);
+                        serve_plain(stream, shared);
                     }
                 });
             }
@@ -17912,6 +17914,24 @@ fn handle_connection<S: Read + Write>(
         }
     }
     Ok(())
+}
+
+/// Serve one plain connection, then close it the way Python's socketserver does:
+/// half-close the write side and drain what the peer still sends. Closing outright
+/// with a request in flight answers it with a RST, which destroys the refusal the
+/// client has not yet read (cycle 30's closing malformed-pair 400 among them).
+fn serve_plain(mut stream: TcpStream, shared: SharedRuntime) {
+    let _ = handle_connection(&mut stream, shared);
+    let _ = stream.shutdown(std::net::Shutdown::Write);
+    let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(2)));
+    let mut sink = [0_u8; 4096];
+    let started = std::time::Instant::now();
+    while started.elapsed() < std::time::Duration::from_secs(2) {
+        match stream.read(&mut sink) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
+        }
+    }
 }
 
 fn handle_websocket<S: Write>(
