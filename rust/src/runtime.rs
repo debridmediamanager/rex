@@ -2973,6 +2973,30 @@ impl Runtime {
             .and_then(serde_json::Number::from_f64)
             .map(Value::Number)
             .unwrap_or_else(|| json!(platform_text));
+        // Measured: a device's `name` and `platform` are written whenever a request
+        // carries them, each independently -- a request without one leaves the stored
+        // value alone.
+        let previous = self.devices.get(&identifier).cloned();
+        let name = headers
+            .get("x-plex-device-name")
+            .cloned()
+            .filter(|name| !name.is_empty())
+            .or_else(|| previous.as_ref().map(|device| device.name.clone()))
+            .unwrap_or_default();
+        let product = headers
+            .get("x-plex-product")
+            .cloned()
+            .filter(|product| !product.is_empty())
+            .or_else(|| previous.as_ref().map(|device| device.product.clone()))
+            .unwrap_or_default();
+        let platform = if platform_text.is_empty() {
+            previous
+                .as_ref()
+                .map(|device| device.platform.clone())
+                .unwrap_or(platform)
+        } else {
+            platform
+        };
         self.devices.insert(
             identifier.clone(),
             Device {
