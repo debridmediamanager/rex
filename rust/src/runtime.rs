@@ -4197,17 +4197,22 @@ impl Runtime {
         // Python's stable sort uses titleSort as the final tie breaker for
         // every advertised key.  Seed that order before applying the explicit
         // keys in reverse priority.
+        // `server.py` `_sort_key`: `titleSort` alone stays case-FOLDED (every other
+        // text key compares raw codepoints, cycle 22).
+        let folded = |value: &Value| string_value(value).to_lowercase();
         rows.sort_by(|left, right| {
-            string_value(&self.sort_value(left, "titleSort"))
-                .cmp(&string_value(&self.sort_value(right, "titleSort")))
+            folded(&self.sort_value(left, "titleSort"))
+                .cmp(&folded(&self.sort_value(right, "titleSort")))
         });
         for (field, descending) in specs.into_iter().rev() {
+            let title_sort = field.rsplit('.').next() == Some("titleSort");
             rows.sort_by(|left, right| {
                 let left_owned = self.sort_value(left, &field);
                 let right_owned = self.sort_value(right, &field);
                 let left_value = &left_owned;
                 let right_value = &right_owned;
                 let ordering = match (left_value, right_value) {
+                    _ if title_sort => folded(left_value).cmp(&folded(right_value)),
                     (Value::Number(a), Value::Number(b)) => a
                         .as_f64()
                         .partial_cmp(&b.as_f64())
@@ -4247,6 +4252,14 @@ impl Runtime {
             };
             self.catalog.get(&key)
         };
+        if bare == "id" {
+            // The row's id is its ratingKey, ordered as a number.
+            return target
+                .and_then(key_of)
+                .and_then(|key| key.parse::<i64>().ok())
+                .map(|id| json!(id))
+                .unwrap_or(Value::Null);
+        }
         if bare == "viewUpdatedAt" {
             return target
                 .and_then(|target| target.get("_viewUpdatedAt"))
@@ -5097,9 +5110,12 @@ impl Runtime {
         if !self.authorized(&path, &request, &query) {
             return self.unauthorized_route(&path, request);
         }
-        if (path == "/player" || path.starts_with("/player/"))
-            && request.headers.contains_key("x-plex-target-client-identifier")
-        {
+        if path == "/player" || path.starts_with("/player/") {
+            // Player commands go to a PLAYER, not to a server: a real PMS answers 400
+            // for every one of them.
+            if !request.headers.contains_key("x-plex-target-client-identifier") {
+                return Response::error(400, "plexsim: bad request");
+            }
             // Cycle 59, measured on zen, kids and both copies: WITH an
             // `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
             // `PlexClient.sendCommand()` -- the server looks for that player to proxy
@@ -5261,7 +5277,8 @@ impl Runtime {
                     } else {
                         302
                     },
-                    content_type: "text/html".to_string(),
+                    // Cycle 16: the redirect carries no Content-Type at all.
+                    content_type: String::new(),
                     body: Vec::new(),
                     headers: vec![
                         (
@@ -6668,6 +6685,13 @@ impl Runtime {
             }
         }
 
+        // Measured on both servers: an empty or non-numeric `accountID`/`deviceID` is a
+        // 400 (a negative one and `+1` parse), and so is any `lan` but 0 or 1.
+        for name in ["accountID", "deviceID"] {
+            if query.get(name).is_some_and(|value| !int_param(value, None)) {
+                return Response::error(400, "plexsim: bad request");
+            }
+        }
         if let Some(value) = query.get("lan") {
             if !matches!(value.as_str(), "0" | "1") {
                 return Response::error(400, "plexsim: bad request");
@@ -6815,6 +6839,13 @@ impl Runtime {
     }
 
     fn route_media_statistics(&self, query: &HashMap<String, String>) -> Response {
+        // Measured on both servers: an empty or non-numeric `accountID`/`deviceID` is a
+        // 400, as on `/statistics/bandwidth`.
+        for name in ["accountID", "deviceID"] {
+            if query.get(name).is_some_and(|value| !int_param(value, None)) {
+                return Response::error(400, "plexsim: bad request");
+            }
+        }
         let spans = if let Some(value) = query.get("timespan") {
             let timespan = value.parse::<i64>().unwrap_or_default();
             if matches!(timespan, 0 | 1 | 2 | 3 | 4) {
@@ -7159,6 +7190,9 @@ impl Runtime {
                             values.insert(key, value.clone());
                         }
                     }
+                    // The session serialiser's marker: the XML/JSON orderer writes a
+                    // `_session` element's attributes alphabetically (cycle 49).
+                    values.insert("_session".to_string(), json!(true));
                     Value::Object(values)
                 })
                 .collect::<Vec<_>>();
@@ -8645,19 +8679,10 @@ impl Runtime {
             .cloned()
             .collect::<Vec<_>>();
 
-        let mut in_progress = if is_show {
-            episodes.clone()
-        } else {
-            items.clone()
-        };
-        in_progress.retain(|row| {
-            row.get("viewOffset")
-                .and_then(Value::as_i64)
-                .is_some_and(|offset| offset > 60000)
-                && key_of(row)
-                    .map(|key| !self.hidden_continue.contains(&key))
-                    .unwrap_or(false)
-        });
+        // Cycle 57/58: the section's Continue Watching shelf is the same list as its
+        // see-all leaf (`section_continue_watching`): the library's resume rows, a
+        // next-up only once its show has a playback completion.
+        let in_progress = self.section_continue_watching_rows(section_key, is_show);
 
         let mut watched = if is_show {
             episodes.clone()
@@ -8859,7 +8884,9 @@ impl Runtime {
                     } else {
                         // Cycle 56, measured on zen and kids: `includeGuids=1` carries
                         // `Guid` on a library hub page's rows too.
-                        let mut shown = self.listing_row(&row);
+                        // The oracle's `_grid_row`: a shelf row keeps its `Media` (Parts
+                        // without Streams) and its librarySection fields.
+                        let mut shown = self.grid_row(&row, true, false, false);
                         if include_guids {
                             let guids = row
                                 .get("Guid")
@@ -8911,12 +8938,17 @@ impl Runtime {
                 ("style".to_string(), json!("shelf")),
                 ("context".to_string(), json!(context)),
                 ("key".to_string(), json!(key)),
-                ("promoted".to_string(), json!(promoted)),
-                ("random".to_string(), json!(random)),
                 ("more".to_string(), json!(!exhausted && total > shelf_limit)),
                 ("size".to_string(), json!(rows.len())),
                 ("Metadata".to_string(), Value::Array(rows.clone())),
             ]);
+            // The oracle carries `promoted` and `random` only on the shelves that are.
+            if promoted {
+                hub.insert("promoted".to_string(), json!(true));
+            }
+            if random {
+                hub.insert("random".to_string(), json!(true));
+            }
             if !rows.is_empty() {
                 let keys = rows.iter().filter_map(key_of).collect::<Vec<_>>();
                 if !keys.is_empty() {
@@ -9077,25 +9109,42 @@ impl Runtime {
                 })
                 .map(|index| index + 1)
                 .unwrap_or(hubs.len());
+            // Cycle 59, measured on plexscratch42 and plexscratch: the shelf is the head
+            // of its own key -- this library's video playlists (and every EMPTY one),
+            // newest viewed first -- so its rows are that listing's.
+            let key = format!("/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc&sectionID={section_key}");
+            let listing_query = HashMap::from([
+                ("type".to_string(), "15".to_string()),
+                ("playlistType".to_string(), "video".to_string()),
+                ("sort".to_string(), "lastViewedAt:desc".to_string()),
+                ("sectionID".to_string(), section_key.to_string()),
+            ]);
+            let listed = serde_json::from_slice::<Value>(&self.route_playlist_all(&listing_query).body)
+                .ok()
+                .and_then(|body| body["MediaContainer"]["Metadata"].as_array().cloned())
+                .unwrap_or_default();
+            let mut limit = count.unwrap_or(6);
+            let mut exhausted = false;
+            if limit < 0 {
+                limit = (listed.len() as i64 + limit).max(0);
+                exhausted = true;
+            }
+            let rows = listed.iter().take(limit as usize).cloned().collect::<Vec<_>>();
             let mut playlist = Map::from_iter([
-                (
-                    "hubIdentifier".to_string(),
-                    json!(format!("recent.library.playlists.{section_key}")),
-                ),
+                ("hubIdentifier".to_string(), json!(format!("recent.library.playlists.{section_key}"))),
                 ("title".to_string(), json!("Recent Playlists")),
                 ("type".to_string(), json!("playlist")),
                 ("style".to_string(), json!("shelf")),
                 ("context".to_string(), json!("hub.recent.library.playlists")),
-                (
-                    "key".to_string(),
-                    json!(format!("/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc&sectionID={section_key}")),
-                ),
-                ("promoted".to_string(), json!(false)),
-                ("more".to_string(), json!(false)),
-                ("size".to_string(), json!(0)),
-                ("Metadata".to_string(), json!([])),
+                ("key".to_string(), json!(key)),
+                ("more".to_string(), json!(!exhausted && listed.len() > rows.len())),
+                ("size".to_string(), json!(rows.len())),
             ]);
-            playlist.insert("random".to_string(), json!(false));
+            let keys = rows.iter().filter_map(key_of).collect::<Vec<_>>();
+            if !keys.is_empty() {
+                playlist.insert("hubKey".to_string(), json!(format!("/library/metadata/{}", keys.join(","))));
+            }
+            playlist.insert("Metadata".to_string(), Value::Array(rows));
             hubs.insert(position, Value::Object(playlist));
         }
 
@@ -9180,18 +9229,26 @@ impl Runtime {
     /// A SECTION's Continue Watching see-all leaf (cycles 21, 26, 57): a show
     /// library keeps a hidden row, a movie library drops it, and a next-up whose
     /// anchor was only scrobbled is not listed.
+    /// `section_continue_watching`: a show library keeps a hidden row, a movie library
+    /// drops it, and a next-up whose show was never played in a session is not listed.
+    fn section_continue_watching_rows(&self, section_key: &str, is_show: bool) -> Vec<Value> {
+        self.continue_watching(is_show)
+            .into_iter()
+            .filter(|row| {
+                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+                    && row.get("_nextUpFromScrobble").is_none()
+            })
+            .collect()
+    }
+
     fn route_section_continue_watching_items(&self, section_key: &str) -> Response {
         let Some(section) = self.section(section_key) else {
             return Response::error(404, "plexsim: no such section");
         };
         let is_show = section.get("type").and_then(Value::as_str) == Some("show");
         let rows = self
-            .continue_watching(is_show)
+            .section_continue_watching_rows(section_key, is_show)
             .iter()
-            .filter(|row| {
-                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
-                    && row.get("_nextUpFromScrobble").is_none()
-            })
             .map(|row| self.detail_row(row))
             .collect::<Vec<_>>();
         Response::json(
@@ -9857,7 +9914,13 @@ impl Runtime {
                 let Some(section) = query.get("sectionID") else {
                     return true;
                 };
-                self.playlist_keys(playlist).iter().any(|key| {
+                // Cycle 59, measured on plexscratch42 and plexscratch: an EMPTY
+                // playlist answers to every library.
+                let keys = self.playlist_keys(playlist);
+                if keys.is_empty() {
+                    return true;
+                }
+                keys.iter().any(|key| {
                     self.catalog
                         .get(key)
                         .map(|row| {
@@ -11153,7 +11216,12 @@ impl Runtime {
                     projection.insert(name.to_string(), value.clone());
                 }
             }
-            projection.insert("viewType".to_string(), json!(1));
+            // Cycle 70: only a scrobble's row carries `viewType`; cycle 27: the single
+            // read is its own projection, which the `_history1` marker orders.
+            if let Some(view_type) = row.get("viewType").filter(|v| !v.is_null()) {
+                projection.insert("viewType".to_string(), view_type.clone());
+            }
+            projection.insert("_history1".to_string(), json!(true));
             return Response::json(
                 200,
                 self.container(
@@ -11769,8 +11837,12 @@ impl Runtime {
                         return Response::error(400, "plexsim: bad request");
                     }
                     // A real PMS builds a mosaic of the members' posters; plexsim serves
-                    // one image in its place (`composite_for`), here the placeholder.
-                    let mut response = Response::image(jpeg_placeholder());
+                    // one image in its place (`composite_for`), here the placeholder. It
+                    // is a real-sized PNG: `server.py` serves a member's TMDB poster,
+                    // which this server cannot fetch, and a 4-byte "jpeg" read as that
+                    // poster fails the size the check holds a real image to.
+                    let mut response = Response::image(generated_png(400, 600, [32, 34, 38]));
+                    response.content_type = "image/png".to_string();
                     response.headers = vec![
                         ("Cache-Control".to_string(), "no-cache".to_string()),
                         ("Accept-Ranges".to_string(), "bytes".to_string()),
@@ -12709,47 +12781,7 @@ impl Runtime {
                     return Response::json(200, self.container(fields, true));
                 }
                 if segments.len() == 4 && segments[3] == "categories" {
-                    let mut names = HashSet::new();
-                    let axis_type = query
-                        .get("type")
-                        .and_then(|value| value.parse::<i64>().ok());
-                    for row in self.choose_rows(Some(section_key), axis_type) {
-                        for tag in row
-                            .get("Genre")
-                            .and_then(Value::as_array)
-                            .into_iter()
-                            .flatten()
-                        {
-                            if let Some(name) = tag.get("tag").and_then(Value::as_str) {
-                                names.insert(name.to_string());
-                            }
-                        }
-                    }
-                    let mut names = names.into_iter().collect::<Vec<_>>();
-                    names.sort();
-                    let rows = names
-                        .into_iter()
-                        .map(|name| {
-                            json!({
-                                "type":"directory",
-                                "title":name,
-                                "key":format!("/library/sections/{section_key}/all?genre={name}")
-                            })
-                        })
-                        .collect::<Vec<_>>();
-                    return Response::json(
-                        200,
-                        self.container(
-                            Map::from_iter([
-                                ("Directory".to_string(), Value::Array(rows)),
-                                (
-                                    "Meta".to_string(),
-                                    json!({"Type":[{"type":"genre","title":"Genre"}]}),
-                                ),
-                            ]),
-                            false,
-                        ),
-                    );
+                    return self.route_categories(section_key, section.clone(), request);
                 }
                 if segments.len() == 4 && segments[3] == "folder" {
                     return self.route_section_folder(section_key, section, query, request);
@@ -14305,10 +14337,53 @@ impl Runtime {
             .ok()
             .flatten()
             .is_some();
-        // The default order is titleSort -- except a SHOW library's `type=3` and
-        // `type=4` grids, which keep the show's order (the rows arrive in it).
+        // Measured on both servers: the DEFAULT order of a listing is `titleSort`
+        // ascending, not the catalog's order -- except (cycle 16) a show library's
+        // `type=3` and `type=4` grids, which default to the SHOW's order: the show's
+        // title, then `parentIndex`, then `index`.
         let show_order = section_type == "show"
             && matches!(query.get("type").map(String::as_str), Some("3" | "4"));
+        let rows = if show_order && query.get("sort").is_none_or(|sort| sort.is_empty()) && !by_id {
+            let mut rows = rows;
+            let show_title = |row: &Value| {
+                let key = row
+                    .get("grandparentRatingKey")
+                    .or_else(|| row.get("parentRatingKey"))
+                    .map(string_value)
+                    .unwrap_or_default();
+                let key = if row.get("type").and_then(Value::as_str) == Some("season") {
+                    row.get("parentRatingKey").map(string_value).unwrap_or(key)
+                } else {
+                    key
+                };
+                self.catalog
+                    .get(&key)
+                    .and_then(|show| show.get("title"))
+                    .map(string_value)
+                    .unwrap_or_default()
+            };
+            let number = |row: &Value, name: &str| {
+                row.get(name).map(string_value).and_then(|v| v.parse::<i64>().ok()).unwrap_or(0)
+            };
+            let parent_index = |row: &Value| {
+                if row.get("type").and_then(Value::as_str) == Some("episode") {
+                    row.get("parentRatingKey")
+                        .map(string_value)
+                        .and_then(|key| self.catalog.get(&key))
+                        .map(|season| number(season, "index"))
+                        .unwrap_or_else(|| number(row, "parentIndex"))
+                } else {
+                    number(row, "parentIndex")
+                }
+            };
+            rows.sort_by(|a, b| {
+                (show_title(a), parent_index(a), number(a, "index"))
+                    .cmp(&(show_title(b), parent_index(b), number(b, "index")))
+            });
+            rows
+        } else {
+            rows
+        };
         let sort = query
             .get("sort")
             .filter(|sort| !sort.is_empty())
@@ -16740,8 +16815,16 @@ impl Runtime {
             .get("_poster_url")
             .and_then(Value::as_str)
             .map(|url| json!([{"key":url,"source":"tmdb","previewKey":url}]));
+        // Cycle 53: a season's and an episode's background candidates are their own,
+        // never the show's that `hierarchy` copies down -- `/arts` answers none there,
+        // so the row inlines no `Art`.
+        let owns_art = !matches!(
+            object.get("type").and_then(Value::as_str),
+            Some("season" | "episode")
+        );
         let art = object
             .get("_art_url")
+            .filter(|_| owns_art)
             .and_then(Value::as_str)
             .map(|url| json!([{"key":url,"source":"tmdb","previewKey":url}]));
         let theme = object

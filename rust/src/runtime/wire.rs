@@ -417,7 +417,8 @@ pub(super) fn reason_phrase(status: u16) -> &'static str {
         201 => "Created",
         204 => "No Content",
         206 => "Partial Content",
-        302 => "Found",
+        // Cycle 16: a real PMS says "Moved Temporarily", not Python's "Found".
+        302 => "Moved Temporarily",
         400 => "Bad Request",
         401 => "Unauthorized",
         403 => "Forbidden",
