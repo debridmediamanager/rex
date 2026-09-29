@@ -29,6 +29,7 @@ mod edit;
 mod frames;
 mod artwork;
 mod butler;
+mod children;
 mod framework;
 mod gates;
 mod listing;
@@ -13619,86 +13620,32 @@ impl Runtime {
                     };
                 }
                 let group = row.get("type").and_then(Value::as_str) == Some("show");
+                // Measured: a LISTING carries the `Guid` list only under
+                // `includeGuids=1`, and then even a row with none of its own gets a
+                // one-entry list naming its primary guid.
+                let include_guids = query.get("includeGuids").is_some_and(|value| value == "1");
                 let mut rows = children
                     .iter()
-                    .map(|child| self.grid_row(child, false, true, false))
-                    .collect::<Vec<_>>();
-                let mut fields = Map::from_iter([
-                    ("key".to_string(), json!(key)),
-                    ("nocache".to_string(), json!(true)),
-                    (
-                        "viewGroup".to_string(),
-                        json!(if group { "season" } else { "episode" }),
-                    ),
-                    (
-                        "viewMode".to_string(),
-                        json!(if group { 65593 } else { 65592 }),
-                    ),
-                    (
-                        "parentTitle".to_string(),
-                        row.get("title").cloned().unwrap_or(Value::Null),
-                    ),
-                    (
-                        "title1".to_string(),
-                        row.get("librarySectionTitle")
-                            .cloned()
-                            .unwrap_or(Value::Null),
-                    ),
-                    (
-                        "title2".to_string(),
-                        row.get("title").cloned().unwrap_or(Value::Null),
-                    ),
-                    (
-                        "librarySectionID".to_string(),
-                        row.get("librarySectionID").cloned().unwrap_or(Value::Null),
-                    ),
-                    (
-                        "librarySectionTitle".to_string(),
-                        row.get("librarySectionTitle")
-                            .cloned()
-                            .unwrap_or(Value::Null),
-                    ),
-                    (
-                        "librarySectionUUID".to_string(),
-                        self.section(&string_value(
-                            row.get("librarySectionID").unwrap_or(&Value::Null),
-                        ))
-                        .and_then(|s| s.get("uuid"))
-                        .cloned()
-                        .unwrap_or(Value::Null),
-                    ),
-                    ("allowSync".to_string(), json!(true)),
-                    ("Metadata".to_string(), Value::Array(rows.clone())),
-                ]);
-                if row.get("type").and_then(Value::as_str) == Some("season") {
-                    if let Some(parent_key) = row.get("parentRatingKey").map(string_value) {
-                        if let Some(parent) = self.catalog.get(&parent_key) {
-                            fields.insert(
-                                "title1".to_string(),
-                                parent.get("title").cloned().unwrap_or(Value::Null),
-                            );
-                            fields.insert("parentTitle".to_string(), json!(""));
-                            if let Ok(parent_id) = parent_key.parse::<i64>() {
-                                fields.insert("grandparentRatingKey".to_string(), json!(parent_id));
+                    .map(|child| {
+                        let mut shown = self.grid_row(child, false, include_guids, false);
+                        if include_guids {
+                            if let Some(object) = shown.as_object_mut() {
+                                if object.get("Guid").is_none() {
+                                    if let Some(guid) = object.get("guid").cloned() {
+                                        object.insert("Guid".to_string(), json!([{"id": guid}]));
+                                    }
+                                }
                             }
-                            fields.insert(
-                                "grandparentTitle".to_string(),
-                                parent.get("title").cloned().unwrap_or(Value::Null),
-                            );
-                            fields.insert(
-                                "grandparentThumb".to_string(),
-                                parent.get("thumb").cloned().unwrap_or(Value::Null),
-                            );
-                            fields.insert(
-                                "grandparentArt".to_string(),
-                                parent.get("art").cloned().unwrap_or(Value::Null),
-                            );
                         }
-                    }
-                    if let Some(year) = row.get("year") {
-                        fields.insert("parentYear".to_string(), year.clone());
-                    }
-                }
+                        shown
+                    })
+                    .collect::<Vec<_>>();
+                let mut fields = self.child_container_fields(
+                    row,
+                    "children",
+                    children.first().and_then(|child| child.get("type")).and_then(Value::as_str),
+                );
+                fields.insert("Metadata".to_string(), Value::Array(rows.clone()));
                 if group {
                     let leaves = self.leaves(key);
                     // Re-measured on zen against a 24-season show: the "All
@@ -13879,28 +13826,26 @@ impl Runtime {
                         strip_excluded_fields(shown, &names);
                     }
                 }
-                let mut fields = Map::from_iter([
-                    ("key".to_string(), json!(key)),
-                    ("nocache".to_string(), json!(true)),
-                    ("allowSync".to_string(), json!(true)),
-                    ("viewGroup".to_string(), json!(view_group)),
-                    ("viewMode".to_string(), json!(65592)),
-                    ("Metadata".to_string(), Value::Array(rows)),
-                ]);
+                let _ = view_group;
+                let first_type = rows
+                    .first()
+                    .and_then(|row| row.get("type"))
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
                 if kind == "show" {
-                    fields.insert("mixedParents".to_string(), json!(true));
-                }
-                if kind == "episode" {
-                    if let Some(parent_key) = row.get("parentRatingKey").map(string_value) {
-                        if let Some(parent) = self.catalog.get(&parent_key) {
-                            fields.insert(
-                                "title1".to_string(),
-                                parent.get("title").cloned().unwrap_or_else(|| json!("")),
-                            );
+                    // Measured on kids and zen, 20 rows across five shows: a SHOW's
+                    // `/allLeaves` -- and only that list -- gives every episode row the
+                    // SHOW's `studio`.
+                    if let Some(studio) = row.get("studio").filter(|studio| !studio.is_null()) {
+                        for shown in &mut rows {
+                            if let Some(object) = shown.as_object_mut() {
+                                object.insert("studio".to_string(), studio.clone());
+                            }
                         }
                     }
-                    fields.insert("grandparentTitle".to_string(), json!(""));
                 }
+                let mut fields = self.child_container_fields(row, "allLeaves", first_type.as_deref());
+                fields.insert("Metadata".to_string(), Value::Array(rows));
                 Response::json(200, self.container(fields, true))
             }
             "nearest" => {
