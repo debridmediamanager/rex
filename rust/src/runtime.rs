@@ -2009,13 +2009,15 @@ impl Runtime {
 
     fn gdm_server_rows(&self) -> Vec<Value> {
         let current = now();
+        // `server.py` `/servers`: the self row carries its own interface address and
+        // port, then the version, with no `owned` mark on any row.
         let mut rows = vec![json!({
             "name": self.friendly,
-            "machineIdentifier": self.machine,
             "host": self.private_address,
             "address": self.private_address,
             "port": self.private_port,
-            "owned": true
+            "machineIdentifier": self.machine,
+            "version": VERSION
         })];
         rows.extend(
             self.gdm_peers
@@ -2024,12 +2026,11 @@ impl Runtime {
                 .map(|peer| {
                     json!({
                         "name": peer.name,
-                        "machineIdentifier": peer.machine,
                         "host": if peer.host.is_empty() { peer.address.clone() } else { peer.host.clone() },
                         "address": peer.address,
                         "port": peer.port,
-                        "version": peer.version,
-                        "owned": false
+                        "machineIdentifier": peer.machine,
+                        "version": peer.version
                     })
                 }),
         );
@@ -18917,11 +18918,17 @@ fn load_tls_config(cert_path: &Path, key_path: Option<&Path>) -> Result<ServerCo
     Ok(config)
 }
 
-fn start_gdm(runtime: SharedRuntime, mode: &str) {
+fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
     if matches!(
         mode.to_ascii_lowercase().as_str(),
         "off" | "false" | "0" | "no"
     ) {
+        return;
+    }
+    // `server.py`: `auto` discovers only on the standard port. A test instance on any
+    // other port stays off the wire, so its `/servers` lists itself alone rather than
+    // whatever servers happen to share its LAN.
+    if mode.eq_ignore_ascii_case("auto") && port != 32400 {
         return;
     }
     let ports = configured_gdm_ports();
@@ -19015,7 +19022,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         None => None,
     };
     let runtime = Arc::new(Mutex::new(Runtime::load(options)?));
-    start_gdm(Arc::clone(&runtime), &gdm_mode);
+    start_gdm(Arc::clone(&runtime), &gdm_mode, port);
     let listener = TcpListener::bind((host.as_str(), port))
         .map_err(|e| format!("cannot bind {host}:{port}: {e}"))?;
     for stream in listener.incoming() {
