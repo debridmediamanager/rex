@@ -208,12 +208,15 @@ impl Runtime {
         // Cycle 21: the per-user state sits after `ratingCount` (or `index` once an
         // unmatch removed it) and before `thumb`.
         let after = if row.contains_key("ratingCount") { "ratingCount" } else { "index" };
+        // A collection never carries `viewCount` at all, whatever is scrobbled at it.
+        let stored_state = self.list_state.get(&collection.id);
         let state = LIST_STATE
             .iter()
+            .filter(|name| **name != "viewCount")
             .filter_map(|name| {
-                collection
-                    .extra
-                    .get(*name)
+                stored_state
+                    .and_then(|state| state.get(*name))
+                    .or_else(|| collection.extra.get(*name))
                     .filter(|value| !value.is_null())
                     .map(|value| (name.to_string(), value.clone()))
             })
@@ -1076,6 +1079,9 @@ impl Runtime {
         {
             let leaf = tail[0];
             if matches!(leaf, "poster" | "art" | "thumb") {
+                if method == "PUT" && leaf != "thumb" {
+                    return self.set_collection_artwork(&id, leaf, query);
+                }
                 return Response::error(404, "plexsim: not found");
             }
             if !matches!(method, "GET" | "HEAD" | "PUT") {
@@ -1236,5 +1242,37 @@ impl Runtime {
                 tag_object.insert("guid".to_string(), json!(format!("collection://plexsim-{}", collection.id)));
             }
         }
+    }
+
+    /// `PUT /library/metadata/{collection}/{poster,art}?url=` -- the pick on a list.
+    /// Measured: the answer is the new versioned path, the field is locked, the row's
+    /// `updatedAt` moves, and ONE `state 5` frame goes out carrying the list's own type
+    /// (cycle 22: 18 for a collection).
+    fn set_collection_artwork(&mut self, id: &str, leaf: &str, query: &HashMap<String, String>) -> Response {
+        if query.get("url").is_none_or(|url| url.is_empty()) {
+            return Response::error(400, "plexsim: no url");
+        }
+        let field = if leaf == "poster" { "thumb" } else { "art" };
+        let stamp = now();
+        let path = format!("/library/metadata/{id}/{field}/{stamp}");
+        let Some(collection) = self.collections.get_mut(id) else {
+            return Response::error(404, "plexsim: not found");
+        };
+        collection.extra.insert(field.to_string(), json!(path));
+        collection.extra.insert("updatedAt".to_string(), json!(stamp));
+        let mut map = collection.extra.clone();
+        edit::set_lock(&mut map, field, true);
+        if let Some(fields) = map.get("Field") {
+            collection.extra.insert("Field".to_string(), fields.clone());
+        }
+        if let Some(stored) = self.collections.get(id).cloned() {
+            let row = self.dynamic_collection_row(&stored);
+            self.push_timeline_collection(&row, 5, None);
+        }
+        self.dirty = true;
+        self.save_if_dirty();
+        let mut response = Response::bytes(200, "text/html");
+        response.body = path.into_bytes();
+        response
     }
 }

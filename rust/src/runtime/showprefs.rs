@@ -73,7 +73,12 @@ impl Runtime {
     pub(super) fn apply_flatten_projection(&self, object: &mut Map<String, Value>) {
         match object.get("type").and_then(Value::as_str) {
             Some("show") => {
-                let row = Value::Object(object.clone());
+                // The projected row has lost its private `_prefs`; read the stored one.
+                let row = object
+                    .get("ratingKey")
+                    .map(string_value)
+                    .and_then(|key| self.catalog.get(&key).cloned())
+                    .unwrap_or_else(|| Value::Object(object.clone()));
                 if self.show_flattened(&row) {
                     object.insert("skipChildren".to_string(), json!(true));
                 } else {

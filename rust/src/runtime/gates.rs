@@ -98,6 +98,14 @@ pub(super) fn read_only_refusal(method: &str, route: &str) -> bool {
     if READ_ONLY_ROUTES.contains(&route) {
         return true;
     }
+    // Cycle 23, measured on plexscratch over 138 path templates x 7 verbs: three
+    // more read-only routes answer 404 to every verb but GET and HEAD.
+    if route == "/hubs/home/recentlyAdded"
+        || (parts.len() == 3 && parts[..2] == ["hubs", "sections"])
+        || (parts.len() == 4 && parts[..2] == ["library", "metadata"] && parts[3] == "children")
+    {
+        return true;
+    }
     if READ_ONLY_EXCEPT_POST.contains(&route) && method != "POST" {
         return true;
     }

@@ -501,6 +501,38 @@ impl Runtime {
             .collect()
     }
 
+    /// Cycle 54, measured on kids and zen: the request's listing FILTERS run over the
+    /// EPISODES before the TV roll-up -- `title=Train` answers the one episode,
+    /// `title=Firefly` nothing, `show.title=Firefly` the show again.  `Ok(None)` when the
+    /// request carries no filter; a filter that does not parse is its status.  A hub
+    /// PAGE drops an empty-valued pair first (`drop_empty`, the oracle's
+    /// `_hub_page_filters`), where `/hubs/home/recentlyAdded` parses it.
+    pub(super) fn filtered_tv_leaves(
+        &self,
+        query: &HashMap<String, String>,
+        drop_empty: bool,
+    ) -> Result<Option<Vec<Value>>, u16> {
+        let mut pairs = query
+            .iter()
+            .filter(|(_, value)| !drop_empty || !value.is_empty())
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect::<Vec<_>>();
+        pairs.sort();
+        let types = self.filter_field_types("show");
+        let mut errors = Vec::new();
+        if crate::filters::parse(&pairs, &types, &mut errors).is_none() {
+            return Ok(None);
+        }
+        let leaves = self
+            .catalog
+            .items
+            .iter()
+            .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
+            .cloned()
+            .collect::<Vec<_>>();
+        self.filter_rows(leaves, &pairs, "show").map(Some)
+    }
+
     /// Newest first, by TYPE (1 movies, 2 the TV roll-up); None for every other type
     /// (cycle 21).
     pub(super) fn recently_added_rows(&self, type_id: Option<&str>, section_id: Option<&String>) -> Option<Vec<Value>> {
@@ -590,7 +622,8 @@ impl Runtime {
                     self.in_directories(self.recently_added_rows(Some("1"), None).unwrap_or_default(), &directories)
                 }
                 "home.television.recent" => {
-                    self.in_directories(self.recently_added_tv(None, None), &directories)
+                    let leaves = self.filtered_tv_leaves(query, true).ok().flatten();
+                    self.in_directories(self.recently_added_tv(None, leaves), &directories)
                 }
                 "home.playlists" => self.recent_playlists(),
                 _ => Vec::new(),
@@ -689,9 +722,15 @@ impl Runtime {
             }
             let is_show = section_type == "show";
             let mut rows = self.section_recently_added_rows(section);
+            // Cycle 54: with a filter in the request the library's TV shelf is the
+            // roll-up of the episodes that pass it.
+            let filtered = if is_show { self.filtered_tv_leaves(query, true).ok().flatten() } else { None };
+            if let Some(leaves) = filtered.clone() {
+                rows = self.recently_added_tv(Some(&section_key), Some(leaves));
+            }
             if pinned.is_some() {
                 let merged = if is_show {
-                    self.recently_added_tv(None, None)
+                    self.recently_added_tv(None, filtered)
                 } else {
                     self.recently_added_rows(Some("1"), None).unwrap_or_default()
                 };
