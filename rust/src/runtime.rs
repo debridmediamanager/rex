@@ -8504,6 +8504,11 @@ impl Runtime {
         if let Some(refusal) = hub_refusal(query) {
             return refusal;
         }
+        // Cycle 54: the TV shelf runs the request's filters, and one that does not
+        // parse refuses the page.
+        if let Err(status) = self.filtered_tv_leaves(query, true) {
+            return Response::error(status, "plexsim: bad request");
+        }
         Response::json(200, self.global_hubs(query))
     }
 
@@ -8616,14 +8621,20 @@ impl Runtime {
             )
         });
 
-        let mut added = items.clone();
-        added.sort_by(|left, right| {
-            right
-                .get("addedAt")
-                .and_then(Value::as_i64)
-                .unwrap_or(0)
-                .cmp(&left.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
-        });
+        let mut added = self.section_recently_added_rows(section);
+        if is_show {
+            // Cycle 54, measured on kids and zen: the TV shelf here runs the request's
+            // filters over the episodes, and `contentDirectoryID` naming another
+            // library empties it -- the other shelves keep their rows.
+            match self.filtered_tv_leaves(query, true) {
+                Ok(Some(leaves)) => added = self.recently_added_tv(Some(&section_key.to_string()), Some(leaves)),
+                Ok(None) => {}
+                Err(status) => return Response::error(status, "plexsim: bad request"),
+            }
+            if content_directories(query).is_some_and(|wanted| !wanted.contains(section_key)) {
+                added.clear();
+            }
+        }
 
         let mut top_unwatched = items.clone();
         top_unwatched.retain(|row| {
@@ -11136,6 +11147,9 @@ impl Runtime {
                     return refusal;
                 }
             }
+            if let Err(status) = self.filtered_tv_leaves(query, true) {
+                return Response::error(status, "plexsim: bad request");
+            }
             return Response::json(200, self.promoted_hubs(query));
         }
         if path == "/hubs/home/onDeck" {
@@ -11176,6 +11190,17 @@ impl Runtime {
                 }
             }
             let mut rows = self.recently_added_rows(Some(type_id), query.get("sectionID"));
+            if type_id == "2" {
+                // Cycle 54: the request's listing filters run over the episodes before
+                // the roll-up, and a value that does not parse is the filter's 500.
+                match self.filtered_tv_leaves(query, false) {
+                    Ok(Some(leaves)) => {
+                        rows = Some(self.recently_added_tv(query.get("sectionID"), Some(leaves)));
+                    }
+                    Ok(None) => {}
+                    Err(status) => return Response::error(status, "plexsim: bad request"),
+                }
+            }
             if let Some(personal) = query.get("personal") {
                 // Cycle 54: the 0/1 option; cycle 55: only the movie list (and the
                 // always-empty others) empties at 1, the TV list is unchanged.
