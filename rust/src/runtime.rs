@@ -2973,15 +2973,36 @@ impl Runtime {
             .and_then(serde_json::Number::from_f64)
             .map(Value::Number)
             .unwrap_or_else(|| json!(platform_text));
+        // Measured: a device's `name` and `platform` are written whenever a request
+        // carries them, each independently -- a request without one leaves the stored
+        // value alone.
+        let previous = self.devices.get(&identifier).cloned();
+        let name = headers
+            .get("x-plex-device-name")
+            .cloned()
+            .filter(|name| !name.is_empty())
+            .or_else(|| previous.as_ref().map(|device| device.name.clone()))
+            .unwrap_or_default();
+        let product = headers
+            .get("x-plex-product")
+            .cloned()
+            .filter(|product| !product.is_empty())
+            .or_else(|| previous.as_ref().map(|device| device.product.clone()))
+            .unwrap_or_default();
+        let platform = if platform_text.is_empty() {
+            previous
+                .as_ref()
+                .map(|device| device.platform.clone())
+                .unwrap_or(platform)
+        } else {
+            platform
+        };
         self.devices.insert(
             identifier.clone(),
             Device {
                 client_identifier: identifier,
-                name: headers
-                    .get("x-plex-device-name")
-                    .cloned()
-                    .unwrap_or_default(),
-                product: headers.get("x-plex-product").cloned().unwrap_or_default(),
+                name,
+                product,
                 platform,
                 last_seen: now(),
             },
@@ -4750,6 +4771,26 @@ impl Runtime {
         self.spelling = Some(spellfix::SearchIndex::build(&self.catalog.items, &static_tags));
     }
 
+    /// Every request registers its client -- header or query alike -- in the order the
+    /// server first sees it (`sessions.device_id`), the notification sockets included.
+    fn register_request_device(&mut self, request: &Request) {
+        let (_, raw_query) = split_target(&request.target);
+        let identifier = request
+            .headers
+            .get("x-plex-client-identifier")
+            .cloned()
+            .filter(|value| !value.is_empty())
+            .or_else(|| {
+                parse_query(&raw_query)
+                    .into_iter()
+                    .rev()
+                    .find(|(name, _)| name == "X-Plex-Client-Identifier")
+                    .map(|(_, value)| value)
+            })
+            .unwrap_or_default();
+        self.register_device(&identifier);
+    }
+
     pub fn route(&mut self, request: &Request) -> Response {
         if request.method == "PATCH" {
             // Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not
@@ -4759,25 +4800,7 @@ impl Runtime {
             return Response::error(500, "plexsim: unknown method");
         }
         self.mark_device(&request.headers);
-        {
-            // Every request registers its client -- header or query alike -- in the
-            // order the server first sees it (`sessions.device_id`).
-            let (_, raw_query) = split_target(&request.target);
-            let identifier = request
-                .headers
-                .get("x-plex-client-identifier")
-                .cloned()
-                .filter(|value| !value.is_empty())
-                .or_else(|| {
-                    parse_query(&raw_query)
-                        .into_iter()
-                        .rev()
-                        .find(|(name, _)| name == "X-Plex-Client-Identifier")
-                        .map(|(_, value)| value)
-                })
-                .unwrap_or_default();
-            self.register_device(&identifier);
-        }
+        self.register_request_device(request);
         let mut response = self.request_route(request);
         exclude_fields_response(request, &mut response);
         sync_version_response(request, &mut response);
@@ -7702,6 +7725,9 @@ impl Runtime {
         completes: bool,
     ) {
         let Some(row) = self.catalog.get(key).cloned() else {
+            if self.playlists.contains_key(key) {
+                self.list_progress(key, offset, total, session);
+            }
             return;
         };
         let pair = (session.to_string(), key.to_string());
@@ -7786,6 +7812,81 @@ impl Runtime {
                 object.remove("_completed");
                 object.remove("_completionStopped");
             }
+        }
+    }
+
+    /// A view-state field of a catalog row, or of a list row's own state.
+    fn view_state(&self, key: &str, name: &str) -> Option<Value> {
+        if let Some(row) = self.catalog.get(key) {
+            return row.get(name).filter(|value| !value.is_null()).cloned();
+        }
+        if let Some(collection) = self.collections.get(key) {
+            return collection.extra.get(name).cloned();
+        }
+        self.list_state.get(key).and_then(|state| state.get(name)).cloned()
+    }
+
+    fn set_view_state(&mut self, key: &str, name: &str, value: Option<Value>) {
+        if self.catalog.get(key).is_some() {
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                match value {
+                    Some(value) => {
+                        object.insert(name.to_string(), value);
+                    }
+                    None => {
+                        object.shift_remove(name);
+                    }
+                }
+            }
+            return;
+        }
+        let state = self.list_state_mut(key);
+        match value {
+            Some(value) => {
+                state.insert(name.to_string(), value);
+            }
+            None => {
+                state.shift_remove(name);
+            }
+        }
+    }
+
+    /// The item machine run on a PLAYLIST's own state (cycle 59): the resume
+    /// point past a minute, and a crossing past 90% steps the list's view count
+    /// from the 1 it is born with.
+    fn list_progress(&mut self, key: &str, offset: Option<i64>, total: i64, session: &str) {
+        let pair = (session.to_string(), key.to_string());
+        let stored = self.view_state(key, "viewOffset").and_then(|v| v.as_i64());
+        if let Some(offset) = offset.filter(|offset| Some(*offset) != stored) {
+            let near_end = total > 0 && (offset as f64) >= total as f64 * 0.9;
+            if total > 0 && offset > 60000 && !near_end {
+                self.set_view_state(key, "viewOffset", Some(json!(offset)));
+                self.set_view_state(key, "lastViewedAt", Some(json!(now())));
+            } else if total > 0 && offset <= 60000 && self.progressed.contains(&pair) {
+                self.set_view_state(key, "viewOffset", None);
+            }
+        }
+        let position = offset.or(stored).unwrap_or(0);
+        let seen = self.timeline_offsets.get(&pair).copied();
+        if offset.is_some() && total > 0 {
+            self.timeline_offsets.insert(pair.clone(), position);
+            if position > 60000 {
+                self.progressed.insert(pair.clone());
+            }
+        }
+        let crossed = total > 0 && seen.is_some_and(|seen| seen > 0 && (seen as f64) < total as f64 * 0.9);
+        if crossed && position >= total.saturating_mul(9) / 10 {
+            if self.view_state(key, "_completed").and_then(|v| v.as_str().map(str::to_string)).as_deref() != Some(session) {
+                self.set_view_state(key, "_completed", Some(json!(session)));
+                self.set_view_state(key, "_completionStopped", None);
+                let count = self.view_state(key, "viewCount").and_then(|v| v.as_i64()).unwrap_or(1);
+                self.set_view_state(key, "viewCount", Some(json!(count + 1)));
+                self.set_view_state(key, "viewOffset", None);
+                self.set_view_state(key, "lastViewedAt", Some(json!(now())));
+            }
+        } else if offset.is_some_and(|offset| total > 0 && (offset as f64) < total as f64 * 0.9) {
+            self.set_view_state(key, "_completed", None);
+            self.set_view_state(key, "_completionStopped", None);
         }
     }
 
@@ -8490,7 +8591,11 @@ impl Runtime {
             .cloned()
             .or_else(|| headers.get("x-plex-client-identifier").cloned())
             .unwrap_or_else(|| "default".to_string());
-        if !key.is_empty() && self.catalog.get(&key).is_none() {
+        // Cycle 59, measured on plexscratch42 and plexscratch: a PLAYLIST's
+        // ratingKey is a timeline row too -- it runs the item's own machine on the
+        // list's own state and opens a Now Playing session.
+        let listed = !key.is_empty() && self.catalog.get(&key).is_none() && self.playlists.contains_key(&key);
+        if !key.is_empty() && self.catalog.get(&key).is_none() && !listed {
             return Response::error(404, "plexsim: no such item");
         }
         if state == "stopped" {
@@ -8517,26 +8622,21 @@ impl Runtime {
         let session_tag = if session_identifier.is_empty() { "\u{1}".to_string() } else { session_identifier.clone() };
         let completed_by = |runtime: &Self| {
             runtime
-                .catalog
-                .get(&key)
-                .and_then(|row| row.get("_completed"))
-                .and_then(Value::as_str)
-                .map(str::to_string)
+                .view_state(&key, "_completed")
+                .and_then(|value| value.as_str().map(str::to_string))
         };
         // A completed play answers `complete` to every beat past 90% until a
         // `stopped` beat has closed it, and `ignore` to every beat after that.
         let already = !key.is_empty()
             && completed_by(self).as_deref() == Some(session_tag.as_str())
-            && self.catalog.get(&key).is_some_and(|row| row.get("_completionStopped").is_some());
+            && self.view_state(&key, "_completionStopped").is_some();
         let total = if query.get("duration").is_some() { duration } else { 0 };
         if !key.is_empty() {
             let device_id = self.device_id(&client);
             let offset = query.get("time").map(|_| time);
             self.library_progress(&key, offset, total, device_id, &session_tag, true);
             if state == "stopped" && completed_by(self).as_deref() == Some(session_tag.as_str()) {
-                if let Some(object) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
-                    object.insert("_completionStopped".to_string(), json!(true));
-                }
+                self.set_view_state(&key, "_completionStopped", Some(json!(true)));
             }
         }
         // Cycle 50: `progress` is sticky within the playback SESSION once one of
@@ -8572,6 +8672,7 @@ impl Runtime {
             .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
             .and_then(|value| value.parse::<i64>().ok());
         if !key.is_empty()
+            && !listed
             && query.get("offline").map(String::as_str) == Some("1")
             && playback_state == "ignore"
         {
@@ -8623,11 +8724,16 @@ impl Runtime {
             let decided = self
                 .decided_sessions
                 .contains(&(session_identifier.clone(), key.clone()));
-            let Some(row) = self.catalog.get(&key) else {
-                return Response::error(404, "plexsim: no such item");
+            let row = if listed {
+                json!({"ratingKey": key, "type": "playlist"})
+            } else {
+                let Some(row) = self.catalog.get(&key) else {
+                    return Response::error(404, "plexsim: no such item");
+                };
+                row.clone()
             };
-            let session = self.session_row(
-                row,
+            let mut session = self.session_row(
+                &row,
                 &key,
                 &client,
                 &session_identifier,
@@ -8638,6 +8744,35 @@ impl Runtime {
                 query,
                 decided,
             );
+            if listed {
+                // Cycle 59: a playlist's session row is the LISTING row -- its state
+                // block included, no empty `summary` -- with the session's
+                // `sessionKey` and `viewOffset`, and only `User` and `Player`.
+                let player = session.get("Player").cloned().unwrap_or(Value::Null);
+                let session_key = session.get("sessionKey").cloned().unwrap_or(json!(client));
+                let mut item = self
+                    .playlists
+                    .get(&key)
+                    .cloned()
+                    .map(|p| self.dynamic_playlist_row(&p))
+                    .unwrap_or_else(|| json!({}));
+                if let Some(object) = item.as_object_mut() {
+                    if object.get("summary").is_some_and(|v| string_value(v).is_empty()) {
+                        object.remove("summary");
+                    }
+                    for (name, value) in self.list_state.get(&key).cloned().unwrap_or_default() {
+                        if !name.starts_with('_') {
+                            object.insert(name, value);
+                        }
+                    }
+                    object.insert("sessionKey".to_string(), session_key);
+                    object.insert("viewOffset".to_string(), json!(time));
+                    object.insert("User".to_string(), json!({"id": "1"}));
+                    object.insert("Player".to_string(), player);
+                    object.insert("_session".to_string(), json!(true));
+                }
+                session = item;
+            }
             let session_key = session
                 .get("sessionKey")
                 .map(string_value)
@@ -8657,7 +8792,10 @@ impl Runtime {
             frame.insert("guid".to_string(), json!(""));
             frame.insert("ratingKey".to_string(), json!(key));
             frame.insert("url".to_string(), json!(""));
-            frame.insert("key".to_string(), json!(format!("/library/metadata/{key}")));
+            frame.insert(
+                "key".to_string(),
+                json!(if listed { format!("/playlists/{key}") } else { format!("/library/metadata/{key}") }),
+            );
             frame.insert("viewOffset".to_string(), json!(time));
             frame.insert("state".to_string(), json!(state));
             // Measured on a writable copy of the reference: every frame of a session
@@ -8686,23 +8824,19 @@ impl Runtime {
         }
         self.save_if_dirty();
         let stored = self
-            .catalog
-            .get(&key)
-            .and_then(|row| row.get("viewOffset"))
-            .and_then(Value::as_i64)
+            .view_state(&key, "viewOffset")
+            .and_then(|value| value.as_i64())
+            .filter(|value| *value != 0)
             .unwrap_or(-1);
+        // A playlist is born with a view count of 1.
+        let view_count = self
+            .view_state(&key, "viewCount")
+            .and_then(|value| value.as_i64())
+            .unwrap_or(if listed { 1 } else { 0 });
         let mut fields = Map::from_iter([
             ("playbackState".to_string(), json!(playback_state)),
             ("skipCount".to_string(), json!(0)),
-            (
-                "viewCount".to_string(),
-                json!(self
-                    .catalog
-                    .get(&key)
-                    .and_then(|row| row.get("viewCount"))
-                    .and_then(Value::as_i64)
-                    .unwrap_or(0)),
-            ),
+            ("viewCount".to_string(), json!(view_count)),
             ("viewOffset".to_string(), json!(stored)),
         ]);
         let product = query
@@ -19143,6 +19277,7 @@ fn handle_connection<S: Read + Write>(
                     return Ok(());
                 }
                 guard.mark_device(&request.headers);
+                guard.register_request_device(&request);
                 guard.event_cursor()
             };
             return handle_websocket(&mut stream, &runtime, &request, event_start);
@@ -19158,6 +19293,7 @@ fn handle_connection<S: Read + Write>(
                     return Ok(());
                 }
                 guard.mark_device(&request.headers);
+                guard.register_request_device(&request);
                 guard.event_cursor()
             };
             return handle_eventsource(&mut stream, &runtime, &request, event_start);
@@ -19338,6 +19474,13 @@ fn handle_websocket<S: Write>(
         .map(str::to_string)
         .collect::<HashSet<_>>();
     let everything = filters.is_empty() && filter_value.is_some();
+    // Cycle 65: the socket's language, fixed at the handshake; activity titles follow it.
+    let (language, catalog_path) = {
+        let guard = runtime
+            .lock()
+            .map_err(|_| "runtime lock poisoned".to_string())?;
+        (i18n::socket_language(&guard.catalog_path, request), guard.catalog_path.clone())
+    };
     let started = std::time::Instant::now();
     let mut cursor = event_start;
     let mut last_write = std::time::Instant::now();
@@ -19349,7 +19492,8 @@ fn handle_websocket<S: Write>(
             (guard.events_since(cursor), guard.event_cursor())
         };
         cursor = next;
-        for (kind, value) in events {
+        for (kind, mut value) in events {
+            i18n::localise_notification(&mut value, language.as_deref(), &catalog_path);
             let wanted = if filters.is_empty() {
                 everything || kind != "log"
             } else {
@@ -19439,11 +19583,18 @@ fn handle_eventsource<S: Write>(
         .into_iter()
         .find(|(key, _)| key == "filters")
         .map(|(_, value)| value);
-    let events = runtime
-        .lock()
-        .map_err(|_| "runtime lock poisoned".to_string())?
-        .events_since(event_start);
-    for (kind, value) in events {
+    let (events, language, catalog_path) = {
+        let guard = runtime
+            .lock()
+            .map_err(|_| "runtime lock poisoned".to_string())?;
+        (
+            guard.events_since(event_start),
+            i18n::socket_language(&guard.catalog_path, request),
+            guard.catalog_path.clone(),
+        )
+    };
+    for (kind, mut value) in events {
+        i18n::localise_notification(&mut value, language.as_deref(), &catalog_path);
         if filters.as_deref() == Some("all")
             || (filters.as_deref() == Some("log") && kind != "log")
             || (filters
@@ -21340,9 +21491,11 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
     let count = if lists.is_empty() {
         body.get("size").and_then(Value::as_u64).unwrap_or(0) as usize
     } else {
-        lists
-            .iter()
-            .filter_map(|key| sliced.get(key).and_then(Value::as_array).map(Vec::len))
+        // `size` counts every sliced list -- a statistics page's Device and Account
+        // lookups included (`sum(len(rows) for rows in sliced.values())`).
+        sliced
+            .values()
+            .filter_map(|rows| rows.as_array().map(Vec::len))
             .sum()
     };
     let mut out = Map::new();
