@@ -4087,6 +4087,7 @@ impl Runtime {
     pub fn route(&mut self, request: &Request) -> Response {
         self.mark_device(&request.headers);
         let mut response = self.request_route(request);
+        exclude_fields_response(request, &mut response);
         self.localize_response(request, &mut response);
         if let Some(origin) = request.headers.get("origin") {
             response
@@ -20039,4 +20040,65 @@ fn int_param_32(text: &str) -> Option<i64> {
     }
     let value: i64 = text.trim_start_matches('+').parse().ok()?;
     (-(1i64 << 31)..(1i64 << 31)).contains(&value).then_some(value)
+}
+
+/// `excludeFields=` applied to a whole response, as a real PMS applies it.
+///
+/// Measured: the named fields go from EVERY row -- section listings, `/children`,
+/// `/allLeaves`, hubs, search -- and from the container itself (a show's
+/// `/children?excludeFields=summary` loses the container's summary too).  Cycle 19:
+/// the named field goes from every CHILD ELEMENT of a row too (`id` off `Media`,
+/// `Part`, `Stream`, `Genre`), but only the container's own attributes, not its
+/// Directory rows.  Applied once, after the route, where Python applies it.
+fn exclude_fields_response(request: &Request, response: &mut Response) {
+    if !matches!(request.method.as_str(), "GET" | "HEAD")
+        || response.content_type != "application/json"
+    {
+        return;
+    }
+    let (_, raw_query) = split_target(&request.target);
+    let Some(spec) = parse_query(&raw_query)
+        .into_iter()
+        .rev()
+        .find(|(key, _)| key == "excludeFields")
+        .map(|(_, value)| value)
+    else {
+        return;
+    };
+    let names = spec
+        .split(',')
+        .filter(|name| !name.is_empty())
+        .collect::<HashSet<_>>();
+    if names.is_empty() {
+        return;
+    }
+    let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+        return;
+    };
+    let Some(body) = document
+        .get_mut("MediaContainer")
+        .and_then(Value::as_object_mut)
+    else {
+        return;
+    };
+    for name in &names {
+        body.remove(*name);
+    }
+    if let Some(rows) = body.get_mut("Metadata").and_then(Value::as_array_mut) {
+        for row in rows {
+            strip_excluded_fields(row, &names);
+        }
+    }
+    if let Some(hubs) = body.get_mut("Hub").and_then(Value::as_array_mut) {
+        for hub in hubs {
+            if let Some(rows) = hub.get_mut("Metadata").and_then(Value::as_array_mut) {
+                for row in rows {
+                    strip_excluded_fields(row, &names);
+                }
+            }
+        }
+    }
+    if let Ok(bytes) = serde_json::to_vec(&document) {
+        response.body = bytes;
+    }
 }
