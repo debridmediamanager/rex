@@ -1088,4 +1088,43 @@ impl SearchIndex {
     pub fn tag_matches(&self, name: &str, query: &str) -> bool {
         self.tags.matches(name, query)
     }
+
+    /// `persist.py` keeps `(spelling.metadata.rows, spelling.tags.rows)`: cycle 73
+    /// measured that a restart does not refresh the vocabulary (PMS rebuilds its
+    /// spellfix tables at database optimization only), so the rows are saved as they
+    /// stand rather than rebuilt from the restored catalog.
+    pub fn to_value(&self) -> serde_json::Value {
+        let rows = |vocabulary: &Vocabulary| {
+            serde_json::Value::Array(
+                vocabulary
+                    .rows
+                    .iter()
+                    .map(|w| serde_json::json!([w.rowid, w.word, w.rank, w.k1, w.k2]))
+                    .collect(),
+            )
+        };
+        serde_json::json!({"metadata": rows(&self.metadata), "tags": rows(&self.tags)})
+    }
+
+    /// The inverse of `to_value`; `None` for anything it did not write.
+    pub fn from_value(value: &serde_json::Value) -> Option<Self> {
+        let rows = |field: &str| -> Option<Vocabulary> {
+            let mut out = Vec::new();
+            for row in value.get(field)?.as_array()? {
+                let row = row.as_array()?;
+                out.push(Word {
+                    rowid: row.first()?.as_u64()? as usize,
+                    word: row.get(1)?.as_str()?.to_string(),
+                    rank: row.get(2)?.as_u64()? as usize,
+                    k1: row.get(3)?.as_str()?.to_string(),
+                    k2: row.get(4)?.as_str()?.to_string(),
+                });
+            }
+            Some(Vocabulary { rows: out })
+        };
+        Some(Self {
+            metadata: rows("metadata")?,
+            tags: rows("tags")?,
+        })
+    }
 }

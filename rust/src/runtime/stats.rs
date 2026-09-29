@@ -17,6 +17,9 @@ impl Runtime {
         }
         self.device_order.push(identifier.to_string());
         self.device_first_seen.insert(identifier.to_string(), now());
+        // The device table is persisted state (`persist.py` SESSION_FIELDS): cycle 74
+        // measured a first-seen device surviving a SIGKILL 0.16 s after the answer.
+        self.dirty = true;
         self.device_order.len() as i64
     }
 

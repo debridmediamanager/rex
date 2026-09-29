@@ -531,7 +531,11 @@ impl Runtime {
             activity_serial: 0,
         };
         runtime.load_state()?;
-        runtime.rebuild_spelling();
+        // A restored vocabulary is kept as it stood (cycle 73); only a fresh start, or
+        // a state file without one, builds it from the rows.
+        if runtime.spelling.is_none() {
+            runtime.rebuild_spelling();
+        }
         Ok(runtime)
     }
 
@@ -572,6 +576,25 @@ impl Runtime {
                 rebuilt = true;
             }
         }
+        // `persist.py` `_restore_all`: over the SAME catalog every row comes back as it
+        // was edited -- watch state, locks, tags, merges, deletes -- rather than being
+        // re-derived from a list of overlays. An overlay cannot carry what a write did to
+        // a row's derived fields: a collection member's tag `filter` and its `collection`
+        // lock were lost that way. Restored rows are not re-normalised (they would strip
+        // the fields a user wrote); a file from before rows were kept falls back to the
+        // overlays below.
+        let restored_rows = !rebuilt && state.get("items").is_some_and(Value::is_array);
+        if restored_rows {
+            self.catalog.items = state
+                .get("items")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            if let Some(sections) = state.get("sections").and_then(Value::as_array) {
+                self.catalog.sections = sections.clone();
+            }
+            self.catalog.rebuild_index();
+        }
         self.friendly = state
             .get("friendlyName")
             .and_then(Value::as_str)
@@ -582,7 +605,11 @@ impl Runtime {
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default();
-        if let Some(rows) = state.get("viewState").and_then(Value::as_object) {
+        if let Some(rows) = state
+            .get("viewState")
+            .and_then(Value::as_object)
+            .filter(|_| !restored_rows)
+        {
             for (key, patch) in rows {
                 if let Some(row) = self.catalog.get_mut(key) {
                     if let (Some(row), Some(patch)) = (row.as_object_mut(), patch.as_object()) {
@@ -614,19 +641,26 @@ impl Runtime {
         if !rebuilt {
             if let Some(sections) = state.get("addedSections").and_then(Value::as_array) {
                 self.added_sections = sections.clone();
-                self.catalog.sections.extend(sections.iter().cloned());
+                if !restored_rows {
+                    self.catalog.sections.extend(sections.iter().cloned());
+                }
             }
             if let Some(deleted) = state.get("deleted").and_then(Value::as_array) {
                 for value in deleted {
                     let key = string_value(value);
                     self.deleted.insert(key.clone());
-                    let _ = self.catalog.remove(&key);
+                    if !restored_rows {
+                        let _ = self.catalog.remove(&key);
+                    }
                 }
             }
             if let Some(edits) = state.get("edits").and_then(Value::as_object) {
                 for (key, value) in edits {
                     if let Some(fields) = value.as_object() {
                         self.edits.insert(key.clone(), fields.clone());
+                        if restored_rows {
+                            continue;
+                        }
                         if let Some(row) = self.catalog.get_mut(key).and_then(Value::as_object_mut)
                         {
                             for (field, field_value) in fields {
@@ -768,7 +802,7 @@ impl Runtime {
             // collection itself survives a restart while the item's metadata
             // silently loses its membership tag.
             for collection in self.collections.values() {
-                if collection.smart {
+                if collection.smart || restored_rows {
                     continue;
                 }
                 for key in &collection.items {
@@ -791,6 +825,61 @@ impl Runtime {
                     }
                 }
             }
+            // The tag TABLE outlives every row's tag, so a re-add after a restart keeps
+            // the spelling and id it had (`library` is pickled whole in `persist.py`).
+            if let Some(tags) = state.get("tagTable").and_then(Value::as_array) {
+                for entry in tags {
+                    if let (Some(field), Some(lowered), Some(value)) = (
+                        entry.get(0).and_then(Value::as_str),
+                        entry.get(1).and_then(Value::as_str),
+                        entry.get(2),
+                    ) {
+                        self.tag_table
+                            .insert((field.to_string(), lowered.to_string()), value.clone());
+                    }
+                }
+            }
+            if restored_rows {
+                self.spelling = state
+                    .get("spelling")
+                    .and_then(spellfix::SearchIndex::from_value);
+            }
+        }
+        // `persist.py` SESSION_FIELDS: the device table in first-seen order (the ids the
+        // Devices page, history rows and statistics name), and the play and bandwidth
+        // counters behind the Dashboard. Kept over a rebuilt catalog too: none of it is
+        // about the catalog's rows.
+        if let Some(order) = state.get("deviceOrder").and_then(Value::as_array) {
+            let order = order
+                .iter()
+                .filter_map(|value| value.as_str().map(str::to_string))
+                .collect::<Vec<_>>();
+            if !order.is_empty() {
+                self.device_order = order;
+            }
+        }
+        if let Some(seen) = state.get("deviceFirstSeen").and_then(Value::as_object) {
+            for (key, value) in seen {
+                if let Some(at) = value.as_i64() {
+                    self.device_first_seen.insert(key.clone(), at);
+                }
+            }
+        }
+        if let Some(plays) = state.get("plays").and_then(Value::as_array) {
+            self.plays = plays
+                .iter()
+                .filter_map(|play| {
+                    Some((
+                        play.get(0)?.as_i64()?,
+                        play.get(1)?.as_str()?.to_string(),
+                        play.get(2)?.as_i64()?,
+                        play.get(3)?.as_i64()?,
+                    ))
+                })
+                .collect();
+        }
+        if let Some(bytes) = state.get("bandwidthBytes").and_then(Value::as_u64) {
+            self.bandwidth_bytes = bytes;
         }
         Ok(())
     }
@@ -840,6 +929,14 @@ impl Runtime {
             "devices": self.devices.iter().map(|(key, value)| (key.clone(), json!({"name":value.name,"product":value.product,"platform":value.platform,"lastSeenAt":value.last_seen}))).collect::<Map<String, Value>>(),
             "playlists": self.playlists.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri})).collect::<Vec<_>>(),
             "collections": self.collections.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items,"smart":value.smart,"section":value.section,"subtype":value.subtype,"prefs":value.prefs,"uri":value.uri,"tag":value.tag,"extra":value.extra})).collect::<Vec<_>>(),
+            "items": self.catalog.items,
+            "sections": self.catalog.sections,
+            "tagTable": self.tag_table.iter().map(|((field, lowered), value)| json!([field, lowered, value])).collect::<Vec<_>>(),
+            "spelling": self.spelling.as_ref().map(spellfix::SearchIndex::to_value),
+            "deviceOrder": self.device_order,
+            "deviceFirstSeen": self.device_first_seen,
+            "plays": self.plays.iter().map(|(at, kind, seconds, device)| json!([at, kind, seconds, device])).collect::<Vec<_>>(),
+            "bandwidthBytes": self.bandwidth_bytes,
         });
         let text = serde_json::to_vec_pretty(&state).map_err(|e| e.to_string())?;
         let tmp = path.with_extension("tmp");
