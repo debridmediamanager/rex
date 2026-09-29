@@ -17899,13 +17899,14 @@ fn handle_connection<S: Read + Write>(
         }
         wire::exclude_container(&mut response, &query, &request_path);
         page_container(&mut response, &query, &request_path);
-        if response.content_type.starts_with("application/json") {
-            // The post-passes re-serialise; keep the upper-case control escapes.
-            response.body = upper_json_escapes(std::mem::take(&mut response.body));
-        }
         add_paging_headers(&mut response, &query);
         response = xml_or_json(response, request.headers.get("accept").map(String::as_str));
         order_json_body(&mut response, &request_path);
+        if response.content_type.starts_with("application/json") {
+            // The post-passes re-serialise; keep the upper-case control escapes
+            // (cycle 32) on the bytes that go out.
+            response.body = upper_json_escapes(std::mem::take(&mut response.body));
+        }
         let envelope = wire::Wire::of(&request, &request_path, &query);
         let still_open = wire::write_enveloped(&mut stream, &response, &envelope, keep)?;
         served_any = true;
