@@ -9924,12 +9924,6 @@ impl Runtime {
                 request.method == "HEAD",
             );
         }
-        if segments.starts_with(&["hubs", "sections"])
-            && segments.get(3) == Some(&"manage")
-            && request.method == "GET"
-        {
-            return Response::error(400, "plexsim: bad request");
-        }
         if path == "/neighborhood/devices" && matches!(request.method.as_str(), "GET" | "HEAD") {
             return Response::json(200, self.container(Map::new(), false));
         }
@@ -11309,6 +11303,27 @@ impl Runtime {
             };
             if request.method != "GET" && request.method != "HEAD" {
                 return Response::error(404, "plexsim: not found");
+            }
+            if let Some(raw_item) = query.get("metadataItemId") {
+                // Measured on both servers: naming an item -- even with an empty id --
+                // is a 400 on a read.  Cycle 55 refined it on zen and kids: the id is a
+                // signed 32-bit integer and there are THREE answers.  `-1` (and `-01`)
+                // is the bare hub list, a number naming NO item (`0`, `-2`, `999999`)
+                // is an EMPTY 200, and an item the server holds -- in any library --
+                // is the 400, as are an empty value, a word, `1.5`, ` 1` and
+                // `2147483648`.
+                let Some(item) = int_param_32(raw_item) else {
+                    return Response::error(400, "plexsim: bad request");
+                };
+                if item != -1 {
+                    if self.catalog.get(&item.to_string()).is_some() {
+                        return Response::error(400, "plexsim: bad request");
+                    }
+                    return Response::json(
+                        200,
+                        self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
+                    );
+                }
             }
             let rows = if section.get("type").and_then(Value::as_str) == Some("show") {
                 vec![
@@ -20429,4 +20444,16 @@ fn accept_wants_xml(header: &str) -> bool {
         }
     }
     best.map(|(_, _, is_xml)| is_xml).unwrap_or(true)
+}
+
+/// Cycle 54: an integer query parameter as a real PMS parses it -- an optional sign
+/// and digits, nothing else (no space, no `0x`, no fraction), inside the signed 32-bit
+/// range.  Measured on kids and zen over fifteen values.
+fn int_param_32(text: &str) -> Option<i64> {
+    let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let value: i64 = text.trim_start_matches('+').parse().ok()?;
+    (-(1i64 << 31)..(1i64 << 31)).contains(&value).then_some(value)
 }
