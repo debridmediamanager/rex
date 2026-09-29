@@ -242,13 +242,21 @@ fn strip_leading(text: &str) -> String {
 pub fn sort_title(title: &str) -> String {
     let folded = fold_title(title);
     let trimmed = strip_leading(&folded);
-    let lower = trimmed.to_ascii_lowercase();
-    for article in ["the ", "a ", "an "] {
+    // A title made of nothing but strippable characters keeps its own text: measured,
+    // a title of apostrophes or of opening brackets carries no titleSort at all.
+    let base = if trimmed.is_empty() { folded } else { trimmed };
+    // `(?i)^(the|a|an)\s+`: the article and every whitespace character after it.
+    let lower = base.to_ascii_lowercase();
+    for article in ["the", "an", "a"] {
         if lower.starts_with(article) {
-            return trimmed[article.len()..].to_string();
+            let rest = &base[article.len()..];
+            let after = rest.trim_start_matches(char::is_whitespace);
+            if after.len() < rest.len() {
+                return after.to_string();
+            }
         }
     }
-    trimmed
+    base
 }
 fn generated_title(title: &str) -> bool {
     title == "Specials"
