@@ -11122,6 +11122,9 @@ impl Runtime {
                         ),
                     );
                 }
+                if segments.len() >= 4 && segments[3] == "extras" {
+                    return self.section_extras(section_key, &segments[4..], query);
+                }
                 if segments.len() == 4 && segments[3] == "arts" {
                     if request.method != "GET" && request.method != "HEAD" {
                         return Response::error(404, "plexsim: not found");

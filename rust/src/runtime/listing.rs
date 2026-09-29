@@ -259,3 +259,138 @@ impl Runtime {
         Response::json(200, self.container(Map::from_iter([("Metadata".to_string(), Value::Array(rows))]), true))
     }
 }
+
+impl Runtime {
+    /// `/library/sections/{id}/extras` and its one view, `/extras/all` (cycles 15, 29,
+    /// 45): the leaf runs the LISTING query and refuses what a listing refuses, plus
+    /// the four media keys, while `extraType=` is a real column here.
+    pub(super) fn section_extras(
+        &self,
+        section_key: &str,
+        rest: &[&str],
+        query: &HashMap<String, String>,
+    ) -> Response {
+        let Some(section) = self.section(section_key) else {
+            return Response::error(404, "plexsim: not found");
+        };
+        if !(rest.is_empty() || rest == ["all"]) {
+            return Response::error(404, "plexsim: not found");
+        }
+        if rest == ["all"] {
+            if let Some(status) = listing_refusals(query, &["extraType"]) {
+                return Response::error(status, "plexsim: refused");
+            }
+            if query.get("limit").is_some_and(|raw| {
+                let digits = raw.trim_start_matches('-');
+                digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit())
+            }) {
+                return Response::error(500, "plexsim: server error");
+            }
+            if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
+                if self.sort_rows(Vec::new(), Some(sort)).is_err() {
+                    return Response::error(500, "plexsim: unsupported sort key");
+                }
+            }
+            if let Err(status) = parsed_type(query, 500, None) {
+                return Response::error(status, "plexsim: bad type");
+            }
+            if query.contains_key("group") {
+                return Response::error(500, "plexsim: server error");
+            }
+            if query.get("parent").is_some_and(|raw| {
+                let digits = raw.trim_start_matches('-');
+                digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit())
+            }) {
+                return Response::error(500, "plexsim: server error");
+            }
+            if query
+                .keys()
+                .any(|key| matches!(bare_key(key).trim(), "duration" | "resolution" | "mediaSize" | "file"))
+            {
+                return Response::error(500, "plexsim: server error");
+            }
+            if query.get("index").is_some_and(|raw| !int_param(raw, None)) {
+                return Response::error(500, "plexsim: bad index");
+            }
+            if query.get("sourceType").is_some_and(|raw| !int_param(raw, Some(32))) {
+                return Response::error(500, "plexsim: bad sourceType");
+            }
+        }
+        let is_show = section.get("type").and_then(Value::as_str) == Some("show");
+        let title = section.get("title").and_then(Value::as_str).unwrap_or("").to_string();
+        let mut fields = Map::new();
+        fields.insert("size".to_string(), json!(0));
+        fields.insert(
+            "art".to_string(),
+            json!(if is_show { "/:/resources/show-fanart.jpg" } else { "/:/resources/movie-fanart.jpg" }),
+        );
+        fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+        fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
+        fields.insert(
+            "thumb".to_string(),
+            json!(if is_show { "/:/resources/show.png" } else { "/:/resources/movie.png" }),
+        );
+        fields.insert("title1".to_string(), json!(title));
+        if is_show {
+            fields.insert("nocache".to_string(), json!(true));
+        }
+        if rest.is_empty() {
+            fields.insert("size".to_string(), json!(1));
+            fields.insert("Directory".to_string(), json!([{"key": "all", "title": format!("All {title}")}]));
+            return Response::json(200, Value::Object(Map::from_iter([("MediaContainer".to_string(), Value::Object(fields))])));
+        }
+        // The library's clips: every clip owned by a parent in this section.
+        let mut rows = self
+            .catalog
+            .items
+            .iter()
+            .filter(|row| {
+                row.get("type").and_then(Value::as_str) == Some("clip")
+                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        if let Ok(Some(number)) = parsed_type(query, 500, None) {
+            if number != 12 {
+                rows.clear();
+            }
+        }
+        if let Some(wanted) = query.get("extraType") {
+            rows.retain(|row| row.get("extraType").map(string_value).as_deref() == Some(wanted.as_str()));
+        }
+        let pairs = query
+            .iter()
+            .filter(|(key, _)| key.as_str() != "extraType")
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect::<Vec<_>>();
+        let rows = match self.filter_rows(rows, &pairs, if is_show { "show" } else { "movie" }) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad request"),
+        };
+        let rows = match self.sort_rows(rows, Some(query.get("sort").map(String::as_str).filter(|s| !s.is_empty()).unwrap_or("index"))) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: unsupported sort key"),
+        };
+        let rows = match limited(rows, query) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad limit"),
+        };
+        let (page, paged, start, total) = match page_window(rows, query) {
+            Ok(window) => window,
+            Err(status) => return Response::error(status, "plexsim: bad container parameter"),
+        };
+        fields.insert("size".to_string(), json!(page.len()));
+        if paged {
+            fields.insert("totalSize".to_string(), json!(total));
+            fields.insert("offset".to_string(), json!(start));
+        }
+        if !page.is_empty() {
+            fields.insert(
+                "Metadata".to_string(),
+                Value::Array(page.iter().map(|row| self.grid_row(row, false, false, false)).collect()),
+            );
+        }
+        Response::json(200, Value::Object(Map::from_iter([("MediaContainer".to_string(), Value::Object(fields))])))
+    }
+}
