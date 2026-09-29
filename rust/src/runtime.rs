@@ -15145,6 +15145,7 @@ impl Runtime {
         ];
         let old_art = row.get("art").cloned();
         let old_thumb = row.get("thumb").cloned();
+        let old_title = row.get("title").map(string_value).unwrap_or_default();
         let section_write = metadata_state == "queued";
         let title_sort_lock_request = query.get("titleSort.locked").map(String::as_str);
         let mut locks = Vec::new();
@@ -15325,6 +15326,27 @@ impl Runtime {
                 });
             }
             let title_changed = query.contains_key("title") || query.contains_key("title.value");
+            let generated_season = old_title == "Specials"
+                || old_title == "[Unknown Season]"
+                || old_title
+                    .strip_prefix("Season ")
+                    .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
+            if changed.contains_key("index")
+                && !title_changed
+                && object.get("type").and_then(Value::as_str) == Some("season")
+                && generated_season
+            {
+                // Cycle 55, measured on plexscratch42: a season's title is GENERATED
+                // unless the user wrote one, so it follows an index edit --
+                // `index.value=0` is `Specials` and putting the index back is `Season N`.
+                let title = match object.get("index") {
+                    Some(index) if string_value(index) == "0" => "Specials".to_string(),
+                    Some(index) if !index.is_null() => format!("Season {}", string_value(index)),
+                    _ => "[Unknown Season]".to_string(),
+                };
+                object.insert("title".to_string(), json!(title));
+                changed.insert("title".to_string(), json!(title));
+            }
             if title_changed && title_sort_lock_request != Some("1") {
                 let title = object
                     .get("title")
