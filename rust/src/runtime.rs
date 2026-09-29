@@ -6650,6 +6650,13 @@ impl Runtime {
             }
         }
 
+        // Measured on both servers: an empty or non-numeric `accountID`/`deviceID` is a
+        // 400 (a negative one and `+1` parse), and so is any `lan` but 0 or 1.
+        for name in ["accountID", "deviceID"] {
+            if query.get(name).is_some_and(|value| !int_param(value, None)) {
+                return Response::error(400, "plexsim: bad request");
+            }
+        }
         if let Some(value) = query.get("lan") {
             if !matches!(value.as_str(), "0" | "1") {
                 return Response::error(400, "plexsim: bad request");
@@ -6797,6 +6804,13 @@ impl Runtime {
     }
 
     fn route_media_statistics(&self, query: &HashMap<String, String>) -> Response {
+        // Measured on both servers: an empty or non-numeric `accountID`/`deviceID` is a
+        // 400, as on `/statistics/bandwidth`.
+        for name in ["accountID", "deviceID"] {
+            if query.get(name).is_some_and(|value| !int_param(value, None)) {
+                return Response::error(400, "plexsim: bad request");
+            }
+        }
         let spans = if let Some(value) = query.get("timespan") {
             let timespan = value.parse::<i64>().unwrap_or_default();
             if matches!(timespan, 0 | 1 | 2 | 3 | 4) {
