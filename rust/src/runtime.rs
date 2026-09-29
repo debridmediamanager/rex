@@ -12175,8 +12175,10 @@ impl Runtime {
                         ];
                         return response;
                     };
+                    // An UPLOADED poster (`upload://...`) is served from the upload store.
+                    let uploaded = self.uploads.get(&art).cloned();
                     let url = transcoder::tmdb_at_width(&art, query.get("width").map(String::as_str));
-                    let Some((bytes, kind)) = transcoder::fetch_remote_image(&url) else {
+                    let Some((bytes, kind)) = uploaded.or_else(|| transcoder::fetch_remote_image(&url)) else {
                         return Response::error(404, "plexsim: artwork unavailable");
                     };
                     let mut response = Response::bytes(200, kind);
