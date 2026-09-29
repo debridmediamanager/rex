@@ -7064,10 +7064,12 @@ impl Runtime {
             }
         }
         let current = now();
+        // `resource_statistics` answers `bare_container(size=len(series), ...)`: the
+        // series carries its own `size`, which a client's poll reads before the rows.
         Response::json(
             200,
             self.container(
-                Map::from_iter([(
+                Map::from_iter([("size".to_string(), json!(1)), (
                     "StatisticsResources".to_string(),
                     json!([{
                         "timespan": 6,
