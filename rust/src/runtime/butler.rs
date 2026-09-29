@@ -450,7 +450,19 @@ impl Runtime {
                     .and_then(|show| show.get("title"))
                     .map(string_value)
                     .unwrap_or_default();
-                let index = number(row.get(if kind == "season" { "index" } else { "parentIndex" }));
+                // An episode's `parentIndex` is read off its season at read time,
+                // so a stored row may not carry it: fall back to the season's index.
+                let own_parent_index = row.get(if kind == "season" { "index" } else { "parentIndex" });
+                let index = if own_parent_index.is_none() && kind == "episode" {
+                    number(
+                        row.get("parentRatingKey")
+                            .map(string_value)
+                            .and_then(|parent| self.catalog.get(&parent))
+                            .and_then(|season| season.get("index")),
+                    )
+                } else {
+                    number(own_parent_index)
+                };
                 let mut text = format!("{show_title} S{index:02}");
                 if kind == "episode" {
                     text.push_str(&format!(" E{:02}", number(row.get("index"))));
@@ -472,16 +484,8 @@ impl Runtime {
             vec![row.clone()]
         };
         for leaf in &leaves {
-            let leaf_key = key_of(leaf).unwrap_or_default();
             for media_state in [Some("analyzing"), Some("thumbnailing"), None] {
-                self.push_timeline(&leaf_key, 5, None);
-                if let Some(media_state) = media_state {
-                    if let Some((_, value)) = self.events.last_mut() {
-                        if let Some(entry) = value.get_mut("TimelineEntry").and_then(Value::as_object_mut) {
-                            entry.insert("mediaState".to_string(), json!(media_state));
-                        }
-                    }
-                }
+                self.push_timeline_row(leaf, 5, None, media_state);
             }
         }
         let mut activity = new_activity("media.generate.chapter.thumbs", "Generating video chapter thumbnails", false);
