@@ -7625,6 +7625,11 @@ impl Runtime {
                 protocol,
                 true,
             );
+            if answer.outcome == decision::Outcome::Refuse {
+                // Xbox 360's one video target is an asf with no protocol, and both
+                // references answer a 400 for every row it cannot direct play.
+                return Response::error(400, "plexsim: bad request");
+            }
             if answer.outcome != decision::Outcome::DirectPlay {
                 refusal = answer.text;
             }
