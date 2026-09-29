@@ -17947,8 +17947,8 @@ impl Runtime {
         if status == 416 {
             return Response {
                 status,
-                content_type: "text/plain".to_string(),
-                body: vec![b'\n'; 129],
+                content_type: "text/html".to_string(),
+                body: error_document(416),
                 headers: vec![
                     ("X-Plex-Protocol".to_string(), "1.0".to_string()),
                     ("Cache-Control".to_string(), "no-cache".to_string()),
@@ -18227,10 +18227,11 @@ impl Response {
         }
     }
     fn photo_error(status: u16, message: &str) -> Self {
+        let _ = message;
         Self {
             status,
-            content_type: "text/plain".to_string(),
-            body: message.as_bytes().to_vec(),
+            content_type: "text/html".to_string(),
+            body: error_document(status),
             headers: vec![
                 ("X-Plex-Protocol".to_string(), "1.0".to_string()),
                 ("Cache-Control".to_string(), "no-cache".to_string()),
@@ -18252,10 +18253,14 @@ impl Response {
         }
     }
     fn error(status: u16, message: &str) -> Self {
+        // Cycle 36, measured on kids and zen: every refusal on the surface answers the
+        // reference's own `text/html` document (85 bytes for a 404, 89 for a 400), never
+        // a plexsim sentence. The sentence is kept for the log only.
+        let _ = message;
         Self {
             status,
-            content_type: "text/plain".to_string(),
-            body: message.as_bytes().to_vec(),
+            content_type: "text/html".to_string(),
+            body: error_document(status),
             headers: Vec::new(),
             close: false,
         }
@@ -18286,6 +18291,29 @@ impl Response {
             .push(("Cache-Control".to_string(), "no-cache".to_string()));
         response
     }
+}
+
+/// The reference's refusal document, Python's `http.HTTPStatus(status).phrase` spelling.
+fn error_document(status: u16) -> Vec<u8> {
+    let reason = match status {
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        406 => "Not Acceptable",
+        409 => "Conflict",
+        412 => "Precondition Failed",
+        413 => "Request Entity Too Large",
+        416 => "Requested Range Not Satisfiable",
+        422 => "Unprocessable Entity",
+        500 => "Internal Server Error",
+        501 => "Not Implemented",
+        503 => "Service Unavailable",
+        _ => "",
+    };
+    format!("<html><head><title>{reason}</title></head><body><h1>{status} {reason}</h1></body></html>")
+        .into_bytes()
 }
 
 fn drop_empty_value(value: &Value) -> Value {
