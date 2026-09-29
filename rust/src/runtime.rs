@@ -4429,6 +4429,7 @@ impl Runtime {
         self.mark_device(&request.headers);
         let mut response = self.request_route(request);
         exclude_fields_response(request, &mut response);
+        exclude_elements_response(request, &mut response);
         let (raw_path, _) = split_target(&request.target);
         if let Some(cookie) = Self::framework_cookie(&request.method, &raw_path) {
             // Cycle 33/52: the plug-in framework's session cookie rides every response it
@@ -19516,6 +19517,97 @@ fn accept_wants_xml(header: &str) -> bool {
     best.map(|(_, _, is_xml)| is_xml).unwrap_or(true)
 }
 
+
+/// `excludeElements=` applied to a whole response's rows (cycle 15: it is a property
+/// of the RESPONSE, and every container that carries rows honours it -- the container's
+/// own `Metadata` and each `Hub`'s). Only the measured element set is removable
+/// (cycle 22); dropping `Media` substitutes `mediaCount` and `mediaCountOptimized` 0,
+/// and `Part` drops each Media's Parts for a `partCount` (cycle 70). A DECISION keeps
+/// everything (cycle 26).
+fn exclude_elements_response(request: &Request, response: &mut Response) {
+    if !matches!(request.method.as_str(), "GET" | "HEAD")
+        || response.content_type != "application/json"
+    {
+        return;
+    }
+    let (path, raw_query) = split_target(&request.target);
+    if path.starts_with("/video/:/transcode/universal/decision") {
+        return;
+    }
+    const EXCLUDABLE: &[&str] = &[
+        "Media", "Part", "Genre", "Country", "Guid", "Rating", "Director", "Writer", "Role",
+        "Producer", "CommonSenseMedia",
+    ];
+    let Some(spec) = parse_query(&raw_query)
+        .into_iter()
+        .rev()
+        .find(|(key, _)| key == "excludeElements")
+        .map(|(_, value)| value)
+    else {
+        return;
+    };
+    let excluded = spec
+        .split(',')
+        .filter(|name| EXCLUDABLE.contains(name))
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if excluded.is_empty() {
+        return;
+    }
+    let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+        return;
+    };
+    fn trim(rows: &mut Vec<Value>, excluded: &[String]) {
+        for row in rows.iter_mut() {
+            let Some(object) = row.as_object_mut() else { continue };
+            let count = object.get("Media").and_then(Value::as_array).map(Vec::len);
+            for name in excluded {
+                object.remove(name);
+            }
+            if excluded.iter().any(|name| name == "Media") {
+                let count = count
+                    .map(|count| json!(count))
+                    .or_else(|| object.get("mediaCount").cloned())
+                    .unwrap_or_else(|| json!(0));
+                object.insert("mediaCount".to_string(), count);
+                object.insert("mediaCountOptimized".to_string(), json!(0));
+            } else if excluded.iter().any(|name| name == "Part") {
+                // `remove` above took `Part` off the row itself; the Parts live under Media.
+            }
+            if !excluded.iter().any(|name| name == "Media") && excluded.iter().any(|name| name == "Part") {
+                if let Some(media_rows) = object.get_mut("Media").and_then(Value::as_array_mut) {
+                    for media in media_rows.iter_mut() {
+                        if let Some(media) = media.as_object_mut() {
+                            if let Some(parts) = media.remove("Part") {
+                                let count = parts.as_array().map_or(0, Vec::len);
+                                media.insert("partCount".to_string(), json!(count));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn walk(body: &mut Map<String, Value>, excluded: &[String]) {
+        if let Some(rows) = body.get_mut("Metadata").and_then(Value::as_array_mut) {
+            trim(rows, excluded);
+        }
+        if let Some(hubs) = body.get_mut("Hub").and_then(Value::as_array_mut) {
+            for hub in hubs.iter_mut() {
+                if let Some(hub) = hub.as_object_mut() {
+                    walk(hub, excluded);
+                }
+            }
+        }
+    }
+    let Some(body) = document.get_mut("MediaContainer").and_then(Value::as_object_mut) else {
+        return;
+    };
+    walk(body, &excluded);
+    if let Ok(bytes) = serde_json::to_vec(&document) {
+        response.body = bytes;
+    }
+}
 
 /// `excludeFields=` applied to a whole response, as a real PMS applies it.
 ///
