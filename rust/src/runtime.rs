@@ -14191,11 +14191,58 @@ impl Runtime {
             .ok()
             .flatten()
             .is_some();
+        // Measured on both servers: the DEFAULT order of a listing is `titleSort`
+        // ascending, not the catalog's order -- except (cycle 16) a show library's
+        // `type=3` and `type=4` grids, which default to the SHOW's order: the show's
+        // title, then `parentIndex`, then `index`.
+        let show_order = section_type == "show"
+            && matches!(query.get("type").map(String::as_str), Some("3" | "4"));
+        let rows = if show_order && query.get("sort").is_none_or(|sort| sort.is_empty()) && !by_id {
+            let mut rows = rows;
+            let show_title = |row: &Value| {
+                let key = row
+                    .get("grandparentRatingKey")
+                    .or_else(|| row.get("parentRatingKey"))
+                    .map(string_value)
+                    .unwrap_or_default();
+                let key = if row.get("type").and_then(Value::as_str) == Some("season") {
+                    row.get("parentRatingKey").map(string_value).unwrap_or(key)
+                } else {
+                    key
+                };
+                self.catalog
+                    .get(&key)
+                    .and_then(|show| show.get("title"))
+                    .map(string_value)
+                    .unwrap_or_default()
+            };
+            let number = |row: &Value, name: &str| {
+                row.get(name).map(string_value).and_then(|v| v.parse::<i64>().ok()).unwrap_or(0)
+            };
+            let parent_index = |row: &Value| {
+                if row.get("type").and_then(Value::as_str) == Some("episode") {
+                    row.get("parentRatingKey")
+                        .map(string_value)
+                        .and_then(|key| self.catalog.get(&key))
+                        .map(|season| number(season, "index"))
+                        .unwrap_or_else(|| number(row, "parentIndex"))
+                } else {
+                    number(row, "parentIndex")
+                }
+            };
+            rows.sort_by(|a, b| {
+                (show_title(a), parent_index(a), number(a, "index"))
+                    .cmp(&(show_title(b), parent_index(b), number(b, "index")))
+            });
+            rows
+        } else {
+            rows
+        };
         let sort = query
             .get("sort")
             .filter(|sort| !sort.is_empty())
             .map(String::as_str)
-            .or(if by_id { Some("id") } else { None });
+            .or(if by_id { Some("id") } else if show_order { None } else { Some("titleSort") });
         let rows = match self.sort_rows(rows, sort) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
