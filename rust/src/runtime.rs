@@ -5237,7 +5237,8 @@ impl Runtime {
                     } else {
                         302
                     },
-                    content_type: "text/html".to_string(),
+                    // Cycle 16: the redirect carries no Content-Type at all.
+                    content_type: String::new(),
                     body: Vec::new(),
                     headers: vec![
                         (
