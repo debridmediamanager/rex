@@ -8314,6 +8314,11 @@ impl Runtime {
         if !["playing", "paused", "buffering", "stopped"].contains(&state.as_str()) {
             return Response::error(400, "plexsim: bad request");
         }
+        // Cycle 45: `playbackTime=` is a VALIDATED signed 32-bit integer; anything else
+        // is a 400 on both copies.
+        if query.get("playbackTime").is_some_and(|value| !int_param(value, Some(32))) {
+            return Response::error(400, "plexsim: bad request");
+        }
         let time = match query.get("time") {
             Some(value) => match value.parse::<i64>() {
                 Ok(parsed) => parsed,
