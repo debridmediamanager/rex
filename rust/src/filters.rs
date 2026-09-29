@@ -1028,6 +1028,25 @@ pub fn evaluate_with(
         vec![row.clone()]
     };
     for candidate in candidates {
+        if field == "title" && operator == "=" {
+            // Cycle 18, measured on zen: the bare `title=` matcher -- and ONLY it --
+            // also reads the row's ORIGINAL title, and (cycle 32) its folded pass
+            // reads the stored SORT title; both travel with the value in Python.
+            if let Some(object) = candidate.as_object() {
+                let text = value_of(field, &candidate);
+                let text = str_actual(&text).unwrap_or_default();
+                let sort = crate::hierarchy::stored_sort_title(object);
+                let original = object
+                    .get("originalTitle")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                if title_match(&wanted, &text, Some(&sort), Some(&original)) {
+                    return Ok(true);
+                }
+                continue;
+            }
+        }
         if compare(kind, operator, &value_of(field, &candidate), &wanted, field)? {
             return Ok(true);
         }
