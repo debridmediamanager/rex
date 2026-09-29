@@ -159,13 +159,15 @@ fn escape(text: &str) -> String {
     out.push('"');
     out
 }
-fn child_rank(key: &str, row: &Map<String, Value>) -> usize {
-    let list = if row.get("_light").is_some() {
-        LIGHT_CHILD_ORDER
-    } else if row.get("_element").and_then(Value::as_str) == Some("Type") || key == "Type" {
+fn child_rank(name: &str, key: &str, row: &Map<String, Value>) -> usize {
+    // xmlout.py `_split`: the ELEMENT decides the table -- a `Type` row orders
+    // its children Filter, Sort, Field and a `Meta` its own -- then a light row.
+    let list = if name == "Type" || row.get("_element").and_then(Value::as_str) == Some("Type") {
         TYPE_CHILD_ORDER
-    } else if key == "Meta" {
+    } else if name == "Meta" {
         META_CHILD_ORDER
+    } else if row.get("_light").is_some() {
+        LIGHT_CHILD_ORDER
     } else {
         CHILD_ORDER
     };
@@ -725,7 +727,8 @@ fn split(name: &str, row: &Map<String, Value>, container: bool) -> (Vec<String>,
         } else {
             attrs.sort_by_key(|k| attr_order(name, row, k));
         }
-        children.sort_by_key(|k| (child_rank(k, row), k.clone()));
+        // A STABLE sort, as Python's: unknown children keep their order.
+        children.sort_by_key(|k| child_rank(name, k, row));
     }
     (attrs, children)
 }
