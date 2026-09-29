@@ -7634,11 +7634,16 @@ impl Runtime {
     }
 
     /// Where a LIST row's per-user state lives: a collection keeps it on its own
-    /// stored row (`extra`, which its projection splices back in), a playlist in
-    /// `list_state`.
+    /// stored row (`extra`, which its projection splices back in), a playlist in its
+    /// `edits` columns -- where it is born `viewCount: 1` and where `playlist_row`
+    /// reads the block back. Writing a playlist's into `list_state` left a rating
+    /// that never showed and a count that never moved past the one it was born with.
     fn list_state_mut(&mut self, key: &str) -> &mut Map<String, Value> {
         if self.collections.contains_key(key) {
             return &mut self.collections.get_mut(key).expect("checked").extra;
+        }
+        if self.playlists.contains_key(key) {
+            return self.edits.entry(key.to_string()).or_default();
         }
         self.list_state.entry(key.to_string()).or_default()
     }
@@ -7820,6 +7825,9 @@ impl Runtime {
         if let Some(collection) = self.collections.get(key) {
             return collection.extra.get(name).cloned();
         }
+        if self.playlists.contains_key(key) {
+            return self.edits.get(key).and_then(|state| state.get(name)).cloned();
+        }
         self.list_state.get(key).and_then(|state| state.get(name)).cloned()
     }
 
@@ -7934,7 +7942,9 @@ impl Runtime {
             }
             let state = self.list_state_mut(&key);
             if watched {
-                let count = state.get("viewCount").and_then(Value::as_i64).unwrap_or(1);
+                // `library.scrobble`: `viewCount + 1` from nothing once an unscrobble
+                // has cleared the 1 a playlist is born with.
+                let count = state.get("viewCount").and_then(Value::as_i64).unwrap_or(0);
                 state.insert("viewCount".to_string(), json!(count + 1));
                 state.insert("lastViewedAt".to_string(), json!(now()));
                 state.shift_remove("viewOffset");
