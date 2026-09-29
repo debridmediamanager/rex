@@ -333,6 +333,12 @@ pub struct Runtime {
     /// can take a snapshot without a mutable callback into the route thread.
     /// This is bounded in `push_event`; it is runtime state, never persisted.
     events: Vec<(String, Value)>,
+    /// How many events `push_event` has dropped off the front of `events`. A
+    /// subscriber's cursor is an absolute sequence number, so it stays valid after
+    /// the bounded buffer starts shedding -- an index into `events` alone froze at
+    /// the cap and every channel opened after the 512th event received nothing.
+    events_dropped: usize,
+    activity_serial: u64,
 }
 
 impl Runtime {
@@ -416,6 +422,8 @@ impl Runtime {
             bandwidth_bytes: 0,
             dirty: false,
             events: Vec::new(),
+            events_dropped: 0,
+            activity_serial: 0,
         };
         runtime.load_state()?;
         Ok(runtime)
@@ -1537,6 +1545,27 @@ impl Runtime {
         row
     }
 
+    /// The container a per-item sub-resource uses -- posters, arts, matches, tree,
+    /// similar, extras: identifier plus the media-tag pair and nothing else.
+    fn tag_container(&self, fields: Map<String, Value>) -> Value {
+        let mut body = Map::from_iter([
+            ("size".to_string(), json!(0)),
+            ("identifier".to_string(), json!("com.plexapp.plugins.library")),
+            ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
+            ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
+        ]);
+        let explicit_size = fields.contains_key("size");
+        for (key, value) in fields {
+            body.insert(key, value);
+        }
+        if !explicit_size {
+            if let Some(array) = body.get("Metadata").and_then(Value::as_array) {
+                body.insert("size".to_string(), json!(array.len()));
+            }
+        }
+        json!({"MediaContainer": body})
+    }
+
     fn container(&self, fields: Map<String, Value>, library: bool) -> Value {
         let mut body = Map::new();
         let explicit_size = fields.contains_key("size");
@@ -2596,48 +2625,521 @@ impl Runtime {
         }
     }
 
+    /// The absolute sequence number the next pushed event will carry.
+    fn event_cursor(&self) -> usize {
+        self.events_dropped + self.events.len()
+    }
+
+    /// Every retained event at or after `cursor`, and the cursor after them.
+    fn events_since(&self, cursor: usize) -> (Vec<(String, Value)>, usize) {
+        let skip = cursor.saturating_sub(self.events_dropped);
+        (
+            self.events.iter().skip(skip).cloned().collect(),
+            self.event_cursor(),
+        )
+    }
+
+    /// A fresh activity uuid; the reference mints a random v4 per activity.
+    fn activity_uuid(&mut self) -> String {
+        self.activity_serial += 1;
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let hex = bytes_digest(format!("{nanos}/{}", self.activity_serial).as_bytes());
+        format!(
+            "{}-{}-4{}-a{}-{}",
+            &hex[0..8],
+            &hex[8..12],
+            &hex[13..16],
+            &hex[17..20],
+            &hex[20..32]
+        )
+    }
+
+    fn push_activity(&mut self, activity: &Value, event: &str) {
+        let uuid = activity.get("uuid").cloned().unwrap_or(Value::Null);
+        self.push_event(
+            "activity",
+            json!({"ActivityNotification": [{"event": event, "uuid": uuid, "Activity": activity}]}),
+        );
+    }
+
+    /// One activity from `started` to `ended`, with the measured `updated` steps --
+    /// (progress, subtitle) pairs -- between; the end keeps the last subtitle.
+    fn push_activity_run(&mut self, kind: &str, title: &str, steps: &[(i64, &str)]) {
+        let uuid = self.activity_uuid();
+        let mut activity = json!({"uuid": uuid, "type": kind, "cancellable": false,
+            "userID": 1, "title": title, "subtitle": "", "progress": 0});
+        self.push_activity(&activity, "started");
+        for (progress, subtitle) in steps {
+            activity["progress"] = json!(progress);
+            activity["subtitle"] = json!(subtitle);
+            self.push_activity(&activity, "updated");
+        }
+        activity["progress"] = json!(100);
+        self.push_activity(&activity, "ended");
+    }
+
     fn push_event(&mut self, kind: &str, value: Value) {
         self.events.push((kind.to_string(), value));
         if self.events.len() > 512 {
             let excess = self.events.len() - 512;
             self.events.drain(0..excess);
+            self.events_dropped += excess;
         }
     }
 
     fn push_timeline(&mut self, key: &str, state: i64, metadata_state: Option<&str>) {
-        let section = self
-            .catalog
-            .get(key)
-            .and_then(|row| row.get("librarySectionID"))
-            .map(string_value)
-            .unwrap_or_default();
-        let title = self
-            .catalog
-            .get(key)
-            .map(|row| {
-                let base = row.get("title").and_then(Value::as_str).unwrap_or_default();
-                if row.get("type").and_then(Value::as_str) == Some("movie") {
-                    if let Some(year) = row.get("year").and_then(Value::as_i64) {
-                        return format!("{base} ({year})");
-                    }
-                }
-                base.to_string()
-            })
-            .unwrap_or_default();
-        let mut entry = json!({
-            "sectionID": section,
-            "itemID": key,
-            "type": 1,
-            "state": state,
-            "title": title,
-            "updatedAt": now(),
-        });
-        if let Some(metadata_state) = metadata_state {
-            if let Some(object) = entry.as_object_mut() {
-                object.insert("metadataState".to_string(), json!(metadata_state));
+        let Some(row) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        self.notify_timeline(&row, state, metadata_state);
+    }
+
+    // The timeline's state alphabet, read off the reference and pinned against the
+    // client's own reducer: 0 created, 3 queued/processing/loading an edit, 4 loading,
+    // 5 DONE (and it carries NO metadataState), 9 deleted. `5` is what makes the
+    // client refetch the row.
+
+    /// Plex's numeric type code as a TimelineEntry carries it. A playlist is 15 and a
+    /// collection 18 on the wire, and the client builds the URL of the row it
+    /// updates from this number.
+    fn timeline_type(kind: &str) -> i64 {
+        match kind {
+            "movie" => 1,
+            "show" => 2,
+            "season" => 3,
+            "episode" => 4,
+            "playlist" => 15,
+            "collection" => 18,
+            _ => 1,
+        }
+    }
+
+    /// The string a row's frames -- and its activity's subtitle -- carry. Measured on
+    /// a writable copy: a movie's and a show's frames title them with the year
+    /// (`Elephants Dream (2006)`, and an emptied title still gets it: ` (2010)`),
+    /// while a SEASON's say `Firefly S01` and an EPISODE's `Firefly S01 E07`, from
+    /// the SHOW's title and the current indexes.
+    fn frame_title(&self, row: &Value) -> String {
+        let mut title = row
+            .get("title")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
+        let year = row.get("year").filter(|value| truthy(value));
+        if matches!(kind, "movie" | "show") {
+            if let Some(year) = year {
+                return format!("{title} ({})", string_value(year));
             }
         }
-        self.push_event("timeline", json!({"TimelineEntry": entry}));
+        if matches!(kind, "season" | "episode") {
+            let show_key = row
+                .get(if kind == "season" {
+                    "parentRatingKey"
+                } else {
+                    "grandparentRatingKey"
+                })
+                .map(string_value)
+                .unwrap_or_default();
+            let show_title = self
+                .catalog
+                .get(&show_key)
+                .and_then(|show| show.get("title"))
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+            let index = row
+                .get(if kind == "season" { "index" } else { "parentIndex" })
+                .and_then(value_as_i64)
+                .unwrap_or(0);
+            title = format!("{show_title} S{index:02}");
+            if kind == "episode" {
+                let own = row.get("index").and_then(value_as_i64).unwrap_or(0);
+                title.push_str(&format!(" E{own:02}"));
+            }
+        }
+        title
+    }
+
+    fn notify_timeline(&mut self, row: &Value, state: i64, metadata_state: Option<&str>) {
+        self.notify_timeline_full(row, state, metadata_state, None, None, None);
+    }
+
+    /// A TimelineEntry for one row, with the field set measured off a real refresh:
+    /// identifier, sectionID and itemID as STRINGS, the numeric type, the title,
+    /// `state` and `metadataState` (omitted when None, which is what state 5 does).
+    fn notify_timeline_full(
+        &mut self,
+        row: &Value,
+        state: i64,
+        metadata_state: Option<&str>,
+        media_state: Option<&str>,
+        type_number: Option<i64>,
+        title_override: Option<&str>,
+    ) {
+        let title = match title_override {
+            Some(title) => title.to_string(),
+            None => self.frame_title(row),
+        };
+        let item_id = row.get("ratingKey").map(string_value).unwrap_or_default();
+        let mut kind = row
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let mut section_id = row
+            .get("librarySectionID")
+            .map(string_value)
+            .unwrap_or_default();
+        if kind.is_empty() || kind == "playlist" || kind == "collection" {
+            if self.playlists.contains_key(&item_id) && self.catalog.get(&item_id).is_none() {
+                kind = "playlist".to_string();
+                section_id = "-1".to_string();
+            } else if self.collections.contains_key(&item_id) && self.catalog.get(&item_id).is_none()
+            {
+                kind = "collection".to_string();
+            }
+        }
+        let mut entry = Map::new();
+        entry.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+        entry.insert("sectionID".to_string(), json!(section_id));
+        entry.insert("itemID".to_string(), json!(item_id));
+        entry.insert(
+            "type".to_string(),
+            json!(type_number.unwrap_or_else(|| Self::timeline_type(&kind))),
+        );
+        entry.insert("title".to_string(), json!(title));
+        entry.insert("state".to_string(), json!(state));
+        entry.insert("updatedAt".to_string(), json!(now()));
+        if let Some(metadata_state) = metadata_state {
+            entry.insert("metadataState".to_string(), json!(metadata_state));
+        }
+        if let Some(media_state) = media_state {
+            entry.insert("mediaState".to_string(), json!(media_state));
+        }
+        self.push_event("timeline", json!({"TimelineEntry": Value::Object(entry)}));
+    }
+
+    fn notify_status(&mut self, title: &str, description: &str) {
+        self.push_event(
+            "status",
+            json!({"StatusNotification": [{"title": title, "description": description,
+                "notificationName": "LIBRARY_UPDATE"}]}),
+        );
+    }
+
+    fn notify_progress(&mut self, message: &str) {
+        self.push_event(
+            "progress",
+            json!({"ProgressNotification": [{"message": message}]}),
+        );
+    }
+
+    /// Shape measured on fun mid-refresh: uuid, type, cancellable, userID, title,
+    /// subtitle, progress. Pushes the `started` frame.
+    fn add_activity(&mut self, subtitle: &str, title: &str, kind: &str, progress: i64) -> Value {
+        let uuid = self.activity_uuid();
+        let activity = json!({"uuid": uuid, "type": kind, "cancellable": false,
+            "userID": 1, "title": title, "subtitle": subtitle, "progress": progress});
+        self.push_activity(&activity, "started");
+        activity
+    }
+
+    fn add_metadata_activity(&mut self, subtitle: &str) -> Value {
+        self.add_activity(subtitle, "Updating Metadata", "library.update.item.metadata", -1)
+    }
+
+    /// End an activity the way a real refresh does: an `updated` at 49 unless the
+    /// sequence already pushed it, then `ended` at 100.
+    fn finish_activity(&mut self, activity: &mut Value) {
+        if activity.get("progress").and_then(Value::as_i64) != Some(49) {
+            activity["progress"] = json!(49);
+            self.push_activity(activity, "updated");
+        }
+        activity["progress"] = json!(100);
+        self.push_activity(activity, "ended");
+    }
+
+    /// started -> ended with NO `updated` between (the chapter-thumbs activity, the
+    /// season cascade).
+    fn end_activity_quietly(&mut self, activity: &mut Value) {
+        self.push_activity(activity, "ended");
+    }
+
+    /// The seven-frame sequence a real PMS pushes for a metadata refresh: timeline(3,
+    /// queued), activity started, activity updated 49, timeline(3, processing),
+    /// timeline(4, loading), activity ended, timeline(5). Cycle 33: a never-matched
+    /// row (`local://` guid) opens with `state 2 matching` and a bare `state 5`.
+    fn notify_refreshed(&mut self, key: &str) {
+        let Some(row) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        if row
+            .get("guid")
+            .and_then(Value::as_str)
+            .is_some_and(|guid| guid.starts_with("local://"))
+        {
+            self.notify_timeline(&row, 2, Some("matching"));
+            self.notify_timeline(&row, 5, None);
+        }
+        self.notify_timeline(&row, 3, Some("queued"));
+        let subtitle = self.frame_title(&row);
+        let mut activity = self.add_metadata_activity(&subtitle);
+        activity["progress"] = json!(49);
+        self.push_activity(&activity, "updated");
+        self.notify_timeline(&row, 3, Some("processing"));
+        self.notify_timeline(&row, 4, Some("loading"));
+        self.finish_activity(&mut activity);
+        self.notify_timeline(&row, 5, None);
+    }
+
+    /// The frames a show-wide re-read pushes: the show queued -> processing -> loading
+    /// inside one `Updating Metadata` activity, then each season with its episodes,
+    /// the media pass per episode, and the show's own state 5.
+    fn notify_show_cascade(&mut self, key: &str) {
+        let Some(show) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        let subtitle = self.frame_title(&show);
+        let mut activity = self.add_metadata_activity(&subtitle);
+        self.notify_timeline(&show, 3, Some("queued"));
+        self.notify_timeline(&show, 3, Some("processing"));
+        self.notify_timeline(&show, 4, Some("loading"));
+        let seasons = self.children(key);
+        let count = seasons.len().max(1) as f64;
+        let show_title = show.get("title").and_then(Value::as_str).unwrap_or_default().to_string();
+        for (number, season) in seasons.iter().enumerate() {
+            let index = season.get("index").and_then(value_as_i64).unwrap_or(0);
+            activity["subtitle"] = json!(format!("{show_title} S{index:02}"));
+            activity["progress"] = json!(py_round((number + 1) as f64 * 89.0 / count));
+            self.push_activity(&activity, "updated");
+            self.notify_timeline(season, 5, Some("processing"));
+            self.notify_timeline(season, 4, Some("loading"));
+            let episodes = self.children(&key_of(season).unwrap_or_default());
+            for episode in &episodes {
+                self.notify_timeline(episode, 5, Some("processing"));
+                self.notify_timeline(episode, 4, Some("loading"));
+                self.notify_timeline(episode, 4, Some("loading"));
+                self.notify_timeline(episode, 5, None);
+            }
+            for episode in &episodes {
+                self.notify_timeline_full(episode, 5, None, Some("analyzing"), None, None);
+                self.notify_timeline_full(episode, 5, None, Some("thumbnailing"), None, None);
+                self.notify_timeline(episode, 5, None);
+            }
+            self.notify_timeline(season, 5, None);
+        }
+        self.finish_activity(&mut activity);
+        self.notify_timeline(&show, 5, None);
+    }
+
+    /// The eighteen frames a SEASON refresh pushes. Cycle 15/25: started at -1 and
+    /// ended at 100 with nothing between.
+    fn notify_season_cascade(&mut self, key: &str) {
+        let Some(season) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        let subtitle = self.frame_title(&season);
+        let mut activity = self.add_metadata_activity(&subtitle);
+        self.notify_timeline(&season, 3, Some("queued"));
+        self.notify_timeline(&season, 3, Some("processing"));
+        self.notify_timeline(&season, 4, Some("loading"));
+        for episode in self.children(key) {
+            self.notify_timeline(&episode, 5, Some("processing"));
+            self.notify_timeline(&episode, 4, Some("loading"));
+            self.notify_timeline(&episode, 4, Some("loading"));
+            self.notify_timeline(&episode, 5, None);
+        }
+        activity["progress"] = json!(100);
+        self.end_activity_quietly(&mut activity);
+        self.notify_timeline(&season, 5, None);
+    }
+
+    /// The 46 frames a SHOW's unmatch pushes. Cycle 25: the opener and the activity
+    /// progression are the MOVIE unmatch's, and the activity opens with the show's
+    /// bare TITLE -- the one place the subtitle is not the frame title.
+    fn notify_show_unmatch_cascade(&mut self, key: &str) {
+        let Some(show) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        self.notify_timeline(&show, 2, Some("matching"));
+        self.notify_timeline(&show, 3, Some("matching"));
+        self.notify_timeline(&show, 3, Some("queued"));
+        let bare = show.get("title").and_then(Value::as_str).unwrap_or_default().to_string();
+        let mut activity = self.add_metadata_activity(&bare);
+        for (title, progress) in [
+            ("Analyzing Media", -1),
+            ("Analyzing Media", 25),
+            ("Updating Metadata", 25),
+            ("Updating Metadata", 50),
+        ] {
+            activity["title"] = json!(title);
+            activity["progress"] = json!(progress);
+            self.push_activity(&activity, "updated");
+        }
+        self.notify_timeline(&show, 3, Some("processing"));
+        self.notify_timeline(&show, 4, Some("loading"));
+        let seasons = self.children(key);
+        let total = seasons.len() as i64;
+        for (number, season) in seasons.iter().enumerate() {
+            activity["subtitle"] = json!(self.frame_title(season));
+            self.push_activity(&activity, "updated");
+            activity["progress"] = json!(100 - 5 * (total - (number as i64 + 1)));
+            self.push_activity(&activity, "updated");
+            self.notify_timeline(season, 5, Some("processing"));
+            self.notify_timeline(season, 4, Some("loading"));
+            for episode in self.children(&key_of(season).unwrap_or_default()) {
+                self.notify_timeline(&episode, 5, Some("processing"));
+                self.notify_timeline(&episode, 4, Some("loading"));
+                self.notify_timeline(&episode, 4, Some("loading"));
+                self.notify_timeline(&episode, 5, None);
+            }
+            self.notify_timeline(season, 5, None);
+        }
+        activity["progress"] = json!(100);
+        self.end_activity_quietly(&mut activity);
+        self.notify_timeline(&show, 5, None);
+    }
+
+    /// The `backgroundProcessingQueue` frame that follows a queue-touching write
+    /// (cycle 15). The measured delay is not reproduced.
+    fn notify_queue_regenerated(&mut self) {
+        self.push_event(
+            "backgroundProcessingQueue",
+            json!({"BackgroundProcessingQueueEventNotification":
+                [{"queueID": 1, "event": "queueRegenerated"}]}),
+        );
+    }
+
+    /// The two frames an EDIT pushes: state 3, then done. `loading` for an edit to
+    /// the item's own path, `queued` for one saved through the section path.
+    fn notify_edited(&mut self, row: &Value, metadata_state: &str) {
+        self.notify_timeline(row, 3, Some(metadata_state));
+        self.notify_timeline(row, 5, None);
+    }
+
+    /// The frames a library scan pushes, measured on a writable copy: one
+    /// `library.update.section` activity steps through the items (a MOVIE library
+    /// per movie, a SHOW library per SEASON after the show's own progress row), then
+    /// ends inside a nested pair of `provider.subscriptions.process` activities.
+    fn notify_section_scan(&mut self, section_id: &str) {
+        let Some(section) = self.section(section_id).cloned() else {
+            return;
+        };
+        let title = section.get("title").and_then(Value::as_str).unwrap_or_default().to_string();
+        let uuid = self.activity_uuid();
+        let mut activity = json!({"uuid": uuid, "type": "library.update.section",
+            "cancellable": false, "userID": 1, "title": "Scanning", "subtitle": "",
+            "progress": 0});
+        self.push_activity(&activity, "started");
+        self.notify_status(&format!("Scanning the \"{title}\" section"), "");
+        activity["title"] = json!(format!("Scanning {title}"));
+        self.push_activity(&activity, "updated");
+        let mut steps: Vec<(String, Option<String>)> = Vec::new();
+        for row in self.section_items(section_id) {
+            let own = row.get("title").and_then(Value::as_str).unwrap_or_default();
+            let label = match row.get("year").filter(|value| truthy(value)) {
+                Some(year) => format!("{own} ({})", string_value(year)),
+                None => own.to_string(),
+            };
+            match row.get("type").and_then(Value::as_str) {
+                Some("movie") => steps.push((label.clone(), Some(label))),
+                Some("show") => {
+                    steps.push((label.clone(), None));
+                    let mut seasons = self.children(&key_of(&row).unwrap_or_default());
+                    seasons.sort_by_key(|season| {
+                        -season.get("index").and_then(value_as_i64).unwrap_or(0)
+                    });
+                    for season in &seasons {
+                        let name = format!(
+                            "Season {:02}",
+                            season.get("index").and_then(value_as_i64).unwrap_or(0)
+                        );
+                        steps.push((format!("{label}/{name}"), Some(format!("{label} - {name}"))));
+                    }
+                    if seasons.is_empty() {
+                        steps.push((label.clone(), Some(label)));
+                    }
+                }
+                _ => {}
+            }
+        }
+        let counted = steps.iter().filter(|step| step.1.is_some()).count();
+        let mut number = 0;
+        for (message, subtitle) in &steps {
+            self.notify_progress(&format!("Scanning {message}"));
+            let Some(subtitle) = subtitle else { continue };
+            number += 1;
+            activity["subtitle"] = json!(subtitle);
+            activity["progress"] = json!(py_round(number as f64 * 99.0 / counted as f64));
+            activity["Context"] = json!({"librarySectionID": section_id});
+            self.push_activity(&activity, "updated");
+        }
+        if counted == 0 {
+            activity["progress"] = json!(99);
+            activity["Context"] = json!({"librarySectionID": section_id});
+            self.push_activity(&activity, "updated");
+        }
+        activity["progress"] = json!(100);
+        activity["Context"] = json!({"librarySectionID": section_id});
+        self.push_activity(&activity, "updated");
+        let outer_uuid = self.activity_uuid();
+        let mut outer = json!({"uuid": outer_uuid, "type": "provider.subscriptions.process",
+            "cancellable": true, "userID": 1, "title": "Processing subscriptions",
+            "subtitle": "", "progress": 0});
+        self.push_activity(&outer, "started");
+        self.push_activity(&activity, "ended");
+        self.notify_status(
+            "Library scan complete",
+            "Extra information may still be downloading from the Internet",
+        );
+        let mut inner = outer.clone();
+        inner["uuid"] = json!(self.activity_uuid());
+        self.push_activity(&inner, "started");
+        inner["progress"] = json!(100);
+        self.push_activity(&inner, "ended");
+        outer["progress"] = json!(100);
+        self.push_activity(&outer, "ended");
+    }
+
+    /// Cycle 19: a scan of a path the library does not hold -- the same activity and
+    /// subscriptions pair with NO progress rows and an empty subtitle.
+    fn notify_empty_section_scan(&mut self, section_id: &str) {
+        let Some(section) = self.section(section_id).cloned() else {
+            return;
+        };
+        let title = section.get("title").and_then(Value::as_str).unwrap_or_default().to_string();
+        let uuid = self.activity_uuid();
+        let mut activity = json!({"uuid": uuid, "type": "library.update.section",
+            "cancellable": false, "userID": 1, "title": "Scanning", "subtitle": "",
+            "progress": 0});
+        self.push_activity(&activity, "started");
+        self.notify_status(&format!("Scanning the \"{title}\" section"), "");
+        activity["title"] = json!(format!("Scanning {title}"));
+        self.push_activity(&activity, "updated");
+        activity["progress"] = json!(100);
+        activity["Context"] = json!({"librarySectionID": section_id});
+        self.push_activity(&activity, "updated");
+        let outer_uuid = self.activity_uuid();
+        let mut outer = json!({"uuid": outer_uuid, "type": "provider.subscriptions.process",
+            "cancellable": true, "userID": 1, "title": "Processing subscriptions",
+            "subtitle": "", "progress": 0});
+        self.push_activity(&outer, "started");
+        self.push_activity(&activity, "ended");
+        self.notify_status(
+            "Library scan complete",
+            "Extra information may still be downloading from the Internet",
+        );
+        outer["progress"] = json!(100);
+        self.push_activity(&outer, "ended");
+    }
+
+    /// The rows a section holds, in catalog order (movies or shows).
+    fn section_items(&self, section_id: &str) -> Vec<Value> {
+        self.section_rows(section_id)
     }
 
     fn push_refresh_events_named(&mut self, key: &str, subtitle: &str) {
@@ -3733,6 +4235,21 @@ impl Runtime {
 
     fn rows_for_uri(&self, uri: &str) -> Vec<Value> {
         let decoded = percent_decode(uri);
+        // Cycle 16, measured on plexscratch: a uri that is not this server's own
+        // `server://<machine>/...` or a stored `library://` resolves to NOTHING -- a
+        // foreign machine and a scheme-less `/library/metadata/1` alike. plexsim read
+        // the ratingKey out of any uri shaped like one, so another server's item
+        // silently queued its own.
+        if !uri.is_empty() {
+            if let Some(rest) = decoded.strip_prefix("server://") {
+                let machine = rest.split('/').next().unwrap_or("");
+                if !machine.is_empty() && machine != self.machine {
+                    return Vec::new();
+                }
+            } else if !decoded.starts_with("library://") {
+                return Vec::new();
+            }
+        }
         if let Some(tail) = decoded.split("/playlists/").nth(1) {
             let playlist_id = tail.split('/').next().unwrap_or_default();
             if tail.starts_with(playlist_id) && tail.contains("/items") {
@@ -9636,8 +10153,12 @@ impl Runtime {
                     };
                     let rows = self.rows_for_uri(uri);
                     if rows.is_empty() {
+                        // Measured on the copy: an add that adds nothing answers the
+                        // queue as it stands, `playQueueVersion` unmoved -- the client
+                        // discards a response whose version it does not expect.
+                        let response = self.queue_container(&queue, query);
                         self.queues.insert(id.to_string(), queue);
-                        return Response::error(200, "");
+                        return response;
                     }
                     let at = queue
                         .selected
@@ -10519,6 +11040,16 @@ impl Runtime {
         }
         if path == "/library/optimize" {
             return if request.method == "PUT" {
+                // Measured on the copy, frame for frame: Optimize Database runs a
+                // `general.db.optimize` activity -- started at 0 with an EMPTY
+                // subtitle, updated at 0, 10, 40 and 60 with `Optimizing Database`,
+                // ended at 100. plexsim answered the empty 200 and pushed nothing.
+                let step = "Optimizing Database";
+                self.push_activity_run(
+                    "general.db.optimize",
+                    "Optimizing database",
+                    &[(0, step), (10, step), (40, step), (60, step)],
+                );
                 Response::empty(200)
             } else {
                 Response::error(404, "plexsim: not found")
@@ -13171,11 +13702,22 @@ impl Runtime {
                 return Response::error(404, "plexsim: not found");
             }
             let raw_id = segments[2];
-            let stream_id = raw_id
-                .split('.')
-                .next()
-                .and_then(|value| value.parse::<i64>().ok());
+            // Measured on both servers: `.srt` and `.vtt` are the sidecar extraction by
+            // extension, answered as the bare stream; any other dot stays in the id.
+            let bare_id = raw_id
+                .strip_suffix(".srt")
+                .or_else(|| raw_id.strip_suffix(".vtt"))
+                .unwrap_or(raw_id);
+            let stream_id = (!bare_id.is_empty() && bare_id.bytes().all(|b| b.is_ascii_digit()))
+                .then(|| bare_id.parse::<i64>().ok())
+                .flatten();
             let Some(stream_id) = stream_id else {
+                // Measured on the copy: a PUT to an id it does not have is a 400, and so
+                // is a DELETE of a NON-NUMERIC one -- `DELETE /library/streams/abc` is a
+                // 400 where `DELETE /library/streams/999999` is a 404.
+                if request.method == "PUT" || request.method == "DELETE" {
+                    return Response::error(400, "plexsim: bad request");
+                }
                 return Response::error(404, "plexsim: not found");
             };
             if request.method == "GET" || request.method == "HEAD" {
@@ -13223,6 +13765,22 @@ impl Runtime {
                 return Response::error(404, "plexsim: not found");
             }
             if request.method == "PUT" {
+                // Measured on a writable copy: a PUT to a stream it HAS is 200 with an
+                // empty body and stores nothing; one it does not have is a 400.
+                let known = self.catalog.items.iter().any(|row| {
+                    row.get("Media").and_then(Value::as_array).into_iter().flatten().any(|media| {
+                        media.get("Part").and_then(Value::as_array).into_iter().flatten().any(
+                            |part| {
+                                part.get("Stream").and_then(Value::as_array).into_iter().flatten().any(
+                                    |stream| stream.get("id").and_then(Value::as_i64) == Some(stream_id),
+                                )
+                            },
+                        )
+                    })
+                });
+                if known {
+                    return Response::empty(200);
+                }
                 return Response::error(400, "plexsim: bad request");
             }
             if request.method == "DELETE" {
@@ -14529,8 +15087,34 @@ impl Runtime {
             }
             return Response::json(200, container);
         }
+        if request.method == "POST" && tail.len() == 1 {
+            match tail[0] {
+                // Cycle 15, measured on plexscratch: POSTing an EMPTY body to any
+                // artwork or subtitle candidate list is a 406 -- all seven alike, and
+                // for the subtitle upload the empty-body check runs before the title's.
+                "posters" | "arts" | "thumbs" | "banners" | "themes" | "clearLogos"
+                | "subtitles"
+                    if request.body.is_empty() =>
+                {
+                    return Response::error(406, "plexsim: not acceptable");
+                }
+                // Cycle 16: `/extras` is the one candidate list that refuses a POST
+                // with a 400 whatever the body.
+                "extras" => return Response::error(400, "plexsim: bad request"),
+                _ => {}
+            }
+        }
         match tail[0] {
             "prefs" => self.route_item_prefs(key, row, query, request),
+            "banners" | "thumbs" if tail.len() == 1 => {
+                // Cycle 14: two more candidate lists, 200 on kids AND zen: `banners`
+                // is empty on both and `thumbs` lists the media bundle's video
+                // thumbnails, which plexsim has none of. Only GET and HEAD read them.
+                if request.method != "GET" && request.method != "HEAD" {
+                    return Response::error(404, "plexsim: not found");
+                }
+                Response::json(200, self.tag_container(Map::new()))
+            }
             "grandchildren" => {
                 if request.method != "GET" && request.method != "HEAD" {
                     return Response::error(404, "plexsim: not found");
@@ -18252,10 +18836,18 @@ impl Response {
         }
     }
     fn error(status: u16, message: &str) -> Self {
+        // Cycle 36, measured on kids and zen over seven statuses and every path
+        // family that answers one: a real PMS's refusal BODY is ONE fixed HTML
+        // document per status, built from HTTP's own reason phrase, `text/html`,
+        // whatever `Accept` asked for. plexsim's own sentence is the useful half
+        // for debugging, so it goes to the log where a client never sees it.
+        if std::env::var_os("PLEXSIM_LOG_ERRORS").is_some() {
+            eprintln!("{status} -- {message}");
+        }
         Self {
             status,
-            content_type: "text/plain".to_string(),
-            body: message.as_bytes().to_vec(),
+            content_type: "text/html".to_string(),
+            body: error_document(status),
             headers: Vec::new(),
             close: false,
         }
@@ -18629,7 +19221,7 @@ fn handle_connection<S: Read + Write>(
                     return Ok(());
                 }
                 guard.mark_device(&request.headers);
-                guard.events.len()
+                guard.event_cursor()
             };
             return handle_websocket(&mut stream, &runtime, &request, event_start);
         }
@@ -18644,7 +19236,7 @@ fn handle_connection<S: Read + Write>(
                     return Ok(());
                 }
                 guard.mark_device(&request.headers);
-                guard.events.len()
+                guard.event_cursor()
             };
             return handle_eventsource(&mut stream, &runtime, &request, event_start);
         }
@@ -18726,62 +19318,122 @@ fn handle_websocket<S: Write>(
         .write_all(header.as_bytes())
         .map_err(|error| error.to_string())?;
     stream.flush().map_err(|error| error.to_string())?;
-    // The client starts its trigger only after it has received the upgrade
-    // response.  Give that trigger a full scheduling window before taking the
-    // retained event snapshot; a fixed sub-second sleep races on a busy host.
-    thread::sleep(std::time::Duration::from_millis(1500));
-    let (_, raw_query) = split_target(&request.target);
-    let filters = parse_query(&raw_query)
-        .into_iter()
-        .find(|(key, _)| key == "filters")
-        .map(|(_, value)| value);
-    let events = runtime
-        .lock()
-        .map_err(|_| "runtime lock poisoned".to_string())?
-        .events
-        .iter()
-        .skip(event_start)
-        .cloned()
-        .collect::<Vec<_>>();
-    for (kind, value) in events {
-        if filters.as_deref() == Some("all")
-            || (filters.as_deref() == Some("log") && kind != "log")
-            || (filters.as_deref() != Some("log") && kind == "log")
-        {
-            continue;
-        }
-        let mut container = Map::new();
-        container.insert("type".to_string(), json!(kind));
-        if let Value::Object(object) = value {
-            for (key, value) in object {
-                if key != "NotificationContainer" {
-                    let value = if matches!(
-                        key.as_str(),
-                        "ActivityNotification"
-                            | "TimelineEntry"
-                            | "StatusNotification"
-                            | "ProgressNotification"
-                            | "PlaySessionStateNotification"
-                    ) && !value.is_array()
-                    {
-                        Value::Array(vec![value])
-                    } else {
-                        value
-                    };
-                    container.insert(key, value);
+    let filter = EventFilter::from_target(&request.target);
+    // Measured on the reference: events are pushed as they happen, for as long as
+    // the client holds the socket, and a silent socket is kept alive with a
+    // ONE-byte ping every ten seconds on a free-running timer. plexsim took one
+    // snapshot 1.5 s after the upgrade and closed, so any trigger slower than that
+    // (a busy host, a request that fans out) pushed its frames to nobody. A dead
+    // peer is found by the write that fails, which the ping guarantees happens.
+    let opened = std::time::Instant::now();
+    let mut next_ping = opened + std::time::Duration::from_secs(10);
+    let mut cursor = event_start;
+    while opened.elapsed() < std::time::Duration::from_secs(3600) {
+        let (events, next) = runtime
+            .lock()
+            .map_err(|_| "runtime lock poisoned".to_string())?
+            .events_since(cursor);
+        cursor = next;
+        for (kind, value) in events {
+            if !filter.admits(&kind) {
+                continue;
+            }
+            let mut container = Map::new();
+            container.insert("type".to_string(), json!(kind));
+            let mut rows = Vec::new();
+            if let Value::Object(object) = value {
+                for (key, value) in object {
+                    if key != "NotificationContainer" {
+                        let value = if matches!(
+                            key.as_str(),
+                            "ActivityNotification"
+                                | "TimelineEntry"
+                                | "StatusNotification"
+                                | "ProgressNotification"
+                                | "PlaySessionStateNotification"
+                                | "ReachabilityNotification"
+                                | "BackgroundProcessingQueueEventNotification"
+                                | "TranscodeSession"
+                                | "Setting"
+                                | "LogSentNotification"
+                        ) && !value.is_array()
+                        {
+                            Value::Array(vec![value])
+                        } else {
+                            value
+                        };
+                        rows.push((key, value));
+                    }
                 }
             }
+            if !rows.iter().any(|(key, _)| key == "size") {
+                let size = rows
+                    .iter()
+                    .find_map(|(_, value)| value.as_array().map(Vec::len))
+                    .unwrap_or(1);
+                container.insert("size".to_string(), json!(size));
+            }
+            for (key, value) in rows {
+                container.insert(key, value);
+            }
+            let payload = serde_json::to_vec(&json!({"NotificationContainer": container}))
+                .map_err(|error| error.to_string())?;
+            if write_websocket_frame(stream, &payload).is_err() {
+                return Ok(());
+            }
         }
-        let payload = serde_json::to_vec(&json!({"NotificationContainer": container}))
-            .map_err(|error| error.to_string())?;
-        write_websocket_frame(stream, &payload)?;
+        if std::time::Instant::now() >= next_ping {
+            next_ping += std::time::Duration::from_secs(10);
+            if stream
+                .write_all(&[0x89, 0x01, b'?'])
+                .and_then(|_| stream.flush())
+                .is_err()
+            {
+                return Ok(());
+            }
+        }
+        thread::sleep(std::time::Duration::from_millis(40));
     }
-    // A normal close frame lets clients finish their read loop without treating
-    // the event channel as a failed HTTP request.
-    stream
-        .write_all(&[0x88, 0x00])
-        .map_err(|error| error.to_string())?;
-    stream.flush().map_err(|error| error.to_string())
+    let _ = stream.write_all(&[0x88, 0x00]);
+    let _ = stream.flush();
+    Ok(())
+}
+
+/// Which event kinds a channel receives, from its handshake's `filters=`.
+///
+/// Measured: no `filters` at all delivers everything except `log`, which is opt-in;
+/// `filters=` with an EMPTY value delivers everything INCLUDING `log`; otherwise the
+/// value is a comma list of the kinds delivered.
+struct EventFilter {
+    kinds: Option<Vec<String>>,
+}
+
+impl EventFilter {
+    fn from_target(target: &str) -> Self {
+        let (_, raw_query) = split_target(target);
+        let value = parse_query(&raw_query)
+            .into_iter()
+            .rev()
+            .find(|(key, _)| key == "filters")
+            .map(|(_, value)| value);
+        Self {
+            kinds: value.map(|value| {
+                value
+                    .split(',')
+                    .filter(|kind| !kind.is_empty())
+                    .map(str::to_string)
+                    .collect()
+            }),
+        }
+    }
+
+    fn admits(&self, kind: &str) -> bool {
+        match &self.kinds {
+            None => kind != "log",
+            Some(kinds) if kinds.is_empty() => true,
+            Some(kinds) => kinds.iter().any(|known| known == kind),
+        }
+    }
 }
 
 fn handle_eventsource<S: Write>(
@@ -18806,55 +19458,65 @@ fn handle_eventsource<S: Write>(
         .write_all(header.as_bytes())
         .map_err(|error| error.to_string())?;
     stream.flush().map_err(|error| error.to_string())?;
-    // Give the triggering request a short window to append its events.  The
-    // reference sends real notifications as soon as they exist and reserves
-    // the ten-second delay for the initial keepalive ping; sleeping before
-    // reading the event log loses every short-lived client request.
-    // The client starts its trigger only after the SSE headers arrive.  The
-    // extra window keeps the event snapshot deterministic without changing the
-    // measured ten-second quiet-channel ping below.
-    thread::sleep(std::time::Duration::from_millis(1500));
-    let (_, raw_query) = split_target(&request.target);
-    let filters = parse_query(&raw_query)
-        .into_iter()
-        .find(|(key, _)| key == "filters")
-        .map(|(_, value)| value);
-    let events = runtime
-        .lock()
-        .map_err(|_| "runtime lock poisoned".to_string())?
-        .events
-        .iter()
-        .skip(event_start)
-        .cloned()
-        .collect::<Vec<_>>();
-    for (kind, value) in events {
-        if filters.as_deref() == Some("all")
-            || (filters.as_deref() == Some("log") && kind != "log")
-            || (filters
-                .as_deref()
-                .map(|value| !value.is_empty() && value != "log")
-                .unwrap_or(true)
-                && kind == "log")
-        {
-            continue;
+    let filter = EventFilter::from_target(&request.target);
+    // Cycle 30, measured on the copy over a 430-second idle capture: the reference's
+    // eventsource channel stays open, pushing each event as it happens and a named
+    // `ping` event every ten seconds, the first ten seconds in.
+    let mut next_ping = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let mut cursor = event_start;
+    loop {
+        let (events, next) = runtime
+            .lock()
+            .map_err(|_| "runtime lock poisoned".to_string())?
+            .events_since(cursor);
+        cursor = next;
+        let mut frames = String::new();
+        for (kind, value) in events {
+            if !filter.admits(&kind) {
+                continue;
+            }
+            // One `data:` line per ROW under its element name, no container.
+            let mut rows = Vec::new();
+            if let Value::Object(object) = &value {
+                for (key, inner) in object {
+                    if key == "size" {
+                        continue;
+                    }
+                    match inner {
+                        Value::Array(items) => {
+                            for item in items {
+                                rows.push(json!({key.clone(): item}));
+                            }
+                        }
+                        other => rows.push(json!({key.clone(): other})),
+                    }
+                }
+            }
+            for row in rows {
+                let payload = serde_json::to_string(&row).map_err(|error| error.to_string())?;
+                frames.push_str(&format!("event: {kind}\ndata: {payload}\n\n"));
+            }
         }
-        let payload = serde_json::to_string(&value).map_err(|error| error.to_string())?;
-        let frame = format!("event: {kind}\ndata: {payload}\n\n");
-        stream
-            .write_all(frame.as_bytes())
-            .map_err(|error| error.to_string())?;
+        if !frames.is_empty()
+            && stream
+                .write_all(frames.as_bytes())
+                .and_then(|_| stream.flush())
+                .is_err()
+        {
+            return Ok(());
+        }
+        if std::time::Instant::now() >= next_ping {
+            next_ping += std::time::Duration::from_secs(10);
+            if stream
+                .write_all(b"event: ping\ndata: {}\n\n")
+                .and_then(|_| stream.flush())
+                .is_err()
+            {
+                return Ok(());
+            }
+        }
+        thread::sleep(std::time::Duration::from_millis(40));
     }
-    stream.flush().map_err(|error| error.to_string())?;
-    // Keep the channel open until the measured ten-second keepalive.  A quiet
-    // short read therefore sees headers but no ping, while a long-lived
-    // client receives the same initial ping as PMS.
-    thread::sleep(
-        std::time::Duration::from_secs(10).saturating_sub(std::time::Duration::from_millis(1500)),
-    );
-    stream
-        .write_all(b"event: ping\ndata: {}\n\n")
-        .map_err(|error| error.to_string())?;
-    stream.flush().map_err(|error| error.to_string())
 }
 
 fn write_websocket_frame<S: Write>(stream: &mut S, payload: &[u8]) -> Result<(), String> {
@@ -19242,10 +19904,47 @@ fn parse_chunk_size(line: &str) -> Option<&str> {
 }
 
 fn known_method(method: &str) -> bool {
-    matches!(
-        method,
-        "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH"
-    )
+    // Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports), over 20 paths:
+    // PATCH is not in the method table at all -- a 500 on every path, `/identity`
+    // included, with the same body `FROB` gets. The routed PATCH answers were 1.43.4's.
+    matches!(method, "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "OPTIONS")
+}
+
+/// HTTP's own reason phrase, as Python's `http.HTTPStatus(status).phrase` spells
+/// it -- the refusal document is built from it.
+fn status_phrase(status: u16) -> &'static str {
+    match status {
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        402 => "Payment Required",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        406 => "Not Acceptable",
+        408 => "Request Timeout",
+        409 => "Conflict",
+        410 => "Gone",
+        411 => "Length Required",
+        412 => "Precondition Failed",
+        413 => "Request Entity Too Large",
+        414 => "Request-URI Too Long",
+        415 => "Unsupported Media Type",
+        416 => "Requested Range Not Satisfiable",
+        422 => "Unprocessable Entity",
+        429 => "Too Many Requests",
+        500 => "Internal Server Error",
+        501 => "Not Implemented",
+        502 => "Bad Gateway",
+        503 => "Service Unavailable",
+        504 => "Gateway Timeout",
+        _ => "Error",
+    }
+}
+
+fn error_document(status: u16) -> Vec<u8> {
+    let reason = status_phrase(status);
+    format!("<html><head><title>{reason}</title></head><body><h1>{status} {reason}</h1></body></html>")
+        .into_bytes()
 }
 
 fn write_response<S: Write>(stream: &mut S, response: &Response, keep: bool) -> Result<(), String> {
@@ -19819,6 +20518,47 @@ fn statistics_bucket(timestamp: i64, timespan: i64) -> i64 {
             _ => 1,
         };
         timestamp - timestamp.rem_euclid(width)
+    }
+}
+
+/// Python's truthiness for a JSON value: null, false, 0, "" and empty containers
+/// are false. The Python oracle reads most optional fields this way.
+fn truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(flag) => *flag,
+        Value::Number(number) => number.as_f64().is_some_and(|value| value != 0.0),
+        Value::String(text) => !text.is_empty(),
+        Value::Array(items) => !items.is_empty(),
+        Value::Object(map) => !map.is_empty(),
+    }
+}
+
+/// An integer out of a JSON number or a numeric string, the way `int(x)` reads the
+/// Python rows (whose indexes are sometimes stored as strings).
+fn value_as_i64(value: &Value) -> Option<i64> {
+    match value {
+        Value::Number(number) => number
+            .as_i64()
+            .or_else(|| number.as_f64().map(|value| value as i64)),
+        Value::String(text) => text.trim().parse::<i64>().ok(),
+        Value::Bool(flag) => Some(*flag as i64),
+        _ => None,
+    }
+}
+
+/// Python 3's `round()`: halves go to the even neighbour.
+fn py_round(value: f64) -> i64 {
+    let floor = value.floor();
+    let diff = value - floor;
+    if (diff - 0.5).abs() < 1e-9 {
+        if (floor as i64) % 2 == 0 {
+            floor as i64
+        } else {
+            floor as i64 + 1
+        }
+    } else {
+        value.round() as i64
     }
 }
 
