@@ -42,6 +42,7 @@ mod listing;
 mod merge;
 mod playlists;
 mod resume;
+mod stats;
 mod streams;
 mod search;
 mod spellfix;
@@ -348,6 +349,11 @@ pub struct Runtime {
     next_playlist_item: i64,
     /// Keys a merge or a delete freed: a split never reuses one (measured).
     retired_keys: Vec<i64>,
+    /// Client identifiers in the order the server first saw them (`""` is device 1).
+    device_order: Vec<String>,
+    device_first_seen: HashMap<String, i64>,
+    /// `(at, type, seconds, device)` per stopped play, for `/statistics/media`.
+    plays: Vec<(i64, String, i64, i64)>,
     pub next_collection: i64,
     pub next_queue: i64,
     pub next_queue_item: i64,
@@ -479,6 +485,9 @@ impl Runtime {
             next_playlist: playlists::PLAYLIST_BASE + 1,
             next_playlist_item: 0,
             retired_keys: Vec::new(),
+            device_order: vec![String::new()],
+            device_first_seen: HashMap::new(),
+            plays: Vec::new(),
             // Key spaces stay disjoint (library.py): collections are 50000+.
             next_collection: 50001,
             next_queue: 2,
@@ -3492,19 +3501,11 @@ impl Runtime {
     }
 
     fn device_id(&self, identifier: &str) -> i64 {
-        let mut identifiers = self
-            .devices
-            .values()
-            .map(|device| device.client_identifier.clone())
-            .collect::<Vec<_>>();
-        if let Some(index) = identifiers.iter().position(|value| value.is_empty()) {
-            identifiers.swap(0, index);
-        }
-        identifiers
+        self.device_order
             .iter()
-            .position(|value| value == identifier)
+            .position(|known| known == identifier)
             .map(|index| index as i64 + 1)
-            .unwrap_or(identifiers.len() as i64 + 1)
+            .unwrap_or(self.device_order.len() as i64 + 1)
     }
 
     fn choose_rows(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<Value> {
@@ -4753,6 +4754,25 @@ impl Runtime {
             return Response::error(500, "plexsim: unknown method");
         }
         self.mark_device(&request.headers);
+        {
+            // Every request registers its client -- header or query alike -- in the
+            // order the server first sees it (`sessions.device_id`).
+            let (_, raw_query) = split_target(&request.target);
+            let identifier = request
+                .headers
+                .get("x-plex-client-identifier")
+                .cloned()
+                .filter(|value| !value.is_empty())
+                .or_else(|| {
+                    parse_query(&raw_query)
+                        .into_iter()
+                        .rev()
+                        .find(|(name, _)| name == "X-Plex-Client-Identifier")
+                        .map(|(_, value)| value)
+                })
+                .unwrap_or_default();
+            self.register_device(&identifier);
+        }
         let mut response = self.request_route(request);
         exclude_fields_response(request, &mut response);
         sync_version_response(request, &mut response);
@@ -5552,7 +5572,7 @@ impl Runtime {
                 .unwrap_or_else(|| self.route_bandwidth(&query)),
             ("GET" | "HEAD", "/statistics/media") => self
                 .statistics_refusal("media", &query)
-                .unwrap_or_else(|| self.route_media_statistics(&query)),
+                .unwrap_or_else(|| self.route_media_statistics_ported(&query)),
             ("GET" | "HEAD", "/statistics/resources") => self
                 .statistics_refusal("resources", &query)
                 .unwrap_or_else(|| self.route_resource_statistics(&query)),
@@ -8456,6 +8476,19 @@ impl Runtime {
             .unwrap_or_else(|| "default".to_string());
         if !key.is_empty() && self.catalog.get(&key).is_none() {
             return Response::error(404, "plexsim: no such item");
+        }
+        if state == "stopped" {
+            // `record_play`: a stopped timeline records one play for the rollups,
+            // under the device that played.
+            if let Some(row) = self.catalog.get(&key).cloned() {
+                let identifier = query
+                    .get("X-Plex-Client-Identifier")
+                    .cloned()
+                    .or_else(|| headers.get("x-plex-client-identifier").cloned())
+                    .unwrap_or_default();
+                let device = self.register_device(&identifier);
+                self.record_play(&row, time / 1000, device);
+            }
         }
         let session_identifier = query
             .get("X-Plex-Session-Identifier")
@@ -12826,47 +12859,7 @@ impl Runtime {
                     return Response::json(200, self.container(fields, true));
                 }
                 if segments.len() == 4 && segments[3] == "categories" {
-                    let mut names = HashSet::new();
-                    let axis_type = query
-                        .get("type")
-                        .and_then(|value| value.parse::<i64>().ok());
-                    for row in self.choose_rows(Some(section_key), axis_type) {
-                        for tag in row
-                            .get("Genre")
-                            .and_then(Value::as_array)
-                            .into_iter()
-                            .flatten()
-                        {
-                            if let Some(name) = tag.get("tag").and_then(Value::as_str) {
-                                names.insert(name.to_string());
-                            }
-                        }
-                    }
-                    let mut names = names.into_iter().collect::<Vec<_>>();
-                    names.sort();
-                    let rows = names
-                        .into_iter()
-                        .map(|name| {
-                            json!({
-                                "type":"directory",
-                                "title":name,
-                                "key":format!("/library/sections/{section_key}/all?genre={name}")
-                            })
-                        })
-                        .collect::<Vec<_>>();
-                    return Response::json(
-                        200,
-                        self.container(
-                            Map::from_iter([
-                                ("Directory".to_string(), Value::Array(rows)),
-                                (
-                                    "Meta".to_string(),
-                                    json!({"Type":[{"type":"genre","title":"Genre"}]}),
-                                ),
-                            ]),
-                            false,
-                        ),
-                    );
+                    return self.route_categories(section_key, section.clone(), request);
                 }
                 if segments.len() == 4 && segments[3] == "folder" {
                     return self.route_section_folder(section_key, section, query, request);
@@ -16907,8 +16900,16 @@ impl Runtime {
             .get("_poster_url")
             .and_then(Value::as_str)
             .map(|url| json!([{"key":url,"source":"tmdb","previewKey":url}]));
+        // Cycle 53: a season's and an episode's background candidates are their own,
+        // never the show's that `hierarchy` copies down -- `/arts` answers none there,
+        // so the row inlines no `Art`.
+        let owns_art = !matches!(
+            object.get("type").and_then(Value::as_str),
+            Some("season" | "episode")
+        );
         let art = object
             .get("_art_url")
+            .filter(|_| owns_art)
             .and_then(Value::as_str)
             .map(|url| json!([{"key":url,"source":"tmdb","previewKey":url}]));
         let theme = object
