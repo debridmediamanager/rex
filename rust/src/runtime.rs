@@ -9053,25 +9053,42 @@ impl Runtime {
                 })
                 .map(|index| index + 1)
                 .unwrap_or(hubs.len());
+            // Cycle 59, measured on plexscratch42 and plexscratch: the shelf is the head
+            // of its own key -- this library's video playlists (and every EMPTY one),
+            // newest viewed first -- so its rows are that listing's.
+            let key = format!("/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc&sectionID={section_key}");
+            let listing_query = HashMap::from([
+                ("type".to_string(), "15".to_string()),
+                ("playlistType".to_string(), "video".to_string()),
+                ("sort".to_string(), "lastViewedAt:desc".to_string()),
+                ("sectionID".to_string(), section_key.to_string()),
+            ]);
+            let listed = serde_json::from_slice::<Value>(&self.route_playlist_all(&listing_query).body)
+                .ok()
+                .and_then(|body| body["MediaContainer"]["Metadata"].as_array().cloned())
+                .unwrap_or_default();
+            let mut limit = count.unwrap_or(6);
+            let mut exhausted = false;
+            if limit < 0 {
+                limit = (listed.len() as i64 + limit).max(0);
+                exhausted = true;
+            }
+            let rows = listed.iter().take(limit as usize).cloned().collect::<Vec<_>>();
             let mut playlist = Map::from_iter([
-                (
-                    "hubIdentifier".to_string(),
-                    json!(format!("recent.library.playlists.{section_key}")),
-                ),
+                ("hubIdentifier".to_string(), json!(format!("recent.library.playlists.{section_key}"))),
                 ("title".to_string(), json!("Recent Playlists")),
                 ("type".to_string(), json!("playlist")),
                 ("style".to_string(), json!("shelf")),
                 ("context".to_string(), json!("hub.recent.library.playlists")),
-                (
-                    "key".to_string(),
-                    json!(format!("/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc&sectionID={section_key}")),
-                ),
-                ("promoted".to_string(), json!(false)),
-                ("more".to_string(), json!(false)),
-                ("size".to_string(), json!(0)),
-                ("Metadata".to_string(), json!([])),
+                ("key".to_string(), json!(key)),
+                ("more".to_string(), json!(!exhausted && listed.len() > rows.len())),
+                ("size".to_string(), json!(rows.len())),
             ]);
-            playlist.insert("random".to_string(), json!(false));
+            let keys = rows.iter().filter_map(key_of).collect::<Vec<_>>();
+            if !keys.is_empty() {
+                playlist.insert("hubKey".to_string(), json!(format!("/library/metadata/{}", keys.join(","))));
+            }
+            playlist.insert("Metadata".to_string(), Value::Array(rows));
             hubs.insert(position, Value::Object(playlist));
         }
 
@@ -9841,7 +9858,13 @@ impl Runtime {
                 let Some(section) = query.get("sectionID") else {
                     return true;
                 };
-                self.playlist_keys(playlist).iter().any(|key| {
+                // Cycle 59, measured on plexscratch42 and plexscratch: an EMPTY
+                // playlist answers to every library.
+                let keys = self.playlist_keys(playlist);
+                if keys.is_empty() {
+                    return true;
+                }
+                keys.iter().any(|key| {
                     self.catalog
                         .get(key)
                         .map(|row| {
