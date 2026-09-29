@@ -1514,6 +1514,41 @@ impl Runtime {
         rows
     }
 
+    /// The `Preferences` block a library row carries under `includePreferences=1`.
+    ///
+    /// Measured on kids and zen: `/library/sections?includePreferences=1` and
+    /// `/media/providers?includePreferences=1` answer the same block for the same
+    /// library, byte for byte -- including the show library's `episodeSort`, which is
+    /// the per-SHOW variant here (`Library default` in its enum and "for this show" in
+    /// its summary) rather than the library leaf's own.
+    fn section_preference_rows(&self, section_key: &str, kind: &str) -> Vec<Value> {
+        let mut rows = self.section_pref_rows(section_key, kind);
+        if kind == "show" {
+            let own = load_json_sidecar(&self.catalog_path, "item_prefs.json")
+                .and_then(|value| value.get("show").cloned())
+                .and_then(|value| value.as_array().cloned())
+                .unwrap_or_default()
+                .into_iter()
+                .find(|setting| setting.get("id").and_then(Value::as_str) == Some("episodeSort"));
+            if let Some(own) = own {
+                for row in &mut rows {
+                    if row.get("id").and_then(Value::as_str) != Some("episodeSort") {
+                        continue;
+                    }
+                    if let Some(object) = row.as_object_mut() {
+                        for field in ["summary", "enumValues"] {
+                            object.insert(
+                                field.to_string(),
+                                own.get(field).cloned().unwrap_or(Value::Null),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        rows
+    }
+
     fn section_directory(&self, section: &Value) -> Value {
         let key = string_value(section.get("key").unwrap_or(&Value::Null));
         let kind = section
@@ -1917,7 +1952,7 @@ impl Runtime {
                 if let Some(object) = row.as_object_mut() {
                     object.insert(
                         "Preferences".to_string(),
-                        json!({"Setting": self.section_pref_rows(&section_id, kind)}),
+                        json!({"Setting": self.section_preference_rows(&section_id, kind)}),
                     );
                 }
             }
@@ -5041,7 +5076,7 @@ impl Runtime {
                     if let Some(object) = row.as_object_mut() {
                         object.insert(
                             "Preferences".to_string(),
-                            json!({"Setting": self.section_pref_rows(
+                            json!({"Setting": self.section_preference_rows(
                                 &string_value(section.get("key").unwrap_or(&Value::Null)),
                                 section.get("type").and_then(Value::as_str).unwrap_or("movie"),
                             )}),
