@@ -14201,11 +14201,22 @@ impl Runtime {
             .ok()
             .flatten()
             .is_some();
+        // `server.py` `section_listing`: the default order is `titleSort`, except a
+        // show library's `type=3`/`type=4` grid, which keeps the show's own order.
+        let show_leaves = self.section(section_key).and_then(|s| s.get("type")).and_then(Value::as_str)
+            == Some("show")
+            && matches!(query.get("type").map(String::as_str), Some("3" | "4"));
         let sort = query
             .get("sort")
             .filter(|sort| !sort.is_empty())
             .map(String::as_str)
-            .or(if by_id { Some("id") } else { None });
+            .or(if by_id {
+                Some("id")
+            } else if show_leaves {
+                None
+            } else {
+                Some("titleSort")
+            });
         let rows = match self.sort_rows(rows, sort) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
