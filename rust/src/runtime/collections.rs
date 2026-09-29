@@ -208,12 +208,15 @@ impl Runtime {
         // Cycle 21: the per-user state sits after `ratingCount` (or `index` once an
         // unmatch removed it) and before `thumb`.
         let after = if row.contains_key("ratingCount") { "ratingCount" } else { "index" };
+        // A collection never carries `viewCount` at all, whatever is scrobbled at it.
+        let stored_state = self.list_state.get(&collection.id);
         let state = LIST_STATE
             .iter()
+            .filter(|name| **name != "viewCount")
             .filter_map(|name| {
-                collection
-                    .extra
-                    .get(*name)
+                stored_state
+                    .and_then(|state| state.get(*name))
+                    .or_else(|| collection.extra.get(*name))
                     .filter(|value| !value.is_null())
                     .map(|value| (name.to_string(), value.clone()))
             })
