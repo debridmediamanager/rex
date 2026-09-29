@@ -42,6 +42,7 @@ mod listing;
 mod merge;
 mod playlists;
 mod resume;
+mod stats;
 mod streams;
 mod search;
 mod spellfix;
@@ -348,6 +349,11 @@ pub struct Runtime {
     next_playlist_item: i64,
     /// Keys a merge or a delete freed: a split never reuses one (measured).
     retired_keys: Vec<i64>,
+    /// Client identifiers in the order the server first saw them (`""` is device 1).
+    device_order: Vec<String>,
+    device_first_seen: HashMap<String, i64>,
+    /// `(at, type, seconds, device)` per stopped play, for `/statistics/media`.
+    plays: Vec<(i64, String, i64, i64)>,
     pub next_collection: i64,
     pub next_queue: i64,
     pub next_queue_item: i64,
@@ -479,6 +485,9 @@ impl Runtime {
             next_playlist: playlists::PLAYLIST_BASE + 1,
             next_playlist_item: 0,
             retired_keys: Vec::new(),
+            device_order: vec![String::new()],
+            device_first_seen: HashMap::new(),
+            plays: Vec::new(),
             // Key spaces stay disjoint (library.py): collections are 50000+.
             next_collection: 50001,
             next_queue: 2,
@@ -3492,19 +3501,11 @@ impl Runtime {
     }
 
     fn device_id(&self, identifier: &str) -> i64 {
-        let mut identifiers = self
-            .devices
-            .values()
-            .map(|device| device.client_identifier.clone())
-            .collect::<Vec<_>>();
-        if let Some(index) = identifiers.iter().position(|value| value.is_empty()) {
-            identifiers.swap(0, index);
-        }
-        identifiers
+        self.device_order
             .iter()
-            .position(|value| value == identifier)
+            .position(|known| known == identifier)
             .map(|index| index as i64 + 1)
-            .unwrap_or(identifiers.len() as i64 + 1)
+            .unwrap_or(self.device_order.len() as i64 + 1)
     }
 
     fn choose_rows(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<Value> {
@@ -4758,6 +4759,25 @@ impl Runtime {
             return Response::error(500, "plexsim: unknown method");
         }
         self.mark_device(&request.headers);
+        {
+            // Every request registers its client -- header or query alike -- in the
+            // order the server first sees it (`sessions.device_id`).
+            let (_, raw_query) = split_target(&request.target);
+            let identifier = request
+                .headers
+                .get("x-plex-client-identifier")
+                .cloned()
+                .filter(|value| !value.is_empty())
+                .or_else(|| {
+                    parse_query(&raw_query)
+                        .into_iter()
+                        .rev()
+                        .find(|(name, _)| name == "X-Plex-Client-Identifier")
+                        .map(|(_, value)| value)
+                })
+                .unwrap_or_default();
+            self.register_device(&identifier);
+        }
         let mut response = self.request_route(request);
         exclude_fields_response(request, &mut response);
         sync_version_response(request, &mut response);
@@ -4844,6 +4864,81 @@ impl Runtime {
         }
     }
 
+    /// `server.py` `_localise_item_language_enum` (cycle 59): an item's own
+    /// `audioLanguage`/`subtitleLanguage` enum is built at READ time -- its stream
+    /// languages as bare tags, then the regional list -- so it is never in the table
+    /// whole, and localising it by the table's captured entry named this item's head in
+    /// each language's own name (`fr:Français` under `en`). zen localises it piece by
+    /// piece: the head's names and the inherit option are read off zen per language
+    /// (`item_language_names.json`; in da, he, pt and sr the inherit option is not the
+    /// table list's lead), and the regional tail is the table's own list in its own
+    /// ORDER (cycle 45: the order moves with the names). `translations.json` has no `en`
+    /// entry because English is the source, so, as the Python does at load time, the
+    /// table's list for a language it lacks is `agent_languages.json`'s rows.
+    fn localized_item_language_enum(&self, source: &str, language: &str, strings: &Value) -> Option<String> {
+        let (lead, rest) = source.split_once('|')?;
+        if !matches!(lead, ":Account default" | ":Series default") || rest.is_empty() {
+            return None;
+        }
+        let prefix = format!("{lead}|en:English|");
+        let entry = strings
+            .get("enumValues")?
+            .as_object()?
+            .iter()
+            .find(|(key, _)| key.starts_with(&prefix))
+            .map(|(_, entry)| entry)?;
+        let translated = match entry.get(language).and_then(Value::as_str) {
+            Some(text) if !text.is_empty() => text.to_string(),
+            _ if language.is_empty() => return None,
+            _ => {
+                let rows = load_json_sidecar(&self.catalog_path, "agent_languages.json")?
+                    .get("languages")?
+                    .get(language)?
+                    .as_array()?
+                    .iter()
+                    .filter_map(|row| {
+                        let row = row.as_array()?;
+                        Some(format!("{}:{}", row.first()?.as_str()?, row.get(1)?.as_str()?))
+                    })
+                    .collect::<Vec<_>>();
+                if rows.is_empty() {
+                    return None;
+                }
+                format!("{lead}|{}", rows.join("|"))
+            }
+        };
+        let table = load_json_sidecar(&self.catalog_path, "item_language_names.json");
+        let head = table.as_ref().and_then(|t| t.get("names")).and_then(|n| n.get(language));
+        let mut pieces = Vec::new();
+        for pair in rest.split('|') {
+            let (code, name) = pair.split_once(':').map_or((pair, None), |(c, n)| (c, Some(n)));
+            if code.contains('-') {
+                break;
+            }
+            let named = head.and_then(|h| h.get(code)).and_then(Value::as_str).filter(|n| !n.is_empty());
+            pieces.push(match (named, name) {
+                (Some(named), _) => format!("{code}:{named}"),
+                (None, Some(name)) => format!("{code}:{name}"),
+                (None, None) => code.to_string(),
+            });
+        }
+        pieces.extend(
+            translated
+                .split('|')
+                .skip(1)
+                .filter(|pair| pair.split(':').next().unwrap_or("").contains('-'))
+                .map(str::to_string),
+        );
+        let inherit = table
+            .as_ref()
+            .and_then(|t| t.get("leads"))
+            .and_then(|l| l.get(language))
+            .and_then(|l| l.get(lead))
+            .and_then(Value::as_str)
+            .unwrap_or(lead);
+        Some(std::iter::once(inherit.to_string()).chain(pieces).collect::<Vec<_>>().join("|"))
+    }
+
     /// Language pickers are a measured sidecar rather than ordinary enum
     /// translations.  The server keeps the source order for an item's own
     /// audio/subtitle setting, while the library language picker uses the
@@ -4856,6 +4951,9 @@ impl Runtime {
         language: &str,
         strings: &Value,
     ) -> Option<String> {
+        if let Some(rebuilt) = self.localized_item_language_enum(source, language, strings) {
+            return Some(rebuilt);
+        }
         let language_list =
             source.contains("ca-ES:") || source.contains("en-US:") || source.contains("ar-SA:");
         if !language_list {
@@ -5386,6 +5484,9 @@ impl Runtime {
             ("GET" | "HEAD", "/system/proxy") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/video/:/transcode/universal/subtitles") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/photo/:/transcode") => self.route_photo_transcode(request, &query),
+            ("GET" | "HEAD", "/service/ultrablur/colors" | "/services/ultrablur/colors") => {
+                self.route_ultrablur_colors(request, &query)
+            }
             ("GET" | "HEAD", "/channels") => Response::json(
                 200,
                 self.container(
@@ -5479,7 +5580,7 @@ impl Runtime {
                 .unwrap_or_else(|| self.route_bandwidth(&query)),
             ("GET" | "HEAD", "/statistics/media") => self
                 .statistics_refusal("media", &query)
-                .unwrap_or_else(|| self.route_media_statistics(&query)),
+                .unwrap_or_else(|| self.route_media_statistics_ported(&query)),
             ("GET" | "HEAD", "/statistics/resources") => self
                 .statistics_refusal("resources", &query)
                 .unwrap_or_else(|| self.route_resource_statistics(&query)),
@@ -7719,10 +7820,19 @@ impl Runtime {
             Ok(None) => return Response::error(404, "plexsim: no such item"),
             Err(refusal) => return refusal,
         };
+        self.scrobble_key(&key, watched, Some(1));
+        Response::empty(200)
+    }
+
+    /// library.scrobble: mark a row played or unplayed (see `route_scrobble`).
+    /// `view_type` is the history row's `viewType`: 1 for a scrobble, none for a
+    /// play a session completed (cycle 70's offline sync is one).
+    fn scrobble_key(&mut self, key: &str, watched: bool, view_type: Option<i64>) {
+        let key = key.to_string();
         if self.catalog.get(&key).is_none() {
             let is_collection = self.collections.contains_key(&key);
             if watched && is_collection {
-                return Response::empty(200);
+                return;
             }
             let state = self.list_state_mut(&key);
             if watched {
@@ -7737,7 +7847,7 @@ impl Runtime {
             }
             self.dirty = true;
             self.save_if_dirty();
-            return Response::empty(200);
+            return;
         }
         let kind = self
             .catalog
@@ -7766,8 +7876,8 @@ impl Runtime {
                 if let Some(row) = self.catalog.get(leaf).cloned() {
                     self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
                     let mut history = self.history_row(&row);
-                    if let Some(object) = history.as_object_mut() {
-                        object.insert("viewType".to_string(), json!(1));
+                    if let (Some(object), Some(view_type)) = (history.as_object_mut(), view_type) {
+                        object.insert("viewType".to_string(), json!(view_type));
                     }
                     self.history.push(history);
                 }
@@ -7808,7 +7918,6 @@ impl Runtime {
             self.completion_pending_stop.retain(|(_, item)| item != &key);
         }
         self.save_if_dirty();
-        Response::empty(200)
     }
 
     /// `/:/rate?key=&identifier=&rating=` -- the star rating.  An unparseable
@@ -8384,6 +8493,19 @@ impl Runtime {
         if !key.is_empty() && self.catalog.get(&key).is_none() {
             return Response::error(404, "plexsim: no such item");
         }
+        if state == "stopped" {
+            // `record_play`: a stopped timeline records one play for the rollups,
+            // under the device that played.
+            if let Some(row) = self.catalog.get(&key).cloned() {
+                let identifier = query
+                    .get("X-Plex-Client-Identifier")
+                    .cloned()
+                    .or_else(|| headers.get("x-plex-client-identifier").cloned())
+                    .unwrap_or_default();
+                let device = self.register_device(&identifier);
+                self.record_play(&row, time / 1000, device);
+            }
+        }
         let session_identifier = query
             .get("X-Plex-Session-Identifier")
             .cloned()
@@ -8439,6 +8561,36 @@ impl Runtime {
         }
         if state == "stopped" {
             self.started_sessions.remove(&session_identifier);
+        }
+        // Cycle 70, measured on both writable copies: the OFFLINE form Plex for
+        // Android syncs a downloaded item's view state with marks it watched when
+        // `viewCount` is 1 or more -- one view per sync, a history row of the
+        // SESSION kind, `complete` -- and `viewCount=0` on a watched item clears
+        // it.  A negative or unparseable value is ignored.
+        let offline_count = query
+            .get("viewCount")
+            .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
+            .and_then(|value| value.parse::<i64>().ok());
+        if !key.is_empty()
+            && query.get("offline").map(String::as_str) == Some("1")
+            && playback_state == "ignore"
+        {
+            if let Some(count) = offline_count {
+                if count >= 1 {
+                    self.scrobble_key(&key, true, None);
+                    playback_state = "complete";
+                } else if self
+                    .catalog
+                    .get(&key)
+                    .and_then(|row| row.get("viewCount"))
+                    .and_then(Value::as_i64)
+                    .unwrap_or(0)
+                    > 0
+                {
+                    self.scrobble_key(&key, false, None);
+                    playback_state = "complete";
+                }
+            }
         }
         if let Some(item_id) = query
             .get("playQueueItemID")
@@ -8829,6 +8981,11 @@ impl Runtime {
                                 .and_then(Value::as_f64)
                                 .is_some_and(|value| value >= 7.0)
                     });
+                    // Cycle 55, re-measured on zen: the shelf is the HEAD of its own key
+                    // listing, so its rows come in that listing's default order.
+                    let filtered = self
+                        .sort_rows(filtered.clone(), Some("titleSort"))
+                        .unwrap_or(filtered);
                     ((name, tag), filtered)
                 })
                 .unwrap_or_else(|| ((String::new(), Value::Null), Vec::new()))
@@ -9201,6 +9358,50 @@ impl Runtime {
     /// A SECTION's Continue Watching see-all leaf (cycles 21, 26, 57): a show
     /// library keeps a hidden row, a movie library drops it, and a next-up whose
     /// anchor was only scrobbled is not listed.
+    /// Cycle 70: `/service(s)/ultrablur/colors?url=` -- Plex for Android's backdrop tint
+    /// (js:831397).  zen answers both spellings and resolves the url exactly as
+    /// `/photo/:/transcode` does: no `url` a 400, an unresolvable one a 404, a server
+    /// path that is not an image a 500, any image it serves a 200 with the four corner
+    /// colours.  plexsim has no image decoder, so the VALUES are the row's own palette.
+    fn route_ultrablur_colors(&mut self, request: &Request, query: &HashMap<String, String>) -> Response {
+        let Some(url) = query.get("url").cloned() else {
+            return Response::error(400, "plexsim: bad request");
+        };
+        let photo_query = HashMap::from([
+            ("url".to_string(), url.clone()),
+            ("width".to_string(), "64".to_string()),
+            ("height".to_string(), "64".to_string()),
+        ]);
+        let fetched = self.route_photo_transcode(request, &photo_query);
+        if fetched.status != 200 {
+            return fetched;
+        }
+        let inner = url.split(['?', '#']).next().unwrap_or_default().to_string();
+        let owner = inner
+            .strip_prefix("/library/metadata/")
+            .and_then(|rest| rest.split_once('/'))
+            .map(|(key, _)| key.to_string())
+            .filter(|key| !key.is_empty() && key.bytes().all(|b| b.is_ascii_digit()));
+        let palette = owner
+            .and_then(|key| self.catalog.get(&key))
+            .and_then(|row| row.get("UltraBlurColors"))
+            .map(|colors| if colors.is_array() { colors[0].clone() } else { colors.clone() })
+            .filter(Value::is_object);
+        let mut colors = Map::new();
+        for (corner, fallback) in crate::hierarchy::DEFAULT_ULTRABLUR {
+            let value = palette
+                .as_ref()
+                .and_then(|palette| palette.get(*corner))
+                .cloned()
+                .unwrap_or_else(|| json!(fallback));
+            colors.insert(corner.to_string(), value);
+        }
+        Response::json(
+            200,
+            json!({"MediaContainer": {"size": 1, "UltraBlurColors": [Value::Object(colors)]}}),
+        )
+    }
+
     /// `section_continue_watching`: a show library keeps a hidden row, a movie library
     /// drops it, and a next-up whose show was never played in a session is not listed.
     fn section_continue_watching_rows(&self, section_key: &str, is_show: bool) -> Vec<Value> {
@@ -10788,7 +10989,8 @@ impl Runtime {
             }
             self.hidden_continue.insert(key);
             self.dirty = true;
-            return Response::empty(200);
+            // Measured: the answer is a bare `size 0` container, not an empty body.
+            return Response::json(200, json!({"MediaContainer": {"size": 0}}));
         }
         if segments.first() == Some(&"downloadQueue") {
             return self.route_download_queue(&segments[1..], request);
@@ -12054,8 +12256,15 @@ impl Runtime {
                             Ok(rows) => rows,
                             Err(status) => return Response::error(status, "plexsim: bad request"),
                         };
-                        if let Some(sort) = query.get("sort") {
-                            rows = match self.sort_rows(rows, Some(sort)) {
+                        // A movie library's leaves default to titleSort; a show
+                        // library's keep the show order they arrive in.
+                        let sort = query
+                            .get("sort")
+                            .filter(|sort| !sort.is_empty())
+                            .map(String::as_str)
+                            .or(if is_show { None } else { Some("titleSort") });
+                        if sort.is_some() {
+                            rows = match self.sort_rows(rows, sort) {
                                 Ok(rows) => rows,
                                 Err(status) => {
                                     return Response::error(status, "plexsim: bad request")
@@ -12070,9 +12279,31 @@ impl Runtime {
                                 Err(status) => return Response::error(status, "plexsim: bad request"),
                             };
                         }
+                        // Measured on kids and zen: `limit=` applies here as on `/all`.
+                        let rows = match listing::limited(rows, query) {
+                            Ok(rows) => rows,
+                            Err(status) => return Response::error(status, "plexsim: bad request"),
+                        };
+                        let exclude_media = query
+                            .get("excludeElements")
+                            .is_some_and(|value| value.split(',').any(|name| name == "Media"));
                         let shown = rows
                             .iter()
-                            .map(|candidate| self.grid_row(candidate, false, true, false))
+                            .map(|candidate| {
+                                let mut shown = self.child_list_row(candidate, query);
+                                if exclude_media {
+                                    if let Some(object) = shown.as_object_mut() {
+                                        let count = object
+                                            .get("Media")
+                                            .and_then(Value::as_array)
+                                            .map_or(0, Vec::len);
+                                        object.remove("Media");
+                                        object.insert("mediaCount".to_string(), json!(count));
+                                        object.insert("mediaCountOptimized".to_string(), json!(0));
+                                    }
+                                }
+                                shown
+                            })
                             .collect::<Vec<_>>();
                         fields.insert(
                             "viewGroup".to_string(),
@@ -12840,7 +13071,10 @@ impl Runtime {
                             return response;
                         }
                     }
-                    if segments.len() == 5 && segments[3] == "firstCharacter" {
+                    // `/firstCharacter/top` is the tag-table leaf (`route_section_top`), not
+                    // the bucket named `top`: the section /top check measured the bare empty
+                    // 200 with no `title2`, where the bucket answers "Start with 'top'".
+                    if segments.len() == 5 && segments[3] == "firstCharacter" && segments[4] != "top" {
                         return self.first_character_listing(section_key, section, segments[4], query, pairs);
                     }
                     if segments.len() == 5 && segments[4] != "top" && !segments[4].is_empty() {
@@ -13061,7 +13295,11 @@ impl Runtime {
                         ),
                     );
                 }
-                if segments.len() == 5 && segments[3] == "firstCharacter" && !segments[4].is_empty() {
+                if segments.len() == 5
+                    && segments[3] == "firstCharacter"
+                    && !segments[4].is_empty()
+                    && segments[4] != "top"
+                {
                     // Cycle 16, measured on kids and zen: the bucket behind a
                     // letter is a real LISTING, not the axis.  The match is on the
                     // ROW's own STORED sort title (cycle 18: empty for a generated
@@ -14406,7 +14644,8 @@ impl Runtime {
         let rows = rows
             .iter()
             .map(|row| {
-                let mut projected = self.section_listing_row(row);
+                // Measured: a LISTING carries `Guid` only under `includeGuids=1`.
+                let mut projected = guid_gate(self.section_listing_row(row), query);
                 if with_storage {
                     let leaves = if row.get("Media").is_some() {
                         vec![row.clone()]
@@ -15409,10 +15648,20 @@ impl Runtime {
                         .get("includeChildren")
                         .is_some_and(|value| is_true_option(value))
                 {
+                    // Cycle 16, measured on kids and zen: an INLINED child row is the
+                    // full row without `librarySectionID`, `librarySectionKey` or
+                    // `librarySectionTitle`, which the same row through `/children`
+                    // carries.
                     let children = self
                         .children(key)
                         .into_iter()
-                        .map(|child| self.listing_row(&child))
+                        .map(|child| {
+                            let mut shown = self.detail_row(&child);
+                            if let Some(object) = shown.as_object_mut() {
+                                object.retain(|name, _| !name.starts_with("librarySection"));
+                            }
+                            shown
+                        })
                         .collect::<Vec<_>>();
                     object.insert(
                         "Children".to_string(),
@@ -16180,13 +16429,60 @@ impl Runtime {
                 if request.method != "GET" && request.method != "HEAD" {
                     return Response::error(404, "plexsim: not found");
                 }
-                Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([("Metadata".to_string(), Value::Array(Vec::new()))]),
-                        false,
-                    ),
-                )
+                // Measured: both are candidate lists in the tag container, EMPTY for an
+                // item with none.  Cycle 59: an UPLOAD is a candidate here, selected
+                // while the row carries it.
+                let field = if tail[0] == "clearLogos" { "clearLogo" } else { "theme" };
+                let owned = if field == "clearLogo" {
+                    row.get("_clearLogo").is_some_and(|value| !value.is_null())
+                } else {
+                    artwork::owns_field(Some(row), "theme")
+                };
+                let current = owned
+                    .then(|| row.get(&format!("_{field}_url")).and_then(Value::as_str).map(str::to_string))
+                    .flatten();
+                let entries = row
+                    .get("_uploads")
+                    .and_then(|uploads| uploads.get(field))
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                    .map(|upload| {
+                        let path = artwork::candidate_path(key, upload);
+                        json!({"key": path, "ratingKey": upload, "thumb": path,
+                               "selected": current.as_deref() == Some(upload)})
+                    })
+                    .collect::<Vec<_>>();
+                let mut fields = Map::new();
+                fields.insert("size".to_string(), json!(entries.len()));
+                fields.insert("identifier".to_string(), json!("com.plexapp.plugins.library"));
+                fields.insert("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX));
+                fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
+                if !entries.is_empty() {
+                    fields.insert("Metadata".to_string(), Value::Array(entries));
+                }
+                Response::json(200, self.container(fields, false))
+            }
+            "theme" | "clearLogo" => {
+                // Cycle 59: an UPLOADED theme or logo is served from the row that owns
+                // it; cycle 60: only a READ serves it, and anything else is the 404.
+                let owned = if tail[0] == "clearLogo" {
+                    row.get("_clearLogo").is_some_and(|value| !value.is_null())
+                } else {
+                    artwork::owns_field(Some(row), "theme")
+                };
+                let stored = row.get(&format!("_{}_url", tail[0])).and_then(Value::as_str);
+                match stored.and_then(|url| self.uploads.get(url)) {
+                    Some((body, content_type))
+                        if owned && matches!(request.method.as_str(), "GET" | "HEAD") =>
+                    {
+                        let mut response = Response::bytes(200, content_type.clone());
+                        response.body = body.clone();
+                        response
+                    }
+                    _ => Response::error(404, "plexsim: not found"),
+                }
             }
             "art" | "thumb" | "poster" => self.route_art(key, row, tail, query, request),
             "file" => {
@@ -17273,6 +17569,30 @@ impl Runtime {
         if tail.len() == 1 && matches!(tail[0], "posters" | "arts" | "clearLogos" | "themes") {
             return self.list_artwork_response(&playlist.id, false, tail[0], request);
         }
+        if tail.len() == 1 && matches!(tail[0], "thumbs" | "banners") {
+            // Cycle 16, measured on plexscratch: a list answers these two the way an
+            // ITEM does -- 200 with an empty candidate container.
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 0, "identifier": "com.plexapp.plugins.library",
+                                          "mediaTagPrefix": MEDIA_TAG_PREFIX,
+                                          "mediaTagVersion": MEDIA_TAG_VERSION}}),
+            );
+        }
+        if tail == ["tree"] {
+            // Cycle 16: a list has a `/tree` too, a single `MetadataItem` naming itself.
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 1, "MetadataItem": [
+                    {"id": playlist.id.parse::<i64>().unwrap_or(0)}]}}),
+            );
+        }
         if tail == ["items"] && request.method == "PUT" && playlist.smart {
             return self.save_smart_playlist(&playlist.id, query);
         }
@@ -17512,6 +17832,14 @@ impl Runtime {
                 } else {
                     Response::error(404, "plexsim: no such playlist item")
                 };
+            }
+            // Cycle 16, measured on plexscratch: a playlist's artwork lives under
+            // `/library/metadata/{ratingKey}/`; under `/playlists/{id}/` `posters`,
+            // `arts`, `thumb`, `art` and the UNVERSIONED `composite` are 404s.
+            if (segments.len() == 2 && matches!(segments[1], "posters" | "arts" | "thumb" | "art" | "composite"))
+                || matches!(segments.get(1), Some(&"thumbs" | &"banners" | &"tree"))
+            {
+                return Response::error(404, "plexsim: not found");
             }
             return self.route_playlist_metadata(&p, &segments[1..], query, request);
         }
