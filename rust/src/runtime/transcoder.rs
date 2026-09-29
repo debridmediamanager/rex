@@ -101,9 +101,13 @@ impl Runtime {
             response
         };
         if matches!(scheme.as_deref(), Some("http" | "https")) {
-            // An absolute url is the agent's remote artwork; the native runtime has no
-            // image fetcher, so it answers the placeholder the direct artwork path does.
-            let mut response = Response::image(jpeg_placeholder());
+            // An absolute url (a person thumb, or art handed out earlier) is fetched as
+            // it is, at the TMDB variant nearest the width, once the lock is released.
+            self.pending_image = Some(tmdb_at_width(
+                &target,
+                query.get("width").map(String::as_str),
+            ));
+            let mut response = Response::bytes(200, "image/jpeg");
             response.headers = vec![
                 ("X-Plex-Protocol".to_string(), "1.0".to_string()),
                 ("Date".to_string(), http_date()),
@@ -166,7 +170,17 @@ impl Runtime {
             return Response::photo_error(404, "plexsim: not found");
         }
         if !fetched.content_type.starts_with("image/") {
+            self.pending_image = None;
             return Response::photo_error(500, "plexsim: server error");
+        }
+        // The direct path answered with a remote image it has not fetched yet: the
+        // transcoder asks for it at the variant nearest ITS width (`_at_width` over the
+        // inner result), and the fetch happens once the lock is released.
+        if let Some(url) = self.pending_image.take() {
+            self.pending_image = Some(tmdb_at_width(
+                &url,
+                query.get("width").map(String::as_str),
+            ));
         }
         transcoded(Response {
             status: 200,

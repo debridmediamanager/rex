@@ -340,6 +340,9 @@ pub struct Runtime {
     /// A part read the router accepted; `handle_connection` streams it after the
     /// runtime lock is released, so a media body never holds up the rest of the API.
     pending_part: Option<PartProxy>,
+    /// A remote artwork url the router answered with (`_serve_image`); fetched, cached,
+    /// after the lock is released, so a slow image host never holds up the API.
+    pending_image: Option<String>,
     decision_profiles: decision::Profiles,
     pub part_mode: String,
     pub public_url: Option<String>,
@@ -508,6 +511,7 @@ impl Runtime {
             tmdb,
             match_candidates: HashMap::new(),
             pending_part: None,
+            pending_image: None,
             decision_profiles,
             part_mode: options.part_mode,
             public_url: options.public_url,
@@ -12998,13 +13002,17 @@ impl Runtime {
                     let uploaded = self.uploads.get(&art).cloned();
                     let url =
                         transcoder::tmdb_at_width(&art, query.get("width").map(String::as_str));
-                    let Some((bytes, kind)) =
-                        uploaded.or_else(|| transcoder::fetch_remote_image(&url))
-                    else {
-                        return Response::error(404, "plexsim: artwork unavailable");
+                    let mut response = match uploaded {
+                        Some((bytes, kind)) => {
+                            let mut response = Response::bytes(200, kind);
+                            response.body = bytes;
+                            response
+                        }
+                        None => {
+                            self.pending_image = Some(url);
+                            Response::bytes(200, "image/jpeg")
+                        }
                     };
-                    let mut response = Response::bytes(200, kind);
-                    response.body = bytes;
                     response.headers = vec![
                         ("Cache-Control".to_string(), "no-cache".to_string()),
                         ("Accept-Ranges".to_string(), "bytes".to_string()),
@@ -18618,25 +18626,61 @@ impl Runtime {
         if row.get(field).map_or(true, Value::is_null) {
             return Response::error(404, "plexsim: not found");
         }
-        // The image the row points at: an uploaded one, or the placeholder.  Cycle
-        // 29: `X-Plex-Local-Asset: 1` marks an ITEM's own artwork.
-        let private = if field == "thumb" {
+        // `artwork_for`: the poster for `thumb`/`poster`, the backdrop (else the poster)
+        // for `art`. `thumb` is the leaf that carries the size: plexsim cannot resize, so
+        // it asks TMDB for the published variant nearest the width. The singular
+        // `poster`/`art` read is the image the row points at, as stored.
+        let url = if field == "thumb" {
             row.get("_poster_url")
         } else {
             row.get("_art_url").or_else(|| row.get("_poster_url"))
+        }
+        .and_then(Value::as_str)
+        .filter(|url| !url.is_empty())
+        .map(|url| {
+            if leaf == "thumb" {
+                transcoder::tmdb_at_width(url, query.get("width").map(String::as_str))
+            } else {
+                url.to_string()
+            }
+        });
+        let Some(url) = url else {
+            // No image at all: the generated tile, sized by the request on `thumb`, and
+            // not an item's local asset.
+            let size = |name: &str, default: u32| {
+                query
+                    .get(name)
+                    .filter(|_| leaf == "thumb")
+                    .and_then(|value| value.trim().parse::<u32>().ok())
+                    .filter(|value| *value != 0)
+                    .unwrap_or(default)
+            };
+            let mut response = Response::bytes(200, "image/png");
+            response.body = generated_png(size("width", 342), size("height", 513), [32, 34, 38]);
+            response
+                .headers
+                .push(("Cache-Control".to_string(), "no-cache".to_string()));
+            response
+                .headers
+                .push(("Accept-Ranges".to_string(), "bytes".to_string()));
+            return response;
         };
-        let mut response = match private
-            .and_then(Value::as_str)
-            .and_then(|url| self.uploads.get(url))
-        {
+        // Cycle 29: `X-Plex-Local-Asset: 1` marks an ITEM's own artwork, uploaded or
+        // remote; a direct asset is `no-cache` (a re-match changes the version).
+        let mut response = match self.uploads.get(&url) {
             Some((body, content_type)) => {
                 let mut response = Response::bytes(200, content_type.clone());
                 response.body = body.clone();
                 response
             }
-            None if query.get("width").is_some() => Response::image(png_placeholder()),
-            None => Response::image(jpeg_placeholder()),
+            None => {
+                self.pending_image = Some(url);
+                Response::bytes(200, "image/jpeg")
+            }
         };
+        response
+            .headers
+            .push(("Cache-Control".to_string(), "no-cache".to_string()));
         response
             .headers
             .push(("Accept-Ranges".to_string(), "bytes".to_string()));
@@ -20906,9 +20950,17 @@ fn handle_connection<S: Read + Write>(
                 .lock()
                 .map_err(|_| "runtime lock poisoned".to_string())?;
             guard.pending_part = None;
+            guard.pending_image = None;
             let response = guard.route(&request);
             part_plan = guard.pending_part.take();
-            response
+            let image = guard.pending_image.take();
+            drop(guard);
+            match image {
+                Some(url) if response.status == 200 && response.body.is_empty() => {
+                    serve_remote_image(response, &url)
+                }
+                _ => response,
+            }
         };
         // Cycle 30/49: a refusal of the request's ENVELOPE closes the socket -- the
         // malformed query pair among them -- while a refusal of its MEANING keeps it.
@@ -22811,9 +22863,6 @@ fn content_type(path: &str) -> String {
         "application/octet-stream".to_string()
     }
 }
-fn png_placeholder() -> Vec<u8> {
-    b"\x89PNG\r\n\x1a\n".to_vec()
-}
 fn jpeg_placeholder() -> Vec<u8> {
     b"\xff\xd8\xff\xd9".to_vec()
 }
@@ -22919,6 +22968,19 @@ struct PartProxy {
     redirect: bool,
     window: PartWindow,
     head: bool,
+}
+
+/// `_serve_image`'s upstream half, outside the lock: the remote bytes and their type
+/// into the response the router shaped, or the 404 a failed fetch is.
+fn serve_remote_image(mut response: Response, url: &str) -> Response {
+    match transcoder::fetch_remote_image(url) {
+        Some((body, content_type)) => {
+            response.body = body;
+            response.content_type = content_type;
+            response
+        }
+        None => Response::error(404, "plexsim: artwork unavailable"),
+    }
 }
 
 /// Content-Range sits right after Accept-Ranges, where the part read has always put it.
