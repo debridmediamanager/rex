@@ -5552,13 +5552,19 @@ impl Runtime {
             ("GET" | "HEAD", "/livetv/epg/channels") => {
                 Response::error(400, "plexsim: bad request")
             }
-            ("GET" | "HEAD", "/servers") => Response::json(
-                200,
-                self.container(
-                    Map::from_iter([("Server".to_string(), Value::Array(self.gdm_server_rows()))]),
-                    false,
-                ),
-            ),
+            ("GET" | "HEAD", "/servers") => {
+                let rows = self.gdm_server_rows();
+                Response::json(
+                    200,
+                    self.container(
+                        Map::from_iter([
+                            ("size".to_string(), json!(rows.len())),
+                            ("Server".to_string(), Value::Array(rows)),
+                        ]),
+                        false,
+                    ),
+                )
+            }
             ("GET" | "HEAD", "/logs") => Response::json(
                 200,
                 self.container(Map::from_iter([("content".to_string(), json!("plexsim native log\n"))]), false),
