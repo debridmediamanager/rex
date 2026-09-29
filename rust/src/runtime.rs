@@ -15193,8 +15193,10 @@ impl Runtime {
                 if request.method != "GET" && request.method != "HEAD" {
                     return Response::error(404, "plexsim: not found");
                 }
-                let Some(url) = query.get("url") else {
-                    return Response::error(404, "plexsim: not found");
+                // Measured on both servers: the item's file endpoint without its
+                // `url` (or with an empty one) is a 400.
+                let Some(url) = query.get("url").filter(|url| !url.is_empty()) else {
+                    return Response::error(400, "plexsim: bad request");
                 };
                 let Some(content) = row
                     .get(if url.contains("themes") {
