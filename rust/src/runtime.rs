@@ -4133,11 +4133,29 @@ impl Runtime {
                             .iter()
                             .find(|(name, _)| name == "sort")
                             .map(|(_, value)| value.as_str());
-                        return self
-                            .filter_rows(rows, &pairs, section_type)
+                        // `limit` is part of the query a smart list stores, measured on a
+                        // writable copy of the reference: a list saved with
+                        // `sort=titleSort:desc&limit=2` reads back two rows.
+                        let limit = pairs
+                            .iter()
+                            .rev()
+                            .find(|(name, _)| name == "limit")
+                            .and_then(|(_, value)| value.parse::<usize>().ok())
+                            .filter(|limit| *limit > 0);
+                        let filter_pairs = pairs
+                            .iter()
+                            .filter(|(name, _)| name != "sort" && name != "limit")
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        let mut rows = self
+                            .filter_rows(rows, &filter_pairs, section_type)
                             .ok()
                             .and_then(|rows| self.sort_rows(rows, sort).ok())
                             .unwrap_or_default();
+                        if let Some(limit) = limit {
+                            rows.truncate(limit);
+                        }
+                        return rows;
                     }
                     return rows;
                 }
@@ -4154,51 +4172,7 @@ impl Runtime {
     }
 
     fn dynamic_playlist_row(&self, playlist: &Playlist) -> Value {
-        let item_keys = self.playlist_keys(playlist);
-        let items = item_keys
-            .iter()
-            .filter_map(|key| self.catalog.get(key))
-            .collect::<Vec<_>>();
-        let duration = items
-            .iter()
-            .map(|r| r.get("duration").and_then(Value::as_i64).unwrap_or(0))
-            .sum::<i64>();
-        let mut row = json!({
-            "ratingKey": playlist.id,
-            "key": format!("/playlists/{}", playlist.id),
-            "guid": "com.plexapp.plugins.library://playlist",
-            "type": "playlist",
-            "playlistType": "video",
-            "title": playlist.title,
-            "composite": format!("/playlists/{}/composite", playlist.id),
-            "smart": playlist.smart,
-            "icon": if playlist.smart { "playlist://image.smart" } else { "playlist://image.standard" },
-            "leafCount": items.len(),
-            "duration": duration,
-            "addedAt": 1700000000,
-            "updatedAt": 1700000000,
-            "librarySectionID": -1,
-            "librarySectionTitle": "",
-        });
-        if playlist.smart {
-            if let Some(object) = row.as_object_mut() {
-                object.insert("content".to_string(), json!(source_uri_for(&playlist.uri)));
-            }
-        }
-        if let Some(edits) = self.edits.get(&playlist.id) {
-            if let Some(object) = row.as_object_mut() {
-                for (name, value) in edits {
-                    object.insert(name.clone(), value.clone());
-                }
-            }
-        }
-        if item_keys.is_empty() {
-            if let Some(object) = row.as_object_mut() {
-                object.remove("composite");
-                object.remove("duration");
-            }
-        }
-        row
+        self.playlist_row(playlist, true, true)
     }
 
     fn playlist_keys(&self, playlist: &Playlist) -> Vec<String> {
@@ -9320,19 +9294,7 @@ impl Runtime {
                     .map(|value| value.split(',').any(|kind| kind == "video"))
                     .unwrap_or(true)
             })
-            .map(|p| {
-                let mut row = self.dynamic_playlist_row(p);
-                if p.smart {
-                    if let Some(object) = row.as_object_mut() {
-                        object.remove("content");
-                    }
-                }
-                if let Some(object) = row.as_object_mut() {
-                    object.insert("viewCount".to_string(), json!(1));
-                    object.insert("lastViewedAt".to_string(), json!(1700000000));
-                }
-                row
-            })
+            .map(|p| self.playlist_row(p, false, true))
             .collect::<Vec<_>>();
         if let Some(sort) = query.get("sort") {
             let descending = sort.ends_with(":desc");
@@ -14774,6 +14736,7 @@ impl Runtime {
                         fields.remove(*name);
                     }
                 }
+                fields.insert("Metadata".to_string(), Value::Array(rows.clone()));
                 page_fields(&mut fields, query);
                 if fields.contains_key("Directory") {
                     let directory = fields
@@ -15731,6 +15694,16 @@ impl Runtime {
         query: &HashMap<String, String>,
         request: &Request,
     ) -> Response {
+        // Cycle 16, measured on plexscratch: EVERY item write on a smart list is a 400
+        // -- the move, the single delete and the clear -- because a smart list's items
+        // are its query.
+        if playlist.smart
+            && tail.first() == Some(&"items")
+            && ((tail.len() >= 2 && matches!(request.method.as_str(), "PUT" | "DELETE"))
+                || (tail.len() == 1 && request.method == "DELETE"))
+        {
+            return Response::error(400, "plexsim: bad request");
+        }
         if tail.len() == 3 && tail[0] == "items" && tail[2] == "move" && request.method == "PUT" {
             let Some(item_id) = tail[1].parse::<i64>().ok() else {
                 return Response::error(404, "plexsim: no such playlist item");
@@ -15741,6 +15714,24 @@ impl Runtime {
             let Some(index) = stored.item_ids.iter().position(|value| *value == item_id) else {
                 return Response::error(404, "plexsim: no such playlist item");
             };
+            // Measured: moving an item after ITSELF leaves the order alone (it
+            // would otherwise read as an unknown `after` and go to the front).
+            let after_itself = query.get("after").is_some_and(|after| *after == tail[1]);
+            let index = if after_itself { usize::MAX } else { index };
+            if index == usize::MAX {
+                self.dirty = true;
+                let updated = self.playlists.get(&playlist.id).cloned().unwrap_or_else(|| playlist.clone());
+                return Response::json(
+                    200,
+                    self.container(
+                        Map::from_iter([(
+                            "Metadata".to_string(),
+                            Value::Array(vec![self.dynamic_playlist_row(&updated)]),
+                        )]),
+                        false,
+                    ),
+                );
+            }
             let item = stored.items.remove(index);
             let id = stored.item_ids.remove(index);
             let position = query
@@ -15905,7 +15896,8 @@ impl Runtime {
             return Response::image(jpeg_placeholder());
         }
         if tail.is_empty() && request.method == "PUT" {
-            return self.edit_playlist(&playlist.id, query);
+            let pairs = Self::request_pairs(request);
+            return self.edit_playlist_ported(&playlist.id, query, &pairs);
         }
         if tail.is_empty() && request.method == "GET" {
             let row = self.dynamic_playlist_row(playlist);
@@ -15930,10 +15922,20 @@ impl Runtime {
         if tail.len() == 1 && matches!(tail[0], "posters" | "arts" | "clearLogos" | "themes") {
             return self.list_artwork_response(&playlist.id, false, tail[0], request);
         }
+        if tail == ["items"] && request.method == "PUT" && playlist.smart {
+            return self.save_smart_playlist(&playlist.id, query);
+        }
         if tail.first() == Some(&"items") && request.method == "PUT" {
-            let keys = self.rows_for_uri(query.get("uri").map(String::as_str).unwrap_or(""));
+            let mut keys = self.rows_for_uri(query.get("uri").map(String::as_str).unwrap_or(""));
             if keys.is_empty() {
-                return Response::error(400, "plexsim: bad request");
+                // Measured: a queue can be saved as a playlist by its id.
+                if let Some(queue) = query.get("playQueueID").and_then(|id| self.queues.get(id)) {
+                    keys = queue
+                        .items
+                        .iter()
+                        .filter_map(|item| self.catalog.get(&item.rating_key).cloned())
+                        .collect();
+                }
             }
             let requested = keys.len();
             let Some(stored) = self.playlists.get_mut(&playlist.id) else {
@@ -15944,10 +15946,16 @@ impl Runtime {
                 let Some(key) = key_of(&row) else { continue };
                 if !stored.items.contains(&key) {
                     stored.items.push(key);
-                    stored.item_ids.push(self.next_dynamic_key);
-                    self.next_dynamic_key += 1;
+                    self.next_playlist_item += 1;
+                    stored.item_ids.push(self.next_playlist_item);
                     added += 1;
                 }
+            }
+            if added > 0 {
+                self.edits
+                    .entry(playlist.id.clone())
+                    .or_default()
+                    .insert("updatedAt".to_string(), json!(now()));
             }
             self.dirty = true;
             self.save_if_dirty();
@@ -16031,7 +16039,7 @@ impl Runtime {
     ) -> Response {
         if segments.is_empty() {
             if request.method == "POST" {
-                return self.create_playlist(query);
+                return self.create_playlist_ported(query);
             }
             return self.route_playlists(query);
         }
@@ -16123,7 +16131,8 @@ impl Runtime {
             };
         }
         if request.method == "PUT" && segments.len() == 1 {
-            return self.edit_playlist(id, query);
+            let pairs = Self::request_pairs(request);
+            return self.edit_playlist_ported(id, query, &pairs);
         }
         if let Some(p) = self.playlists.get(id).cloned() {
             if segments.len() == 1 && matches!(request.method.as_str(), "GET" | "HEAD") {
@@ -16131,7 +16140,7 @@ impl Runtime {
                 fields.insert("size".to_string(), json!(1));
                 fields.insert(
                     "Metadata".to_string(),
-                    Value::Array(vec![self.dynamic_playlist_row(&p)]),
+                    Value::Array(vec![self.playlist_row(&p, true, false)]),
                 );
                 return Response::json(
                     200,
