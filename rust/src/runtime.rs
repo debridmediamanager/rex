@@ -39,6 +39,8 @@ mod detail;
 mod framework;
 mod gates;
 mod listing;
+mod merge;
+mod playlists;
 mod resume;
 mod streams;
 mod search;
@@ -343,6 +345,9 @@ pub struct Runtime {
     queues: HashMap<String, Queue>,
     download_queues: HashMap<String, Value>,
     pub next_playlist: i64,
+    next_playlist_item: i64,
+    /// Keys a merge or a delete freed: a split never reuses one (measured).
+    retired_keys: Vec<i64>,
     pub next_collection: i64,
     pub next_queue: i64,
     pub next_queue_item: i64,
@@ -471,7 +476,9 @@ impl Runtime {
             next_metadata_provider_group: 5,
             queues: HashMap::new(),
             download_queues: HashMap::new(),
-            next_playlist: 1,
+            next_playlist: playlists::PLAYLIST_BASE + 1,
+            next_playlist_item: 0,
+            retired_keys: Vec::new(),
             // Key spaces stay disjoint (library.py): collections are 50000+.
             next_collection: 50001,
             next_queue: 2,
@@ -4385,11 +4392,29 @@ impl Runtime {
                             .iter()
                             .find(|(name, _)| name == "sort")
                             .map(|(_, value)| value.as_str());
-                        return self
-                            .filter_rows(rows, &pairs, section_type)
+                        // `limit` is part of the query a smart list stores, measured on a
+                        // writable copy of the reference: a list saved with
+                        // `sort=titleSort:desc&limit=2` reads back two rows.
+                        let limit = pairs
+                            .iter()
+                            .rev()
+                            .find(|(name, _)| name == "limit")
+                            .and_then(|(_, value)| value.parse::<usize>().ok())
+                            .filter(|limit| *limit > 0);
+                        let filter_pairs = pairs
+                            .iter()
+                            .filter(|(name, _)| name != "sort" && name != "limit")
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        let mut rows = self
+                            .filter_rows(rows, &filter_pairs, section_type)
                             .ok()
                             .and_then(|rows| self.sort_rows(rows, sort).ok())
                             .unwrap_or_default();
+                        if let Some(limit) = limit {
+                            rows.truncate(limit);
+                        }
+                        return rows;
                     }
                     return rows;
                 }
@@ -4406,51 +4431,7 @@ impl Runtime {
     }
 
     fn dynamic_playlist_row(&self, playlist: &Playlist) -> Value {
-        let item_keys = self.playlist_keys(playlist);
-        let items = item_keys
-            .iter()
-            .filter_map(|key| self.catalog.get(key))
-            .collect::<Vec<_>>();
-        let duration = items
-            .iter()
-            .map(|r| r.get("duration").and_then(Value::as_i64).unwrap_or(0))
-            .sum::<i64>();
-        let mut row = json!({
-            "ratingKey": playlist.id,
-            "key": format!("/playlists/{}", playlist.id),
-            "guid": "com.plexapp.plugins.library://playlist",
-            "type": "playlist",
-            "playlistType": "video",
-            "title": playlist.title,
-            "composite": format!("/playlists/{}/composite", playlist.id),
-            "smart": playlist.smart,
-            "icon": if playlist.smart { "playlist://image.smart" } else { "playlist://image.standard" },
-            "leafCount": items.len(),
-            "duration": duration,
-            "addedAt": 1700000000,
-            "updatedAt": 1700000000,
-            "librarySectionID": -1,
-            "librarySectionTitle": "",
-        });
-        if playlist.smart {
-            if let Some(object) = row.as_object_mut() {
-                object.insert("content".to_string(), json!(source_uri_for(&playlist.uri)));
-            }
-        }
-        if let Some(edits) = self.edits.get(&playlist.id) {
-            if let Some(object) = row.as_object_mut() {
-                for (name, value) in edits {
-                    object.insert(name.clone(), value.clone());
-                }
-            }
-        }
-        if item_keys.is_empty() {
-            if let Some(object) = row.as_object_mut() {
-                object.remove("composite");
-                object.remove("duration");
-            }
-        }
-        row
+        self.playlist_row(playlist, true, true)
     }
 
     fn playlist_keys(&self, playlist: &Playlist) -> Vec<String> {
@@ -4762,6 +4743,7 @@ impl Runtime {
         self.mark_device(&request.headers);
         let mut response = self.request_route(request);
         exclude_fields_response(request, &mut response);
+        sync_version_response(request, &mut response);
         self.stream_titles_response(request, &mut response);
         let (raw_path, _) = split_target(&request.target);
         if let Some(cookie) = Self::framework_cookie(&request.method, &raw_path) {
@@ -5174,6 +5156,8 @@ impl Runtime {
                 return match path.as_str() {
                     "/identity" => self.identity_response(&query),
                     "/hubs" | "/playlists" => Response::json(200, plugin_container(Vec::new())),
+                    // Cycle 45: its own 400 to every verb.
+                    "/:/viewChange" => Response::error(400, "plexsim: bad request"),
                     _ => Response::error(404, "plexsim: not found"),
                 };
             }
@@ -8322,6 +8306,11 @@ impl Runtime {
         if !["playing", "paused", "buffering", "stopped"].contains(&state.as_str()) {
             return Response::error(400, "plexsim: bad request");
         }
+        // Cycle 45: `playbackTime=` is a VALIDATED signed 32-bit integer; anything else
+        // is a 400 on both copies.
+        if query.get("playbackTime").is_some_and(|value| !int_param(value, Some(32))) {
+            return Response::error(400, "plexsim: bad request");
+        }
         let time = match query.get("time") {
             Some(value) => match value.parse::<i64>() {
                 Ok(parsed) => parsed,
@@ -9735,6 +9724,10 @@ impl Runtime {
     }
 
     fn route_playlists(&self, query: &HashMap<String, String>) -> Response {
+        self.route_playlists_on(query, false)
+    }
+
+    fn route_playlists_on(&self, query: &HashMap<String, String>, listing_all: bool) -> Response {
         if let Some(value) = query.get("type") {
             let Ok(kind) = value.parse::<i64>() else {
                 return Response::error(500, "plexsim: unsupported playlist type");
@@ -9799,86 +9792,51 @@ impl Runtime {
                         .unwrap_or(false)
                 })
             })
-            .filter(|_| {
+            .filter(|playlist| {
+                let own = self
+                    .playlist_columns(&playlist.id)
+                    .get("playlistType")
+                    .map(string_value)
+                    .filter(|kind| !kind.is_empty())
+                    .unwrap_or_else(|| "video".to_string());
                 query
                     .get("playlistType")
-                    .map(|value| value.split(',').any(|kind| kind == "video"))
+                    .map(|value| value.split(',').any(|kind| kind == own))
                     .unwrap_or(true)
             })
-            .map(|p| {
-                let mut row = self.dynamic_playlist_row(p);
-                if p.smart {
-                    if let Some(object) = row.as_object_mut() {
-                        object.remove("content");
-                    }
-                }
-                if let Some(object) = row.as_object_mut() {
-                    object.insert("viewCount".to_string(), json!(1));
-                    object.insert("lastViewedAt".to_string(), json!(1700000000));
-                }
-                row
-            })
+            .map(|p| self.playlist_row(p, false, true))
             .collect::<Vec<_>>();
-        if let Some(sort) = query.get("sort") {
-            let descending = sort.ends_with(":desc");
-            let key = sort.strip_suffix(":desc").unwrap_or(sort.as_str());
-            if !matches!(key, "titleSort" | "lastViewedAt" | "mediaCount") {
-                return Response::error(500, "plexsim: unsupported playlist sort");
-            }
+        // Cycle 16: the SMART lists come first, then `titleSort` within each group,
+        // and every tie under an explicit sort falls back to the same.
+        rows.sort_by(|left, right| {
+            let smart_left = left.get("smart").and_then(Value::as_bool).unwrap_or(false);
+            let smart_right = right.get("smart").and_then(Value::as_bool).unwrap_or(false);
+            let sort_of = |row: &Value| {
+                row.get("titleSort")
+                    .or_else(|| row.get("title"))
+                    .map(string_value)
+                    .unwrap_or_default()
+            };
+            smart_right.cmp(&smart_left).then_with(|| sort_of(left).cmp(&sort_of(right)))
+        });
+        let spec = query.get("sort").cloned().unwrap_or_default();
+        if spec.split(':').next() == Some("mediaCount") {
+            // Cycle 16: `mediaCount` orders by the number of items -- the sixth sort
+            // this endpoint's own Meta advertises.
+            let descending = spec.ends_with(":desc");
+            let count = |row: &Value| row.get("leafCount").and_then(Value::as_i64).unwrap_or(0);
             rows.sort_by(|left, right| {
-                let order = match key {
-                    "mediaCount" => right
-                        .get("leafCount")
-                        .and_then(Value::as_i64)
-                        .unwrap_or(0)
-                        .cmp(&left.get("leafCount").and_then(Value::as_i64).unwrap_or(0)),
-                    "lastViewedAt" => left
-                        .get("lastViewedAt")
-                        .and_then(Value::as_i64)
-                        .unwrap_or(0)
-                        .cmp(
-                            &right
-                                .get("lastViewedAt")
-                                .and_then(Value::as_i64)
-                                .unwrap_or(0),
-                        ),
-                    _ => left
-                        .get("titleSort")
-                        .or_else(|| left.get("title"))
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                        .cmp(
-                            right
-                                .get("titleSort")
-                                .or_else(|| right.get("title"))
-                                .and_then(Value::as_str)
-                                .unwrap_or_default(),
-                        ),
-                };
                 if descending {
-                    order.reverse()
+                    count(right).cmp(&count(left))
                 } else {
-                    order
+                    count(left).cmp(&count(right))
                 }
             });
-        } else {
-            rows.sort_by(|left, right| {
-                let smart_left = left.get("smart").and_then(Value::as_bool).unwrap_or(false);
-                let smart_right = right.get("smart").and_then(Value::as_bool).unwrap_or(false);
-                smart_right.cmp(&smart_left).then_with(|| {
-                    left.get("titleSort")
-                        .or_else(|| left.get("title"))
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                        .cmp(
-                            right
-                                .get("titleSort")
-                                .or_else(|| right.get("title"))
-                                .and_then(Value::as_str)
-                                .unwrap_or_default(),
-                        )
-                })
-            });
+        } else if !spec.is_empty() {
+            rows = match self.sort_rows(rows, Some(&spec)) {
+                Ok(rows) => rows,
+                Err(status) => return Response::error(status, "plexsim: unsupported sort key"),
+            };
         }
         let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(rows))]);
         if query
@@ -9887,7 +9845,7 @@ impl Runtime {
         {
             fields.insert(
                 "Meta".to_string(),
-                json!({"Type":[{"key":"/playlists","type":"playlist","title":"All","active":true,"Sort":self.playlist_sort_rows()}]}),
+                self.playlist_meta(query, listing_all),
             );
         }
         page_fields(&mut fields, query);
@@ -9895,7 +9853,58 @@ impl Runtime {
     }
 
     fn route_playlist_all(&self, query: &HashMap<String, String>) -> Response {
-        self.route_playlists(query)
+        self.route_playlists_on(query, true)
+    }
+
+    /// Cycle 56: the playlist Meta shaped by the request, measured on kids, zen and
+    /// plexscratch42.  The Type `key` carries the request's `playlistType`,
+    /// `sectionID` and `type` -- alphabetical, URL-encoded -- and nothing else.  On
+    /// `/playlists/all` NO Type and NO Sort is active; on `/playlists` the Type is
+    /// active and the active Sort is the requested one (Name ascending by default).
+    fn playlist_meta(&self, query: &HashMap<String, String>, listing_all: bool) -> Value {
+        let carried = ["playlistType", "sectionID", "type"]
+            .iter()
+            .filter_map(|name| {
+                query
+                    .get(*name)
+                    .filter(|value| !value.is_empty())
+                    .map(|value| format!("{name}={}", percent_encode(value)))
+            })
+            .collect::<Vec<_>>();
+        let key = if carried.is_empty() {
+            "/playlists".to_string()
+        } else {
+            format!("/playlists?{}", carried.join("&"))
+        };
+        let mut sorts = self.playlist_sort_rows();
+        for sort in &mut sorts {
+            if let Some(object) = sort.as_object_mut() {
+                object.remove("active");
+                object.remove("activeDirection");
+            }
+        }
+        if !listing_all {
+            let terms = crate::filters::sort_terms(
+                query.get("sort").map(String::as_str).filter(|sort| !sort.is_empty()).unwrap_or("titleSort"),
+            );
+            let (wanted, descending) = terms
+                .first()
+                .map(|(key, descending, _)| (key.clone(), *descending))
+                .unwrap_or(("titleSort".to_string(), false));
+            for sort in &mut sorts {
+                if sort.get("key").and_then(Value::as_str) == Some(wanted.as_str()) {
+                    if let Some(object) = sort.as_object_mut() {
+                        object.insert("active".to_string(), json!(true));
+                        object.insert(
+                            "activeDirection".to_string(),
+                            json!(if descending { "desc" } else { "asc" }),
+                        );
+                    }
+                }
+            }
+        }
+        json!({"Type": [{"key": key, "type": "playlist", "title": "All",
+                         "active": !listing_all, "Sort": sorts}]})
     }
 
     fn playlist_sort_rows(&self) -> Vec<Value> {
@@ -10000,6 +10009,15 @@ impl Runtime {
         }
         page_fields(&mut fields, query);
         Response::json(200, self.container(fields, true))
+    }
+
+    /// Whether a `server://` uri names a machine that is not this one.
+    fn foreign_uri(&self, uri: &str) -> bool {
+        let decoded = percent_decode(uri);
+        decoded
+            .strip_prefix("server://")
+            .map(|rest| rest.split('/').next().unwrap_or(""))
+            .is_some_and(|machine| !machine.is_empty() && machine != self.machine)
     }
 
     fn queue_rows_for_query(&self, query: &HashMap<String, String>) -> Vec<Value> {
@@ -10226,6 +10244,10 @@ impl Runtime {
                 items,
                 source: if playlist_id.is_some() {
                     String::new()
+                } else if self.foreign_uri(query.get("uri").map(String::as_str).unwrap_or("")) {
+                    // Measured on a writable copy of the reference: a uri naming
+                    // ANOTHER server builds an EMPTY queue that echoes the uri verbatim.
+                    query.get("uri").cloned().unwrap_or_default()
                 } else {
                     source_uri_for(query.get("uri").map(String::as_str).unwrap_or(""))
                 },
@@ -10280,11 +10302,30 @@ impl Runtime {
             match request.method.as_str() {
                 "GET" | "HEAD" => self.queue_container(&queue, query),
                 "PUT" => {
-                    let Some(uri) = query.get("uri") else {
+                    let uri = query.get("uri").cloned().unwrap_or_default();
+                    let playlist_id = query.get("playlistID").cloned().unwrap_or_default();
+                    if uri.is_empty() && playlist_id.is_empty() {
+                        // Measured: a bare refresh PUT with no uri is a 400.
                         self.queues.insert(id.to_string(), queue);
                         return Response::error(400, "plexsim: bad request");
+                    }
+                    let rows = if uri.is_empty() {
+                        // Measured on a writable copy of the reference: `playlistID=`
+                        // adds that playlist's items as a plain add.
+                        self.playlists
+                            .get(&playlist_id)
+                            .map(|playlist| {
+                                self.playlist_keys(playlist)
+                                    .iter()
+                                    .filter_map(|key| self.catalog.get(key).cloned())
+                                    .collect::<Vec<_>>()
+                            })
+                            .unwrap_or_default()
+                    } else if self.foreign_uri(&uri) {
+                        Vec::new()
+                    } else {
+                        self.rows_for_uri(&uri)
                     };
-                    let rows = self.rows_for_uri(uri);
                     if rows.is_empty() {
                         // Measured on the copy: an add that adds nothing answers the
                         // queue as it stands, `playQueueVersion` unmoved -- the client
@@ -10323,13 +10364,10 @@ impl Runtime {
                         let insert_at = (at + added_ids.len() - 1).min(queue.items.len());
                         queue.items.insert(insert_at, item);
                     }
-                    if let Some(last) = added_ids.last() {
-                        // Play Next leaves the previous plain-add marker in
-                        // place.  A plain add starts (or extends) the marker.
-                        if query.get("next") != Some(&"1".to_string()) || queue.last_added.is_none()
-                        {
-                            queue.last_added = Some(*last);
-                        }
+                    if !added_ids.is_empty() {
+                        // Cycle 57: the marker is the tail of the Up Next BLOCK, and
+                        // ANY add opens it.
+                        queue.last_added = queue_block_tail(&queue);
                         queue.version += 1;
                     }
                     self.queue_container(&queue, query)
@@ -10401,44 +10439,62 @@ impl Runtime {
                 queue.version += 1;
                 self.queue_container(&queue, query)
             }
+        } else if segments.len() == 2 && segments[1] == "items" && request.method == "DELETE" {
+            // Measured on a writable copy of the reference: DELETE on the items clears
+            // the queue down to its SELECTED item and steps the version.
+            let selected = queue.selected;
+            queue.items.retain(|item| Some(item.id) == selected);
+            queue.version += 1;
+            self.queue_container(&queue, query)
         } else if segments.len() == 3 && segments[1] == "items" && request.method == "DELETE" {
-            if let Some(item_id) = segments[2].parse::<i64>().ok() {
-                if let Some(index) = queue.items.iter().position(|item| item.id == item_id) {
-                    let old_version = queue.version;
-                    let old_total = queue.items.len();
-                    let selected = queue.selected == Some(item_id);
-                    queue.items.remove(index);
-                    if selected {
-                        queue.selected = queue
-                            .items
-                            .get(index)
-                            .or_else(|| queue.items.last())
-                            .map(|item| item.id);
-                    }
-                    queue.version += 1;
-                    let mut response = self.queue_container(&queue, query);
-                    if !selected {
-                        if let Ok(document) = serde_json::from_slice::<Value>(&response.body) {
-                            if let Some(container) = document.get("MediaContainer") {
-                                let mut container = container.clone();
-                                if let Some(object) = container.as_object_mut() {
-                                    object
-                                        .insert("playQueueVersion".to_string(), json!(old_version));
-                                    object.insert(
-                                        "playQueueTotalCount".to_string(),
-                                        json!(old_total),
-                                    );
-                                }
-                                response.body =
-                                    serde_json::to_vec(&json!({"MediaContainer": container}))
-                                        .unwrap_or_default();
+            // Cycle 16: EVERY item delete answers the queue as it stood BEFORE it -- the
+            // old version and total -- with the rows that REMAIN; the SELECTED one also
+            // drops the rows entirely and keeps the old selection.  The next read has
+            // the stepped version and the selection on the item that followed.
+            let index = segments[2]
+                .parse::<i64>()
+                .ok()
+                .and_then(|item_id| queue.items.iter().position(|item| item.id == item_id));
+            if let Some(index) = index {
+                let item_id = queue.items[index].id;
+                let was_selected = queue.selected == Some(item_id);
+                let was_id = queue.selected;
+                queue.items.remove(index);
+                queue.version += 1;
+                if was_selected {
+                    queue.selected = queue
+                        .items
+                        .get(index)
+                        .or_else(|| queue.items.last())
+                        .map(|item| item.id);
+                }
+                let was_marker = queue.last_added;
+                if was_marker.is_some() {
+                    queue.last_added = queue_block_tail(&queue);
+                }
+                let remaining = queue.items.len();
+                let mut response = self.queue_container(&queue, query);
+                if let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) {
+                    if let Some(object) = document
+                        .get_mut("MediaContainer")
+                        .and_then(Value::as_object_mut)
+                    {
+                        object.insert("playQueueVersion".to_string(), json!(queue.version - 1));
+                        object.insert("playQueueTotalCount".to_string(), json!(remaining + 1));
+                        if let Some(marker) = was_marker {
+                            object.insert("playQueueLastAddedItemID".to_string(), json!(marker));
+                        }
+                        if was_selected {
+                            object.remove("Metadata");
+                            object.insert("size".to_string(), json!(0));
+                            if let Some(was_id) = was_id {
+                                object.insert("playQueueSelectedItemID".to_string(), json!(was_id));
                             }
                         }
                     }
-                    response
-                } else {
-                    Response::error(404, "plexsim: no such play queue item")
+                    response.body = serde_json::to_vec(&document).unwrap_or_default();
                 }
+                response
             } else {
                 Response::error(404, "plexsim: no such play queue item")
             }
@@ -10481,10 +10537,18 @@ impl Runtime {
                 })
                 .unwrap_or(0);
             queue.items.insert(position, item);
-            // The marker identifies the tail of the contiguous add block.  A
-            // move changes that tail, so re-anchor it to the new queue tail.
+            // Cycle 57: a move to just behind the selected item or a block member JOINS
+            // the Up Next block; a move anywhere else leaves it.
+            if Some(item_id) != queue.selected {
+                let joins = position > 0 && {
+                    let before = &queue.items[position - 1];
+                    Some(before.id) == queue.selected || before.added
+                };
+                queue.items[position].added = joins;
+            }
+            // Cycle 57: the marker is the tail of the Up Next block.
             if queue.last_added.is_some() {
-                queue.last_added = queue.items.last().map(|entry| entry.id);
+                queue.last_added = queue_block_tail(&queue);
             }
             queue.version += 1;
             self.queue_container(&queue, query)
@@ -12681,6 +12745,14 @@ impl Runtime {
                             self.axis_bucket(section_key, section, segments[3], segments[4], query, pairs)
                         {
                             return response;
+                        }
+                        // `server.py`: any other two-segment leaf is a bucket of an axis
+                        // that has none -- `studio` and `platform` among them -- a 404.
+                        if !matches!(
+                            segments[3],
+                            "query" | "indexes" | "firstCharacter" | "extras" | "composite" | "stations"
+                        ) {
+                            return Response::error(404, "plexsim: not found");
                         }
                     }
                 }
@@ -15574,6 +15646,7 @@ impl Runtime {
                         fields.remove(*name);
                     }
                 }
+                fields.insert("Metadata".to_string(), Value::Array(rows.clone()));
                 page_fields(&mut fields, query);
                 if fields.contains_key("Directory") {
                     let directory = fields
@@ -15597,7 +15670,7 @@ impl Runtime {
             "allLeaves" => {
                 let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
                 let (view_group, mut rows) = if kind == "movie" {
-                    ("movie", vec![self.leaf_listing_row(row)])
+                    ("movie", vec![self.child_list_row(row, query)])
                 } else if kind == "season" {
                     // A season's own allLeaves is an intentionally empty
                     // episode container; the descendants are exposed by its
@@ -15612,7 +15685,7 @@ impl Runtime {
                         "episode",
                         self.children(&parent)
                             .into_iter()
-                            .map(|leaf| self.leaf_listing_row(&leaf))
+                            .map(|leaf| self.child_list_row(&leaf, query))
                             .collect::<Vec<_>>(),
                     )
                 } else {
@@ -15631,7 +15704,7 @@ impl Runtime {
                         "episode",
                         leaves
                             .into_iter()
-                            .map(|leaf| self.leaf_listing_row(&leaf))
+                            .map(|leaf| self.child_list_row(&leaf, query))
                             .collect::<Vec<_>>(),
                     )
                 };
@@ -15684,6 +15757,12 @@ impl Runtime {
                     .and_then(Value::as_str)
                     .map(str::to_string);
                 if kind == "show" {
+                    // Cycle 17, measured on kids and zen: this list -- and no other
+                    // container -- stamps each episode's BORROWED artwork with the
+                    // EPISODE's own `addedAt`, so a leaf's cached URL never changes.
+                    for shown in &mut rows {
+                        restamp_borrowed(shown);
+                    }
                     // Measured on kids and zen, 20 rows across five shows: a SHOW's
                     // `/allLeaves` -- and only that list -- gives every episode row the
                     // SHOW's `studio`.
@@ -15829,23 +15908,34 @@ impl Runtime {
                 if request.body.is_empty() || !request.body_complete {
                     return Response::error(406, "plexsim: subtitle body required");
                 }
-                let id = self.next_dynamic_key;
-                self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
+                // Measured on the copy: the new stream's id is the next after the
+                // highest the server holds, and it is the Stream the reference writes:
+                // the format as `codec` and `format`, the stem as `title`, a
+                // `/library/streams/{id}` key, `transient: "0"`, selected -- no language.
+                let id = self
+                    .catalog
+                    .items
+                    .iter()
+                    .flat_map(|item| item.get("Media").and_then(Value::as_array).cloned().unwrap_or_default())
+                    .flat_map(|media| media.get("Part").and_then(Value::as_array).cloned().unwrap_or_default())
+                    .flat_map(|part| part.get("Stream").and_then(Value::as_array).cloned().unwrap_or_default())
+                    .filter_map(|stream| stream.get("id").and_then(Value::as_i64))
+                    .max()
+                    .unwrap_or(0)
+                    + 1;
                 let content = String::from_utf8_lossy(&request.body).to_string();
-                let stream = json!({
-                    "id": id,
-                    "key": format!("/library/streams/{id}"),
-                    "streamType": 3,
-                    "codec": format,
-                    "format": format,
-                    "language": "Unknown",
-                    "title": stem,
-                    "displayTitle": format,
-                    "extendedDisplayTitle": format,
-                    "selected": true,
-                    "transient": "0",
-                    "_content": content,
-                });
+                let mut stream_row = Map::new();
+                stream_row.insert("id".to_string(), json!(id));
+                stream_row.insert("streamType".to_string(), json!(3));
+                stream_row.insert("codec".to_string(), json!(format));
+                stream_row.insert("format".to_string(), json!(format));
+                stream_row.insert("title".to_string(), json!(stem));
+                stream_row.insert("key".to_string(), json!(format!("/library/streams/{id}")));
+                stream_row.insert("transient".to_string(), json!("0"));
+                stream_row.insert("selected".to_string(), json!(true));
+                crate::mediainfo::stream_titles(&mut stream_row, None, None);
+                stream_row.insert("_content".to_string(), json!(content));
+                let stream = Value::Object(stream_row);
                 let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
                     return Response::error(404, "plexsim: not found");
                 };
@@ -15940,7 +16030,7 @@ impl Runtime {
             "tree" => self.route_tree(row),
             "userState" => Response::error(404, "plexsim: not found"),
             "merge" => {
-                if request.method != "PUT" {
+                if request.method != "PUT" && request.method != "POST" {
                     return Response::error(404, "plexsim: not found");
                 }
                 // Measured on a writable copy: no `ids` is a 400, an id the server
@@ -15978,8 +16068,8 @@ impl Runtime {
                         continue;
                     }
                     media.extend(value.get("Media").and_then(Value::as_array).cloned().unwrap_or_default());
-                    self.catalog.remove(&other);
-                    self.deleted.insert(other.clone());
+                    // A merged-away key is retired: a later split never reuses it.
+                    self.retire_row(&other);
                     merged.push(value);
                 }
                 if merged.is_empty() {
@@ -16003,36 +16093,10 @@ impl Runtime {
                 Response::empty(200)
             }
             "split" => {
-                if request.method != "PUT" {
+                if request.method != "PUT" && request.method != "POST" {
                     return Response::error(404, "plexsim: not found");
                 }
-                let Some(original) = self.catalog.get(key).cloned() else {
-                    return Response::error(404, "plexsim: not found");
-                };
-                let Some(media) = original.get("Media").and_then(Value::as_array) else {
-                    return Response::error(400, "plexsim: no media");
-                };
-                if media.len() < 2 {
-                    return Response::error(400, "plexsim: no alternate version");
-                }
-                let new_key = self.next_dynamic_key.to_string();
-                self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
-                let mut extra = original.clone();
-                if let Some(object) = extra.as_object_mut() {
-                    object.insert("ratingKey".to_string(), json!(new_key.clone()));
-                    object.insert(
-                        "key".to_string(),
-                        json!(format!("/library/metadata/{new_key}")),
-                    );
-                    object.insert("Media".to_string(), json!([media[1].clone()]));
-                }
-                if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                    object.insert("Media".to_string(), json!([media[0].clone()]));
-                }
-                self.catalog.add(extra);
-                self.dirty = true;
-                self.save_if_dirty();
-                Response::empty(200)
+                self.route_split(key)
             }
             "matches" => Response::json(
                 200,
@@ -16315,8 +16379,7 @@ impl Runtime {
                 object.insert("Media".to_string(), Value::Array(media));
                 object.insert("updatedAt".to_string(), json!(now()));
             }
-            self.catalog.remove(key);
-            self.deleted.insert(key.to_string());
+            self.retire_row(key);
             let mut gone = row.clone();
             gone["title"] = json!("");
             if let Some(object) = gone.as_object_mut() {
@@ -16769,6 +16832,16 @@ impl Runtime {
         query: &HashMap<String, String>,
         request: &Request,
     ) -> Response {
+        // Cycle 16, measured on plexscratch: EVERY item write on a smart list is a 400
+        // -- the move, the single delete and the clear -- because a smart list's items
+        // are its query.
+        if playlist.smart
+            && tail.first() == Some(&"items")
+            && ((tail.len() >= 2 && matches!(request.method.as_str(), "PUT" | "DELETE"))
+                || (tail.len() == 1 && request.method == "DELETE"))
+        {
+            return Response::error(400, "plexsim: bad request");
+        }
         if tail.len() == 3 && tail[0] == "items" && tail[2] == "move" && request.method == "PUT" {
             let Some(item_id) = tail[1].parse::<i64>().ok() else {
                 return Response::error(404, "plexsim: no such playlist item");
@@ -16779,6 +16852,24 @@ impl Runtime {
             let Some(index) = stored.item_ids.iter().position(|value| *value == item_id) else {
                 return Response::error(404, "plexsim: no such playlist item");
             };
+            // Measured: moving an item after ITSELF leaves the order alone (it
+            // would otherwise read as an unknown `after` and go to the front).
+            let after_itself = query.get("after").is_some_and(|after| *after == tail[1]);
+            let index = if after_itself { usize::MAX } else { index };
+            if index == usize::MAX {
+                self.dirty = true;
+                let updated = self.playlists.get(&playlist.id).cloned().unwrap_or_else(|| playlist.clone());
+                return Response::json(
+                    200,
+                    self.container(
+                        Map::from_iter([(
+                            "Metadata".to_string(),
+                            Value::Array(vec![self.dynamic_playlist_row(&updated)]),
+                        )]),
+                        false,
+                    ),
+                );
+            }
             let item = stored.items.remove(index);
             let id = stored.item_ids.remove(index);
             let position = query
@@ -16885,14 +16976,22 @@ impl Runtime {
                         })
                         .unwrap_or(true)
                 })
-                .enumerate()
-                .map(|(index, row)| {
-                    let mut value = self.listing_row(&row);
-                    if let Some(object) = value.as_object_mut() {
-                        object.insert(
-                            "playlistItemID".to_string(),
-                            json!(self.playlist_item_id(playlist, index)),
-                        );
+                .map(|row| {
+                    // The light grid row, as measured on the copy; a playlist item
+                    // keeps its librarySection fields.
+                    let mut value = self.grid_row(&row, true, false, false);
+                    // Cycle 16: a SMART list's items carry NO `playlistItemID` -- its
+                    // members are its query -- and a parent a `type=` reaches up to is
+                    // not a member either.
+                    let item_id = (!playlist.smart)
+                        .then(|| {
+                            let key = key_of(&row)?;
+                            let index = playlist.items.iter().position(|item| *item == key)?;
+                            playlist.item_ids.get(index).copied()
+                        })
+                        .flatten();
+                    if let (Some(object), Some(item_id)) = (value.as_object_mut(), item_id) {
+                        object.insert("playlistItemID".to_string(), json!(item_id));
                     }
                     value
                 })
@@ -16913,28 +17012,41 @@ impl Runtime {
                     return Response::error(500, "plexsim: bad request");
                 }
             }
-            let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(rows))]);
-            let duration = self
-                .playlist_keys(playlist)
-                .iter()
-                .filter_map(|key| self.catalog.get(key))
-                .map(|row| row.get("duration").and_then(Value::as_i64).unwrap_or(0))
-                .sum::<i64>()
-                / 1000;
-            if duration > 0 {
-                fields.insert("duration".to_string(), json!(duration));
+            // The container repeats the list's own identity.  Measured: its
+            // `duration` is in SECONDS where the row's is in milliseconds (rounded),
+            // and `includeMeta=1` carries the tab bar's Type rows, every one `mixed`
+            // and keyed by this path with a `?type=`.
+            let summary = self.playlist_row(playlist, false, true);
+            let mut fields = Map::new();
+            if let Some(composite) = summary.get("composite") {
+                fields.insert("composite".to_string(), composite.clone());
             }
-            if query
-                .get("includeMeta")
-                .is_some_and(|value| is_true_option(value))
-            {
+            if let Some(duration) = summary.get("duration").and_then(Value::as_i64) {
                 fields.insert(
-                    "Meta".to_string(),
-                    json!({"Type":[{"key":"/playlists","type":"playlist","title":"All"},{"key":"/playlists","type":"movie","title":"Movies"},{"key":"/playlists","type":"show","title":"Shows"},{"key":"/playlists","type":"season","title":"Seasons"},{"key":"/playlists","type":"episode","title":"Episodes"}]}),
+                    "duration".to_string(),
+                    json!((duration as f64 / 1000.0).round() as i64),
                 );
             }
+            fields.insert("leafCount".to_string(), summary.get("leafCount").cloned().unwrap_or(json!(0)));
+            if query.get("includeMeta").is_some_and(|value| value == "1") {
+                let path = format!("/playlists/{}/items", playlist.id);
+                fields.insert(
+                    "Meta".to_string(),
+                    json!({"Type": [
+                        {"key": path, "type": "mixed", "title": "All", "active": true},
+                        {"key": format!("{path}?type=1"), "type": "mixed", "title": "Movies", "active": false},
+                        {"key": format!("{path}?type=4"), "type": "mixed", "title": "Episodes", "active": false},
+                        {"key": format!("{path}?type=3"), "type": "mixed", "title": "Seasons", "active": false},
+                        {"key": format!("{path}?type=2"), "type": "mixed", "title": "TV Shows", "active": false},
+                    ]}),
+                );
+            }
+            for name in ["playlistType", "ratingKey", "smart", "title"] {
+                fields.insert(name.to_string(), summary.get(name).cloned().unwrap_or(Value::Null));
+            }
+            fields.insert("Metadata".to_string(), Value::Array(rows));
             page_fields(&mut fields, query);
-            return Response::json(200, self.container(fields, true));
+            return Response::json(200, self.container(fields, false));
         }
         if tail.first() == Some(&"composite") {
             if request.method != "GET" && request.method != "HEAD" {
@@ -16943,7 +17055,8 @@ impl Runtime {
             return Response::image(jpeg_placeholder());
         }
         if tail.is_empty() && request.method == "PUT" {
-            return self.edit_playlist(&playlist.id, query);
+            let pairs = Self::request_pairs(request);
+            return self.edit_playlist_alias(&playlist.id, query, &pairs);
         }
         if tail.is_empty() && request.method == "GET" {
             let row = self.dynamic_playlist_row(playlist);
@@ -16968,10 +17081,20 @@ impl Runtime {
         if tail.len() == 1 && matches!(tail[0], "posters" | "arts" | "clearLogos" | "themes") {
             return self.list_artwork_response(&playlist.id, false, tail[0], request);
         }
+        if tail == ["items"] && request.method == "PUT" && playlist.smart {
+            return self.save_smart_playlist(&playlist.id, query);
+        }
         if tail.first() == Some(&"items") && request.method == "PUT" {
-            let keys = self.rows_for_uri(query.get("uri").map(String::as_str).unwrap_or(""));
+            let mut keys = self.rows_for_uri(query.get("uri").map(String::as_str).unwrap_or(""));
             if keys.is_empty() {
-                return Response::error(400, "plexsim: bad request");
+                // Measured: a queue can be saved as a playlist by its id.
+                if let Some(queue) = query.get("playQueueID").and_then(|id| self.queues.get(id)) {
+                    keys = queue
+                        .items
+                        .iter()
+                        .filter_map(|item| self.catalog.get(&item.rating_key).cloned())
+                        .collect();
+                }
             }
             let requested = keys.len();
             let Some(stored) = self.playlists.get_mut(&playlist.id) else {
@@ -16982,10 +17105,16 @@ impl Runtime {
                 let Some(key) = key_of(&row) else { continue };
                 if !stored.items.contains(&key) {
                     stored.items.push(key);
-                    stored.item_ids.push(self.next_dynamic_key);
-                    self.next_dynamic_key += 1;
+                    self.next_playlist_item += 1;
+                    stored.item_ids.push(self.next_playlist_item);
                     added += 1;
                 }
+            }
+            if added > 0 {
+                self.edits
+                    .entry(playlist.id.clone())
+                    .or_default()
+                    .insert("updatedAt".to_string(), json!(now()));
             }
             self.dirty = true;
             self.save_if_dirty();
@@ -17069,7 +17198,7 @@ impl Runtime {
     ) -> Response {
         if segments.is_empty() {
             if request.method == "POST" {
-                return self.create_playlist(query);
+                return self.create_playlist_ported(query);
             }
             return self.route_playlists(query);
         }
@@ -17161,7 +17290,8 @@ impl Runtime {
             };
         }
         if request.method == "PUT" && segments.len() == 1 {
-            return self.edit_playlist(id, query);
+            let pairs = Self::request_pairs(request);
+            return self.edit_playlist_ported(id, query, &pairs);
         }
         if let Some(p) = self.playlists.get(id).cloned() {
             if segments.len() == 1 && matches!(request.method.as_str(), "GET" | "HEAD") {
@@ -17169,7 +17299,7 @@ impl Runtime {
                 fields.insert("size".to_string(), json!(1));
                 fields.insert(
                     "Metadata".to_string(),
-                    Value::Array(vec![self.dynamic_playlist_row(&p)]),
+                    Value::Array(vec![self.playlist_row(&p, true, false)]),
                 );
                 return Response::json(
                     200,
@@ -18220,10 +18350,10 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                                 Err(_) => {}
                             }
                         } else {
-                            let _ = handle_connection(&mut { stream }, shared);
+                            serve_plain(stream, shared);
                         }
                     } else {
-                        let _ = handle_connection(&mut { stream }, shared);
+                        serve_plain(stream, shared);
                     }
                 });
             }
@@ -18563,13 +18693,14 @@ fn handle_connection<S: Read + Write>(
         }
         wire::exclude_container(&mut response, &query, &request_path);
         page_container(&mut response, &query, &request_path);
-        if response.content_type.starts_with("application/json") {
-            // The post-passes re-serialise; keep the upper-case control escapes.
-            response.body = upper_json_escapes(std::mem::take(&mut response.body));
-        }
         add_paging_headers(&mut response, &query);
         response = xml_or_json(response, request.headers.get("accept").map(String::as_str));
         order_json_body(&mut response, &request_path);
+        if response.content_type.starts_with("application/json") {
+            // The post-passes re-serialise; keep the upper-case control escapes
+            // (cycle 32) on the bytes that go out.
+            response.body = upper_json_escapes(std::mem::take(&mut response.body));
+        }
         let envelope = wire::Wire::of(&request, &request_path, &query);
         let still_open = wire::write_enveloped(&mut stream, &response, &envelope, keep)?;
         served_any = true;
@@ -18578,6 +18709,24 @@ fn handle_connection<S: Read + Write>(
         }
     }
     Ok(())
+}
+
+/// Serve one plain connection, then close it the way Python's socketserver does:
+/// half-close the write side and drain what the peer still sends. Closing outright
+/// with a request in flight answers it with a RST, which destroys the refusal the
+/// client has not yet read (cycle 30's closing malformed-pair 400 among them).
+fn serve_plain(mut stream: TcpStream, shared: SharedRuntime) {
+    let _ = handle_connection(&mut stream, shared);
+    let _ = stream.shutdown(std::net::Shutdown::Write);
+    let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(2)));
+    let mut sink = [0_u8; 4096];
+    let started = std::time::Instant::now();
+    while started.elapsed() < std::time::Duration::from_secs(2) {
+        match stream.read(&mut sink) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
+        }
+    }
 }
 
 fn handle_websocket<S: Write>(
@@ -20801,6 +20950,110 @@ fn exclude_fields_response(request: &Request, response: &mut Response) {
                 }
             }
         }
+    }
+    if let Ok(bytes) = serde_json::to_vec(&document) {
+        response.body = bytes;
+    }
+}
+
+/// `_restamped`: a leaf's borrowed artwork versions replaced by its own `addedAt`.
+fn restamp_borrowed(row: &mut Value) {
+    let Some(object) = row.as_object_mut() else {
+        return;
+    };
+    let Some(stamp) = object.get("addedAt").filter(|stamp| !stamp.is_null()).map(string_value) else {
+        return;
+    };
+    let mut borrowed = Vec::new();
+    for field in ["grandparentThumb", "grandparentArt", "grandparentTheme", "art"] {
+        let Some(value) = object.get(field).map(string_value).filter(|value| !value.is_empty()) else {
+            continue;
+        };
+        if let Some((head, _)) = value.rsplit_once('/') {
+            let restamped = format!("{head}/{stamp}");
+            borrowed.push((value.clone(), restamped.clone()));
+            object.insert(field.to_string(), json!(restamped));
+        }
+    }
+    if let Some(images) = object.get_mut("Image").and_then(Value::as_array_mut) {
+        for image in images {
+            let url = image.get("url").map(string_value).unwrap_or_default();
+            if let Some((_, new)) = borrowed.iter().find(|(old, _)| *old == url) {
+                if let Some(image) = image.as_object_mut() {
+                    image.insert("url".to_string(), json!(new));
+                }
+            }
+        }
+    }
+}
+
+/// `playQueueLastAddedItemID`: the last item of the Up Next block -- the selected item
+/// followed by the contiguous run of ADDED items (cycle 57, both writable copies).
+fn queue_block_tail(queue: &Queue) -> Option<i64> {
+    if queue.items.is_empty() {
+        return None;
+    }
+    let mut at = queue
+        .selected
+        .and_then(|selected| queue.items.iter().position(|item| item.id == selected))
+        .unwrap_or(0);
+    while at + 1 < queue.items.len() && queue.items[at + 1].added {
+        at += 1;
+    }
+    Some(queue.items[at].id)
+}
+
+/// Cycle 57, measured on plexscratch42 and plexscratch: under `X-Plex-Sync-Version`
+/// (python-plexapi sends it on every request) a playlist row on `/playlists` and
+/// `/playlists/{id}`, and the `/playlists/{id}/items` container, carry `allowSync` 1 --
+/// though the server's own root says 0.  Nothing else on the surface moves with it.
+fn sync_version_response(request: &Request, response: &mut Response) {
+    if !matches!(request.method.as_str(), "GET" | "HEAD")
+        || response.status != 200
+        || response.content_type != "application/json"
+    {
+        return;
+    }
+    let (path, raw_query) = split_target(&request.target);
+    let segments = path.trim_matches('/').split('/').collect::<Vec<_>>();
+    if segments.first() != Some(&"playlists") || segments.len() > 3 {
+        return;
+    }
+    let synced = request.headers.get("x-plex-sync-version").is_some_and(|v| !v.is_empty())
+        || parse_query(&raw_query)
+            .iter()
+            .any(|(name, value)| name == "X-Plex-Sync-Version" && !value.is_empty());
+    if !synced {
+        return;
+    }
+    let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+        return;
+    };
+    let Some(body) = document.get_mut("MediaContainer").and_then(Value::as_object_mut) else {
+        return;
+    };
+    if segments.len() == 3 && segments[2] == "items" {
+        body.insert("allowSync".to_string(), json!(true));
+    } else if segments.len() <= 2 {
+        if let Some(rows) = body.get_mut("Metadata").and_then(Value::as_array_mut) {
+            for row in rows {
+                if row.get("type").and_then(Value::as_str) != Some("playlist") {
+                    continue;
+                }
+                if let Some(object) = row.as_object_mut() {
+                    let mut marked = Map::new();
+                    marked.insert("allowSync".to_string(), json!(true));
+                    for (key, value) in std::mem::take(object) {
+                        if key != "allowSync" {
+                            marked.insert(key, value);
+                        }
+                    }
+                    *object = marked;
+                }
+            }
+        }
+    } else {
+        return;
     }
     if let Ok(bytes) = serde_json::to_vec(&document) {
         response.body = bytes;
