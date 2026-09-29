@@ -3222,72 +3222,215 @@ impl Runtime {
         self.push_timeline(key, 9, None);
     }
 
-    fn unmatch_item(&mut self, key: &str) -> Option<String> {
-        let original = self.catalog.get(key).cloned()?;
+    /// Strip the agent's identity, the way `PUT .../unmatch` does. Measured on the
+    /// reference by diffing the row's keys across the call: a movie's or a show's guid
+    /// becomes `tv.plex.agents.none://<ratingKey>`, its title the FILE NAME without
+    /// its extension, `summary` emptied but kept, and the artwork, Image, Guid, Rating,
+    /// year and date all KEPT. An EPISODE's and a SEASON's guid becomes `local://<id>`
+    /// and its title the generated `Episode N` / `Season N`; a SEASON cascades to every
+    /// episode under it, and a SHOW to every season and episode.
+    fn unmatch_row(&mut self, key: &str) {
+        let Some(original) = self.catalog.get(key).cloned() else {
+            return;
+        };
         let kind = original
             .get("type")
             .and_then(Value::as_str)
-            .unwrap_or_default();
-        let file_title = original
-            .get("Media")
-            .and_then(Value::as_array)
-            .and_then(|media| media.first())
-            .and_then(|media| media.get("Part"))
-            .and_then(Value::as_array)
-            .and_then(|parts| parts.first())
-            .and_then(|part| part.get("file"))
-            .and_then(Value::as_str)
-            .and_then(|file| file.rsplit('/').next())
-            .map(|file| {
-                file.rsplit_once('.')
-                    .map(|(stem, _)| stem)
-                    .unwrap_or(file)
-                    .to_string()
-            })
-            .filter(|value| !value.is_empty())
-            .or_else(|| {
+            .unwrap_or_default()
+            .to_string();
+        if kind == "episode" || kind == "season" {
+            let index = original.get("index").map(py_str).unwrap_or_else(|| "None".to_string());
+            let title = format!(
+                "{} {index}",
+                if kind == "season" { "Season" } else { "Episode" }
+            );
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                object.insert("guid".to_string(), json!(format!("local://{key}")));
+                object.insert("_generatedTitle".to_string(), json!(true));
+                object.insert("title".to_string(), json!(title.clone()));
                 if kind == "season" {
-                    return original
-                        .get("index")
-                        .map(string_value)
-                        .filter(|value| !value.is_empty())
-                        .map(|index| format!("Season {index}"));
+                    object.insert("titleSort".to_string(), json!(title));
+                } else {
+                    object.remove("titleSort");
                 }
-                None
-            })
-            .unwrap_or_else(|| {
-                original
-                    .get("title")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string()
-            });
-        let title = file_title;
+                object.insert("updatedAt".to_string(), json!(now()));
+                if kind == "episode" {
+                    // Re-measured on the copy against a DIRECT episode unmatch: the
+                    // four people lists, `audienceRating` and `year` go, and `summary`
+                    // is emptied -- the same field set a season's cascade drops.
+                    for field in ["Director", "Writer", "Producer", "Role", "audienceRating", "year"] {
+                        object.remove(field);
+                    }
+                    object.insert("summary".to_string(), json!(""));
+                }
+            }
+            self.follow_parent_title(key);
+            if kind == "season" {
+                self.unmatch_season_children(key);
+            }
+            return;
+        }
         let guid = format!("tv.plex.agents.none://{key}");
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-            object.insert("guid".to_string(), json!(guid));
-            object.insert("title".to_string(), json!(title.clone()));
-            object.insert("summary".to_string(), json!(""));
             for field in [
                 "Genre",
-                "Collection",
+                "Country",
                 "Role",
                 "Director",
                 "Writer",
                 "Producer",
-                "Country",
                 "studio",
                 "contentRating",
+                "contentRatingAge",
+                "tagline",
                 "audienceRating",
                 "rating",
-                "userRating",
-                "_prefs",
-                "Preferences",
             ] {
                 object.remove(field);
             }
+            object.insert("summary".to_string(), json!(""));
+            object.insert("guid".to_string(), json!(guid.clone()));
         }
-        Some(title)
+        if kind == "show" {
+            // Re-measured on the copy: a SHOW unmatch cascades the whole way down --
+            // every season and episode becomes `local://`, each season's `parentGuid`
+            // and each episode's `grandparentGuid` follow the show's new guid, and the
+            // artwork the children borrowed from the show goes with it, as does the
+            // `contentRating` they inherited.
+            for season in self.children(key) {
+                if season.get("type").and_then(Value::as_str) != Some("season") {
+                    continue;
+                }
+                let season_key = key_of(&season).unwrap_or_default();
+                self.unmatch_row(&season_key);
+                if let Some(object) = self.catalog.get_mut(&season_key).and_then(Value::as_object_mut) {
+                    object.insert("parentGuid".to_string(), json!(guid.clone()));
+                    object.remove("parentThumb");
+                    object.remove("parentStudio");
+                }
+            }
+            for leaf in self.leaves(key) {
+                let leaf_key = key_of(&leaf).unwrap_or_default();
+                if let Some(object) = self.catalog.get_mut(&leaf_key).and_then(Value::as_object_mut) {
+                    object.insert("grandparentGuid".to_string(), json!(guid.clone()));
+                    object.remove("grandparentThumb");
+                    object.remove("grandparentArt");
+                    object.remove("contentRating");
+                    object.remove("_inheritedContentRating");
+                }
+            }
+            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                object.remove("art");
+            }
+        }
+        // The FILE NAME is the only title left that an agent did not supply.
+        let file_title = original
+            .get("Media")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+            .find_map(|part| {
+                let name = part
+                    .get("file")
+                    .map(string_value)
+                    .unwrap_or_default()
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or_default()
+                    .to_string();
+                (!name.is_empty()).then(|| {
+                    name.rsplit_once('.')
+                        .map(|(stem, _)| stem.to_string())
+                        .unwrap_or(name.clone())
+                })
+            });
+        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            if let Some(title) = file_title {
+                object.insert("title".to_string(), json!(title));
+            }
+            object.insert("updatedAt".to_string(), json!(now()));
+        }
+    }
+
+    /// The season half of an unmatch: the season loses its `year` (the show's then
+    /// shows through as `parentYear`), its `thumb` falls back to the SHOW's, and every
+    /// episode under it is unmatched with its `parentGuid` following the season.
+    fn unmatch_season_children(&mut self, season_key: &str) {
+        let Some(season) = self.catalog.get(season_key).cloned() else {
+            return;
+        };
+        let parent = season
+            .get("parentRatingKey")
+            .map(string_value)
+            .and_then(|parent| self.catalog.get(&parent).cloned());
+        if let Some(object) = self.catalog.get_mut(season_key).and_then(Value::as_object_mut) {
+            object.remove("year");
+            if let Some(parent) = &parent {
+                if let Some(year) = parent.get("year").filter(|value| !value.is_null()) {
+                    object.insert("parentYear".to_string(), year.clone());
+                }
+                if let Some(thumb) = parent.get("thumb").filter(|value| truthy(value)) {
+                    object.insert("thumb".to_string(), thumb.clone());
+                }
+            }
+        }
+        let season_guid = self
+            .catalog
+            .get(season_key)
+            .and_then(|row| row.get("guid"))
+            .cloned()
+            .unwrap_or(Value::Null);
+        let episodes = self
+            .catalog
+            .items
+            .iter()
+            .filter(|leaf| {
+                leaf.get("type").and_then(Value::as_str) == Some("episode")
+                    && leaf.get("parentRatingKey").map(string_value).as_deref() == Some(season_key)
+            })
+            .filter_map(key_of)
+            .collect::<Vec<_>>();
+        for leaf_key in episodes {
+            self.unmatch_row(&leaf_key);
+            if let Some(object) = self.catalog.get_mut(&leaf_key).and_then(Value::as_object_mut) {
+                object.insert("parentGuid".to_string(), season_guid.clone());
+                object.remove("parentThumb");
+            }
+        }
+    }
+
+    /// Copy a show's or a season's title onto the rows beneath it (`parentTitle`,
+    /// and a show's `grandparentTitle`); an EMPTY title removes them.
+    fn follow_parent_title(&mut self, key: &str) {
+        let Some(row) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
+        if kind != "show" && kind != "season" {
+            return;
+        }
+        let title = row.get("title").filter(|value| truthy(value)).cloned();
+        for child in self.catalog.items.iter_mut() {
+            let parent = child.get("parentRatingKey").map(string_value);
+            let grandparent = child.get("grandparentRatingKey").map(string_value);
+            let Some(object) = child.as_object_mut() else { continue };
+            let name = if parent.as_deref() == Some(key) {
+                "parentTitle"
+            } else if kind == "show" && grandparent.as_deref() == Some(key) {
+                "grandparentTitle"
+            } else {
+                continue;
+            };
+            match &title {
+                Some(title) => {
+                    object.insert(name.to_string(), title.clone());
+                }
+                None => {
+                    object.remove(name);
+                }
+            }
+        }
     }
 
     fn push_list_timeline(&mut self, item_id: &str, kind: i64, state: i64, metadata: &str) {
@@ -12753,23 +12896,72 @@ impl Runtime {
                         }
                     }
                     let allowed = match segments[3] {
-                        "refresh" => request.method == "GET" || request.method == "DELETE",
+                        "refresh" => matches!(request.method.as_str(), "GET" | "POST" | "DELETE"),
                         "indexes" => request.method == "DELETE",
                         _ => request.method == "PUT",
                     };
                     return if allowed {
                         if segments[3] == "analyze" {
-                            let rows = self.section_rows(section_key);
+                            // Cycle 21, re-measured on plexscratch: it is the LEAVES that
+                            // are framed, for each row in title order -- a show library
+                            // pushes three frames per EPISODE, with no activity of its own.
+                            let rows = self
+                                .sort_rows(self.section_rows(section_key), Some("titleSort"))
+                                .unwrap_or_else(|_| self.section_rows(section_key));
+                            let mut leaves = Vec::new();
                             for row in rows {
-                                if let Some(key) = key_of(&row) {
-                                    self.push_timeline(&key, 5, Some("analyzing"));
-                                    self.push_timeline(&key, 5, Some("thumbnailing"));
-                                    self.push_timeline(&key, 5, None);
+                                if matches!(row.get("type").and_then(Value::as_str), Some("show")) {
+                                    leaves.extend(self.leaves(&key_of(&row).unwrap_or_default()));
+                                } else {
+                                    leaves.push(row);
                                 }
                             }
-                        } else if segments[3] == "refresh" {
-                            if let Some(section) = self.section(section_key).cloned() {
-                                self.push_library_refresh_events(&section);
+                            for leaf in leaves {
+                                for media_state in [Some("analyzing"), Some("thumbnailing"), None] {
+                                    self.notify_timeline_full(&leaf, 5, None, media_state, None, None);
+                                }
+                            }
+                        } else if segments[3] == "refresh" && request.method != "DELETE" {
+                            // Cycle 19/36, measured on both copies: `?path=` SCOPES the
+                            // scan -- the section's own Location, a child of it, an empty
+                            // value and no `path` all scan everything; a parent of it or a
+                            // path the library does not hold scan NOTHING (the activity
+                            // runs 0 -> 100 with no progress rows). `force=1` ("Refresh
+                            // All Metadata") runs the whole scan first and then refreshes
+                            // each item.
+                            let mut paths = self
+                                .section(section_key)
+                                .and_then(|section| section.get("Location"))
+                                .and_then(Value::as_array)
+                                .map(|locations| {
+                                    locations
+                                        .iter()
+                                        .filter_map(|location| location.get("path"))
+                                        .map(string_value)
+                                        .collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+                            if paths.is_empty() {
+                                paths.push(format!("/plexsim/{section_key}"));
+                            }
+                            let wanted = query.get("path").filter(|value| !value.is_empty());
+                            let held = wanted.is_none_or(|wanted| {
+                                paths.iter().any(|path| {
+                                    wanted == path
+                                        || wanted.starts_with(&format!("{}/", path.trim_end_matches('/')))
+                                })
+                            });
+                            if !held {
+                                self.notify_empty_section_scan(section_key);
+                            } else {
+                                self.notify_section_scan(section_key);
+                                if query.get("force").map(String::as_str) == Some("1") {
+                                    for row in self.section_rows(section_key) {
+                                        if let Some(key) = key_of(&row) {
+                                            self.notify_refreshed(&key);
+                                        }
+                                    }
+                                }
                             }
                         }
                         Response::empty(200)
@@ -15829,105 +16021,111 @@ impl Runtime {
                 ),
             ),
             "match" => Response::error(400, "plexsim: bad request"),
-            "refresh" | "analyze" => {
+            "refresh" | "analyze" | "unmatch" => {
+                // Measured: `GET .../refresh` and `/analyze` are 404s; the writes take
+                // PUT (and POST answers the same 404 on the action leaves).
                 if request.method != "PUT" {
                     return Response::error(404, "plexsim: not found");
                 }
-                self.push_refresh_events(key);
-                Response::empty(200)
-            }
-            "unmatch" => {
-                if request.method != "PUT" {
-                    return Response::error(404, "plexsim: not found");
-                }
-                let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
-                let mut keys = vec![key.to_string()];
-                if kind == "show" {
-                    keys.extend(
-                        self.children(key)
-                            .into_iter()
-                            .filter_map(|season| key_of(&season)),
-                    );
-                    let seasons = keys[1..].to_vec();
-                    for season in seasons {
-                        keys.extend(
-                            self.children(&season)
-                                .into_iter()
-                                .filter_map(|episode| key_of(&episode)),
-                        );
-                    }
-                } else if kind == "season" {
-                    keys.extend(
-                        self.children(key)
-                            .into_iter()
-                            .filter_map(|episode| key_of(&episode)),
-                    );
-                }
-                let activity_title = row
-                    .get("title")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string();
-                for target in keys {
-                    let title = self.unmatch_item(&target).unwrap_or_default();
-                    self.push_refresh_events_named(&target, &title);
-                }
-                let affected = self
-                    .catalog
-                    .items
-                    .iter()
-                    .filter(|candidate| {
-                        let candidate_key = key_of(candidate).unwrap_or_default();
-                        candidate_key == key
-                            || candidate
-                                .get("grandparentRatingKey")
-                                .map(string_value)
-                                .is_some_and(|parent| parent == key)
-                            || candidate
-                                .get("parentRatingKey")
-                                .map(string_value)
-                                .is_some_and(|parent| parent == key)
-                    })
-                    .filter_map(key_of)
-                    .collect::<Vec<_>>();
-                for target in affected {
-                    let parent_key = self
-                        .catalog
-                        .get(&target)
-                        .and_then(|candidate| candidate.get("parentRatingKey"))
-                        .map(string_value);
-                    let grandparent_key = self
-                        .catalog
-                        .get(&target)
-                        .and_then(|candidate| candidate.get("grandparentRatingKey"))
-                        .map(string_value);
-                    if let Some(object) =
-                        self.catalog.get_mut(&target).and_then(Value::as_object_mut)
-                    {
-                        if let Some(parent) = parent_key {
-                            object.insert(
-                                "parentGuid".to_string(),
-                                json!(format!("tv.plex.agents.none://{parent}")),
-                            );
-                        }
-                        if let Some(grandparent) = grandparent_key {
-                            object.insert(
-                                "grandparentGuid".to_string(),
-                                json!(format!("tv.plex.agents.none://{grandparent}")),
-                            );
-                        }
-                    }
-                }
+                self.item_action(key, tail[0]);
                 self.dirty = true;
-                if kind == "show" {
-                    // A show unmatch uses its bare title for the activity; the
-                    // descendant rows retain their own generated frame titles.
-                    self.push_refresh_events_named(key, &activity_title);
-                }
                 self.save_if_dirty();
                 Response::empty(200)
             }
             _ => Response::error(404, "plexsim: not found"),
+        }
+    }
+
+    /// The frames half of the item context menu's refresh, analyze and unmatch.
+    fn item_action(&mut self, key: &str, action: &str) {
+        let Some(row) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        let kind = row.get("type").and_then(Value::as_str).unwrap_or_default().to_string();
+        match action {
+            "refresh" => {
+                // Cycle 15, re-measured on the copy: a refresh CASCADES. A SEASON runs
+                // its episodes inside its own activity and a SHOW nests a season's
+                // whole block under each season; the episode form is seven frames.
+                if kind == "show" {
+                    self.notify_show_cascade(key);
+                } else if kind == "season" {
+                    self.notify_season_cascade(key);
+                } else {
+                    self.notify_refreshed(key);
+                }
+            }
+            "analyze" => {
+                // Cycle 15, re-measured on the copy: per LEAF and in tree order, three
+                // `state 5` frames carrying `mediaState` analyzing, thumbnailing and
+                // none, then ONE `media.generate.chapter.thumbs` activity whose
+                // subtitle is the TARGET's frame title, started then ended.
+                let leaves = if kind == "show" || kind == "season" {
+                    self.leaves(key)
+                } else {
+                    vec![row.clone()]
+                };
+                for leaf in &leaves {
+                    for media_state in [Some("analyzing"), Some("thumbnailing"), None] {
+                        self.notify_timeline_full(leaf, 5, None, media_state, None, None);
+                    }
+                }
+                let subtitle = self.frame_title(&row);
+                let mut activity = self.add_activity(
+                    &subtitle,
+                    "Generating video chapter thumbnails",
+                    "media.generate.chapter.thumbs",
+                    -1,
+                );
+                activity["progress"] = json!(100);
+                self.end_activity_quietly(&mut activity);
+            }
+            "unmatch" => {
+                self.unmatch_row(key);
+                let Some(row) = self.catalog.get(key).cloned() else {
+                    return;
+                };
+                match kind.as_str() {
+                    "episode" => {
+                        self.notify_timeline(&row, 2, Some("matching"));
+                        self.notify_timeline(&row, 5, None);
+                    }
+                    "season" => {
+                        // Cycle 25: ONE `matching` frame and then the SEASON cascade.
+                        self.notify_timeline(&row, 2, Some("matching"));
+                        self.notify_season_cascade(key);
+                    }
+                    "show" => self.notify_show_unmatch_cascade(key),
+                    "movie" => {
+                        // Cycle 23, measured on plexscratch twice: TWELVE frames, the
+                        // opener a `matching` pair and the activity stepping through a
+                        // second TITLE, `Analyzing Media`.
+                        self.notify_timeline(&row, 2, Some("matching"));
+                        self.notify_timeline(&row, 3, Some("matching"));
+                        self.notify_timeline(&row, 3, Some("queued"));
+                        let subtitle = self.frame_title(&row);
+                        let mut activity = self.add_metadata_activity(&subtitle);
+                        for (title, progress) in [
+                            ("Analyzing Media", -1),
+                            ("Analyzing Media", 25),
+                            ("Updating Metadata", 25),
+                            ("Updating Metadata", 50),
+                        ] {
+                            activity["title"] = json!(title);
+                            activity["progress"] = json!(progress);
+                            self.push_activity(&activity, "updated");
+                        }
+                        self.notify_timeline(&row, 3, Some("processing"));
+                        self.notify_timeline(&row, 4, Some("loading"));
+                        activity["title"] = json!("Updating Metadata");
+                        activity["progress"] = json!(100);
+                        self.end_activity_quietly(&mut activity);
+                        self.notify_timeline(&row, 5, None);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
         }
     }
 
@@ -20544,6 +20742,17 @@ fn value_as_i64(value: &Value) -> Option<i64> {
         Value::String(text) => text.trim().parse::<i64>().ok(),
         Value::Bool(flag) => Some(*flag as i64),
         _ => None,
+    }
+}
+
+/// Python's `"%s" % value` for a JSON scalar: None, True/False, the number, the text.
+fn py_str(value: &Value) -> String {
+    match value {
+        Value::Null => "None".to_string(),
+        Value::Bool(true) => "True".to_string(),
+        Value::Bool(false) => "False".to_string(),
+        Value::String(text) => text.clone(),
+        other => other.to_string(),
     }
 }
 
