@@ -938,11 +938,15 @@ impl Runtime {
                 .min()
             {
                 object.insert("originallyAvailableAt".to_string(), json!(first_air));
-                if let Some(year) = first_air
-                    .get(..4)
-                    .and_then(|value| value.parse::<i64>().ok())
-                {
-                    object.insert("year".to_string(), json!(year));
+                // The show keeps its OWN year (1989 on the fixture while its first
+                // listed episode airs in 2007); only a show with none derives one.
+                if !object.get("year").is_some_and(truthy) {
+                    if let Some(year) = first_air
+                        .get(..4)
+                        .and_then(|value| value.parse::<i64>().ok())
+                    {
+                        object.insert("year".to_string(), json!(year));
+                    }
                 }
             }
             object.insert(
