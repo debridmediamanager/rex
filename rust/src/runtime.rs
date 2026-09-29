@@ -9607,6 +9607,39 @@ impl Runtime {
         {
             fields.insert("nocache".to_string(), json!(true));
         }
+        if query.get("includeMeta").map(String::as_str) == Some("1") && type_number == Some(18) {
+            // Cycle 46: the FULL section descriptor -- one `Type` row for the collection
+            // view with a single `titleSort` Sort scoped `?type=18`, plus the section's
+            // own `FieldType` rows.
+            let kind = self
+                .section(section_key)
+                .and_then(|s| s.get("type"))
+                .and_then(Value::as_str)
+                .unwrap_or("movie")
+                .to_string();
+            let field_types = self
+                .section_meta(section_key, &kind, false)
+                .and_then(|meta| meta.get("FieldType").cloned())
+                .unwrap_or_else(|| json!([]));
+            fields.insert(
+                "Meta".to_string(),
+                json!({
+                    "Type": [{
+                        "key": format!("/library/sections/{section_key}/all?type=18"),
+                        "type": "collection",
+                        "title": "Collections",
+                        "active": true,
+                        "Sort": [{
+                            "active": true, "activeDirection": "asc", "default": "asc",
+                            "defaultDirection": "asc", "descKey": "titleSort:desc",
+                            "key": "titleSort", "title": "Title",
+                            "firstCharacterKey": format!("/library/sections/{section_key}/firstCharacter?type=18"),
+                        }],
+                    }],
+                    "FieldType": field_types,
+                }),
+            );
+        }
         page_fields(&mut fields, query);
         Response::json(200, self.container(fields, true))
     }
