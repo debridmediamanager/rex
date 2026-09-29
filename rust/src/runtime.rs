@@ -5213,14 +5213,7 @@ impl Runtime {
             ("GET" | "HEAD", "/library/recentlyAdded") => self.route_recently_added(&query),
             ("GET" | "HEAD", "/library/onDeck") => self.route_on_deck(&query),
             ("GET" | "HEAD", "/devices") => self.route_devices(),
-            ("GET" | "HEAD", "/accounts") => Response::json(200, self.container(Map::from_iter([
-                ("identifier".to_string(), json!("com.plexapp.system.accounts")),
-                ("Account".to_string(), json!([{
-                    "id":1,"key":"/accounts/1","name":self.owner_username,
-                    "title":self.owner_username,"defaultAudioLanguage":"en","autoSelectAudio":true,
-                    "defaultSubtitleLanguage":"en","subtitleMode":1,"thumb":""
-                }])),
-            ]), false)),
+            ("GET" | "HEAD", "/accounts") => self.route_account(None),
             ("GET" | "HEAD", "/playlists") => self.route_playlists(&query),
             ("GET" | "HEAD", "/library/collections") => Response::error(404, "plexsim: not found"),
             ("GET" | "HEAD", "/statistics/bandwidth") => self
@@ -10107,6 +10100,16 @@ impl Runtime {
         }
         if segments.first() == Some(&"downloadQueue") {
             return self.route_download_queue(&segments[1..], request);
+        }
+        if segments.first() == Some(&"accounts")
+            && segments.len() >= 2
+            && matches!(request.method.as_str(), "GET" | "HEAD")
+        {
+            // Cycle 52: an extra segment after the account id is a 404.
+            if segments.len() > 2 {
+                return Response::error(404, "plexsim: not found");
+            }
+            return self.route_account(Some(segments[1]));
         }
         if segments.len() >= 4 && segments[..2] == ["hubs", "sections"] && segments[3] == "popular" {
             return self.route_popular_hub(&segments, query, request);

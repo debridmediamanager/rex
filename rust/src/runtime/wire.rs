@@ -299,10 +299,14 @@ pub(super) fn envelope(response: &Response, wire: &Wire, keep: bool) -> (u16, Ve
         .headers
         .iter()
         .filter(|(name, _)| {
-            !matches!(
+            // Cycle 53: a framework STRING result carries the literal `Content-type`
+            // spelling as its own header line (`Response::framework_string`); only the
+            // canonical spelling is the envelope's to write.
+            name == "Content-type"
+                || !matches!(
                 name.to_ascii_lowercase().as_str(),
                 "date" | "connection" | "keep-alive" | "content-length" | "content-type" | "x-plex-protocol"
-                    | "x-plexsim-raw"
+                    | "x-plexsim-raw" | "x-plexsim-no-head-gzip"
             ) && !(wire.origin.is_some()
                 && !raw
                 && matches!(
@@ -358,7 +362,11 @@ pub(super) fn envelope(response: &Response, wire: &Wire, keep: bool) -> (u16, Ve
             lines.push(("Keep-Alive".to_string(), "timeout=20".to_string()));
         }
     }
-    let offered = wire
+    // The framework's traceback (`plugin-xml`): a HEAD reports the uncompressed length
+    // and no Content-Encoding on both versions, where its GET honours a gzip offer.
+    let head_plain = wire.method == "HEAD"
+        && response.headers.iter().any(|(name, _)| name == "X-Plexsim-No-Head-Gzip");
+    let offered = !head_plain && wire
         .accept_encoding
         .as_deref()
         .is_some_and(|value| value.split(',').any(|piece| piece.split(';').next().map(str::trim) == Some("gzip")));
