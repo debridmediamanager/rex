@@ -14179,11 +14179,21 @@ impl Runtime {
             .ok()
             .flatten()
             .is_some();
+        // The default order is titleSort -- except a SHOW library's `type=3` and
+        // `type=4` grids, which keep the show's order (the rows arrive in it).
+        let show_order = section_type == "show"
+            && matches!(query.get("type").map(String::as_str), Some("3" | "4"));
         let sort = query
             .get("sort")
             .filter(|sort| !sort.is_empty())
             .map(String::as_str)
-            .or(if by_id { Some("id") } else { None });
+            .or(if by_id {
+                Some("id")
+            } else if show_order {
+                None
+            } else {
+                Some("titleSort")
+            });
         let rows = match self.sort_rows(rows, sort) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
