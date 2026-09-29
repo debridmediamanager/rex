@@ -109,7 +109,8 @@ impl Runtime {
         }
         let mut best: HashMap<String, ((i64, i64), usize)> = HashMap::new();
         for (index, row) in rows.iter().enumerate() {
-            let marker = string_value(&self.filter_value(row, field));
+            let value = self.filter_value(row, field);
+            let marker = string_value(value.get("__title").unwrap_or(&value));
             let rank = (
                 row.get("addedAt").and_then(Value::as_i64).unwrap_or(0),
                 key_of(row).and_then(|key| key.parse::<i64>().ok()).unwrap_or(0),

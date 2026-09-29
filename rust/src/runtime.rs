@@ -6,7 +6,7 @@
 //! and the route layer works on the same ordered `serde_json` values used by
 //! the phase-two serializers.  No Python process or fixture replay is involved.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::io::{self, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream, UdpSocket};
@@ -29,10 +29,14 @@ mod edit;
 mod frames;
 mod artwork;
 mod butler;
+mod children;
 mod framework;
 mod gates;
 mod listing;
 mod resume;
+mod search;
+mod spellfix;
+mod structural;
 mod transcoder;
 mod wire;
 use artwork::owns_artwork;
@@ -342,6 +346,9 @@ pub struct Runtime {
     viewed_in_session: HashSet<String>,
     /// Uploaded artwork by its `upload://` key: the bytes and their content type.
     uploads: HashMap<String, (Vec<u8>, String)>,
+    /// The spellfix1 vocabularies search falls back on: a SNAPSHOT, built at load and
+    /// rebuilt only by Optimize Database (cycles 37-38), never per edit.
+    spelling: Option<spellfix::SearchIndex>,
     pub terminated_sessions: HashMap<String, String>,
     pub decided_sessions: HashSet<(String, String)>,
     pub web_root: Option<PathBuf>,
@@ -377,6 +384,18 @@ impl Runtime {
         let source_digest = bytes_digest(&raw_catalog);
         catalog.normalize();
         number_catalog_tags(&mut catalog.items);
+        // Cycle 41: `Part.accessible`/`exists` are a DETAIL option (`checkFiles=1`), never
+        // a stored field a listing or a plain read carries; the checked read computes them.
+        for item in &mut catalog.items {
+            for media in item.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
+                for part in media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+                    if let Some(object) = part.as_object_mut() {
+                        object.remove("accessible");
+                        object.remove("exists");
+                    }
+                }
+            }
+        }
         let machine = catalog
             .document
             .get("machineIdentifier")
@@ -442,6 +461,7 @@ impl Runtime {
             hidden_continue: HashSet::new(),
             viewed_in_session: HashSet::new(),
             uploads: HashMap::new(),
+            spelling: None,
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
             web_root: options.web_root,
@@ -454,6 +474,7 @@ impl Runtime {
             list_state: HashMap::new(),
         };
         runtime.load_state()?;
+        runtime.rebuild_spelling();
         Ok(runtime)
     }
 
@@ -3480,6 +3501,19 @@ impl Runtime {
     }
 
     fn filter_value(&self, row: &Value, field: &str) -> Value {
+        if field == "title" {
+            // Cycle 18/32: the bare `title=` matcher reads the title, the stored SORT
+            // title (its folded pass) and the original title; every other operator
+            // reads the title alone. The two extra strings travel with the value
+            // (`server.py` `_TitleValue`), unwrapped by `filters::compare`.
+            if let Some(object) = row.as_object() {
+                return json!({
+                    "__title": crate::hierarchy::stored_title(object),
+                    "__sort": crate::hierarchy::stored_sort_title(object),
+                    "__original": row.get("originalTitle").and_then(Value::as_str).unwrap_or(""),
+                });
+            }
+        }
         // A few query columns intentionally do not appear on the row itself.
         // They are projections over hierarchy, view state, tags, or Media and
         // must be resolved before the generic scalar lookup below.
@@ -3520,11 +3554,6 @@ impl Runtime {
         }
         if field == "parent" {
             return row.get("parentRatingKey").cloned().unwrap_or(Value::Null);
-        }
-        if field == "title" {
-            return json!(crate::hierarchy::stored_title(
-                row.as_object().unwrap_or(&Map::new()),
-            ));
         }
         if field == "titleSort" {
             return json!(crate::hierarchy::stored_sort_title(
@@ -4468,6 +4497,15 @@ impl Runtime {
         }
     }
 
+    /// Rebuild both spellfix vocabularies from the current rows (`rebuild_spelling`).
+    fn rebuild_spelling(&mut self) {
+        let static_tags = load_json_sidecar(&self.catalog_path, "spellfix_static_tags.json")
+            .and_then(|value| value.as_array().cloned())
+            .map(|values| values.iter().filter_map(|v| v.as_str().map(str::to_string)).collect::<Vec<_>>())
+            .unwrap_or_default();
+        self.spelling = Some(spellfix::SearchIndex::build(&self.catalog.items, &static_tags));
+    }
+
     pub fn route(&mut self, request: &Request) -> Response {
         if request.method == "PATCH" {
             // Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not
@@ -4783,6 +4821,64 @@ impl Runtime {
         if path.len() > 1 && path.ends_with('/') && !path.starts_with("/web/") {
             path.pop();
         }
+        {
+            // Cycle 45: the `+` form is a 404 in a VALIDATED VERSION position (a part's
+            // changestamp before a filename, a section composite's version), checked on
+            // the raw segment; cycle 36: every other padded or plus-signed id segment
+            // (`\+?0*[0-9]+`) names the same row as its number.
+            let pieces = path.split('/').map(str::to_string).collect::<Vec<_>>();
+            let digits = |text: &str| !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit());
+            if pieces.len() > 5 && pieces[1] == "library" && pieces[2] == "parts" && !digits(&pieces[4]) {
+                return Response::error(404, "plexsim: not found");
+            }
+            if pieces.len() > 5
+                && pieces[1] == "library"
+                && pieces[2] == "sections"
+                && pieces[4] == "composite"
+                && !digits(&pieces[5])
+            {
+                return Response::error(404, "plexsim: not found");
+            }
+            let padded = |text: &str| {
+                let rest = text.strip_prefix('+').unwrap_or(text);
+                digits(rest)
+            };
+            if pieces.iter().any(|piece| padded(piece) && piece.as_str() != piece.trim_start_matches(['+', '0']) ) {
+                path = pieces
+                    .iter()
+                    .map(|piece| {
+                        if padded(piece) {
+                            let stripped = piece.trim_start_matches('+').trim_start_matches('0');
+                            if stripped.is_empty() { "0".to_string() } else { stripped.to_string() }
+                        } else {
+                            piece.clone()
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("/");
+            }
+            // Cycle 36: four paths bound their id to a signed 32-bit integer -- past the
+            // range a 400, a negative inside it a 404.
+            let segments = path.split('/').filter(|p| !p.is_empty()).collect::<Vec<_>>();
+            let bounded = match segments.as_slice() {
+                ["playQueues" | "devices" | "accounts", id, ..] => Some(*id),
+                ["system", "scanners", id, ..] => Some(*id),
+                _ => None,
+            };
+            if let Some(id) = bounded {
+                let body = id.strip_prefix('-').unwrap_or(id);
+                if digits(body) {
+                    match id.parse::<i64>() {
+                        Ok(number) if (-2_147_483_648..=2_147_483_647).contains(&number) => {
+                            if number < 0 {
+                                return Response::error(404, "plexsim: not found");
+                            }
+                        }
+                        _ => return Response::error(400, "plexsim: bad request"),
+                    }
+                }
+            }
+        }
         if request.method == "OPTIONS"
             && request.headers.contains_key("access-control-request-method")
         {
@@ -4820,6 +4916,11 @@ impl Runtime {
         }
         if !self.authorized(&path, &request, &query) {
             return self.unauthorized_route(&path, request);
+        }
+        if matches!(request.method.as_str(), "GET" | "HEAD") {
+            if let Some(status) = self.structural_refusal(&path, &query) {
+                return Response::error(status, "plexsim: bad request");
+            }
         }
         if resource_root_with_slash {
             return self.route_bundled_resource("", request.method == "HEAD");
@@ -5160,9 +5261,15 @@ impl Runtime {
             ]), false)),
             ("GET" | "HEAD", "/playlists") => self.route_playlists(&query),
             ("GET" | "HEAD", "/library/collections") => Response::error(404, "plexsim: not found"),
-            ("GET" | "HEAD", "/statistics/bandwidth") => self.route_bandwidth(&query),
-            ("GET" | "HEAD", "/statistics/media") => self.route_media_statistics(&query),
-            ("GET" | "HEAD", "/statistics/resources") => self.route_resource_statistics(&query),
+            ("GET" | "HEAD", "/statistics/bandwidth") => self
+                .statistics_refusal("bandwidth", &query)
+                .unwrap_or_else(|| self.route_bandwidth(&query)),
+            ("GET" | "HEAD", "/statistics/media") => self
+                .statistics_refusal("media", &query)
+                .unwrap_or_else(|| self.route_media_statistics(&query)),
+            ("GET" | "HEAD", "/statistics/resources") => self
+                .statistics_refusal("resources", &query)
+                .unwrap_or_else(|| self.route_resource_statistics(&query)),
             ("GET" | "HEAD", "/history") => self.route_history(&query),
             ("GET" | "HEAD", "/status/sessions") => self.route_sessions(),
             ("GET" | "HEAD", "/status/sessions/background") => Response::json(200, self.container(Map::new(), false)),
@@ -5197,13 +5304,22 @@ impl Runtime {
                 Response::plain(200, connection_lines(&self.owner_username).into_bytes())
             }
             ("GET" | "HEAD", "/server/identity") => self.identity_response(&query),
-            ("PUT", "/:/progress") => self.route_progress(&query),
-            ("GET" | "HEAD", "/:/progress") => self.route_progress(&query),
-            ("GET" | "HEAD", "/:/timeline") => self.route_timeline(&query, &request.headers),
-            ("PUT" | "POST", "/:/timeline") => self.route_timeline(&query, &request.headers),
-            ("GET" | "HEAD", "/:/scrobble") => self.route_scrobble(&query, true),
-            ("GET" | "HEAD", "/:/unscrobble") => self.route_scrobble(&query, false),
-            ("GET" | "HEAD", "/:/rate") => self.route_rate(&query),
+            // The play-state writers answer on every verb the dispatcher routes, as
+            // the Python oracle does: the suite's own `PUT /:/scrobble` wrote
+            // nothing here and every Dashboard check after it read no history.
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/progress") => {
+                self.route_progress(&query)
+            }
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/timeline") => {
+                self.route_timeline(&query, &request.headers)
+            }
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/scrobble") => {
+                self.route_scrobble(&query, true)
+            }
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/unscrobble") => {
+                self.route_scrobble(&query, false)
+            }
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/rate") => self.route_rate(&query),
             ("GET" | "HEAD", "/video/:/transcode/universal/decision") => {
                 self.route_decision(&query, &request.headers)
             }
@@ -5211,9 +5327,23 @@ impl Runtime {
                 Response::error(400, "plexsim: bad request")
             }
             ("GET" | "HEAD", "/hubs") => self.route_hubs(&query),
-            ("GET" | "HEAD", "/hubs/search") => self.route_search(&query),
+            ("GET" | "HEAD", "/hubs/search") => {
+                // Cycle 54/55: a `sectionId` that parses as an int32 and names no
+                // section is a 400; anything else is ignored.
+                let wanted = query.get("sectionId").cloned().unwrap_or_default();
+                if int_param(&wanted, Some(32))
+                    && !wanted.starts_with('-')
+                    && self
+                        .section(&wanted.trim_start_matches('+').parse::<i64>().map(|n| n.to_string()).unwrap_or_default())
+                        .is_none()
+                {
+                    Response::error(400, "plexsim: bad request")
+                } else {
+                    self.hubs_search(&query)
+                }
+            }
             ("GET" | "HEAD", "/search") => self.route_legacy_search(&query),
-            ("GET" | "HEAD", "/library/search") => self.route_library_search(&query),
+            ("GET" | "HEAD", "/library/search") => self.flat_search(&query),
             _ => self.route_dynamic(request, &path, &query, &pairs),
         }
     }
@@ -5646,68 +5776,161 @@ impl Runtime {
         self.library_all(query)
     }
 
+    /// The Dashboard's view-time keys as `(key, moment)` tests over a history row's
+    /// `viewedAt` (the oracle's `_history_time_filter` with `date=True`).  Cycle 54,
+    /// measured on kids and zen with the client's own encoding: `viewedAt>` is `>=`,
+    /// `viewedAt<` is `<=` and a bare `viewedAt` is `==`; on Top Played and
+    /// `users/top` a value parses like a filter date and a bad one is a 500.
+    fn history_date_tests(query: &HashMap<String, String>) -> Result<Vec<(&'static str, f64)>, u16> {
+        let mut tests = Vec::new();
+        for key in ["viewedAt>", "viewedAt<", "viewedAt"] {
+            if let Some(value) = query.get(key) {
+                let moment = crate::filters::as_epoch(value, None).map_err(|_| 500_u16)?;
+                tests.push((key, moment));
+            }
+        }
+        Ok(tests)
+    }
+
+    fn history_passes(tests: &[(&'static str, f64)], viewed: i64) -> bool {
+        let viewed = viewed as f64;
+        tests.iter().all(|(key, moment)| match *key {
+            "viewedAt>" => viewed >= *moment,
+            "viewedAt<" => viewed <= *moment,
+            _ => viewed == *moment,
+        })
+    }
+
     fn route_top(&self, query: &HashMap<String, String>) -> Response {
-        let Some(type_number) = query
-            .get("type")
-            .and_then(|value| value.parse::<i64>().ok())
-        else {
-            return Response::error(400, "plexsim: bad request");
-        };
-        if !matches!(type_number, 1 | 2) {
+        // Cycle 27, swept over 17 values on kids and zen: any type NUMBER is
+        // answered, and only a value that does not PARSE is a 400.  A type this
+        // server holds no rows of is an empty 200.
+        let raw = query.get("type").map(String::as_str).unwrap_or("");
+        let digits = raw.trim_start_matches(['+', '-']);
+        if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
             return Response::error(400, "plexsim: bad request");
         }
-        let wanted = if type_number == 2 { "show" } else { "movie" };
-        let mut rows = self
-            .catalog
-            .items
-            .iter()
-            .filter(|row| row.get("type").and_then(Value::as_str) == Some(wanted))
-            .map(|row| {
-                let key = key_of(row).unwrap_or_default();
-                let matching = self.history.iter().filter(|history| {
-                    string_value(history.get("ratingKey").unwrap_or(&Value::Null)) == key
-                });
-                let mut plays = 0i64;
-                let mut latest = 0i64;
-                for history in matching {
-                    plays += 1;
-                    latest =
-                        latest.max(history.get("viewedAt").and_then(Value::as_i64).unwrap_or(0));
+        let wanted = match raw.trim_start_matches('+').parse::<i64>().unwrap_or(0) {
+            1 => Some("movie"),
+            2 => Some("show"),
+            3 => Some("season"),
+            4 => Some("episode"),
+            _ => None,
+        };
+        // Cycle 54, measured on kids and zen: `accountID`, `librarySectionID` and the
+        // viewedAt keys filter the HISTORY rows before the plays are counted.  A bad
+        // value in any of them is a 500.
+        let tests = match Self::history_date_tests(query) {
+            Ok(tests) => tests,
+            Err(status) => return Response::error(status, "plexsim: internal error"),
+        };
+        let mut ids: HashMap<&str, f64> = HashMap::new();
+        for name in ["accountID", "librarySectionID"] {
+            if let Some(value) = query.get(name) {
+                // Cycle 55: the id is read as a NUMBER -- `+1` is section 1 and `1.5`
+                // a 200 that matches nothing -- and only a non-number is the 500.
+                let body = value.strip_prefix(['+', '-']).unwrap_or(value);
+                let (whole, fraction) = body.split_once('.').unwrap_or((body, ""));
+                let numeric = !body.is_empty()
+                    && body != "."
+                    && whole.bytes().all(|b| b.is_ascii_digit())
+                    && fraction.bytes().all(|b| b.is_ascii_digit())
+                    && body.matches('.').count() <= 1;
+                if !numeric {
+                    return Response::error(500, "plexsim: internal error");
                 }
-                let mut projected = self.grid_row(row, false, false, false);
-                if let Some(object) = projected.as_object_mut() {
-                    object.insert("globalViewCount".to_string(), json!(plays));
-                    object.insert(
-                        "userCount".to_string(),
-                        json!(if plays > 0 { 1 } else { 0 }),
-                    );
+                ids.insert(name, value.trim_start_matches('+').parse::<f64>().unwrap_or(0.0));
+            }
+        }
+        let mut plays: HashMap<i64, i64> = HashMap::new();
+        let mut viewers: HashMap<i64, BTreeSet<i64>> = HashMap::new();
+        let mut seen_at: HashMap<i64, i64> = HashMap::new();
+        if let Some(wanted) = wanted {
+            for entry in &self.history {
+                let key = string_value(entry.get("ratingKey").unwrap_or(&Value::Null));
+                if key.is_empty() || !key.bytes().all(|b| b.is_ascii_digit()) {
+                    continue;
+                }
+                let Some(row) = self.catalog.get(&key) else { continue };
+                let mut counted = key.clone();
+                if row.get("type").and_then(Value::as_str) != Some(wanted) {
+                    // Cycle 58, measured on zen: a play is counted on the episode's
+                    // SEASON at `type=3` and its SHOW at `type=2`.
+                    let parent = match wanted {
+                        "show" => row.get("grandparentRatingKey").map(string_value),
+                        "season" => row
+                            .get("parentRatingKey")
+                            .or_else(|| row.get("_parentRatingKey"))
+                            .map(string_value),
+                        _ => None,
+                    }
+                    .unwrap_or_default();
+                    if row.get("type").and_then(Value::as_str) != Some("episode")
+                        || parent.is_empty()
+                        || !parent.bytes().all(|b| b.is_ascii_digit())
+                        || self.catalog.get(&parent).is_none()
+                    {
+                        continue;
+                    }
+                    counted = parent;
+                }
+                let viewed = entry.get("viewedAt").and_then(Value::as_i64).unwrap_or(0);
+                if !Self::history_passes(&tests, viewed) {
+                    continue;
+                }
+                let account = entry.get("accountID").and_then(Value::as_i64).unwrap_or(1);
+                if ids.get("accountID").is_some_and(|wanted| account as f64 != *wanted) {
+                    continue;
+                }
+                let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                    .parse::<f64>()
+                    .unwrap_or(0.0);
+                if ids.get("librarySectionID").is_some_and(|wanted| section != *wanted) {
+                    continue;
+                }
+                let number = counted.parse::<i64>().unwrap_or(0);
+                *plays.entry(number).or_default() += 1;
+                viewers.entry(number).or_default().insert(account);
+                let latest = seen_at.entry(number).or_default();
+                *latest = (*latest).max(viewed);
+            }
+        }
+        // Cycle 27, measured on zen's 73 real history rows: a tie in the play count
+        // breaks on the MOST RECENT view, descending, and only then on the ratingKey.
+        let mut ordered = plays.keys().copied().collect::<Vec<_>>();
+        ordered.sort_by_key(|key| (-plays[key], -seen_at.get(key).copied().unwrap_or(0), *key));
+        let limit = query
+            .get("limit")
+            .filter(|value| !value.is_empty())
+            .and_then(|value| value.trim_start_matches('+').parse::<i64>().ok())
+            .map(|value| if value == 0 { 12 } else { value })
+            .unwrap_or(12);
+        let take = if limit < 0 {
+            ordered.len().saturating_sub(limit.unsigned_abs() as usize)
+        } else {
+            limit as usize
+        };
+        let rows = ordered
+            .into_iter()
+            .take(take)
+            .filter_map(|key| {
+                let row = self.catalog.get(&key.to_string())?;
+                let mut shown = self.listing_row(row);
+                if let Some(object) = shown.as_object_mut() {
+                    object.insert("globalViewCount".to_string(), json!(plays[&key]));
+                    object.insert("userCount".to_string(), json!(viewers[&key].len()));
                     object.insert(
                         "User".to_string(),
-                        if plays > 0 {
-                            json!([{"id":1,"title":self.owner_username,"viewCount":plays}])
-                        } else {
-                            json!([])
-                        },
+                        Value::Array(viewers[&key].iter().map(|id| json!({"id": id})).collect()),
                     );
                 }
-                (plays, latest, key, projected)
+                Some(shown)
             })
-            .collect::<Vec<_>>();
-        rows.sort_by(|left, right| {
-            right
-                .0
-                .cmp(&left.0)
-                .then_with(|| right.1.cmp(&left.1))
-                .then_with(|| left.2.cmp(&right.2))
-        });
-        let values = rows
-            .into_iter()
-            .map(|(_, _, _, row)| row)
             .collect::<Vec<_>>();
         Response::json(
             200,
             self.container(
-                Map::from_iter([("Metadata".to_string(), Value::Array(values))]),
+                Map::from_iter([("Metadata".to_string(), Value::Array(rows))]),
                 true,
             ),
         )
@@ -6045,68 +6268,160 @@ impl Runtime {
 
     fn route_history(&self, query: &HashMap<String, String>) -> Response {
         let mut rows = self.history.clone();
-        if let Some(key) = query
-            .get("ratingKey")
-            .or_else(|| query.get("metadataId"))
-            .or_else(|| query.get("metadataItemID"))
-        {
-            rows.retain(|row| string_value(row.get("ratingKey").unwrap_or(&Value::Null)) == *key);
-        }
-        if let Some(account) = query.get("accountID") {
-            rows.retain(|row| {
-                string_value(row.get("accountID").unwrap_or(&Value::Null)) == *account
-            });
-        }
-        if let Some(value) = query.get("viewedAt>") {
-            if let Ok(value) = value.parse::<i64>() {
-                rows.retain(|row| row.get("viewedAt").and_then(Value::as_i64).unwrap_or(0) > value);
-            }
-        }
-        if let Some(kind) = query.get("type") {
-            let wanted = kind
-                .split(',')
-                .map(|value| value.parse::<i64>())
-                .collect::<Result<Vec<_>, _>>();
-            let Ok(wanted) = wanted else {
-                return Response::error(400, "plexsim: bad request");
-            };
-            if wanted.is_empty() {
-                return Response::error(400, "plexsim: bad request");
-            }
-            let session_rows = wanted.contains(&0);
-            let scrobble_rows = wanted.contains(&1);
-            rows.retain(|row| {
-                if row.get("viewType").and_then(Value::as_i64) == Some(1) {
-                    scrobble_rows
-                } else {
-                    session_rows
+        // Cycle 14, measured case by case on kids (1.43.4) and zen (1.42.2): this page
+        // VALIDATES its ids.  `accountID`, `librarySectionID` and `metadataItemID` are
+        // 400 for anything that is not a whole number -- `abc`, empty and `1.5` alike --
+        // while `1`, `-1`, `01` and (cycle 55) `+1` are fine.
+        for name in ["accountID", "librarySectionID", "metadataItemID"] {
+            if let Some(value) = query.get(name) {
+                if !int_param(value, None) {
+                    return Response::error(400, "plexsim: bad request");
                 }
-            });
-        } else {
-            // A plain history listing is the session-play view (the same
-            // rows selected by type=0).  Scrobble rows carry viewType=1 and
-            // are only included when the client asks for that type.
-            rows.retain(|row| row.get("viewType").and_then(Value::as_i64) != Some(1));
+            }
         }
-        if let Some(sort) = query.get("sort") {
-            let descending = sort == "viewedAt:desc";
-            if sort != "viewedAt" && !descending {
+        // Cycle 54, measured on kids and zen: `offset` is an int32 here.
+        if let Some(value) = query.get("offset") {
+            if !int_param(value, Some(32)) {
                 return Response::error(400, "plexsim: bad request");
             }
-            rows.sort_by_key(|row| row.get("viewedAt").and_then(Value::as_i64).unwrap_or(0));
-            if descending {
-                rows.reverse();
+        }
+        let number = |value: &str| value.trim_start_matches('+').parse::<i128>().unwrap_or(0);
+        if let Some(wanted) = query.get("metadataItemID") {
+            // `metadataItemID` is additionally 404 for a whole number the server holds
+            // no row for; cycle 57: a COLLECTION's or a PLAYLIST's id is an empty 200.
+            let wanted_number = number(wanted);
+            let key = wanted_number.to_string();
+            if !rows.iter().any(|row| {
+                string_value(row.get("ratingKey").unwrap_or(&Value::Null)) == *wanted
+            }) && self.catalog.get(&key).is_none()
+                && !self.playlists.contains_key(&key)
+                && !self.collections.contains_key(&key)
+            {
+                return Response::error(404, "plexsim: not found");
             }
         }
-        let total = rows.len();
-        let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(rows))]);
-        page_fields(&mut fields, query);
-        if query.contains_key("X-Plex-Container-Start")
-            && query.contains_key("X-Plex-Container-Size")
-        {
-            fields.insert("totalSize".to_string(), json!(total));
+        // Cycle 54 corrected the keys: `viewedAt%3E=` is the key `viewedAt>` and it is
+        // INCLUSIVE, `viewedAt<` likewise, and a bare `viewedAt` is exact.  On this page
+        // a value must be an integer and anything else is a 400; `viewedAt>=` and
+        // `viewedAt<=` are unknown keys, ignored and not validated.
+        let mut time_tests: Vec<(&str, i64)> = Vec::new();
+        for key in ["viewedAt>", "viewedAt<", "viewedAt"] {
+            if let Some(value) = query.get(key) {
+                let digits = value.strip_prefix('-').unwrap_or(value);
+                if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                time_tests.push((key, value.parse::<i64>().unwrap_or(0)));
+            }
         }
-        Response::json(200, self.container(fields, true))
+        // Cycle 15/70: the `type` is the row's `viewType` -- a row with none (a
+        // timeline completion) is type 0, and an absent `type=` means `type=0`.
+        let mut wanted_types = vec![0i64];
+        if let Some(kind) = query.get("type") {
+            let mut parsed = Vec::new();
+            for part in kind.split(',') {
+                let digits = part.trim_start_matches('-');
+                if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                parsed.push(part.parse::<i64>().unwrap_or(0));
+            }
+            wanted_types = parsed;
+        }
+        rows.retain(|row| {
+            wanted_types.contains(&row.get("viewType").and_then(Value::as_i64).unwrap_or(0))
+        });
+        let row_number = |row: &Value, field: &str| -> Option<i128> {
+            let text = string_value(row.get(field).unwrap_or(&Value::Null));
+            let text = if text.is_empty() { "0".to_string() } else { text };
+            let digits = text.trim_start_matches('-');
+            (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
+                .then(|| text.parse::<i128>().unwrap_or(0))
+        };
+        for (name, field) in [
+            ("accountID", "accountID"),
+            ("deviceID", "deviceID"),
+            ("librarySectionID", "librarySectionID"),
+            ("metadataItemID", "ratingKey"),
+        ] {
+            let Some(wanted) = query.get(name).filter(|value| !value.is_empty()) else {
+                continue;
+            };
+            if name == "deviceID" {
+                rows.retain(|row| string_value(row.get(field).unwrap_or(&Value::Null)) == *wanted);
+            } else {
+                let wanted = number(wanted);
+                rows.retain(|row| row_number(row, field) == Some(wanted));
+            }
+        }
+        rows.retain(|row| {
+            let viewed = row.get("viewedAt").and_then(Value::as_i64).unwrap_or(0);
+            time_tests.iter().all(|(key, moment)| match *key {
+                "viewedAt>" => viewed >= *moment,
+                "viewedAt<" => viewed <= *moment,
+                _ => viewed == *moment,
+            })
+        });
+        // Default order is viewedAt ASCENDING, and an unknown sort key is a 400 --
+        // not the 500 a library listing answers.
+        let spec = query
+            .get("sort")
+            .filter(|value| !value.is_empty())
+            .cloned()
+            .unwrap_or_else(|| "viewedAt".to_string());
+        let terms = spec
+            .split(',')
+            .filter(|term| !term.is_empty())
+            .map(|term| {
+                let (field, direction) = term.split_once(':').unwrap_or((term, ""));
+                (field.to_string(), direction == "desc")
+            })
+            .collect::<Vec<_>>();
+        for (field, descending) in terms.iter().rev() {
+            if !matches!(
+                field.as_str(),
+                "viewedAt" | "historyKey" | "ratingKey" | "accountID" | "deviceID" | "title"
+            ) {
+                return Response::error(400, "plexsim: bad request");
+            }
+            let sort_key = |row: &Value| -> (bool, Value) {
+                match row.get(field.as_str()) {
+                    None | Some(Value::Null) => (true, json!(0)),
+                    Some(value) => (false, value.clone()),
+                }
+            };
+            rows.sort_by(|a, b| {
+                let (an, av) = sort_key(a);
+                let (bn, bv) = sort_key(b);
+                let order = an.cmp(&bn).then_with(|| compare_json(&av, &bv));
+                if *descending { order.reverse() } else { order }
+            });
+        }
+        // Cycle 18, measured on kids and zen: `limit=` is a THIRD grammar here --
+        // `limit=-1` answers ZERO rows -- and `group=` is refused outright with a 400,
+        // the empty form included.
+        if query.contains_key("group") {
+            return Response::error(400, "plexsim: bad request");
+        }
+        if let Some(raw) = query.get("limit") {
+            let digits = raw.trim_start_matches('-');
+            if !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()) {
+                let limit = raw.parse::<i64>().unwrap_or(0).max(0) as usize;
+                rows.truncate(limit);
+            }
+        }
+        let (page, paged, start, total) = match page_window(rows, query) {
+            Ok(window) => window,
+            Err(status) => return Response::error(status, "plexsim: bad container parameter"),
+        };
+        let mut fields = Map::new();
+        fields.insert("size".to_string(), json!(page.len()));
+        fields.insert("Metadata".to_string(), Value::Array(page));
+        if paged {
+            fields.insert("totalSize".to_string(), json!(total));
+            fields.insert("offset".to_string(), json!(start));
+        }
+        Response::json(200, self.container(fields, false))
     }
 
     fn route_bandwidth(&self, query: &HashMap<String, String>) -> Response {
@@ -6122,25 +6437,9 @@ impl Runtime {
                 return Response::error(400, "plexsim: bad request");
             }
         }
-        for name in ["accountID", "deviceID", "offset"] {
-            if let Some(value) = query.get(name) {
-                if value.parse::<i32>().is_err() {
-                    return Response::error(400, "plexsim: bad request");
-                }
-            }
-        }
-        if let Some(value) = query.get("limit") {
-            if value.parse::<i64>().is_err() {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
+
         if let Some(value) = query.get("lan") {
             if !matches!(value.as_str(), "0" | "1") {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
-        if let Some(sort) = query.get("sort") {
-            if !matches!(sort.as_str(), "at" | "bytes" | "lan") {
                 return Response::error(400, "plexsim: bad request");
             }
         }
@@ -6234,24 +6533,58 @@ impl Runtime {
         )
     }
 
+    /// The statistics endpoints' shared parameter grammar (the oracle's `statistics`),
+    /// checked before any endpoint answers.
+    fn statistics_refusal(&self, which: &str, query: &HashMap<String, String>) -> Option<Response> {
+        let refuse = || Some(Response::error(400, "plexsim: bad request"));
+        // Cycle 54/55, measured on kids and zen: `/statistics/media` parses `count`,
+        // `offset` and `type` as int32 and `/statistics/bandwidth` `bytes` as int64 and
+        // `offset` as int32; `offset` is an int32 on all THREE endpoints.
+        let ints: &[(&str, u32)] = match which {
+            "media" => &[("count", 32), ("offset", 32), ("type", 32)],
+            "bandwidth" => &[("bytes", 64), ("offset", 32)],
+            _ => &[("offset", 32)],
+        };
+        for (name, bits) in ints {
+            if query.get(*name).is_some_and(|value| !int_param(value, Some(*bits))) {
+                return refuse();
+            }
+        }
+        // The `sort=` (and cycle 55: `group=`) keys each endpoint accepts.
+        let keys: &[&str] = match which {
+            "bandwidth" => &["at", "bytes", "deviceID", "accountID", "lan", "timespan"],
+            "media" => &["at", "deviceID", "accountID", "timespan", "count", "duration"],
+            _ => &[
+                "at",
+                "timespan",
+                "hostCpuUtilization",
+                "processCpuUtilization",
+                "hostMemoryUtilization",
+                "processMemoryUtilization",
+            ],
+        };
+        if query.get("group").is_some_and(|group| !keys.contains(&group.as_str())) {
+            return refuse();
+        }
+        if which == "bandwidth" && self.devices.values().any(|device| !device.platform.is_string()) {
+            return Some(Response::error(500, "plexsim: internal error"));
+        }
+        // Cycle 55: the window is an int32; cycle 26/55: `limit=` is PARSED as one.
+        for name in ["timespan", "limit"] {
+            if query.get(name).is_some_and(|value| !int_param(value, Some(32))) {
+                return refuse();
+            }
+        }
+        if let Some(sort) = query.get("sort") {
+            let (key, direction) = sort.split_once(':').unwrap_or((sort, ""));
+            if !keys.contains(&key) || !matches!(direction, "" | "asc" | "desc") {
+                return refuse();
+            }
+        }
+        None
+    }
+
     fn route_media_statistics(&self, query: &HashMap<String, String>) -> Response {
-        for name in ["accountID", "deviceID", "limit", "offset"] {
-            if let Some(value) = query.get(name) {
-                if value.parse::<i32>().is_err() {
-                    return Response::error(400, "plexsim: bad request");
-                }
-            }
-        }
-        if let Some(value) = query.get("timespan") {
-            if value.parse::<i64>().is_err() {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
-        if let Some(value) = query.get("sort") {
-            if !matches!(value.as_str(), "at" | "count" | "duration") {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
         let spans = if let Some(value) = query.get("timespan") {
             let timespan = value.parse::<i64>().unwrap_or_default();
             if matches!(timespan, 0 | 1 | 2 | 3 | 4) {
@@ -9178,6 +9511,9 @@ impl Runtime {
                 ),
             );
         }
+        if let Some(status) = listing::listing_refusals(query, &[]) {
+            return Response::error(status, "plexsim: bad request");
+        }
         let mut rows = self
             .playlists
             .values()
@@ -9985,6 +10321,9 @@ impl Runtime {
         if segments.first() == Some(&"downloadQueue") {
             return self.route_download_queue(&segments[1..], request);
         }
+        if segments.len() >= 4 && segments[..2] == ["hubs", "sections"] && segments[3] == "popular" {
+            return self.route_popular_hub(&segments, query, request);
+        }
         if segments.first() == Some(&"activities") && segments.len() > 1 && request.method == "PUT" {
             // Cycle 19: a PUT to an activity is a 400, where its DELETE is a 404.
             return Response::error(400, "plexsim: bad request");
@@ -10326,6 +10665,8 @@ impl Runtime {
                     (60, "Optimizing Database"),
                 ],
             );
+            // Database optimization is the measured spelling-index rebuild point.
+            self.rebuild_spelling();
             return Response::empty(200);
         }
         if segments == ["playQueues"] && matches!(request.method.as_str(), "GET" | "HEAD") {
@@ -10891,7 +11232,7 @@ impl Runtime {
                 // `+999999`) is an EMPTY 200, and an item the server holds -- in any
                 // library -- is the 400, as are an empty value, a word, `1.5`, ` 1` and
                 // `2147483648`.
-                if !pms_int_param(raw_item, Some(32)) {
+                if !int_param(raw_item, Some(32)) {
                     return Response::error(400, "plexsim: bad request");
                 }
                 let item = raw_item.parse::<i64>().unwrap_or(0);
@@ -12139,10 +12480,12 @@ impl Runtime {
                 }
                 if segments.len() == 4 && (segments[3] == "sorts" || segments[3] == "filters") {
                     let number = if let Some(value) = query.get("type") {
-                        let Ok(number) = value.parse::<i64>() else {
+                        // Cycle 55: a signed 32-bit integer (`2147483648` is a 400, `+1`
+                        // the movie list), measured on zen and kids.
+                        if !int_param(value, Some(32)) {
                             return Response::error(400, "plexsim: bad request");
-                        };
-                        number
+                        }
+                        value.trim_start_matches('+').parse::<i64>().unwrap_or(0)
                     } else if section.get("type").and_then(Value::as_str) == Some("show") {
                         2
                     } else {
@@ -13167,7 +13510,9 @@ impl Runtime {
             );
         }
         if let Some(value) = query.get("type") {
-            if value.parse::<i64>().is_err() {
+            // Cycle 55, measured on zen and kids: the type is a SIGNED 32-BIT integer --
+            // `type=2147483648` is refused with the same status as `abc`.
+            if !int_param(value.trim(), Some(32)) {
                 return Response::error(
                     if request.method == "PUT" { 400 } else { 500 },
                     "plexsim: bad request",
@@ -14357,26 +14702,46 @@ impl Runtime {
                 Response::json(200, self.container(fields, false))
             }
             "users" if tail.get(1) == Some(&"top") => {
+                // "Top users" of an item: one Account row per account that has
+                // completed it.  Measured: rows only for an item with views, and a
+                // SEASON is a 500 on the reference.
                 if row.get("type").and_then(Value::as_str) == Some("season") {
                     return Response::error(500, "plexsim: top users unavailable");
                 }
-                let count = self
+                // Cycle 54: the viewedAt keys filter the history counted here too (a
+                // bad value is a 500); `accountID` does not.
+                let tests = match Self::history_date_tests(query) {
+                    Ok(tests) => tests,
+                    Err(status) => return Response::error(status, "plexsim: internal error"),
+                };
+                let views = self
                     .history
                     .iter()
                     .filter(|entry| {
                         string_value(entry.get("ratingKey").unwrap_or(&Value::Null)) == key
+                            && Self::history_passes(
+                                &tests,
+                                entry.get("viewedAt").and_then(Value::as_i64).unwrap_or(0),
+                            )
                     })
                     .count();
-                Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([(
-                            "Account".to_string(),
-                            json!([{"id":1,"title":self.owner_username,"globalViewCount":count}]),
-                        )]),
-                        false,
-                    ),
-                )
+                let accounts = if views > 0 {
+                    json!([{"globalViewCount": views, "id": 1}])
+                } else {
+                    json!([])
+                };
+                // The oracle's `tag_container`: identifier and the media-tag pair, no
+                // `allowSync`.
+                let mut fields = Map::from_iter([
+                    ("size".to_string(), json!(views.min(1))),
+                    ("identifier".to_string(), json!("com.plexapp.plugins.library")),
+                    ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
+                    ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
+                ]);
+                if views > 0 {
+                    fields.insert("Account".to_string(), accounts);
+                }
+                Response::json(200, self.container(fields, false))
             }
             "children" => {
                 if row.get("type").and_then(Value::as_str) == Some("movie") {
@@ -14420,86 +14785,32 @@ impl Runtime {
                     };
                 }
                 let group = row.get("type").and_then(Value::as_str) == Some("show");
+                // Measured: a LISTING carries the `Guid` list only under
+                // `includeGuids=1`, and then even a row with none of its own gets a
+                // one-entry list naming its primary guid.
+                let include_guids = query.get("includeGuids").is_some_and(|value| value == "1");
                 let mut rows = children
                     .iter()
-                    .map(|child| self.grid_row(child, false, true, false))
-                    .collect::<Vec<_>>();
-                let mut fields = Map::from_iter([
-                    ("key".to_string(), json!(key)),
-                    ("nocache".to_string(), json!(true)),
-                    (
-                        "viewGroup".to_string(),
-                        json!(if group { "season" } else { "episode" }),
-                    ),
-                    (
-                        "viewMode".to_string(),
-                        json!(if group { 65593 } else { 65592 }),
-                    ),
-                    (
-                        "parentTitle".to_string(),
-                        row.get("title").cloned().unwrap_or(Value::Null),
-                    ),
-                    (
-                        "title1".to_string(),
-                        row.get("librarySectionTitle")
-                            .cloned()
-                            .unwrap_or(Value::Null),
-                    ),
-                    (
-                        "title2".to_string(),
-                        row.get("title").cloned().unwrap_or(Value::Null),
-                    ),
-                    (
-                        "librarySectionID".to_string(),
-                        row.get("librarySectionID").cloned().unwrap_or(Value::Null),
-                    ),
-                    (
-                        "librarySectionTitle".to_string(),
-                        row.get("librarySectionTitle")
-                            .cloned()
-                            .unwrap_or(Value::Null),
-                    ),
-                    (
-                        "librarySectionUUID".to_string(),
-                        self.section(&string_value(
-                            row.get("librarySectionID").unwrap_or(&Value::Null),
-                        ))
-                        .and_then(|s| s.get("uuid"))
-                        .cloned()
-                        .unwrap_or(Value::Null),
-                    ),
-                    ("allowSync".to_string(), json!(true)),
-                    ("Metadata".to_string(), Value::Array(rows.clone())),
-                ]);
-                if row.get("type").and_then(Value::as_str) == Some("season") {
-                    if let Some(parent_key) = row.get("parentRatingKey").map(string_value) {
-                        if let Some(parent) = self.catalog.get(&parent_key) {
-                            fields.insert(
-                                "title1".to_string(),
-                                parent.get("title").cloned().unwrap_or(Value::Null),
-                            );
-                            fields.insert("parentTitle".to_string(), json!(""));
-                            if let Ok(parent_id) = parent_key.parse::<i64>() {
-                                fields.insert("grandparentRatingKey".to_string(), json!(parent_id));
+                    .map(|child| {
+                        let mut shown = self.grid_row(child, false, include_guids, false);
+                        if include_guids {
+                            if let Some(object) = shown.as_object_mut() {
+                                if object.get("Guid").is_none() {
+                                    if let Some(guid) = object.get("guid").cloned() {
+                                        object.insert("Guid".to_string(), json!([{"id": guid}]));
+                                    }
+                                }
                             }
-                            fields.insert(
-                                "grandparentTitle".to_string(),
-                                parent.get("title").cloned().unwrap_or(Value::Null),
-                            );
-                            fields.insert(
-                                "grandparentThumb".to_string(),
-                                parent.get("thumb").cloned().unwrap_or(Value::Null),
-                            );
-                            fields.insert(
-                                "grandparentArt".to_string(),
-                                parent.get("art").cloned().unwrap_or(Value::Null),
-                            );
                         }
-                    }
-                    if let Some(year) = row.get("year") {
-                        fields.insert("parentYear".to_string(), year.clone());
-                    }
-                }
+                        shown
+                    })
+                    .collect::<Vec<_>>();
+                let mut fields = self.child_container_fields(
+                    row,
+                    "children",
+                    children.first().and_then(|child| child.get("type")).and_then(Value::as_str),
+                );
+                fields.insert("Metadata".to_string(), Value::Array(rows.clone()));
                 if group {
                     let leaves = self.leaves(key);
                     // Re-measured on zen against a 24-season show: the "All
@@ -14680,28 +14991,26 @@ impl Runtime {
                         strip_excluded_fields(shown, &names);
                     }
                 }
-                let mut fields = Map::from_iter([
-                    ("key".to_string(), json!(key)),
-                    ("nocache".to_string(), json!(true)),
-                    ("allowSync".to_string(), json!(true)),
-                    ("viewGroup".to_string(), json!(view_group)),
-                    ("viewMode".to_string(), json!(65592)),
-                    ("Metadata".to_string(), Value::Array(rows)),
-                ]);
+                let _ = view_group;
+                let first_type = rows
+                    .first()
+                    .and_then(|row| row.get("type"))
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
                 if kind == "show" {
-                    fields.insert("mixedParents".to_string(), json!(true));
-                }
-                if kind == "episode" {
-                    if let Some(parent_key) = row.get("parentRatingKey").map(string_value) {
-                        if let Some(parent) = self.catalog.get(&parent_key) {
-                            fields.insert(
-                                "title1".to_string(),
-                                parent.get("title").cloned().unwrap_or_else(|| json!("")),
-                            );
+                    // Measured on kids and zen, 20 rows across five shows: a SHOW's
+                    // `/allLeaves` -- and only that list -- gives every episode row the
+                    // SHOW's `studio`.
+                    if let Some(studio) = row.get("studio").filter(|studio| !studio.is_null()) {
+                        for shown in &mut rows {
+                            if let Some(object) = shown.as_object_mut() {
+                                object.insert("studio".to_string(), studio.clone());
+                            }
                         }
                     }
-                    fields.insert("grandparentTitle".to_string(), json!(""));
                 }
+                let mut fields = self.child_container_fields(row, "allLeaves", first_type.as_deref());
+                fields.insert("Metadata".to_string(), Value::Array(rows));
                 Response::json(200, self.container(fields, true))
             }
             "nearest" => {
@@ -14784,34 +15093,27 @@ impl Runtime {
             }
             "subtitles" => {
                 if request.method != "POST" {
+                    // The Search Subtitles dialog.  Measured: `language` is required
+                    // (400 without it) and must be a real two-letter language, any case
+                    // and with or without a region -- `en`, `EN`, `en-US` and `de` search,
+                    // where `xx`, `eng` and an empty value are 500s.
                     let Some(language) = query.get("language") else {
-                        return Response::error(400, "plexsim: language required");
+                        return Response::error(400, "plexsim: bad request");
                     };
-                    if language == "en-US" {
-                        return Response::json(
-                            200,
-                            self.container(
-                                Map::from_iter([(
-                                    "identifier".to_string(),
-                                    json!("com.plexapp.plugins.library"),
-                                )]),
-                                false,
-                            ),
-                        );
-                    }
-                    if language != "en" {
-                        return Response::error(500, "plexsim: invalid language");
+                    let code = language.split('-').next().unwrap_or_default().to_lowercase();
+                    if !SUBTITLE_LANGUAGES.contains(&code.as_str()) {
+                        return Response::error(500, "plexsim: internal error");
                     }
                     return Response::json(
                         200,
-                        self.container(
-                            Map::from_iter([(
-                                "identifier".to_string(),
-                                json!("com.plexapp.plugins.library"),
-                            )]),
-                            false,
-                        ),
+                        self.container(Map::from_iter([("size".to_string(), json!(0))]), true),
                     );
+                }
+                // Cycle 15, measured on the copy: the EMPTY-BODY check runs FIRST.
+                // With neither a title nor bytes the answer is 406, not the 500 a
+                // missing title gets on its own.
+                if request.body.is_empty() {
+                    return Response::error(406, "plexsim: not acceptable");
                 }
                 let Some(title) = query.get("title").filter(|value| !value.is_empty()) else {
                     return Response::error(500, "plexsim: title required");
@@ -18490,6 +18792,37 @@ fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option
     if parts[1].len() > MAX_TARGET_BYTES {
         return Err("target too long".to_string());
     }
+    // Cycle 36, swept byte by byte on kids and zen: the request TARGET must be printable
+    // ASCII (0x21-0x7E), and every `%` in its PATH must begin an escape a real PMS reads
+    // -- two characters present, parsed like `strtol` (an optional sign, then a hex
+    // digit), `%%` a literal pair. The query is not validated this way.
+    if !parts[1].bytes().all(|byte| (0x21..=0x7e).contains(&byte)) {
+        return Err("bad request target".to_string());
+    }
+    {
+        let raw_path = parts[1].split('?').next().unwrap_or("").as_bytes();
+        let mut index = 0;
+        while let Some(offset) = raw_path[index..].iter().position(|b| *b == b'%') {
+            let at = index + offset;
+            let following = &raw_path[at + 1..(at + 3).min(raw_path.len())];
+            if following.first() == Some(&b'%') {
+                index = at + 2;
+                continue;
+            }
+            if following.len() < 2 {
+                return Err("bad request target".to_string());
+            }
+            let signs = following.iter().take_while(|b| matches!(**b, b'+' | b'-')).count();
+            let digit = following.get(signs);
+            if signs > 1 || !digit.is_some_and(|b| b.is_ascii_hexdigit()) {
+                return Err("bad request target".to_string());
+            }
+            index = at + 3;
+            if index >= raw_path.len() {
+                break;
+            }
+        }
+    }
     if !legacy_http09 && !parts[2].starts_with("HTTP/") {
         return Err("bad request line".to_string());
     }
@@ -18531,7 +18864,16 @@ fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option
     } else {
         parts[2].to_string()
     };
-    let is_read_only = matches!(method.as_str(), "GET" | "HEAD");
+    // Cycle 37/38: GET and HEAD answer without consuming a declared body, and so do the
+    // two query-only UI writes (an item edit, a playlist create); an upload waits for
+    // its bytes.
+    let target_path = target.split('?').next().unwrap_or("");
+    let query_only_write = (method == "PUT"
+        && target_path
+            .strip_prefix("/library/metadata/")
+            .is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit())))
+        || (method == "POST" && target_path == "/playlists");
+    let is_read_only = matches!(method.as_str(), "GET" | "HEAD") || query_only_write;
     let transfer_chunked = headers
         .get("transfer-encoding")
         .is_some_and(|value| value.eq_ignore_ascii_case("chunked"));
@@ -19054,20 +19396,33 @@ fn unix_year(timestamp: i64) -> i64 {
     year + if month < 10 { 0 } else { 1 }
 }
 
-/// Cycle 54: an integer query parameter as a real PMS parses it -- an optional
-/// sign and digits, nothing else (no space, no `0x`, no fraction), inside the
-/// signed range of `bits`; `None` takes any size.  Measured on kids and zen over
-/// fifteen values.
-fn pms_int_param(value: &str, bits: Option<u32>) -> bool {
-    let digits = value.strip_prefix(['+', '-']).unwrap_or(value);
-    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-        return false;
-    }
-    let Some(bits) = bits else { return true };
-    let limit = 1i128 << (bits - 1);
-    match value.trim_start_matches('+').parse::<i128>() {
-        Ok(number) => -limit <= number && number < limit,
-        Err(_) => false,
+/// Python's ordering of two JSON scalars for a sort: numbers by value, strings
+/// by code point, anything else as equal.
+/// The two-letter codes Python's `locale.locale_alias` names, which is the set the
+/// oracle's subtitle search accepts (`SUBTITLE_LANGUAGES`).
+const SUBTITLE_LANGUAGES: &[&str] = &[
+    "aa", "af", "ak", "am", "an", "ar", "as", "az", "be", "bg", "bi", "bn", "bo", "br", "bs",
+    "ca", "ce", "cs", "cv", "cy", "cz", "da", "de", "dv", "dz", "ee", "el", "en", "eo", "es",
+    "et", "eu", "fa", "ff", "fi", "fo", "fr", "fy", "ga", "gd", "gl", "gu", "gv", "ha", "he",
+    "hi", "hr", "ht", "hu", "hy", "ia", "id", "ig", "ik", "in", "is", "it", "iu", "iw", "ja",
+    "jp", "ka", "kk", "kl", "km", "kn", "ko", "ks", "ku", "kw", "ky", "lb", "lg", "li", "ln",
+    "lo", "lt", "lv", "mg", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my", "nb", "ne", "nl",
+    "nn", "no", "nr", "ny", "oc", "om", "or", "os", "pa", "pd", "ph", "pl", "pp", "ps", "pt",
+    "ro", "ru", "rw", "sa", "sc", "sd", "se", "sh", "si", "sk", "sl", "sm", "so", "sp", "sq",
+    "sr", "ss", "st", "sv", "sw", "ta", "te", "tg", "th", "ti", "tk", "tl", "tn", "to", "tr",
+    "ts", "tt", "ug", "uk", "ur", "uz", "ve", "vi", "wa", "wo", "xh", "yi", "yo", "zh", "zu",
+];
+
+fn compare_json(left: &Value, right: &Value) -> std::cmp::Ordering {
+    match (left, right) {
+        (Value::Number(a), Value::Number(b)) => a
+            .as_f64()
+            .unwrap_or(0.0)
+            .partial_cmp(&b.as_f64().unwrap_or(0.0))
+            .unwrap_or(std::cmp::Ordering::Equal),
+        (Value::String(a), Value::String(b)) => a.cmp(b),
+        (Value::Bool(a), Value::Bool(b)) => a.cmp(b),
+        _ => std::cmp::Ordering::Equal,
     }
 }
 
