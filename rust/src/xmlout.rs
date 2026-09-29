@@ -145,7 +145,13 @@ fn escape(text: &str) -> String {
             '\t' => out.push_str("&#9;"),
             '\n' => out.push_str("&#xA;"),
             '\r' => out.push_str("&#xD;"),
-            c if (c as u32) < 0x20 && c != '\u{9}' && c != '\u{a}' && c != '\u{d}' => out.push('?'),
+            // Cycle 17: every control character XML 1.0 forbids -- U+0001..U+001F
+            // bar TAB/LF/CR, and U+007F -- is a literal `?`.
+            c if ((c as u32) < 0x20 && c != '\u{9}' && c != '\u{a}' && c != '\u{d}')
+                || c as u32 == 0x7f =>
+            {
+                out.push('?')
+            }
             c if c as u32 >= 0x80 => out.push_str(&format!("&#{};", c as u32)),
             c => out.push(c),
         }
