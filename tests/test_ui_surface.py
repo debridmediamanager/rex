@@ -449,6 +449,54 @@ def main():
         status, _, _ = get(base, path)
         check("a missing %s is a 404" % label, status == 404, "HTTP %s" % status)
 
+    print("\n=== item artwork is the row's own remote image ===")
+    # A row identified against TMDB keeps its poster and backdrop as remote urls, and
+    # its own `/thumb` and `/art` paths serve those images -- `/thumb` at the published
+    # variant nearest the width asked for, since plexsim cannot resize -- with the
+    # direct-asset headers. A generated tile here is a grid of grey squares. Read before
+    # any check below writes artwork. Without network access the fetch fails and the
+    # path is a 404 (a row with no remote artwork gets the generated PNG): both skip.
+    art_row = next((m for m in movies if m.get("thumb") and m.get("art")), None)
+    if art_row is None:
+        skip("an item's thumb serves its remote poster at the nearest width",
+             "no movie row carries both a thumb and an art path")
+    else:
+        thumb_path, art_path = str(art_row["thumb"]), str(art_row["art"])
+        status_t, body_t, headers_t = request(base, "GET", thumb_path, want_json=False)
+        kind_t = str(headers_t.get("Content-Type", ""))
+        if status_t == 404 or kind_t.startswith("image/png"):
+            skip("an item's thumb serves its remote poster at the nearest width",
+                 "no remote artwork reachable (HTTP %s %s)" % (status_t, kind_t or "-"))
+        else:
+            narrow = request(base, "GET", thumb_path + "?width=92", want_json=False)
+            wide = request(base, "GET", thumb_path + "?width=500", want_json=False)
+            check("an item's thumb serves its remote poster at the nearest width",
+                  status_t == 200 and kind_t.startswith("image/jpeg") and len(body_t) > 5000
+                  and headers_t.get("X-Plex-Local-Asset") == "1"
+                  and headers_t.get("Cache-Control") == "no-cache"
+                  and narrow[0] == 200 and wide[0] == 200
+                  and 0 < len(narrow[1]) < len(body_t) < len(wide[1]),
+                  "HTTP %s %s %d bytes (w92 %d, w500 %d) local-asset=%s"
+                  % (status_t, kind_t, len(body_t), len(narrow[1]), len(wide[1]),
+                     headers_t.get("X-Plex-Local-Asset")))
+            status_a, body_a, headers_a = request(base, "GET", art_path, want_json=False)
+            check("an item's art serves its remote backdrop",
+                  status_a == 200
+                  and str(headers_a.get("Content-Type", "")).startswith("image/jpeg")
+                  and len(body_a) > 5000 and body_a != body_t
+                  and headers_a.get("X-Plex-Local-Asset") == "1",
+                  "HTTP %s %s %d bytes" % (status_a, headers_a.get("Content-Type"),
+                                           len(body_a)))
+            status_p, body_p, headers_p = request(
+                base, "GET", "/photo/:/transcode?url=%s&width=92&height=138"
+                % quote(thumb_path), want_json=False)
+            check("the transcoder serves the same poster at the width it was asked for",
+                  status_p == 200 and body_p == narrow[1]
+                  and headers_p.get("Cache-Control") == "max-age=259200"
+                  and "X-Plex-Local-Asset" not in headers_p,
+                  "HTTP %s %d bytes (w92 %d) %s" % (status_p, len(body_p), len(narrow[1]),
+                                                   headers_p.get("Cache-Control")))
+
     print("\n=== what a show, a season and an episode each carry ===")
     detail_params = ("includeExtras=1&includeOnDeck=1&includePreferences=1"
                      "&includeChapters=1&includeReviews=1")
