@@ -2711,22 +2711,6 @@ impl Runtime {
         self.push_refresh_events_named(key, &subtitle);
     }
 
-    fn push_library_refresh_events(&mut self, section: &Value) {
-        let title = section.get("title").and_then(Value::as_str).unwrap_or("");
-        let uuid = format!(
-            "plexsim-library-{}-{}",
-            string_value(section.get("key").unwrap_or(&Value::Null)),
-            now()
-        );
-        for (event, progress) in [("started", 0), ("ended", 100)] {
-            self.push_event("activity", json!({"ActivityNotification":{"event":event,"uuid":uuid,"Activity":{"type":"library.update.section","progress":progress}}}));
-        }
-        self.push_event(
-            "status",
-            json!({"StatusNotification":{"title":format!("Scanning the \"{title}\" section")}}),
-        );
-    }
-
     fn push_edit_events(&mut self, key: &str) {
         self.push_edit_events_named(key, "loading");
     }
@@ -2826,108 +2810,6 @@ impl Runtime {
                 "updatedAt": now()
             }}),
         );
-    }
-
-    fn push_butler_events(&mut self, task: Option<&str>) {
-        let uuid = format!("plexsim-butler-{}", now());
-        let activity = |kind: &str, event: &str, progress: i64, subtitle: &str| {
-            json!({"ActivityNotification": {
-                "event": event,
-                "uuid": uuid,
-                "Activity": {"type": kind, "progress": progress, "subtitle": subtitle}
-            }})
-        };
-        let progress = |message: &str| json!({"ProgressNotification": {"message": message}});
-        match task.unwrap_or("") {
-            "BackupDatabase" => {
-                // The framework runs the database backup once for each due
-                // database phase.  The duplicate runs and their distinct
-                // subtitles are visible to Dashboard clients.
-                for _ in 0..2 {
-                    self.push_event(
-                        "activity",
-                        activity("general.db.backup", "started", -1, "Backing up database"),
-                    );
-                    self.push_event("progress", progress("The butler backed up your database."));
-                    self.push_event(
-                        "activity",
-                        activity("general.db.backup", "updated", 50, "Backing up database"),
-                    );
-                    self.push_event(
-                        "activity",
-                        activity("general.db.backup", "ended", 100, "Backing up database"),
-                    );
-                }
-            }
-            "OptimizeDatabase" => {
-                self.push_event(
-                    "activity",
-                    activity("general.db.optimize", "started", 0, ""),
-                );
-                self.push_event(
-                    "activity",
-                    activity("general.db.optimize", "updated", 50, ""),
-                );
-                self.push_event(
-                    "activity",
-                    activity("general.db.optimize", "ended", 100, ""),
-                );
-            }
-            "CleanOldBundles" => {
-                self.push_event(
-                    "activity",
-                    activity("general.bundle.clean", "started", -1, "Cleaning bundles"),
-                );
-                self.push_event("progress", progress("Cleaning media bundles."));
-                for progress_value in [15, 30, 45, 60, 75, 90] {
-                    self.push_event(
-                        "activity",
-                        activity(
-                            "general.bundle.clean",
-                            "updated",
-                            progress_value,
-                            "Cleaning bundles",
-                        ),
-                    );
-                }
-                self.push_event(
-                    "activity",
-                    activity("general.bundle.clean", "ended", 100, "Cleaning bundles"),
-                );
-            }
-            "RefreshLibraries" => {
-                self.push_event("progress", progress("Refreshing libraries."));
-                self.push_event(
-                    "activity",
-                    activity("butler", "started", 0, "Refreshing libraries"),
-                );
-                self.push_event(
-                    "activity",
-                    activity("butler", "ended", 100, "Refreshing libraries"),
-                );
-                let sections = self.catalog.sections.clone();
-                for section in sections {
-                    self.push_library_refresh_events(&section);
-                }
-            }
-            "" => {
-                let task_count = 3_i64;
-                self.push_event("activity", activity("butler", "started", 0, ""));
-                for task_number in 1..=task_count {
-                    self.push_event("activity", activity("butler", "updated", 100, ""));
-                    if task_number < task_count {
-                        let step =
-                            (100.0 * task_number as f64 / (task_number + 1) as f64).round() as i64;
-                        self.push_event("activity", activity("butler", "updated", step, ""));
-                    }
-                }
-                self.push_event("activity", activity("butler", "ended", 100, ""));
-            }
-            _ => {
-                self.push_event("activity", activity("butler", "started", 0, ""));
-                self.push_event("activity", activity("butler", "ended", 100, ""));
-            }
-        }
     }
 
     fn update_view(&mut self, key: &str, field: &str, value: Option<Value>) -> bool {
@@ -4401,22 +4283,16 @@ impl Runtime {
         if resource_root_with_slash {
             return self.route_bundled_resource("", request.method == "HEAD");
         }
-        // The `/system` plug-in dispatcher has a verb table distinct from its
-        // XML GET writers: PATCH is an internal 500, OPTIONS is an empty 200,
-        // and unknown POST/PUT/DELETE leaves are empty 404s.  Handle that
-        // envelope before the agent and scanner projections below.
-        if path == "/system" || path.starts_with("/system/") {
-            if request.method == "OPTIONS" {
-                return Response::empty(200);
-            }
-            if request.method == "PATCH" {
-                return Response::plain(500, b"500".to_vec());
-            }
-            if matches!(request.method.as_str(), "POST" | "PUT" | "DELETE")
-                && !(path.contains("/agents/") && request.method == "PUT")
-            {
-                return Response::empty(404);
-            }
+        // The plug-in framework's subtrees (`/system`, `/:/plugins`) are a different
+        // server with their own envelope; see `framework.rs`.
+        if let Some(response) = self.route_framework(request, &path, &query) {
+            return response;
+        }
+        if (path == "/butler" && matches!(request.method.as_str(), "GET" | "HEAD" | "POST" | "DELETE"))
+            || (path.starts_with("/butler/") && path.matches('/').count() == 2)
+        {
+            let segments = path.split('/').filter(|s| !s.is_empty()).collect::<Vec<_>>();
+            return self.route_butler(&request.method, &segments);
         }
         // Single-component framework prefixes are dispatched by PMS before
         // their verb-specific handlers.  A wrong verb therefore receives the
@@ -4843,28 +4719,6 @@ impl Runtime {
                 self.container(Map::from_iter([("content".to_string(), json!("plexsim native log\n"))]), false),
             ),
             ("POST", "/log") => Response::empty(200),
-            ("GET" | "HEAD", "/butler") => {
-                let names = [
-                    "BackupDatabase", "CleanOldBundles", "CleanOldCacheFiles", "DeepMediaAnalysis",
-                    "GenerateMediaIndexFiles", "GenerateVideoPreviewThumbnails", "GenerateVideoPreviewThumbnails",
-                    "GenerateBIF", "RefreshLibraries", "RefreshLocalMedia", "RefreshPeriodicMetadata",
-                    "RefreshPeriodicMetadata", "RefreshPeriodicTasks", "RefreshEpg", "RefreshSubscriptions",
-                    "UpgradeLibraries", "OptimizeDatabase", "BackupDatabase", "CleanOldTranscodeCache",
-                    "RepairDatabase", "GenerateMediaIndexFiles", "CleanOldLogs", "UpgradeDatabase",
-                ];
-                let tasks = names
-                    .iter()
-                    .enumerate()
-                    .map(|(index, name)| {
-                        if index == 0 {
-                            json!({"name":name,"title":"Backup Database"})
-                        } else {
-                            json!({"name":name})
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                Response::json(200, json!({"ButlerTasks":{"ButlerTask":tasks}}))
-            }
             ("GET" | "HEAD", "/library/all/top") => self.route_top(&query),
             ("GET" | "HEAD", "/library/metadata") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/library") => Response::json(
@@ -4910,15 +4764,20 @@ impl Runtime {
             ("GET" | "HEAD", "/transcode/sessions") => Response::json(200, self.container(Map::new(), false)),
             ("GET" | "HEAD", "/clients") => Response::json(200, self.container(Map::new(), false)),
             ("GET" | "HEAD", "/updater/status") => Response::json(200, self.container(Map::from_iter([("canInstall".to_string(), json!(false)), ("checkedAt".to_string(), json!(now()))]), false)),
-            ("PUT", "/updater/check") => Response::empty(200),
+            ("PUT", "/updater/check") => {
+                // Cycle 19: one `update.statechange` frame; with no update channel the
+                // state is `error`, as the isolated copy answers.
+                self.push_event(
+                    "update.statechange",
+                    json!({"AutoUpdateNotification": [{"key": "", "version": "", "state": "error"}]}),
+                );
+                Response::empty(200)
+            }
             ("GET" | "HEAD", "/status/sessions/history/all") => self.route_history(&query),
             ("GET", "/:/prefs") => self.route_prefs(&query, &request.headers, false),
             ("HEAD", "/:/prefs") => self.route_prefs(&query, &request.headers, true),
             ("GET" | "HEAD", "/:/prefs/get") => self.route_pref_get(&query),
             ("PUT", "/:/prefs") => self.route_prefs_write(&query),
-            ("GET" | "HEAD", "/:/resources/library-art.png") => {
-                Response::error(404, "plexsim: not found")
-            }
             ("GET" | "HEAD", "/:/resources/movie.png") => {
                 self.route_bundled_resource("movie.png", request.method == "HEAD")
             }
@@ -6700,42 +6559,103 @@ impl Runtime {
     }
 
     fn route_prefs_write(&mut self, query: &HashMap<String, String>) -> Response {
-        let known = self
-            .pref_rows(query, &HashMap::new())
+        // `set_prefs` in server.py, all of it measured: an unknown id refuses the whole
+        // request (400) and a write-protected one the whole request (403); an int or
+        // double that does not parse is a 500 and an empty one is ignored; a bool is true
+        // for exactly `1` and `true`; and each written id pushes a `preference` frame.
+        let settings = self
+            .pref_rows(&HashMap::new(), &HashMap::new())
             .into_iter()
-            .filter_map(|row| {
-                Some((
-                    row.get("id")?.as_str()?.to_string(),
-                    row.get("type")
-                        .and_then(Value::as_str)
-                        .unwrap_or("text")
-                        .to_string(),
-                ))
-            })
+            .filter_map(|row| Some((row.get("id")?.as_str()?.to_string(), row)))
             .collect::<HashMap<_, _>>();
-        for key in query.keys().filter(|key| !key.starts_with("X-Plex-")) {
-            if !known.contains_key(key) {
-                return Response::error(400, "plexsim: bad request");
+        let mut writes = query
+            .iter()
+            .filter(|(key, _)| !key.starts_with("X-Plex-"))
+            .collect::<Vec<_>>();
+        writes.sort();
+        for (key, _) in &writes {
+            if !settings.contains_key(*key) {
+                return Response::error(400, "plexsim: unknown preference");
+            }
+            // Cycle 19/30: these two answer 403 on 1.42.2 and push no frame, even when
+            // the value written is the one already stored.
+            if matches!(key.as_str(), "PlexOnlineUrl" | "allowMediaDeletionLanOnly") {
+                return Response::error(403, "plexsim: forbidden");
             }
         }
-        for (key, value) in query {
-            if key.starts_with("X-Plex-") {
-                continue;
-            }
-            let stored = match known.get(key).map(String::as_str) {
-                Some("bool") => json!(is_true_option(value)),
-                Some("int") | Some("integer") => {
-                    let Ok(number) = value.parse::<i64>() else {
-                        return Response::error(500, "plexsim: bad request");
+        let mut typed = Vec::new();
+        for (key, value) in &writes {
+            let kind = settings[*key].get("type").and_then(Value::as_str).unwrap_or("text");
+            match kind {
+                "int" | "double" => {
+                    if value.is_empty() {
+                        continue;
+                    }
+                    let parsed = if kind == "int" {
+                        value.trim().parse::<i64>().ok().map(|n| json!(n))
+                    } else {
+                        value.trim().parse::<f64>().ok().map(|n| json!(n))
                     };
-                    json!(number)
+                    match parsed {
+                        Some(number) => typed.push(((*key).clone(), number)),
+                        // Cycle 19: the two butler hours take a WORD and store nothing,
+                        // alone among the 38 integer settings.
+                        None if matches!(key.as_str(), "ButlerStartHour" | "ButlerEndHour") => {
+                            continue
+                        }
+                        None => return Response::error(500, "plexsim: internal error"),
+                    }
                 }
-                _ => json!(value),
-            };
-            if key == "FriendlyName" {
-                self.friendly = value.clone();
+                "bool" => typed.push(((*key).clone(), json!(value.as_str() == "1" || value.as_str() == "true"))),
+                _ => typed.push(((*key).clone(), json!(value))),
             }
-            self.prefs.insert(key.clone(), stored);
+        }
+        for (key, value) in &typed {
+            if key == "FriendlyName" {
+                let name = value.as_str().unwrap_or_default();
+                self.friendly = if name.is_empty() {
+                    local_host_name()
+                } else {
+                    name.to_string()
+                };
+            }
+            self.prefs.insert(key.clone(), value.clone());
+        }
+        let written = typed.iter().map(|(key, _)| key.clone()).collect::<std::collections::BTreeSet<_>>();
+        let mut moved = Vec::new();
+        if written.contains("ButlerStartHour") || written.contains("ButlerEndHour") {
+            // Cycle 74: a write that leaves the maintenance window EMPTY moves the end
+            // hour to start + 1, wrapping 23 to 0, and frames the moved setting first.
+            let current = self
+                .pref_rows(&HashMap::new(), &HashMap::new())
+                .into_iter()
+                .filter_map(|row| Some((row.get("id")?.as_str()?.to_string(), row.get("value")?.clone())))
+                .collect::<HashMap<_, _>>();
+            let start = current.get("ButlerStartHour").and_then(Value::as_i64);
+            let end = current.get("ButlerEndHour").and_then(Value::as_i64);
+            if let (Some(start), Some(end)) = (start, end) {
+                if start == end {
+                    self.prefs.insert("ButlerEndHour".to_string(), json!((start + 1) % 24));
+                    if !written.contains("ButlerEndHour") {
+                        moved.push("ButlerEndHour".to_string());
+                    }
+                }
+            }
+        }
+        let current = self
+            .pref_rows(&HashMap::new(), &HashMap::new())
+            .into_iter()
+            .filter_map(|row| Some((row.get("id")?.as_str()?.to_string(), row)))
+            .collect::<HashMap<_, _>>();
+        for name in moved.iter().chain(written.iter()) {
+            let Some(setting) = current.get(name).and_then(Value::as_object) else {
+                continue;
+            };
+            let mut setting = setting.clone();
+            setting.remove("enumValues");
+            setting.insert("label".to_string(), json!(""));
+            setting.insert("summary".to_string(), json!(""));
+            self.push_event("preference", json!({"Setting": [Value::Object(setting)]}));
         }
         self.dirty = true;
         self.save_if_dirty();
@@ -9941,6 +9861,21 @@ impl Runtime {
         if segments.first() == Some(&"downloadQueue") {
             return self.route_download_queue(&segments[1..], request);
         }
+        if segments.first() == Some(&"activities") && segments.len() > 1 && request.method == "PUT" {
+            // Cycle 19: a PUT to an activity is a 400, where its DELETE is a 404.
+            return Response::error(400, "plexsim: bad request");
+        }
+        if segments.len() >= 3 && segments[..3] == ["library", "metadata", "augmentations"] {
+            // Cycle 52, kids and zen: the augmentation id is PARSED before the row is
+            // looked up -- not a number is a 400, a number the server does not hold a 404.
+            if segments
+                .get(3)
+                .is_some_and(|id| id.is_empty() || !id.bytes().all(|b| b.is_ascii_digit()))
+            {
+                return Response::error(400, "plexsim: bad request");
+            }
+            return Response::error(404, "plexsim: not found");
+        }
         // Universal transcode is a routed family even though this native
         // server has no encoder.  The reference validates the playback
         // target and the session decision before it reaches the encoder; a
@@ -10009,267 +9944,6 @@ impl Runtime {
             } else {
                 Response::error(400, "plexsim: bad request")
             };
-        }
-        if path == "/system/agents" {
-            if let Some(value) = query.get("mediaType") {
-                if value.parse::<i64>().is_err() {
-                    return Response::error(400, "plexsim: bad request");
-                }
-            }
-            let media_type = query.get("mediaType").map(String::as_str);
-            let identifiers = match media_type {
-                Some("1") => vec![
-                    "com.plexapp.agents.none",
-                    "com.plexapp.agents.imdb",
-                    "com.plexapp.agents.themoviedb",
-                    "tv.plex.agents.movie",
-                    "tv.plex.agents.none",
-                ],
-                Some("2") => vec!["tv.plex.agents.series", "tv.plex.agents.none"],
-                _ => vec![
-                    "tv.plex.agents.movie",
-                    "tv.plex.agents.series",
-                    "tv.plex.agents.none",
-                    "tv.plex.agents.localmedia",
-                ],
-            };
-            if request
-                .headers
-                .get("accept")
-                .is_some_and(|accept| !accept.contains("json") && accept.contains("*/*"))
-            {
-                let mut body =
-                    String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer>");
-                let languages = self.agent_language_rows(query);
-                let default_language = self.agent_default_language(query, &languages);
-                for identifier in identifiers.iter() {
-                    let enabled = if *identifier == "tv.plex.agents.movie" {
-                        "1"
-                    } else {
-                        "0"
-                    };
-                    body.push_str(&format!(
-                        "<Agent identifier=\"{}\" enabled=\"{enabled}\">",
-                        Self::xml_attribute(identifier)
-                    ));
-                    if identifier.starts_with("tv.plex.") {
-                        for (code, title) in &languages {
-                            body.push_str(&format!(
-                                "<Language code=\"{}\" title=\"{}\"{} />",
-                                Self::xml_attribute(code),
-                                Self::xml_attribute(title),
-                                if code == &default_language {
-                                    " default=\"1\""
-                                } else {
-                                    ""
-                                }
-                            ));
-                        }
-                    }
-                    body.push_str("</Agent>");
-                }
-                body.push_str("</MediaContainer>\n");
-                return Response {
-                    status: 200,
-                    content_type: "text/xml;charset=utf-8".to_string(),
-                    body: body.into_bytes(),
-                    headers: Vec::new(),
-                    close: false,
-                };
-            }
-            return self.agent_json_response(&identifiers, query);
-        }
-        if segments.first() == Some(&"system")
-            && segments.get(1) == Some(&"agents")
-            && ((segments.len() == 5 && segments[3] == "config")
-                // A few old clients omit the literal config component.  PMS
-                // accepts that legacy spelling as long as the index is 1.
-                || (segments.len() == 4 && segments[3] == "1"))
-        {
-            if request.method == "PUT" && segments[2].starts_with("com.plexapp.agents") {
-                let Some(order) = query.get("order") else {
-                    return Response::plain(500, b"takes exactly 4 arguments (3 given)".to_vec());
-                };
-                if order.is_empty() {
-                    return Response::plain(
-                        500,
-                        b"'NoneType' object has no attribute 'split'".to_vec(),
-                    );
-                }
-                let names = order.split(',').collect::<Vec<_>>();
-                let mut body = String::from(
-                    "<?xml version='1.0' encoding='utf-8'?>\n<combine class=\"Movie\">",
-                );
-                for (index, name) in names.iter().enumerate() {
-                    body.push_str(&format!(
-                        "<Agent enabled=\"{}\" hasPrefs=\"{}\" identifier=\"{}\"/>",
-                        if index < 2 { 1 } else { 0 },
-                        if name.contains("none") || name.contains("local") {
-                            0
-                        } else {
-                            1
-                        },
-                        name
-                    ));
-                }
-                body.push_str("</combine>\n");
-                self.prefs.insert(
-                    format!("_agentOrder:{}", segments[2]),
-                    Value::Array(names.iter().map(|name| json!(*name)).collect()),
-                );
-                return Response {
-                    status: 200,
-                    content_type: "application/xml".to_string(),
-                    body: body.into_bytes(),
-                    headers: Vec::new(),
-                    close: false,
-                };
-            }
-            if request.method != "GET" && request.method != "HEAD" {
-                return Response::error(404, "plexsim: not found");
-            }
-            let config_index = if segments.len() == 5 {
-                segments[4]
-            } else {
-                segments[3]
-            };
-            if config_index != "1" {
-                return Response::error(404, "plexsim: not found");
-            }
-            if segments[2].starts_with("tv.plex") {
-                return Response {
-                    status: 200,
-                    content_type: "text/xml;charset=utf-8".to_string(),
-                    body: b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer identifier=\"com.plexapp.system\" size=\"0\" />\n".to_vec(),
-                    headers: Vec::new(),
-                    close: false,
-                };
-            }
-            let default_names = [
-                "com.plexapp.agents.none",
-                "com.plexapp.agents.localmedia",
-                "com.plexapp.agents.fanarttv",
-                "com.plexapp.agents.imdb",
-                "com.plexapp.agents.movieposterdb",
-                "com.plexapp.agents.themoviedb",
-            ];
-            let ordered_names = self
-                .prefs
-                .get(&format!("_agentOrder:{}", segments[2]))
-                .and_then(Value::as_array)
-                .map(|names| names.iter().filter_map(Value::as_str).collect::<Vec<_>>())
-                .filter(|names| !names.is_empty())
-                .unwrap_or_else(|| default_names.to_vec());
-            let mut body = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer identifier=\"com.plexapp.system\" size=\"6\">");
-            for (index, name) in ordered_names.iter().enumerate() {
-                body.push_str(&format!(
-                    "<Agent enabled=\"{}\" hasPrefs=\"{}\" identifier=\"{}\"/>",
-                    if index < 2 { 1 } else { 0 },
-                    if index < 2 { 0 } else { 1 },
-                    name
-                ));
-            }
-            body.push_str("</MediaContainer>\n");
-            while body.len() < 709 {
-                body.push(' ');
-            }
-            return Response {
-                status: 200,
-                content_type: "text/xml;charset=utf-8".to_string(),
-                body: body.into_bytes(),
-                headers: Vec::new(),
-                close: false,
-            };
-        }
-        if segments.first() == Some(&"system")
-            && segments.get(1) == Some(&"agents")
-            && segments.len() == 3
-            && segments[2] == "contributors"
-        {
-            if query.get("primaryAgent").is_some() {
-                return Response {
-                    status: 200,
-                    content_type: "text/xml;charset=utf-8".to_string(),
-                    body: b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\"><Agent identifier=\"com.plexapp.agents.localmedia\"/></MediaContainer>\n".to_vec(),
-                    headers: Vec::new(),
-                    close: false,
-                };
-            }
-            return Response::error(500, "plexsim: unsupported contributors");
-        }
-        if segments.first() == Some(&"system") && segments.get(1) == Some(&"scanners") {
-            if segments.len() != 3 {
-                return Response::error(404, "plexsim: not found");
-            }
-            let kind = match segments[2] {
-                "1" => Some(vec![
-                    "Plex Movie",
-                    "Plex Movie Scanner",
-                    "Plex Video Files Scanner",
-                    "Plex Video Files",
-                ]),
-                "2" => Some(vec!["Plex TV Series", "Plex Series Scanner"]),
-                "13" => Some(vec!["Plex Photo Scanner"]),
-                _ => None,
-            };
-            let Some(names) = kind else {
-                return Response::error(500, "plexsim: bad request");
-            };
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([
-                        ("identifier".to_string(), json!("com.plexapp.system")),
-                        (
-                            "Scanner".to_string(),
-                            Value::Array(
-                                names.into_iter().map(|name| json!({"name":name})).collect(),
-                            ),
-                        ),
-                    ]),
-                    false,
-                ),
-            );
-        }
-        if segments.first() == Some(&"system")
-            && segments.get(1) == Some(&"agents")
-            && segments.len() == 4
-            && segments[2] == "contributors"
-        {
-            return Response::error(500, "plexsim: unsupported contributors");
-        }
-        if segments.first() == Some(&"butler") && segments.len() == 2 && request.method == "POST" {
-            return if matches!(
-                segments[1],
-                "BackupDatabase"
-                    | "RefreshLibraries"
-                    | "CleanOldBundles"
-                    | "CleanOldCacheFiles"
-                    | "DeepMediaAnalysis"
-                    | "GenerateMediaIndexFiles"
-                    | "GenerateVideoPreviewThumbnails"
-                    | "GenerateBIF"
-                    | "RefreshLocalMedia"
-                    | "RefreshPeriodicMetadata"
-                    | "RefreshPeriodicTasks"
-                    | "RefreshEpg"
-                    | "RefreshSubscriptions"
-                    | "UpgradeLibraries"
-                    | "OptimizeDatabase"
-                    | "RepairDatabase"
-                    | "CleanOldTranscodeCache"
-                    | "UpgradeDatabase"
-                    | "CleanOldLogs"
-            ) {
-                self.push_butler_events(Some(segments[1]));
-                Response::empty(200)
-            } else {
-                Response::error(404, "plexsim: not found")
-            };
-        }
-        if path == "/butler" && request.method == "POST" {
-            self.push_butler_events(None);
-            return Response::empty(200);
         }
         if path == "/hubs/sections/home" {
             return Response::error(404, "plexsim: not found");
@@ -10496,7 +10170,19 @@ impl Runtime {
             return self.route_top(query);
         }
         if path == "/library/clean/bundles" && request.method == "PUT" {
-            self.push_butler_events(Some("CleanOldBundles"));
+            // Measured on a writable copy, frame for frame; plexsim has no bundles.
+            self.notify_activity_run(
+                "general.bundle.clean",
+                "Cleaning bundles",
+                &[
+                    (0, "Analyzing metadata bundles"),
+                    (25, "Deleting 0 metadata bundles"),
+                    (50, "Deleting 0 metadata bundles"),
+                    (50, "Analyzing media bundles"),
+                    (75, "Deleting 0 media bundles"),
+                    (100, "Deleting 0 media bundles"),
+                ],
+            );
             return Response::empty(200);
         }
         if path == "/library/optimize" {
@@ -11442,8 +11128,10 @@ impl Runtime {
                 return Response::error(404, "plexsim: not found");
             }
             if request.method != "DELETE" {
+                // Measured on a writable copy: this scans EVERY library, one after another.
                 for section in self.catalog.sections.clone() {
-                    self.push_library_refresh_events(&section);
+                    let key = string_value(section.get("key").unwrap_or(&Value::Null));
+                    self.refresh_section(&key, &section, query);
                 }
             }
             return Response::empty(200);
@@ -11513,66 +11201,7 @@ impl Runtime {
                         return Response::empty(200);
                     }
                     if request.method == "PUT" {
-                        let Some(name) = query.get("name") else {
-                            return Response::error(400, "plexsim: bad request");
-                        };
-                        let expected_type = section
-                            .get("type")
-                            .and_then(Value::as_str)
-                            .unwrap_or("movie");
-                        let expected_agent = if expected_type == "show" {
-                            "tv.plex.agents.series"
-                        } else {
-                            "tv.plex.agents.movie"
-                        };
-                        let expected_scanner = if expected_type == "show" {
-                            "Plex TV Series"
-                        } else {
-                            "Plex Movie"
-                        };
-                        if query.get("agent").map(String::as_str) != Some(expected_agent)
-                            || query.get("scanner").map(String::as_str) != Some(expected_scanner)
-                            || !matches!(
-                                query.get("language").map(String::as_str),
-                                Some("en-US" | "de-DE" | "fr-FR" | "es-ES")
-                            )
-                        {
-                            return Response::error(400, "plexsim: bad request");
-                        }
-                        if let Some(object) = self
-                            .catalog
-                            .sections
-                            .iter_mut()
-                            .find(|row| {
-                                string_value(row.get("key").unwrap_or(&Value::Null)) == section_key
-                            })
-                            .and_then(Value::as_object_mut)
-                        {
-                            object.insert("title".to_string(), json!(name));
-                            if let Some(language) = query.get("language") {
-                                object.insert("language".to_string(), json!(language));
-                            }
-                        }
-                        for (field, value) in query {
-                            if let Some(pref) = field
-                                .strip_prefix("prefs[")
-                                .and_then(|value| value.strip_suffix(']'))
-                            {
-                                self.section_prefs.insert(
-                                    (section_key.to_string(), pref.to_string()),
-                                    value.clone(),
-                                );
-                            }
-                        }
-                        if let Some(updated) = self.section(section_key).cloned() {
-                            self.push_library_refresh_events(&updated);
-                        }
-                        self.catalog.document.insert(
-                            "sections".to_string(),
-                            Value::Array(self.catalog.sections.clone()),
-                        );
-                        self.dirty = true;
-                        return Response::empty(200);
+                        return self.edit_section(section_key, section.clone(), query);
                     }
                     return Response::json(
                         200,
@@ -12243,9 +11872,9 @@ impl Runtime {
                                     self.push_timeline(&key, 5, None);
                                 }
                             }
-                        } else if segments[3] == "refresh" {
+                        } else if segments[3] == "refresh" && request.method != "DELETE" {
                             if let Some(section) = self.section(section_key).cloned() {
-                                self.push_library_refresh_events(&section);
+                                self.refresh_section(section_key, &section, query);
                             }
                         }
                         Response::empty(200)
@@ -15257,6 +14886,14 @@ impl Runtime {
                     return Response::error(404, "plexsim: not found");
                 }
                 self.push_refresh_events(key);
+                Response::empty(200)
+            }
+            "analyze" => {
+                if request.method != "PUT" {
+                    return Response::error(404, "plexsim: not found");
+                }
+                let row = row.clone();
+                self.analyze_item(key, &row);
                 Response::empty(200)
             }
             "unmatch" => {
@@ -18321,6 +17958,19 @@ fn error_document(status: u16) -> Vec<u8> {
     };
     format!("<html><head><title>{reason}</title></head><body><h1>{status} {reason}</h1></body></html>")
         .into_bytes()
+}
+
+/// The host's own name, which a real PMS shows when `FriendlyName` is written empty.
+fn local_host_name() -> String {
+    let mut buffer = [0_u8; 256];
+    // SAFETY: the buffer is valid for its whole length and gethostname NUL-terminates
+    // within it on success.
+    let status = unsafe { libc::gethostname(buffer.as_mut_ptr().cast(), buffer.len()) };
+    if status != 0 {
+        return "plexsim".to_string();
+    }
+    let end = buffer.iter().position(|byte| *byte == 0).unwrap_or(buffer.len());
+    String::from_utf8_lossy(&buffer[..end]).into_owned()
 }
 
 fn drop_empty_value(value: &Value) -> Value {
