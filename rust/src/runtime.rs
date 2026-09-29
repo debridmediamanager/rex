@@ -17600,7 +17600,7 @@ pub struct Response {
 
 impl Response {
     fn json(status: u16, value: Value) -> Self {
-        let body = serde_json::to_vec(&drop_empty_value(&value)).unwrap_or_default();
+        let body = upper_json_escapes(serde_json::to_vec(&drop_empty_value(&value)).unwrap_or_default());
         Self {
             status,
             content_type: "application/json".to_string(),
@@ -17701,6 +17701,27 @@ impl Response {
             .push(("Cache-Control".to_string(), "no-cache".to_string()));
         response
     }
+}
+
+/// Cycle 32: a real PMS writes a C0 control as `\u00XX` in UPPER-case hex, where
+/// serde_json writes lower-case; every other byte of the compact form already matches.
+fn upper_json_escapes(mut body: Vec<u8>) -> Vec<u8> {
+    let mut index = 0;
+    while index + 1 < body.len() {
+        if body[index] == b'\\' {
+            if body[index + 1] == b'u' && index + 5 < body.len() {
+                for byte in &mut body[index + 2..index + 6] {
+                    byte.make_ascii_uppercase();
+                }
+                index += 6;
+            } else {
+                index += 2;
+            }
+        } else {
+            index += 1;
+        }
+    }
+    body
 }
 
 /// The reference's refusal document, Python's `http.HTTPStatus(status).phrase` spelling.
