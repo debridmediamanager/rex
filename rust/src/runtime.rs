@@ -10132,41 +10132,7 @@ impl Runtime {
         if raw.is_empty() {
             return Response::error(404, "plexsim: not found");
         }
-        let needle = raw.to_lowercase();
-        let rows = self
-            .catalog
-            .items
-            .iter()
-            .filter(|row| {
-                row.get("title")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_lowercase()
-                    .contains(&needle)
-            })
-            .map(|row| {
-                let mut value = self.listing_row(row);
-                if let Some(object) = value.as_object_mut() {
-                    object.insert("personal".to_string(), json!(true));
-                    object.insert("sourceTitle".to_string(), json!(self.friendly));
-                }
-                value
-            })
-            .collect::<Vec<_>>();
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([
-                    ("size".to_string(), json!(4 + rows.len())),
-                    (
-                        "Provider".to_string(),
-                        json!([{"key":"movie"},{"key":"show"},{"key":"episode"},{"key":"person"}]),
-                    ),
-                    ("Metadata".to_string(), Value::Array(rows)),
-                ]),
-                false,
-            ),
-        )
+        self.legacy_search_rows(raw)
     }
 
     fn route_playlists(&self, query: &HashMap<String, String>) -> Response {

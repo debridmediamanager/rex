@@ -1013,3 +1013,71 @@ impl BTreeMapLike {
 }
 
 use std::collections::BTreeMap;
+
+/// The legacy `/search` endpoint's PROVIDER rows, measured.
+const LEGACY_SEARCH_PROVIDERS: &[(&str, &str, &str)] = &[
+    ("/system/search", "Local Network", "mixed"),
+    ("/search?type=10", "Tracks", "tracks"),
+    ("/search/actor", "Actors", "actors"),
+    ("/search/director", "Directors", "directors"),
+];
+
+impl Runtime {
+    /// `/search?query=` (`legacy_search`): the title matcher's hits in hub order, then
+    /// the providers. Cycle 41: `limit` is ignored completely.
+    pub(super) fn legacy_search_rows(&self, text: &str) -> Response {
+        let (typed, _tags) = self.search_matches(text, None, false);
+        let mut rows = Vec::new();
+        for (kind, _title) in SEARCH_HUBS {
+            for row in typed.get(*kind).into_iter().flatten() {
+                // Cycle 23, measured on kids and zen with the same row read twice per
+                // server: a `/search` row is byte-identical to that row's GRID row,
+                // prefixed with six attributes and nothing else. plexsim answered the
+                // detail-derived listing row led by `ratingKey`, with neither
+                // `allowSync` nor the `librarySectionUUID` a client keys a hit to its
+                // library by.
+                let section_id = row.get("librarySectionID").cloned().unwrap_or(Value::Null);
+                let section = self.section(&string_value(&section_id)).cloned().unwrap_or(Value::Null);
+                let mut lead = Map::new();
+                lead.insert("allowSync".to_string(), json!(true));
+                lead.insert("librarySectionID".to_string(), section_id);
+                lead.insert("librarySectionTitle".to_string(), section.get("title").cloned().unwrap_or(Value::Null));
+                lead.insert("librarySectionUUID".to_string(), section.get("uuid").cloned().unwrap_or(Value::Null));
+                lead.insert("personal".to_string(), json!(true));
+                lead.insert("sourceTitle".to_string(), json!(self.friendly));
+                let body = if key_of(row).is_some_and(|key| self.catalog.get(&key).is_some()) {
+                    self.grid_row(row, false, false, false)
+                } else {
+                    let mut plain = row.clone();
+                    if let Some(object) = plain.as_object_mut() {
+                        for name in ["librarySectionID", "librarySectionTitle", "librarySectionKey"] {
+                            object.shift_remove(name);
+                        }
+                    }
+                    plain
+                };
+                for (name, value) in body.as_object().cloned().unwrap_or_default() {
+                    if !lead.contains_key(&name) {
+                        lead.insert(name, value);
+                    }
+                }
+                rows.push(Value::Object(lead));
+            }
+        }
+        // The container is the tag one (identifier plus the media-tag pair, no
+        // allowSync) and its `size` counts the Provider rows as well as the results.
+        let providers = LEGACY_SEARCH_PROVIDERS
+            .iter()
+            .map(|(key, title, kind)| json!({"key": key, "m_title": title, "m_type": kind}))
+            .collect::<Vec<_>>();
+        let size = rows.len() + providers.len();
+        Response::json(
+            200,
+            self.tag_container(Map::from_iter([
+                ("size".to_string(), json!(size)),
+                ("Metadata".to_string(), Value::Array(rows)),
+                ("Provider".to_string(), Value::Array(providers)),
+            ])),
+        )
+    }
+}
