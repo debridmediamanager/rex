@@ -359,7 +359,14 @@ impl Runtime {
 
     /// `/library/metadata/{id}/{posters,arts}` -- the Change Artwork picker.
     pub(super) fn artwork_list(&self, row: &Value, kind: &str) -> Response {
-        let container = |entries: Vec<Value>| {
+        // Measured: an artwork list renders as <Photo> in XML while its JSON still
+        // says `Metadata` (the private `_element` never reaches the JSON writer).
+        let container = |mut entries: Vec<Value>| {
+            for entry in &mut entries {
+                if let Some(object) = entry.as_object_mut() {
+                    object.insert("_element".to_string(), json!("Photo"));
+                }
+            }
             Response::json(
                 200,
                 json!({"MediaContainer": {
