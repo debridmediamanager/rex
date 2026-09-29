@@ -19231,6 +19231,15 @@ fn handle_connection<S: Read + Write>(
         }
         note_live_request(&request);
         let close_after_body = !request.body_complete;
+        // Cycle 49 (`server.py` `_close_after_response`): a chunked body that runs out
+        // of buffered framing is answered and then the socket goes -- but all three live
+        // reference versions still ADVERTISE Keep-Alive on that successful response, so
+        // the close is deferred until after it is written rather than announced.
+        let close_after_write = close_after_body
+            && request
+                .headers
+                .get("transfer-encoding")
+                .is_some_and(|value| value.eq_ignore_ascii_case("chunked"));
         let invalid_absolute_target = if request.target.starts_with("http:") {
             if !request.target.starts_with("http://") {
                 true
@@ -19358,7 +19367,7 @@ fn handle_connection<S: Read + Write>(
         {
             response.close = true;
         }
-        if close_after_body {
+        if close_after_body && !close_after_write {
             response.close = true;
         }
         // Cycle 45: `X-Plex-Container-Focus-Key` (header or query) supplies the START as
@@ -19408,7 +19417,7 @@ fn handle_connection<S: Read + Write>(
         let envelope = wire::Wire::of(&request, &request_path, &query);
         let still_open = wire::write_enveloped(&mut stream, &response, &envelope, keep)?;
         served_any = true;
-        if response.close || !keep || !still_open {
+        if response.close || !keep || !still_open || close_after_write {
             break;
         }
     }
