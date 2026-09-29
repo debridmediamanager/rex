@@ -4192,17 +4192,22 @@ impl Runtime {
         // Python's stable sort uses titleSort as the final tie breaker for
         // every advertised key.  Seed that order before applying the explicit
         // keys in reverse priority.
+        // `server.py` `_sort_key`: `titleSort` alone stays case-FOLDED (every other
+        // text key compares raw codepoints, cycle 22).
+        let folded = |value: &Value| string_value(value).to_lowercase();
         rows.sort_by(|left, right| {
-            string_value(&self.sort_value(left, "titleSort"))
-                .cmp(&string_value(&self.sort_value(right, "titleSort")))
+            folded(&self.sort_value(left, "titleSort"))
+                .cmp(&folded(&self.sort_value(right, "titleSort")))
         });
         for (field, descending) in specs.into_iter().rev() {
+            let title_sort = field.rsplit('.').next() == Some("titleSort");
             rows.sort_by(|left, right| {
                 let left_owned = self.sort_value(left, &field);
                 let right_owned = self.sort_value(right, &field);
                 let left_value = &left_owned;
                 let right_value = &right_owned;
                 let ordering = match (left_value, right_value) {
+                    _ if title_sort => folded(left_value).cmp(&folded(right_value)),
                     (Value::Number(a), Value::Number(b)) => a
                         .as_f64()
                         .partial_cmp(&b.as_f64())
