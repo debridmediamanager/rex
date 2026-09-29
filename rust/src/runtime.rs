@@ -5096,6 +5096,16 @@ impl Runtime {
         if !self.authorized(&path, &request, &query) {
             return self.unauthorized_route(&path, request);
         }
+        if (path == "/player" || path.starts_with("/player/"))
+            && request.headers.contains_key("x-plex-target-client-identifier")
+        {
+            // Cycle 59, measured on zen, kids and both copies: WITH an
+            // `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
+            // `PlexClient.sendCommand()` -- the server looks for that player to proxy
+            // to and answers 404, for an unknown id, a listed device and an empty value
+            // alike; only a bare command is the 400.
+            return Response::error(404, "plexsim: no such player");
+        }
         if matches!(request.method.as_str(), "GET" | "HEAD") {
             if let Some(status) = self.structural_refusal(&path, &query) {
                 return Response::error(status, "plexsim: bad request");
@@ -11577,6 +11587,11 @@ impl Runtime {
                     let key = string_value(section.get("key").unwrap_or(&Value::Null));
                     self.refresh_section(&key, &section, query);
                 }
+            } else {
+                // Cycle 59, measured on plexscratch42 and plexscratch: the library-wide
+                // cancel pushes ONE status frame, "Library scan canceled"; a SECTION's
+                // cancel pushes none.
+                self.notify_status("Library scan canceled", "");
             }
             return Response::empty(200);
         }
