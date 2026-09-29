@@ -786,6 +786,23 @@ impl Runtime {
             return row;
         };
         let key = key_of(original).unwrap_or_default();
+        // Both reference versions omit `Part.accessible`/`exists` from listings and
+        // ordinary detail reads; only a checked detail read (`annotate_file_checks`,
+        // which marks the row) carries them. The catalog's own values never leak.
+        if original.get("_filesChecked").is_none() {
+            if let Some(media_rows) = object.get_mut("Media").and_then(Value::as_array_mut) {
+                for media in media_rows {
+                    if let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut) {
+                        for part in parts {
+                            if let Some(part) = part.as_object_mut() {
+                                part.remove("accessible");
+                                part.remove("exists");
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // Keep the discriminator independent of the mutable response map.  The
         // same map is enriched below, and retaining a borrowed `&str` here
         // would make those measured field insertions borrow-conflict with the
@@ -14016,9 +14033,25 @@ impl Runtime {
             // URLs; doing these steps after projection makes `checkFiles` always
             // report false and `includeAlternates` silently omit the measured
             // alternate blocks even when the source data is present.
+            // Cycles 19, 22, 29, 46: seven detail options carry the 0/1 grammar
+            // (`+?0*[01]`, anything else a 400), and the file pair is reported only
+            // when one of the three check options is ON.
+            for option in [
+                "checkFiles",
+                "skipRefresh",
+                "asyncCheckFiles",
+                "asyncAugmentMetadata",
+                "asyncRefreshLocalMediaAgent",
+                "asyncRefreshAnalysis",
+                "checkFileAvailability",
+            ] {
+                if query.get(option).is_some_and(|value| !bool_option(value)) {
+                    return Response::error(400, "plexsim: bad request");
+                }
+            }
             let checks_requested = ["checkFiles", "asyncCheckFiles", "checkFileAvailability"]
                 .iter()
-                .any(|option| query.contains_key(*option));
+                .any(|option| query.get(*option).is_some_and(|value| is_true_option(value)));
             let prepared = if checks_requested {
                 self.annotate_file_checks(row)
             } else {
@@ -15586,6 +15619,9 @@ impl Runtime {
 
     fn annotate_file_checks(&self, row: &Value) -> Value {
         let mut out = row.clone();
+        if let Some(object) = out.as_object_mut() {
+            object.insert("_filesChecked".to_string(), json!(true));
+        }
         let Some(media_rows) = out.get_mut("Media").and_then(Value::as_array_mut) else {
             return out;
         };
@@ -15594,11 +15630,14 @@ impl Runtime {
                 continue;
             };
             for part in parts {
+                // Cycle 46: a successful unrestrict is the fileless server's
+                // existence check and the provider's explicit "unavailable" the
+                // false/false pair; other failures are not collapsed into "missing".
                 let available = part
                     .get("_debrid")
                     .and_then(Value::as_str)
-                    .map(|link| self.unrestrict(link).is_some())
-                    .unwrap_or(false);
+                    .filter(|link| !link.is_empty())
+                    .map_or(true, |link| self.resolve_link(link) != Err(true));
                 if let Some(object) = part.as_object_mut() {
                     object.insert("accessible".to_string(), json!(available));
                     object.insert("exists".to_string(), json!(available));
@@ -17343,6 +17382,23 @@ impl Runtime {
         let Some(part) = part else {
             return Response::error(404, "plexsim: not found");
         };
+        // Cycle 29: `download=` is one of the 0/1 options, anything else a 400.
+        if query.get("download").is_some_and(|value| !bool_option(value)) {
+            return Response::error(400, "plexsim: bad request");
+        }
+        let link = part.get("_debrid").and_then(Value::as_str).unwrap_or("").to_string();
+        if link.is_empty() {
+            return Response::error(404, "plexsim: no such part");
+        }
+        // Cycle 44: the provider saying the file is gone is a plain 404; any other
+        // resolve failure is the 502.
+        if let Err(unavailable) = self.resolve_link(&link) {
+            return if unavailable {
+                Response::error(404, "plexsim: not found")
+            } else {
+                Response::error(502, "plexsim: debrid resolve failed")
+            };
+        }
         self.stream_part(&part, request)
     }
 
@@ -17466,11 +17522,24 @@ impl Runtime {
     }
 
     fn unrestrict(&self, link: &str) -> Option<String> {
-        let (host, base_path, port) = parse_http_url(&self.rd_api)?;
+        self.resolve_link(link).ok()
+    }
+
+    /// Restricted link -> CDN url.  `Err(true)` is Real-Debrid saying the FILE is not
+    /// there (a 404 or `unavailable_file`, error code 24) -- which a real PMS answers
+    /// with a plain 404 -- and `Err(false)` every other failure, the 502 (cycle 44).
+    fn resolve_link(&self, link: &str) -> Result<String, bool> {
+        let (host, base_path, port) = parse_http_url(&self.rd_api).ok_or(false)?;
+        let result = self.unrestrict_http(link, &host, &base_path, port);
+        result
+    }
+
+    fn unrestrict_http(&self, link: &str, host: &str, base_path: &str, port: u16) -> Result<String, bool> {
+        let host = host.to_string();
         let base = base_path.trim_end_matches('/');
         let path = format!("{base}/unrestrict/link");
         let body = format!("link={}", form_encode(link));
-        let mut stream = TcpStream::connect((host.as_str(), port)).ok()?;
+        let mut stream = TcpStream::connect((host.as_str(), port)).map_err(|_| false)?;
         let authorization = if self.rd_token.is_empty() {
             String::new()
         } else {
@@ -17480,25 +17549,31 @@ impl Runtime {
             "POST {path} HTTP/1.1\r\nHost: {host}\r\n{authorization}Content-Type: application/x-www-form-urlencoded\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
             body.len()
         );
-        stream.write_all(request.as_bytes()).ok()?;
+        stream.write_all(request.as_bytes()).map_err(|_| false)?;
         let mut bytes = Vec::new();
-        stream.read_to_end(&mut bytes).ok()?;
-        let header_end = bytes.windows(4).position(|window| window == b"\r\n\r\n")?;
+        stream.read_to_end(&mut bytes).map_err(|_| false)?;
+        let header_end = bytes
+            .windows(4)
+            .position(|window| window == b"\r\n\r\n")
+            .ok_or(false)?;
         let status = String::from_utf8_lossy(&bytes[..header_end])
             .lines()
-            .next()?
-            .split_whitespace()
-            .nth(1)?
-            .parse::<u16>()
-            .ok()?;
+            .next()
+            .and_then(|line| line.split_whitespace().nth(1))
+            .and_then(|code| code.parse::<u16>().ok())
+            .ok_or(false)?;
+        let payload = serde_json::from_slice::<Value>(&bytes[header_end + 4..]).unwrap_or(Value::Null);
         if !(200..300).contains(&status) {
-            return None;
+            let unavailable = status == 404
+                || payload.get("error_code").and_then(Value::as_i64) == Some(24)
+                || payload.get("error").and_then(Value::as_str) == Some("unavailable_file");
+            return Err(unavailable);
         }
-        serde_json::from_slice::<Value>(&bytes[header_end + 4..])
-            .ok()?
+        payload
             .get("download")
             .and_then(Value::as_str)
             .map(str::to_string)
+            .ok_or(false)
     }
 
     fn route_bundled_resource(&self, relative: &str, head: bool) -> Response {
