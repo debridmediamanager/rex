@@ -2901,13 +2901,23 @@ def main():
     # 400s on both. The check ran three hundred lines after the unmatch above and asserted
     # the 200 the row would have given before it -- plexsim answered 200 either way, which
     # is what made it pass.
-    matched_c36s = [row_c36s.get("ratingKey") for row_c36s in
-                    (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
-                     .get("Metadata") or [])
-                    if not str((get(base, "/library/metadata/%s" % row_c36s.get("ratingKey"))[1]
-                                .get("Metadata") or [{}])[0].get("guid") or "")
-                    .startswith(("local://", "none://", "tv.plex.agents.none://"))]
-    status, body, _ = request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1" % movie)
+    #
+    # Both rows are SELECTED by their state rather than assumed: with a TMDB key the Fix
+    # Match section above leaves `movie` matched again, and the check then wrote to a
+    # matched row and called it the unmatched one. The fixture carries a `local://` row
+    # (zen's own unmatched "Vinaipayan"), so an unmatched movie exists either way.
+    guids_c36s = [(row_c36s.get("ratingKey"),
+                   str((get(base, "/library/metadata/%s" % row_c36s.get("ratingKey"))[1]
+                        .get("Metadata") or [{}])[0].get("guid") or ""))
+                  for row_c36s in (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                                   .get("Metadata") or [])]
+    agentless_c36s = ("local://", "none://", "tv.plex.agents.none://")
+    matched_c36s = [key_c36s for key_c36s, guid_c36s in guids_c36s
+                    if not guid_c36s.startswith(agentless_c36s)]
+    unmatched_key_c36s = next((key_c36s for key_c36s, guid_c36s in guids_c36s
+                               if guid_c36s.startswith(agentless_c36s)), None)
+    status, body, _ = request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1"
+                              % unmatched_key_c36s) if unmatched_key_c36s else (None, None, None)
     unmatched_c36s = (status, body)
     accepted_c36s = request(
         base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1"
@@ -2916,8 +2926,8 @@ def main():
     check("an item preference write follows the row's own Preferences block",
           unmatched_c36s[0] == 400 and other_c36s == 400
           and (accepted_c36s is None or is_empty_200(*accepted_c36s)),
-          "unmatched %s / show setting %s / matched %s"
-          % (unmatched_c36s[0], other_c36s,
+          "unmatched %s: %s / show setting %s / matched %s"
+          % (unmatched_key_c36s, unmatched_c36s[0], other_c36s,
              accepted_c36s[0] if accepted_c36s else "no matched movie left"))
     status, unwatched, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
     check("the unwatched listing answers", status == 200,
@@ -3930,18 +3940,25 @@ def main():
     # Cycle 16 re-measured this and the check had to move with it: an UNMATCHED movie
     # carries no `Preferences` block AT ALL (measured on plexscratch, corroborated
     # read-only on zen, where every `local://` show advertises eight settings against a
-    # matched show's full list). `movie` has been unmatched well before this point, so
-    # the three-setting half is now asserted on a movie that is still matched and the
-    # empty half on the unmatched one. The old check asserted three settings on the
-    # unmatched row, which is the belief this cycle overturned.
-    _, _, movie_prefs = detail_of("includePreferences=1")
+    # matched show's full list). So the three-setting half is asserted on a movie that is
+    # matched and the empty half on an unmatched one, each SELECTED by its guid: `movie`
+    # was unmatched above, but with a TMDB key the Fix Match section matches it again,
+    # and the fixture's `local://` row is the unmatched movie then. The old check
+    # asserted three settings on the unmatched row, which is the belief this cycle
+    # overturned.
+    guids_prefs = [(m["ratingKey"],
+                    str(get(base, "/library/metadata/%s" % m["ratingKey"])[1]["Metadata"][0]
+                        .get("guid") or ""))
+                   for m in get(base, "/library/sections/%s/all" % movie_section)[1]
+                   .get("Metadata") or []]
+    unmatched_movie = next((key_p for key_p, guid_p in guids_prefs
+                            if guid_p.startswith(("local://", "none://",
+                                                  "tv.plex.agents.none://"))), None)
+    _, _, movie_prefs = detail_of("includePreferences=1", unmatched_movie) \
+        if unmatched_movie else (None, None, {"Preferences": {}})
     names = [s.get("id") for s in (movie_prefs.get("Preferences") or {}).get("Setting") or []]
-    matched_movie = next(
-        (m["ratingKey"] for m in get(base, "/library/sections/%s/all" % movie_section)[1]
-         .get("Metadata") or []
-         if str(m.get("ratingKey")) != str(movie)
-         and str(get(base, "/library/metadata/%s" % m["ratingKey"])[1]["Metadata"][0]
-                 .get("guid") or "").startswith("plex://")), None)
+    matched_movie = next((key_p for key_p, guid_p in guids_prefs
+                          if guid_p.startswith("plex://")), None)
     matched_names = []
     if matched_movie:
         _, _, matched_prefs = detail_of("includePreferences=1", matched_movie)
@@ -3951,9 +3968,9 @@ def main():
           matched_names == ["languageOverride", "useOriginalTitle",
                             "enableCreditsMarkerGeneration"]
           and "Preferences" not in movie_prefs,
-          "matched %s -> %s ; unmatched carries a block: %s"
+          "matched %s -> %s ; unmatched %s carries a block: %s"
           % (matched_movie, ",".join(str(n) for n in matched_names),
-             "Preferences" in movie_prefs))
+             unmatched_movie, "Preferences" in movie_prefs))
     if show:
         _, _, show_row = detail_of("includeChildren=1", show)
         children = show_row.get("Children") or {}
