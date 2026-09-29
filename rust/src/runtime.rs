@@ -20137,8 +20137,14 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
     }
     // `server.py`: `auto` discovers only on the standard port. A test instance on any
     // other port stays off the wire, so its `/servers` lists itself alone rather than
-    // whatever servers happen to share its LAN.
-    if mode.eq_ignore_ascii_case("auto") && port != 32400 {
+    // whatever servers happen to share its LAN. The exception is an explicit
+    // `PLEXSIM_GDM_PORTS`: it moves the responder off the host's real udp/32410 and
+    // udp/32414, so it cannot claim the host's one GDM identity -- the reason for the
+    // gate -- and `test_native_gdm.py` runs `auto` on a test port exactly that way.
+    let explicit_ports = std::env::var("PLEXSIM_GDM_PORTS")
+        .map(|value| value.split(',').any(|p| p.trim().parse::<u16>().is_ok()))
+        .unwrap_or(false);
+    if mode.eq_ignore_ascii_case("auto") && port != 32400 && !explicit_ports {
         return;
     }
     let ports = configured_gdm_ports();
