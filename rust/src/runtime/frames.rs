@@ -18,58 +18,6 @@ pub(super) fn timeline_type(kind: &str) -> i64 {
 }
 
 impl Runtime {
-    /// The string a row's frames -- and its activity's subtitle -- carry.
-    ///
-    /// Measured on a writable copy of the reference: a movie's and a show's frames
-    /// title them with the year (`Elephants Dream (2006)`, `Firefly (2002)`, and an
-    /// emptied title still gets it: ` (2010)`), while a SEASON's say `Firefly S01` and
-    /// an EPISODE's `Firefly S01 E07` -- from the SHOW's title and the current indexes.
-    pub(super) fn frame_title(&self, row: &Value) -> String {
-        let title = row.get("title").map(string_value).unwrap_or_default();
-        let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
-        let year = row
-            .get("year")
-            .filter(|year| !year.is_null() && string_value(year) != "0")
-            .map(string_value)
-            .filter(|year| !year.is_empty());
-        if matches!(kind, "movie" | "show") {
-            if let Some(year) = year {
-                return format!("{title} ({year})");
-            }
-            return title;
-        }
-        if matches!(kind, "season" | "episode") {
-            let show_key = row
-                .get(if kind == "season" {
-                    "parentRatingKey"
-                } else {
-                    "grandparentRatingKey"
-                })
-                .map(string_value)
-                .unwrap_or_default();
-            let show_title = self
-                .catalog
-                .get(&show_key)
-                .and_then(|show| show.get("title"))
-                .map(string_value)
-                .unwrap_or_default();
-            let index = row
-                .get(if kind == "season" { "index" } else { "parentIndex" })
-                .and_then(|value| value.as_i64().or_else(|| string_value(value).parse().ok()))
-                .unwrap_or(0);
-            let mut out = format!("{show_title} S{index:02}");
-            if kind == "episode" {
-                let own = row
-                    .get("index")
-                    .and_then(|value| value.as_i64().or_else(|| string_value(value).parse().ok()))
-                    .unwrap_or(0);
-                out.push_str(&format!(" E{own:02}"));
-            }
-            return out;
-        }
-        title
-    }
-
     /// A TimelineEntry for one row, with the field set measured off a real refresh:
     /// identifier, sectionID and itemID as STRINGS, the numeric type, the title,
     /// `state` and `metadataState`.  `metadata_state=None` omits the field, which is

@@ -1291,8 +1291,6 @@ impl Runtime {
                 }
                 continue;
             };
-            let old_art = original.get("art").cloned();
-            let old_thumb = original.get("thumb").cloned();
             // The persisted edit record: every public field the write changed.
             let mut changed = Map::new();
             for (name, value) in &row {
@@ -1314,14 +1312,10 @@ impl Runtime {
                 names.insert("summary".to_string());
                 self.propagate_metadata_change(key, &names);
             }
-            for (field, old) in [("art", old_art), ("thumb", old_thumb)] {
-                if outcome.written.contains(field) {
-                    let new_value = self.catalog.get(key).and_then(|row| row.get(field)).cloned();
-                    if new_value != old {
-                        self.cascade_artwork(key, field, old, new_value);
-                    }
-                }
-            }
+            // Cycle 31: an emptied artwork column falls back to its nearest owning
+            // ancestor's and re-derives every borrower below it.
+            let artwork_query = pairs.iter().cloned().collect::<HashMap<_, _>>();
+            self.after_artwork_edit(key, &artwork_query);
             self.edits.entry(key.clone()).or_default().extend(changed);
             if section {
                 before.push((key.clone(), Value::Object(original)));
