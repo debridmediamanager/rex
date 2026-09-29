@@ -12010,18 +12010,47 @@ impl Runtime {
                     if version.len() > 10 || version.parse::<u64>().unwrap_or(u64::MAX) >= 1 << 31 {
                         return Response::error(400, "plexsim: bad request");
                     }
-                    // A real PMS builds a mosaic of the members' posters; plexsim serves
-                    // one image in its place (`composite_for`), here the placeholder. It
-                    // is a real-sized PNG: `server.py` serves a member's TMDB poster,
-                    // which this server cannot fetch, and a 4-byte "jpeg" read as that
-                    // poster fails the size the check holds a real image to.
-                    let mut response = Response::image(generated_png(400, 600, [32, 34, 38]));
-                    response.content_type = "image/png".to_string();
+                    // A real PMS builds a 400x600 mosaic of the members' posters; plexsim
+                    // has no imaging library, so it serves one member's own poster
+                    // (`composite_for`) at the TMDB variant nearest the asked width, and
+                    // a library with no artwork the generated tile.
+                    let _ = section;
+                    let art = self
+                        .catalog
+                        .items
+                        .iter()
+                        .filter(|row| {
+                            string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                                == section_key
+                        })
+                        .find_map(|row| {
+                            row.get("_poster_url")
+                                .or_else(|| row.get("_art_url"))
+                                .and_then(Value::as_str)
+                                .filter(|url| !url.is_empty())
+                                .map(str::to_string)
+                        });
+                    let Some(art) = art else {
+                        let width = query.get("width").and_then(|v| v.parse::<u32>().ok()).unwrap_or(342);
+                        let height = query.get("height").and_then(|v| v.parse::<u32>().ok()).unwrap_or(513);
+                        let mut response = Response::bytes(200, "image/png");
+                        response.body = generated_png(width, height, [32, 34, 38]);
+                        response.headers = vec![
+                            ("Cache-Control".to_string(), "no-cache".to_string()),
+                            ("Accept-Ranges".to_string(), "bytes".to_string()),
+                        ];
+                        return response;
+                    };
+                    let url = transcoder::tmdb_at_width(&art, query.get("width").map(String::as_str));
+                    let Some((bytes, kind)) = transcoder::fetch_remote_image(&url) else {
+                        return Response::error(404, "plexsim: artwork unavailable");
+                    };
+                    let mut response = Response::bytes(200, kind);
+                    response.body = bytes;
                     response.headers = vec![
                         ("Cache-Control".to_string(), "no-cache".to_string()),
                         ("Accept-Ranges".to_string(), "bytes".to_string()),
                     ];
-                    let _ = section;
                     return response;
                 }
                 if segments.len() == 3 {
