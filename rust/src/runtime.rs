@@ -1556,7 +1556,13 @@ impl Runtime {
         if !explicit_size {
             for key in ["Metadata", "Directory", "Hub", "Video", "Device"] {
                 if let Some(array) = body.get(key).and_then(Value::as_array) {
-                    body.insert("size".to_string(), json!(array.len()));
+                    // `size` leads the container on a real PMS whatever it counts.
+                    let size = array.len();
+                    body.remove("size");
+                    let mut sized = Map::new();
+                    sized.insert("size".to_string(), json!(size));
+                    sized.extend(body);
+                    body = sized;
                     break;
                 }
             }
