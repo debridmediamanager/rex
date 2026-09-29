@@ -4196,17 +4196,22 @@ impl Runtime {
         // Python's stable sort uses titleSort as the final tie breaker for
         // every advertised key.  Seed that order before applying the explicit
         // keys in reverse priority.
+        // `server.py` `_sort_key`: `titleSort` alone stays case-FOLDED (every other
+        // text key compares raw codepoints, cycle 22).
+        let folded = |value: &Value| string_value(value).to_lowercase();
         rows.sort_by(|left, right| {
-            string_value(&self.sort_value(left, "titleSort"))
-                .cmp(&string_value(&self.sort_value(right, "titleSort")))
+            folded(&self.sort_value(left, "titleSort"))
+                .cmp(&folded(&self.sort_value(right, "titleSort")))
         });
         for (field, descending) in specs.into_iter().rev() {
+            let title_sort = field.rsplit('.').next() == Some("titleSort");
             rows.sort_by(|left, right| {
                 let left_owned = self.sort_value(left, &field);
                 let right_owned = self.sort_value(right, &field);
                 let left_value = &left_owned;
                 let right_value = &right_owned;
                 let ordering = match (left_value, right_value) {
+                    _ if title_sort => folded(left_value).cmp(&folded(right_value)),
                     (Value::Number(a), Value::Number(b)) => a
                         .as_f64()
                         .partial_cmp(&b.as_f64())
@@ -5252,7 +5257,8 @@ impl Runtime {
                     } else {
                         302
                     },
-                    content_type: "text/html".to_string(),
+                    // Cycle 16: the redirect carries no Content-Type at all.
+                    content_type: String::new(),
                     body: Vec::new(),
                     headers: vec![
                         (
@@ -6659,6 +6665,13 @@ impl Runtime {
             }
         }
 
+        // Measured on both servers: an empty or non-numeric `accountID`/`deviceID` is a
+        // 400 (a negative one and `+1` parse), and so is any `lan` but 0 or 1.
+        for name in ["accountID", "deviceID"] {
+            if query.get(name).is_some_and(|value| !int_param(value, None)) {
+                return Response::error(400, "plexsim: bad request");
+            }
+        }
         if let Some(value) = query.get("lan") {
             if !matches!(value.as_str(), "0" | "1") {
                 return Response::error(400, "plexsim: bad request");
@@ -6806,6 +6819,13 @@ impl Runtime {
     }
 
     fn route_media_statistics(&self, query: &HashMap<String, String>) -> Response {
+        // Measured on both servers: an empty or non-numeric `accountID`/`deviceID` is a
+        // 400, as on `/statistics/bandwidth`.
+        for name in ["accountID", "deviceID"] {
+            if query.get(name).is_some_and(|value| !int_param(value, None)) {
+                return Response::error(400, "plexsim: bad request");
+            }
+        }
         let spans = if let Some(value) = query.get("timespan") {
             let timespan = value.parse::<i64>().unwrap_or_default();
             if matches!(timespan, 0 | 1 | 2 | 3 | 4) {
@@ -7150,6 +7170,9 @@ impl Runtime {
                             values.insert(key, value.clone());
                         }
                     }
+                    // The session serialiser's marker: the XML/JSON orderer writes a
+                    // `_session` element's attributes alphabetically (cycle 49).
+                    values.insert("_session".to_string(), json!(true));
                     Value::Object(values)
                 })
                 .collect::<Vec<_>>();
@@ -11160,7 +11183,12 @@ impl Runtime {
                     projection.insert(name.to_string(), value.clone());
                 }
             }
-            projection.insert("viewType".to_string(), json!(1));
+            // Cycle 70: only a scrobble's row carries `viewType`; cycle 27: the single
+            // read is its own projection, which the `_history1` marker orders.
+            if let Some(view_type) = row.get("viewType").filter(|v| !v.is_null()) {
+                projection.insert("viewType".to_string(), view_type.clone());
+            }
+            projection.insert("_history1".to_string(), json!(true));
             return Response::json(
                 200,
                 self.container(
@@ -11776,8 +11804,12 @@ impl Runtime {
                         return Response::error(400, "plexsim: bad request");
                     }
                     // A real PMS builds a mosaic of the members' posters; plexsim serves
-                    // one image in its place (`composite_for`), here the placeholder.
-                    let mut response = Response::image(jpeg_placeholder());
+                    // one image in its place (`composite_for`), here the placeholder. It
+                    // is a real-sized PNG: `server.py` serves a member's TMDB poster,
+                    // which this server cannot fetch, and a 4-byte "jpeg" read as that
+                    // poster fails the size the check holds a real image to.
+                    let mut response = Response::image(generated_png(400, 600, [32, 34, 38]));
+                    response.content_type = "image/png".to_string();
                     response.headers = vec![
                         ("Cache-Control".to_string(), "no-cache".to_string()),
                         ("Accept-Ranges".to_string(), "bytes".to_string()),
