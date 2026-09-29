@@ -14654,35 +14654,33 @@ impl Runtime {
                 )
             }
             "subtitles" => {
+                // Cycle 18, measured on plexscratch: DELETE, PATCH and OPTIONS here are
+                // the verb table's 404, not the upload validator's 400.
+                if !matches!(request.method.as_str(), "GET" | "HEAD" | "POST" | "PUT") {
+                    return Response::error(404, "plexsim: not found");
+                }
                 if request.method != "POST" {
+                    // The Search Subtitles dialog.  Measured: `language` is required
+                    // (400 without it) and must be a real two-letter language, any case
+                    // and with or without a region -- `en`, `EN`, `en-US` and `de` search,
+                    // where `xx`, `eng` and an empty value are 500s.
                     let Some(language) = query.get("language") else {
-                        return Response::error(400, "plexsim: language required");
+                        return Response::error(400, "plexsim: bad request");
                     };
-                    if language == "en-US" {
-                        return Response::json(
-                            200,
-                            self.container(
-                                Map::from_iter([(
-                                    "identifier".to_string(),
-                                    json!("com.plexapp.plugins.library"),
-                                )]),
-                                false,
-                            ),
-                        );
-                    }
-                    if language != "en" {
-                        return Response::error(500, "plexsim: invalid language");
+                    let code = language.split('-').next().unwrap_or_default().to_lowercase();
+                    if !SUBTITLE_LANGUAGES.contains(&code.as_str()) {
+                        return Response::error(500, "plexsim: internal error");
                     }
                     return Response::json(
                         200,
-                        self.container(
-                            Map::from_iter([(
-                                "identifier".to_string(),
-                                json!("com.plexapp.plugins.library"),
-                            )]),
-                            false,
-                        ),
+                        self.container(Map::from_iter([("size".to_string(), json!(0))]), true),
                     );
+                }
+                // Cycle 15, measured on the copy: the EMPTY-BODY check runs FIRST.
+                // With neither a title nor bytes the answer is 406, not the 500 a
+                // missing title gets on its own.
+                if request.body.is_empty() {
+                    return Response::error(406, "plexsim: not acceptable");
                 }
                 let Some(title) = query.get("title").filter(|value| !value.is_empty()) else {
                     return Response::error(500, "plexsim: title required");
@@ -17415,6 +17413,138 @@ impl Runtime {
         Response::empty(200)
     }
 
+    /// `PUT /library/parts/{partID}?audioStreamID=&subtitleStreamID=`: track
+    /// selection, ported from the oracle's `select_stream`.
+    fn select_stream(&mut self, part_id: &str, query: &HashMap<String, String>) -> Response {
+        // Cycle 44, measured cell by cell on plexscratch42 and plexscratch: the two
+        // parameters have DIFFERENT value grammars.  `subtitleStreamID` reads a value
+        // that does not parse as 0 (the "no subtitle" pseudo-stream), `-1` reverts to
+        // the default and any other negative is a 400.  `audioStreamID` has no "0"
+        // meaning: `0` and every negative but `-1` are 400s, `-1` reverts to the
+        // default, and a value that does not parse is an accepted no-op.
+        let mut wanted: Vec<(i64, String)> = Vec::new();
+        for (name, stream_type) in [("audioStreamID", 2), ("subtitleStreamID", 3)] {
+            let Some(raw) = query.get(name) else { continue };
+            let number = python_int(raw);
+            if stream_type == 3 {
+                let number = number.unwrap_or(0);
+                if number < -1 {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                wanted.push((3, if number == -1 { 0 } else { number }.to_string()));
+            } else {
+                let Some(number) = number else { continue };
+                if number == 0 || number < -1 {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                wanted.push((2, number.to_string()));
+            }
+        }
+        // Cycle 18, measured on plexscratch: the PART is resolved before anything else;
+        // `999999`, `abc` and `999999?subtitleStreamID=abc` are all 404s.
+        let part_matches =
+            |part: &Value| string_value(part.get("id").unwrap_or(&Value::Null)) == part_id;
+        let parts_of = |row: &Value| -> Vec<Value> {
+            row.get("Media")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .flat_map(|media| {
+                    media
+                        .get("Part")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default()
+                })
+                .collect()
+        };
+        let Some(owner_index) = self
+            .catalog
+            .items
+            .iter()
+            .rposition(|row| parts_of(row).iter().any(|part| part_matches(part)))
+        else {
+            return Response::error(404, "plexsim: no such part");
+        };
+        if wanted.is_empty() {
+            return Response::empty(200);
+        }
+        let owner_parts = parts_of(&self.catalog.items[owner_index]);
+        let streams_of = |stream_type: i64| -> Vec<String> {
+            owner_parts
+                .iter()
+                .flat_map(|part| {
+                    part.get("Stream")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default()
+                })
+                .filter(|stream| stream.get("streamType").and_then(Value::as_i64) == Some(stream_type))
+                .map(|stream| string_value(stream.get("id").unwrap_or(&Value::Null)))
+                .collect()
+        };
+        // `audioStreamID=-1` reverts to the server's own default, the first audio stream.
+        if let Some(position) = wanted.iter().position(|(kind, value)| *kind == 2 && value == "-1") {
+            match streams_of(2).first() {
+                Some(first) => wanted[position].1 = first.clone(),
+                None => {
+                    wanted.remove(position);
+                }
+            }
+        }
+        // Measured: a stream id that is not a stream of the right TYPE on this item is
+        // a 400, and the selection is left untouched.
+        for (stream_type, chosen) in &wanted {
+            if chosen == "0" && *stream_type == 3 {
+                continue;
+            }
+            if !streams_of(*stream_type).contains(chosen) {
+                return Response::error(400, "plexsim: bad request");
+            }
+        }
+        let all_parts = query.get("allParts").map(String::as_str) == Some("1");
+        let owner = &mut self.catalog.items[owner_index];
+        for media in owner
+            .get_mut("Media")
+            .and_then(Value::as_array_mut)
+            .into_iter()
+            .flatten()
+        {
+            for part in media
+                .get_mut("Part")
+                .and_then(Value::as_array_mut)
+                .into_iter()
+                .flatten()
+            {
+                if string_value(part.get("id").unwrap_or(&Value::Null)) != part_id && !all_parts {
+                    continue;
+                }
+                for stream in part
+                    .get_mut("Stream")
+                    .and_then(Value::as_array_mut)
+                    .into_iter()
+                    .flatten()
+                {
+                    let kind = stream.get("streamType").and_then(Value::as_i64).unwrap_or(0);
+                    let Some((_, chosen)) = wanted.iter().find(|(wanted_kind, _)| *wanted_kind == kind)
+                    else {
+                        continue;
+                    };
+                    let id = string_value(stream.get("id").unwrap_or(&Value::Null));
+                    if let Some(object) = stream.as_object_mut() {
+                        if id == *chosen {
+                            object.insert("selected".to_string(), json!(true));
+                        } else {
+                            object.remove("selected");
+                        }
+                    }
+                }
+            }
+        }
+        self.dirty = true;
+        Response::empty(200)
+    }
+
     fn route_part(
         &mut self,
         segments: &[&str],
@@ -17426,104 +17556,10 @@ impl Runtime {
         // `/library/parts/{id}` form is reserved for stream-selection writes;
         // a write against the actual byte URL is a measured 404.
         if request.method != "GET" && request.method != "HEAD" {
-            if request.method == "PUT" && segments.len() == 1 {
-                let Some(part_id) = segments[0].parse::<i64>().ok() else {
-                    return Response::error(404, "plexsim: not found");
-                };
-                let audio = query.get("audioStreamID").cloned();
-                let subtitle = query.get("subtitleStreamID").cloned();
-                if audio.is_none() && subtitle.is_none() {
-                    return Response::error(400, "plexsim: bad request");
-                }
-                let mut found = false;
-                for row in &mut self.catalog.items {
-                    let Some(media_rows) = row.get_mut("Media").and_then(Value::as_array_mut)
-                    else {
-                        continue;
-                    };
-                    for media in media_rows {
-                        let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut)
-                        else {
-                            continue;
-                        };
-                        for part in parts {
-                            if part.get("id").and_then(Value::as_i64) != Some(part_id) {
-                                continue;
-                            }
-                            found = true;
-                            let Some(streams) =
-                                part.get_mut("Stream").and_then(Value::as_array_mut)
-                            else {
-                                continue;
-                            };
-                            if let Some(value) = &audio {
-                                let Ok(id) = value.parse::<i64>() else {
-                                    // An unparsable audio id is an accepted
-                                    // no-op.  The player sends an empty value
-                                    // while clearing a subtitle and PMS does
-                                    // not reject the whole part write.
-                                    continue;
-                                };
-                                if id == 0 {
-                                    return Response::error(400, "plexsim: bad request");
-                                }
-                                if !streams.iter().any(|stream| {
-                                    stream.get("id").and_then(Value::as_i64) == Some(id)
-                                        && stream.get("streamType").and_then(Value::as_i64)
-                                            == Some(2)
-                                }) {
-                                    return Response::error(400, "plexsim: bad request");
-                                }
-                                for stream in streams.iter_mut() {
-                                    if stream.get("streamType").and_then(Value::as_i64) == Some(2) {
-                                        if let Some(object) = stream.as_object_mut() {
-                                            object.insert(
-                                                "selected".to_string(),
-                                                json!(
-                                                    object.get("id").and_then(Value::as_i64)
-                                                        == Some(id)
-                                                ),
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                            if let Some(value) = &subtitle {
-                                // Subtitle values that do not parse are the
-                                // pseudo-stream zero and clear selection.
-                                let id = value.parse::<i64>().unwrap_or(0);
-                                if id != 0
-                                    && !streams.iter().any(|stream| {
-                                        stream.get("id").and_then(Value::as_i64) == Some(id)
-                                            && stream.get("streamType").and_then(Value::as_i64)
-                                                == Some(3)
-                                    })
-                                {
-                                    return Response::error(400, "plexsim: bad request");
-                                }
-                                for stream in streams.iter_mut() {
-                                    if stream.get("streamType").and_then(Value::as_i64) == Some(3) {
-                                        if let Some(object) = stream.as_object_mut() {
-                                            object.insert(
-                                                "selected".to_string(),
-                                                json!(
-                                                    id != 0
-                                                        && object.get("id").and_then(Value::as_i64)
-                                                            == Some(id)
-                                                ),
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if !found {
-                    return Response::error(404, "plexsim: not found");
-                }
-                self.dirty = true;
-                return Response::empty(200);
+            // Cycle 44: only the TWO-segment form takes a write, PUT or POST alike; the
+            // three-segment MEDIA path is a 404 to both on 1.42.2 and 1.43.4.
+            if matches!(request.method.as_str(), "PUT" | "POST") && segments.len() == 1 {
+                return self.select_stream(segments[0], query);
             }
             return Response::error(404, "plexsim: not found");
         }
@@ -19418,6 +19454,37 @@ fn unix_year(timestamp: i64) -> i64 {
 
 /// Python's ordering of two JSON scalars for a sort: numbers by value, strings
 /// by code point, anything else as equal.
+/// The two-letter codes Python's `locale.locale_alias` names, which is the set the
+/// oracle's subtitle search accepts (`SUBTITLE_LANGUAGES`).
+const SUBTITLE_LANGUAGES: &[&str] = &[
+    "aa", "af", "ak", "am", "an", "ar", "as", "az", "be", "bg", "bi", "bn", "bo", "br", "bs",
+    "ca", "ce", "cs", "cv", "cy", "cz", "da", "de", "dv", "dz", "ee", "el", "en", "eo", "es",
+    "et", "eu", "fa", "ff", "fi", "fo", "fr", "fy", "ga", "gd", "gl", "gu", "gv", "ha", "he",
+    "hi", "hr", "ht", "hu", "hy", "ia", "id", "ig", "ik", "in", "is", "it", "iu", "iw", "ja",
+    "jp", "ka", "kk", "kl", "km", "kn", "ko", "ks", "ku", "kw", "ky", "lb", "lg", "li", "ln",
+    "lo", "lt", "lv", "mg", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my", "nb", "ne", "nl",
+    "nn", "no", "nr", "ny", "oc", "om", "or", "os", "pa", "pd", "ph", "pl", "pp", "ps", "pt",
+    "ro", "ru", "rw", "sa", "sc", "sd", "se", "sh", "si", "sk", "sl", "sm", "so", "sp", "sq",
+    "sr", "ss", "st", "sv", "sw", "ta", "te", "tg", "th", "ti", "tk", "tl", "tn", "to", "tr",
+    "ts", "tt", "ug", "uk", "ur", "uz", "ve", "vi", "wa", "wo", "xh", "yi", "yo", "zh", "zu",
+];
+
+/// Python's `int(text)`: surrounding whitespace, an optional sign, and digits that
+/// may be grouped by single underscores.  The oracle parses stream ids this way.
+fn python_int(text: &str) -> Option<i64> {
+    let text = text.trim();
+    let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
+    if digits.is_empty()
+        || digits.starts_with('_')
+        || digits.ends_with('_')
+        || digits.contains("__")
+        || !digits.bytes().all(|b| b.is_ascii_digit() || b == b'_')
+    {
+        return None;
+    }
+    text.replace('_', "").trim_start_matches('+').parse::<i64>().ok()
+}
+
 fn compare_json(left: &Value, right: &Value) -> std::cmp::Ordering {
     match (left, right) {
         (Value::Number(a), Value::Number(b)) => a
