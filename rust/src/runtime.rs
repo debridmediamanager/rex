@@ -5119,9 +5119,15 @@ impl Runtime {
             ]), false)),
             ("GET" | "HEAD", "/playlists") => self.route_playlists(&query),
             ("GET" | "HEAD", "/library/collections") => Response::error(404, "plexsim: not found"),
-            ("GET" | "HEAD", "/statistics/bandwidth") => self.route_bandwidth(&query),
-            ("GET" | "HEAD", "/statistics/media") => self.route_media_statistics(&query),
-            ("GET" | "HEAD", "/statistics/resources") => self.route_resource_statistics(&query),
+            ("GET" | "HEAD", "/statistics/bandwidth") => self
+                .statistics_refusal("bandwidth", &query)
+                .unwrap_or_else(|| self.route_bandwidth(&query)),
+            ("GET" | "HEAD", "/statistics/media") => self
+                .statistics_refusal("media", &query)
+                .unwrap_or_else(|| self.route_media_statistics(&query)),
+            ("GET" | "HEAD", "/statistics/resources") => self
+                .statistics_refusal("resources", &query)
+                .unwrap_or_else(|| self.route_resource_statistics(&query)),
             ("GET" | "HEAD", "/history") => self.route_history(&query),
             ("GET" | "HEAD", "/status/sessions") => self.route_sessions(),
             ("GET" | "HEAD", "/status/sessions/background") => Response::json(200, self.container(Map::new(), false)),
@@ -6275,25 +6281,9 @@ impl Runtime {
                 return Response::error(400, "plexsim: bad request");
             }
         }
-        for name in ["accountID", "deviceID", "offset"] {
-            if let Some(value) = query.get(name) {
-                if value.parse::<i32>().is_err() {
-                    return Response::error(400, "plexsim: bad request");
-                }
-            }
-        }
-        if let Some(value) = query.get("limit") {
-            if value.parse::<i64>().is_err() {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
+
         if let Some(value) = query.get("lan") {
             if !matches!(value.as_str(), "0" | "1") {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
-        if let Some(sort) = query.get("sort") {
-            if !matches!(sort.as_str(), "at" | "bytes" | "lan") {
                 return Response::error(400, "plexsim: bad request");
             }
         }
@@ -6387,24 +6377,58 @@ impl Runtime {
         )
     }
 
+    /// The statistics endpoints' shared parameter grammar (the oracle's `statistics`),
+    /// checked before any endpoint answers.
+    fn statistics_refusal(&self, which: &str, query: &HashMap<String, String>) -> Option<Response> {
+        let refuse = || Some(Response::error(400, "plexsim: bad request"));
+        // Cycle 54/55, measured on kids and zen: `/statistics/media` parses `count`,
+        // `offset` and `type` as int32 and `/statistics/bandwidth` `bytes` as int64 and
+        // `offset` as int32; `offset` is an int32 on all THREE endpoints.
+        let ints: &[(&str, u32)] = match which {
+            "media" => &[("count", 32), ("offset", 32), ("type", 32)],
+            "bandwidth" => &[("bytes", 64), ("offset", 32)],
+            _ => &[("offset", 32)],
+        };
+        for (name, bits) in ints {
+            if query.get(*name).is_some_and(|value| !int_param(value, Some(*bits))) {
+                return refuse();
+            }
+        }
+        // The `sort=` (and cycle 55: `group=`) keys each endpoint accepts.
+        let keys: &[&str] = match which {
+            "bandwidth" => &["at", "bytes", "deviceID", "accountID", "lan", "timespan"],
+            "media" => &["at", "deviceID", "accountID", "timespan", "count", "duration"],
+            _ => &[
+                "at",
+                "timespan",
+                "hostCpuUtilization",
+                "processCpuUtilization",
+                "hostMemoryUtilization",
+                "processMemoryUtilization",
+            ],
+        };
+        if query.get("group").is_some_and(|group| !keys.contains(&group.as_str())) {
+            return refuse();
+        }
+        if which == "bandwidth" && self.devices.values().any(|device| !device.platform.is_string()) {
+            return Some(Response::error(500, "plexsim: internal error"));
+        }
+        // Cycle 55: the window is an int32; cycle 26/55: `limit=` is PARSED as one.
+        for name in ["timespan", "limit"] {
+            if query.get(name).is_some_and(|value| !int_param(value, Some(32))) {
+                return refuse();
+            }
+        }
+        if let Some(sort) = query.get("sort") {
+            let (key, direction) = sort.split_once(':').unwrap_or((sort, ""));
+            if !keys.contains(&key) || !matches!(direction, "" | "asc" | "desc") {
+                return refuse();
+            }
+        }
+        None
+    }
+
     fn route_media_statistics(&self, query: &HashMap<String, String>) -> Response {
-        for name in ["accountID", "deviceID", "limit", "offset"] {
-            if let Some(value) = query.get(name) {
-                if value.parse::<i32>().is_err() {
-                    return Response::error(400, "plexsim: bad request");
-                }
-            }
-        }
-        if let Some(value) = query.get("timespan") {
-            if value.parse::<i64>().is_err() {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
-        if let Some(value) = query.get("sort") {
-            if !matches!(value.as_str(), "at" | "count" | "duration") {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
         let spans = if let Some(value) = query.get("timespan") {
             let timespan = value.parse::<i64>().unwrap_or_default();
             if matches!(timespan, 0 | 1 | 2 | 3 | 4) {
