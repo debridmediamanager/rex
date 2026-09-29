@@ -25,7 +25,9 @@ use sha1::{Digest, Sha1};
 
 use crate::{catalog::Catalog, decision, xmlout};
 
+mod artwork;
 mod resume;
+use artwork::owns_artwork;
 use resume::{bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param, page_window};
 
 const VERSION: &str = "1.42.2.10156-plexsim";
@@ -330,6 +332,8 @@ pub struct Runtime {
     /// Leaves completed in a PLAYBACK SESSION (Python's `_viewedInSession`): history,
     /// not view state, so a later scrobble or unscrobble leaves it standing.
     viewed_in_session: HashSet<String>,
+    /// Uploaded artwork by its `upload://` key: the bytes and their content type.
+    uploads: HashMap<String, (Vec<u8>, String)>,
     pub terminated_sessions: HashMap<String, String>,
     pub decided_sessions: HashSet<(String, String)>,
     pub web_root: Option<PathBuf>,
@@ -417,6 +421,7 @@ impl Runtime {
             completion_pending_stop: HashSet::new(),
             hidden_continue: HashSet::new(),
             viewed_in_session: HashSet::new(),
+            uploads: HashMap::new(),
             terminated_sessions: HashMap::new(),
             decided_sessions: HashSet::new(),
             web_root: options.web_root,
@@ -14633,27 +14638,26 @@ impl Runtime {
                 Response::empty(200)
             }
             "posters" | "arts" => {
-                if tail[0] == "arts"
-                    && matches!(
-                        row.get("type").and_then(Value::as_str),
-                        Some("season" | "episode")
-                    )
-                {
-                    if request.method == "GET" || request.method == "HEAD" {
-                        return Response::json(
-                            200,
-                            self.container(
-                                Map::from_iter([(
-                                    "Metadata".to_string(),
-                                    Value::Array(Vec::new()),
-                                )]),
-                                false,
-                            ),
-                        );
+                match request.method.as_str() {
+                    // Measured: the plural path is a 404 for a write.
+                    "PUT" => Response::error(404, "plexsim: not found"),
+                    // Cycle 15: an empty upload body is a 406.
+                    "POST" if request.body.is_empty() => Response::error(406, "plexsim: not acceptable"),
+                    "POST" => {
+                        let body = request.body.clone();
+                        self.upload_artwork(key, tail[0], &body)
                     }
-                    return Response::error(404, "plexsim: not found");
+                    "GET" | "HEAD" => self.artwork_list(row, tail[0]),
+                    _ => Response::error(404, "plexsim: not found"),
                 }
-                self.route_art_candidates(key, row, tail[0], query, request)
+            }
+            "thumbs" | "banners" | "themes" | "clearLogos" if request.method == "POST" => {
+                // Cycle 15: every candidate list answers a POST as an upload does.
+                if request.body.is_empty() {
+                    return Response::error(406, "plexsim: not acceptable");
+                }
+                let body = request.body.clone();
+                self.upload_artwork(key, tail[0], &body)
             }
             "clearLogos" | "themes" => {
                 if request.method != "GET" && request.method != "HEAD" {
@@ -14667,27 +14671,28 @@ impl Runtime {
                     ),
                 )
             }
-            "art" | "thumb" | "poster" => self.route_art(key, row, tail[0], query, request),
+            "art" | "thumb" | "poster" => self.route_art(key, row, tail, query, request),
             "file" => {
                 if request.method != "GET" && request.method != "HEAD" {
                     return Response::error(404, "plexsim: not found");
                 }
-                let Some(url) = query.get("url") else {
-                    return Response::error(404, "plexsim: not found");
+                // Measured: without its `url` a 400; with a url naming one of this
+                // row's candidates it serves that image (cycle 17); otherwise a 404.
+                let Some(url) = query.get("url").filter(|url| !url.is_empty()) else {
+                    return Response::error(400, "plexsim: bad request");
                 };
-                let Some(content) = row
-                    .get(if url.contains("themes") {
-                        "_theme_content"
-                    } else {
-                        "_upload_content"
-                    })
-                    .and_then(Value::as_str)
-                else {
-                    return Response::error(404, "plexsim: not found");
-                };
-                let mut response = Response::bytes(200, "image/png");
-                response.body = content.as_bytes().to_vec();
-                response
+                let wanted = percent_decode(&url.replace("%2E", "."));
+                match self.uploads.get(&wanted) {
+                    Some((body, content_type)) => {
+                        let mut response = Response::bytes(200, content_type.clone());
+                        response.body = body.clone();
+                        response
+                            .headers
+                            .push(("Accept-Ranges".to_string(), "bytes".to_string()));
+                        response
+                    }
+                    None => Response::error(404, "plexsim: not found"),
+                }
             }
             "tree" => self.route_tree(row),
             "userState" => Response::error(404, "plexsim: not found"),
@@ -15092,6 +15097,26 @@ impl Runtime {
                 if base == "userRating" && !section_write {
                     continue;
                 }
+                if matches!(base, "thumb" | "art") {
+                    // Cycle 20: the artwork columns take a value on both paths -- the
+                    // url is DISCARDED and the column becomes the row's own versioned
+                    // path. Cycle 31: an EMPTY value removes the column.
+                    if value.is_empty() {
+                        object.remove(base);
+                    } else {
+                        let stamp = object
+                            .get("updatedAt")
+                            .and_then(Value::as_i64)
+                            .filter(|stamp| *stamp != 0)
+                            .unwrap_or_else(now);
+                        object.insert(
+                            base.to_string(),
+                            json!(format!("/library/metadata/{key}/{base}/{stamp}")),
+                        );
+                    }
+                    changed.insert(base.to_string(), object.get(base).cloned().unwrap_or(Value::Null));
+                    continue;
+                }
                 {
                     if value.is_empty() {
                         if matches!(base, "year" | "audienceRating" | "rating") && !section_write {
@@ -15302,22 +15327,10 @@ impl Runtime {
         }
         let changed_names = changed.keys().cloned().collect::<HashSet<_>>();
         self.propagate_metadata_change(key, &changed_names);
-        if changed.contains_key("art") {
-            let new_value = self
-                .catalog
-                .get(key)
-                .and_then(|row| row.get("art"))
-                .cloned();
-            self.cascade_artwork(key, "art", old_art, new_value);
-        }
-        if changed.contains_key("thumb") {
-            let new_value = self
-                .catalog
-                .get(key)
-                .and_then(|row| row.get("thumb"))
-                .cloned();
-            self.cascade_artwork(key, "thumb", old_thumb, new_value);
-        }
+        // Cycle 31: an emptied artwork column falls back to its nearest owning
+        // ancestor's and re-derives every borrower below it.
+        let _ = (old_art, old_thumb);
+        self.after_artwork_edit(key, query);
         // Field lock rows are part of the metadata document and the edit dialog
         // reads them back after a restart.  Persist the projected Field array
         // alongside ordinary scalar edits instead of losing `title.locked` (and
@@ -15430,273 +15443,80 @@ impl Runtime {
         self.dirty = true;
     }
 
-    fn route_art_candidates(
-        &mut self,
-        key: &str,
-        row: &Value,
-        field: &str,
-        _query: &HashMap<String, String>,
-        request: &Request,
-    ) -> Response {
-        if request.method == "POST" {
-            if request.body.is_empty() {
-                return Response::error(400, "plexsim: bad request");
-            }
-            let name = if field == "posters" { "thumb" } else { "art" };
-            let old = self
-                .catalog
-                .get(key)
-                .and_then(|value| value.get(name))
-                .cloned();
-            let stamp = now();
-            let value = format!("/library/metadata/{key}/{name}/{stamp}");
-            let upload_kind = if field == "posters" {
-                "posters"
-            } else {
-                "arts"
-            };
-            let upload_uri = format!("upload://{upload_kind}/{stamp}");
-            let upload_key = format!(
-                "/library/metadata/{key}/file?url={}",
-                percent_encode(&upload_uri)
-            );
-            let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
-                return Response::error(404, "plexsim: not found");
-            };
-            object.insert(name.to_string(), json!(value));
-            object.insert("_upload_url".to_string(), json!(upload_uri));
-            object.insert(
-                "_upload_content".to_string(),
-                json!(String::from_utf8_lossy(&request.body)),
-            );
-            object.insert("updatedAt".to_string(), json!(stamp));
-            let _ = upload_key;
-            self.cascade_artwork(key, name, old, Some(json!(value)));
-            self.dirty = true;
-            self.save_if_dirty();
-            return Response::empty(200);
-        }
-        if request.method != "GET" && request.method != "HEAD" {
-            return Response::error(404, "plexsim: not found");
-        }
-        let is_poster = field == "posters";
-        let local = if is_poster {
-            row.get("thumb")
-        } else {
-            row.get("art")
-        };
-        let remote = if is_poster {
-            row.get("_poster_url")
-        } else {
-            row.get("_art_url")
-        };
-        let mut entries = Vec::new();
-        if let Some(upload) = row.get("_upload_url").and_then(Value::as_str) {
-            let key_path = format!(
-                "/library/metadata/{key}/file?url={}",
-                percent_encode(upload)
-            );
-            entries.push(json!({
-                "_element": "Photo",
-                "ratingKey": upload,
-                "key": key_path,
-                "thumb": key_path,
-                "selected": true,
-                "type": if is_poster { "poster" } else { "art" },
-            }));
-        }
-        if let Some(value) = local.and_then(Value::as_str) {
-            entries.push(json!({
-                "_element": "Photo",
-                "ratingKey": value,
-                "key": value,
-                "selected": row.get(if is_poster { "thumb" } else { "art" }) == Some(&Value::String(value.to_string())),
-                "type": if is_poster { "poster" } else { "art" },
-            }));
-        }
-        if let Some(value) = remote.and_then(Value::as_str) {
-            entries.push(json!({
-                "_element": "Photo",
-                "ratingKey": value,
-                "key": value,
-                "previewKey": value,
-                "selected": row.get(if is_poster { "thumb" } else { "art" }) == Some(&Value::String(value.to_string())),
-                "type": if is_poster { "poster" } else { "art" },
-            }));
-        }
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([("Metadata".to_string(), Value::Array(entries))]),
-                false,
-            ),
-        )
-    }
-
     fn cascade_artwork(
         &mut self,
         owner_key: &str,
-        field: &str,
-        old: Option<Value>,
-        new: Option<Value>,
+        _field: &str,
+        _old: Option<Value>,
+        _new: Option<Value>,
     ) {
-        let owner_prefix = format!("/library/metadata/{owner_key}/{field}/");
-        let old = old.and_then(|value| value.as_str().map(str::to_string));
-        let new = new.and_then(|value| value.as_str().map(str::to_string));
-        let keys = self
-            .catalog
-            .items
-            .iter()
-            .filter_map(key_of)
-            .collect::<HashSet<_>>();
-        for row in &mut self.catalog.items {
-            let Some(row_key) = key_of(row) else { continue };
-            if row_key == owner_key {
-                continue;
-            }
-            let parent = row
-                .get("parentRatingKey")
-                .map(string_value)
-                .unwrap_or_default();
-            let grandparent = row
-                .get("grandparentRatingKey")
-                .map(string_value)
-                .unwrap_or_default();
-            if !keys.contains(&parent) && !keys.contains(&grandparent) {
-                continue;
-            }
-            let Some(object) = row.as_object_mut() else {
-                continue;
-            };
-            let current = object
-                .get(field)
-                .and_then(Value::as_str)
-                .map(str::to_string);
-            let owns = current.as_deref().is_some_and(|value| {
-                value.starts_with(&format!("/library/metadata/{row_key}/{field}/"))
-                    || value.starts_with("upload://")
-            });
-            let inherits_owner = current.is_none() || old.as_deref() == current.as_deref();
-            if !owns && inherits_owner {
-                match new.as_deref() {
-                    Some(value) => {
-                        object.insert(field.to_string(), json!(value));
-                    }
-                    None => {
-                        object.remove(field);
-                    }
-                }
-            }
-        }
-        let field_parent = format!("parent{}", capitalize_ascii(field));
-        let field_grandparent = format!("grandparent{}", capitalize_ascii(field));
-        let snapshot = self.catalog.items.clone();
-        for row in &mut self.catalog.items {
-            let Some(kind) = row.get("type").and_then(Value::as_str).map(str::to_string) else {
-                continue;
-            };
-            let Some(object) = row.as_object_mut() else {
-                continue;
-            };
-            let parent_key = object.get("parentRatingKey").map(string_value);
-            let grandparent_key = object.get("grandparentRatingKey").map(string_value);
-            if kind == "season" {
-                let inherited = parent_key
-                    .as_deref()
-                    .and_then(|key| {
-                        snapshot
-                            .iter()
-                            .find(|candidate| key_of(candidate).as_deref() == Some(key))
-                    })
-                    .and_then(|parent| parent.get(field));
-                if let Some(value) = inherited {
-                    object.insert(field_parent.clone(), value.clone());
-                } else {
-                    object.remove(&field_parent);
-                }
-            } else if kind == "episode" {
-                let parent = parent_key
-                    .as_deref()
-                    .and_then(|key| {
-                        snapshot
-                            .iter()
-                            .find(|candidate| key_of(candidate).as_deref() == Some(key))
-                    })
-                    .and_then(|parent| parent.get(field));
-                let grandparent = grandparent_key
-                    .as_deref()
-                    .and_then(|key| {
-                        snapshot
-                            .iter()
-                            .find(|candidate| key_of(candidate).as_deref() == Some(key))
-                    })
-                    .and_then(|parent| parent.get(field));
-                if let Some(value) = parent {
-                    object.insert(field_parent.clone(), value.clone());
-                } else {
-                    object.remove(&field_parent);
-                }
-                if let Some(value) = grandparent {
-                    object.insert(field_grandparent.clone(), value.clone());
-                } else {
-                    object.remove(&field_grandparent);
-                }
-            }
-        }
-        let _ = owner_prefix;
+        self.cascade_artwork_from(owner_key);
     }
 
     fn route_art(
         &mut self,
         key: &str,
         row: &Value,
-        field: &str,
+        tail: &[&str],
         query: &HashMap<String, String>,
         request: &Request,
     ) -> Response {
-        if request.method == "PUT" {
-            if field != "poster" && field != "art" {
+        let mut leaf = tail[0];
+        let method = request.method.as_str();
+        // Cycle 52: the artwork read leaves take GET, HEAD, PUT and DELETE and answer
+        // the ordinary 404 to every other verb.
+        if !matches!(method, "GET" | "HEAD" | "PUT" | "DELETE" | "PATCH") {
+            return Response::error(404, "plexsim: not found");
+        }
+        // And the VERSIONED path is not the write.
+        if method == "PUT" && tail.len() >= 2 {
+            return Response::error(404, "plexsim: not found");
+        }
+        if matches!(method, "GET" | "HEAD") && !owns_artwork(row, leaf) {
+            return Response::error(404, "plexsim: not found");
+        }
+        if leaf == "thumb" && method == "DELETE" {
+            leaf = "poster";
+        }
+        if leaf == "poster" || leaf == "art" {
+            if method == "PUT" {
+                return self.set_artwork(key, if leaf == "poster" { "posters" } else { "arts" }, query);
+            }
+            // Cycle 31: `DELETE .../{poster,thumb,art}` is a 404 on 1.42.2.
+            if method == "DELETE" {
                 return Response::error(404, "plexsim: not found");
             }
-            let Some(url) = query.get("url").filter(|url| !url.is_empty()) else {
-                return Response::error(400, "plexsim: bad request");
-            };
-            let name = if field == "poster" { "thumb" } else { "art" };
-            let old = self.catalog.get(key).and_then(|row| row.get(name)).cloned();
-            let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
-                return Response::error(404, "plexsim: not found");
-            };
-            object.insert(name.to_string(), json!(url));
-            self.cascade_artwork(key, name, old, Some(json!(url)));
-            self.dirty = true;
-            self.save_if_dirty();
-            return Response::plain(200, url.as_bytes().to_vec());
         }
-        if request.method != "GET" && request.method != "HEAD" {
+        if method != "GET" && method != "HEAD" {
             return Response::error(404, "plexsim: not found");
         }
-        let source = if field == "thumb" || field == "poster" {
-            row.get("thumb")
+        let field = if leaf == "art" { "art" } else { "thumb" };
+        if row.get(field).map_or(true, Value::is_null) {
+            return Response::error(404, "plexsim: not found");
+        }
+        // The image the row points at: an uploaded one, or the placeholder.  Cycle
+        // 29: `X-Plex-Local-Asset: 1` marks an ITEM's own artwork.
+        let private = if field == "thumb" {
+            row.get("_poster_url")
         } else {
-            row.get("art")
+            row.get("_art_url").or_else(|| row.get("_poster_url"))
         };
-        if source.is_none() {
-            return Response::error(404, "plexsim: not found");
-        }
-        let key = key_of(row).unwrap_or_default();
-        let source_text = source.and_then(Value::as_str).unwrap_or_default();
-        let expected = format!("/library/metadata/{key}/");
-        if !source_text.starts_with(&expected)
-            && !source_text.starts_with("http://")
-            && !source_text.starts_with("https://")
-            && !source_text.starts_with("upload://")
-        {
-            return Response::error(404, "plexsim: not found");
-        }
-        if query.get("width").is_some() {
-            return Response::image(png_placeholder());
-        }
-        Response::image(jpeg_placeholder())
+        let mut response = match private.and_then(Value::as_str).and_then(|url| self.uploads.get(url)) {
+            Some((body, content_type)) => {
+                let mut response = Response::bytes(200, content_type.clone());
+                response.body = body.clone();
+                response
+            }
+            None if query.get("width").is_some() => Response::image(png_placeholder()),
+            None => Response::image(jpeg_placeholder()),
+        };
+        response
+            .headers
+            .push(("Accept-Ranges".to_string(), "bytes".to_string()));
+        response
+            .headers
+            .push(("X-Plex-Local-Asset".to_string(), "1".to_string()));
+        response
     }
 
     fn annotate_file_checks(&self, row: &Value) -> Value {
