@@ -1375,6 +1375,16 @@ def main():
         check("match applies the chosen guid",
               is_empty_200(status, body) and row.get("guid") == chosen["guid"],
               row.get("guid"))
+        # A matched row follows the same titleSort rule as every other row: sent only
+        # when it differs from the title.
+        check("a matched row sends titleSort only when it differs from its title",
+              "titleSort" not in row or row["titleSort"] != row.get("title"),
+              "title=%r titleSort=%r" % (row.get("title"), row.get("titleSort")))
+        # Everything after this reads `movie` as the UNMATCHED row a run without a TMDB
+        # key leaves behind -- the cycle 16 and cycle 36 checks say so in as many words.
+        # Unmatch it again so a keyed run walks the same states instead of asserting
+        # unmatched shapes on a row the match just re-identified.
+        request(base, "PUT", "/library/metadata/%s/unmatch" % movie)
     else:
         skip("match applies the chosen guid", "no candidates to choose from")
 
