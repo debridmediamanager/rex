@@ -20948,7 +20948,10 @@ fn error_document(status: u16) -> Vec<u8> {
         422 => "Unprocessable Entity",
         500 => "Internal Server Error",
         501 => "Not Implemented",
+        // `http.HTTPStatus(status).phrase`: a part whose provider link fails is a 502.
+        502 => "Bad Gateway",
         503 => "Service Unavailable",
+        504 => "Gateway Timeout",
         _ => "",
     };
     format!(
