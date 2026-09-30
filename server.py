@@ -8272,10 +8272,10 @@ class PlexSim:
             # there is one; only fall back to a generated tile when there is not.
             resolved = self.resolve_artwork(query.get("url", ""))
             if resolved in self.uploads \
-                    and not self.uploads[resolved][1].startswith("image/"):
+                    and not _image_type(self.uploads[resolved][0]).startswith("image/"):
                 # Cycle 52's rule reaches item artwork too: the transcoder DECODES what the
                 # path serves, and a 200 whose bytes are not an image is its 500. An upload
-                # whose bytes sniff as no image (served `application/octet-stream` directly)
+                # whose bytes sniff as no image (served `image/jpeg` directly all the same)
                 # was handed back through the transcoder as a 200 carrying three days of
                 # `max-age`, where the native server already answered the measured 500.
                 return ("error", 500, "plexsim: server error")
@@ -18572,11 +18572,17 @@ class PlexSim:
         # every artwork it owns re-versioning onto the same stamp. plexsim answered 200,
         # pushed its frame and kept nothing -- and filed both as an `art` upload, so a
         # theme changed the row's backdrop.
+        # Cycle 83, measured on plexscratch42 (1.42.2): a poster or backdrop upload is
+        # served `image/jpeg` WHATEVER its bytes -- PNG uploads (its own and the copy's
+        # earlier ones) and 32 bytes of plain text alike, on the candidate's `/file?url=`,
+        # the row's versioned `thumb`/`art` path and through the transcoder. plexsim
+        # sniffed the bytes and sent `image/png` or `application/octet-stream`. The
+        # transcoder still DECODES them: see `_image_type` at `/photo/:/transcode`.
         field, prefix, served = {
-            "posters": ("thumb", "upload://posters", None),
+            "posters": ("thumb", "upload://posters", "image/jpeg"),
             "themes": ("theme", "upload://themes", "audio/mpeg3"),
             "clearLogos": ("clearLogo", "upload://clearLogos", "image/jpeg"),
-        }.get(kind, ("art", "upload://art", None))
+        }.get(kind, ("art", "upload://art", "image/jpeg"))
         if row.get("type") == "season":
             prefix += "/seasons/%s" % row.get("index")
         elif row.get("type") == "episode":

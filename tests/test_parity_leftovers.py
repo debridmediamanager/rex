@@ -15,6 +15,8 @@ re-measured on a real PMS and checked here against the measured values.
   (`tests/fixtures/collection_empty_childcount.json`, plexscratch42);
 - a CLIP's `/allLeaves` and `/grandchildren` are 404s beside `/children`'s 400 (kids' clip
   5; driven on `catalog_features.json`'s trailer 201);
+- a poster upload is served `image/jpeg` whatever its bytes, and the transcoder still refuses
+  one that is no image (`tests/fixtures/upload_non_image.json`, plexscratch42);
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -27,8 +29,11 @@ import os
 import socket
 import subprocess
 import sys
+import hashlib
+import struct
 import time
 import urllib.parse
+import zlib
 
 from server_command import server_command
 
@@ -229,6 +234,46 @@ def run(port):
           {"empty": empty, "seen": seen, "member": member})
     for key in (empty, full):
         request(port, "DELETE", "/library/collections/%s" % key)
+
+    # 7. Uploads: served `image/jpeg` whatever the bytes; the transcoder decodes them.
+    with open(os.path.join(FIXTURES, "upload_non_image.json")) as handle:
+        recorded = json.load(handle)
+    text = recorded["body"].encode("ascii")
+
+    def chunk(kind, data):
+        return (struct.pack(">I", len(data)) + kind + data
+                + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff))
+    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(b"\0\0\0\0")) + chunk(b"IEND", b""))
+    seen = {}
+    for key, body in (("1007", text), ("1012", png)):
+        status, _, _ = exchange(port, "POST", "/library/metadata/%s/posters" % key, body=body,
+                                headers={"Content-Type": "application/octet-stream"})
+        thumb = (mc(port, "/library/metadata/%s" % key).get("Metadata") or [{}])[0].get("thumb")
+        candidate = "/library/metadata/%s/file?url=%s" % (
+            key, urllib.parse.quote("upload://posters/" + hashlib.sha1(body).hexdigest(), safe=""))
+        row = {"upload": status}
+        for name, path in (("direct", thumb), ("candidate", candidate),
+                           ("transcode", "/photo/:/transcode?width=100&height=100&url="
+                            + urllib.parse.quote(thumb or "", safe="")),
+                           ("ultrablur", "/services/ultrablur/colors?url="
+                            + urllib.parse.quote(thumb or "", safe=""))):
+            got, headers, raw = exchange(port, "GET", path, headers={"Accept": "*/*"})
+            row[name] = (got, headers.get("Content-Type") if name != "ultrablur" else None,
+                         len(raw) if name in ("direct", "candidate") else None)
+        seen[key] = row
+    want = recorded["answers"]
+    expected = {
+        "1007": {"upload": want["upload"], "direct": (200, "image/jpeg", len(text)),
+                 "candidate": (200, "image/jpeg", len(text)),
+                 "transcode": (want["transcode"][0], want["transcode"][1], None),
+                 "ultrablur": (want["ultrablur"], None, None)},
+        "1012": {"upload": 200, "direct": (200, "image/jpeg", len(png)),
+                 "candidate": (200, "image/jpeg", len(png)),
+                 "transcode": (200, "image/jpeg", None), "ultrablur": (200, None, None)},
+    }
+    check("an upload is served image/jpeg whatever its bytes; the transcoder refuses a non-image",
+          seen == expected, seen)
 
 
 def run_features(port):

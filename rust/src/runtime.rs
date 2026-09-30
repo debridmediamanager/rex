@@ -5410,7 +5410,8 @@ impl Runtime {
             let upload = format!("{prefix}/{}", artwork::sha1_hex(&request.body));
             self.uploads.insert(
                 upload.clone(),
-                (request.body.clone(), artwork::image_type(&request.body).to_string()),
+                // Cycle 83: served `image/jpeg` whatever the bytes, as an item's upload.
+                (request.body.clone(), "image/jpeg".to_string()),
             );
             let stamp = now();
             let reversion = |columns: &mut Map<String, Value>| {

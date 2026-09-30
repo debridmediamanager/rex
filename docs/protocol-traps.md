@@ -3133,3 +3133,12 @@ are changing; replay the client's exact request before altering behavior.
   paged or not): the 85-byte Not Found, beside `/children`'s 89-byte 400, where a movie's two are
   empty 200s. `catalog_ui.json` holds no clip, but `catalog_features.json`'s trailer 201 is one, and
   both servers answered it the movie's empty 200s.
+- **An upload is served `image/jpeg` whatever its bytes, and STORED whatever its bytes** (cycle 83,
+  plexscratch42 1.42.2, `tests/fixtures/upload_non_image.json`). `POST /library/metadata/{id}/posters`
+  with 32 bytes of plain text is the empty 200 of any upload: a selected `upload://posters/<sha1>`
+  candidate, the row re-versioned, and the text read back as `image/jpeg` (`no-cache`) on the
+  candidate's `/file?url=` and on the row's `thumb` path -- as every PNG upload on the copy reads back
+  `image/jpeg` too, through the transcoder included. Only the DECODE refuses it: `/photo/:/transcode`
+  and `/services/ultrablur/colors` over that thumb are the 500s the `85996be` rule already answered.
+  Both servers sniffed the bytes and served `image/png` or `application/octet-stream`. Playlist and
+  collection uploads take the same type here (unmeasured on a list; the oracle has one upload path).

@@ -204,15 +204,18 @@ impl Runtime {
         let Some(mut row) = self.catalog.get(key).cloned() else {
             return Response::error(404, "plexsim: not found");
         };
+        // Cycle 83, plexscratch42 (1.42.2): a poster or backdrop upload is served
+        // `image/jpeg` WHATEVER its bytes -- PNG and plain text alike, directly and
+        // through the transcoder, which still decodes them (`transcoder.rs`).
         let (field, mut prefix, served) = match kind {
-            "posters" => ("thumb", "upload://posters".to_string(), None),
+            "posters" => ("thumb", "upload://posters".to_string(), Some("image/jpeg")),
             "themes" => ("theme", "upload://themes".to_string(), Some("audio/mpeg3")),
             "clearLogos" => (
                 "clearLogo",
                 "upload://clearLogos".to_string(),
                 Some("image/jpeg"),
             ),
-            _ => ("art", "upload://art".to_string(), None),
+            _ => ("art", "upload://art".to_string(), Some("image/jpeg")),
         };
         match row.get("type").and_then(Value::as_str) {
             Some("season") => {

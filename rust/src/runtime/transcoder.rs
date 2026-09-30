@@ -183,7 +183,15 @@ impl Runtime {
             // Every refusal the direct path makes -- 400, 404, 500 -- is a 404 here.
             return Response::photo_error(404, "plexsim: not found");
         }
-        if !fetched.content_type.starts_with("image/") {
+        // Cycle 83: an upload is served `image/jpeg` whatever its bytes, and the
+        // transcoder DECODES them -- 32 bytes of text is its 500 on plexscratch42 -- so a
+        // jpeg-labelled body that is no image is refused here too. (A remote image's
+        // body is still empty at this point: it is fetched after the lock.)
+        if !fetched.content_type.starts_with("image/")
+            || (fetched.content_type == "image/jpeg"
+                && !fetched.body.is_empty()
+                && !artwork::image_type(&fetched.body).starts_with("image/"))
+        {
             self.pending_image = None;
             return Response::photo_error(500, "plexsim: server error");
         }
