@@ -160,6 +160,132 @@ def test_empty_answers(server, playlist, other):
           (status, headers.get("Content-Type"), payload[:60]))
 
 
+def test_small_shapes(server):
+    _, _, sorts = server.json("GET", "/playlists/sorts")
+    first = (sorts.get("Directory") or [{}])[0]
+    check("/playlists/sorts marks no sort active",
+          "active" not in first and "activeDirection" not in first, first)
+    _, _, found = server.json("GET", "/library/metadata/1007/subtitles?language=en")
+    check("the subtitle search container carries no allowSync",
+          list(found) == ["size", "identifier", "mediaTagPrefix", "mediaTagVersion"],
+          list(found))
+    _, _, both = server.json("GET", "/library/metadata/20001,1007")
+    check("a comma-joined read names the first row's library as an integer",
+          both.get("librarySectionID") == 2, repr(both.get("librarySectionID")))
+    _, _, listing = server.json("GET", "/library/sections/2/collections")
+    check("a show library's collection list is titled All Shows",
+          listing.get("title2") == "All Shows" and listing.get("nocache") is True,
+          (listing.get("title2"), listing.get("nocache")))
+    _, _, typed = server.json("GET", "/library/sections/2/collections?type=18")
+    check("an explicit type=18 is the /all container, without nocache",
+          "nocache" not in typed and typed.get("title2") == "All Shows",
+          (typed.get("nocache"), typed.get("title2")))
+    _, _, grid = server.json("GET", "/library/sections/1/all?type=1")
+    _, _, movies = server.json("GET", "/library/sections/1/collections?type=1")
+    check("type=1 on the collections leaf answers the grid's own rows, no Guid",
+          movies.get("Metadata") == grid.get("Metadata")
+          and not any("Guid" in row for row in rows(movies)),
+          [sorted(set(row) ^ set(other)) for row, other in zip(rows(movies), rows(grid))][:2])
+    for spelling in ("42", "042", "00042"):
+        _, _, background = server.json("GET", "/playlists?type=" + spelling)
+        row = rows(background)[0] if rows(background) else {}
+        check("/playlists?type=%s is the background list, addedAt last" % spelling,
+              list(row)[-1:] == ["addedAt"] and row.get("ratingKey") == "39999",
+              list(row))
+    _, _, empty = server.json("GET", "/playlists/all?type=42")
+    check("/playlists/all?type=42 is an empty container", empty == {"size": 0}, empty)
+
+
+def test_written_prefs_stay_on_the_detail_row(server):
+    server.call("PUT", "/library/metadata/20001/prefs?episodeSort=1&useOriginalTitle=1")
+    _, _, detail = server.json("GET", "/library/metadata/20001")
+    shown = rows(detail)[0] if rows(detail) else {}
+    check("the show's detail row carries its written settings",
+          (shown.get("episodeSort"), shown.get("useOriginalTitle")) == ("1", "1"),
+          (shown.get("episodeSort"), shown.get("useOriginalTitle")))
+    _, _, both = server.json("GET", "/library/metadata/20001,1007")
+    show = rows(both)[0] if rows(both) else {}
+    check("a comma-joined read carries no written setting",
+          "episodeSort" not in show and "useOriginalTitle" not in show, sorted(show))
+    _, _, made = server.json(
+        "POST", "/playlists?title=prefs&type=video&smart=0&uri=" + server.uri(30001))
+    playlist = rows(made)[0]["ratingKey"] if rows(made) else None
+    _, _, shows = server.json("GET", "/playlists/%s/items?type=2" % playlist)
+    show = rows(shows)[0] if rows(shows) else {}
+    check("a playlist's show row carries no written setting",
+          show.get("ratingKey") == "20001" and "episodeSort" not in show
+          and "useOriginalTitle" not in show, sorted(show))
+    _, _, made = server.json(
+        "POST", "/library/collections?type=2&title=prefs&smart=0&sectionId=2&uri="
+        + server.uri(20001))
+    collection = rows(made)[0]["ratingKey"] if rows(made) else None
+    for path in ("/library/collections/%s/children", "/library/metadata/%s/children"):
+        _, _, children = server.json("GET", path % collection)
+        show = rows(children)[0] if rows(children) else {}
+        check("%s carries no written setting" % (path % "N"),
+              show.get("ratingKey") == "20001" and "episodeSort" not in show
+              and "useOriginalTitle" not in show, sorted(show))
+    server.call("DELETE", "/playlists/%s" % playlist)
+    server.call("DELETE", "/library/collections/%s" % collection)
+    server.call("PUT", "/library/metadata/20001/prefs?episodeSort=-1&useOriginalTitle=-1")
+
+
+IMAGE = b"\x89PNG\r\n\x1a\n" + b"plexsim parity upload " * 3
+IMAGE_SHA1 = __import__("hashlib").sha1(IMAGE).hexdigest()
+
+
+def test_list_artwork(server):
+    _, _, made = server.json(
+        "POST", "/playlists?title=c36upload&type=video&smart=0&uri=" + server.uri(1007))
+    playlist = rows(made)[0]["ratingKey"] if rows(made) else None
+    _, _, made = server.json(
+        "POST", "/library/collections?title=c36uploadc&type=1&smart=0&sectionId=1&uri="
+        + server.uri(1007))
+    collection = rows(made)[0]["ratingKey"] if rows(made) else None
+    _, _, before = server.json("GET", "/library/metadata/%s/posters" % playlist)
+    first = rows(before)[0] if rows(before) else {}
+    stamp = str((rows(made) or [{}])[0].get("updatedAt"))
+    check("a playlist's composite candidate leads with key and names a real stamp",
+          list(first) == ["key", "ratingKey", "thumb", "selected"]
+          and "/composite/1700000000" not in first.get("key", ""), first)
+    for key, name in ((playlist, "playlist"), (collection, "collection")):
+        for leaf, kind in (("posters", "posters"), ("arts", "art")):
+            status, headers, payload = server.call(
+                "POST", "/library/metadata/%s/%s" % (key, leaf), body=IMAGE)
+            check("a %s takes a %s upload as an empty 200" % (name, leaf),
+                  (status, payload) == (200, b""), (status, payload[:40]))
+            _, _, listed = server.json("GET", "/library/metadata/%s/%s" % (key, leaf))
+            expected = "upload://%s/%s" % (kind, IMAGE_SHA1)
+            got = [(row.get("key"), row.get("selected")) for row in rows(listed)]
+            check("the %s's %s list ends with the upload, keyed by its sha1 and selected"
+                  % (name, leaf), got[-1:] == [(expected, True)]
+                  and all(selected is None for _, selected in got[:-1]), got)
+    _, _, row = server.json("GET", "/playlists/%s" % playlist)
+    row = rows(row)[0] if rows(row) else {}
+    check("the uploads give the playlist row its own thumb, art and Image",
+          str(row.get("thumb", "")).startswith("/library/metadata/%s/thumb/" % playlist)
+          and str(row.get("art", "")).startswith("/library/metadata/%s/art/" % playlist)
+          and [image.get("type") for image in row.get("Image") or []]
+          == ["coverPoster", "background"], row)
+    server.call("PUT", "/library/metadata/%s/poster?url=http%%3A%%2F%%2Fexample.com%%2Fa.jpg"
+                % collection)
+    _, _, listed = server.json("GET", "/library/metadata/%s/posters" % collection)
+    got = [row.get("key") for row in rows(listed)]
+    check("a picked url is the collection's selected candidate",
+          got[-1:] == ["http://example.com/a.jpg"], got)
+    _, _, listing = server.json("GET", "/library/sections/1/collections")
+    mine = [row for row in rows(listing) if row.get("ratingKey") == collection]
+    check("the section's collection list carries no Field lock list",
+          mine and "Field" not in mine[0], mine)
+    for leaf in ("clearLogos", "themes"):
+        _, _, empty = server.json("GET", "/library/metadata/%s/%s" % (playlist, leaf))
+        check("a playlist's %s is the library tag container" % leaf,
+              list(empty) == ["size", "identifier", "mediaTagPrefix", "mediaTagVersion"],
+              list(empty))
+    server.call("DELETE", "/playlists/%s" % playlist)
+    server.call("DELETE", "/library/collections/%s" % collection)
+
+
 def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
     env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
@@ -190,6 +316,9 @@ def main():
             return 1
         playlist, other = test_playlist_over_a_show(server)
         test_empty_answers(server, playlist, other)
+        test_small_shapes(server)
+        test_written_prefs_stay_on_the_detail_row(server)
+        test_list_artwork(server)
     finally:
         proc.terminate()
         try:
