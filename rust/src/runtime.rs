@@ -11149,7 +11149,9 @@ impl Runtime {
             let Ok(kind) = value.parse::<i64>() else {
                 return Response::error(500, "plexsim: unsupported playlist type");
             };
-            if kind != 15 && kind != 42 {
+            // `/playlists/all?type=42` is an ordinary empty type: the background list
+            // answers on `/playlists` alone.
+            if kind != 15 && (kind != 42 || listing_all) {
                 return Response::json(
                     200,
                     self.container(
@@ -11159,7 +11161,13 @@ impl Runtime {
                 );
             }
         }
-        if query.get("type").is_some_and(|value| value == "42") {
+        // Cycle 50: `type=42`, `042` and `00042` alike, and the row's eighth key is the
+        // server's own start time as `addedAt`.
+        if !listing_all
+            && query
+                .get("type")
+                .is_some_and(|value| matches!(value.as_str(), "42" | "042" | "00042"))
+        {
             let row = json!({
                 "ratingKey": "39999",
                 "key": "/playlists/39999/items",
@@ -11168,6 +11176,7 @@ impl Runtime {
                 "title": "Background Processing List",
                 "summary": "",
                 "playlistType": "backgroundProcessing",
+                "addedAt": self.started_at,
             });
             return Response::json(
                 200,
