@@ -336,6 +336,7 @@ python3 tests/test_parity_hubs.py           # hubs, search, voice search, autoco
 python3 tests/test_parity_playback.py       # play queues, sessions, timeline, statistics (TZ=Europe/Berlin): the oracle's values
 python3 tests/test_parity_server.py         # server-level routes, the plug-in dispatcher, resources, Live TV: the oracle's values
 python3 tests/test_parity_lists.py          # playlists, collections, list artwork, empty answers: the oracle's values
+python3 tests/test_parity_residue.py        # what a lockstep replay of the whole UI suite still found: the oracle's values
 ```
 
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
