@@ -11230,6 +11230,54 @@ plexscratch42's 500 on a 95 % timeline beat and on one identity's `select_sub_no
 200 replayed on an idle server: reference contention); `regress_p75`'s fourth check, which encodes
 a claim cycle 75 refuted.
 
+#### The UI suite with keys, and without its content skips
+
+The UI suite had only ever been green keyless: 1,960/1,960 with 12 skips. With a TMDB key and a
+real Real-Debrid token the Fix Match section really matches `movie` again, and four checks failed.
+Two were server bugs on the Fix Match path; two assumed `movie` was still unmatched.
+
+- **`rating` is the critic score, and plexsim holds none.** zen (1.42.2), GET-only, over all 3,889
+  movies of its movie section: the 2,351 `local://` rows carry no `rating`, `ratingImage`,
+  `Rating`, `audienceRating` or `Field`. Of the 1,538 `plex://` rows, 743 carry `rating`, every one
+  beside a `rottentomatoes://image.rating.*` `ratingImage` and a `critic` entry in `Rating`; none of
+  the 795 whose `Rating` entries are all `audience` ones (IMDb, TMDB, the RT audience score) does.
+  (Three carry a critic entry and still no `rating`.) No movie carries `Field` at all. So "no
+  `rating`" is not an unmatched-row rule: it holds for every row whose ratings are TMDB votes, which
+  is every row plexsim has. Load already drops it (`hierarchy.normalize_rows`); `metadata.enrich`
+  wrote the vote into `rating` again on every Fix Match, so a matched row claimed a critic score.
+- **A Fix Match row's `titleSort` came from a bare article strip** and was always set, so "Tears of
+  Steel" sorted as "Tears of Steel", which no real PMS sends. It now takes the load-time rule
+  (`hierarchy.sort_title`) and is sent only when it differs.
+- **An unmatch re-versions the poster the row owns.** Measured on plexscratch (1.43.4) by
+  unmatching matched movie 1: `updatedAt` 1790724822 → 1790724825 and `thumb`
+  `/library/metadata/1/thumb/1790724822` → `.../thumb/1790724825` in the same write. plexsim moved
+  `updatedAt` and kept the old version, breaking cycle 20's rule that an owned artwork version IS
+  the row's `updatedAt`. The UI suite caught it only once the fixture held a movie that is unmatched
+  after its last artwork write.
+
+The six content skips were mostly the suite's own writes, measured by instrumenting a run:
+
+- merges and deletes leave two movie rows by the `#` axis, so it and the collection move grammar
+  (both need three) skipped;
+- cycle 27's borrowed-artwork check clears the show's `art` before the pick check that needs a
+  season borrowing it, so no season could borrow;
+- cycle 36's repeated-`filters=` check retitles `movie` "Repeated Key" and never put it back, so
+  both search-ladder checks after it lost their three-word title;
+- no Dolby Vision row existed at all.
+
+The fixture gained three movies from zen's own library, built as `build_catalog.py` builds a row:
+ffprobe 8.1.2 over zen's part URL, `mediainfo.build_media`, `metadata.enrich` against the TMDB id
+zen matched, and zen's `plex://` guid. zen's 1.42.2 ffprobe (4.4.2) does not report the DOVI
+configuration record of an mkv, so the probes were taken with 8.1.2 through a tunnel; the
+resulting `DOVI*` attributes are field for field what zen's own analysis carries. "Trust No One:
+The Hunt for the Crypto King" and "Tuesday" are zen's profile-5 rows 967 and 1120, and
+"Vinaipayan" is zen's unmatched `local://3763`: a keyed run leaves no unmatched movie otherwise.
+
+**Measured and not acted on:** the same plexscratch unmatch dropped the movie's `art` outright,
+where the unmatch model keeps it (read off a different row); and a plexsim row unmatched with
+`/unmatch` keeps its `Rating` array and `audienceRatingImage`, which zen's never-matched `local://`
+rows do not carry. Neither is measured on the same row both ways.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

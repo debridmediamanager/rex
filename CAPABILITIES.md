@@ -1,8 +1,7 @@
 # plexsim capabilities
 
 This is the feature inventory of the current movie/TV server, based on the code
-and recorded measurements through **cycle 72**, plus the `--state` persistence
-added after it. It describes
+and recorded measurements through **cycle 82**. It describes
 implemented behavior and its prerequisites, not the current health or
 configuration of a deployed instance.
 
@@ -11,10 +10,12 @@ original media without keeping complete media files locally. Its largest limit
 is **direct play only**. Library changes last across restarts only when the
 server runs with `--state`; without it a restart reloads the catalog.
 
-Cycle 72 added no server capabilities after cycle 71. It repeated the
-compatibility audit and improved the Android test harness's sign-in recovery.
-After it, `--state` made the server's mutable state survive restarts; see
-[Persistence](#persistence).
+`--state` (after cycle 72) made the server's mutable state survive restarts; see
+[Persistence](#persistence). Cycle 73 added a server restart as the twelfth audit
+axis, and cycles 73-79 fixed what it and the repeats found: writes saved before
+they are answered, sidecar subtitle bytes, play-queue ownership and flags, the
+Shuffle toggle, and season 0 `Specials`. Cycles 80-82 found nothing further on
+any of the twelve axes, the last under python-plexapi 4.18.3.
 
 ## Client access and discovery
 
@@ -69,6 +70,8 @@ Sources: [build_catalog.py](build_catalog.py), [metadata.py](metadata.py),
 
 - Library grids and individual movie, show, season, and episode detail pages.
 - Season children, episode children, grandchildren, and all-leaf listings.
+- A season 0 titled `Specials` (localised as a real PMS localises it), and a
+  show's `seasonCount` when it holds one.
 - Collection and playlist browsing.
 - Folder views, alphabetical indexes, categories, tag axes, and people pages.
 - Technical Get Info views with media, part, and stream details.
@@ -117,8 +120,11 @@ Sources: [filters.py](filters.py), [spellfix.py](spellfix.py),
 - Audio/subtitle stream selections and per-session playback state.
 - Play queues built from individual items, shows, seasons, playlists, and
   supported filtered library selections.
-- Play Next, append, remove, reorder, clear, shuffle, and unshuffle queue actions.
-- Queue selection, versioning, and update responses used by clients.
+- Play Next, append, remove, reorder, clear, shuffle, and unshuffle queue actions,
+  including shuffling a queue nothing was added to.
+- Queue `shuffle`/`repeat` as 0/1 integer flags; any other value is refused.
+- Queue selection, versioning, and update responses used by clients, and moving
+  a queue to the client that reads it with `own=1`.
 - Provider availability checks and distinct responses for unavailable content
   versus upstream transport failures.
 
@@ -195,13 +201,14 @@ Sources: [library.py](library.py), [server.py](server.py).
 - Serve library/list composites and cached remote artwork responses.
 - Choose available TMDB image sizes for supported image requests.
 - Answer Android's background-color requests using the row's stored palette.
-- Upload subtitle records, select a subtitle track, and remove uploaded tracks.
+- Upload subtitle files, select a subtitle track, and remove uploaded tracks.
+- Serve an uploaded subtitle's bytes at its stream key, the URL Plex for Android
+  loads when a sidecar subtitle is selected.
 - Accept the measured subtitle upload formats: SRT, ASS, SSA, SMI, TXT, and PSB
   (the API format values are lowercase).
 
 The image path is not a general image-processing engine. Embedded subtitle
-extraction returns not implemented, and uploaded subtitle records are not
-currently accompanied by a working stream-byte delivery route.
+extraction returns not implemented; only uploaded subtitles have byte delivery.
 
 Source: [server.py](server.py).
 
@@ -274,7 +281,8 @@ Sources: [server.py](server.py), [xmlout.py](xmlout.py),
 
 With `--state FILE` (or `PLEXSIM_STATE`) the server saves what clients change to
 one file and restores it at start. A client write (any non-GET request, and the
-scrobble, rate, progress and timeline GETs) is on disk before it is answered, so a
+scrobble, rate, progress and timeline GETs), and a client's first request or a
+changed device name or platform, is on disk before it is answered, so a
 crash loses nothing a client was told succeeded -- a real PMS keeps writes answered a
 fraction of a second before a hard kill. Everything else is saved within about two
 seconds, every minute regardless, and on SIGTERM or Ctrl-C. It is off by default because the test suites rely
@@ -340,7 +348,7 @@ them enabled.
 | Persistence | Opt-in: without `--state`, watch state, edits, lists, library changes, uploads, preferences, and statistics last until restart. With it, a catalog rebuild keeps only view state and server-level settings. There is no PMS database, backup format, or export. Claim state and metadata caches have separate persistent files |
 | Acquisition | No built-in torrent search, magnet acquisition, continuous RD-library synchronization, or automatic discovery of new media |
 | Scanning/analysis | No complete filesystem scanner, media-analysis pipeline, generated thumbnails, intro/credits detection, or actual PMS database backups |
-| Subtitle delivery | Embedded extraction is unimplemented; uploaded subtitle records do not yet have working byte delivery |
+| Subtitle delivery | Embedded extraction is unimplemented; uploaded subtitles are served, embedded tracks are not |
 | Mobile offline downloads | Original-file downloading works; the mobile queue/add/media/decision workflow is incomplete |
 | Multi-user operation | No complete sharing, managed-user, permission-isolation, or independent per-user watch-state system |
 | Music/photos | Some section and protocol surfaces exist, but there is no complete music or photo ingestion/library backend |
@@ -361,29 +369,41 @@ written and not a live deployment health check.
 
 | Check | Recorded result |
 |---|---|
-| Cycle 71 UI surface | 1,954/1,954 passing checks, with 12 fixture skips |
-| Cycle 71 live navigation | 25/25 |
-| Cycle 71 python-plexapi conformance | 38/38 |
-| Cycle 71 playback/byte/decode suite | 5/5 |
-| Cycle 71 offline suites | All passing, as recorded in the handover |
-| Cycle 72 compatibility repeat | Zero client-visible and zero new malformed-only findings across all 11 audit axes |
-| `--state` persistence (`test_persist.py`) | 14/14; fails before the change, where the server refuses `--state` |
-| With `--state` on (2026-09-26) | UI surface 1,954/1,954 (12 skips, same as without); navigation 25/25; python-plexapi 38/38; playback 5/5 against the local instance; offline suites passing. The UI suite's end state (12 playlists, 9 collections, 97 history rows, one library deleted) was restored intact after a restart |
+| UI surface (cycles 79 and 82) | 1,960/1,960 passing checks, with 12 fixture skips |
+| Navigation (cycle 79) | 29/29 on the fixture catalog, 25/25 on the live account catalog |
+| python-plexapi conformance (cycle 79) | 38/38 |
+| Playback/byte/decode suite (cycle 79) | 5/5 |
+| Offline suites (cycle 79) | All thirteen passing |
+| `--state` persistence (`test_persist.py`) | 16/16 |
+| Cycle 82 compatibility repeat | Zero client-visible and zero new malformed-only findings across all 12 audit axes, under python-plexapi 4.18.3 |
 
-Cycle 72 repeated Web walks in English and 17 other languages, localization and
-notification checks, playback/write matrices, client identities, request and
-vocabulary inventories, discovery, and Android read/write inventories and the
-emulator walk. The driver reran the existing audit tools after the planned
-subagents were unavailable; it was not a new independent-agent review. With no
-server implementation changes, the cycle 71 suite results stand, and the audit
-regressions were repeated at their cycle 71 counts.
+The 12 UI skips are checks whose prerequisites the test fixture lacks: a TMDB
+key (two Fix Match checks), a resolvable RD link (Download), and catalog content
+such as a third movie, person tags or a Dolby Vision row.
 
-The 11-axis stopping criterion applies to the defined audit coverage. It does
+The twelve axes are the eleven audit axes of cycle 72 plus, from cycle 73, what a
+client sees across a server restart under `--state`. The axis ledger is in
+[HANDOVER.md](HANDOVER.md).
+
+The 12-axis stopping criterion applies to the defined audit coverage. It does
 not remove the limitations above or establish parity with every PMS version.
 
 Evidence: [current status and coverage](HANDOVER.md),
-[cycle 72 findings](docs/findings.md#the-seventy-second-pass--clean-on-all-eleven-axes),
+[cycle 82 record](HANDOVER.md#cycle-82--python-plexapi-4183-clean-on-all-twelve-axes),
 [test suites](tests/), [reference harness](harness/README.md).
+
+## Native Rust implementation (not on `main`)
+
+A native Rust port of the server (`rust/`) exists on the branch
+`fix/rust-ui-all`; `main` runs only the Python server described above. On that
+branch the native binary is selected for the test suites with `PLEXSIM_SERVER`,
+and on 2026-09-29 it passed the UI surface 1,960/1,960 (the same 12 skips),
+navigation 29/29, `--state` persistence 17/17, and the TLS, GDM, prefix-registry,
+regional-preference and part-byte suites.
+
+It cannot yet make HTTPS requests, so it cannot resolve real RD links or reach
+TMDB: the suites above run on a redacted catalog or a local stub. Until that is
+ported it is not a replacement for the Python server.
 
 ## Keeping this inventory current
 

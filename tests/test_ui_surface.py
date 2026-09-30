@@ -58,8 +58,6 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-from server_command import server_command
-
 GREEN = "\033[32m"
 RED = "\033[31m"
 YELLOW = "\033[33m"
@@ -1423,16 +1421,12 @@ def main():
         check("match applies the chosen guid",
               is_empty_200(status, body) and row.get("guid") == chosen["guid"],
               row.get("guid"))
-        # A matched row follows the same titleSort rule as every other row: sent only
-        # when it differs from the title.
+        # A real PMS sends titleSort only when it differs from the title. The Fix
+        # Match path stripped a leading article by its own regex and always set the
+        # field, so "Tears of Steel" came back sorting as "Tears of Steel".
         check("a matched row sends titleSort only when it differs from its title",
               "titleSort" not in row or row["titleSort"] != row.get("title"),
               "title=%r titleSort=%r" % (row.get("title"), row.get("titleSort")))
-        # Everything after this reads `movie` as the UNMATCHED row a run without a TMDB
-        # key leaves behind -- the cycle 16 and cycle 36 checks say so in as many words.
-        # Unmatch it again so a keyed run walks the same states instead of asserting
-        # unmatched shapes on a row the match just re-identified.
-        request(base, "PUT", "/library/metadata/%s/unmatch" % movie)
     else:
         skip("match applies the chosen guid", "no candidates to choose from")
 
@@ -2955,13 +2949,23 @@ def main():
     # 400s on both. The check ran three hundred lines after the unmatch above and asserted
     # the 200 the row would have given before it -- plexsim answered 200 either way, which
     # is what made it pass.
-    matched_c36s = [row_c36s.get("ratingKey") for row_c36s in
-                    (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
-                     .get("Metadata") or [])
-                    if not str((get(base, "/library/metadata/%s" % row_c36s.get("ratingKey"))[1]
-                                .get("Metadata") or [{}])[0].get("guid") or "")
-                    .startswith(("local://", "none://", "tv.plex.agents.none://"))]
-    status, body, _ = request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1" % movie)
+    #
+    # Both rows are SELECTED by their state rather than assumed: with a TMDB key the Fix
+    # Match section above leaves `movie` matched again, and the check then wrote to a
+    # matched row and called it the unmatched one. The fixture carries a `local://` row
+    # (zen's own unmatched "Vinaipayan"), so an unmatched movie exists either way.
+    guids_c36s = [(row_c36s.get("ratingKey"),
+                   str((get(base, "/library/metadata/%s" % row_c36s.get("ratingKey"))[1]
+                        .get("Metadata") or [{}])[0].get("guid") or ""))
+                  for row_c36s in (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                                   .get("Metadata") or [])]
+    agentless_c36s = ("local://", "none://", "tv.plex.agents.none://")
+    matched_c36s = [key_c36s for key_c36s, guid_c36s in guids_c36s
+                    if not guid_c36s.startswith(agentless_c36s)]
+    unmatched_key_c36s = next((key_c36s for key_c36s, guid_c36s in guids_c36s
+                               if guid_c36s.startswith(agentless_c36s)), None)
+    status, body, _ = request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1"
+                              % unmatched_key_c36s) if unmatched_key_c36s else (None, None, None)
     unmatched_c36s = (status, body)
     accepted_c36s = request(
         base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1"
@@ -2970,8 +2974,8 @@ def main():
     check("an item preference write follows the row's own Preferences block",
           unmatched_c36s[0] == 400 and other_c36s == 400
           and (accepted_c36s is None or is_empty_200(*accepted_c36s)),
-          "unmatched %s / show setting %s / matched %s"
-          % (unmatched_c36s[0], other_c36s,
+          "unmatched %s: %s / show setting %s / matched %s"
+          % (unmatched_key_c36s, unmatched_c36s[0], other_c36s,
              accepted_c36s[0] if accepted_c36s else "no matched movie left"))
     status, unwatched, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
     check("the unwatched listing answers", status == 200,
@@ -3000,10 +3004,12 @@ def main():
     # The gate is opt-in (`--token`) because the suites and probes talk to plexsim
     # without one; this check starts its OWN gated instance to prove it works.
     import subprocess
+    import sys as _sys
     gated_port = 32599
     gated = subprocess.Popen(
-        server_command("--port", gated_port, "--catalog", "tests/catalog_ui.json",
-                       "--assert-claimed", "--token", "suite-gate-token", root=REPO_ROOT),
+        [_sys.executable, "server.py", "--port", str(gated_port),
+         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
+         "--token", "suite-gate-token"],
         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -3646,12 +3652,17 @@ def main():
     titles = [r.get("title") or "" for r in sample.get("Metadata") or []]
     first = titles[0] if titles else ""
     word = first.split(" ")[0] if first else "zzz"
+    # The rows the word reaches, counted off the titles rather than assumed to be all of
+    # them: the fixture's movies no longer all begin with the same word.
+    beginning = sum(1 for title in titles
+                    if any(w.lower().startswith(word.lower()) for w in title.split()))
+    leading = sum(1 for title in titles if title.lower().startswith(word.lower()))
     cases = [
-        ("?title=%s" % quote(word), total, "a bare = on a title matches a word's beginning"),
+        ("?title=%s" % quote(word), beginning, "a bare = on a title matches a word's beginning"),
         ("?title=zzzznope", 0, "a title miss"),
         ("?title%%3D=%s" % quote(word), 0, "== is exact, so a word does not match"),
         ("?title%%3D=%s" % quote(first), 1, "== matches the whole title"),
-        ("?title%%3C=%s" % quote(word), total, "<= begins with"),
+        ("?title%%3C=%s" % quote(word), leading, "<= begins with"),
         ("?bogusfield=1", total, "an unknown field is ignored, not an error"),
     ]
     years = sorted({r.get("year") for r in sample.get("Metadata") or [] if r.get("year")})
@@ -3662,7 +3673,8 @@ def main():
             ("?year%%3C%%3C=%d" % low, 0, "<<= is strictly less"),
             ("?year%%3E=%d" % years[0], total, ">= is inclusive"),
             ("?year%%3C%%3C=%d" % high, total, "<<= the other way"),
-            ("?push=1&year=%d&or=1&year=%d&pop=1" % (low, years[0]), total,
+            ("?push=1&year=%d&or=1&year=%d&pop=1" % (low, years[0]),
+             sum(1 for r in sample.get("Metadata") or [] if r.get("year") == years[0]),
              "push/pop with or is a union"),
             ("?year=%d&and=1&year=%d" % (low, years[0]), 0, "and of two years is empty"),
         ]
@@ -3982,18 +3994,25 @@ def main():
     # Cycle 16 re-measured this and the check had to move with it: an UNMATCHED movie
     # carries no `Preferences` block AT ALL (measured on plexscratch, corroborated
     # read-only on zen, where every `local://` show advertises eight settings against a
-    # matched show's full list). `movie` has been unmatched well before this point, so
-    # the three-setting half is now asserted on a movie that is still matched and the
-    # empty half on the unmatched one. The old check asserted three settings on the
-    # unmatched row, which is the belief this cycle overturned.
-    _, _, movie_prefs = detail_of("includePreferences=1")
+    # matched show's full list). So the three-setting half is asserted on a movie that is
+    # matched and the empty half on an unmatched one, each SELECTED by its guid: `movie`
+    # was unmatched above, but with a TMDB key the Fix Match section matches it again,
+    # and the fixture's `local://` row is the unmatched movie then. The old check
+    # asserted three settings on the unmatched row, which is the belief this cycle
+    # overturned.
+    guids_prefs = [(m["ratingKey"],
+                    str(get(base, "/library/metadata/%s" % m["ratingKey"])[1]["Metadata"][0]
+                        .get("guid") or ""))
+                   for m in get(base, "/library/sections/%s/all" % movie_section)[1]
+                   .get("Metadata") or []]
+    unmatched_movie = next((key_p for key_p, guid_p in guids_prefs
+                            if guid_p.startswith(("local://", "none://",
+                                                  "tv.plex.agents.none://"))), None)
+    _, _, movie_prefs = detail_of("includePreferences=1", unmatched_movie) \
+        if unmatched_movie else (None, None, {"Preferences": {}})
     names = [s.get("id") for s in (movie_prefs.get("Preferences") or {}).get("Setting") or []]
-    matched_movie = next(
-        (m["ratingKey"] for m in get(base, "/library/sections/%s/all" % movie_section)[1]
-         .get("Metadata") or []
-         if str(m.get("ratingKey")) != str(movie)
-         and str(get(base, "/library/metadata/%s" % m["ratingKey"])[1]["Metadata"][0]
-                 .get("guid") or "").startswith("plex://")), None)
+    matched_movie = next((key_p for key_p, guid_p in guids_prefs
+                          if guid_p.startswith("plex://")), None)
     matched_names = []
     if matched_movie:
         _, _, matched_prefs = detail_of("includePreferences=1", matched_movie)
@@ -4003,9 +4022,9 @@ def main():
           matched_names == ["languageOverride", "useOriginalTitle",
                             "enableCreditsMarkerGeneration"]
           and "Preferences" not in movie_prefs,
-          "matched %s -> %s ; unmatched carries a block: %s"
+          "matched %s -> %s ; unmatched %s carries a block: %s"
           % (matched_movie, ",".join(str(n) for n in matched_names),
-             "Preferences" in movie_prefs))
+             unmatched_movie, "Preferences" in movie_prefs))
     if show:
         _, _, show_row = detail_of("includeChildren=1", show)
         children = show_row.get("Children") or {}
@@ -4711,11 +4730,27 @@ def main():
                                      % movie_section)
     up_keys = [r.get("ratingKey") for r in secondary_up.get("Metadata") or []]
     down_keys = [r.get("ratingKey") for r in secondary_down.get("Metadata") or []]
-    if len(up_keys) > 1:
-        check("a secondary sort key is honoured", up_keys == list(reversed(down_keys)),
+
+    def by_year(rows_sk):
+        # [(year, [keys in that year, in listing order])] -- the secondary key decides
+        # only WITHIN a year, so that is where the two orders must be mirror images.
+        groups_sk = []
+        for r_sk in rows_sk:
+            if groups_sk and groups_sk[-1][0] == r_sk.get("year"):
+                groups_sk[-1][1].append(r_sk.get("ratingKey"))
+            else:
+                groups_sk.append((r_sk.get("year"), [r_sk.get("ratingKey")]))
+        return groups_sk
+    up_groups = by_year(secondary_up.get("Metadata") or [])
+    down_groups = by_year(secondary_down.get("Metadata") or [])
+    if any(len(keys_sk) > 1 for _year_sk, keys_sk in up_groups):
+        check("a secondary sort key is honoured",
+              [y_sk for y_sk, _k_sk in up_groups] == [y_sk for y_sk, _k_sk in down_groups]
+              and all(k_up == list(reversed(k_down)) for (_y1, k_up), (_y2, k_down)
+                      in zip(up_groups, down_groups)),
               "%s vs %s" % (up_keys, down_keys))
     else:
-        skip("a secondary sort key is honoured", "need two rows")
+        skip("a secondary sort key is honoured", "need two rows sharing a year")
     # Measured: `random:<seed>` differs per seed and is stable for one seed --
     # which is what lets a client page through a shuffled library without
     # repeating or skipping rows.
@@ -5475,7 +5510,16 @@ def main():
     # An item that HAS related titles: earlier edits in this run replace genres, so
     # the first movie may have lost every neighbour it shared one with. Two movies
     # are given one shared genre first, so this cannot pass by comparing nothing.
-    for candidate in grid[:2]:
+    # A Related neighbour needs TWO shared tags (cycle 55), so the pair is chosen by
+    # a shared ROLE as well -- not as the grid's first two, which is an unmatched row
+    # with no roles at all whenever the run has no TMDB key to match it again.
+    roles_c5r = [(r_c5r, {str(t.get("tag")).lower() for t in
+                          ((get(base, "/library/metadata/%s" % r_c5r["ratingKey"])[1]
+                            .get("Metadata") or [{}])[0].get("Role") or [])[:4]})
+                 for r_c5r in grid]
+    pair_c5r = next(([a_c5r[0], b_c5r[0]] for i_c5r, a_c5r in enumerate(roles_c5r)
+                     for b_c5r in roles_c5r[i_c5r + 1:] if a_c5r[1] & b_c5r[1]), grid[:2])
+    for candidate in pair_c5r:
         request(base, "PUT", "/library/metadata/%s?%s=%s"
                 % (candidate["ratingKey"], quote("genre[0].tag.tag"), quote("Cycle5 Related")))
     related_item = wanted_hubs = None
@@ -6798,7 +6842,13 @@ def main():
           "leaves %d/%d, statuses %s" % (len(movie_leaves9.get("Metadata") or []), len(movie_all9),
                                          leaf_statuses9))
 
-    role9 = next((t for t in detail_of(c5_movie).get("Role") or [] if t.get("id")), {})
+    # The row is the first one with a numbered role rather than `c5_movie` itself, which
+    # is the grid's first row and an unmatched one -- no roles at all -- whenever the run
+    # has no TMDB key to match it again.
+    actor_movie9 = next((r.get("ratingKey") for r in movie_all9
+                         if any(t.get("id") for t in detail_of(r.get("ratingKey")).get("Role") or [])),
+                        c5_movie)
+    role9 = next((t for t in detail_of(actor_movie9).get("Role") or [] if t.get("id")), {})
     if role9:
         _, person9, _ = get(base, "/library/people/%s" % role9["id"])
         _, person_media9, _ = get(base, "/library/people/%s/media" % role9["id"])
@@ -6806,7 +6856,7 @@ def main():
         check("a person reads back as its tag row, and /media lists what they are on",
               person_row9.get("tag") == role9.get("tag") and person_row9.get("tagType") == 6
               and person_row9.get("filter") == "actor=%s" % role9["id"]
-              and str(c5_movie) in [str(r.get("ratingKey")) for r in person_media9.get("Metadata") or []]
+              and str(actor_movie9) in [str(r.get("ratingKey")) for r in person_media9.get("Metadata") or []]
               and person_media9.get("viewGroup") == "movie"
               and all(r.get("librarySectionID") for r in person_media9.get("Metadata") or [])
               and get(base, "/library/people/999999999")[0] == 404,
@@ -14858,8 +14908,9 @@ def main():
     open(os.path.join(web_root_c16y, "favicon.ico"), "wb").write(b"\x00" * 300)
     web_port_c16y = 32598
     web_c16y = subprocess.Popen(
-        server_command("--port", web_port_c16y, "--catalog", "tests/catalog_ui.json",
-                       "--assert-claimed", "--web-root", web_root_c16y, root=REPO_ROOT),
+        [_sys.executable, "server.py", "--port", str(web_port_c16y),
+         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
+         "--web-root", web_root_c16y],
         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -18877,8 +18928,13 @@ def main():
                        (get(base, "/library/sections/%s/all?type=1&sort=studio:desc"
                             % movie_section)[1].get("Metadata") or [])
                        if r_c22c.get("studio")]
+        # The whole listing is in descending CODEPOINT order, and the lowercase row
+        # comes first -- asserted over every row rather than as the first two, because a
+        # row an earlier check retitled (`Москва Probe`) sorts above both.
         check("a text sort compares raw codepoints, so lowercase sorts above uppercase",
-              order_c22c[:2] == ["zebra lower", "Zebra Upper"]
+              order_c22c == sorted(order_c22c, reverse=True)
+              and "zebra lower" in order_c22c and "Zebra Upper" in order_c22c
+              and order_c22c.index("zebra lower") < order_c22c.index("Zebra Upper")
               and studio_c22c[:2] == ["aaa lower", "ZZZ Upper"],
               "title:desc %s | studio:desc %s" % (order_c22c[:3], studio_c22c[:3]))
     else:
@@ -20788,9 +20844,17 @@ def main():
             body_c26h = json.loads(response_c26h.read() or b"{}")
         return (body_c26h.get("MediaContainer", {}).get("Metadata") or [{}])[0]
 
-    detail_c26h = (get(base, "/library/metadata/%s" % spare)[1].get("Metadata")
+    # A movie that HAS a summary to keep, chosen by that rather than taken to be `spare`:
+    # an unmatched row's summary is empty, and `spare` is the fixture's unmatched movie.
+    summarised_c26h = next(
+        (r_c26h.get("ratingKey") for r_c26h in
+         (get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or [])
+         if str(r_c26h.get("ratingKey")) != str(movie)
+         and (get(base, "/library/metadata/%s" % r_c26h.get("ratingKey"))[1]
+              .get("Metadata") or [{}])[0].get("summary")), spare)
+    detail_c26h = (get(base, "/library/metadata/%s" % summarised_c26h)[1].get("Metadata")
                    or [{}])[0]
-    row_c26h = decide_full_c26h(spare)
+    row_c26h = decide_full_c26h(summarised_c26h)
     check("a MOVIE's decision row keeps its summary",
           bool(detail_c26h.get("summary"))
           and row_c26h.get("summary") == detail_c26h.get("summary"),
@@ -21984,6 +22048,14 @@ def main():
     # owner's path, stamp and all. plexsim re-versioned `thumb`, `art` and `theme` onto
     # the picking row whatever it owned, so a season that borrowed the show's backdrop
     # came away claiming a path only the show serves.
+    #
+    # By the time this runs, cycle 27's own borrowed-artwork check above has cleared the
+    # SHOW's `art`, and the cascade took every season's borrowed copy with it -- so there
+    # was no borrower left and this skipped on every run. The show is given a backdrop
+    # first, the way cycle 29's check does it: an upload makes it the owner, and the
+    # seasons with none of their own borrow it again.
+    request(base, "POST", "/library/metadata/%s/arts" % show,
+            body=bytes([0x89]) + b"PNG" + bytes([13, 10, 26, 10]) + b"c27t-show")
     seasons_c27t = [s_c27t for s_c27t in
                     (get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
                      .get("Metadata") or []) if s_c27t.get("type") == "season"]
@@ -23208,6 +23280,7 @@ def main():
     # It needs `--web-root`, so it starts its own instance the way cycle 16's asset check
     # does, on its own port.
     import subprocess as subprocess_c29l
+    import sys as sys_c29l
     import tempfile as tempfile_c29l
     root_c29l = tempfile_c29l.mkdtemp(prefix="plexsim-c29l-")
     os.makedirs(os.path.join(root_c29l, "js"))
@@ -23217,15 +23290,15 @@ def main():
     # The suite's own file locates the tree: `__file__` is not in the namespace a
     # patch's check block is exec'd in (the proof driver builds it from the module's
     # public names), so the module is found by its basename instead.
-    import sys as sys_c29l
     tree_c29l = next(
         os.path.dirname(os.path.dirname(os.path.abspath(argument_c29l)))
         for argument_c29l in sys_c29l.argv
         if argument_c29l.endswith("test_ui_surface.py"))
     port_c29l = 32597
     server_c29l = subprocess_c29l.Popen(
-        server_command("--port", port_c29l, "--catalog", "tests/catalog_ui.json",
-                       "--assert-claimed", "--web-root", root_c29l, root=tree_c29l),
+        [sys_c29l.executable, "server.py", "--port", str(port_c29l),
+         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
+         "--web-root", root_c29l],
         cwd=tree_c29l,
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess_c29l.DEVNULL, stderr=subprocess_c29l.DEVNULL)
@@ -25364,9 +25437,15 @@ def main():
     # cannot be driven from a single base; the channel's half is the same one-line rule
     # and IS drivable, so it is what this check proves -- with `filters=` repeated, the
     # first value naming no event type at all.
+    # The title is put back afterwards: the two search-ladder checks below read `movie`'s
+    # title and need three words, and a two-word "Repeated Key" left behind here made
+    # both of them skip on every run.
+    title_c36b = (get(base, "/library/metadata/%s" % movie)[1]
+                  .get("Metadata") or [{}])[0].get("title") or ""
     _status_c36b, events_c36b = eventsource(
         base, lambda: request(base, "PUT", "/library/metadata/%s?title.value=Repeated%%20Key"
                               % movie), 8, "?filters=zzz&filters=timeline")
+    request(base, "PUT", "/library/metadata/%s?title.value=%s" % (movie, quote(title_c36b)))
     check("a repeated filters= on a notification channel takes the LAST value",
           any(name_c36b == "timeline" for name_c36b, _data_c36b in events_c36b),
           str([name_c36b for name_c36b, _d_c36b in events_c36b][:6]))
