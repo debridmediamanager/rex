@@ -65,7 +65,8 @@ class Server:
             conn.request(method, path, headers=merged)
             response = conn.getresponse()
             body = response.read()
-            heads = {k.lower(): v for k, v in response.getheaders()}
+            self.header_list = [(k.lower(), v) for k, v in response.getheaders()]
+            heads = dict(self.header_list)
         finally:
             conn.close()
         return response.status, heads, body
@@ -308,6 +309,44 @@ def run_browse(s):
     check("unpadded base64 is a 400", status == 400, status)
 
 
+def run_system(s):
+    # -- /clients/profiles: the reference's order, titles only, sized -----------------
+    status, _, doc = s.json("GET", "/clients/profiles")
+    titles = [row.get("title") for row in container(doc).get("Profile") or []]
+    check("/clients/profiles is sized 78", container(doc).get("size") == 78 == len(titles),
+          (container(doc).get("size"), len(titles)))
+    check("/clients/profiles lists Opera TV App before Opera and Roku-7.x before Roku",
+          "Opera" in titles and titles.index("Opera TV App") < titles.index("Opera")
+          and titles.index("Roku-7.x") < titles.index("Roku")
+          and titles.index("PlayStation 3 App") < titles.index("PlayStation 3"),
+          titles[10:32])
+    status, _, doc = s.json("GET", "/clients/profiles?type=42")
+    check("/clients/profiles?type=42 is the seven local profiles, titles only",
+          doc == {"MediaContainer": {"size": 7, "Profile": [{"title": name} for name in (
+              "Android", "iOS", "Universal Mobile", "Universal TV", "Windows Phone",
+              "Windows", "Xbox One")]}}, doc)
+
+    # -- /media/providers/metadata: served types in numeric order ---------------------
+    status, _, doc = s.json("GET", "/media/providers/metadata")
+    none = [row for row in container(doc).get("MetadataAgentProvider") or []
+            if row.get("identifier") == "tv.plex.agents.none"]
+    types = [row.get("type") for row in (none[0].get("MetadataType") if none else [])]
+    check("Personal Media's MetadataType rows are in numeric order",
+          types == [1, 2, 3, 4, 8, 13], types)
+
+    # -- paging headers -----------------------------------------------------------------
+    s.raw("GET", "/system/search?X-Plex-Container-Start=0&X-Plex-Container-Size=1")
+    names = [name for name, _ in s.header_list]
+    check("/system/search sends no paging headers even when asked to page",
+          "x-plex-container-start" not in names
+          and "x-plex-container-total-size" not in names, names)
+    s.raw("GET", "/system?X-Plex-Container-Start=0&X-Plex-Container-Size=1")
+    names = [name for name, _ in s.header_list]
+    check("a paged /system sends ONE X-Plex-Container-Start and ONE Total-Size",
+          names.count("x-plex-container-start") == 1
+          and names.count("x-plex-container-total-size") == 1, names)
+
+
 def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
     env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
@@ -330,6 +369,7 @@ def main():
         run(server)
         run_dispatcher(server)
         run_browse(server)
+        run_system(server)
     finally:
         proc.send_signal(signal.SIGTERM)
         try:

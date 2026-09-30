@@ -2742,7 +2742,9 @@ impl Runtime {
                     .get("identifier")
                     .and_then(Value::as_str)
                     .unwrap_or_default();
-                let types = media_types
+                // server.py sorts the served media types NUMERICALLY (`sorted(int(n))`);
+                // the sidecar's key order puts 13 before 2.
+                let mut numbers = media_types
                     .iter()
                     .filter(|(_, providers)| {
                         providers
@@ -23739,6 +23741,15 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
 
 fn add_paging_headers(response: &mut Response, query: &HashMap<String, String>) {
     if response.status != 200 {
+        return;
+    }
+    // A framework container (`/system`) already wrote its own pair; one of each is
+    // what the oracle sends.
+    if response
+        .headers
+        .iter()
+        .any(|(name, _)| name.eq_ignore_ascii_case("X-Plex-Container-Start"))
+    {
         return;
     }
     let Ok(document) = serde_json::from_slice::<Value>(&response.body) else {
