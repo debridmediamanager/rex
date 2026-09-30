@@ -12875,7 +12875,11 @@ impl Runtime {
                 .split('/')
                 .next()
                 .unwrap_or_default();
-            if !section_key.is_empty() && !section_key.contains('?') {
+            // Measured on kids: a leaf the server does not route under a section
+            // (`/hubs/sections/1/foo`, `/extras/x`, `/manage/x`, `/continueWatching`) is
+            // the 85-byte Not Found document. Taking the first segment alone answered the
+            // whole Recommended page for any of them.
+            if segments.len() == 3 && !section_key.is_empty() && !section_key.contains('?') {
                 return self.route_section_hubs(section_key, query);
             }
             return Response::error(404, "plexsim: not found");

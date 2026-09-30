@@ -2916,3 +2916,12 @@ are changing; replay the client's exact request before altering behavior.
   "partly watched shows vanish from the TV Unwatched filter" is not the rule to copy, and Plex Web's
   TV filter sends `unwatchedLeaves=1` (the Filter the show Meta advertises) anyway. plexsim read the
   own counter on both lists, and an episode scrobble stamps one on its season and show.
+- **`/hubs/sections/{id}/{leaf}` routes four leaves and 404s the rest.** Swept on kids (1.43.4,
+  2026-09-30) with 1,450 names under both sections: only `extras`, `manage`, `newReleases` and
+  `popular` answer (`popular` 500s on a movie library there, see the route), and every other leaf --
+  `foo`, `continueWatching` without `/items`, `extras/x`, `manage/x` -- is the 85-byte Not Found
+  document. The native server took the first segment after `sections/` and answered the section's
+  Recommended page for any of them. `/hubs/metadata/{id}/` routes `related` and `postplay` alone and
+  `/hubs/home/` `continueWatching`, `onDeck` and `recentlyAdded`; both servers already agreed.
+  (The sweep that found it showed the native answer "matching" early on: both requests had failed
+  identically with the client out of ports, which `ndiff` does not report.)
