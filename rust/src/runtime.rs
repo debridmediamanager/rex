@@ -8948,6 +8948,29 @@ impl Runtime {
                 state.insert("viewCount".to_string(), json!(count + 1));
                 state.insert("lastViewedAt".to_string(), json!(now()));
                 state.shift_remove("viewOffset");
+                // `library.scrobble`: the playlist is its own leaf, so `record_view` writes
+                // it a history row -- a stored list row has no `type` and no section.
+                if let Some(title) = self.playlists.get(&key).map(|playlist| playlist.title.clone()) {
+                    let number = self.history_counter.get() + 1;
+                    self.history_counter.set(number);
+                    let mut entry = Map::new();
+                    entry.insert(
+                        "historyKey".to_string(),
+                        json!(format!("/status/sessions/history/{number}")),
+                    );
+                    entry.insert("key".to_string(), json!(format!("/library/metadata/{key}")));
+                    entry.insert("ratingKey".to_string(), json!(key));
+                    entry.insert("librarySectionID".to_string(), json!(""));
+                    entry.insert("viewedAt".to_string(), json!(now()));
+                    entry.insert("accountID".to_string(), json!(1));
+                    entry.insert("deviceID".to_string(), json!(1));
+                    if let Some(view_type) = view_type {
+                        entry.insert("viewType".to_string(), json!(view_type));
+                    }
+                    entry.insert("_history".to_string(), json!(true));
+                    entry.insert("title".to_string(), json!(title));
+                    self.history.push(Value::Object(entry));
+                }
             } else {
                 state.shift_remove("viewCount");
                 state.shift_remove("viewOffset");
