@@ -3,7 +3,10 @@
 not copy", each re-measured on a real PMS before either server changed:
 
 - an EMPTY body is never gzipped, whatever the client offers -- driven from the official
-  client's own `PUT /updater/check` in `tests/fixtures/reference-walk.jsonl`.
+  client's own `PUT /updater/check` in `tests/fixtures/reference-walk.jsonl`;
+- `/photo/:/transcode` output caches (`max-age=259200`) whatever it transcodes, a
+  bundled resource and an uploaded poster included, where the same files read directly
+  are `no-cache`.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -14,10 +17,12 @@ import http.client
 import json
 import os
 import socket
+import struct
 import subprocess
 import sys
 import time
 import urllib.parse
+import zlib
 
 from server_command import server_command
 
@@ -118,6 +123,17 @@ def start():
     raise SystemExit("server did not start")
 
 
+def png(width, height):
+    """A real (grey) PNG, so nothing downstream can refuse it as not-an-image."""
+    def chunk(kind, data):
+        return (struct.pack(">I", len(data)) + kind + data
+                + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff))
+    rows = b"".join(b"\0" + b"\x80\x80\x80" * width for _ in range(height))
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
 # --- an empty body is never gzipped -------------------------------------------------
 
 def empty_body(port):
@@ -179,8 +195,36 @@ def empty_body(port):
           "%s %s" % (status, names))
 
 
+# --- transcoder output caches ----------------------------------------------------------
+
+def transcoder_cache(port):
+    def cache(path):
+        status, headers, _ = request(port, "GET", path)
+        return status, dict((k.lower(), v) for k, v in headers).get("cache-control")
+    # kids, 2026-09-30, repeated: 200 `max-age=259200` through the transcoder, 200
+    # `no-cache` read directly.
+    through = cache("/photo/:/transcode?width=100&height=100&url=%s"
+                    % urllib.parse.quote("/:/resources/movie.png", safe=""))
+    direct = cache("/:/resources/movie.png")
+    check("a bundled resource through /photo/:/transcode caches for three days",
+          through == (200, "max-age=259200"), through)
+    check("and the same resource read directly is no-cache", direct == (200, "no-cache"), direct)
+
+    status, _, _ = request(port, "POST", "/library/metadata/1007/posters", body=png(20, 30),
+                           headers={"Content-Type": "image/png"})
+    thumb = (mc(port, "/library/metadata/1007").get("Metadata") or [{}])[0].get("thumb")
+    through = cache("/photo/:/transcode?width=100&height=150&url=%s"
+                    % urllib.parse.quote(thumb or "", safe=""))
+    direct = cache(thumb or "/")
+    check("an UPLOADED poster through /photo/:/transcode caches for three days",
+          status == 200 and thumb and through == (200, "max-age=259200"),
+          "upload %s thumb %s -> %s" % (status, thumb, through))
+    check("and read directly it is no-cache", direct == (200, "no-cache"), direct)
+
+
 def run(port):
     empty_body(port)
+    transcoder_cache(port)
 
 
 def main():

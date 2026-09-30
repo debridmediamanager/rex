@@ -2876,3 +2876,7 @@ are changing; replay the client's exact request before altering behavior.
   zstd`) is answered `Content-Length: 0`, `Content-Type: text/html`, no encoding pair, length before
   type. The oracle compressed nothing into a 20-byte stream with `X-Plex-Content-Original-Length: 0`,
   which also moved every empty write answer, a 204 included, into the gzip family's header order.
+- **`/photo/:/transcode` output caches for three days whatever it transcodes.** A bundled resource
+  (`url=/:/resources/movie.png`) answers `max-age=259200` on kids, fresh and cached alike, and so does an
+  item's artwork; the same files read directly are `no-cache`. The oracle
+  served a resource and an uploaded poster through the transcoder with the direct path's `no-cache`.

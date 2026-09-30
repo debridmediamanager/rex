@@ -23592,8 +23592,12 @@ class Handler(BaseHTTPRequestHandler):
                 # under `/system` are served by the plug-in framework rather than by the
                 # asset handler, and neither reference names a range unit on them.
                 ranged = len(result) < 4 or result[3]
+                # Through `/photo/:/transcode` it is transcoder OUTPUT, and that caches:
+                # `url=/:/resources/movie.png` answers `max-age=259200` on kids, repeated
+                # 2026-09-30, where the same file read directly is `no-cache`.
                 self._send(200, result[1], result[2],
-                           [("Cache-Control", "no-cache"),
+                           [("Cache-Control", "max-age=259200"
+                             if self.path.startswith("/photo/:/transcode") else "no-cache"),
                             ("Accept-Ranges", "bytes" if ranged else None),
                             ("Content-Encoding", None)])
                 return
@@ -24100,6 +24104,13 @@ class Handler(BaseHTTPRequestHandler):
             # remote one is, so it carries `X-Plex-Local-Asset: 1` on the same paths --
             # this branch never sent the header at all, which the cycle's own
             # local-asset check found the moment it uploaded a poster to read one back.
+            # And through the transcoder it is transcoder output like any other image:
+            # `max-age=259200` and no local-asset mark (the branch below), where this
+            # one answered `no-cache` whatever the path.
+            if self.path.startswith("/photo/:/transcode"):
+                self._send(200, content_type, payload,
+                           [("Cache-Control", "max-age=259200"), ("Accept-Ranges", "bytes")])
+                return
             self._send(200, content_type, payload,
                        [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes")]
                        + self._local_asset_header())
