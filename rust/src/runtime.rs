@@ -12553,9 +12553,12 @@ impl Runtime {
                 if let Some(refusal) = hub_refusal(query) {
                     return refusal;
                 }
-            }
-            if let Err(status) = self.filtered_tv_leaves(query, true) {
-                return Response::error(status, "plexsim: bad request");
+                // Cycle 83: only a TV shelf runs the filters, so a movie-only page never
+                // parses them -- kids answers `resolution=1` 200 at
+                // `contentDirectoryID=1` and 500 at `=2`.
+                if let Err(status) = self.filtered_tv_leaves(query, true) {
+                    return Response::error(status, "plexsim: bad request");
+                }
             }
             return Response::json(200, self.promoted_hubs(query));
         }

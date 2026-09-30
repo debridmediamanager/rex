@@ -193,6 +193,13 @@ def run(port):
           all(whole > 0 and dovi == 0 and network == 0 and role == whole
               for whole, dovi, network, role in table.values()), table)
 
+    # 4. /hubs/promoted scoped to a movie library runs no TV filter.
+    movie_only = "/hubs/promoted?contentDirectoryID=1&pinnedContentDirectoryID=1,2&count=12"
+    got = {name: request(port, join(movie_only, name))[0]
+           for name in ("extraType=1", "parentIndex=1", "resolution=1", "art=1")}
+    check("movie-scoped /hubs/promoted answers 200 to TV-shelf refusals",
+          set(got.values()) == {200}, got)
+
 
 def main():
     process, port = start()

@@ -2994,3 +2994,6 @@ are changing; replay the client's exact request before altering behavior.
   `network` are advertised Fields and filter (`dovi=1`, `network=1` empty every consumer on
   kids), and `role` is no field at all: `role=1` answers every row where `actor=1` answers none.
   The native table lacked the first two and filtered `role` as the actor tag.
+- **A movie-scoped `/hubs/promoted` runs no filter at all** (cycle 83, kids): at
+  `contentDirectoryID=1` `resolution=1`, `extraType=1`, `parentIndex=1` and `art=1` are 200s,
+  at `=2` 500s -- only a TV shelf parses the request's filters.
