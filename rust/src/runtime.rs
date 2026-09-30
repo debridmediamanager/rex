@@ -15330,7 +15330,16 @@ impl Runtime {
         {
             return Response::error(500, "plexsim: bad sourceType");
         }
-        if pairs.iter().filter(|(name, _)| name == "type").count() > 1 {
+        // `server.py` `typed_rows`: repeated DISTINCT types AND, and a row has one type,
+        // so they select nothing -- inside the ordinary listing container.
+        let conflicting_types = pairs
+            .iter()
+            .filter(|(name, _)| name == "type")
+            .map(|(_, value)| value.as_str())
+            .collect::<HashSet<_>>()
+            .len()
+            > 1;
+        if conflicting_types && !matches!(request.method.as_str(), "GET" | "HEAD") {
             return Response::json(
                 200,
                 self.container(
@@ -15490,6 +15499,7 @@ impl Runtime {
         let rows = self
             .choose_rows(Some(section_key), type_number)
             .into_iter()
+            .filter(|_| !conflicting_types)
             .filter(|row| {
                 if type_number.is_none() {
                     matches!(
