@@ -7,6 +7,8 @@ re-measured on a real PMS and checked here against the measured values.
   (`tests/fixtures/paging_grammar.json`, kids);
 - the grammar of the two paging values: a Size is parsed whenever sent, a lone one
   included, a Start only beside a Size, as a 32-bit signed integer (the same fixture);
+- `/folder?parent=` that is not all digits (`1,2`, `-1`, `+7`) is the top folder, an empty
+  or unknown numeric one the empty list, and a REPEATED `parent` takes its last value (kids);
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -149,6 +151,22 @@ def run(port):
     for family in fixture["families"]:
         check("paging values on %s follow the measured int32 grammar" % family,
               family not in wrong, wrong.get(family))
+
+    # 3. `/folder?parent=`: kids answers `1,2` with the library's top folder (the handover's
+    #    "empty 200" was a numeric parent naming no directory), and the last `parent` wins.
+    top = [row.get("key") for row in mc(port, "/library/sections/2/folder").get("Metadata") or []]
+    answers = {}
+    for query in ("parent=1,2", "parent=1%2C2", "parent=-1", "parent=%2B7", "parent=",
+                  "parent=99999", "parent=abc&parent=99999", "parent=99999&parent=abc"):
+        body = mc(port, "/library/sections/2/folder?" + query)
+        answers[query] = (body.get("_status", 200),
+                          [row.get("key") for row in body.get("Metadata") or []])
+    expected = {query: (200, top) for query in
+                ("parent=1,2", "parent=1%2C2", "parent=-1", "parent=%2B7", "parent=99999&parent=abc")}
+    expected.update({query: (200, []) for query in
+                     ("parent=", "parent=99999", "parent=abc&parent=99999")})
+    check("a non-digit folder parent is the top folder and the last repeated parent wins",
+          top and answers == expected, {"top": top, "answers": answers})
 
 
 def main():

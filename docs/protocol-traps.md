@@ -3109,3 +3109,9 @@ are changing; replay the client's exact request before altering behavior.
   `/system/search`, a non-container root (`/butler`, `/myplex/account`), an image and an earlier
   refusal (a 404, `/:/timeline`'s 400) are untouched. Both servers read a Size only beside a Start
   and parsed with `int()` / `trim().parse::<i64>()`, so every one of these was a 200.
+- **`/folder?parent=1,2` is the TOP folder, not an empty list** (cycle 83, kids, re-measured): a
+  parent that is not all digits (`1,2`, `1%2C2`, `-1`, `+7`, ` 7`, `7,abc`) lists the library's top
+  folder; only an EMPTY parent and a numeric one naming no directory (`1`, `99999`) are the empty
+  200. A repeated `parent` takes its LAST value (`parent=7&parent=8` is folder 8, `parent=7&parent=abc`
+  the top). The handover's "empty 200 on kids, 500 on both ours" predates `69f8720`; at `27d76b2` both
+  servers already answered this, and the check pins it.
