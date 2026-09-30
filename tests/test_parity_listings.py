@@ -194,6 +194,27 @@ def run(port):
         ok, bad = has(deck, **expected)
         check("/library/sections/%s/onDeck is the listing container" % section, ok, bad)
 
+    # -- sort= ----------------------------------------------------------------------------
+    import zlib
+    keys = [r["ratingKey"] for r in mc(port, "/library/sections/1/all").get("Metadata") or []]
+    expected = sorted(keys, key=lambda k: zlib.crc32(("12345/%s" % k).encode()))
+    seeded = [r["ratingKey"] for r in
+              mc(port, "/library/sections/1/all?sort=random%3A12345").get("Metadata") or []]
+    check("a seeded random sort orders by CRC-32 of <seed>/<ratingKey>",
+          seeded == expected and len(keys) > 2, (seeded, expected))
+    backwards = [r["ratingKey"] for r in
+                 mc(port, "/library/sections/1/all?sort=random:12345:desc").get("Metadata") or []]
+    check("random:<seed>:desc is that order reversed", backwards == expected[::-1], backwards)
+    prefixed = [r["ratingKey"] for r in mc(
+        port, "/library/sections/1/all?type=1&sort=movie.random%3A99").get("Metadata") or []]
+    check("a type-prefixed random key takes a seed too",
+          prefixed == sorted(keys, key=lambda k: zlib.crc32(("99/%s" % k).encode())), prefixed)
+    episodes = mc(port, "/library/sections/2/all?type=4&sort=episode.index:desc").get("Metadata") or []
+    order = [(r.get("index"), r.get("parentIndex")) for r in episodes]
+    check("an episode sort breaks ties in broadcast order, not by title",
+          order == sorted(order, key=lambda pair: (-(pair[0] or 0), pair[1] or 0))
+          and len(order) > 3, order)
+
     # -- the tag tables ------------------------------------------------------------
     genre = mc(port, "/library/sections/1/genre/top")
     rows = genre.get("Directory") or []
