@@ -13037,7 +13037,49 @@ impl Runtime {
                         self.catalog.sections.retain(|row| {
                             string_value(row.get("key").unwrap_or(&Value::Null)) != section_key
                         });
-                        self.deleted.insert(section_key.to_string());
+                        // `server.py` `Catalog.remove_section`: the library's rows go with
+                        // it -- every row it holds and everything beneath them. Only the
+                        // section entry was removed here, so its shows, seasons and
+                        // episodes still answered 200 by key and stayed on hubs, On Deck,
+                        // Recently Added, playlists, collections and play queues. And the
+                        // SECTION key went into `deleted`, the set of deleted ROW keys a
+                        // `--state` file replays, so a restart deleted whichever row
+                        // happened to share the section's number.
+                        let mut doomed = self
+                            .catalog
+                            .items
+                            .iter()
+                            .filter(|row| {
+                                row.get("librarySectionID").map(string_value).as_deref()
+                                    == Some(section_key)
+                            })
+                            .filter_map(key_of)
+                            .collect::<HashSet<_>>();
+                        loop {
+                            let below = self
+                                .catalog
+                                .items
+                                .iter()
+                                .filter(|row| {
+                                    ["parentRatingKey", "grandparentRatingKey"].iter().any(|name| {
+                                        row.get(*name)
+                                            .map(string_value)
+                                            .is_some_and(|parent| doomed.contains(&parent))
+                                    })
+                                })
+                                .filter_map(key_of)
+                                .filter(|key| !doomed.contains(key))
+                                .collect::<Vec<_>>();
+                            if below.is_empty() {
+                                break;
+                            }
+                            doomed.extend(below);
+                        }
+                        self.catalog
+                            .items
+                            .retain(|row| key_of(row).is_none_or(|key| !doomed.contains(&key)));
+                        self.catalog.rebuild_index();
+                        self.deleted.extend(doomed);
                         self.touch_gdm();
                         self.catalog.document.insert(
                             "sections".to_string(),

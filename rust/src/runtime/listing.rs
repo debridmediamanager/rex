@@ -234,9 +234,12 @@ impl Runtime {
         if type_number == Some(18) {
             // Cycle 14: every collection the SERVER holds, across libraries, in title
             // order (`server.py` takes no other parameter here).
+            // `server.py` walks the collections of each LIBRARY, so a deleted
+            // library's collections are not listed.
             let rows = self
                 .collections
                 .values()
+                .filter(|collection| self.section(&collection.section).is_some())
                 .map(|collection| self.dynamic_collection_row(collection))
                 .collect::<Vec<_>>();
             let rows = match self.sort_rows(
@@ -293,7 +296,11 @@ impl Runtime {
         if type_number.is_none() {
             // Cycle 25: the UNTYPED query lists collections as well, sorted into the
             // rest by ratingKey.
-            source.extend(self.collections.values().map(|collection| {
+            source.extend(self.collections.values().filter(|collection| {
+                // Per library, as `server.py` walks them: a deleted library's
+                // collections are not rows here.
+                self.section(&collection.section).is_some()
+            }).map(|collection| {
                 let mut row = self.dynamic_collection_row(collection);
                 if let Some(object) = row.as_object_mut() {
                     object.insert("_collectionRow".to_string(), json!(true));

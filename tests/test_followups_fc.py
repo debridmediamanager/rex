@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Three HANDOVER §2a follow-ups, each against its measurement:
+"""Four HANDOVER §2a follow-ups, each against its measurement:
 
 - a collection built from a SECTION uri holds the section's rows at the collection's own
   level (`type=2` the shows, `3` the seasons, `4` the episodes), never the episodes a play
@@ -10,6 +10,9 @@
   (`tests/fixtures/paging_header_precedence.json`, kids, zen and plexscratch42);
 - the GDM advertisement's `Updated-At` moves to the second of a library create, edit and
   delete, and not with a `FriendlyName` write (cycle 50, docs/findings.md);
+- a deleted library's rows are gone from every reader: 404 by key, and absent from
+  listings, hubs, On Deck, Recently Added, search, playlists, collections and play queues.
+
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
 
@@ -370,6 +373,73 @@ def gdm():
         stop(process)
 
 
+# -- 4. a deleted library's rows -----------------------------------------------------
+
+def deleted_library(port, show, seasons, episodes, movie, show_title):
+    machine = mc(port, "/identity").get("machineIdentifier")
+
+    def uri(path):
+        return urllib.parse.quote("server://%s/com.plexapp.plugins.library%s" % (machine, path),
+                                  safe="")
+
+    request(port, "GET", "/:/timeline?ratingKey=%s&key=%%2Flibrary%%2Fmetadata%%2F%s"
+            "&state=stopped&time=60000&duration=3600000"
+            "&identifier=com.plexapp.plugins.library" % (episodes[1], episodes[1]))
+    playlist = keys(mc(port, "/playlists?type=video&title=fcdel&smart=0&uri=%s"
+                       % uri("/library/metadata/%s,%s" % (episodes[0], movie)), "POST"))[0]
+    collection = keys(mc(port, "/library/collections?type=2&title=fcdel&smart=0&sectionId=2"
+                         "&uri=%s" % uri("/library/metadata/%s" % show), "POST"))[0]
+    queue = mc(port, "/playQueues?type=video&uri=%s" % uri("/library/metadata/%s" % show),
+               "POST").get("playQueueID")
+    before = {
+        "queue": len(mc(port, "/playQueues/%s" % queue).get("Metadata") or []),
+        "all": keys(mc(port, "/library/all")),
+        "playlist": keys(mc(port, "/playlists/%s/items" % playlist)),
+    }
+    check("before the delete the library's rows are queued, listed and in a playlist",
+          before["queue"] == len(episodes) and show in before["all"]
+          and collection in before["all"] and episodes[0] in before["playlist"], before)
+
+    status = request(port, "DELETE", "/library/sections/2")[0]
+    check("DELETE /library/sections/2 is a 200", status == 200, "HTTP %s" % status)
+    gone = [show] + seasons + episodes
+    answers = {}
+    for key in [show, seasons[0], episodes[0]]:
+        for leaf in ("", "/children", "/allLeaves", "/tree"):
+            answers["/library/metadata/%s%s" % (key, leaf)] = request(
+                port, "GET", "/library/metadata/%s%s" % (key, leaf))[0]
+    check("every row of the deleted library is a 404 by key, with its children and leaves",
+          set(answers.values()) == {404}, answers)
+    check("the other library's rows still answer",
+          request(port, "GET", "/library/metadata/%s" % movie)[0] == 200)
+    seen = {}
+    for path in ("/hubs", "/hubs/sections/1", "/library/onDeck", "/library/recentlyAdded",
+                 "/hubs/home/onDeck", "/hubs/continueWatching", "/library/all",
+                 "/library/all?type=4", "/hubs/search?query=%s" % urllib.parse.quote(show_title),
+                 "/library/search?query=%s" % urllib.parse.quote(show_title)):
+        box = mc(port, path)
+        rows = [str(m.get("ratingKey")) for hub in box.get("Hub") or [] for m in hub.get("Metadata") or []]
+        rows += [str(m.get("ratingKey")) for m in box.get("Metadata") or []]
+        rows += [str(m.get("ratingKey")) for m in box.get("SearchResult") or []]
+        rows += [str((m.get("Metadata") or {}).get("ratingKey")) for m in box.get("SearchResult") or []]
+        seen[path] = sorted(set(rows) & set(gone))
+    check("no hub, On Deck, Recently Added, search or /library/all row names a deleted row",
+          not any(seen.values()), seen)
+    items = mc(port, "/playlists/%s/items" % playlist)
+    row = (mc(port, "/playlists/%s" % playlist).get("Metadata") or [{}])[0]
+    check("a playlist drops the deleted library's rows, and its leafCount follows",
+          keys(items) == [movie] and row.get("leafCount") == 1,
+          (keys(items), row.get("leafCount")))
+    check("a collection of the deleted library lists nothing and is off /library/all",
+          keys(mc(port, "/library/collections/%s/children" % collection)) == []
+          and collection not in keys(mc(port, "/library/all"))
+          and collection not in keys(mc(port, "/library/all?type=18")),
+          keys(mc(port, "/library/collections/%s/children" % collection)))
+    after = mc(port, "/playQueues/%s" % queue)
+    check("a play queue over the deleted show holds nothing",
+          not after.get("Metadata"), len(after.get("Metadata") or []))
+
+
 def main():
     process, port = start()
     try:
@@ -401,6 +471,8 @@ def main():
         with open(os.path.join(FIXTURES, "paging_header_precedence.json")) as handle:
             paging(port, json.load(handle), show, movie, made[0], playlist)
 
+        deleted_library(port, show, [key for key in seasons if key not in episodes],
+                        episodes, movie, show_title)
     finally:
         stop(process)
     gdm()
