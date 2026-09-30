@@ -15575,11 +15575,9 @@ impl Runtime {
                                     };
                                     return Response {
                                         status: 200,
-                                        content_type: if raw_id.ends_with(".vtt") {
-                                            "text/vtt".to_string()
-                                        } else {
-                                            "text/plain".to_string()
-                                        },
+                                        // Cycle 74 (`server.py` "sidecar"): the file's
+                                        // bytes as `text/html`, `.srt` and `.vtt` alike.
+                                        content_type: "text/html".to_string(),
                                         body: content.as_bytes().to_vec(),
                                         headers: Vec::new(),
                                         close: false,
