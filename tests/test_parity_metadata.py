@@ -164,6 +164,30 @@ def run(server):
           and "fr:Fran" not in audio,
           (tree[0].get("originallyAvailableAt"), audio[:80]))
 
+    # -- includeAlternates: {key, source} blocks on every FULL row ------------------
+    movie = (server.rows("/library/metadata/1007?includeAlternates=1") or [{}])[0]
+    blocks = [movie.get(name) for name in ("Thumb", "Art", "Theme")]
+    check("includeAlternates inlines {key, source} alone, and no Theme",
+          blocks[0] and blocks[1] and blocks[2] is None
+          and all(sorted(entry) == ["key", "source"] and entry["source"] == "tmdb"
+                  for block in blocks[:2] for entry in block), blocks)
+    server.call("GET", "/:/timeline?ratingKey=1007&key=%2Flibrary%2Fmetadata%2F1007"
+                       "&state=stopped&time=90000&duration=600000")
+    deck = server.rows("/library/onDeck?includeAlternates=1")
+    show = (server.rows("/library/metadata/20001?includeAlternates=1&includeChildren=1")
+            or [{}])[0]
+    seasons = (show.get("Children") or {}).get("Metadata") or []
+    related = server.get("/library/metadata/1007/related?includeAlternates=1")[1] or {}
+    shelf = [row for hub in related.get("Hub") or [] for row in hub.get("Metadata") or []]
+    grid = server.rows("/library/sections/1/all?includeAlternates=1")
+    check("and on /library/onDeck, a detail row's Children and related, not on a grid",
+          deck and all(row.get("Thumb") for row in deck)
+          and seasons and all(row.get("Thumb") and "Art" not in row for row in seasons)
+          and shelf and all(row.get("Thumb") for row in shelf)
+          and grid and not any(row.get("Thumb") for row in grid),
+          ([bool(row.get("Thumb")) for row in deck], [bool(row.get("Thumb")) for row in seasons],
+           [bool(row.get("Thumb")) for row in shelf], [bool(row.get("Thumb")) for row in grid]))
+
     # -- a person's media list is the light grid row ------------------------------
     media = server.rows("/library/people/837308/media")
     check("a person's media rows keep Media and cap each tag family like a grid",
