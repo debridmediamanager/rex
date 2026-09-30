@@ -354,6 +354,12 @@ fn header_family(
     range_container: bool,
 ) -> &'static [&'static str] {
     let has = |name: &str| value_of(lines, name).is_some();
+    // Cycle 74 (`_sidecar_answer`): an uploaded sidecar's bytes write their length before
+    // their type, the error family's order (plexscratch42). A 200 under `/library/streams/`
+    // is only ever that sidecar.
+    if status == 200 && path.starts_with("/library/streams/") {
+        return ORDER_ERROR;
+    }
     if has("etag") || has("content-disposition") {
         return ORDER_PART;
     }
@@ -679,6 +685,9 @@ pub(super) fn reason_phrase(status: u16) -> &'static str {
         409 => "Conflict",
         416 => "Requested Range Not Satisfiable",
         500 => "Internal Server Error",
+        // Measured on kids (2026-09-30): an embedded stream's `/library/streams/{id}` is
+        // `HTTP/1.1 501 Not Implemented`; the phrase was missing here, so it went out empty.
+        501 => "Not Implemented",
         502 => "Bad Gateway",
         503 => "Service Unavailable",
         _ => "",

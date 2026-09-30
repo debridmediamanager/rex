@@ -6,7 +6,9 @@ lockstep and neutralising what is random or per-run by measurement.
 Each check asserts the MEASURED answer, not the other server's:
 
 - a refusal at `/system/agents` orders its length before its type (kids, 1.43.4:
-  `?mediaType=abc` is the 89-byte 400), although the container there is type-first.
+  `?mediaType=abc` is the 89-byte 400), although the container there is type-first;
+- an embedded stream's 501 carries the reason phrase `Not Implemented` (kids), and an
+  uploaded sidecar's 200 orders its length before its type (plexscratch42, cycle 74).
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -124,6 +126,33 @@ def run(port):
     check("... while the /system/agents container stays type-first",
           status == 200 and order(names)[:3] == ["X-Plex-Protocol", "Content-Type",
                                                  "Content-Length"], (status, names))
+
+    # An EMBEDDED stream (1007's first) is the 501, measured on kids for the bare id,
+    # `.srt` and `.vtt` alike: `HTTP/1.1 501 Not Implemented`, 97 bytes, length first.
+    for suffix in ("", ".srt", ".vtt"):
+        status, reason, names, _, body = raw(port, "GET", "/library/streams/1007001" + suffix)
+        check("an embedded stream%s is `501 Not Implemented`, length before type" % suffix,
+              status == 501 and reason == "Not Implemented" and order(names) == ERROR_ORDER
+              and len(body) == 97, (status, reason, names, len(body)))
+    # An uploaded sidecar's key serves its bytes as a 200 `text/html` with its length
+    # before its type (cycle 74, plexscratch42), `.srt` and `autoAdjustSubtitle=` alike.
+    srt = b"1\n00:00:00,000 --> 00:00:02,000\nresidue\n\n"
+    status, _, _, _, _ = raw(port, "POST", "/library/metadata/1007/subtitles?title=ra.srt&format=srt",
+                             body=srt)
+    detail = json.loads(raw(port, "GET", "/library/metadata/1007")[4])
+    sidecar = [stream for media in detail["MediaContainer"]["Metadata"][0].get("Media", [])
+               for part in media.get("Part", []) for stream in part.get("Stream", [])
+               if stream.get("key") and stream.get("streamType") == 3]
+    check("the subtitle upload lands a sidecar with a key", status == 200 and sidecar,
+          (status, sidecar))
+    if sidecar:
+        key = sidecar[-1]["key"]
+        for tail in ("", "?autoAdjustSubtitle=1"):
+            status, reason, names, values, body = raw(port, "GET", key + tail)
+            check("a sidecar read%s is the 200 text/html with its length before its type" % tail,
+                  status == 200 and reason == "OK" and body == srt
+                  and values.get("content-type") == "text/html" and order(names) == ERROR_ORDER,
+                  (status, reason, names, body[:40]))
 
 
 def main():

@@ -3060,3 +3060,7 @@ are changing; replay the client's exact request before altering behavior.
   `X-Plex-Protocol, Content-Length, Content-Type, Connection, Cache-Control, Date` -- the refusal
   family -- while its 200 container is type-first. Both servers sent the container order to every
   status there, the PATCH 500 included.
+- **An embedded stream's 501 has a reason phrase.** Measured on kids (1.43.4, 2026-09-30):
+  `GET /library/streams/{id}` (and `.srt`, `.vtt`) of a stream the server holds is `HTTP/1.1 501
+  Not Implemented`, 97 bytes, length before type. The native server wrote an EMPTY phrase for 501,
+  and ordered an uploaded sidecar's 200 type-first where cycle 74 measured it length-first.
