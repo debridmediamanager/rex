@@ -230,6 +230,13 @@ def run(port):
     check("a prefixed group= reads the season's index: one episode per season",
           len(grouped) == len(seasons) == 4, [r.get("ratingKey") for r in grouped])
 
+    # -- excludeElements=Part -------------------------------------------------------------
+    rows = mc(port, "/library/sections/1/all?excludeElements=Part").get("Metadata") or []
+    counts = [m.get("partCount") for r in rows for m in r.get("Media") or []]
+    check("excludeElements=Part counts each Media's Parts on a section listing",
+          counts and all(count == 1 for count in counts)
+          and not any("Part" in m for r in rows for m in r.get("Media") or []), counts)
+
     # -- the tag tables ------------------------------------------------------------
     genre = mc(port, "/library/sections/1/genre/top")
     rows = genre.get("Directory") or []
