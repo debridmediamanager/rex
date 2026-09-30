@@ -299,6 +299,12 @@ def write_checks(srv):
             srv.raw("/playlists/%s" % row.get("ratingKey"), "DELETE")
     check("Recent Playlists made in one second keep the title order",
           order == ["alpha list", "mid list", "zeta list"], order)
+    hubs = srv.container("/hubs/search?query=alpha").get("Hub") or []
+    rows = [row for hub in hubs if hub.get("hubIdentifier") == "playlist"
+            for row in hub.get("Metadata") or []]
+    check("a playlist search hit keeps score LAST (no attribute table to lead it)",
+          rows and list(rows[0])[0] == "ratingKey" and list(rows[0])[-1] == "score",
+          [list(row) for row in rows[:1]])
     # -- the in-library search box lists episodes in (show, season, index) order -------
     srv.raw("/library/metadata/30001?index.value=41", "PUT")
     rows = srv.container("/library/sections/2/search?type=4&query=e").get("Metadata") or []
