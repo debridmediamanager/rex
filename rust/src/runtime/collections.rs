@@ -61,17 +61,18 @@ impl Runtime {
     /// sort or `0` is RELEASE DATE, `2` the custom order a move writes, and any other
     /// plain integer -- `1`, `3`, `-1`, `01`, `+1` -- ALPHABETICAL; `1.5`, ` 1`, `abc`
     /// and an empty value fall back to release date. A smart collection's members are
-    /// its query, re-run on every read.
+    /// its query, re-run on every read, in the query's own order: `collectionSort`
+    /// orders a PLAIN collection only (`collection_children`), so a smart one never
+    /// went through the release-date sort that put an undated row first.
     pub(super) fn collection_members(&self, collection: &Collection) -> Vec<Value> {
-        let rows = if collection.smart {
-            self.rows_for_uri(&collection.uri)
-        } else {
-            collection
-                .items
-                .iter()
-                .filter_map(|key| self.catalog.get(key).cloned())
-                .collect()
-        };
+        if collection.smart {
+            return self.rows_for_uri(&collection.uri);
+        }
+        let rows: Vec<Value> = collection
+            .items
+            .iter()
+            .filter_map(|key| self.catalog.get(key).cloned())
+            .collect();
         let sort = collection
             .prefs
             .get("collectionSort")
