@@ -10693,9 +10693,15 @@ class PlexSim:
                 owners.append(owner)
             rows = owners
             extra.pop("mixedParents", None)
-        if leaf == "recentlyViewedShows" and not self.page_window(rows, query)[1]:
+        if leaf == "recentlyViewedShows" and "X-Plex-Container-Size" not in (query or {}):
+            # Cycle 83, measured on zen (509 shows) and kids: with NO Size sent this list
+            # is a DEFAULT window -- the first 25 rows at `offset` 0 with the full
+            # `totalSize`, and a lone Start is ignored. Once a Size is sent the shared
+            # rule applies, so a lone `Size=3` is all 509 rows with neither field, where
+            # plexsim still claimed `offset` 0 and a total.
             extra["offset"] = 0
             extra["totalSize"] = len(rows)
+            rows = rows[:25]
         return self.listing_container(section_id, section, [_listing_row(r) for r in rows],
                                       view_group=view_group, query=query, **extra)
 

@@ -3008,3 +3008,10 @@ are changing; replay the client's exact request before altering behavior.
 - **`includeGuids=1` never gives an unmatched `local://` row a Guid** -- on the grid, on
   `/grandchildren` and on a hub page alike (cycle 83, kids' episodes 12-14), where a matched row
   with no external ids gets the one-entry list. `/grandchildren` honours the option at all.
+- **`/recentlyViewedShows` is a DEFAULT window** (cycle 83, zen's 509 shows and kids): with no
+  `X-Plex-Container-Size` it answers the first 25 rows at `offset` 0 with the full `totalSize`, a
+  lone Start ignored; once a Size is sent the shared rule applies (both page, a lone Size or a
+  negative value is every row with neither field). `/folder` follows the shared rule plainly.
+  Measured beside it and not fixed here (the shared reader): a NON-INTEGER lone Size
+  (`X-Plex-Container-Size=abc`) is a 500 on kids and zen on the grid, `/folder` and
+  `/recentlyViewedShows`, where both servers ignore it.

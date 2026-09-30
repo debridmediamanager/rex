@@ -256,6 +256,32 @@ def run(port):
     check("...and carries no Guid without it",
           not any("Guid" in row for row in (mc or {}).get("Metadata") or []), mc)
 
+    # 8. Query-parameter paging on /folder and /recentlyViewedShows.
+    def window(path):
+        status, mc = request(port, path)
+        mc = mc or {}
+        return (status, mc.get("size"), mc.get("offset"), mc.get("totalSize"))
+    folder = "/library/sections/1/folder"
+    got = {query: window(join(folder, query)) for query in
+           ("X-Plex-Container-Size=1", "X-Plex-Container-Start=1&X-Plex-Container-Size=1",
+            "X-Plex-Container-Start=abc&X-Plex-Container-Size=2")}
+    check("/folder pages only on Start AND Size as query parameters",
+          got == {"X-Plex-Container-Size=1": (200, 6, None, None),
+                  "X-Plex-Container-Start=1&X-Plex-Container-Size=1": (200, 1, 1, 6),
+                  "X-Plex-Container-Start=abc&X-Plex-Container-Size=2":
+                      (500, None, None, None)}, got)
+    shows = "/library/sections/2/recentlyViewedShows"
+    got = {query: window(join(shows, query) if query else shows) for query in
+           ("", "X-Plex-Container-Size=1", "X-Plex-Container-Start=1",
+            "X-Plex-Container-Start=1&X-Plex-Container-Size=1",
+            "X-Plex-Container-Start=1&X-Plex-Container-Size=abc")}
+    check("/recentlyViewedShows: a default window, a lone Size unpaged, a lone Start ignored",
+          got == {"": (200, 1, 0, 1), "X-Plex-Container-Size=1": (200, 1, None, None),
+                  "X-Plex-Container-Start=1": (200, 1, 0, 1),
+                  "X-Plex-Container-Start=1&X-Plex-Container-Size=1": (200, 0, 1, 1),
+                  "X-Plex-Container-Start=1&X-Plex-Container-Size=abc":
+                      (500, None, None, None)}, got)
+
 
 def main():
     process, port = start()

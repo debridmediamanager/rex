@@ -13690,21 +13690,28 @@ impl Runtime {
                         } else {
                             fields.insert("viewGroup".to_string(), json!("movie"));
                         }
-                        let total = rows.len();
-                        let start = query
-                            .get("X-Plex-Container-Start")
-                            .and_then(|value| value.parse::<usize>().ok())
-                            .unwrap_or(0);
-                        let size = query
-                            .get("X-Plex-Container-Size")
-                            .and_then(|value| value.parse::<usize>().ok());
-                        let rows = if let Some(size) = size {
-                            rows.into_iter().skip(start).take(size).collect::<Vec<_>>()
+                        // Cycle 83, measured on zen (509 shows) and kids: with NO Size
+                        // sent this list is a DEFAULT window -- the first 25 rows,
+                        // `offset` 0 and the full `totalSize`, a lone Start ignored --
+                        // and once a Size is sent the shared rule applies: Start AND
+                        // Size page, a lone Size (or a negative value) is every row with
+                        // neither field, and a bad value beside a Size is a 500.
+                        let (rows, start, total) = if query.contains_key("X-Plex-Container-Size") {
+                            match page_window(rows, query) {
+                                Ok((page, true, start, total)) => (page, Some(start), total),
+                                Ok((page, false, _, total)) => (page, None, total),
+                                Err(status) => {
+                                    return Response::error(status, "plexsim: bad request")
+                                }
+                            }
                         } else {
-                            rows
+                            let total = rows.len();
+                            (rows.into_iter().take(25).collect::<Vec<_>>(), Some(0), total)
                         };
-                        fields.insert("offset".to_string(), json!(start));
-                        fields.insert("totalSize".to_string(), json!(total));
+                        if let Some(start) = start {
+                            fields.insert("offset".to_string(), json!(start));
+                            fields.insert("totalSize".to_string(), json!(total));
+                        }
                         fields.insert("Metadata".to_string(), Value::Array(rows));
                     } else {
                         fields.insert("Metadata".to_string(), Value::Array(rows));
@@ -16142,18 +16149,13 @@ impl Runtime {
                 rows.push(projected);
             }
         }
-        let total = rows.len();
-        let start = query
-            .get("X-Plex-Container-Start")
-            .and_then(|value| value.parse::<usize>().ok())
-            .unwrap_or(0);
-        let size = query
-            .get("X-Plex-Container-Size")
-            .and_then(|value| value.parse::<usize>().ok());
-        let page = if let Some(size) = size {
-            rows.into_iter().skip(start).take(size).collect::<Vec<_>>()
-        } else {
-            rows
+        // Cycle 83, measured on kids: this list pages by the shared rule -- only when
+        // Start AND Size are both sent (`Size=1` alone is every row, no offset and no
+        // totalSize; a bad Start beside a Size is a 500) -- where it paged on a Size
+        // alone and read an unparseable value as 0.
+        let (page, paged, start, total) = match page_window(rows, query) {
+            Ok(window) => window,
+            Err(status) => return Response::error(status, "plexsim: bad request"),
         };
         let mut fields = Map::from_iter([
             ("Metadata".to_string(), Value::Array(page)),
@@ -16171,7 +16173,7 @@ impl Runtime {
                 section.get("uuid").cloned().unwrap_or(Value::Null),
             ),
         ]);
-        if size.is_some() {
+        if paged {
             fields.insert("offset".to_string(), json!(start));
             fields.insert("totalSize".to_string(), json!(total));
         }
