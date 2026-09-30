@@ -3167,3 +3167,8 @@ are changing; replay the client's exact request before altering behavior.
   play-queue create and add flag nothing: on a quiet server both were answered and then gone after
   an immediate SIGKILL, and under load 1 in 5 kills lost one that no other write's save had
   carried (2026-09-30). `Handler.send_response` in the oracle saves every client write.
+- **A write's save must not hold the other clients.** The native server serialised, wrote and
+  fsynced the whole state file under its one runtime lock, so with eight clients writing a ninth
+  client's `/identity` had a median of 20-23 ms (the oracle, saving outside its request lock:
+  0.5 ms), and 32 loaded clients saw it take up to 0.78 s. The snapshot is still taken under the
+  lock; the file is written after it, in snapshot order, before the status line (2026-09-30).

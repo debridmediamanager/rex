@@ -441,6 +441,10 @@ pub struct Runtime {
     resource_sample: Option<(i64, f64)>,
     resource_series: Vec<Value>,
     pub dirty: bool,
+    /// The order snapshots of the state are taken in, and the one a request took that
+    /// its connection writes after releasing the runtime lock (`write_snapshot`).
+    save_serial: u64,
+    pending_save: Option<StateSnapshot>,
     /// Events are retained by sequence so an eventsource/websocket subscriber
     /// can take a snapshot without a mutable callback into the route thread.
     /// This is bounded in `push_event`; it is runtime state, never persisted.
@@ -649,6 +653,8 @@ impl Runtime {
             resource_sample: None,
             resource_series: Vec::new(),
             dirty: false,
+            save_serial: 0,
+            pending_save: None,
             events: Vec::new(),
             section_timeline: HashMap::new(),
             events_dropped: 0,
@@ -1121,8 +1127,17 @@ impl Runtime {
     }
 
     pub fn save_state(&mut self) -> Result<(), String> {
+        match self.snapshot_state()? {
+            Some(snapshot) => write_snapshot(&snapshot),
+            None => Ok(()),
+        }
+    }
+
+    /// The state as the file will hold it, taken under the runtime lock; writing it is
+    /// `write_snapshot`'s, which needs no lock but the file's own.
+    fn snapshot_state(&mut self) -> Result<Option<StateSnapshot>, String> {
         let Some(path) = self.state_path.clone() else {
-            return Ok(());
+            return Ok(None);
         };
         let mut view = Map::new();
         for item in &self.catalog.items {
@@ -1188,21 +1203,14 @@ impl Runtime {
             "bandwidthBytes": self.bandwidth_bytes,
             "byteBuckets": self.byte_buckets.iter().map(|((device, lan), seconds)| json!([device, lan, seconds])).collect::<Vec<_>>(),
         });
-        let text = serde_json::to_vec_pretty(&state).map_err(|e| e.to_string())?;
-        // `Store.save`: `<path>.tmp`, fsynced, then `os.replace` -- and an OSError's
-        // text as Python writes it, which is what the `state not saved` line carries.
-        let tmp = PathBuf::from(format!("{}.tmp", path.display()));
-        let written = fs::File::create(&tmp).and_then(|mut handle| {
-            handle.write_all(&text)?;
-            handle.flush()?;
-            handle.sync_all()
-        });
-        written.map_err(|e| format!("{}: '{}'", py_os_error(&e), tmp.display()))?;
-        fs::rename(&tmp, &path).map_err(|e| {
-            format!("{}: '{}' -> '{}'", py_os_error(&e), tmp.display(), path.display())
-        })?;
+        let bytes = serde_json::to_vec_pretty(&state).map_err(|e| e.to_string())?;
         self.dirty = false;
-        Ok(())
+        self.save_serial += 1;
+        Ok(Some(StateSnapshot {
+            serial: self.save_serial,
+            path,
+            bytes,
+        }))
     }
 
     fn section(&self, key: &str) -> Option<&Value> {
@@ -3642,13 +3650,23 @@ impl Runtime {
         self.catalog.get_mut(key)
     }
 
+    /// Inside a request: snapshot now and leave the file write to the connection,
+    /// which does it after releasing the runtime lock and before the status line.
     fn save_if_dirty(&mut self) {
         if self.dirty && self.state_path.is_some() {
-            // `except OSError as error: logger.error("state not saved: %s", error)`.
-            if let Err(error) = self.save_state() {
-                error!("state not saved: {error}");
+            match self.snapshot_state() {
+                // A later snapshot holds everything an earlier one did.
+                Ok(snapshot) => self.pending_save = snapshot,
+                // `except OSError as error: logger.error("state not saved: %s", error)`.
+                Err(error) => error!("state not saved: {error}"),
             }
         }
+    }
+
+    /// Outside a request (the saver, the SIGTERM save): snapshot and write at once.
+    fn flush_state(&mut self) -> Option<StateSnapshot> {
+        self.save_if_dirty();
+        self.pending_save.take()
     }
 
     /// `push_log`: the lines logged since the last drain, as `LogSentNotification`s for
@@ -21293,6 +21311,54 @@ extern "C" fn on_sigterm(_signal: libc::c_int) {
     TERMINATE.store(true, std::sync::atomic::Ordering::SeqCst);
 }
 
+/// One serialised state file and its place in the order snapshots were taken.
+#[derive(Debug)]
+struct StateSnapshot {
+    serial: u64,
+    path: PathBuf,
+    bytes: Vec<u8>,
+}
+
+/// The serial of the snapshot on disk. Writes queue on it rather than on the runtime
+/// lock: a client write's save -- serialise, write, fsync, rename -- ran under that
+/// lock, so every other client, `/identity` included, waited out each one; 32 clients
+/// under `--state` saw `/identity` take up to 0.78 s where the oracle, which saves
+/// outside its request lock, took 0.16 s (`tests/test_concurrency.py`).
+static STATE_WRITTEN: Mutex<u64> = Mutex::new(0);
+
+/// `Store.save`: `<path>.tmp`, fsynced, then `os.replace` -- and an OSError's text as
+/// Python writes it, which is what the `state not saved` line carries. A snapshot older
+/// than the one already on disk is skipped: the newer one holds its write too.
+fn write_snapshot(snapshot: &StateSnapshot) -> Result<(), String> {
+    let mut written = STATE_WRITTEN
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if snapshot.serial <= *written {
+        return Ok(());
+    }
+    let path = &snapshot.path;
+    let tmp = PathBuf::from(format!("{}.tmp", path.display()));
+    let result = fs::File::create(&tmp).and_then(|mut handle| {
+        handle.write_all(&snapshot.bytes)?;
+        handle.flush()?;
+        handle.sync_all()
+    });
+    result.map_err(|e| format!("{}: '{}'", py_os_error(&e), tmp.display()))?;
+    fs::rename(&tmp, path).map_err(|e| {
+        format!("{}: '{}' -> '{}'", py_os_error(&e), tmp.display(), path.display())
+    })?;
+    *written = snapshot.serial;
+    Ok(())
+}
+
+fn write_or_log(snapshot: Option<StateSnapshot>) {
+    if let Some(snapshot) = snapshot {
+        if let Err(error) = write_snapshot(&snapshot) {
+            error!("state not saved: {error}");
+        }
+    }
+}
+
 /// `persist.Store.start`: with `--state`, what a request leaves dirty without being a
 /// client write is coalesced -- saved at most once per two-second interval -- and a
 /// SIGTERM saves before the process exits. Saving on every request instead rewrote the
@@ -21323,8 +21389,15 @@ fn start_state_saver(runtime: SharedRuntime) {
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             if terminate {
                 info!("stopping");
-                guard.save_if_dirty();
+                // Held to the end: no write is answered after the last snapshot.
+                write_or_log(guard.flush_state());
                 std::process::exit(0);
+            }
+            if let Some(snapshot) = guard.pending_save.take() {
+                // Taken by a request that never reached its connection's write.
+                drop(guard);
+                write_or_log(Some(snapshot));
+                continue;
             }
             if !guard.dirty {
                 dirty_since = None;
@@ -21335,7 +21408,9 @@ fn start_state_saver(runtime: SharedRuntime) {
                 .elapsed()
                 >= interval
             {
-                guard.save_if_dirty();
+                let snapshot = guard.flush_state();
+                drop(guard);
+                write_or_log(snapshot);
                 dirty_since = None;
             }
         }
@@ -21898,7 +21973,11 @@ fn handle_connection<S: Read + Write + PollRead>(
                 }
             }
             guard.absorb_logs();
+            let snapshot = guard.pending_save.take();
             drop(guard);
+            // `Handler.send_response`: on disk before the status line, written outside
+            // the runtime lock so the other clients' requests go on meanwhile.
+            write_or_log(snapshot);
             match (image, claim) {
                 (_, Some(token)) => plextv::finish_claim(&runtime, &token, &request.target),
                 (Some(url), _) if response.status == 200 && response.body.is_empty() => {

@@ -1141,6 +1141,56 @@ def prop_state_quiet(catalog):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def prop_save_stall(catalog):
+    """A client write's save must not hold up the clients that are only reading.
+
+    Eight clients rate one movie back to back with `--state`, each rating saved before
+    it is answered, while a ninth reads `/identity`. The native server wrote and
+    fsynced the whole state file under its runtime lock, so the reader queued behind
+    every save: a median of 22.8 ms against the oracle's 0.6 ms, which saves outside
+    its request lock (and 0.9 ms once the native write moved out of it).
+    """
+    work = tempfile.mkdtemp(prefix="plexsim-cc-stall-")
+    server = None
+    try:
+        server = Server(catalog, os.path.join(work, "state"))
+        stop_at = time.time() + 6
+        latencies, writes = [], [0]
+
+        def write(index):
+            client = Client(server.port, "cc-stall-w%d" % index)
+            while time.time() < stop_at:
+                client.request("GET", "/:/rate?key=%s&identifier=%s&rating=%d"
+                               % (RATED, LIBRARY, 1 + index % 9))
+                writes[0] += 1
+            client.close()
+
+        def read():
+            client = Client(server.port, "cc-stall-r")
+            time.sleep(0.5)
+            while time.time() < stop_at:
+                status, _, sent, answered = client.request("GET", "/identity")
+                latencies.append(answered - sent)
+                time.sleep(0.01)
+            client.close()
+
+        workers = [threading.Thread(target=write, args=(index,)) for index in range(8)]
+        workers.append(threading.Thread(target=read))
+        [worker.start() for worker in workers]
+        [worker.join() for worker in workers]
+        latencies.sort()
+        median = latencies[len(latencies) // 2] if latencies else None
+        note("saver: %d saved writes; /identity median %.1f ms, p90 %.1f ms, max %.1f ms" % (
+            writes[0], (median or 0) * 1e3, latencies[int(len(latencies) * 0.9)] * 1e3,
+            latencies[-1] * 1e3))
+        check("saver: /identity's median stays under 5 ms while 8 clients' writes are saved",
+              median is not None and median < 0.005, "median %.1f ms" % ((median or 0) * 1e3))
+    finally:
+        if server is not None and server.proc.poll() is None:
+            server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
 # -- 6. slow and stalled clients -----------------------------------------------------
 
 def timed_reads(port, count=20, path="/identity"):
@@ -1278,6 +1328,7 @@ def main():
                     prop_state(catalog, state_seconds, args.threads, signal.SIGKILL, "sigkill")
                     prop_state(catalog, state_seconds, args.threads, signal.SIGTERM, "sigterm")
                     prop_state_quiet(catalog)
+                    prop_save_stall(catalog)
                 if reaper and abandoned:
                     prop_reaper(abandoned)
             finally:
