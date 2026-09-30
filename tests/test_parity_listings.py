@@ -372,6 +372,18 @@ def run(port):
                    "type": "movie", "title": "", "summary": "", "state": 9,
                    "metadataState": "deleted"}, (status, stub, [r.get("ratingKey") for r in rows]))
 
+    # -- /common -------------------------------------------------------------------------
+    everyone = "%2C".join(["1007", "1008", "1009", "1012", "1013", "1014"])
+    status, _, body = request(port, "POST", "/library/collections?type=1&title=Common+Probe"
+                              "&smart=0&sectionId=1&uri=" + uri.replace("1007", everyone))
+    made = ((body or {}).get("MediaContainer") or {}).get("Metadata", [{}])[0] \
+        if isinstance(body, dict) else {}
+    common = (mc(port, "/library/sections/1/common?type=1").get("Metadata") or [{}])[0]
+    tags = [t for t in common.get("Collection") or [] if t.get("tag") == "Common Probe"]
+    check("a shared collection tag on /common carries the collection's guid",
+          tags and tags[0].get("guid") == "collection://plexsim-%s" % made.get("ratingKey"),
+          (status, common.get("Collection")))
+
     # -- empty write answers ---------------------------------------------------------
     for method, path in (("PUT", "/library/sections/1/analyze"),
                          ("PUT", "/library/sections/1/emptyTrash"),
