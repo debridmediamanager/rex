@@ -358,6 +358,12 @@ def run(port):
     check("/folder?parent= non-digits is the top level, an unknown id empty",
           top > 0 and got == {"-1": top, "1,2": top, "abc": top, "99": 0}, (top, got))
 
+    # 16. A projected row takes only the include blocks, never a detail fill.
+    _status, mc = request(port, "/library/sections/2/common?type=2&id=20001&includeExtras=1")
+    row = ((mc or {}).get("Metadata") or [{}])[0]
+    check("the show Common row with includeExtras gains Extras and no duration",
+          "Extras" in row and "duration" not in row, sorted(row))
+
 
 def main():
     process, port = start()

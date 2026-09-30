@@ -393,7 +393,21 @@ impl Runtime {
                 continue;
             };
             if !blocks.is_empty() {
+                // `apply_detail_blocks` is the DETAIL read's, which also fills a show's
+                // absent `index`/`duration`/`originallyAvailableAt`/`Guid`; a projected
+                // row takes only the blocks (cycle 83: the Common row gained a
+                // `duration` the oracle's `expand_full_rows` never adds).
+                let before = projected
+                    .as_object()
+                    .map(|object| object.keys().cloned().collect::<HashSet<_>>())
+                    .unwrap_or_default();
                 self.apply_detail_blocks(&stored, projected, &blocks);
+                if let Some(object) = projected.as_object_mut() {
+                    object.retain(|name, _| {
+                        before.contains(name)
+                            || matches!(name.as_str(), "Extras" | "OnDeck" | "Preferences")
+                    });
+                }
             }
             if children {
                 let inlined = self

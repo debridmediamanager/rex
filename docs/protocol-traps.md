@@ -3039,3 +3039,6 @@ are changing; replay the client's exact request before altering behavior.
   native grid ran a private digits-only pass that refused `-1` and `1,2`.
 - **`/folder?parent=` that is not all DIGITS is the top level** (cycle 83, kids: `-1`, `1,2` and
   `abc` answer the library's top folder); a numeric id naming no directory is the empty list.
+- **A projected row takes only the `include*` blocks, never a detail read's fills** (cycle 83,
+  kids): the show Common row with `includeExtras=1` gains `Extras` and no `duration`, where the
+  native pass borrowed the detail read's, which fills a show's absent duration.
