@@ -5918,7 +5918,13 @@ impl Runtime {
         }
         self.localize_response(request, &mut response);
         // The CORS trio is the envelope's (`wire.rs`), written for every response.
+        // `Handler.send_response` saves every client write, not only the ones whose
+        // handler remembered to mark the state dirty: a play-queue create or add marks
+        // nothing, so on a quiet server it was answered and then lost to a SIGKILL
+        // (`tests/test_concurrency.py`), and under load it survived only by riding
+        // another write's save.
         if persist_before_answer {
+            self.dirty = true;
             self.save_if_dirty();
         }
         response

@@ -3162,3 +3162,8 @@ are changing; replay the client's exact request before altering behavior.
   with a 500 (`dictionary changed size during iteration`): 81 of 292 collection listings and 10 of
   319 playlist listings read beside four churning clients over 300 lists, and 2 in a five-minute
   32-client soak (2026-09-30). A real PMS reads its lists from SQLite; every walk now snapshots.
+- **Every answered client write is on disk, whether or not its handler marked the state.** The
+  native server saved a client write only when the handler had flagged the state dirty, and the
+  play-queue create and add flag nothing: on a quiet server both were answered and then gone after
+  an immediate SIGKILL, and under load 1 in 5 kills lost one that no other write's save had
+  carried (2026-09-30). `Handler.send_response` in the oracle saves every client write.

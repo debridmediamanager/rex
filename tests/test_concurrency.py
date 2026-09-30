@@ -1090,6 +1090,57 @@ def prop_state(catalog, seconds, threads, sig, label):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def prop_state_quiet(catalog):
+    """One write on a quiet server, answered, then SIGKILL: is it on disk?
+
+    Under load some other write has always left the state dirty, so a write that does
+    not mark it can still ride that save -- the native server lost a play queue that
+    way in 1 of 5 loaded kills. On a quiet server nothing else saves it: the saver has
+    flushed, the device is known, and the kill follows the answer at once.
+    """
+    work = tempfile.mkdtemp(prefix="plexsim-cc-quiet-")
+    server = None
+    try:
+        state = os.path.join(work, "state")
+        server = Server(catalog, state)
+        client = "cc-quiet"
+        call(server.port, "GET", "/identity", client=client)
+        status, body = call(server.port, "POST", "/playQueues?type=video&own=1&uri=%s"
+                            % server.uri(MOVIES[0]), client=client)
+        queue = mc(body).get("playQueueID")
+        writes = [
+            ("a play-queue create", "POST", "/playQueues?type=video&own=1&uri=%s" % server.uri(MOVIES[1]),
+             lambda port, answer: call(port, "GET", "/playQueues/%s" % mc(answer).get("playQueueID"),
+                                       client=client)[0] == 200),
+            ("a play-queue add", "PUT", "/playQueues/%s?uri=%s" % (queue, server.uri(MOVIES[2])),
+             lambda port, answer: MOVIES[2] in [entry.get("ratingKey") for entry in rows(
+                 call(port, "GET", "/playQueues/%s" % queue, client=client)[1])]),
+            ("a playlist create", "POST", "/playlists?type=video&title=Quiet&smart=0&uri=%s" % server.uri(MOVIES[0]),
+             lambda port, answer: call(port, "GET", "/playlists/%s" % rows(answer)[0]["ratingKey"])[0] == 200),
+            ("a rating", "GET", "/:/rate?key=%s&identifier=%s&rating=6" % (MOVIES[3], LIBRARY),
+             lambda port, answer: row(port, MOVIES[3]).get("userRating") == 6.0),
+        ]
+        for label, method, path, survived in writes:
+            time.sleep(2.5)                 # the saver's interval: nothing is left dirty
+            status, answer = call(server.port, method, path, client=client)
+            server.stop(signal.SIGKILL)
+            server.start()
+            kept = status == 200 and survived(server.port, answer)
+            if label == "a play-queue create":
+                # The kept queue is now the client's; the next checks add to the first.
+                status, body = call(server.port, "POST", "/playQueues?type=video&own=1&uri=%s"
+                                    % server.uri(MOVIES[0]), client=client)
+                queue = mc(body).get("playQueueID")
+                writes[1] = ("a play-queue add", "PUT", "/playQueues/%s?uri=%s" % (queue, server.uri(MOVIES[2])),
+                             writes[1][3])
+            check("state: %s answered on a quiet server survives an immediate SIGKILL" % label,
+                  kept, "status %s" % status)
+    finally:
+        if server is not None and server.proc.poll() is None:
+            server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
 # -- 6. slow and stalled clients -----------------------------------------------------
 
 def timed_reads(port, count=20, path="/identity"):
@@ -1226,6 +1277,7 @@ def main():
                     state_seconds = args.seconds or (60 if args.long else 20)
                     prop_state(catalog, state_seconds, args.threads, signal.SIGKILL, "sigkill")
                     prop_state(catalog, state_seconds, args.threads, signal.SIGTERM, "sigterm")
+                    prop_state_quiet(catalog)
                 if reaper and abandoned:
                     prop_reaper(abandoned)
             finally:
