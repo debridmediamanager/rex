@@ -16434,6 +16434,11 @@ impl Runtime {
                 common.insert(key.to_string(), Value::Array(tags));
             }
         }
+        // Cycle 15: a member's `Collection` tag carries the collection's own guid --
+        // `server.py` stores it on the catalog tag, which this projection copies.
+        if let Some(first) = rows.first().and_then(key_of) {
+            self.stamp_collection_tags(&first, &mut common);
+        }
         // The row is written as a `Common` element (the handler's `_xml` override).
         common.insert("_element".to_string(), json!("Common"));
         let mut fields = Map::new();
