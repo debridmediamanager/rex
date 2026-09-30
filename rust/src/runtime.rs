@@ -12637,7 +12637,7 @@ impl Runtime {
                 "accountID",
                 "deviceID",
             ] {
-                if let Some(value) = row.get(name) {
+                if let Some(value) = row.get(name).filter(|value| !value.is_null()) {
                     projection.insert(name.to_string(), value.clone());
                 }
             }
@@ -12647,12 +12647,10 @@ impl Runtime {
                 projection.insert("viewType".to_string(), view_type.clone());
             }
             projection.insert("_history1".to_string(), json!(true));
+            // Measured on both servers: alone in a container carrying only `size`.
             return Response::json(
                 200,
-                self.container(
-                    Map::from_iter([("Metadata".to_string(), json!([projection]))]),
-                    true,
-                ),
+                json!({"MediaContainer": {"size": 1, "Metadata": [projection]}}),
             );
         }
         if path == "/status/sessions/terminate" && request.method == "GET" {
