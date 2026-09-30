@@ -678,6 +678,11 @@ pub(super) fn reason_phrase(status: u16) -> &'static str {
     }
 }
 
+thread_local! {
+    /// The payload length of the last response `write_enveloped` wrote on this thread.
+    pub(super) static LAST_PAYLOAD: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
 /// Write one response through the envelope; answers whether the socket stays open.
 pub(super) fn write_enveloped<S: Write>(
     stream: &mut S,
@@ -686,6 +691,13 @@ pub(super) fn write_enveloped<S: Write>(
     keep: bool,
 ) -> Result<bool, String> {
     let (status, lines, body, keep) = envelope(response, wire, keep);
+    // `_count_bytes(len(payload))`: what the answer's length says, a HEAD's included.
+    let payload = lines
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+        .and_then(|(_, value)| value.parse::<u64>().ok())
+        .unwrap_or(body.len() as u64);
+    LAST_PAYLOAD.with(|cell| cell.set(payload));
     let mut out = format!("HTTP/1.1 {} {}\r\n", status, reason_phrase(status));
     for (name, value) in &lines {
         out.push_str(&format!("{name}: {value}\r\n"));

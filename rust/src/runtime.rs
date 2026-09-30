@@ -45,6 +45,7 @@ mod playlists;
 mod plextv;
 mod resume;
 mod search;
+mod sessions;
 mod showprefs;
 mod spellfix;
 mod stats;
@@ -400,9 +401,12 @@ pub struct Runtime {
     pub next_queue: i64,
     pub next_queue_item: i64,
     pub next_dynamic_key: i64,
-    pub sessions: HashMap<String, Value>,
-    /// When each session last beat (`sessions.touch`'s `seen`), for the reaper.
-    session_seen: HashMap<String, f64>,
+    /// Live playback sessions by playback-session identity (`sessions.py`).
+    pub(crate) sessions: HashMap<String, sessions::SessionEntry>,
+    /// `Sessions._next_key`: the counter a new session's `sessionKey` steps.
+    next_session_key: i64,
+    /// `Sessions._bytes`: (device, lan) -> per-second byte counts, in first-seen order.
+    byte_buckets: Vec<((i64, bool), Vec<(i64, i64)>)>,
     /// The reaper's last tick: process-wide, anchored at start (`sessions._last_reap`).
     last_reap: f64,
     pub started_sessions: HashSet<String>,
@@ -593,7 +597,8 @@ impl Runtime {
             next_queue_item: 2,
             next_dynamic_key: 40000,
             sessions: HashMap::new(),
-            session_seen: HashMap::new(),
+            next_session_key: 1,
+            byte_buckets: Vec::new(),
             last_reap: now_seconds(),
             started_sessions: HashSet::new(),
             timeline_offsets: HashMap::new(),
@@ -977,6 +982,21 @@ impl Runtime {
         if let Some(bytes) = state.get("bandwidthBytes").and_then(Value::as_u64) {
             self.bandwidth_bytes = bytes;
         }
+        // `persist.py` SESSION_FIELDS `_bytes`: the per-second counters by (device, lan).
+        if let Some(buckets) = state.get("byteBuckets").and_then(Value::as_array) {
+            self.byte_buckets = buckets
+                .iter()
+                .filter_map(|entry| {
+                    let seconds = entry
+                        .get(2)?
+                        .as_array()?
+                        .iter()
+                        .filter_map(|pair| Some((pair.get(0)?.as_i64()?, pair.get(1)?.as_i64()?)))
+                        .collect::<Vec<_>>();
+                    Some(((entry.get(0)?.as_i64()?, entry.get(1)?.as_bool()?), seconds))
+                })
+                .collect();
+        }
         // `Store.restore`'s answer, which `main()` logs.
         self.state_summary = if rebuilt {
             warning!(
@@ -1043,6 +1063,7 @@ impl Runtime {
             "deviceFirstSeen": self.device_first_seen,
             "plays": self.plays.iter().map(|(at, kind, seconds, device)| json!([at, kind, seconds, device])).collect::<Vec<_>>(),
             "bandwidthBytes": self.bandwidth_bytes,
+            "byteBuckets": self.byte_buckets.iter().map(|((device, lan), seconds)| json!([device, lan, seconds])).collect::<Vec<_>>(),
         });
         let text = serde_json::to_vec_pretty(&state).map_err(|e| e.to_string())?;
         // `Store.save`: `<path>.tmp`, fsynced, then `os.replace` -- and an OSError's
@@ -3350,55 +3371,11 @@ impl Runtime {
         )
     }
 
-    fn mark_device(&mut self, headers: &HashMap<String, String>) {
-        let identifier = headers
-            .get("x-plex-client-identifier")
-            .cloned()
-            .unwrap_or_default();
-        let platform_text = headers.get("x-plex-platform").cloned().unwrap_or_default();
-        let platform = platform_text
-            .trim()
-            .parse::<f64>()
-            .ok()
-            .filter(|value| value.is_finite())
-            .and_then(serde_json::Number::from_f64)
-            .map(Value::Number)
-            .unwrap_or_else(|| json!(platform_text));
-        // Measured: a device's `name` and `platform` are written whenever a request
-        // carries them, each independently -- a request without one leaves the stored
-        // value alone.
-        let previous = self.devices.get(&identifier).cloned();
-        let name = headers
-            .get("x-plex-device-name")
-            .cloned()
-            .filter(|name| !name.is_empty())
-            .or_else(|| previous.as_ref().map(|device| device.name.clone()))
-            .unwrap_or_default();
-        let product = headers
-            .get("x-plex-product")
-            .cloned()
-            .filter(|product| !product.is_empty())
-            .or_else(|| previous.as_ref().map(|device| device.product.clone()))
-            .unwrap_or_default();
-        let platform = if platform_text.is_empty() {
-            previous
-                .as_ref()
-                .map(|device| device.platform.clone())
-                .unwrap_or(platform)
-        } else {
-            platform
-        };
-        self.devices.insert(
-            identifier.clone(),
-            Device {
-                client_identifier: identifier,
-                name,
-                product,
-                platform,
-                last_seen: now(),
-            },
-        );
-        self.dirty = true;
+    /// `_count_bytes`'s side effect on the device table: register the client and write
+    /// the device name and platform it sent (header, else the query's first value).
+    fn mark_device(&mut self, request: &Request) {
+        let owner = sessions::ByteOwner::of(request);
+        self.note_device(&owner.identifier, &owner.name, &owner.platform);
     }
 
     fn item_mut(&mut self, key: &str) -> Option<&mut Value> {
@@ -5508,7 +5485,7 @@ impl Runtime {
             .get(&identifier)
             .map(|device| (device.name.clone(), device.platform.clone()));
         let known_devices = self.device_order.len();
-        self.mark_device(&request.headers);
+        self.mark_device(request);
         self.register_request_device(request);
         let after = self
             .devices
@@ -5518,6 +5495,7 @@ impl Runtime {
             persist_before_answer = true;
         }
         let mut response = self.request_route(request);
+        self.refresh_session_rows();
         exclude_fields_response(request, &mut response);
         sync_version_response(request, &mut response);
         self.stream_titles_response(request, &mut response);
@@ -6384,10 +6362,7 @@ impl Runtime {
                 .statistics_refusal("resources", &query)
                 .unwrap_or_else(|| self.route_resource_statistics(&query)),
             ("GET" | "HEAD", "/history") => self.route_history(&query),
-            ("GET" | "HEAD", "/status/sessions") => {
-                self.reap_sessions();
-                self.route_sessions()
-            }
+            ("GET" | "HEAD", "/status/sessions") => self.route_sessions(&query),
             // `server.py`: the running activities -- every native activity starts and
             // ends inside the request that ran it, so the list between requests is empty.
             ("GET" | "HEAD", "/activities") => {
@@ -7392,107 +7367,6 @@ impl Runtime {
         Response::json(200, self.container(fields, true))
     }
 
-    fn route_devices(&self) -> Response {
-        if self
-            .devices
-            .values()
-            .any(|device| !device.platform.is_string())
-        {
-            return Response::error(500, "plexsim: internal error");
-        }
-        // One row per client in the order the server first saw it -- the same ids the
-        // history rows and the statistics series name (`sessions.device_id`).
-        let mut rows = self
-            .device_order
-            .iter()
-            .map(|identifier| {
-                let known = self.devices.get(identifier);
-                json!({
-                    "clientIdentifier": identifier,
-                    "name": known.map(|device| device.name.clone()).unwrap_or_default(),
-                    "product": known.map(|device| device.product.clone()).unwrap_or_default(),
-                    "platform": known.map(|device| device.platform.clone()).unwrap_or(json!("")),
-                    "lastSeenAt": known.map(|device| device.last_seen)
-                        .unwrap_or_else(|| self.device_first_seen.get(identifier).copied().unwrap_or(self.started_at)),
-                    "owned": true,
-                })
-            })
-            .collect::<Vec<_>>();
-        for (index, row) in rows.iter_mut().enumerate() {
-            if let Some(object) = row.as_object_mut() {
-                object.insert("id".to_string(), json!(index + 1));
-            }
-        }
-        rows.push(json!({"id": rows.len() + 1, "clientIdentifier": self.machine, "name": self.friendly, "product": "Plex Media Server", "platform": "Linux", "owned": true}));
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([
-                    (
-                        "identifier".to_string(),
-                        json!("com.plexapp.system.devices"),
-                    ),
-                    ("Device".to_string(), Value::Array(rows)),
-                ]),
-                false,
-            ),
-        )
-    }
-
-    fn route_device(&self, id: &str) -> Response {
-        let Ok(number) = id.parse::<i64>() else {
-            return Response::error(404, "plexsim: not found");
-        };
-        if number <= 0 || number > i32::MAX as i64 {
-            return if number > i32::MAX as i64 {
-                Response::error(400, "plexsim: bad request")
-            } else {
-                Response::error(404, "plexsim: not found")
-            };
-        }
-        if self
-            .devices
-            .values()
-            .any(|device| !device.platform.is_string())
-        {
-            // The direct read remains available while list serializers hit
-            // the same measured numeric-platform cast failure.
-        }
-        // One row per client in the order the server first saw it -- the same ids the
-        // history rows and the statistics series name (`sessions.device_id`).
-        let mut rows = self
-            .device_order
-            .iter()
-            .map(|identifier| {
-                let known = self.devices.get(identifier);
-                json!({
-                    "clientIdentifier": identifier,
-                    "name": known.map(|device| device.name.clone()).unwrap_or_default(),
-                    "product": known.map(|device| device.product.clone()).unwrap_or_default(),
-                    "platform": known.map(|device| device.platform.clone()).unwrap_or(json!("")),
-                    "lastSeenAt": known.map(|device| device.last_seen)
-                        .unwrap_or_else(|| self.device_first_seen.get(identifier).copied().unwrap_or(self.started_at)),
-                    "owned": true,
-                })
-            })
-            .collect::<Vec<_>>();
-        rows.push(json!({"clientIdentifier": self.machine, "name": self.friendly, "product": "Plex Media Server", "platform": "Linux", "owned": true}));
-        let index = number as usize - 1;
-        let Some(mut row) = rows.get(index).cloned() else {
-            return Response::error(404, "plexsim: not found");
-        };
-        if let Some(object) = row.as_object_mut() {
-            object.insert("id".to_string(), json!(number));
-        }
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([("Device".to_string(), json!([row]))]),
-                false,
-            ),
-        )
-    }
-
     fn route_history(&self, query: &HashMap<String, String>) -> Response {
         let mut rows = self.history.clone();
         // Cycle 14, measured case by case on kids (1.43.4) and zen (1.42.2): this page
@@ -7658,122 +7532,6 @@ impl Runtime {
             fields.insert("offset".to_string(), json!(start));
         }
         Response::json(200, self.container(fields, false))
-    }
-
-    fn route_bandwidth(&self, query: &HashMap<String, String>) -> Response {
-        if self
-            .devices
-            .values()
-            .any(|device| !device.platform.is_string())
-        {
-            return Response::error(500, "plexsim: internal error");
-        }
-        if let Some(value) = query.get("timespan") {
-            if value.parse::<i64>().is_err() {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
-
-        // Measured on both servers: an empty or non-numeric `accountID`/`deviceID` is a
-        // 400 (a negative one and `+1` parse), and so is any `lan` but 0 or 1.
-        for name in ["accountID", "deviceID"] {
-            if query.get(name).is_some_and(|value| !int_param(value, None)) {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
-        if let Some(value) = query.get("lan") {
-            if !matches!(value.as_str(), "0" | "1") {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
-        let spans = if let Some(value) = query.get("timespan") {
-            let timespan = value.parse::<i64>().unwrap_or_default();
-            if !matches!(timespan, 0 | 1 | 2 | 3 | 4 | 6) {
-                Vec::new()
-            } else {
-                vec![timespan]
-            }
-        } else {
-            vec![0, 1, 2, 3, 4]
-        };
-        let account = query.get("accountID").map(String::as_str);
-        let device = query.get("deviceID").map(String::as_str);
-        let include_account = account.is_none_or(|value| value == "1");
-        let include_device = device.is_none_or(|value| value == "1");
-        let mut rows = if !include_account || !include_device {
-            Vec::new()
-        } else {
-            spans
-                .into_iter()
-                .map(|timespan| {
-                    json!({
-                        "at": statistics_bucket(now(), timespan),
-                        "bytes": self.bandwidth_bytes.max(1),
-                        "lan": self.bandwidth_bytes.max(1),
-                        "wan": 0,
-                        "timespan": timespan,
-                    })
-                })
-                .collect::<Vec<_>>()
-        };
-        if let Some(operator) = query.get("at>") {
-            if let Ok(pivot) = operator.parse::<i64>() {
-                rows.retain(|row| row.get("at").and_then(Value::as_i64).unwrap_or(0) >= pivot);
-            }
-        }
-        if let Some(operator) = query.get("at<") {
-            if let Ok(pivot) = operator.parse::<i64>() {
-                rows.retain(|row| row.get("at").and_then(Value::as_i64).unwrap_or(0) <= pivot);
-            }
-        }
-        if let Some(operator) = query.get("at=") {
-            if let Ok(pivot) = operator.parse::<i64>() {
-                rows.retain(|row| row.get("at").and_then(Value::as_i64) == Some(pivot));
-            }
-        }
-        if let Some(lan) = query.get("lan") {
-            let want = lan == "1";
-            rows.retain(|row| (row.get("lan").and_then(Value::as_i64).unwrap_or(0) > 0) == want);
-        }
-        if let Some(limit) = query
-            .get("limit")
-            .and_then(|value| value.parse::<i64>().ok())
-        {
-            if limit <= 0 {
-                rows.clear();
-            } else {
-                rows.truncate(limit as usize);
-            }
-        }
-        if let Some(offset) = query
-            .get("offset")
-            .and_then(|value| value.parse::<i32>().ok())
-        {
-            if offset > 0 {
-                rows = rows.into_iter().skip(offset as usize).collect();
-            }
-        }
-        let size = rows.len();
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([
-                    ("size".to_string(), json!(size)),
-                    ("StatisticsBandwidth".to_string(), Value::Array(rows)),
-                    (
-                        "Device".to_string(),
-                        Value::Array(
-                            self.devices
-                                .values()
-                                .map(|device| json!({"id":device.client_identifier,"title":device.name}))
-                                .collect(),
-                        ),
-                    ),
-                    ("Account".to_string(), json!([{"id":1,"title":self.owner_username}])),
-                ]),
-                false,
-            ),
-        )
     }
 
     /// The statistics endpoints' shared parameter grammar (the oracle's `statistics`),
@@ -8030,44 +7788,6 @@ impl Runtime {
         )
     }
 
-    /// `Sessions.live`'s reaper, measured in cycles 26 and 41: a process-wide tick every
-    /// 30 s drops each session whose last beat is older than the tick minus 180 s, so a
-    /// silent player stays in Now Playing for 180-210 s -- not a per-row timer.
-    fn reap_sessions(&mut self) {
-        const TTL: f64 = 180.0;
-        const INTERVAL: f64 = 30.0;
-        let elapsed = now_seconds() - self.last_reap;
-        if elapsed < INTERVAL {
-            return;
-        }
-        self.last_reap += (elapsed / INTERVAL).floor() * INTERVAL;
-        let cutoff = self.last_reap - TTL;
-        let expired = self
-            .session_seen
-            .iter()
-            .filter(|(_, seen)| **seen < cutoff)
-            .map(|(client, _)| client.clone())
-            .collect::<Vec<_>>();
-        for client in expired {
-            self.session_seen.remove(&client);
-            self.sessions.remove(&client);
-        }
-    }
-
-    fn route_sessions(&self) -> Response {
-        let rows = self.sessions.values().cloned().collect::<Vec<_>>();
-        if rows.is_empty() {
-            return Response::json(200, self.container(Map::new(), true));
-        }
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([("Metadata".to_string(), Value::Array(rows))]),
-                true,
-            ),
-        )
-    }
-
     fn session_profile(
         &self,
         query: &HashMap<String, String>,
@@ -8096,250 +7816,6 @@ impl Runtime {
             );
         }
         None
-    }
-
-    fn session_media(&self, row: &Value, decided: bool) -> Value {
-        let Some(media_rows) = row.get("Media").and_then(Value::as_array) else {
-            return Value::Array(Vec::new());
-        };
-        let media_rows = media_rows
-            .iter()
-            .map(|media| {
-                let mut media = media.clone();
-                let Some(media_object) = media.as_object_mut() else {
-                    return media;
-                };
-                media_object.insert("_session".to_string(), json!(true));
-                if let Some(id) = media_object.get("id").cloned() {
-                    media_object.insert("id".to_string(), json!(string_value(&id)));
-                }
-                if let Some(aspect) = media_object.get("aspectRatio").cloned() {
-                    media_object.insert("aspectRatio".to_string(), json!(string_value(&aspect)));
-                }
-                if decided {
-                    media_object.insert("selected".to_string(), json!(true));
-                }
-                let parts = media_object
-                    .get("Part")
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|part| {
-                        let mut part = part;
-                        let Some(part_object) = part.as_object_mut() else {
-                            return part;
-                        };
-                        part_object.insert("_session".to_string(), json!(true));
-                        if let Some(id) = part_object.get("id").cloned() {
-                            part_object.insert("id".to_string(), json!(string_value(&id)));
-                        }
-                        if decided {
-                            part_object.insert("selected".to_string(), json!(true));
-                            part_object.insert("decision".to_string(), json!("directplay"));
-                        }
-                        let streams = part_object
-                            .get("Stream")
-                            .and_then(Value::as_array)
-                            .cloned()
-                            .unwrap_or_default()
-                            .into_iter()
-                            .map(|stream| {
-                                let mut stream = stream;
-                                if let Some(stream_object) = stream.as_object_mut() {
-                                    stream_object.insert("_session".to_string(), json!(true));
-                                    if let Some(id) = stream_object.get("id").cloned() {
-                                        stream_object
-                                            .insert("id".to_string(), json!(string_value(&id)));
-                                    }
-                                    if decided {
-                                        stream_object
-                                            .insert("location".to_string(), json!("direct"));
-                                    }
-                                    if stream_object.get("streamType").and_then(Value::as_i64)
-                                        == Some(1)
-                                    {
-                                        for field in ["displayTitle", "extendedDisplayTitle"] {
-                                            if let Some(title) =
-                                                stream_object.get(field).and_then(Value::as_str)
-                                            {
-                                                let plain = title
-                                                    .split_once(" (")
-                                                    .map(|(head, _)| head)
-                                                    .unwrap_or(title)
-                                                    .to_string();
-                                                stream_object
-                                                    .insert(field.to_string(), json!(plain));
-                                            }
-                                        }
-                                    }
-                                }
-                                stream
-                            })
-                            .collect::<Vec<_>>();
-                        if !streams.is_empty() {
-                            part_object.insert("Stream".to_string(), Value::Array(streams));
-                        }
-                        part
-                    })
-                    .collect::<Vec<_>>();
-                media_object.insert("Part".to_string(), Value::Array(parts));
-                media
-            })
-            .collect::<Vec<_>>();
-        Value::Array(media_rows)
-    }
-
-    fn session_row(
-        &self,
-        row: &Value,
-        key: &str,
-        client: &str,
-        session_identifier: &str,
-        state: &str,
-        time: i64,
-        duration: i64,
-        headers: &HashMap<String, String>,
-        query: &HashMap<String, String>,
-        decided: bool,
-    ) -> Value {
-        let mut session = self.detail_row(row);
-        let projected_media = self.session_media(row, decided);
-        let profile = self.session_profile(query, headers);
-        let Some(object) = session.as_object_mut() else {
-            return session;
-        };
-        object.shift_remove("Guid");
-        object.shift_remove("Image");
-        object.shift_remove("Media");
-        object.shift_remove("_light");
-        object.insert("_session".to_string(), json!(true));
-        object.insert("sessionKey".to_string(), json!(client));
-        object.insert("ratingKey".to_string(), json!(key));
-        object.insert("key".to_string(), json!(format!("/library/metadata/{key}")));
-        object.insert("state".to_string(), json!(state));
-        object.insert("viewOffset".to_string(), json!(time));
-        object.insert("duration".to_string(), json!(duration));
-        if let Some(section) = object.get("librarySectionID").cloned() {
-            object.insert(
-                "librarySectionID".to_string(),
-                json!(string_value(&section)),
-            );
-        }
-        object.insert("Media".to_string(), projected_media);
-        for name in [
-            "Genre",
-            "Collection",
-            "Director",
-            "Writer",
-            "Producer",
-            "Role",
-            "Country",
-            "Label",
-            "Similar",
-            "Style",
-            "Mood",
-        ] {
-            let Some(tags) = row.get(name).and_then(Value::as_array) else {
-                continue;
-            };
-            let projected = tags
-                .iter()
-                .filter_map(Value::as_object)
-                .map(|tag| {
-                    let mut values = Map::new();
-                    let tag_text = tag.get("tag").and_then(Value::as_str).unwrap_or_default();
-                    let id = tag
-                        .get("id")
-                        .map(string_value)
-                        .filter(|id| !id.is_empty())
-                        .unwrap_or_else(|| tag_id("Genre", tag_text).to_string());
-                    let mut keys = tag.keys().cloned().collect::<Vec<_>>();
-                    if !keys.iter().any(|key| key == "id") {
-                        keys.push("id".to_string());
-                    }
-                    keys.sort();
-                    keys.dedup();
-                    for key in keys {
-                        if key == "id" {
-                            values.insert(key, Value::String(id.clone()));
-                        } else if let Some(value) = tag.get(&key) {
-                            values.insert(key, value.clone());
-                        }
-                    }
-                    // The session serialiser's marker: the XML/JSON orderer writes a
-                    // `_session` element's attributes alphabetically (cycle 49).
-                    values.insert("_session".to_string(), json!(true));
-                    Value::Object(values)
-                })
-                .collect::<Vec<_>>();
-            if !projected.is_empty() {
-                object.insert(name.to_string(), Value::Array(projected));
-            }
-        }
-        if let Some(colors) = object.get("UltraBlurColors").cloned() {
-            if !colors.is_array() {
-                object.insert("UltraBlurColors".to_string(), json!([colors]));
-            }
-        }
-        let mut player = Map::new();
-        let header_or_query = |header: &str, parameter: &str| {
-            query
-                .get(parameter)
-                .cloned()
-                .or_else(|| headers.get(header).cloned())
-                .unwrap_or_default()
-        };
-        for (name, value) in [
-            ("address", "127.0.0.1".to_string()),
-            ("device", header_or_query("x-plex-device", "X-Plex-Device")),
-            (
-                "machineIdentifier",
-                header_or_query("x-plex-client-identifier", "X-Plex-Client-Identifier"),
-            ),
-            ("model", header_or_query("x-plex-model", "X-Plex-Model")),
-            (
-                "platform",
-                header_or_query("x-plex-platform", "X-Plex-Platform"),
-            ),
-            (
-                "platformVersion",
-                header_or_query("x-plex-platform-version", "X-Plex-Platform-Version"),
-            ),
-            (
-                "product",
-                header_or_query("x-plex-product", "X-Plex-Product"),
-            ),
-            (
-                "title",
-                header_or_query("x-plex-device-name", "X-Plex-Device-Name"),
-            ),
-            (
-                "version",
-                header_or_query("x-plex-version", "X-Plex-Version"),
-            ),
-        ] {
-            if !value.is_empty() {
-                player.insert(name.to_string(), json!(value));
-            }
-        }
-        if let Some(profile) = profile {
-            player.insert("profile".to_string(), json!(profile));
-        }
-        player.insert("local".to_string(), json!(true));
-        player.insert("relayed".to_string(), json!(false));
-        player.insert("secure".to_string(), json!(false));
-        player.insert("state".to_string(), json!(state));
-        player.insert("userID".to_string(), json!(1));
-        object.insert("Player".to_string(), Value::Object(player));
-        object.insert(
-            "User".to_string(),
-            json!({"id":1,"title":self.owner_username}),
-        );
-        if decided {
-            object.insert("Session".to_string(), json!({"id":session_identifier}));
-        }
-        session
     }
 
     fn route_prefs(
@@ -9461,26 +8937,6 @@ impl Runtime {
             return Response::json(200, self.container(fields, false));
         }
         self.decided_sessions.insert((session.clone(), key.clone()));
-        for existing in self.sessions.values_mut() {
-            let same_item = existing
-                .get("ratingKey")
-                .map(string_value)
-                .is_some_and(|value| value == key);
-            let client_identifier = query
-                .get("X-Plex-Client-Identifier")
-                .or_else(|| headers.get("x-plex-client-identifier"))
-                .map(String::as_str)
-                .unwrap_or_default();
-            let same_session = existing
-                .get("sessionKey")
-                .and_then(Value::as_str)
-                .is_some_and(|value| value == client_identifier || value == session);
-            if same_item && same_session {
-                if let Some(object) = existing.as_object_mut() {
-                    object.insert("Session".to_string(), json!({"id":session}));
-                }
-            }
-        }
         fields.insert("resourceSession".to_string(), json!(session));
         let decided_path = query.get("path").map_or("", String::as_str);
         if mde {
@@ -9643,372 +9099,6 @@ impl Runtime {
         }
         output = order_scalar_fields(output);
         fields.insert("Metadata".to_string(), Value::Array(vec![output]));
-        Response::json(200, self.container(fields, false))
-    }
-
-    fn route_timeline(
-        &mut self,
-        query: &HashMap<String, String>,
-        headers: &HashMap<String, String>,
-    ) -> Response {
-        let key = query
-            .get("ratingKey")
-            .map(|v| extract_key(v))
-            .or_else(|| query.get("key").map(|v| extract_key(v)));
-        let Some(key) = key else {
-            return Response::error(400, "plexsim: bad request");
-        };
-        let Some(state) = query.get("state").cloned() else {
-            return Response::error(400, "plexsim: bad request");
-        };
-        if !["playing", "paused", "buffering", "stopped"].contains(&state.as_str()) {
-            return Response::error(400, "plexsim: bad request");
-        }
-        // Cycle 45: `playbackTime=` is a VALIDATED signed 32-bit integer; anything else
-        // is a 400 on both copies.
-        if query
-            .get("playbackTime")
-            .is_some_and(|value| !int_param(value, Some(32)))
-        {
-            return Response::error(400, "plexsim: bad request");
-        }
-        let time = match query.get("time") {
-            Some(value) => match value.parse::<i64>() {
-                Ok(parsed) => parsed,
-                Err(_) => return Response::error(400, "plexsim: bad request"),
-            },
-            None => 0,
-        };
-        let duration = match query.get("duration") {
-            Some(value) => match value.parse::<i64>() {
-                Ok(parsed) => parsed,
-                Err(_) => return Response::error(400, "plexsim: bad request"),
-            },
-            None => 0,
-        };
-        if time < 0 || duration < 0 || (duration > 0 && time > duration) {
-            return Response::error(400, "plexsim: bad request");
-        }
-        let client = query
-            .get("X-Plex-Client-Identifier")
-            .cloned()
-            .or_else(|| headers.get("x-plex-client-identifier").cloned())
-            .unwrap_or_else(|| "default".to_string());
-        // Cycle 59, measured on plexscratch42 and plexscratch: a PLAYLIST's
-        // ratingKey is a timeline row too -- it runs the item's own machine on the
-        // list's own state and opens a Now Playing session.
-        let listed = !key.is_empty()
-            && self.catalog.get(&key).is_none()
-            && self.playlists.contains_key(&key);
-        if !key.is_empty() && self.catalog.get(&key).is_none() && !listed {
-            return Response::error(404, "plexsim: no such item");
-        }
-        if state == "stopped" {
-            // `record_play`: a stopped timeline records one play for the rollups,
-            // under the device that played.
-            if let Some(row) = self.catalog.get(&key).cloned() {
-                let identifier = query
-                    .get("X-Plex-Client-Identifier")
-                    .cloned()
-                    .or_else(|| headers.get("x-plex-client-identifier").cloned())
-                    .unwrap_or_default();
-                let device = self.register_device(&identifier);
-                self.record_play(&row, time / 1000, device);
-            }
-        }
-        let session_identifier = query
-            .get("X-Plex-Session-Identifier")
-            .cloned()
-            .or_else(|| headers.get("x-plex-session-identifier").cloned())
-            .unwrap_or_else(|| client.clone());
-        let session_pair = (session_identifier.clone(), key.clone());
-        let decided_for_response = self.decided_sessions.contains(&session_pair);
-        // The play's session tag, as `_completed` stores it (`session or True`).
-        let session_tag = if session_identifier.is_empty() {
-            "\u{1}".to_string()
-        } else {
-            session_identifier.clone()
-        };
-        let completed_by = |runtime: &Self| {
-            runtime
-                .view_state(&key, "_completed")
-                .and_then(|value| value.as_str().map(str::to_string))
-        };
-        // A completed play answers `complete` to every beat past 90% until a
-        // `stopped` beat has closed it, and `ignore` to every beat after that.
-        let already = !key.is_empty()
-            && completed_by(self).as_deref() == Some(session_tag.as_str())
-            && self.view_state(&key, "_completionStopped").is_some();
-        let total = if query.get("duration").is_some() {
-            duration
-        } else {
-            0
-        };
-        if !key.is_empty() {
-            let device_id = self.device_id(&client);
-            let offset = query.get("time").map(|_| time);
-            self.library_progress(&key, offset, total, device_id, &session_tag, true);
-            if state == "stopped" && completed_by(self).as_deref() == Some(session_tag.as_str()) {
-                self.set_view_state(&key, "_completionStopped", Some(json!(true)));
-            }
-        }
-        // Cycle 50: `progress` is sticky within the playback SESSION once one of
-        // its beats passes the minute gate.
-        if time > 60000 {
-            self.started_sessions.insert(session_identifier.clone());
-        }
-        let mut playback_state = "ignore";
-        if total > 0 {
-            playback_state = if self.started_sessions.contains(&session_identifier) {
-                "progress"
-            } else {
-                "ignore"
-            };
-            if time >= total.saturating_mul(9) / 10 {
-                // Past 90% it is never `progress`: `complete` for the beat that
-                // completed the play and every one after it until a `stopped`
-                // closes it, `ignore` for a beat that completed nothing.
-                let finished = completed_by(self).as_deref() == Some(session_tag.as_str());
-                playback_state = if finished && !already {
-                    "complete"
-                } else {
-                    "ignore"
-                };
-            }
-        }
-        if state == "stopped" {
-            self.started_sessions.remove(&session_identifier);
-        }
-        // Cycle 70, measured on both writable copies: the OFFLINE form Plex for
-        // Android syncs a downloaded item's view state with marks it watched when
-        // `viewCount` is 1 or more -- one view per sync, a history row of the
-        // SESSION kind, `complete` -- and `viewCount=0` on a watched item clears
-        // it.  A negative or unparseable value is ignored.
-        let offline_count = query
-            .get("viewCount")
-            .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
-            .and_then(|value| value.parse::<i64>().ok());
-        if !key.is_empty()
-            && !listed
-            && query.get("offline").map(String::as_str) == Some("1")
-            && playback_state == "ignore"
-        {
-            if let Some(count) = offline_count {
-                if count >= 1 {
-                    self.scrobble_key(&key, true, None);
-                    playback_state = "complete";
-                } else if self
-                    .catalog
-                    .get(&key)
-                    .and_then(|row| row.get("viewCount"))
-                    .and_then(Value::as_i64)
-                    .unwrap_or(0)
-                    > 0
-                {
-                    self.scrobble_key(&key, false, None);
-                    playback_state = "complete";
-                }
-            }
-        }
-        if let Some(item_id) = query
-            .get("playQueueItemID")
-            .and_then(|value| value.parse::<i64>().ok())
-        {
-            for queue in self.queues.values_mut() {
-                if queue.items.iter().any(|item| item.id == item_id) {
-                    queue.selected = Some(item_id);
-                    queue.version += 1;
-                    break;
-                }
-            }
-        } else if !key.is_empty() {
-            for queue in self.queues.values_mut() {
-                if let Some(item) = queue.items.iter().find(|item| item.rating_key == key) {
-                    queue.selected = Some(item.id);
-                    break;
-                }
-            }
-        }
-        let already_listed = self.sessions.contains_key(&client);
-        if state == "stopped" {
-            self.sessions.remove(&client);
-            self.session_seen.remove(&client);
-            self.decided_sessions
-                .remove(&(session_identifier.clone(), key.clone()));
-        } else if matches!(state.as_str(), "paused" | "buffering") && !already_listed {
-            // The first paused/buffering beat is the player's probe.  PMS does
-            // not publish a Now Playing row until a playing beat arrives.
-        } else {
-            let decided = self
-                .decided_sessions
-                .contains(&(session_identifier.clone(), key.clone()));
-            let row = if listed {
-                json!({"ratingKey": key, "type": "playlist"})
-            } else {
-                let Some(row) = self.catalog.get(&key) else {
-                    return Response::error(404, "plexsim: no such item");
-                };
-                row.clone()
-            };
-            let mut session = self.session_row(
-                &row,
-                &key,
-                &client,
-                &session_identifier,
-                &state,
-                time,
-                duration,
-                headers,
-                query,
-                decided,
-            );
-            if listed {
-                // Cycle 59: a playlist's session row is the LISTING row -- its state
-                // block included, no empty `summary` -- with the session's
-                // `sessionKey` and `viewOffset`, and only `User` and `Player`.
-                let player = session.get("Player").cloned().unwrap_or(Value::Null);
-                let session_key = session.get("sessionKey").cloned().unwrap_or(json!(client));
-                let mut item = self
-                    .playlists
-                    .get(&key)
-                    .cloned()
-                    .map(|p| self.dynamic_playlist_row(&p))
-                    .unwrap_or_else(|| json!({}));
-                if let Some(object) = item.as_object_mut() {
-                    if object
-                        .get("summary")
-                        .is_some_and(|v| string_value(v).is_empty())
-                    {
-                        object.shift_remove("summary");
-                    }
-                    for (name, value) in self.list_state.get(&key).cloned().unwrap_or_default() {
-                        if !name.starts_with('_') {
-                            object.insert(name, value);
-                        }
-                    }
-                    object.insert("sessionKey".to_string(), session_key);
-                    object.insert("viewOffset".to_string(), json!(time));
-                    object.insert("User".to_string(), json!({"id": "1"}));
-                    object.insert("Player".to_string(), player);
-                    object.insert("_session".to_string(), json!(true));
-                }
-                session = item;
-            }
-            let session_key = session
-                .get("sessionKey")
-                .map(string_value)
-                .filter(|value| !value.is_empty())
-                .unwrap_or_else(|| client.clone());
-            let player = session
-                .get("Player")
-                .and_then(|player| player.get("machineIdentifier"))
-                .map(string_value)
-                .or_else(|| query.get("X-Plex-Client-Identifier").cloned())
-                .or_else(|| headers.get("x-plex-client-identifier").cloned())
-                .unwrap_or_default();
-            self.session_seen.insert(client.clone(), now_seconds());
-            self.sessions.insert(client.clone(), session);
-            let mut frame = Map::new();
-            frame.insert("sessionKey".to_string(), json!(session_key));
-            frame.insert("clientIdentifier".to_string(), json!(player));
-            frame.insert("guid".to_string(), json!(""));
-            frame.insert("ratingKey".to_string(), json!(key));
-            frame.insert("url".to_string(), json!(""));
-            frame.insert(
-                "key".to_string(),
-                json!(if listed {
-                    format!("/playlists/{key}")
-                } else {
-                    format!("/library/metadata/{key}")
-                }),
-            );
-            frame.insert("viewOffset".to_string(), json!(time));
-            frame.insert("state".to_string(), json!(state));
-            // Measured on a writable copy of the reference: every frame of a session
-            // driven from a play queue carries `playQueueItemID` and `playQueueID`, and a
-            // session with no queue carries neither.
-            if let Some(item_id) = query
-                .get("playQueueItemID")
-                .and_then(|value| value.parse::<i64>().ok())
-            {
-                if let Some(queue) = self
-                    .queues
-                    .values()
-                    .find(|queue| queue.items.iter().any(|item| item.id == item_id))
-                {
-                    frame.insert("playQueueItemID".to_string(), json!(item_id));
-                    frame.insert(
-                        "playQueueID".to_string(),
-                        json!(queue.id.parse::<i64>().unwrap_or(0)),
-                    );
-                }
-            }
-            self.push_event(
-                "playing",
-                json!({"PlaySessionStateNotification": Value::Object(frame)}),
-            );
-            info!(
-                "TIMELINE {} state={state} t={}ms session={session_key}",
-                query.get("ratingKey").map_or("", String::as_str),
-                logging::py_opt(query.get("time"))
-            );
-        }
-        self.save_if_dirty();
-        let stored = self
-            .view_state(&key, "viewOffset")
-            .and_then(|value| value.as_i64())
-            .filter(|value| *value != 0)
-            .unwrap_or(-1);
-        // A playlist is born with a view count of 1.
-        let view_count = self
-            .view_state(&key, "viewCount")
-            .and_then(|value| value.as_i64())
-            .unwrap_or(if listed { 1 } else { 0 });
-        let mut fields = Map::from_iter([
-            ("playbackState".to_string(), json!(playback_state)),
-            ("skipCount".to_string(), json!(0)),
-            ("viewCount".to_string(), json!(view_count)),
-            ("viewOffset".to_string(), json!(stored)),
-        ]);
-        let product = query
-            .get("X-Plex-Product")
-            .or_else(|| headers.get("x-plex-product"));
-        if (decided_for_response
-            || self
-                .decided_sessions
-                .contains(&(session_identifier.clone(), key.clone())))
-            && !matches!(
-                product.map(String::as_str),
-                Some("Plex for Windows" | "Plex for Windows Phone")
-            )
-        {
-            let resolution = self
-                .catalog
-                .get(&key)
-                .and_then(|row| row.get("Media"))
-                .and_then(Value::as_array)
-                .and_then(|media| media.first())
-                .and_then(|media| media.get("videoResolution"))
-                .and_then(Value::as_str)
-                .map(|value| format!("{value}p"))
-                .unwrap_or_else(|| "1080p".to_string());
-            fields.insert(
-                "Bandwidths".to_string(),
-                json!([{"Bandwidth":[{"resolution":resolution,"bytes":self.bandwidth_bytes}]}]),
-            );
-        }
-        if let Some(reason) = self.terminated_sessions.get(&session_identifier) {
-            fields.insert("terminationCode".to_string(), json!(2006));
-            fields.insert("terminationText".to_string(), json!(reason));
-        }
-        fields.insert(
-            "size".to_string(),
-            json!(if fields.contains_key("Bandwidths") {
-                1
-            } else {
-                0
-            }),
-        );
         Response::json(200, self.container(fields, false))
     }
 
@@ -12736,30 +11826,7 @@ impl Runtime {
             );
         }
         if path == "/status/sessions/terminate" && request.method == "GET" {
-            let Some(session_id) = query.get("sessionId").filter(|value| !value.is_empty()) else {
-                return Response::error(400, "plexsim: bad request");
-            };
-            let found = self.sessions.values().any(|session| {
-                session
-                    .get("Session")
-                    .and_then(|value| value.get("id"))
-                    .and_then(Value::as_str)
-                    == Some(session_id.as_str())
-                    || session.get("sessionKey").and_then(Value::as_str)
-                        == Some(session_id.as_str())
-            });
-            if !found {
-                return Response::error(404, "plexsim: no such session");
-            }
-            info!("TERMINATE {session_id}: {}", logging::py_opt(query.get("reason")));
-            self.terminated_sessions.insert(
-                session_id.clone(),
-                query
-                    .get("reason")
-                    .cloned()
-                    .unwrap_or_else(|| "Session terminated".to_string()),
-            );
-            return Response::empty(200);
+            return self.route_terminate(query);
         }
         if path == "/hubs/continueWatching/items" {
             return self.route_continue_watching_items(query);
@@ -20483,11 +19550,13 @@ impl Runtime {
         // A terminated playback session is refused before the byte URL is
         // resolved.  PMS applies this gate to the complete `/parts/{id}/...`
         // path, so a missing provider link still answers 503 for the next read.
+        // `sessions.is_terminated`: keyed on the query's session identifier, and it stays
+        // armed -- every later read of that session is refused too.
         if let Some(session_id) = query
             .get("X-Plex-Session-Identifier")
-            .or_else(|| request.headers.get("x-plex-session-identifier"))
+            .filter(|value| !value.is_empty())
         {
-            if self.terminated_sessions.remove(session_id).is_some() {
+            if self.terminated_sessions.contains_key(session_id) {
                 info!(
                     "PART {} refused: session {session_id} terminated",
                     segments.first().copied().unwrap_or_default()
@@ -20704,7 +19773,8 @@ impl Runtime {
     /// Adds what a part read actually WROTE to the bandwidth statistic (cycle 44: a
     /// real PMS counts written bytes, so a seek or a stop does not count the whole part).
     pub(crate) fn count_part_bytes(&mut self, written: u64) {
-        self.bandwidth_bytes = self.bandwidth_bytes.saturating_add(written);
+        let owner = sessions::BYTE_OWNER.with(|cell| cell.borrow().clone());
+        self.record_bytes(&owner, written);
     }
 
     fn route_bundled_resource(&self, relative: &str, head: bool) -> Response {
@@ -21788,7 +20858,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                     write_response(&mut stream, &response, false)?;
                     return Ok(());
                 }
-                guard.mark_device(&request.headers);
+                guard.mark_device(&request);
                 guard.register_request_device(&request);
                 // Logged before the channel's cursor is taken: the opening socket is
                 // not yet a log sink when the oracle logs it.
@@ -21825,7 +20895,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                     write_response(&mut stream, &response, false)?;
                     return Ok(());
                 }
-                guard.mark_device(&request.headers);
+                guard.mark_device(&request);
                 guard.register_request_device(&request);
                 guard.absorb_logs();
                 guard.event_cursor()
@@ -21997,12 +21067,22 @@ fn handle_connection<S: Read + Write + PollRead>(
             response.body = upper_json_escapes(std::mem::take(&mut response.body));
         }
         let envelope = wire::Wire::of(&request, &request_path, &query);
+        let owner = sessions::ByteOwner::of(&request);
+        sessions::BYTE_OWNER.with(|cell| *cell.borrow_mut() = owner.clone());
         let still_open = match part_plan {
             Some(plan) if response.status == 200 => {
                 serve_part_proxy(&mut stream, &runtime, response.clone(), plan, &envelope, keep)?;
                 false
             }
-            _ => wire::write_enveloped(&mut stream, &response, &envelope, keep)?,
+            _ => {
+                let open = wire::write_enveloped(&mut stream, &response, &envelope, keep)?;
+                // Every response counts towards the bandwidth statistics (`_count_bytes`).
+                let payload = wire::LAST_PAYLOAD.with(|cell| cell.get());
+                if let Ok(mut guard) = runtime.lock() {
+                    guard.record_bytes(&owner, payload);
+                }
+                open
+            }
         };
         served_any = true;
         if response.close || !keep || !still_open || close_after_write {

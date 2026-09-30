@@ -73,7 +73,7 @@ impl Runtime {
     }
 
     /// The Device rows the Dashboard's graphs key by.
-    fn statistics_devices(&self) -> Vec<Value> {
+    pub(super) fn statistics_devices(&self) -> Vec<Value> {
         self.device_order
             .iter()
             .enumerate()
