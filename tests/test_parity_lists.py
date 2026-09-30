@@ -286,6 +286,29 @@ def test_list_artwork(server):
     server.call("DELETE", "/library/collections/%s" % collection)
 
 
+def test_transcoder_and_envelope(server):
+    status, headers, payload = server.call(
+        "GET", "/photo/:/transcode?url=%2Flibrary%2Fmetadata%2F1014%2Fthumb%2F1"
+        "&width=200&height=300")
+    size = (int.from_bytes(payload[16:20], "big"), int.from_bytes(payload[20:24], "big")) \
+        if payload.startswith(b"\x89PNG") else None
+    check("a transcoded row with no image is the generated tile at the TRANSCODER's size",
+          (status, size, len(payload)) == (200, (200, 300), 840), (status, size, len(payload)))
+    status, headers, payload = server.call("PATCH", "/playlists",
+                                           headers={"Connection": "close"})
+    check("a PATCH from a closing client is a 500 that closes",
+          (status, headers.get("Connection"), headers.get("Keep-Alive"))
+          == (500, "close", None),
+          (status, headers.get("Connection"), headers.get("Keep-Alive")))
+    server.call("POST", "/library/metadata/1008/themes", body=IMAGE)
+    _, _, detail = server.json("GET", "/library/metadata/1008")
+    theme = (rows(detail) or [{}])[0].get("theme")
+    status, headers, payload = server.call("GET", theme or "/library/metadata/1008/theme/0")
+    check("an uploaded theme is served with a byte range unit",
+          (status, headers.get("Accept-Ranges"), payload) == (200, "bytes", IMAGE),
+          (status, headers.get("Accept-Ranges"), len(payload)))
+
+
 def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
     env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
@@ -319,6 +342,7 @@ def main():
         test_small_shapes(server)
         test_written_prefs_stay_on_the_detail_row(server)
         test_list_artwork(server)
+        test_transcoder_and_envelope(server)
     finally:
         proc.terminate()
         try:
