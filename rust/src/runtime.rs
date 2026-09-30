@@ -18698,9 +18698,24 @@ impl Runtime {
                 .filter(|value| value.as_i64() != Some(0))
                 .unwrap_or(json!(1)),
         );
+        // A show's first air date is the catalog load's (its earliest episode's) when
+        // the row stores none -- the oracle reads it off the stored row.
+        let first_air = if kind == "show" {
+            self.leaves(&key_of(row).unwrap_or_default())
+                .iter()
+                .filter_map(|leaf| leaf.get("originallyAvailableAt").and_then(Value::as_str))
+                .filter(|date| !date.is_empty())
+                .min()
+                .map(|date| json!(date))
+        } else {
+            None
+        };
         item.insert(
             "originallyAvailableAt".to_string(),
-            number("originallyAvailableAt").unwrap_or(json!("")),
+            number("originallyAvailableAt")
+                .filter(truthy)
+                .or(first_air)
+                .unwrap_or(json!("")),
         );
         item.insert("addedAt".to_string(), number("addedAt").unwrap_or(json!(0)));
         item.insert(
@@ -18732,7 +18747,23 @@ impl Runtime {
                 "subtitleLanguage",
                 "subtitleMode",
             ];
-            let known = self.item_preferences("show", row);
+            // The CAPTURED show settings with the stored values laid over them, as the
+            // oracle's tree reads `ITEM_PREFS` -- not the item's rebuilt language enums
+            // the settings dialog carries.
+            let stored = row.get("_prefs").and_then(Value::as_object);
+            let known = load_json_sidecar(&self.catalog_path, "item_prefs.json")
+                .and_then(|value| value.get("show").cloned())
+                .and_then(|value| value.as_array().cloned())
+                .unwrap_or_default()
+                .into_iter()
+                .map(|mut setting| {
+                    let id = setting.get("id").map(string_value).unwrap_or_default();
+                    if let Some(value) = stored.and_then(|map| map.get(&id)) {
+                        setting["value"] = value.clone();
+                    }
+                    setting
+                })
+                .collect::<Vec<_>>();
             let mut settings = Vec::new();
             for name in names {
                 let Some(mut setting) = known
