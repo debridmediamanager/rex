@@ -382,7 +382,11 @@ impl Runtime {
         );
         self.push_timeline(key, 5, None);
         self.dirty = true;
-        Response::plain(200, body.into_bytes())
+        // The oracle's `("text", 200, path)`: the new artwork path as a `text/html`
+        // body, which the client assigns straight onto the row.
+        let mut response = Response::bytes(200, "text/html");
+        response.body = body.into_bytes();
+        response
     }
 
     /// The fallback and the cascade an EMPTY `thumb.value=`/`art.value=` owes (cycle 31):
