@@ -58,6 +58,8 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
+from server_command import server_command
+
 GREEN = "\033[32m"
 RED = "\033[31m"
 YELLOW = "\033[33m"
@@ -3007,9 +3009,8 @@ def main():
     import sys as _sys
     gated_port = 32599
     gated = subprocess.Popen(
-        [_sys.executable, "server.py", "--port", str(gated_port),
-         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
-         "--token", "suite-gate-token"],
+        server_command("--port", gated_port, "--catalog", "tests/catalog_ui.json",
+                       "--assert-claimed", "--token", "suite-gate-token", root=REPO_ROOT),
         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -14914,9 +14915,8 @@ def main():
     open(os.path.join(web_root_c16y, "favicon.ico"), "wb").write(b"\x00" * 300)
     web_port_c16y = 32598
     web_c16y = subprocess.Popen(
-        [_sys.executable, "server.py", "--port", str(web_port_c16y),
-         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
-         "--web-root", web_root_c16y],
+        server_command("--port", web_port_c16y, "--catalog", "tests/catalog_ui.json",
+                       "--assert-claimed", "--web-root", web_root_c16y, root=REPO_ROOT),
         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -23302,9 +23302,8 @@ def main():
         if argument_c29l.endswith("test_ui_surface.py"))
     port_c29l = 32597
     server_c29l = subprocess_c29l.Popen(
-        [sys_c29l.executable, "server.py", "--port", str(port_c29l),
-         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
-         "--web-root", root_c29l],
+        server_command("--port", port_c29l, "--catalog", "tests/catalog_ui.json",
+                       "--assert-claimed", "--web-root", root_c29l, root=tree_c29l),
         cwd=tree_c29l,
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess_c29l.DEVNULL, stderr=subprocess_c29l.DEVNULL)
