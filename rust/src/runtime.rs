@@ -5820,9 +5820,10 @@ impl Runtime {
                     | "/channels//"
                     | "/resources//"
                     | "/:/prefs//"
-            ) || (path.starts_with("/library/metadata/")
-                && path.ends_with("//")
-                && path != "/library/metadata//")
+            ) || path
+                .strip_prefix("/library/metadata/")
+                .and_then(|rest| rest.strip_suffix("//"))
+                .is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit()))
             {
                 // `server.py` `handle`: these exact routes return their PARENT's own
                 // response -- the doubled slash drops to one, which the trailing-slash
