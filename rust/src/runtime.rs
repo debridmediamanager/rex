@@ -6221,6 +6221,10 @@ impl Runtime {
             ("GET" | "HEAD", "/diagnostics/logs") => {
                 let mut response = Response::bytes(200, "application/zip");
                 response.body = self.log_archive();
+                response.headers.push((
+                    "Content-Disposition".to_string(),
+                    "attachment; filename=\"plexsim-logs.zip\"".to_string(),
+                ));
                 response
             }
             ("GET" | "HEAD", "/diagnostics") => Response::json(200, plugin_container(Vec::new())),
