@@ -20710,10 +20710,11 @@ impl Response {
     fn empty(status: u16) -> Self {
         Self {
             status,
-            // Plex labels successful mutation responses as JSON even when
-            // the entity is empty.  The wire writer places this type after
-            // Content-Length for that measured empty-body shape.
-            content_type: "application/json".to_string(),
+            // Every mutating endpoint answers an empty body typed `text/html` --
+            // the oracle's `("empty", status)`, measured against 1.43.4 for refresh,
+            // analyze, unmatch, match, split, merge, scrobble, rate, the prefs write
+            // and the section tasks. `application/json` here was never measured.
+            content_type: "text/html".to_string(),
             body: Vec::new(),
             headers: Vec::new(),
             close: false,
