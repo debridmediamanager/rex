@@ -11,6 +11,8 @@ re-measured on a real PMS and checked here against the measured values.
   or unknown numeric one the empty list, and a REPEATED `parent` takes its last value (kids);
 - `/library/all` reads a repeated parameter's LAST value where the section grid ANDs it
   (kids and zen);
+- an EMPTY collection carries no `childCount` on any row
+  (`tests/fixtures/collection_empty_childcount.json`, plexscratch42);
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -197,6 +199,34 @@ def run(port):
     }
     check("/library/all takes a repeated key's last value and the grid ANDs it",
           len(movies) == 6 and answers == expected, answers)
+
+    # 5. An empty collection: no `childCount` on any of its rows; a member's collection
+    #    keeps its count. Built as the fixture's create, over a show's key at type 4.
+    with open(os.path.join(FIXTURES, "collection_empty_childcount.json")) as handle:
+        recorded = json.load(handle)
+    machine = mc(port, "/identity").get("machineIdentifier")
+
+    def create(title, kind, section, key):
+        uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, key)
+        body = mc(port, "/library/collections?type=%s&title=%s&smart=0&sectionId=%s&uri=%s"
+                  % (kind, title, section, urllib.parse.quote(uri, safe="")), method="POST")
+        row = (body.get("Metadata") or [{}])[0]
+        return row.get("ratingKey"), "childCount" in row
+    empty, created_count = create("LB83Empty", 4, 2, SHOW["ui"])
+    full, _ = create("LB83One", 1, 1, "1007")
+    seen = {"create": created_count}
+    for path in recorded["childCount_absent_on"][:-1]:
+        path = path.replace("742", str(empty))
+        rows = [row for row in mc(port, path).get("Metadata") or [] if row.get("ratingKey") == empty]
+        seen[path] = [("childCount" in row, row.get("childCount")) for row in rows]
+    member = [row.get("childCount") for row in mc(port, "/library/sections/1/collections")
+              .get("Metadata") or [] if row.get("ratingKey") == full]
+    check("an empty collection carries no childCount on any row; a member's collection 1",
+          empty and not created_count and member == [1]
+          and all(value == [(False, None)] for name, value in seen.items() if name != "create"),
+          {"empty": empty, "seen": seen, "member": member})
+    for key in (empty, full):
+        request(port, "DELETE", "/library/collections/%s" % key)
 
 
 def main():

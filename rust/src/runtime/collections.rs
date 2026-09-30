@@ -187,7 +187,11 @@ impl Runtime {
                 .unwrap_or_else(|| json!(stamp)),
         );
         row.insert("updatedAt".to_string(), json!(stamp));
-        row.insert("childCount".to_string(), json!(rows.len()));
+        // Cycle 83, plexscratch42 (1.42.2): an EMPTY collection carries no `childCount`
+        // on any of its rows (a one-member one says 1); this sent 0.
+        if !rows.is_empty() {
+            row.insert("childCount".to_string(), json!(rows.len()));
+        }
         row.insert(
             "librarySectionID".to_string(),
             collection

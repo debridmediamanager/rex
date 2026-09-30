@@ -2863,7 +2863,7 @@ are changing; replay the client's exact request before altering behavior.
   show's key, `type=2` over an episode's, another library's key or section are empty collections of
   the named type. The oracle expanded a section's shows into episodes as a play queue does; the
   native server listed the shows whatever the type. An EMPTY collection carries no `childCount` on
-  1.42.2, where plexsim sends 0 -- recorded, not yet changed.
+  1.42.2, where plexsim sent 0 -- see the empty-collection rule below.
 - **The paging HEADER beats the query on every route family** (cycle 16, re-measured cycle 83 with
   GETs on kids, zen and plexscratch42, `tests/fixtures/paging_header_precedence.json`): section
   listings, `/children`, `/allLeaves`, `/hubs`, section hubs, `/hubs/search`, On Deck, Recently
@@ -3122,3 +3122,10 @@ are changing; replay the client's exact request before altering behavior.
   `addedAt>=abc&addedAt>=1` a 200, the reverse the 500) -- the whole query is a map. The grid answers
   both guids with no row, as a conjunction. Both servers ran the grid's conjunction here (the oracle
   also emptied `type=2&type=1`, reading every `type`).
+- **An EMPTY collection carries no `childCount` at all** (cycle 83, plexscratch42 1.42.2,
+  `tests/fixtures/collection_empty_childcount.json`): an episode collection created over a show's key
+  holds nothing, and neither its create answer nor section `/collections`, `/library/metadata/{id}`,
+  `/library/collections/{id}`, `all?type=18`, `/library/all` or `?includeChildren=1` names the field,
+  where a one-member collection says `childCount: 1`. Both servers sent `0`. (The same copy's section
+  `search?type=18&query=` finds the empty collection; both ours answer that search with no row --
+  measured beside it, not changed here.)

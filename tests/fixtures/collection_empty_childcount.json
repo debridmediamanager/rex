@@ -1,0 +1,113 @@
+{
+ "_about": "PMS 1.42.2.10156-f737b826c (plexscratch42, a writable copy with no route out), 2026-09-30: an EMPTY collection -- created with POST /library/collections?type=4&title=LB83Empty&smart=0&sectionId=2&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/6 (an episode collection over a SHOW's key holds nothing), read, then DELETE /library/collections/742. No row of it carries childCount: section 2's /collections, /library/metadata/742, /library/collections/742, /library/sections/2/all?type=18, /library/all?type=18, untyped /library/all and ?includeChildren=1 alike, where the one-member collection 289 in section 1 says childCount 1. The create answered the same row, also without childCount. The machine identifier and section uuid are removed.",
+ "version": "1.42.2.10156-f737b826c",
+ "create": {
+  "request": "POST /library/collections?type=4&title=LB83Empty&smart=0&sectionId=2&uri=server%3A%2F%2F{machine}%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F6",
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 1,
+    "Metadata": [
+     {
+      "ratingKey": "742",
+      "key": "/library/collections/742/children",
+      "guid": "collection://d305064c-4ddc-4ab7-97b8-c84162fdbbf7",
+      "type": "collection",
+      "title": "LB83Empty",
+      "subtype": "episode",
+      "summary": "",
+      "index": 433,
+      "ratingCount": 4,
+      "thumb": "/library/collections/742/composite/1790800486?width=400&height=600",
+      "addedAt": 1790800486,
+      "updatedAt": 1790800486
+     }
+    ]
+   }
+  }
+ },
+ "reads": {
+  "GET /library/sections/2/collections": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "totalSize": 1,
+     "offset": 0,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 2,
+     "librarySectionTitle": "TV Shows",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "TV Shows",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "742",
+       "key": "/library/collections/742/children",
+       "guid": "collection://d305064c-4ddc-4ab7-97b8-c84162fdbbf7",
+       "type": "collection",
+       "title": "LB83Empty",
+       "subtype": "episode",
+       "summary": "",
+       "index": 433,
+       "ratingCount": 4,
+       "thumb": "/library/collections/742/composite/1790800486?width=400&height=600",
+       "addedAt": 1790800486,
+       "updatedAt": 1790800486
+      }
+     ]
+    }
+   }
+  },
+  "GET /library/metadata/742": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 2,
+     "librarySectionTitle": "TV Shows",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "742",
+       "key": "/library/collections/742/children",
+       "guid": "collection://d305064c-4ddc-4ab7-97b8-c84162fdbbf7",
+       "type": "collection",
+       "title": "LB83Empty",
+       "librarySectionTitle": "TV Shows",
+       "librarySectionID": 2,
+       "librarySectionKey": "/library/sections/2",
+       "subtype": "episode",
+       "summary": "",
+       "index": 433,
+       "ratingCount": 4,
+       "thumb": "/library/collections/742/composite/1790800486?width=400&height=600",
+       "addedAt": 1790800486,
+       "updatedAt": 1790800486
+      }
+     ]
+    }
+   }
+  }
+ },
+ "childCount_absent_on": [
+  "/library/sections/2/collections",
+  "/library/metadata/742",
+  "/library/collections/742",
+  "/library/sections/2/all?type=18",
+  "/library/all?type=18",
+  "/library/all",
+  "/library/metadata/742?includeChildren=1",
+  "/library/sections/2/search?type=18&query=LB83"
+ ]
+}

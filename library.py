@@ -2646,6 +2646,13 @@ class Library:
             if str(collection["librarySectionID"]).isdigit()
             else collection["librarySectionID"],
         }
+        if not rows:
+            # Cycle 83, measured on plexscratch42 (1.42.2) with an episode collection
+            # created over a show's key (so it holds nothing): the row carries NO
+            # `childCount` -- section `/collections`, `/library/metadata/{id}`,
+            # `/library/collections/{id}`, `all?type=18`, `/library/all` alike -- where
+            # a one-member collection beside it says 1. plexsim sent 0.
+            row.pop("childCount")
         if collection.get("_unmatched"):
             # Cycle 26: an unmatch REMOVES it. Built above and popped here rather than
             # made conditional in the literal, so the surviving keys keep the order a
