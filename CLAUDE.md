@@ -73,6 +73,25 @@ exception to the flat rule: `tmdb_cache.json` and `claim_state.json` are resolve
 The `--state` file is state too, and lives wherever that flag names (`run.sh.example`
 puts it beside the catalog).
 
+The native server finds the same sidecars beside the catalog, then one directory up,
+then in its working directory (`sidecar_roots` in `runtime.rs`), so run it from the
+repository root or keep the catalog there -- `run.sh.example` `cd`s to its own directory.
+`client_profiles.json`, `languages.json` and the decision corpus are compiled into the
+binary with `include_str!`, so a change to them needs a rebuild. `tmdb_cache.json` and
+`claim_state.json` sit beside the catalog on both servers.
+
+Where things live in `rust/src/`:
+
+| Path | What it is |
+|---|---|
+| `main.rs` | The CLI: the server flags (argparse's, refusals included) and the test-only adapters `test_native_phase2.py` drives |
+| `runtime.rs` | The request loop, the route table and most projections; `serve` starts GDM, the state saver and the plex.tv threads |
+| `runtime/wire.rs` | The response envelope: header order, Range/416, CORS, gzip, websocket handshake |
+| `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind Real-Debrid, CDN bytes, TMDB and artwork |
+| `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and Fix Match (`PLEXSIM_PLEXTV_URL` points plex.tv at a stub) |
+| `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
+| `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | The ports of the Python modules of the same name |
+
 A movie library and a show library have **different**
 `Meta` descriptors, which is why there are two: retargeting one onto the other
 gives the client a grid whose filter bar can only talk about the wrong type.
@@ -86,7 +105,8 @@ cp catalog.example.json catalog.json
 ```
 
 The native `--state` file is JSON and refuses the Python server's pickle, so a state
-file does not move between the two.
+file does not move between the two. Both servers refuse to start without `RD_TOKEN`,
+and `--announce-url` needs `PLEX_TOKEN`.
 
 `catalog.json` and `run.sh` are gitignored: both carry account-scoped
 credentials. `catalog.example.json` keeps the shape with the links redacted.
@@ -338,6 +358,39 @@ python3 tests/test_parity_server.py         # server-level routes, the plug-in d
 python3 tests/test_parity_lists.py          # playlists, collections, list artwork, empty answers: the oracle's values
 python3 tests/test_parity_residue.py        # what a lockstep replay of the whole UI suite still found: the oracle's values
 ```
+
+The native-only and parity suites, all black-box unless noted:
+
+```bash
+python3 tests/test_native_runtime_smoke.py  # native routes and CLI refusals; refuses PLEXSIM_SERVER=python
+python3 tests/test_native_gdm.py            # native GDM answers and the /servers self row
+PLEXSIM_NATIVE_BIN=rust/target/release/plexsim python3 tests/test_native_phase2.py
+                                            # the Rust core modules against the Python ones, row by row
+python3 tests/test_tls.py                   # HTTPS and plain HTTP on one port
+python3 tests/test_prefix_registry.py       # 58 measured prefix shapes
+python3 tests/test_regional_prefs.py        # the regional prefs documents, cell by cell
+python3 tests/test_part_bytes.py            # part reads against a local provider stub
+python3 tests/test_server_command.py        # the launcher's native default and python override
+cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests
+```
+
+Credentials unlock the rest. With `TMDB_KEY` and a real `RD_TOKEN`, and a copy of
+`catalog_ui.json` whose `_debrid` links that account owns (made on the test host, never
+committed), the UI suite runs with **no skips**: 1,979/1,979 on both servers.
+Keyless it is 1,975/1,975 with exactly three skips (two Fix Match, Download).
+`test_all.py` and `conformance.py` need the live catalog and the same credentials.
+Real-Debrid is read-only in tests: unrestrict and read bytes, never add or delete.
+
+Where to run them: service and end-to-end tests run on **zen** (the workspace rule),
+with the native binary cross-built on the Mac --
+`docker run --rm --platform linux/amd64 -v "$PWD":/src -v <target dir outside the repo>:/target -e CARGO_TARGET_DIR=/target -w /src/rust rust:1-bullseye cargo build --release`
+-- and copied to `rust/target/release/plexsim` in the zen copy. Keep every test port
+**below 32768**: zen's ephemeral range starts there, so a port inside it is taken now and
+then by an outgoing connection and the server fails to bind (the cause of the old
+"flaky" `--web-root` sub-server crash). The UI suite binds three sub-servers of its own
+on fixed ports (`gated_port`, `web_port_c16y`, `port_c29l`, 32597-32599); two suites at
+once need those remapped in the test host's copy. Point `PLEXSIM_PLEXTV_URL` at a
+closed local port for any run that must not reach plex.tv.
 
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
 collections, and finally deletes a row and a section. Everything it touches is in
