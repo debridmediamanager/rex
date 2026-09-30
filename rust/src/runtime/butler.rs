@@ -424,7 +424,7 @@ impl Runtime {
 }
 
 /// `KNOWN_AGENTS` / `KNOWN_SCANNERS` in server.py: what a library edit may name.
-const KNOWN_AGENTS: [&str; 6] = [
+pub(super) const KNOWN_AGENTS: [&str; 6] = [
     "tv.plex.agents.movie",
     "tv.plex.agents.series",
     "tv.plex.agents.none",
@@ -432,7 +432,7 @@ const KNOWN_AGENTS: [&str; 6] = [
     "tv.plex.agents.nfo.series",
     "com.plexapp.agents.none",
 ];
-const KNOWN_SCANNERS: [&str; 6] = [
+pub(super) const KNOWN_SCANNERS: [&str; 6] = [
     "Plex Movie",
     "Plex Movie Scanner",
     "Plex Video Files Scanner",
@@ -444,7 +444,7 @@ const KNOWN_SCANNERS: [&str; 6] = [
 impl Runtime {
     /// `KNOWN_LANGUAGES`: the regional codes of the first `languageOverride` enum in the
     /// item preference descriptors, lower-cased.
-    fn known_languages(&self) -> HashSet<String> {
+    pub(super) fn known_languages(&self) -> HashSet<String> {
         let Some(document) = load_json_sidecar(&self.catalog_path, "item_prefs.json") else {
             return HashSet::new();
         };

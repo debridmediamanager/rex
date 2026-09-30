@@ -2035,10 +2035,16 @@ impl Runtime {
     }
 
     fn section_pref_rows(&self, section_key: &str, kind: &str) -> Vec<Value> {
-        let mut rows = load_json_sidecar(&self.catalog_path, "section_prefs.json")
+        let rows = load_json_sidecar(&self.catalog_path, "section_prefs.json")
             .and_then(|value| value.get(kind).cloned())
             .and_then(|value| value.as_array().cloned())
             .unwrap_or_default();
+        self.section_settings(section_key, rows)
+    }
+
+    /// `server.py` `section_settings`: a library's setting rows with the values
+    /// written to it.
+    fn section_settings(&self, section_key: &str, mut rows: Vec<Value>) -> Vec<Value> {
         for row in &mut rows {
             if let Some(object) = row.as_object_mut() {
                 let id = object.get("id").map(string_value).unwrap_or_default();
@@ -2049,7 +2055,9 @@ impl Runtime {
                     // canonical string `false`/`true`.
                     let value = match object.get("type").and_then(Value::as_str) {
                         Some("bool") => {
-                            if is_true_option(value) {
+                            // The write stores the canonical string (`server.py`: exactly
+                            // `1` or `true` is "true").
+                            if value == "true" || is_true_option(value) {
                                 "true"
                             } else {
                                 "false"
@@ -7177,7 +7185,115 @@ impl Runtime {
         body
     }
 
+    /// `server.py`'s section prefs write (`PUT /library/sections/{id}/prefs`, and the
+    /// `prefs[...]` of a create): an unknown setting refuses the whole write; an `int`
+    /// that does not parse stores 0, a `bool` stores "true" for exactly `1` or `true`,
+    /// text is escaped; and a write that set anything stamps the section's `updatedAt`.
+    fn write_section_prefs(
+        &mut self,
+        section_key: &str,
+        kind: &str,
+        writes: &[(String, String)],
+    ) -> Result<(), ()> {
+        let definitions = self.section_pref_rows(section_key, kind);
+        let types = definitions
+            .iter()
+            .filter_map(|row| {
+                Some((
+                    row.get("id")?.as_str()?.to_string(),
+                    row.get("type")
+                        .and_then(Value::as_str)
+                        .unwrap_or("text")
+                        .to_string(),
+                ))
+            })
+            .collect::<HashMap<_, _>>();
+        if writes.iter().any(|(name, _)| !types.contains_key(name)) {
+            return Err(());
+        }
+        for (name, value) in writes {
+            let stored = match types.get(name).map(String::as_str) {
+                // Cycle 17: a value that is not an integer stores **0**.
+                Some("int" | "integer") => py_int(value)
+                    .map(|number| number.to_string())
+                    .unwrap_or_else(|| "0".to_string()),
+                Some("bool") => {
+                    if value == "1" || value == "true" {
+                        "true".to_string()
+                    } else {
+                        "false".to_string()
+                    }
+                }
+                Some("text") => escaped_pref(value),
+                _ => value.clone(),
+            };
+            info!("SECTION PREF {section_key} {name} = {stored}");
+            self.section_prefs
+                .insert((section_key.to_string(), name.clone()), stored);
+        }
+        if !writes.is_empty() {
+            if let Some(object) = self
+                .catalog
+                .sections
+                .iter_mut()
+                .find(|known| string_value(known.get("key").unwrap_or(&Value::Null)) == section_key)
+                .and_then(Value::as_object_mut)
+            {
+                object.insert("updatedAt".to_string(), json!(now()));
+            }
+            self.catalog.document.insert(
+                "sections".to_string(),
+                Value::Array(self.catalog.sections.clone()),
+            );
+        }
+        self.dirty = true;
+        Ok(())
+    }
+
+    /// `server.py` `create_section`: `POST /library/sections` -- Add Library.  The
+    /// form is validated in the measured order (location, type, agent, scanner, name,
+    /// language -- each a 400), a numeric type names a library type, the new library's
+    /// uuid is the CRC-32 of `<name>-<type>`, its `prefs[...]` are applied as a prefs
+    /// write, and the answer is a 201 bare container naming it in `Location`.
     fn create_section(&mut self, query: &HashMap<String, String>) -> Response {
+        let Some(location) = query.get("location") else {
+            return Response::error(400, "'location' is missing or invalid. ");
+        };
+        let raw_type = query.get("type").cloned().unwrap_or_default();
+        let kind = if !raw_type.is_empty() && raw_type.bytes().all(|b| b.is_ascii_digit()) {
+            match raw_type.as_str() {
+                "1" => "movie",
+                "2" => "show",
+                "8" => "artist",
+                "13" => "photo",
+                _ => "",
+            }
+            .to_string()
+        } else {
+            raw_type
+        };
+        if !matches!(kind.as_str(), "movie" | "show" | "photo" | "artist") {
+            return Response::error(400, "'type' is missing or invalid");
+        }
+        if !query
+            .get("agent")
+            .is_some_and(|agent| butler::KNOWN_AGENTS.contains(&agent.as_str()))
+        {
+            return Response::error(400, "'agent' is missing or invalid");
+        }
+        if !query
+            .get("scanner")
+            .is_some_and(|scanner| butler::KNOWN_SCANNERS.contains(&scanner.as_str()))
+        {
+            return Response::error(400, "new scanner needs to be paired with new agent ");
+        }
+        let Some(title) = query.get("name").filter(|name| !name.is_empty()).cloned() else {
+            return Response::error(400, "'name' is missing or invalid ");
+        };
+        let language = query.get("language").cloned().unwrap_or_default();
+        if !self.known_languages().contains(&language.to_lowercase()) {
+            return Response::error(400, "'language' is invalid ");
+        }
         let key = self
             .catalog
             .sections
@@ -7187,54 +7303,82 @@ impl Runtime {
             .max()
             .unwrap_or(0)
             + 1;
-        let kind = query.get("type").map(String::as_str).unwrap_or("movie");
-        let section_type = if kind == "2" || kind == "show" { "show" } else { "movie" };
-        let title = query.get("name").cloned().unwrap_or_else(|| "Library".to_string());
-        // server.py: the new section's uuid is `"%032x" % crc32("{title}-{type}")`.
-        let uuid = format!("{:032x}", crc32(format!("{title}-{section_type}").as_bytes()));
+        let seed = format!("{title}-{kind}");
         let section = json!({
             "key": key.to_string(),
-            "type": section_type,
+            "type": kind,
             "title": title,
-            "uuid": uuid,
-            "language": query.get("language").cloned().unwrap_or_else(|| "en-US".to_string()),
+            "uuid": format!("{:032x}", crc32(seed.as_bytes())),
         });
-        info!(
-            "SECTION create {} ({})",
-            section.get("title").map_or_else(String::new, string_value),
-            section.get("type").map_or_else(String::new, string_value)
-        );
+        info!("SECTION create {title} ({kind})");
         self.catalog.sections.push(section.clone());
         self.added_sections.push(section.clone());
         self.catalog.document.insert(
             "sections".to_string(),
             Value::Array(self.catalog.sections.clone()),
         );
+        let mut prefs = query
+            .iter()
+            .filter_map(|(name, value)| {
+                let inner = name.strip_prefix("prefs[")?.strip_suffix(']')?;
+                (!inner.is_empty()
+                    && inner.chars().all(|c| c.is_alphanumeric() || c == '_'))
+                .then(|| (inner.to_string(), value.clone()))
+            })
+            .collect::<Vec<_>>();
+        prefs.sort();
+        if !prefs.is_empty() {
+            // Measured on a writable copy of the reference: the create applies its
+            // `prefs[...]` as the prefs write does (an unknown one refuses them all).
+            let _ = self.write_section_prefs(&key.to_string(), &kind, &prefs);
+        }
+        let section = self
+            .catalog
+            .sections
+            .iter()
+            .find(|known| string_value(known.get("key").unwrap_or(&Value::Null)) == key.to_string())
+            .cloned()
+            .unwrap_or(section);
         // Cycle 35, measured on both copies frame for frame: a create SCANS, and the
         // scan's skeleton survives a location holding no files at all; cycle 15: it
         // ends in ONE `backgroundProcessingQueue` `queueRegenerated` frame.
         self.notify_section_scan(&key.to_string(), &section);
         self.notify_queue_regenerated();
-        for (name, value) in query {
-            if let Some(pref) = name
-                .strip_prefix("prefs[")
-                .and_then(|value| value.strip_suffix(']'))
-            {
-                self.section_prefs
-                    .insert((key.to_string(), pref.to_string()), value.clone());
-            }
-        }
         self.dirty = true;
-        Response::json(
+        let mut row = section.as_object().cloned().unwrap_or_default();
+        let is_show = kind == "show";
+        row.insert(
+            "agent".to_string(),
+            json!(if is_show { "tv.plex.agents.series" } else { "tv.plex.agents.movie" }),
+        );
+        row.insert(
+            "scanner".to_string(),
+            json!(if is_show { "Plex TV Series" } else { "Plex Movie" }),
+        );
+        row.insert(
+            "language".to_string(),
+            json!(if language.is_empty() { "en-US".to_string() } else { language }),
+        );
+        row.insert("refreshing".to_string(), json!(false));
+        row.insert("content".to_string(), json!(true));
+        row.insert("directory".to_string(), json!(true));
+        row.insert("contentChangedAt".to_string(), json!(0));
+        row.insert("hidden".to_string(), json!(0));
+        row.insert(
+            "Location".to_string(),
+            json!([{"id": 1, "path": if location.is_empty() { "/plexsim" } else { location.as_str() }}]),
+        );
+        // Measured: the create answers a BARE container, with none of the library
+        // container's identifier, media-tag pair or allowSync -- and a `Location`
+        // header naming the new library.
+        let mut response = Response::json(
             201,
-            self.container(
-                Map::from_iter([(
-                    "Directory".to_string(),
-                    vec![self.section_directory(&section)].into_iter().collect(),
-                )]),
-                false,
-            ),
-        )
+            json!({"MediaContainer": {"size": 1, "Directory": [Value::Object(row)]}}),
+        );
+        response
+            .headers
+            .push(("Location".to_string(), format!("/library/sections/{key}")));
+        response
     }
 
     fn route_all(&self, query: &HashMap<String, String>) -> Response {
@@ -12633,36 +12777,6 @@ impl Runtime {
             return Response::json(200, plugin_container(Vec::new()));
         }
         if segments == ["library", "sections"] && request.method == "POST" {
-            for required in ["name", "type", "agent", "scanner", "language", "location"] {
-                if !query.contains_key(required) {
-                    return Response::error(400, "plexsim: bad request");
-                }
-            }
-            let kind = query.get("type").map(String::as_str).unwrap_or("");
-            let expected_agent = if kind == "2" || kind == "show" {
-                "tv.plex.agents.series"
-            } else if kind == "1" || kind == "movie" {
-                "tv.plex.agents.movie"
-            } else {
-                ""
-            };
-            let expected_scanner = if kind == "2" || kind == "show" {
-                "Plex TV Series"
-            } else if kind == "1" || kind == "movie" {
-                "Plex Movie"
-            } else {
-                ""
-            };
-            if expected_agent.is_empty()
-                || query.get("agent").map(String::as_str) != Some(expected_agent)
-                || query.get("scanner").map(String::as_str) != Some(expected_scanner)
-                || !matches!(
-                    query.get("language").map(String::as_str),
-                    Some("en-US" | "de-DE" | "fr-FR" | "es-ES")
-                )
-            {
-                return Response::error(400, "plexsim: bad request");
-            }
             return self.create_section(query);
         }
         if segments.len() == 3
@@ -14574,120 +14688,64 @@ impl Runtime {
                     let kind = section
                         .get("type")
                         .and_then(Value::as_str)
-                        .unwrap_or("movie");
-                    let definitions = self.section_pref_rows(section_key, kind);
-                    let known = definitions
+                        .unwrap_or("movie")
+                        .to_string();
+                    let writes = query
                         .iter()
-                        .filter_map(|row| row.get("id").and_then(Value::as_str))
-                        .collect::<HashSet<_>>();
-                    if query
-                        .keys()
-                        .any(|name| !name.starts_with("X-Plex-") && !known.contains(name.as_str()))
-                    {
+                        .filter(|(name, _)| !name.starts_with("X-Plex-"))
+                        .map(|(name, value)| (name.clone(), value.clone()))
+                        .collect::<Vec<_>>();
+                    if self.write_section_prefs(section_key, &kind, &writes).is_err() {
                         return Response::error(400, "plexsim: bad request");
                     }
-                    let types = definitions
-                        .iter()
-                        .filter_map(|row| {
-                            Some((
-                                row.get("id")?.as_str()?.to_string(),
-                                row.get("type")
-                                    .and_then(Value::as_str)
-                                    .unwrap_or("text")
-                                    .to_string(),
-                            ))
-                        })
-                        .collect::<HashMap<_, _>>();
-                    for (name, value) in query {
-                        if !name.starts_with("X-Plex-") {
-                            let Some(kind) = types.get(name).map(String::as_str) else {
-                                continue;
-                            };
-                            // PMS accepts a malformed integer write as a
-                            // successful write of zero. It canonicalizes
-                            // booleans and enum delimiters on readback.
-                            let stored = match kind {
-                                "int" | "integer" => value
-                                    .parse::<i64>()
-                                    .map(|number| number.to_string())
-                                    .unwrap_or_else(|_| "0".to_string()),
-                                "bool" => {
-                                    if is_true_option(value) {
-                                        "true".to_string()
-                                    } else {
-                                        "false".to_string()
-                                    }
-                                }
-                                _ => escaped_pref(value),
-                            };
-                            info!("SECTION PREF {section_key} {name} = {stored}");
-                            self.section_prefs
-                                .insert((section_key.to_string(), name.clone()), stored);
-                        }
-                    }
-                    if let Some(object) = self
-                        .catalog
-                        .sections
-                        .iter_mut()
-                        .find(|known| {
-                            string_value(known.get("key").unwrap_or(&Value::Null)) == section_key
-                        })
-                        .and_then(Value::as_object_mut)
-                    {
-                        object.insert("updatedAt".to_string(), json!(now()));
-                    }
-                    self.catalog.document.insert(
-                        "sections".to_string(),
-                        Value::Array(self.catalog.sections.clone()),
-                    );
-                    self.dirty = true;
                     return Response::empty(200);
                 }
                 if segments[3] == "prefs" && request.method == "GET" {
-                    let settings = if query
-                        .get("agent")
-                        .is_some_and(|agent| agent == "tv.plex.agents.none")
-                    {
-                        let type_number =
-                            if section.get("type").and_then(Value::as_str) == Some("show") {
-                                "2"
-                            } else {
-                                "1"
-                            };
-                        load_json_sidecar(&self.catalog_path, "section_prefs_new.json")
-                            .and_then(|document| {
-                                let ids = document
-                                    .get("lists")
-                                    .and_then(|lists| lists.get(type_number))
-                                    .and_then(Value::as_array)?;
-                                let definitions =
-                                    document.get("settings").and_then(Value::as_object)?;
-                                Some(
-                                    ids.iter()
-                                        .filter_map(|id| {
-                                            id.as_str().and_then(|id| definitions.get(id)).cloned()
+                    let kind = section
+                        .get("type")
+                        .and_then(Value::as_str)
+                        .unwrap_or("movie")
+                        .to_string();
+                    let base = load_json_sidecar(&self.catalog_path, "section_prefs.json")
+                        .and_then(|value| value.get(&kind).cloned())
+                        .and_then(|value| value.as_array().cloned())
+                        .unwrap_or_default();
+                    // `server.py`: `?agent=` (any agent) RESHAPES an existing library's
+                    // list exactly as it shapes a new one's, keeping the library's own
+                    // rows for the settings it has; the written values apply after.
+                    let rows = match query.get("agent").filter(|agent| !agent.is_empty()) {
+                        Some(agent) => {
+                            let type_id = if kind == "show" { "2" } else { "1" };
+                            let document =
+                                load_json_sidecar(&self.catalog_path, "section_prefs_new.json")
+                                    .unwrap_or(Value::Null);
+                            let lists = document.get("lists");
+                            let known = document.get("settings");
+                            let ids = lists
+                                .and_then(|lists| {
+                                    lists
+                                        .get(format!("{type_id}|{agent}"))
+                                        .filter(|ids| truthy(ids))
+                                        .or_else(|| lists.get(type_id).filter(|ids| truthy(ids)))
+                                })
+                                .and_then(Value::as_array)
+                                .cloned()
+                                .unwrap_or_else(|| vec![json!("hidden")]);
+                            ids.iter()
+                                .filter_map(Value::as_str)
+                                .filter_map(|name| {
+                                    base.iter()
+                                        .find(|row| {
+                                            row.get("id").and_then(Value::as_str) == Some(name)
                                         })
-                                        .collect::<Vec<_>>(),
-                                )
-                            })
-                            .unwrap_or_else(|| {
-                                self.section_pref_rows(
-                                    section_key,
-                                    section
-                                        .get("type")
-                                        .and_then(Value::as_str)
-                                        .unwrap_or("movie"),
-                                )
-                            })
-                    } else {
-                        self.section_pref_rows(
-                            section_key,
-                            section
-                                .get("type")
-                                .and_then(Value::as_str)
-                                .unwrap_or("movie"),
-                        )
+                                        .cloned()
+                                        .or_else(|| known.and_then(|known| known.get(name)).cloned())
+                                })
+                                .collect::<Vec<_>>()
+                        }
+                        None => base,
                     };
+                    let settings = self.section_settings(section_key, rows);
                     let mut settings = settings;
                     // Cycle 25, measured on kids and zen: `X-Plex-Platform: Samsung` --
                     // that exact spelling, the header beating the query -- appends a
@@ -22296,6 +22354,27 @@ const SECTION_TOP_KNOWN: &[&str] = &[
         "viewUpdatedAt", "viewedLeafCount", "viewedOrInProgressLeafCount", "writer", "year",
 ];
 
+/// Python's `int(text)` for a base-10 string: surrounding whitespace, one sign, and
+/// single underscores between digits.
+fn py_int(text: &str) -> Option<i64> {
+    let trimmed = text.trim_matches(|c: char| c.is_whitespace());
+    let (negative, digits) = match trimmed.as_bytes().first() {
+        Some(b'-') => (true, &trimmed[1..]),
+        Some(b'+') => (false, &trimmed[1..]),
+        _ => (false, trimmed),
+    };
+    if digits.is_empty()
+        || digits.starts_with('_')
+        || digits.ends_with('_')
+        || digits.contains("__")
+        || !digits.bytes().all(|b| b.is_ascii_digit() || b == b'_')
+    {
+        return None;
+    }
+    let value = digits.replace('_', "").parse::<i64>().ok()?;
+    Some(if negative { -value } else { value })
+}
+
 fn known_method(method: &str) -> bool {
     matches!(
         method,
@@ -23937,7 +24016,11 @@ fn http_date_at(seconds: i64) -> String {
 pub fn xml_or_json(response: Response, accept: Option<&str>) -> Response {
     let paired = PAIRED_HUBS.with(|noted| std::mem::take(&mut *noted.borrow_mut()));
     let want_xml = accept_wants_xml(accept.unwrap_or(""));
-    if response.status != 200 || !want_xml || response.content_type != "application/json" {
+    // `server.py`'s "created" answer (Add Library's 201) negotiates XML too.
+    if !matches!(response.status, 200 | 201)
+        || !want_xml
+        || response.content_type != "application/json"
+    {
         return response;
     }
     let Ok(mut value) = serde_json::from_slice::<Value>(&response.body) else {
