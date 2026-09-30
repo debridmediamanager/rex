@@ -451,7 +451,9 @@ impl Runtime {
     }
 
     /// Every playlist row, smart first, then by sort title (`library.playlists`).
-    fn playlist_rows(&self) -> Vec<Value> {
+    /// The `/playlists` rows in `library.playlists()` order: the SMART ones first, then
+    /// `titleSort` (or the title) -- the order every later stable sort ties back to.
+    pub(super) fn playlist_rows(&self) -> Vec<Value> {
         let mut rows = self
             .playlists
             .values()

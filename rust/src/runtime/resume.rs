@@ -661,12 +661,10 @@ impl Runtime {
     }
 
     /// The `home.playlists` shelf's rows: the `/playlists` rows, newest VIEWED first.
+    /// A stable sort over `library.playlists()`'s order, so lists viewed or added in the
+    /// same second keep the smart-then-title order rather than the map's.
     pub(super) fn recent_playlists(&self) -> Vec<Value> {
-        let mut rows = self
-            .playlists
-            .values()
-            .map(|playlist| self.playlist_row(playlist, false, true))
-            .collect::<Vec<_>>();
+        let mut rows = self.playlist_rows();
         rows.sort_by_key(|row| {
             -row.get("lastViewedAt")
                 .and_then(Value::as_i64)
