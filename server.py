@@ -3509,8 +3509,12 @@ def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
                          if key == "Collection" else tag["tag"]} for tag in out[key]
                         if isinstance(tag, dict) and tag.get("tag")][:GRID_TAG_CAPS.get(key)]
     if out.get("Media"):
+        # A Media that `excludeElements=Part` already emptied keeps its `partCount` and
+        # gains no `Part` list back: an empty one here made the response-wide pass count
+        # it again and answer `partCount: 0` for a one-part movie.
         out["Media"] = [dict(media, Part=[{k: v for k, v in part.items() if k != "Stream"}
                                           for part in media.get("Part") or []])
+                        if "Part" in media else dict(media)
                         for media in out["Media"]]
     return out
 
