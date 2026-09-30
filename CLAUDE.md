@@ -330,6 +330,12 @@ python3 tests/test_plextv.py                # claim, announce, account import an
 python3 tests/test_session_reaper.py        # Now Playing's 180 s + 30 s-tick reaper; ~3.5 min of wall clock
 python3 tests/test_cli.py                   # main()'s argparse: --help anywhere, refusals, --flag=value, prefixes, --web-root default
 python3 tests/test_server_log.py            # every route's log line and level, Download Logs, filters=log, SSE/websocket channels
+python3 tests/test_parity_listings.py       # section listings, /library roots, Add Library, section prefs: the oracle's values
+python3 tests/test_parity_metadata.py       # item detail, children, tags, top leaves, alternates: the oracle's values
+python3 tests/test_parity_hubs.py           # hubs, search, voice search, autocomplete, matches: the oracle's values
+python3 tests/test_parity_playback.py       # play queues, sessions, timeline, statistics (TZ=Europe/Berlin): the oracle's values
+python3 tests/test_parity_server.py         # server-level routes, the plug-in dispatcher, resources, Live TV: the oracle's values
+python3 tests/test_parity_lists.py          # playlists, collections, list artwork, empty answers: the oracle's values
 ```
 
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
