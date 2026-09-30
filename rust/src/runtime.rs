@@ -19865,7 +19865,7 @@ impl Runtime {
             let height = asset.get("height").and_then(Value::as_u64).unwrap_or(1) as u32;
             match content_type.as_str() {
                 "image/png" => generated_png(width, height, [32, 34, 38]),
-                "image/jpeg" => generated_jpeg(width, height),
+                "image/jpeg" => generated_jpeg(width, height, [32, 34, 38]),
                 _ => Vec::new(),
             }
         };
@@ -23144,21 +23144,103 @@ fn generated_png(width: u32, height: u32, rgb: [u8; 3]) -> Vec<u8> {
     output
 }
 
-fn generated_jpeg(width: u32, height: u32) -> Vec<u8> {
-    let width = width.clamp(1, u16::MAX as u32) as u16;
-    let height = height.clamp(1, u16::MAX as u32) as u16;
-    // The UI only needs a stable bundled-art placeholder.  Keep a valid SOF
-    // geometry and terminator so image sniffers do not mistake JPEG resources
-    // for the PNG placeholders used by older routes.
-    let mut output = vec![
-        0xff, 0xd8, // SOI
-        0xff, 0xc0, 0x00, 0x11, 0x08,
-    ];
-    output.extend_from_slice(&height.to_be_bytes());
-    output.extend_from_slice(&width.to_be_bytes());
-    output.extend_from_slice(&[3, 1, 0x11, 0, 2, 0x11, 1, 3, 0x11, 1]);
-    output.extend_from_slice(&[0xff, 0xd9]);
-    output
+const JPEG_DC_BITS: [u8; 16] = [0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0];
+const JPEG_DC_VALS: [u8; 12] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const JPEG_AC_BITS: [u8; 16] = [0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 0x7d];
+const JPEG_AC_VALS: [u8; 162] = [0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12, 0x21, 0x31, 0x41, 0x06, 0x13, 0x51, 0x61, 0x07, 0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xa1, 0x08, 0x23, 0x42, 0xb1, 0xc1, 0x15, 0x52, 0xd1, 0xf0, 0x24, 0x33, 0x62, 0x72, 0x82, 0x09, 0x0a, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4a, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5a, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xaa, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa];
+
+fn jpeg_huffman_codes(bits: &[u8; 16], values: &[u8]) -> HashMap<u8, (u32, u32)> {
+    let mut codes = HashMap::new();
+    let (mut code, mut index) = (0_u32, 0_usize);
+    for length in 1..=16_u32 {
+        for _ in 0..bits[length as usize - 1] {
+            codes.insert(values[index], (code, length));
+            index += 1;
+            code += 1;
+        }
+        code <<= 1;
+    }
+    codes
+}
+
+/// server.py's `_jpeg`: a baseline JPEG of one solid colour -- every 8x8 block a DC
+/// coefficient and an end-of-block, unit quantisation, the standard Huffman tables --
+/// byte for byte what the oracle serves for a bundled `.jpg` resource.
+fn generated_jpeg(width: u32, height: u32, rgb: [u8; 3]) -> Vec<u8> {
+    let (red, green, blue) = (rgb[0] as f64, rgb[1] as f64, rgb[2] as f64);
+    let luma = (0.299 * red + 0.587 * green + 0.114 * blue) as i64;
+    let chroma_b = (128.0 - 0.168736 * red - 0.331264 * green + 0.5 * blue) as i64;
+    let chroma_r = (128.0 + 0.5 * red - 0.418688 * green - 0.081312 * blue) as i64;
+    let dc_codes = jpeg_huffman_codes(&JPEG_DC_BITS, &JPEG_DC_VALS);
+    let ac_codes = jpeg_huffman_codes(&JPEG_AC_BITS, &JPEG_AC_VALS);
+    let mut scan = Vec::new();
+    let (mut accumulator, mut filled) = (0_u32, 0_u32);
+    let mut put = |scan: &mut Vec<u8>, code: u32, length: u32| {
+        for shift in (0..length).rev() {
+            accumulator = (accumulator << 1) | ((code >> shift) & 1);
+            filled += 1;
+            if filled == 8 {
+                scan.push(accumulator as u8);
+                if accumulator == 0xff {
+                    scan.push(0x00); // byte stuffing
+                }
+                accumulator = 0;
+                filled = 0;
+            }
+        }
+        filled
+    };
+    let mut previous = [0_i64; 3];
+    let blocks = ((width as u64 + 7) / 8) * ((height as u64 + 7) / 8);
+    for _ in 0..blocks {
+        for (component, level) in [luma, chroma_b, chroma_r].into_iter().enumerate() {
+            let value = (level - 128) * 8;
+            let difference = value - previous[component];
+            previous[component] = value;
+            let size = 64 - difference.unsigned_abs().leading_zeros();
+            let (code, length) = dc_codes[&(size as u8)];
+            put(&mut scan, code, length);
+            if size > 0 {
+                let bits = if difference > 0 {
+                    difference
+                } else {
+                    difference + (1_i64 << size) - 1
+                };
+                put(&mut scan, bits as u32, size);
+            }
+            let (code, length) = ac_codes[&0x00];
+            put(&mut scan, code, length);
+        }
+    }
+    while put(&mut scan, 0, 0) != 0 {
+        put(&mut scan, 1, 1);
+    }
+    let mut document = vec![0xff, 0xd8];
+    for table in 0..2_u8 {
+        document.extend_from_slice(&[0xff, 0xdb, 0, 67, table]);
+        document.extend_from_slice(&[1_u8; 64]);
+    }
+    document.extend_from_slice(&[0xff, 0xc0, 0, 17, 8]);
+    document.extend_from_slice(&(height as u16).to_be_bytes());
+    document.extend_from_slice(&(width as u16).to_be_bytes());
+    document.extend_from_slice(&[3, 1, 0x11, 0, 2, 0x11, 1, 3, 0x11, 1]);
+    for (kind, table, bits, values) in [
+        (0_u8, 0_u8, &JPEG_DC_BITS, &JPEG_DC_VALS[..]),
+        (0, 1, &JPEG_DC_BITS, &JPEG_DC_VALS[..]),
+        (1, 0, &JPEG_AC_BITS, &JPEG_AC_VALS[..]),
+        (1, 1, &JPEG_AC_BITS, &JPEG_AC_VALS[..]),
+    ] {
+        document.extend_from_slice(&[0xff, 0xc4]);
+        document.extend_from_slice(&((19 + values.len()) as u16).to_be_bytes());
+        document.push((kind << 4) | table);
+        document.extend_from_slice(bits);
+        document.extend_from_slice(values);
+    }
+    document.extend_from_slice(&[0xff, 0xda, 0, 12, 3]);
+    document.extend_from_slice(&[1, 0x00, 2, 0x11, 3, 0x11, 0, 63, 0]);
+    document.extend_from_slice(&scan);
+    document.extend_from_slice(&[0xff, 0xd9]);
+    document
 }
 
 /// The seed `plex_guid` hashes for a TMDB id: Python's `str()` of the JSON value.
