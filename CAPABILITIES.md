@@ -369,7 +369,7 @@ written and not a live deployment health check.
 
 | Check | Recorded result |
 |---|---|
-| UI surface (cycles 79 and 82) | 1,960/1,960 passing checks, with 12 fixture skips |
+| UI surface (2026-09-30) | 1,979/1,979 with a TMDB key and a real RD token, no skips; 1,975/1,975 without them, 3 skips |
 | Navigation (cycle 79) | 29/29 on the fixture catalog, 25/25 on the live account catalog |
 | python-plexapi conformance (cycle 79) | 38/38 |
 | Playback/byte/decode suite (cycle 79) | 5/5 |
@@ -377,9 +377,9 @@ written and not a live deployment health check.
 | `--state` persistence (`test_persist.py`) | 16/16 |
 | Cycle 82 compatibility repeat | Zero client-visible and zero new malformed-only findings across all 12 audit axes, under python-plexapi 4.18.3 |
 
-The 12 UI skips are checks whose prerequisites the test fixture lacks: a TMDB
-key (two Fix Match checks), a resolvable RD link (Download), and catalog content
-such as a third movie, person tags or a Dolby Vision row.
+Without credentials the UI suite skips exactly three checks: the two Fix Match
+checks, which need `TMDB_KEY`, and Download, which needs a real `RD_TOKEN` and a
+catalog whose links that account owns.
 
 The twelve axes are the eleven audit axes of cycle 72 plus, from cycle 73, what a
 client sees across a server restart under `--state`. The axis ledger is in
@@ -396,14 +396,15 @@ Evidence: [current status and coverage](HANDOVER.md),
 
 A native Rust port of the server (`rust/`) exists on the branch
 `fix/rust-ui-all`; `main` runs only the Python server described above. On that
-branch the native binary is selected for the test suites with `PLEXSIM_SERVER`,
-and on 2026-09-29 it passed the UI surface 1,960/1,960 (the same 12 skips),
-navigation 29/29, `--state` persistence 17/17, and the TLS, GDM, prefix-registry,
-regional-preference and part-byte suites.
+branch the native binary is selected for the test suites with `PLEXSIM_SERVER`.
+On 2026-09-30 it matched the Python server check for check on the UI surface
+(1,979/1,979 with real RD and TMDB credentials, 1,975/1,975 with 3 skips without),
+and passed python-plexapi conformance 38/38, the real-media playback/decode suite
+5/5, navigation 29/29, `--state` persistence 17/17, and the TLS, GDM,
+prefix-registry, regional-preference and part-byte suites.
 
-It cannot yet make HTTPS requests, so it cannot resolve real RD links or reach
-TMDB: the suites above run on a redacted catalog or a local stub. Until that is
-ported it is not a replacement for the Python server.
+It resolves RD links, streams CDN bytes and matches against TMDB over HTTPS,
+using the system certificate bundle. It has not been run as a deployed server.
 
 ## Keeping this inventory current
 
