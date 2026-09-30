@@ -2954,6 +2954,14 @@ impl Runtime {
             return Response::error(404, "plexsim: not found");
         }
         if segments.len() == 4 && segments[3] == "group" {
+            // Measured on plexscratch (1.43.4, 2026-09-30): the group LISTING is a
+            // writer path -- POST is Add Agent's create, and PUT and DELETE are its 400
+            // with or without a `title=` (a group is edited and removed by id), while a
+            // bare OPTIONS and PATCH are the ordinary 404. This answered PUT and DELETE
+            // with the 404 of a read-only route.
+            if matches!(request.method.as_str(), "PUT" | "DELETE") {
+                return Response::error(400, "plexsim: bad request");
+            }
             if request.method == "GET" || request.method == "HEAD" {
                 let rows = self.metadata_provider_groups();
                 return Response::json(
@@ -13037,6 +13045,24 @@ impl Runtime {
         if segments.starts_with(&["library", "sections"]) && segments.len() >= 3 {
             let section_key = segments[2];
             if let Some(section) = self.section(section_key) {
+                // `server.py` SECTION_LEAF_VERBS, re-measured on plexscratch (1.43.4,
+                // 2026-09-30) over fifteen read leaves x PUT/POST/DELETE/OPTIONS: every
+                // verb a section leaf does not take is a 404 -- the eleven tag
+                // directories, `firstCharacter`, `sorts`, `filters`, `unwatched` and
+                // `collections` take GET and HEAD alone, and the section itself refuses
+                // POST and a bare OPTIONS. This server answered the GET body with a 200
+                // to all of them: the leaves were routed by name and never by verb.
+                let allowed: &[&str] = match segments.get(3) {
+                    None => &["GET", "HEAD", "PUT", "DELETE"],
+                    Some(&"refresh") => &["GET", "HEAD", "POST", "DELETE"],
+                    Some(&"emptyTrash" | &"analyze") => &["PUT"],
+                    Some(&"indexes") => &["DELETE"],
+                    Some(&"prefs" | &"all") => &["GET", "HEAD", "PUT"],
+                    Some(_) => &["GET", "HEAD"],
+                };
+                if !allowed.contains(&request.method.as_str()) {
+                    return Response::error(404, "plexsim: not found");
+                }
                 if segments.get(3) == Some(&"composite")
                     && matches!(request.method.as_str(), "GET" | "HEAD")
                 {
@@ -14946,7 +14972,10 @@ impl Runtime {
                     }
                     return Response::empty(200);
                 }
-                if segments[3] == "prefs" && request.method == "GET" {
+                // A HEAD is the GET without its body here as everywhere (kids and zen:
+                // `HEAD /library/sections/1/prefs` 200 `text/xml`); matching GET alone
+                // sent the HEAD on to the unknown-leaf 404.
+                if segments[3] == "prefs" && matches!(request.method.as_str(), "GET" | "HEAD") {
                     let kind = section
                         .get("type")
                         .and_then(Value::as_str)

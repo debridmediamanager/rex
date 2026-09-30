@@ -1,0 +1,1327 @@
+{
+ "_about": "Verb table measured 2026-09-30 by sending each verb to each read path with a token, Accept: application/json and no body. plexscratch (1.43.4) for every verb; kids (1.43.4) and zen (1.42.2) for OPTIONS and HEAD only. plexscratch's ratingKeys 1 and 3 are two movies. Its /statistics GETs are themselves 404s there, so for that subtree only the refused verbs are kept, and kids -- where the GET and HEAD are 200s -- corroborates them with the same 404 to a bare OPTIONS. DELETE on a section, an item or a collection was never sent.",
+ "rows": [
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/genre",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/2/genre?type=2",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/year?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/decade?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/actor?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/director?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/country?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/studio?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/contentRating?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/resolution?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/collection?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/firstCharacter?sort=titleSort",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/sorts",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/filters",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/unwatched",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/collections",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1?includeDetails=1",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/sections/1/prefs",
+   "status": 200,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/genre",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/2/genre?type=2",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/year?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/decade?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/actor?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/director?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/country?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/studio?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/contentRating?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/resolution?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/collection?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/firstCharacter?sort=titleSort",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/sorts",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/filters",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/unwatched",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/collections",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1?includeDetails=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/sections/1/prefs",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/genre",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/2/genre?type=2",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/year?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/decade?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/actor?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/director?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/country?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/studio?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/contentRating?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/resolution?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/firstCharacter?sort=titleSort",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/sorts",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/filters",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/unwatched",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/sections/1/prefs",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/genre",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/2/genre?type=2",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/year?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/decade?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/actor?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/director?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/country?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/studio?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/contentRating?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/resolution?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/collection?type=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/firstCharacter?sort=titleSort",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/sorts",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/filters",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/unwatched",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/collections",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1?includeDetails=1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/sections/1/prefs",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/genre",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/2/genre?type=2",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/year?type=1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/decade?type=1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/actor?type=1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/director?type=1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/country?type=1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/studio?type=1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/contentRating?type=1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/resolution?type=1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/collection?type=1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/firstCharacter?sort=titleSort",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/sorts",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/filters",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/unwatched",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1?includeDetails=1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/prefs",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/status/sessions/background",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/search?query=the&limit=100&searchTypes=movies,people,tv",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/media/providers/metadata/group",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/media/providers/metadata",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/status/sessions",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/metadata/1,3",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/library/metadata/1",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/player/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/player/timeline/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/playlists?type=42",
+   "status": 200,
+   "contentType": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "content": "plugins"
+    }
+   }
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/status/sessions/background",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/search?query=the&limit=100&searchTypes=movies,people,tv",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/media/providers/metadata/group",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/media/providers/metadata",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/status/sessions",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/metadata/1,3",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/library/metadata/1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/player/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/player/timeline/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/playlists?type=42",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/status/sessions/background",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/library/search?query=the&limit=100&searchTypes=movies,people,tv",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/media/providers/metadata/group",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/media/providers/metadata",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/status/sessions",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/player/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/player/timeline/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/playlists?type=42",
+   "status": 200,
+   "contentType": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "content": "plugins"
+    }
+   }
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/status/sessions/background",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/search?query=the&limit=100&searchTypes=movies,people,tv",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/media/providers/metadata/group",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/media/providers/metadata",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/status/sessions",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/metadata/1,3",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/library/metadata/1",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/player/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/player/timeline/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/playlists?type=42",
+   "status": 200,
+   "contentType": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "content": "plugins"
+    }
+   }
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/status/sessions/background",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/search?query=the&limit=100&searchTypes=movies,people,tv",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/media/providers/metadata/group",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/media/providers/metadata",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/status/sessions",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/metadata/1,3",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/metadata/1",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/player/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/player/timeline/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/playlists?type=42",
+   "status": 200,
+   "contentType": "application/json"
+  },
+  {
+   "reference": "kids",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/player/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "kids",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/player/timeline/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "zen",
+   "version": "1.42.2",
+   "method": "OPTIONS",
+   "path": "/player/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "zen",
+   "version": "1.42.2",
+   "method": "OPTIONS",
+   "path": "/player/timeline/zzNoSuchLeaf",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "kids",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/library/sections/1/prefs",
+   "status": 200,
+   "contentType": "text/xml"
+  },
+  {
+   "reference": "zen",
+   "version": "1.42.2",
+   "method": "HEAD",
+   "path": "/library/sections/1/prefs",
+   "status": 200,
+   "contentType": "text/xml"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/media/providers/metadata/group?zz=1",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/media/providers/metadata/group?title=x",
+   "status": 400,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/statistics/resources?timespan=6",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/statistics/bandwidth?timespan=6",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/statistics/media?timespan=3",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "PUT",
+   "path": "/statistics",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/statistics/resources?timespan=6",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/statistics/bandwidth?timespan=6",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/statistics/media?timespan=3",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "POST",
+   "path": "/statistics",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/statistics/resources?timespan=6",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/statistics/bandwidth?timespan=6",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/statistics/media?timespan=3",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "DELETE",
+   "path": "/statistics",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/statistics/resources?timespan=6",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/statistics/bandwidth?timespan=6",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/statistics/media?timespan=3",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "plexscratch",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/statistics",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "kids",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/statistics/resources?timespan=6",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "kids",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/statistics/resources?timespan=6",
+   "status": 200,
+   "contentType": "text/xml"
+  },
+  {
+   "reference": "kids",
+   "version": "1.43.4",
+   "method": "OPTIONS",
+   "path": "/statistics/bandwidth?timespan=6",
+   "status": 404,
+   "contentType": "text/html"
+  },
+  {
+   "reference": "kids",
+   "version": "1.43.4",
+   "method": "HEAD",
+   "path": "/statistics/bandwidth?timespan=6",
+   "status": 200,
+   "contentType": "text/xml"
+  }
+ ]
+}

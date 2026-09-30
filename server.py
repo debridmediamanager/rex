@@ -1494,8 +1494,12 @@ SINGLE_SEGMENT_WRITERS = {("POST", "/playlists"), ("POST", "/playQueues"),
 # `/:/eventsource/notifications` -- an event stream that never ends. `/system`,
 # `/:/plugins`, `/library/metadata/{id}/match` and `/:/viewChange` keep their own
 # measured envelopes (cycles 21, 52, 25 and 45) and are decided before this.
+# `/player/` is the other any-verb family: its refusal is not a route but the rule that
+# player commands go to a player, and kids, zen and plexscratch answer a bare OPTIONS
+# (and PUT, POST, DELETE and PATCH) under it with the same 400 a GET gets
+# (2026-09-30), where the sweep above filed it with the GET-only reads.
 OPTIONS_ROUTED_PREFIXES = ("/:/resources/", "/video/:/transcode/universal/",
-                           "/subtitles/:/transcode/universal/")
+                           "/subtitles/:/transcode/universal/", "/player/")
 OPTIONS_ROUTED = {"/:/progress", "/:/rate", "/:/scrobble", "/:/timeline", "/:/unscrobble",
                   "/log/networked", "/photo/:/transcode", "/security/resources",
                   "/security/token", "/services/codecs", "/status/sessions/terminate"}
@@ -6237,6 +6241,11 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             return self.bare_container(size=1, **{key: picked})
 
+        if route == "/media/providers/metadata/group" and method in ("PUT", "DELETE"):
+            # Measured on plexscratch (1.43.4, 2026-09-30): the group LISTING is a writer
+            # path, and PUT and DELETE there are its 400 with or without a `title=` -- a
+            # group is edited and removed by id. plexsim answered both with the listing.
+            return ("error", 400, "plexsim: bad request")
         if route in ("/media/providers/metadata", "/media/providers/metadata/group"):
             if method == "POST":
                 # Cycle 31 measured this on the PROVIDER listing. Creating one needs
@@ -13235,6 +13244,12 @@ class PlexSim:
                     return ("error", 404, "plexsim: not found")
                 return self.library_metadata(segments[:2] + [numeric[0]] + segments[3:],  # noqa: E501
                                              query, method)
+            if method not in ("GET", "HEAD", "PUT", "DELETE"):
+                # Measured on plexscratch (1.43.4, 2026-09-30): a key LIST takes the one
+                # item's verbs, and `POST /library/metadata/1,3` and a bare OPTIONS are
+                # the same 404 `POST /library/metadata/1` is. plexsim answered the
+                # listing. (Its DELETE is held out: no reference may be sent one.)
+                return ("error", 404, "plexsim: not found")
             keys = [int(p) for p in raw_key.split(",")
                     if p.isdigit() and int(p) in self.catalog.items]
             if method == "PUT":
@@ -19114,7 +19129,12 @@ class PlexSim:
             if query.get("sectionID") is None or query.get("path") is None:
                 return ("error", 400, "plexsim: bad request")
             return ("error", 500, "plexsim: playlist import failed")
-        if len(segments) == 1 and str(query.get("type") or "") in ("42", "042", "00042"):
+        # The listing is a READ: on plexscratch (1.43.4, 2026-09-30) `POST
+        # /playlists?type=42` is the create validator's 400 like any other POST there,
+        # and PUT, DELETE and a bare OPTIONS the dispatcher's empty row. plexsim answered
+        # the POST with the background list.
+        if len(segments) == 1 and str(query.get("type") or "") in ("42", "042", "00042") \
+                and method in ("GET", "HEAD"):
             # Cycle 50: PMS's own BACKGROUND PROCESSING list, the second half of the
             # Conversions page's pair. Measured on zen, kids and plexscratch42: the row is
             # eight keys in this order and much lighter than an ordinary playlist row --
@@ -23317,6 +23337,13 @@ class Handler(BaseHTTPRequestHandler):
         "/statistics", "/statistics/bandwidth", "/statistics/media",
         "/status/sessions", "/clients/profiles", "/playlists/sorts",
         "/library/sections/prefs",
+        # Re-measured on plexscratch (1.43.4, 2026-09-30) with PUT, POST, DELETE and a
+        # bare OPTIONS: the session LISTINGS are one family -- `/status/sessions/
+        # background` refuses every one of them as `/status/sessions` does -- and so
+        # are the two server-wide searches. plexsim answered each with its GET body.
+        # (`/status/sessions/history/{id}` takes a DELETE and `/terminate` any verb, so
+        # this is a list of listings, not a prefix.)
+        "/status/sessions/background", "/library/search",
     )
     # Cycle 31: the three paths whose POST is a real refusal of its own (400 on both
     # versions) while every other verb is a 404. The recorded rule "POST /library/sections
@@ -23327,7 +23354,11 @@ class Handler(BaseHTTPRequestHandler):
     # Cycle 18: `/system`, `/system/agents` and `/system/scanners/{N}` were here, and
     # the whole subtree has an envelope of its own instead -- 405 on PATCH, an empty 200
     # on OPTIONS and an empty-bodied 404 on the rest, measured on plexscratch.
-    READ_ONLY_PREFIXES = ()
+    # Re-measured on plexscratch (1.43.4, 2026-09-30): the `/statistics` subtree has no
+    # writer at all -- `/statistics/resources` refuses PUT, POST, DELETE and a bare
+    # OPTIONS with the 404 its two siblings do -- so the rule is the subtree, and
+    # plexsim's answer of the resources series to all four was the listed-path gap.
+    READ_ONLY_PREFIXES = ("/statistics/",)
     # Cycle 17, measured on plexscratch: the collection ITEM paths take exactly one
     # verb each and answer 404 to every other. plexsim answered 200 with an empty
     # container to four verbs on the list, 200 with an invented single-item container

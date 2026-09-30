@@ -3078,3 +3078,17 @@ are changing; replay the client's exact request before altering behavior.
   the life of the process). It was the whole `/hubs/sections/{id}` residue of the lockstep replay:
   the rows are the same SET on both servers, and every field difference under them was one row
   compared against another.
+- **The verb table is a rule per route FAMILY, and each server had a different half of it.**
+  Measured on plexscratch (1.43.4, 2026-09-30) with PUT, POST, DELETE, OPTIONS and HEAD over every
+  client read path, with kids and zen for OPTIONS and HEAD (`tests/fixtures/verb_table_2026-09-30.json`):
+  every SECTION leaf takes cycle 15's table and nothing else -- the eleven tag directories,
+  `firstCharacter`, `sorts`, `filters`, `unwatched` and `collections` are GET and HEAD only, the
+  section itself refuses POST, and `HEAD /library/sections/{id}/prefs` is the GET; the session and
+  search LISTINGS (`/status/sessions/background`, `/library/search`) and the whole `/statistics`
+  subtree refuse every verb but GET and HEAD; a key list `/library/metadata/{a},{b}` refuses POST
+  like one item; the provider-group LISTING answers PUT and DELETE with a 400 (with or without
+  `title=`: a group is edited by id) and only a bare OPTIONS with the 404; `/playlists?type=42` is a
+  read, so its POST is the create's 400 and PUT/DELETE/OPTIONS the dispatcher; and under `/player/`
+  a bare OPTIONS is the same 400 as every verb. The native server routed the section leaves by name
+  alone and answered the GET body to any verb; the oracle had listed read-only PATHS and answered the
+  rest. Both follow the families now. A key list's DELETE is held out -- no reference may be sent one.
