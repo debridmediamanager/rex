@@ -838,8 +838,9 @@ def prop_load(catalog, seconds, threads, reaper_seconds=None, during=None):
             lone.request("GET", "/identity")
         lone_seconds = time.time() - began
         lone.close()
-        check("load: 50 sequential /identity reads from one client take under 0.25 s",
-              lone_seconds < 0.25, "%.3f s (%.1f ms each)" % (lone_seconds, lone_seconds * 20))
+        # Measured on the Mac: 5.3-13 ms a read before, 0.2 ms after, the oracle 0.6 ms.
+        check("load: 50 sequential /identity reads from one client take under 0.1 s",
+              lone_seconds < 0.1, "%.3f s (%.1f ms each)" % (lone_seconds, lone_seconds * 20))
         load = Load(server, threads)
         abandoned = {}
         started = time.time()
