@@ -15338,7 +15338,12 @@ impl Runtime {
                         "identifier".to_string(),
                         json!("com.plexapp.plugins.library"),
                     ),
-                    ("librarySectionID".to_string(), json!(section_key)),
+                    // The FIRST row's own value, as the oracle reads it off the row:
+                    // an integer, never the string the section lookup takes.
+                    (
+                        "librarySectionID".to_string(),
+                        first.get("librarySectionID").cloned().unwrap_or(Value::Null),
+                    ),
                     (
                         "librarySectionTitle".to_string(),
                         section.get("title").cloned().unwrap_or(Value::Null),
