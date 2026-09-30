@@ -18267,8 +18267,13 @@ impl Runtime {
                     Some((body, content_type))
                         if owned && matches!(request.method.as_str(), "GET" | "HEAD") =>
                     {
+                        // The oracle's `_serve_image` over an upload: `no-cache` and a
+                        // byte range unit, like every other body path.
                         let mut response = Response::bytes(200, content_type.clone());
                         response.body = body.clone();
+                        response
+                            .headers
+                            .push(("Accept-Ranges".to_string(), "bytes".to_string()));
                         response
                     }
                     _ => Response::error(404, "plexsim: not found"),
