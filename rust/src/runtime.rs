@@ -17604,13 +17604,11 @@ impl Runtime {
                     .collect::<Vec<_>>();
                 // Cycle 54: the listing's filters are ignored on `/allLeaves`; only
                 // `unwatched=` (above) is read.
+                // Cycle 83, measured on kids' show: `sort=` is ignored here as well --
+                // `title:desc`, `titleSort`, an empty value and an unknown key `zzz` all
+                // answer the six episodes in broadcast order with a 200, where this list
+                // sorted and refused the unknown key with a 500.
                 let _ = (&filter_pairs, section_type);
-                if let Some(sort) = query.get("sort") {
-                    rows = match self.sort_rows(rows, Some(sort)) {
-                        Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "plexsim: bad request"),
-                    };
-                }
                 if query
                     .get("excludeElements")
                     .is_some_and(|value| value.split(',').any(|name| name == "Media"))

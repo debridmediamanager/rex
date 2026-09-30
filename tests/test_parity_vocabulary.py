@@ -200,6 +200,14 @@ def run(port):
     check("movie-scoped /hubs/promoted answers 200 to TV-shelf refusals",
           set(got.values()) == {200}, got)
 
+    # 5. allLeaves ignores sort=.
+    plain = keys(request(port, "/library/metadata/20001/allLeaves")[1])
+    got = {sort: (status, keys(mc)) for sort in ("1", "zzz", "title:desc", "")
+           for status, mc in [request(port, "/library/metadata/20001/allLeaves?sort=" + sort)]}
+    check("allLeaves ignores sort= (200, broadcast order)",
+          plain and all(status == 200 and order == plain for status, order in got.values()),
+          got)
+
 
 def main():
     process, port = start()

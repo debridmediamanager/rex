@@ -2997,3 +2997,6 @@ are changing; replay the client's exact request before altering behavior.
 - **A movie-scoped `/hubs/promoted` runs no filter at all** (cycle 83, kids): at
   `contentDirectoryID=1` `resolution=1`, `extraType=1`, `parentIndex=1` and `art=1` are 200s,
   at `=2` 500s -- only a TV shelf parses the request's filters.
+- **`/library/metadata/{id}/allLeaves` ignores `sort=`** (cycle 83, kids' show): `title:desc`,
+  `titleSort`, an empty value and the unknown key `zzz` all answer the episodes in broadcast
+  order with a 200.
