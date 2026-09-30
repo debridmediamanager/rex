@@ -11415,17 +11415,29 @@ impl Runtime {
             .into_iter()
             .map(|mut row| {
                 if let Some(object) = row.as_object_mut() {
+                    // The oracle's listing container projects each row through the grid
+                    // row, which carries no `Field` lock list -- the detail read keeps it.
                     object.retain(|name, _| {
                         !matches!(
                             name.as_str(),
-                            "librarySectionID" | "librarySectionTitle" | "librarySectionKey"
+                            "librarySectionID"
+                                | "librarySectionTitle"
+                                | "librarySectionKey"
+                                | "Field"
                         )
                     });
                 }
                 row
             })
             .collect::<Vec<_>>();
-        let mut fields = self.listing_fields(section_key, &kind, &kind, &format!("All {title}"));
+        // The oracle's `_all_title`: a SHOW library answers the constant "All Shows"
+        // whatever it is called, a movie library composes it from its own title.
+        let all_title = if kind == "show" {
+            "All Shows".to_string()
+        } else {
+            format!("All {title}")
+        };
+        let mut fields = self.listing_fields(section_key, &kind, &kind, &all_title);
         fields.insert("Metadata".to_string(), Value::Array(rows));
         if query.get("includeMeta").map(String::as_str) == Some("1") && type_number == Some(18) {
             // Cycle 46: the FULL section descriptor -- one `Type` row for the collection
@@ -11459,6 +11471,11 @@ impl Runtime {
                     "FieldType": field_types,
                 }),
             );
+        }
+        if query.contains_key("type") {
+            // An explicit `type=18` is the `/all` listing's container, which carries no
+            // `nocache` on either library type; only the bare leaf does on a show one.
+            fields.shift_remove("nocache");
         }
         page_fields(&mut fields, query);
         Response::json(200, self.container(fields, true))
@@ -15130,6 +15147,17 @@ impl Runtime {
                     );
                 }
                 if segments[3] == "collections" {
+                    // Cycle 28: with a `type=` the leaf IS the `/all` listing -- the
+                    // oracle hands it to `section_listing` whole, so `type=1` answers
+                    // exactly the grid's rows, without the `Guid` block the grid
+                    // leaves to `includeGuids`.
+                    if query
+                        .get("type")
+                        .and_then(|value| value.parse::<i64>().ok())
+                        .is_some_and(|number| number != 18)
+                    {
+                        return self.route_section_all(section_key, &[], query, pairs, request);
+                    }
                     return self.route_section_collections(section_key, query);
                 }
                 if segments[3] == "autocomplete" {
