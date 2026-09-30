@@ -128,6 +128,9 @@ def run(port):
         "Content-Encoding", "X-Plex-Content-Original-Length",
         "X-Plex-Content-Compressed-Length", "Content-Length", "Connection", "Cache-Control"))
 
+    # 3. `/children` of a leaf -- an episode as well as a movie -- is the 400.
+    replay(port, "leaf-children", "a leaf's children")
+
 
 def main():
     process, port = start()

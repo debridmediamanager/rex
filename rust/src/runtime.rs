@@ -17317,7 +17317,12 @@ impl Runtime {
                 Response::json(200, self.container(fields, false))
             }
             "children" => {
-                if row.get("type").and_then(Value::as_str) == Some("movie") {
+                // Measured on kids: an EPISODE's `/children` is the same 400 as a movie's
+                // (and a clip's); its `/allLeaves` stays a 200. Only the movie was refused.
+                if matches!(
+                    row.get("type").and_then(Value::as_str),
+                    Some("movie" | "episode" | "clip" | "track")
+                ) {
                     return Response::error(400, "plexsim: bad request");
                 }
                 let section_key = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));

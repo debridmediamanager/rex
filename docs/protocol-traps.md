@@ -2931,3 +2931,9 @@ are changing; replay the client's exact request before altering behavior.
   wire, and no connection state (the socket closes). The cycle-16 rule "a web asset is never
   gzipped" is about the served FILE; the native server applied it to every `/web` path. `/web/`
   (trailing slash) is the same absolute 302 as `/web`, which the native server 404'd.
+- **Every leaf type's `/children` is the 400.** Measured on kids (1.43.4, 2026-09-30): a movie (1),
+  an episode (8) and a clip (5) all answer the 89-byte Bad Request document, paged or not. Their
+  `/allLeaves` and `/grandchildren` differ by type -- 200 for a movie and an episode, 404 for a clip.
+  The oracle refused all four leaf types; the native server refused only a movie and answered an
+  episode an empty 200 container. (The fixture catalog has no clip, so the clip's 404s are recorded
+  here and not checked.)
