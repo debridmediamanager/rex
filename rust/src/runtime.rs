@@ -487,6 +487,7 @@ impl Runtime {
         let source_digest = bytes_digest(&raw_catalog);
         catalog.normalize();
         catalog.retitle_streams();
+        show_listing_columns(&mut catalog.items);
         number_catalog_tags(&mut catalog.items);
         // The catalog's `_strip_show_fields`: an episode carries no Genre, Country,
         // studio, tagline, originalTitle, rating or Label of its own -- the enriched
@@ -1285,18 +1286,9 @@ impl Runtime {
             // STORED columns (measured: The Simpsons stays 1989 and its typical
             // episode length); the detail read only fills them when absent
             // (`show_detail`), which is done by the route, not by every projection.
-            // The first air date is the exception: the catalog load gives a show
-            // without one its earliest episode's, so every projection carries it.
-            if object.get("originallyAvailableAt").is_none() {
-                if let Some(first_air) = leaves
-                    .iter()
-                    .filter_map(|leaf| leaf.get("originallyAvailableAt").and_then(Value::as_str))
-                    .filter(|date| !date.is_empty())
-                    .min()
-                {
-                    object.insert("originallyAvailableAt".to_string(), json!(first_air));
-                }
-            }
+            // The catalog LOAD gives a show without them its episodes' average
+            // duration and earliest air date (`show_listing_columns`), stored, so every
+            // projection carries them and nothing recomputes them afterwards.
             object.insert(
                 "viewedLeafCount".to_string(),
                 json!(leaves
@@ -1304,13 +1296,6 @@ impl Runtime {
                     .filter(|leaf| leaf.get("viewCount").is_some())
                     .count()),
             );
-            if let Some(first) = leaves.first() {
-                if let Some(value) = first.get("duration") {
-                    object
-                        .entry("duration".to_string())
-                        .or_insert(value.clone());
-                }
-            }
             // `Preferences`, `OnDeck` and `Extras` are DETAIL blocks the route adds
             // under their include options (`apply_detail_blocks`); no projection
             // carries them unasked, and a show row names its library by id only.
@@ -22449,6 +22434,77 @@ fn py_int(text: &str) -> Option<i64> {
     }
     let value = digits.replace('_', "").parse::<i64>().ok()?;
     Some(if negative { -value } else { value })
+}
+
+/// `server.py` `Catalog.__init__`: a show's LISTING row carries `duration` (a typical
+/// episode's -- the integer mean of its episodes' non-zero durations) and
+/// `originallyAvailableAt` (its earliest episode's), stored at load with `setdefault`.
+fn show_listing_columns(items: &mut [Value]) {
+    let mut children: HashMap<String, Vec<usize>> = HashMap::new();
+    for (index, row) in items.iter().enumerate() {
+        if row.get("type").and_then(Value::as_str) == Some("clip") {
+            continue;
+        }
+        if let Some(parent) = row.get("parentRatingKey").map(string_value) {
+            if !parent.is_empty() {
+                children.entry(parent).or_default().push(index);
+            }
+        }
+    }
+    fn leaves(
+        items: &[Value],
+        children: &HashMap<String, Vec<usize>>,
+        key: &str,
+        out: &mut Vec<usize>,
+        depth: usize,
+    ) {
+        if depth > 8 {
+            return;
+        }
+        for &index in children.get(key).into_iter().flatten() {
+            if items[index].get("type").and_then(Value::as_str) == Some("episode") {
+                out.push(index);
+            } else {
+                let child = string_value(items[index].get("ratingKey").unwrap_or(&Value::Null));
+                leaves(items, children, &child, out, depth + 1);
+            }
+        }
+    }
+    for show in 0..items.len() {
+        if items[show].get("type").and_then(Value::as_str) != Some("show") {
+            continue;
+        }
+        let key = string_value(items[show].get("ratingKey").unwrap_or(&Value::Null));
+        let mut found = Vec::new();
+        leaves(items, &children, &key, &mut found, 0);
+        let durations = found
+            .iter()
+            .filter_map(|&index| items[index].get("duration").and_then(Value::as_f64))
+            .filter(|duration| *duration != 0.0)
+            .collect::<Vec<_>>();
+        let aired = found
+            .iter()
+            .filter_map(|&index| {
+                items[index]
+                    .get("originallyAvailableAt")
+                    .and_then(Value::as_str)
+                    .filter(|date| !date.is_empty())
+                    .map(str::to_string)
+            })
+            .min();
+        let Some(object) = items[show].as_object_mut() else {
+            continue;
+        };
+        if !durations.is_empty() && !object.contains_key("duration") {
+            let mean = durations.iter().sum::<f64>() / durations.len() as f64;
+            object.insert("duration".to_string(), json!(mean as i64));
+        }
+        if let Some(first) = aired {
+            object
+                .entry("originallyAvailableAt".to_string())
+                .or_insert(json!(first));
+        }
+    }
 }
 
 fn known_method(method: &str) -> bool {
