@@ -4464,11 +4464,20 @@ impl Runtime {
             return json!(row.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) > 0);
         }
         if field == "mediaCount" {
-            return row
-                .get("Media")
-                .and_then(Value::as_array)
-                .map(|media| json!(media.len()))
-                .unwrap_or(Value::Null);
+            // `filter_value`: a show or season counts each LEAF's versions, a list that
+            // matches when any leaf does (0 when it has none); a row its own Media.
+            if matches!(row.get("type").and_then(Value::as_str), Some("show" | "season")) {
+                let counts = key_of(row)
+                    .map(|key| self.leaves(&key))
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|leaf| {
+                        json!(leaf.get("Media").and_then(Value::as_array).map_or(0, Vec::len))
+                    })
+                    .collect::<Vec<_>>();
+                return if counts.is_empty() { json!(0) } else { Value::Array(counts) };
+            }
+            return json!(row.get("Media").and_then(Value::as_array).map_or(0, Vec::len));
         }
         if field == "duplicate" {
             let own = row
