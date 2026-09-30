@@ -428,6 +428,10 @@ pub struct Runtime {
     pub decided_sessions: HashSet<(String, String)>,
     pub web_root: Option<PathBuf>,
     pub bandwidth_bytes: u64,
+    /// `resource_statistics`: the last (second, process CPU seconds) sample and the
+    /// per-second series the Dashboard's CPU graph reads.
+    resource_sample: Option<(i64, f64)>,
+    resource_series: Vec<Value>,
     pub dirty: bool,
     /// Events are retained by sequence so an eventsource/websocket subscriber
     /// can take a snapshot without a mutable callback into the route thread.
@@ -605,6 +609,8 @@ impl Runtime {
             decided_sessions: HashSet::new(),
             web_root: options.web_root,
             bandwidth_bytes: 0,
+            resource_sample: None,
+            resource_series: Vec::new(),
             dirty: false,
             events: Vec::new(),
             section_timeline: HashMap::new(),
@@ -7917,67 +7923,105 @@ impl Runtime {
         )
     }
 
-    fn route_resource_statistics(&self, query: &HashMap<String, String>) -> Response {
-        let Some(value) = query.get("timespan") else {
-            return Response::json(
-                200,
-                self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
-            );
+    /// `resource_statistics`: the Dashboard's CPU and memory graph.  The samples are
+    /// taken when the endpoint is ASKED -- the Dashboard polls while it is open, so the
+    /// per-second series grows the way it does on a real server.  Host CPU is the load
+    /// average over the core count and process CPU is rusage over wall time; the two
+    /// memory numbers are honestly 0.0.  The grammar is `statistics_refusal`'s.
+    fn route_resource_statistics(&mut self, query: &HashMap<String, String>) -> Response {
+        let bare_empty = || Response::json(200, json!({"MediaContainer": {"size": 0}}));
+        let Some(span) = query.get("timespan").filter(|value| !value.is_empty()) else {
+            return bare_empty();
         };
-        let Ok(timespan) = value.parse::<i64>() else {
-            return Response::error(400, "plexsim: bad request");
-        };
-        if timespan != 6 {
-            return Response::json(
-                200,
-                self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
-            );
+        if span.trim_start_matches('+').parse::<i64>().ok() != Some(6) {
+            return bare_empty();
         }
-        for name in ["limit", "offset"] {
-            if let Some(value) = query.get(name) {
-                if value.parse::<i32>().is_err() {
-                    return Response::error(400, "plexsim: bad request");
+        let now = now();
+        let cpu_seconds = unsafe {
+            let mut usage: libc::rusage = std::mem::zeroed();
+            if libc::getrusage(libc::RUSAGE_SELF, &mut usage) == 0 {
+                let seconds = |value: libc::timeval| {
+                    value.tv_sec as f64 + value.tv_usec as f64 / 1_000_000.0
+                };
+                seconds(usage.ru_utime) + seconds(usage.ru_stime)
+            } else {
+                0.0
+            }
+        };
+        let mut process = 0.0_f64;
+        if let Some((at, previous)) = self.resource_sample {
+            if now > at {
+                process = ((cpu_seconds - previous) / (now - at) as f64 * 100.0).max(0.0);
+            }
+        }
+        self.resource_sample = Some((now, cpu_seconds));
+        let host = {
+            let mut loads = [0.0_f64; 3];
+            let got = unsafe { libc::getloadavg(loads.as_mut_ptr(), 3) };
+            if got < 1 {
+                0.0
+            } else {
+                let cores = std::thread::available_parallelism()
+                    .map(|count| count.get())
+                    .unwrap_or(1) as f64;
+                (loads[0] / cores * 100.0).min(100.0)
+            }
+        };
+        let round3 = |value: f64| (value * 1000.0).round() / 1000.0;
+        let last_at = self
+            .resource_series
+            .last()
+            .and_then(|row| row.get("at"))
+            .and_then(Value::as_i64);
+        if last_at.is_none_or(|at| at < now) {
+            self.resource_series.push(json!({
+                "timespan": 6,
+                "at": now,
+                "hostCpuUtilization": round3(host),
+                "processCpuUtilization": round3(process),
+                "hostMemoryUtilization": 0.0,
+                "processMemoryUtilization": 0.0,
+            }));
+            // The reference kept about two and a half minutes at this bucket.
+            let excess = self.resource_series.len().saturating_sub(180);
+            self.resource_series.drain(..excess);
+        }
+        let mut series = self.resource_series.clone();
+        // `_statistics_window`: sort= really orders, limit= caps (non-positive: none).
+        if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
+            let (key, direction) = sort.split_once(':').unwrap_or((sort.as_str(), ""));
+            series.sort_by(|left, right| {
+                let value = |row: &Value| row.get(key).and_then(Value::as_f64);
+                let order = (value(left).is_none(), value(left))
+                    .partial_cmp(&(value(right).is_none(), value(right)))
+                    .unwrap_or(std::cmp::Ordering::Equal);
+                if direction == "desc" {
+                    order.reverse()
+                } else {
+                    order
                 }
+            });
+        }
+        if let Some(limit) = query
+            .get("limit")
+            .and_then(|value| value.trim_start_matches('+').parse::<i64>().ok())
+        {
+            if limit > 0 {
+                series.truncate(limit as usize);
+            } else {
+                series.clear();
             }
         }
-        if let Some(limit) = query.get("limit") {
-            if limit.parse::<i32>().ok().is_some_and(|value| value <= 0) {
-                return Response::json(
-                    200,
-                    self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
-                );
-            }
+        let since = query.get("at>").or_else(|| query.get("at>="));
+        if let Some(since) = since
+            .filter(|value| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()))
+            .and_then(|value| value.parse::<i64>().ok())
+        {
+            series.retain(|row| row.get("at").and_then(Value::as_i64).unwrap_or(0) > since);
         }
-        if let Some(sort) = query.get("sort") {
-            if !matches!(
-                sort.as_str(),
-                "at" | "hostCpuUtilization" | "processCpuUtilization"
-            ) {
-                return Response::error(400, "plexsim: bad request");
-            }
-        }
-        let current = now();
-        // `resource_statistics` answers `bare_container(size=len(series), ...)`: the
-        // series carries its own `size`, which a client's poll reads before the rows.
         Response::json(
             200,
-            self.container(
-                Map::from_iter([
-                    ("size".to_string(), json!(1)),
-                    (
-                        "StatisticsResources".to_string(),
-                        json!([{
-                            "timespan": 6,
-                            "at": current,
-                            "hostCpuUtilization": 0,
-                            "processCpuUtilization": 0,
-                            "hostMemoryUtilization": 0,
-                            "processMemoryUtilization": 0,
-                        }]),
-                    ),
-                ]),
-                false,
-            ),
+            json!({"MediaContainer": {"size": series.len(), "StatisticsResources": series}}),
         )
     }
 
