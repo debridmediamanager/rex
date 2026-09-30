@@ -1652,10 +1652,6 @@ impl Runtime {
     fn section_listing_row(&self, original: &Value) -> Value {
         let mut row = self.grid_row(original, false, true, false);
         if let Some(object) = row.as_object_mut() {
-            if original.get("type").and_then(Value::as_str) == Some("season") {
-                object.shift_remove("leafCount");
-                object.shift_remove("viewedLeafCount");
-            }
             for name in [
                 "librarySectionID",
                 "librarySectionKey",
@@ -15718,6 +15714,20 @@ impl Runtime {
             .map(|row| {
                 // Measured: a LISTING carries `Guid` only under `includeGuids=1`.
                 let mut projected = guid_gate(self.section_listing_row(row), query);
+                // `server.py` `section_listing`: under `type=3` exactly, a season in the
+                // grid carries no leaf counts (its /children row, and every other
+                // listing's, does).
+                // (The oracle reads `type` after its `+?0*` normalisation: `03` and
+                // `+3` are `3`.)
+                if query
+                    .get("type")
+                    .is_some_and(|value| value.trim_start_matches('+').parse::<i64>().ok() == Some(3))
+                {
+                    if let Some(object) = projected.as_object_mut() {
+                        object.shift_remove("leafCount");
+                        object.shift_remove("viewedLeafCount");
+                    }
+                }
                 if with_storage {
                     let leaves = if row.get("Media").is_some() {
                         vec![row.clone()]
