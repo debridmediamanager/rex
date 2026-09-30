@@ -21212,7 +21212,31 @@ fn connection_lines(owner: &str) -> String {
     }
 }
 
-fn handle_connection<S: Read + Write>(
+/// A connection whose read timeout can be shortened, so the event channel can poll for
+/// the client's frames (a CLOSE) between its own writes.
+trait PollRead {
+    fn poll_timeout(&self, timeout: Option<std::time::Duration>);
+}
+
+impl PollRead for TcpStream {
+    fn poll_timeout(&self, timeout: Option<std::time::Duration>) {
+        let _ = self.set_read_timeout(timeout);
+    }
+}
+
+impl<T: PollRead + ?Sized> PollRead for &mut T {
+    fn poll_timeout(&self, timeout: Option<std::time::Duration>) {
+        (**self).poll_timeout(timeout);
+    }
+}
+
+impl PollRead for StreamOwned<ServerConnection, TcpStream> {
+    fn poll_timeout(&self, timeout: Option<std::time::Duration>) {
+        let _ = self.sock.set_read_timeout(timeout);
+    }
+}
+
+fn handle_connection<S: Read + Write + PollRead>(
     mut stream: &mut S,
     runtime: SharedRuntime,
 ) -> Result<(), String> {
@@ -21569,7 +21593,7 @@ fn serve_plain(mut stream: TcpStream, shared: SharedRuntime) {
     }
 }
 
-fn handle_websocket<S: Write>(
+fn handle_websocket<S: Read + Write + PollRead>(
     stream: &mut S,
     runtime: &SharedRuntime,
     request: &Request,
@@ -21623,14 +21647,31 @@ fn handle_websocket<S: Write>(
         .rev()
         .find(|(key, _)| key == "filters")
         .map(|(_, value)| value.clone());
-    let filters = filter_value
+    let named = filter_value
         .as_deref()
         .unwrap_or("")
         .split(',')
         .filter(|name| !name.is_empty())
         .map(str::to_string)
-        .collect::<HashSet<_>>();
+        .collect::<Vec<_>>();
+    let filters = named.iter().cloned().collect::<HashSet<_>>();
     let everything = filters.is_empty() && filter_value.is_some();
+    // `logger.info("... filters=%s", filters or "all")`: the list as Python prints it.
+    info!(
+        "websocket event channel opened filters={}",
+        if named.is_empty() {
+            "all".to_string()
+        } else {
+            format!(
+                "[{}]",
+                named
+                    .iter()
+                    .map(|name| crate::filters::py_repr(name))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        }
+    );
     // Cycle 65: the socket's language, fixed at the handshake; activity titles follow it.
     let (language, catalog_path) = {
         let guard = runtime
@@ -21641,10 +21682,18 @@ fn handle_websocket<S: Write>(
             guard.catalog_path.clone(),
         )
     };
+    // The oracle's loop: an hour's deadline, a FREE-RUNNING ping every ten seconds with
+    // the one-byte payload the reference sends (cycle 30: a pong never moves it), and
+    // the socket read between them so a CLOSE is answered with 1000 and ends the channel.
     let started = std::time::Instant::now();
     let mut cursor = event_start;
-    let mut last_write = std::time::Instant::now();
-    while started.elapsed() < std::time::Duration::from_secs(120) {
+    let mut next_ping = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    stream.poll_timeout(Some(std::time::Duration::from_millis(100)));
+    let gone = |error: String| {
+        debug!("websocket event channel closed by client");
+        error
+    };
+    while started.elapsed() < std::time::Duration::from_secs(3600) {
         let (events, next) = {
             let mut guard = runtime
                 .lock()
@@ -21689,24 +21738,48 @@ fn handle_websocket<S: Write>(
             }
             let payload = serde_json::to_vec(&json!({"NotificationContainer": container}))
                 .map_err(|error| error.to_string())?;
-            write_websocket_frame(stream, &payload)?;
-            last_write = std::time::Instant::now();
+            write_websocket_frame(stream, &payload).map_err(gone)?;
         }
-        if last_write.elapsed() > std::time::Duration::from_secs(5) {
-            // A ping on an idle channel is how a gone peer is noticed: the
-            // write fails and the loop ends.  Clients ignore control frames.
+        if std::time::Instant::now() >= next_ping {
             stream
-                .write_all(&[0x89, 0x00])
+                .write_all(&[0x89, 0x01, b'?'])
                 .and_then(|_| stream.flush())
-                .map_err(|error| error.to_string())?;
-            last_write = std::time::Instant::now();
+                .map_err(|error| gone(error.to_string()))?;
+            next_ping = std::time::Instant::now() + std::time::Duration::from_secs(10);
         }
-        thread::sleep(std::time::Duration::from_millis(100));
+        // `_client_went_away`: a frame's two-byte head, the rest drained; a CLOSE is
+        // echoed with status 1000, and a peer that has gone ends the channel quietly.
+        let mut head = [0_u8; 2];
+        match stream.read(&mut head[..1]) {
+            Ok(0) => return Ok(()),
+            Ok(_) => {
+                if stream.read_exact(&mut head[1..]).is_err() {
+                    return Ok(());
+                }
+                let opcode = head[0] & 0x0F;
+                let length = (head[1] & 0x7F) as usize;
+                let masked = head[1] & 0x80 != 0;
+                let mut rest = vec![0_u8; length + if masked { 4 } else { 0 }];
+                if stream.read_exact(&mut rest).is_err() {
+                    return Ok(());
+                }
+                if opcode == 0x8 {
+                    let _ = stream
+                        .write_all(&[0x88, 0x02, 0x03, 0xE8])
+                        .and_then(|_| stream.flush());
+                    info!("websocket closed by client");
+                    return Ok(());
+                }
+            }
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut | io::ErrorKind::Interrupted
+                ) => {}
+            Err(_) => return Ok(()),
+        }
     }
-    stream
-        .write_all(&[0x88, 0x00])
-        .map_err(|error| error.to_string())?;
-    stream.flush().map_err(|error| error.to_string())
+    Ok(())
 }
 
 fn handle_eventsource<S: Write>(
@@ -21731,75 +21804,89 @@ fn handle_eventsource<S: Write>(
         .write_all(header.as_bytes())
         .map_err(|error| error.to_string())?;
     stream.flush().map_err(|error| error.to_string())?;
-    // Give the triggering request a short window to append its events.  The
-    // reference sends real notifications as soon as they exist and reserves
-    // the ten-second delay for the initial keepalive ping; sleeping before
-    // reading the event log loses every short-lived client request.
-    // The client starts its trigger only after the SSE headers arrive.  The
-    // extra window keeps the event snapshot deterministic without changing the
-    // measured ten-second quiet-channel ping below.
-    thread::sleep(std::time::Duration::from_millis(1500));
+    // `_serve_eventsource`: the channel STREAMS for as long as the client holds it, the
+    // same events as the websocket in the measured SSE shape, and a ping every ten
+    // seconds. `filters=` is the same exact whitelist -- `log` opt-in, an EMPTY value
+    // everything including log -- and only what happens after the connect is sent.
     let (_, raw_query) = split_target(&request.target);
-    let filters = parse_query(&raw_query)
-        .into_iter()
+    let pairs = parse_query(&raw_query);
+    let filter_value = pairs
+        .iter()
+        .rev()
         .find(|(key, _)| key == "filters")
-        .map(|(_, value)| value);
-    let (events, language, catalog_path) = {
-        let mut guard = runtime
+        .map(|(_, value)| value.clone());
+    let filters = filter_value
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect::<HashSet<_>>();
+    let everything = filters.is_empty() && filter_value.is_some();
+    let (language, catalog_path) = {
+        let guard = runtime
             .lock()
             .map_err(|_| "runtime lock poisoned".to_string())?;
-        guard.absorb_logs();
         (
-            guard.events_since(event_start),
             i18n::socket_language(&guard.catalog_path, request),
             guard.catalog_path.clone(),
         )
     };
-    for (kind, mut value) in events {
-        i18n::localise_notification(&mut value, language.as_deref(), &catalog_path);
-        if filters.as_deref() == Some("all")
-            || (filters.as_deref() == Some("log") && kind != "log")
-            || (filters
-                .as_deref()
-                .map(|value| !value.is_empty() && value != "log")
-                .unwrap_or(true)
-                && kind == "log")
-        {
-            continue;
-        }
-        // The SSE shape is ONE row per `data:` line under its element name, with no
-        // container and no list around it (measured); an event holding several rows
-        // is several frames.
-        let mut frames = Vec::new();
-        match &value {
-            Value::Object(object) if object.len() == 1 && object.values().all(Value::is_array) => {
-                for (element, rows) in object {
-                    for row in rows.as_array().into_iter().flatten() {
-                        frames.push(json!({ element.clone(): row.clone() }));
+    let mut cursor = event_start;
+    let mut next_ping = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        let (events, next) = {
+            let mut guard = runtime
+                .lock()
+                .map_err(|_| "runtime lock poisoned".to_string())?;
+            guard.absorb_logs();
+            (guard.events_since(cursor), guard.event_cursor())
+        };
+        cursor = next;
+        for (kind, mut value) in events {
+            let wanted = if filters.is_empty() {
+                everything || kind != "log"
+            } else {
+                filters.contains(&kind)
+            };
+            if !wanted {
+                continue;
+            }
+            i18n::localise_notification(&mut value, language.as_deref(), &catalog_path);
+            // The SSE shape is ONE row per `data:` line under its element name, with no
+            // container and no list around it (measured); an event holding several rows
+            // is several frames.
+            let mut frames = Vec::new();
+            match &value {
+                Value::Object(object) if object.len() == 1 && object.values().all(Value::is_array) => {
+                    for (element, rows) in object {
+                        for row in rows.as_array().into_iter().flatten() {
+                            frames.push(json!({ element.clone(): row.clone() }));
+                        }
                     }
                 }
+                _ => frames.push(value.clone()),
             }
-            _ => frames.push(value.clone()),
-        }
-        for frame_value in frames {
-            let payload = serde_json::to_string(&frame_value).map_err(|error| error.to_string())?;
-            let frame = format!("event: {kind}\ndata: {payload}\n\n");
+            let mut text = String::new();
+            for frame_value in frames {
+                let payload =
+                    serde_json::to_string(&frame_value).map_err(|error| error.to_string())?;
+                text.push_str(&format!("event: {kind}\ndata: {payload}\n\n"));
+            }
             stream
-                .write_all(frame.as_bytes())
+                .write_all(text.as_bytes())
+                .and_then(|_| stream.flush())
                 .map_err(|error| error.to_string())?;
         }
+        if std::time::Instant::now() >= next_ping {
+            stream
+                .write_all(b"event: ping\ndata: {}\n\n")
+                .and_then(|_| stream.flush())
+                .map_err(|error| error.to_string())?;
+            next_ping += std::time::Duration::from_secs(10);
+        }
+        thread::sleep(std::time::Duration::from_millis(100));
     }
-    stream.flush().map_err(|error| error.to_string())?;
-    // Keep the channel open until the measured ten-second keepalive.  A quiet
-    // short read therefore sees headers but no ping, while a long-lived
-    // client receives the same initial ping as PMS.
-    thread::sleep(
-        std::time::Duration::from_secs(10).saturating_sub(std::time::Duration::from_millis(1500)),
-    );
-    stream
-        .write_all(b"event: ping\ndata: {}\n\n")
-        .map_err(|error| error.to_string())?;
-    stream.flush().map_err(|error| error.to_string())
 }
 
 fn write_websocket_frame<S: Write>(stream: &mut S, payload: &[u8]) -> Result<(), String> {
