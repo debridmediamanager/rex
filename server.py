@@ -8251,6 +8251,14 @@ class PlexSim:
             # real path in `url`. Resolve that to the row's TMDB image when
             # there is one; only fall back to a generated tile when there is not.
             resolved = self.resolve_artwork(query.get("url", ""))
+            if resolved in self.uploads \
+                    and not self.uploads[resolved][1].startswith("image/"):
+                # Cycle 52's rule reaches item artwork too: the transcoder DECODES what the
+                # path serves, and a 200 whose bytes are not an image is its 500. An upload
+                # whose bytes sniff as no image (served `application/octet-stream` directly)
+                # was handed back through the transcoder as a 200 carrying three days of
+                # `max-age`, where the native server already answered the measured 500.
+                return ("error", 500, "plexsim: server error")
             if resolved:
                 return ("image", self._at_width(resolved, query.get("width")))
             return ("png", query)

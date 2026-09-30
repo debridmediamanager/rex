@@ -8,7 +8,9 @@ Each check asserts the MEASURED answer, not the other server's:
 - a refusal at `/system/agents` orders its length before its type (kids, 1.43.4:
   `?mediaType=abc` is the 89-byte 400), although the container there is type-first;
 - an embedded stream's 501 carries the reason phrase `Not Implemented` (kids), and an
-  uploaded sidecar's 200 orders its length before its type (plexscratch42, cycle 74).
+  uploaded sidecar's 200 orders its length before its type (plexscratch42, cycle 74);
+- the photo transcoder (and ultrablur through it) 500s an uploaded poster whose bytes are
+  not an image, the 200-that-does-not-decode rule of cycle 52.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -18,9 +20,12 @@ default, the oracle with `PLEXSIM_SERVER=python`.
 import json
 import os
 import socket
+import struct
 import subprocess
 import sys
 import time
+import urllib.parse
+import zlib
 
 from server_command import server_command
 
@@ -153,6 +158,48 @@ def run(port):
                   status == 200 and reason == "OK" and body == srt
                   and values.get("content-type") == "text/html" and order(names) == ERROR_ORDER,
                   (status, reason, names, body[:40]))
+
+    # The photo transcoder DECODES what the path serves (cycle 52, kids and zen): only a
+    # 200 whose bytes are not an image is its 500, and ultrablur resolves its url the same
+    # way (cycle 70; kids answers `url=/identity` with that 109-byte 500). An uploaded
+    # poster whose bytes are no image is such a 200 on the direct path.
+    def thumb():
+        rows = json.loads(raw(port, "GET", "/library/metadata/1007")[4])["MediaContainer"]
+        return rows["Metadata"][0]["thumb"]
+
+    status = raw(port, "POST", "/library/metadata/1007/posters", body=b"<binary 32 bytes>")[0]
+    art = thumb()
+    status_direct, _, _, values_direct, _ = raw(port, "GET", art)
+    status, _, names, values, body = raw(
+        port, "GET", "/photo/:/transcode?width=200&height=300&url=%s" % urllib.parse.quote(art, safe=""))
+    check("a non-image upload's direct read is a 200 octet-stream, and the transcoder 500s it",
+          status_direct == 200 and values_direct.get("content-type") == "application/octet-stream"
+          and status == 500 and len(body) == 109 and order(names) == ERROR_ORDER,
+          (status_direct, values_direct.get("content-type"), status, names, body[:60]))
+    for leaf in ("/service/ultrablur/colors", "/services/ultrablur/colors"):
+        status, _, names, _, body = raw(port, "GET", leaf + "?url=%2Flibrary%2Fmetadata%2F1007%2Fthumb")
+        check("%s of that non-image thumb is the transcoder's 500" % leaf,
+              status == 500 and len(body) == 109 and order(names) == ERROR_ORDER,
+              (status, names, body[:60]))
+    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(b"\x00\x10\x20\x30")) + chunk(b"IEND", b""))
+    raw(port, "POST", "/library/metadata/1007/posters", body=png)
+    art = thumb()
+    status, _, names, values, body = raw(
+        port, "GET", "/photo/:/transcode?width=200&height=300&url=%s" % urllib.parse.quote(art, safe=""))
+    check("... while an uploaded PNG transcodes to itself, cached three days",
+          status == 200 and body == png and values.get("content-type") == "image/png"
+          and values.get("cache-control") == "max-age=259200", (status, values, body[:20]))
+    status, _, names, _, body = raw(port, "GET", "/service/ultrablur/colors?url=%2Flibrary%2Fmetadata%2F1007%2Fthumb")
+    check("... and ultrablur answers its container, type first",
+          status == 200 and b"UltraBlurColors" in body
+          and order(names)[:3] == ["X-Plex-Protocol", "Content-Type", "Content-Length"],
+          (status, names, body[:60]))
+
+
+def chunk(kind, data):
+    return (struct.pack(">I", len(data)) + kind + data
+            + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF))
 
 
 def main():

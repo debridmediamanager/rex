@@ -3064,3 +3064,10 @@ are changing; replay the client's exact request before altering behavior.
   `GET /library/streams/{id}` (and `.srt`, `.vtt`) of a stream the server holds is `HTTP/1.1 501
   Not Implemented`, 97 bytes, length before type. The native server wrote an EMPTY phrase for 501,
   and ordered an uploaded sidecar's 200 type-first where cycle 74 measured it length-first.
+- **The transcoder's decode rule covers an item's own artwork.** Cycle 52's "only a 200 whose bytes
+  are not an image is the 500" was implemented for server paths only; an uploaded poster whose bytes
+  sniff as no image (served `application/octet-stream` directly) went back through the oracle's
+  transcoder as a 200 with `max-age=259200`, and `/service(s)/ultrablur/colors` over it as a 200 tint.
+  Whether a real PMS STORES such an upload at all is unmeasured (a scratch write); the lockstep
+  replay reached it only because the recorded request stream kept binary bodies as the text
+  `<binary N bytes>`.
