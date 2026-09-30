@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Two HANDOVER §2a follow-ups, each against its measurement:
+"""Three HANDOVER §2a follow-ups, each against its measurement:
 
 - a collection built from a SECTION uri holds the section's rows at the collection's own
   level (`type=2` the shows, `3` the seasons, `4` the episodes), never the episodes a play
@@ -8,6 +8,8 @@
 - `X-Plex-Container-Start` / `-Size` request HEADERS win over the query parameters of the
   same name, per parameter, on every paged route family
   (`tests/fixtures/paging_header_precedence.json`, kids, zen and plexscratch42);
+- the GDM advertisement's `Updated-At` moves to the second of a library create, edit and
+  delete, and not with a `FriendlyName` write (cycle 50, docs/findings.md);
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
 
@@ -296,6 +298,78 @@ def paging(port, fixture, show, movie, collection, playlist):
                   "%s != %s (totalSize %s)" % (got, wanted, total))
 
 
+# -- 3. GDM Updated-At moves with the library lifecycle ------------------------------
+
+def gdm_reply(port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(2.0)
+    try:
+        sock.sendto(b"M-SEARCH * HTTP/1.1\r\n", ("127.0.0.1", port))
+        body = sock.recvfrom(4096)[0].decode()
+    except socket.timeout:
+        return {}
+    finally:
+        sock.close()
+    return dict(line.split(": ", 1) for line in body.split("\r\n") if ": " in line)
+
+
+def next_second():
+    now = time.time()
+    time.sleep(int(now) + 1.05 - now)
+
+
+def gdm():
+    udp = [free_port(socket.SOCK_DGRAM), free_port(socket.SOCK_DGRAM)]
+    process, port = start(("--gdm", "auto"), {"PLEXSIM_GDM_PORTS": "%d,%d" % tuple(udp)})
+    try:
+        first = gdm_reply(udp[0])
+        check("GDM answers on a private port", "Updated-At" in first, first)
+        if "Updated-At" not in first:
+            return
+
+        def stamp():
+            return int(gdm_reply(udp[0]).get("Updated-At", 0))
+
+        def moved_by(label, method, path):
+            next_second()
+            before = stamp()
+            low = int(time.time())
+            status = request(port, method, path)[0]
+            high = int(time.time())
+            after = stamp()
+            check("a library %s moves GDM Updated-At to its own second" % label,
+                  status in (200, 201) and after != before and low <= after <= high,
+                  "HTTP %s, %s -> %s, write in [%s, %s]" % (status, before, after, low, high))
+            return status
+
+        next_second()
+        held = stamp()
+        next_second()
+        check("GDM Updated-At is not a clock", stamp() == held == int(first["Updated-At"]),
+              (first["Updated-At"], held))
+        form = ("agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US"
+                "&location=%2Fdata%2Ffc")
+        moved_by("create", "POST", "/library/sections?name=fc+gdm&type=movie&" + form)
+        created = [d for d in mc(port, "/library/sections").get("Directory") or []
+                   if d.get("title") == "fc gdm"]
+        key = created[0]["key"] if created else "999"
+        moved_by("edit", "PUT", "/library/sections/%s?name=fc+gdm+2&%s" % (key, form))
+        next_second()
+        before = stamp()
+        request(port, "PUT", "/:/prefs?FriendlyName=fc%20renamed")
+        reply = gdm_reply(udp[0])
+        check("a FriendlyName write renames the GDM reply and leaves Updated-At",
+              reply.get("Name") == "fc renamed" and int(reply.get("Updated-At", 0)) == before,
+              (reply.get("Name"), before, reply.get("Updated-At")))
+        next_second()
+        before = stamp()
+        request(port, "PUT", "/library/metadata/1007?title.value=fc&title.locked=1")
+        check("an item edit leaves GDM Updated-At", stamp() == before, before)
+        moved_by("delete", "DELETE", "/library/sections/%s" % key)
+    finally:
+        stop(process)
+
+
 def main():
     process, port = start()
     try:
@@ -329,6 +403,7 @@ def main():
 
     finally:
         stop(process)
+    gdm()
     passed = sum(results)
     print("PASS %d/%d follow-up checks" % (passed, len(results)))
     return 0 if passed == len(results) else 1

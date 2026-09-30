@@ -337,6 +337,10 @@ pub struct Runtime {
     pub token: Option<String>,
     pub assert_claimed: bool,
     pub started_at: i64,
+    /// The GDM advertisement's `Updated-At` (`gdm.py` `Discovery.updated_at`): stamped
+    /// when the advertisement is built and moved only by a library create, edit or
+    /// delete (`touch_gdm`).
+    pub gdm_updated_at: i64,
     pub private_address: String,
     pub private_port: u16,
     pub state_path: Option<PathBuf>,
@@ -562,6 +566,7 @@ impl Runtime {
             token: options.token,
             assert_claimed: options.assert_claimed,
             started_at,
+            gdm_updated_at: started_at,
             // PMS advertises the routeable interface even when its listener
             // binds all interfaces.  Returning an empty address for
             // `0.0.0.0` makes `/servers` unusable to LAN clients and differs
@@ -2332,10 +2337,19 @@ impl Runtime {
             format!("Name: {}", self.friendly),
             format!("Port: {}", self.private_port),
             format!("Resource-Identifier: {}", self.machine),
-            format!("Updated-At: {}", self.started_at),
+            format!("Updated-At: {}", self.gdm_updated_at),
             format!("Version: {VERSION}"),
         ]);
         format!("{}\r\n\r\n", lines.join("\r\n")).into_bytes()
+    }
+
+    /// Cycle 50, measured on both disposable copies with a 2 s sampler inside the
+    /// container: a library CREATE, EDIT or DELETE moves `Updated-At` to that write's
+    /// own second, and nothing else does -- not a `FriendlyName` write (which changes
+    /// `Name:` at once), a refresh, an item edit, a collection create or an index
+    /// delete. The native advertisement answered its start time for ever.
+    pub(super) fn touch_gdm(&mut self) {
+        self.gdm_updated_at = now();
     }
 
     fn gdm_record(&mut self, datagram: &[u8], address: &str) {
@@ -7383,6 +7397,7 @@ impl Runtime {
             "uuid": format!("{:032x}", crc32(seed.as_bytes())),
         });
         info!("SECTION create {title} ({kind})");
+        self.touch_gdm();
         self.catalog.sections.push(section.clone());
         self.added_sections.push(section.clone());
         self.catalog.document.insert(
@@ -13023,6 +13038,7 @@ impl Runtime {
                             string_value(row.get("key").unwrap_or(&Value::Null)) != section_key
                         });
                         self.deleted.insert(section_key.to_string());
+                        self.touch_gdm();
                         self.catalog.document.insert(
                             "sections".to_string(),
                             Value::Array(self.catalog.sections.clone()),

@@ -704,6 +704,7 @@ impl Runtime {
                 self.notify_section_scan(section_key, &updated);
             }
         }
+        self.touch_gdm();
         info!(
             "SECTION edit {section_key} -> {}",
             self.section(section_key)
