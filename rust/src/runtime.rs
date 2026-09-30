@@ -9819,10 +9819,33 @@ impl Runtime {
                 limit = (listed.len() as i64 + limit).max(0);
                 exhausted = true;
             }
+            // `shelf()` hands each row through `hub()`, whose `_grid_row` is the LIGHT
+            // projection: no `Field` (a playlist's locked uploaded thumb), `Rating`,
+            // `Location` or `Guid`.
             let rows = listed
                 .iter()
                 .take(limit as usize)
                 .cloned()
+                .map(|mut row| {
+                    if let Some(object) = row.as_object_mut() {
+                        for name in [
+                            "Rating",
+                            "Field",
+                            "Producer",
+                            "CommonSenseMedia",
+                            "Label",
+                            "Style",
+                            "Similar",
+                            "Mood",
+                            "Location",
+                            "Guid",
+                        ] {
+                            object.shift_remove(name);
+                        }
+                        object.insert("_light".to_string(), json!(true));
+                    }
+                    row
+                })
                 .collect::<Vec<_>>();
             let mut playlist = Map::from_iter([
                 (
