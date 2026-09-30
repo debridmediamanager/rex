@@ -402,6 +402,10 @@ pub struct Runtime {
     pub next_queue_item: i64,
     pub next_dynamic_key: i64,
     pub sessions: HashMap<String, Value>,
+    /// When each session last beat (`sessions.touch`'s `seen`), for the reaper.
+    session_seen: HashMap<String, f64>,
+    /// The reaper's last tick: process-wide, anchored at start (`sessions._last_reap`).
+    last_reap: f64,
     pub started_sessions: HashSet<String>,
     timeline_offsets: HashMap<(String, String), i64>,
     completed_sessions: HashSet<(String, String)>,
@@ -585,6 +589,8 @@ impl Runtime {
             next_queue_item: 1,
             next_dynamic_key: 40000,
             sessions: HashMap::new(),
+            session_seen: HashMap::new(),
+            last_reap: now_seconds(),
             started_sessions: HashSet::new(),
             timeline_offsets: HashMap::new(),
             completed_sessions: HashSet::new(),
@@ -6239,7 +6245,10 @@ impl Runtime {
                 .statistics_refusal("resources", &query)
                 .unwrap_or_else(|| self.route_resource_statistics(&query)),
             ("GET" | "HEAD", "/history") => self.route_history(&query),
-            ("GET" | "HEAD", "/status/sessions") => self.route_sessions(),
+            ("GET" | "HEAD", "/status/sessions") => {
+                self.reap_sessions();
+                self.route_sessions()
+            }
             ("GET" | "HEAD", "/status/sessions/background") => {
                 Response::json(200, self.container(Map::new(), false))
             }
@@ -7832,6 +7841,30 @@ impl Runtime {
                 false,
             ),
         )
+    }
+
+    /// `Sessions.live`'s reaper, measured in cycles 26 and 41: a process-wide tick every
+    /// 30 s drops each session whose last beat is older than the tick minus 180 s, so a
+    /// silent player stays in Now Playing for 180-210 s -- not a per-row timer.
+    fn reap_sessions(&mut self) {
+        const TTL: f64 = 180.0;
+        const INTERVAL: f64 = 30.0;
+        let elapsed = now_seconds() - self.last_reap;
+        if elapsed < INTERVAL {
+            return;
+        }
+        self.last_reap += (elapsed / INTERVAL).floor() * INTERVAL;
+        let cutoff = self.last_reap - TTL;
+        let expired = self
+            .session_seen
+            .iter()
+            .filter(|(_, seen)| **seen < cutoff)
+            .map(|(client, _)| client.clone())
+            .collect::<Vec<_>>();
+        for client in expired {
+            self.session_seen.remove(&client);
+            self.sessions.remove(&client);
+        }
     }
 
     fn route_sessions(&self) -> Response {
@@ -9561,6 +9594,7 @@ impl Runtime {
         let already_listed = self.sessions.contains_key(&client);
         if state == "stopped" {
             self.sessions.remove(&client);
+            self.session_seen.remove(&client);
             self.decided_sessions
                 .remove(&(session_identifier.clone(), key.clone()));
         } else if matches!(state.as_str(), "paused" | "buffering") && !already_listed {
@@ -9634,6 +9668,7 @@ impl Runtime {
                 .or_else(|| query.get("X-Plex-Client-Identifier").cloned())
                 .or_else(|| headers.get("x-plex-client-identifier").cloned())
                 .unwrap_or_default();
+            self.session_seen.insert(client.clone(), now_seconds());
             self.sessions.insert(client.clone(), session);
             let mut frame = Map::new();
             frame.insert("sessionKey".to_string(), json!(session_key));
@@ -22373,6 +22408,14 @@ fn percent_encode(value: &str) -> String {
         })
         .collect()
 }
+/// `time.time()`.
+fn now_seconds() -> f64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs_f64()
+}
+
 /// `socket.gethostname()`.
 fn hostname() -> String {
     let mut buffer = [0_u8; 256];
