@@ -609,7 +609,7 @@ fn ensure_account_id(claim: &SharedClaim) -> Result<Option<i64>, String> {
     Ok(state.account_id)
 }
 
-fn uuid4() -> String {
+pub(super) fn uuid4() -> String {
     let mut bytes = [0_u8; 16];
     if let Ok(mut random) = std::fs::File::open("/dev/urandom") {
         use std::io::Read;

@@ -6224,10 +6224,19 @@ impl Runtime {
             ("GET" | "HEAD", "/media/grabbers") => Response::json(
                 200,
                 self.container(
-                    Map::from_iter([(
-                        "MediaGrabber".to_string(),
-                        json!([{"key":"1"},{"key":"2"},{"key":"3"},{"key":"4"}]),
-                    )]),
+                    // server.py's MEDIA_GRABBERS, verbatim off the reference.
+                    Map::from_iter([
+                        ("size".to_string(), json!(4)),
+                        (
+                            "MediaGrabber".to_string(),
+                            json!([
+                                {"title":"HDHomerun","identifier":"tv.plex.grabbers.hdhomerun","protocol":"livetv"},
+                                {"title":"Stream","identifier":"tv.plex.grabbers.stream","protocol":"stream"},
+                                {"title":"Download","identifier":"tv.plex.grabbers.download","protocol":"download"},
+                                {"title":"Remote","identifier":"tv.plex.grabbers.tunerservice","protocol":"livetv"}
+                            ]),
+                        ),
+                    ]),
                     false,
                 ),
             ),
@@ -6252,13 +6261,17 @@ impl Runtime {
             ("GET" | "HEAD", "/channels") => Response::json(
                 200,
                 self.container(
-                    Map::from_iter([(
-                        "Directory".to_string(),
-                        json!([
-                            {"key":"all","title":"Channels","type":"folder"},
-                            {"key":"recentlyViewed","title":"Recently Viewed","type":"folder"}
-                        ]),
-                    )]),
+                    // Measured 200 on both servers with exactly these two rows.
+                    Map::from_iter([
+                        ("size".to_string(), json!(2)),
+                        (
+                            "Directory".to_string(),
+                            json!([
+                                {"key":"all","title":"All"},
+                                {"key":"recentlyViewed","title":"Recently Viewed"}
+                            ]),
+                        ),
+                    ]),
                     false,
                 ),
             ),
@@ -6268,19 +6281,28 @@ impl Runtime {
                     .sections
                     .iter()
                     .map(|section| {
-                        json!({
-                            "key": format!("/library/sections/{}", string_value(section.get("key").unwrap_or(&Value::Null))),
-                            "title": section.get("title").cloned().unwrap_or(Value::Null),
-                        })
+                        // Cycle 49: the library `Directory` rows, keyed by the full
+                        // path and without `allowSync`, `filters` and `refreshing`.
+                        let mut row = self.section_directory(section);
+                        if let Some(object) = row.as_object_mut() {
+                            object.insert(
+                                "key".to_string(),
+                                json!(format!(
+                                    "/library/sections/{}",
+                                    string_value(section.get("key").unwrap_or(&Value::Null))
+                                )),
+                            );
+                            for dropped in ["allowSync", "filters", "refreshing"] {
+                                object.shift_remove(dropped);
+                            }
+                        }
+                        row
                     })
                     .collect::<Vec<_>>();
                 rows.push(json!({"key":"/channels/all","title":"Channels"}));
                 Response::json(
                     200,
-                    self.container(
-                        Map::from_iter([("Directory".to_string(), Value::Array(rows))]),
-                        false,
-                    ),
+                    json!({"MediaContainer": {"size": rows.len(), "Directory": rows}}),
                 )
             }
             ("GET" | "HEAD", "/livetv") => Response::json(
@@ -6288,7 +6310,7 @@ impl Runtime {
                 plugin_container(vec![("dvrs", false), ("epg", false), ("sessions", false)]),
             ),
             ("GET" | "HEAD", "/livetv/dvrs" | "/livetv/sessions") => {
-                Response::json(200, self.container(Map::new(), false))
+                Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }
             ("GET" | "HEAD", "/livetv/epg/channels") => {
                 Response::error(400, "plexsim: bad request")
@@ -6306,13 +6328,9 @@ impl Runtime {
                     ),
                 )
             }
-            ("GET" | "HEAD", "/logs") => Response::json(
-                200,
-                self.container(
-                    Map::from_iter([("content".to_string(), json!("plexsim native log\n"))]),
-                    false,
-                ),
-            ),
+            // Not the zip -- measured: the dispatcher's container, and `/diagnostics`
+            // answers the same.
+            ("GET" | "HEAD", "/logs") => Response::json(200, plugin_container(Vec::new())),
             // Measured on both references: a real (empty, paged) container with
             // no `content` at all -- the one place the dispatcher does not leak.
             ("GET" | "HEAD", "/security") => {
@@ -6372,13 +6390,17 @@ impl Runtime {
             ("GET" | "HEAD", "/transcode/sessions") => {
                 Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }
-            ("GET" | "HEAD", "/clients") => Response::json(200, self.container(Map::new(), false)),
+            ("GET" | "HEAD", "/clients") => {
+                Response::json(200, json!({"MediaContainer": {"size": 0}}))
+            }
             ("GET" | "HEAD", "/updater/status") => Response::json(
                 200,
                 self.container(
                     Map::from_iter([
+                        ("size".to_string(), json!(0)),
                         ("canInstall".to_string(), json!(false)),
                         ("checkedAt".to_string(), json!(now())),
+                        ("status".to_string(), json!(0)),
                     ]),
                     false,
                 ),
@@ -7905,15 +7927,9 @@ impl Runtime {
                 return Response::error(403, "plexsim: forbidden");
             }
         }
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|duration| duration.as_nanos())
-            .unwrap_or_default();
-        let token = format!("delegation-{}-{}", self.machine, nonce);
-        Response::json(
-            200,
-            self.container(Map::from_iter([("token".to_string(), json!(token))]), false),
-        )
+        // Each call answers a DIFFERENT token, in server.py's `transient-<uuid4>` form.
+        let token = format!("transient-{}", plextv::uuid4());
+        Response::json(200, json!({"MediaContainer": {"size": 0, "token": token}}))
     }
 
     fn route_prefs_write(&mut self, query: &[(String, String)]) -> Response {
