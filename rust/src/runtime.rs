@@ -9255,7 +9255,11 @@ impl Runtime {
                 return Response::error(400, "plexsim: bad request");
             }
         }
-        let protocol = query.get("protocol").map(String::as_str).unwrap_or("http");
+        let protocol = query
+            .get("protocol")
+            .map(String::as_str)
+            .filter(|value| !value.is_empty())
+            .unwrap_or("http");
         let session = query
             .get("X-Plex-Session-Identifier")
             .or_else(|| headers.get("x-plex-session-identifier"))
@@ -9300,7 +9304,13 @@ impl Runtime {
         let selected_for_engine = if all_parts {
             selected_media.clone()
         } else {
-            let part_index = part_raw.parse::<usize>().unwrap_or(0);
+            // `int(raw_part) if raw_part.isdigit() and int(raw_part) < len(parts) else 0`:
+            // an out-of-range index decides the FIRST part.
+            let part_index = part_raw
+                .parse::<usize>()
+                .ok()
+                .filter(|index| part_raw.bytes().all(|b| b.is_ascii_digit()) && *index < parts.len())
+                .unwrap_or(0);
             let mut media = selected_media.clone();
             if let Some(object) = media.as_object_mut() {
                 if let Some(part) = parts.get(part_index).cloned() {
@@ -9356,8 +9366,9 @@ impl Runtime {
                 "transcodeDecisionText".to_string(),
                 json!(if blocked {
                     "File is unplayable. DoVi (Profile 5) color space is not supported."
+                        .to_string()
                 } else {
-                    "Cannot convert this item. No conversion profile found for protocol http."
+                    format!("Cannot convert this item. No conversion profile found for protocol {protocol}.")
                 }),
             );
             fields.insert("size".to_string(), json!(0));
@@ -9443,7 +9454,13 @@ impl Runtime {
                     .and_then(Value::as_array)
                     .cloned()
                     .unwrap_or_default();
-                let part_index = part_raw.parse::<usize>().unwrap_or(0);
+                let part_index = part_raw
+                    .parse::<usize>()
+                    .ok()
+                    .filter(|index| {
+                        part_raw.bytes().all(|b| b.is_ascii_digit()) && *index < source_parts.len()
+                    })
+                    .unwrap_or(0);
                 let selected_parts = if all_parts {
                     source_parts
                 } else {
@@ -9466,30 +9483,6 @@ impl Runtime {
                                         }
                                         stream_object
                                             .insert("location".to_string(), json!("direct"));
-                                        if stream_object.get("streamType").and_then(Value::as_i64)
-                                            == Some(1)
-                                        {
-                                            for title_key in
-                                                ["displayTitle", "extendedDisplayTitle"]
-                                            {
-                                                if let Some(title) = stream_object
-                                                    .get(title_key)
-                                                    .and_then(Value::as_str)
-                                                    .map(str::to_string)
-                                                {
-                                                    if let Some((base, suffix)) =
-                                                        title.rsplit_once(" (")
-                                                    {
-                                                        if suffix.ends_with(')') {
-                                                            stream_object.insert(
-                                                                title_key.to_string(),
-                                                                json!(base),
-                                                            );
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
                                         stream_object.insert("_session".to_string(), json!(true));
                                     }
                                     stream
