@@ -18547,10 +18547,13 @@ impl Runtime {
         if key.is_empty() {
             return row;
         }
+        // The oracle's `_alternates_container`: each block is `{key, source}` alone --
+        // no `previewKey` -- and there is no `Theme` at all.
         let thumb = object
             .get("_poster_url")
             .and_then(Value::as_str)
-            .map(|url| json!([{"key":url,"source":"tmdb","previewKey":url}]));
+            .filter(|url| !url.is_empty())
+            .map(|url| json!([{"key":url,"source":"tmdb"}]));
         // Cycle 53: a season's and an episode's background candidates are their own,
         // never the show's that `hierarchy` copies down -- `/arts` answers none there,
         // so the row inlines no `Art`.
@@ -18562,11 +18565,9 @@ impl Runtime {
             .get("_art_url")
             .filter(|_| owns_art)
             .and_then(Value::as_str)
-            .map(|url| json!([{"key":url,"source":"tmdb","previewKey":url}]));
-        let theme = object
-            .get("_theme_url")
-            .and_then(Value::as_str)
-            .map(|url| json!([{"key":url,"source":"tmdb","previewKey":url}]));
+            .filter(|url| !url.is_empty())
+            .map(|url| json!([{"key":url,"source":"tmdb"}]));
+        let theme: Option<Value> = None;
         if thumb.is_none() && art.is_none() && theme.is_none() {
             return row;
         }
