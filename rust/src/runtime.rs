@@ -19163,8 +19163,11 @@ impl Runtime {
                     .filter(|value| *value != 0)
                     .unwrap_or(default)
             };
+            let (width, height) = transcoder::TRANSCODE_SIZE
+                .with(|cell| cell.get())
+                .unwrap_or_else(|| (size("width", 342), size("height", 513)));
             let mut response = Response::bytes(200, "image/png");
-            response.body = generated_png(size("width", 342), size("height", 513), [32, 34, 38]);
+            response.body = generated_png(width, height, [32, 34, 38]);
             response
                 .headers
                 .push(("Cache-Control".to_string(), "no-cache".to_string()));

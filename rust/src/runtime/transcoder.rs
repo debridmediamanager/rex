@@ -47,6 +47,11 @@ fn url_scheme(target: &str) -> Option<String> {
 
 thread_local! {
     static IN_TRANSCODE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// The transcoder's OWN `width`/`height` while its inner fetch runs: an item with
+    /// no image to resolve is the oracle's `("png", query)`, the generated tile at the
+    /// size the TRANSCODER was asked for, not the direct path's 342x513.
+    pub(super) static TRANSCODE_SIZE: std::cell::Cell<Option<(u32, u32)>> =
+        const { std::cell::Cell::new(None) };
 }
 
 impl Runtime {
@@ -162,9 +167,18 @@ impl Runtime {
             body: Vec::new(),
             body_complete: true,
         };
+        let dimension = |name: &str| {
+            query
+                .get(name)
+                .and_then(|value| value.trim().parse::<i64>().ok())
+                .map(|value| value.clamp(1, 2000) as u32)
+                .unwrap_or(1)
+        };
+        TRANSCODE_SIZE.with(|cell| cell.set(Some((dimension("width"), dimension("height")))));
         IN_TRANSCODE.with(|cell| cell.set(true));
         let fetched = self.request_route(&inner_request);
         IN_TRANSCODE.with(|cell| cell.set(false));
+        TRANSCODE_SIZE.with(|cell| cell.set(None));
         if fetched.status != 200 {
             // Every refusal the direct path makes -- 400, 404, 500 -- is a 404 here.
             return Response::photo_error(404, "plexsim: not found");
