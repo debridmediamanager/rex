@@ -2983,3 +2983,10 @@ are changing; replay the client's exact request before altering behavior.
   only on the grid, `/library/all` and `/playlists`; and the hub pages refuse all eight on the
   fifteen's terms (non-empty value, a show library's shelf in scope), so the hub set is the
   fifteen PLUS the listing's refusals. The section extras leaf still filters on `extraType`.
+- **`guid=` is a grammar field on every listing**, not a grid-and-`/library/all` special case
+  (cycle 83, kids and zen): `guid=1` empties every tag axis, `/children`, `/grandchildren`,
+  `/search`, `/autocomplete`, `/unwatched`, `/recentlyViewedShows` and a hub page's TV shelf. The
+  prefix is CASE-SENSITIVE (`guid=PLEX` nothing), the `<=` key is the same prefix, and a comma is
+  the grammar's OR (`guid=<a>,<b>` is both rows) -- a private prefix pass read it as one guid.
+  kids answers `/library/all?type=1&guid=<a>&guid=<b>` with ONE row where the section grid
+  answers none; not modelled.

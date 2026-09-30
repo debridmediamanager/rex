@@ -870,6 +870,9 @@ pub fn compare(
     Ok(match operator.as_str() {
         "==" => text.to_lowercase() == wanted.to_lowercase(),
         "!==" => text.to_lowercase() != wanted.to_lowercase(),
+        // The guid prefix is CASE-SENSITIVE (kids: `guid=plex` every matched row,
+        // `guid=PLEX` none); every other string's begins-with folds case.
+        "<=" if field == "guid" => text.starts_with(wanted),
         "<=" => text.to_lowercase().starts_with(&wanted.to_lowercase()),
         ">=" => text.to_lowercase().ends_with(&wanted.to_lowercase()),
         "!=" => !text.to_lowercase().contains(&wanted.to_lowercase()),

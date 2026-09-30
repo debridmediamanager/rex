@@ -335,29 +335,13 @@ impl Runtime {
         } else {
             "movie"
         };
-        // A plain `guid=` is the listing's own prefix match below; the grammar reads
-        // `guid` only when a scoped guid asks for it (`parse_only`).
-        let filter_pairs = pairs
-            .iter()
-            .filter(|(key, _)| scoped_guid || key.as_str() != "guid")
-            .cloned()
-            .collect::<Vec<_>>();
-        let mut rows = match self.filter_rows(source, &filter_pairs, section_type) {
+        // Cycle 83: `guid=` is the grammar's own field (a case-sensitive prefix whose
+        // comma is OR -- kids answers `guid=<a>,<b>` with both rows), so no private
+        // prefix pass reads it here any more.
+        let mut rows = match self.filter_rows(source, pairs, section_type) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
         };
-        // `guid=` is a case-sensitive PREFIX of the row's guid (measured).
-        let prefixes = pairs
-            .iter()
-            .filter(|(name, _)| name == "guid")
-            .map(|(_, value)| value.as_str())
-            .collect::<Vec<_>>();
-        if !prefixes.is_empty() {
-            rows.retain(|row| {
-                let guid = row.get("guid").and_then(Value::as_str).unwrap_or("");
-                prefixes.iter().all(|prefix| guid.starts_with(prefix))
-            });
-        }
         if let Some(group) = query.get("group") {
             // Cycle 29: `group=` is honoured here too, and refused as on a listing.
             rows = match self.grouped(rows, group) {

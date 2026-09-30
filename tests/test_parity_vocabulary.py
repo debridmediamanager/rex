@@ -150,6 +150,36 @@ def run(port):
                 if status != 200]
     check("...an empty value, and a movie library's hub page, are 200s", not lenient, lenient)
 
+    # 2. guid= is a grammar field on every consumer: case-sensitive prefix, comma OR.
+    sizes = {}
+    for label, query in (("none", ""), ("1", "guid=1"), ("plex", "guid=plex"),
+                         ("PLEX", "guid=PLEX")):
+        for path in ("/library/sections/1/genre", "/library/metadata/20001/children",
+                     "/library/sections/1/search?type=1&query=t"):
+            _status, mc = request(port, join(path, query) if query else path)
+            sizes[(label, path.split("?")[0])] = (mc or {}).get("size")
+    expected = {}
+    for path in ("/library/sections/1/genre", "/library/metadata/20001/children",
+                 "/library/sections/1/search"):
+        expected[("1", path)] = 0
+        expected[("PLEX", path)] = 0
+        expected[("plex", path)] = sizes[("none", path)]
+    got = {key: sizes[key] for key in expected}
+    check("guid= filters the axes, /children and /search as a case-sensitive prefix",
+          got == expected and all(sizes[("none", p)] for _l, p in expected), sizes)
+    _status, mc = request(port, "/hubs/sections/2?count=12&guid=1")
+    shelf = hub(mc, "tv.recentlyadded.")
+    check("guid=1 empties the show hub page's TV Recently Added shelf",
+          shelf is not None and shelf.get("size") == 0, shelf and shelf.get("size"))
+    pair = "plex://movie/614ee97b618cd92600cef3e1,plex://movie/60a69a74ba9733002ddf78f6"
+    for path in ("/library/sections/1/all", "/library/all?type=1"):
+        _status, mc = request(port, join(path, "guid=" + pair))
+        check("a comma in guid= is OR on %s" % path, sorted(keys(mc)) == ["1012", "1013"],
+              keys(mc))
+    _status, mc = request(port, "/library/sections/1/all?guid%3C=plex://movie/520a1a3c")
+    check("guid< (the <= key) is the same prefix", sorted(keys(mc)) == ["1007", "1008", "1009"],
+          keys(mc))
+
 
 def main():
     process, port = start()

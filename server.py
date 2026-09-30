@@ -587,6 +587,14 @@ FILTER_FIELD_TYPES.setdefault("parent", "integer")
 for _bare in ("rating", "audienceRating"):
     FILTER_FIELD_TYPES.setdefault(_bare, "integer")
 FILTER_FIELD_TYPES.setdefault("file", "string")
+# Cycle 83, measured on kids (1.43.4) and zen (1.42.2): `guid=` is a real filter
+# wherever the grammar runs, not a section-grid and `/library/all` special case --
+# `guid=1` empties a show's `/children` and `/grandchildren`, every tag axis,
+# `/search`, `/autocomplete`, `/unwatched`, `/recentlyViewedShows` and the TV shelf of a
+# hub page, and a COMMA is the grammar's OR (`guid=<a>,<b>` is those two rows on the grid
+# and on the axes alike). plexsim ran a private prefix pass on two paths, which read the
+# comma as part of the guid. The prefix is case-sensitive; see filters.compare.
+FILTER_FIELD_TYPES["guid"] = "string"
 # And `parentIndex` is a 500 on a listing on BOTH references -- on a movie library, on
 # a show library and at type=4 alike -- where plexsim filtered on it happily. It is the
 # one column of this family that refuses rather than filters.
@@ -7381,7 +7389,6 @@ class PlexSim:
                 source = [r for r in source if wanted and r.get("type") == wanted]
             source, _ = self.apply_filters(source, query,
                                            parse_only={"guid"} if scoped_guid else ())
-            source = self._guid_prefix(source, query)
             if "group" in query:
                 # Cycle 29, measured on kids (14 rows -> 4 by type, 7 by year, 10 by
                 # title) and zen (14,434 -> 4, 90, 8,358), which agree: `group=` is
@@ -10461,7 +10468,6 @@ class PlexSim:
         source = self.typed_rows(section_id, query)
 
         source, _ = self.apply_filters(source, query, section)
-        source = self._guid_prefix(source, query)
         # Measured on both servers: the DEFAULT order of a listing is `titleSort`
         # ascending (falling back to the title where no sort title is stored), not
         # the catalog's own order -- fun's show grid opens on `【OSHI NO KO】, 13
@@ -12089,24 +12095,6 @@ class PlexSim:
             type_number, tree, order, limit, group, errors,
             lambda field, scope: FIELD_TITLES.get((scope or implicit, field), ""),
             self.tag_title)
-
-    @staticmethod
-    def _guid_prefix(rows, query):
-        """`guid=` on a listing: a case-sensitive PREFIX of the row's guid.
-
-        Measured on both servers, and not a field the filter grammar advertises:
-        `/library/all?type=1&guid=<guid>` is that one movie, `guid=plex` every matched
-        one, `guid=PLEX` none and an empty value every row. It is how the client asks
-        whether this server holds an item it found elsewhere -- `type=N&guid=`, from
-        its availability lookup -- and plexsim ignored it, so every movie guid
-        "found" the whole library. `guid==` and `guid!=` do something else again and
-        the client sends neither; they are left to the grammar.
-        """
-        wanted = [value for name, value in query.get("_pairs") or [] if name == "guid"]
-        if not wanted:
-            return rows
-        return [r for r in rows
-                if all(str(r.get("guid") or "").startswith(value) for value in wanted)]
 
     def _with_storage(self, row):
         """`includeStorage=1` adds `durationTotal` and `storageTotal` to a grid row.

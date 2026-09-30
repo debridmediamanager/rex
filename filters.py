@@ -973,6 +973,10 @@ def compare(kind, operator, actual, wanted, field=""):
     if operator == "!==":
         return text.lower() != wanted.lower()
     if operator == "<=":
+        if field == "guid":
+            # Measured (cycle 13, re-measured cycle 83 on kids): the guid prefix is
+            # CASE-SENSITIVE -- `guid=plex` is every matched row and `guid=PLEX` none.
+            return text.startswith(wanted)
         return text.lower().startswith(wanted.lower())
     if operator == ">=":
         return text.lower().endswith(wanted.lower())
