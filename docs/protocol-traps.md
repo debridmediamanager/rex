@@ -2871,3 +2871,8 @@ are changing; replay the client's exact request before altering behavior.
   section's `/collections`, a collection's children and a playlist's items all answer the header's
   start and size, per parameter, and a header `Start=abc` beside a valid query is a 500. The native
   server took a header only when the query had not named it; both now override at the door.
+- **An EMPTY body is never gzipped**, whatever the client offers. The official client's own
+  `PUT /updater/check` (`tests/fixtures/reference-walk.jsonl`, `Accept-Encoding: gzip, deflate, br,
+  zstd`) is answered `Content-Length: 0`, `Content-Type: text/html`, no encoding pair, length before
+  type. The oracle compressed nothing into a 20-byte stream with `X-Plex-Content-Original-Length: 0`,
+  which also moved every empty write answer, a 204 included, into the gzip family's header order.

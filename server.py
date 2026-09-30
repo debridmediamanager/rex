@@ -22515,6 +22515,15 @@ class Handler(BaseHTTPRequestHandler):
     def _maybe_gzip(self, content_type, payload, names):
         if "content-encoding" in names:
             return payload
+        if not payload:
+            # An EMPTY body is never compressed. Recorded from the official client's own
+            # `PUT /updater/check` (`tests/fixtures/reference-walk.jsonl`), which offers
+            # `gzip, deflate, br, zstd`: kids answers `Content-Length: 0`, `text/html`
+            # and no encoding pair, length before type. plexsim gzipped it into a
+            # 20-byte stream that decodes to nothing and named an original length of 0,
+            # so every empty write answer -- a 204 included -- took the gzip family's
+            # header order too.
+            return payload
         # Cycle 16, measured on kids and zen: the token is matched EXACTLY and
         # case-sensitively -- `GZIP`, `x-gzip` and `*` all get a plain body, while
         # `gzip;q=0` is still gzipped because the q is ignored entirely. plexsim
