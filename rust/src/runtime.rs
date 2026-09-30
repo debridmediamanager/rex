@@ -6716,7 +6716,9 @@ impl Runtime {
                 Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }
             ("GET" | "HEAD", "/library/all/top") => self.route_top(&query),
-            ("GET" | "HEAD", "/library/metadata") => Response::error(400, "plexsim: bad request"),
+            // Measured on kids (2026-09-30): the bare `/library/metadata` -- with or without
+            // paging, GET and HEAD -- is the 85-byte Not Found document, not a 400.
+            ("GET" | "HEAD", "/library/metadata") => Response::error(404, "plexsim: not found"),
             ("GET" | "HEAD", "/library") => Response::json(
                 200,
                 self.container(

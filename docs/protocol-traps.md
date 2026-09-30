@@ -2968,3 +2968,6 @@ are changing; replay the client's exact request before altering behavior.
   the bare prefix `/web`: the oracle gave these paths the asset header order, let them through the
   token gate and exempted them from the empty-segment rule; the native server also refused to gzip
   them. The web tree is `/web` and what is under `/web/`.
+- **The bare `/library/metadata` is a 404.** Measured on kids (1.43.4, 2026-09-30): GET and HEAD,
+  with or without paging, answer the 85-byte Not Found document, as the oracle does. The native
+  server answered a 400 there, with no measurement behind it.

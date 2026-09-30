@@ -209,6 +209,9 @@ def run(port):
     replay(port, "web-prefix-plugin", "a /web-prefixed plug-in path", headers=(
         "Content-Encoding", "X-Plex-Content-Original-Length"), order=True)
 
+    # 8. The bare `/library/metadata` is the Not Found document.
+    replay(port, "bare-metadata", "the bare metadata path")
+
 
 def run_gate():
     # 7b. With the token gate on, a /web-prefixed plug-in path is gated like any other.
