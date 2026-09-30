@@ -223,6 +223,17 @@ def checks(srv):
                   and len(r.get("Role") or []) <= 3 for r in rows),
           [(r.get("ratingKey"), "Media" in r, "librarySectionID" in r) for r in rows])
 
+    # -- a show's genre is not its episodes' ------------------------------------------
+    hubs = srv.container("/hubs/search?query=comedy&limit=50").get("Hub") or []
+    by_id = {h.get("hubIdentifier"): h for h in hubs}
+    genre = ((by_id.get("genre") or {}).get("Directory") or [{}])[0]
+    check("search's Comedy genre row counts the show alone, and finds no episode by it",
+          genre.get("count") == 1 and (by_id.get("episode") or {}).get("size") == 0,
+          (genre.get("count"), (by_id.get("episode") or {}).get("size")))
+    rows = srv.container("/library/sections/2/autocomplete?type=4&genre.query=c") \
+        .get("Directory") or []
+    check("an episode autocomplete offers no show genre", rows == [], rows)
+
 
 def write_checks(srv):
     """Checks that write: run last, after every read-only check."""
