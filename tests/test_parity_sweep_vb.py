@@ -143,6 +143,52 @@ def run(port):
         check("a first GET /devices lists the asking client's own new row",
               status == ref["status"] and own == ref["own"], "%s %s" % (status, own))
 
+    # 5. A ranged container keeps the socket: the 206 names the whole length and then the
+    #    slice's, a second request on the socket is served, and the idle socket is then
+    #    closed at 20 s with no bytes at all.
+    for row in fixture("ranged-keepalive"):
+        ref = row["response"]
+        sock = socket.create_connection(("127.0.0.1", port), 10)
+
+        def ask(headers):
+            sock.sendall(("GET %s HTTP/1.1\r\nHost: 127.0.0.1:%d\r\n" % (row["request"]["path"], port)
+                          + "".join("%s: %s\r\n" % tuple(pair) for pair in headers)
+                          + "\r\n").encode())
+
+        def drain(limit):
+            sock.settimeout(limit)
+            data, eof = b"", False
+            try:
+                while True:
+                    chunk = sock.recv(65536)
+                    if not chunk:
+                        eof = True
+                        break
+                    data += chunk
+            except socket.timeout:
+                pass
+            return data, eof
+
+        def head(data):
+            lines = data.partition(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
+            return int(lines[0].split()[1]), [line.split(": ", 1)[0] for line in lines[1:]
+                                              if line.split(": ", 1)[0] == "Content-Length"]
+        ask(row["request"]["headers"])
+        first, eof1 = drain(2)
+        status, lengths = head(first) if first else (None, [])
+        check("a ranged container is the measured 206 with two lengths and stays open",
+              status == ref["status"] and len(lengths) == 2 and eof1 is not row["open_after_first"],
+              (status, lengths, eof1))
+        ask(row["second"]["headers"])
+        second, _ = drain(2)
+        check("a second request on that socket is served",
+              second and head(second)[0] == row["second"]["response"]["status"], second[:80])
+        idle, eof3 = drain(30)
+        check("the idle socket is then closed with no bytes",
+              eof3 == row["idle"]["eof"] and len(idle) == row["idle"]["bytes"], (eof3, idle[:80]))
+        sock.close()
+
+
 
 def run_last(port):
     # 4b. ...so a first request whose platform is a NUMBER lists the row that the measured

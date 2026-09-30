@@ -2947,3 +2947,11 @@ are changing; replay the client's exact request before altering behavior.
   `Connection: de` was that same 500, left behind by a concurrent numeric-platform cell on one server
   before the other; every later `/devices` 500s on both until a non-numeric platform overwrites the
   row, as on a real PMS. Numeric spellings are never sent to a shared reference.
+- **An idle keep-alive socket is closed at 20 s with NO bytes -- after a ranged 206 as after
+  anything.** Measured on kids (1.43.4, 2026-09-30) on a raw socket: `Range: bytes=0-1` on
+  `/identity`, `/accounts` or `/status/sessions` answers 206 with `Content-Length` twice (the whole
+  body's, then the slice's) and `Connection: Keep-Alive`; a second request on the socket is served;
+  then the socket goes quiet and closes at 20.0 s. A socket that sent nothing, or half a request
+  line, closes the same way. The native server answered every such read timeout with a 400 before
+  closing, which a client that believed the first `Content-Length` (python's `http.client` does)
+  read as the rest of its body -- the sweep's "oracle IncompleteRead, native 206" cells.
