@@ -3209,9 +3209,11 @@ impl Runtime {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
         };
+        // The oracle's `_grid_row(_listing_row(row))`: the LIGHT grid row, which keeps
+        // `Media` (Parts without Streams) and caps each tag family the way a grid does.
         let shown = rows
             .iter()
-            .map(|row| self.listing_row(row))
+            .map(|row| self.grid_row(row, true, false, false))
             .collect::<Vec<_>>();
         let mut fields = Map::from_iter([
             (
