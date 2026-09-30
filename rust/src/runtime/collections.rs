@@ -1097,6 +1097,10 @@ impl Runtime {
                     stored.uri = uri.clone();
                     stored.touch();
                 }
+                info!(
+                    "COLLECTION {id} query <- {}",
+                    uri.chars().take(120).collect::<String>()
+                );
                 self.dirty = true;
                 return self.collection_row_container(id);
             }

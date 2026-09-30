@@ -174,6 +174,30 @@ pub(crate) fn log(level: Level, message: &str) {
     }
 }
 
+/// `%s` of an optional query value, the way the oracle formats `query.get(name)`.
+pub(crate) fn py_opt(value: Option<&String>) -> String {
+    value.cloned().unwrap_or_else(|| "None".to_string())
+}
+
+/// `%s` of a stored value the way Python's `str()` writes it: `True`, `4`, `1.0`.
+pub(crate) fn py_str(value: &Value) -> String {
+    match value {
+        Value::String(text) => text.clone(),
+        Value::Bool(true) => "True".to_string(),
+        Value::Bool(false) => "False".to_string(),
+        Value::Null => "None".to_string(),
+        Value::Number(number) if number.is_f64() => {
+            let float = number.as_f64().unwrap_or_default();
+            if float.fract() == 0.0 && float.abs() < 1e16 {
+                format!("{float:.1}")
+            } else {
+                format!("{float}")
+            }
+        }
+        other => other.to_string(),
+    }
+}
+
 pub(crate) fn lines() -> Vec<String> {
     SINK.lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())

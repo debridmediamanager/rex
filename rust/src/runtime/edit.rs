@@ -1395,6 +1395,19 @@ impl Runtime {
     }
 }
 
+/// The oracle's query DICT from the request's ordered pairs: each name once, at its
+/// first position, holding its last value.
+pub(crate) fn dict_pairs(pairs: &[(String, String)]) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    for (name, value) in pairs {
+        match out.iter_mut().find(|(known, _)| known == name) {
+            Some(slot) => slot.1 = value.clone(),
+            None => out.push((name.clone(), value.clone())),
+        }
+    }
+    out
+}
+
 /// `",".join(k for k in query if not k.startswith("X-Plex-") and k != "_pairs")`: the
 /// request's parameter NAMES, once each in first-seen order, as the oracle's dict holds them.
 pub(super) fn query_names(pairs: &[(String, String)]) -> String {

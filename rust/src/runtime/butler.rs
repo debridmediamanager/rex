@@ -412,6 +412,7 @@ impl Runtime {
                 );
                 self.notify_activity(&wrapper, "updated");
             }
+            info!("BUTLER ran {name}");
         }
         wrapper.insert("progress".to_string(), json!(100));
         self.notify_activity(&wrapper, "ended");

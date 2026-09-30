@@ -223,10 +223,17 @@ pub(super) fn tmdb_at_width(url: &str, width: Option<&str>) -> String {
 pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
     static CACHE: OnceLock<Mutex<HashMap<String, (Vec<u8>, String)>>> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    if let Some(hit) = cache.lock().ok().and_then(|map| map.get(url).cloned()) {
+    let cached = cache.lock().ok().and_then(|map| map.get(url).cloned());
+    info!(
+        "ARTWORK {} {}",
+        if cached.is_some() { "cache" } else { "fetch" },
+        url.chars().take(110).collect::<String>()
+    );
+    if let Some(hit) = cached {
         return Some(hit);
     }
-    let (status, headers, body) = super::upstream::fetch(
+    let short = url.chars().take(80).collect::<String>();
+    let fetched = super::upstream::fetch(
         "GET",
         url,
         &[
@@ -235,9 +242,19 @@ pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
         ],
         b"",
         std::time::Duration::from_secs(20),
-    )
-    .ok()?;
+    );
+    let (status, headers, body) = match fetched {
+        Ok(fetched) => fetched,
+        Err(error) => {
+            debug!("artwork fetch failed for {short}: <urlopen error {error}>");
+            return None;
+        }
+    };
     if !(200..300).contains(&status) {
+        debug!(
+            "artwork fetch failed for {short}: HTTP Error {status}: {}",
+            super::wire::reason_phrase(status)
+        );
         return None;
     }
     let content_type = headers

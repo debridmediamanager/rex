@@ -251,6 +251,11 @@ impl Runtime {
         edit::derive_title_sort(&mut columns);
         self.edits.insert(id.clone(), columns);
         self.playlists.insert(id.clone(), playlist.clone());
+        info!(
+            "PLAYLIST create {title} smart={} ({} item(s))",
+            if smart { "True" } else { "False" },
+            rows.len()
+        );
         self.push_list_timeline(&id, 15, 0, "created");
         self.dirty = true;
         self.save_if_dirty();
@@ -470,6 +475,10 @@ impl Runtime {
         if uri.is_empty() {
             return Response::error(400, "plexsim: bad request");
         }
+        info!(
+            "PLAYLIST {id} query <- {}",
+            uri.chars().take(120).collect::<String>()
+        );
         if let Some(stored) = self.playlists.get_mut(id) {
             stored.uri = uri;
         }

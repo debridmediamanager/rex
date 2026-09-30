@@ -91,6 +91,8 @@ enum Framing {
 /// de-chunked and bounded by its declared length.
 pub(super) struct Upstream {
     pub status: u16,
+    /// The status line's reason phrase, which `urllib.error.HTTPError` puts in its text.
+    pub reason: String,
     pub headers: Vec<(String, String)>,
     reader: BufReader<Conn>,
     framing: Framing,
@@ -299,8 +301,15 @@ fn exchange(
     } else {
         Framing::Close
     };
+    let reason = status_line
+        .splitn(3, ' ')
+        .nth(2)
+        .unwrap_or_default()
+        .trim()
+        .to_string();
     Ok(Upstream {
         status,
+        reason,
         headers: response_headers,
         reader,
         framing,
@@ -397,10 +406,12 @@ impl std::fmt::Debug for Resolver {
 /// Why a link did not resolve. `Unavailable` is Real-Debrid saying the FILE is not
 /// there -- a 404 or `unavailable_file` (error code 24) -- which a real PMS answers
 /// with a plain 404; `Failed` is every other failure, the 502 (cycle 44).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// An unrestrict that failed, with the text the oracle's exception carries into its
+/// log line: `Unavailable`'s argument, `HTTP Error 401: Unauthorized`, and so on.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum ResolveError {
-    Unavailable,
-    Failed,
+    Unavailable(String),
+    Failed(String),
 }
 
 impl Resolver {
@@ -449,14 +460,14 @@ impl Resolver {
             headers.push(("Authorization", format!("Bearer {}", self.token)));
         }
         let url = format!("{}/unrestrict/link", self.api.trim_end_matches('/'));
-        let (status, _, payload) = fetch(
-            "POST",
-            &url,
-            &headers,
-            body.as_bytes(),
-            Duration::from_secs(30),
-        )
-        .map_err(|_| ResolveError::Failed)?;
+        // `urllib.error.URLError`'s text for a transport failure.
+        let mut response = open("POST", &url, &headers, body.as_bytes(), Duration::from_secs(30))
+            .map_err(|error| ResolveError::Failed(format!("<urlopen error {error}>")))?;
+        let status = response.status;
+        let reason = response.reason.clone();
+        let payload = response
+            .read_body(64 * 1024 * 1024)
+            .map_err(|error| ResolveError::Failed(format!("<urlopen error {error}>")))?;
         let payload = serde_json::from_slice::<Value>(&payload).unwrap_or(Value::Null);
         if !(200..300).contains(&status) {
             // Cycle 44: tell "this file is not there" apart from "the transport failed".
@@ -467,15 +478,23 @@ impl Resolver {
                 || payload.get("error_code").and_then(Value::as_i64) == Some(24)
                 || payload.get("error").and_then(Value::as_str) == Some("unavailable_file");
             return Err(if unavailable {
-                ResolveError::Unavailable
+                ResolveError::Unavailable(
+                    payload
+                        .get("error")
+                        .and_then(Value::as_str)
+                        .filter(|error| !error.is_empty())
+                        .unwrap_or("unavailable_file")
+                        .to_string(),
+                )
             } else {
-                ResolveError::Failed
+                ResolveError::Failed(format!("HTTP Error {status}: {reason}"))
             });
         }
+        // `payload["download"]` on a payload without it is a KeyError.
         let url = payload
             .get("download")
             .and_then(Value::as_str)
-            .ok_or(ResolveError::Failed)?
+            .ok_or_else(|| ResolveError::Failed("'download'".to_string()))?
             .to_string();
         // `int(payload.get("filesize") or 0)`
         let size = payload

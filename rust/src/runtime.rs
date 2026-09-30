@@ -1039,9 +1039,18 @@ impl Runtime {
             "bandwidthBytes": self.bandwidth_bytes,
         });
         let text = serde_json::to_vec_pretty(&state).map_err(|e| e.to_string())?;
-        let tmp = path.with_extension("tmp");
-        fs::write(&tmp, text).map_err(|e| format!("cannot write state: {e}"))?;
-        fs::rename(&tmp, &path).map_err(|e| format!("cannot replace state: {e}"))?;
+        // `Store.save`: `<path>.tmp`, fsynced, then `os.replace` -- and an OSError's
+        // text as Python writes it, which is what the `state not saved` line carries.
+        let tmp = PathBuf::from(format!("{}.tmp", path.display()));
+        let written = fs::File::create(&tmp).and_then(|mut handle| {
+            handle.write_all(&text)?;
+            handle.flush()?;
+            handle.sync_all()
+        });
+        written.map_err(|e| format!("{}: '{}'", py_os_error(&e), tmp.display()))?;
+        fs::rename(&tmp, &path).map_err(|e| {
+            format!("{}: '{}' -> '{}'", py_os_error(&e), tmp.display(), path.display())
+        })?;
         self.dirty = false;
         Ok(())
     }
@@ -3376,7 +3385,10 @@ impl Runtime {
 
     fn save_if_dirty(&mut self) {
         if self.dirty && self.state_path.is_some() {
-            let _ = self.save_state();
+            // `except OSError as error: logger.error("state not saved: %s", error)`.
+            if let Err(error) = self.save_state() {
+                error!("state not saved: {error}");
+            }
         }
     }
 
@@ -3681,12 +3693,11 @@ impl Runtime {
     }
 
     fn push_edit_events_named(&mut self, key: &str, metadata_state: &str) {
+        // `notify_edited`: the two timeline frames and nothing else. The log line the
+        // edit writes (`EDIT <key> <- <fields>`) reaches a `filters=log` channel by
+        // itself, as every logged line does.
         self.push_timeline(key, 3, Some(metadata_state));
         self.push_timeline(key, 5, None);
-        self.push_event(
-            "log",
-            json!({"LogSentNotification": {"level": "info", "thread": "plexsim", "time": now(), "message": "metadata updated"}}),
-        );
     }
 
     fn push_delete_event(&mut self, key: &str) {
@@ -4739,6 +4750,7 @@ impl Runtime {
             ];
             let bare = field.rsplit('.').next().unwrap_or(field);
             if !allowed.contains(&bare) {
+                note_unsupported_sort(field);
                 return Err(500);
             }
             specs.push((field.to_string(), direction == "desc"));
@@ -5839,7 +5851,7 @@ impl Runtime {
                 return Response::error(refusal, "plexsim: bad request");
             }
             if gates::read_only_refusal(&request.method, &path) {
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "plexsim: not found -- read-only route");
             }
         }
         if !self.authorized(&path, &request, &query) {
@@ -6069,7 +6081,8 @@ impl Runtime {
             ("PUT", "/myplex/refreshReachability") => Response::empty(200),
             ("GET" | "HEAD", "/myplex/account") => self.myplex_account(),
             ("GET" | "HEAD", "/security/token") => self.route_security_token(&request, &query),
-            ("GET", "/log") => {
+            // Measured: `level` must be an integer AND `message` present, on EVERY verb.
+            (_, "/log") => {
                 let valid_level = query
                     .get("level")
                     .is_some_and(|value| !value.is_empty() && value.parse::<i64>().is_ok());
@@ -6091,7 +6104,6 @@ impl Runtime {
                     Response::empty(200)
                 }
             }
-            ("HEAD", "/log") => Response::error(400, "plexsim: bad request"),
             ("GET" | "HEAD", "/log/networked") => Response::empty(200),
             ("GET" | "HEAD", "/diagnostics/logs") => {
                 let mut response = Response::bytes(200, "application/zip");
@@ -6197,7 +6209,6 @@ impl Runtime {
                     false,
                 ),
             ),
-            ("POST", "/log") => Response::empty(200),
             // Measured on both references: a real (empty, paged) container with
             // no `content` at all -- the one place the dispatcher does not leak.
             ("GET" | "HEAD", "/security") => {
@@ -6279,7 +6290,7 @@ impl Runtime {
             ("GET", "/:/prefs") => self.route_prefs(&query, &request.headers, false),
             ("HEAD", "/:/prefs") => self.route_prefs(&query, &request.headers, true),
             ("GET" | "HEAD", "/:/prefs/get") => self.route_pref_get(&query),
-            ("PUT", "/:/prefs") => self.route_prefs_write(&query),
+            ("PUT", "/:/prefs") => self.route_prefs_write(&edit::dict_pairs(&pairs)),
             ("GET" | "HEAD", "/:/resources/movie.png") => {
                 self.route_bundled_resource("movie.png", request.method == "HEAD")
             }
@@ -8260,7 +8271,7 @@ impl Runtime {
         )
     }
 
-    fn route_prefs_write(&mut self, query: &HashMap<String, String>) -> Response {
+    fn route_prefs_write(&mut self, query: &[(String, String)]) -> Response {
         // `set_prefs` in server.py, all of it measured: an unknown id refuses the whole
         // request (400) and a write-protected one the whole request (403); an int or
         // double that does not parse is a 500 and an empty one is ignored; a bool is true
@@ -8270,14 +8281,18 @@ impl Runtime {
             .into_iter()
             .filter_map(|row| Some((row.get("id")?.as_str()?.to_string(), row)))
             .collect::<HashMap<_, _>>();
-        let mut writes = query
+        // The query dict's order: the first refusal the ORACLE reaches is the answer.
+        let writes = query
             .iter()
             .filter(|(key, _)| !key.starts_with("X-Plex-"))
+            .map(|(key, value)| (key, value))
             .collect::<Vec<_>>();
-        writes.sort();
         for (key, _) in &writes {
             if !settings.contains_key(*key) {
-                return Response::error(400, "plexsim: unknown preference");
+                return Response::error(
+                    400,
+                    &format!("cannot set preference value for unknown preference {key}"),
+                );
             }
             // Cycle 19/30: these two answer 403 on 1.42.2 and push no frame, even when
             // the value written is the one already stored.
@@ -8328,6 +8343,7 @@ impl Runtime {
                 };
             }
             self.prefs.insert(key.clone(), value.clone());
+            info!("PREF {key} = {}", logging::py_str(value));
         }
         let written = typed
             .iter()
@@ -8353,6 +8369,7 @@ impl Runtime {
                 if start == end {
                     self.prefs
                         .insert("ButlerEndHour".to_string(), json!((start + 1) % 24));
+                    info!("PREF ButlerEndHour = {} (an empty window)", (start + 1) % 24);
                     if !written.contains("ButlerEndHour") {
                         moved.push("ButlerEndHour".to_string());
                     }
@@ -8508,12 +8525,18 @@ impl Runtime {
             Err(refusal) => return refusal,
         };
         let position = position.unwrap_or(0);
-        if let Some(key) = key {
+        if let Some(key) = &key {
             if position >= 0 {
-                self.store_progress(&key, position);
+                self.store_progress(key, position);
             }
         }
         self.save_if_dirty();
+        info!(
+            "PROGRESS {} t={}ms state={}",
+            key.unwrap_or_else(|| logging::py_opt(query.get("key"))),
+            logging::py_opt(query.get("time")),
+            logging::py_opt(query.get("state"))
+        );
         Response::empty(200)
     }
 
@@ -8770,7 +8793,18 @@ impl Runtime {
             Ok(None) => return Response::error(404, "plexsim: no such item"),
             Err(refusal) => return refusal,
         };
+        // `library.scrobble` returns the leaves it marked: a show's or season's
+        // episodes, the row itself otherwise, and none for a collection's scrobble.
+        let changed = match self.catalog.get(&key).and_then(|row| row.get("type")).and_then(Value::as_str) {
+            Some("show" | "season") => self.leaves(&key).len(),
+            None if watched && self.collections.contains_key(&key) => 0,
+            _ => 1,
+        };
         self.scrobble_key(&key, watched, Some(1));
+        info!(
+            "{} {key} -> {changed} leaf row(s)",
+            if watched { "SCROBBLE" } else { "UNSCROBBLE" }
+        );
         Response::empty(200)
     }
 
@@ -8915,9 +8949,11 @@ impl Runtime {
             }
             self.dirty = true;
             self.save_if_dirty();
+            info!("RATE {key} -> {}", logging::py_opt(query.get("rating")));
             return Response::empty(200);
         }
         self.stamp_view(&[key.clone()]);
+        info!("RATE {key} -> {}", logging::py_opt(query.get("rating")));
         if rating == -1.0 {
             self.update_view(&key, "userRating", None);
             self.update_view(&key, "lastRatedAt", None);
@@ -9213,6 +9249,10 @@ impl Runtime {
                 }),
             );
             fields.insert("size".to_string(), json!(0));
+            info!(
+                "DECISION refused for path={}",
+                query.get("path").map_or("", String::as_str)
+            );
             return Response::json(200, self.container(fields, false));
         }
         self.decided_sessions.insert((session.clone(), key.clone()));
@@ -9237,6 +9277,12 @@ impl Runtime {
             }
         }
         fields.insert("resourceSession".to_string(), json!(session));
+        let decided_path = query.get("path").map_or("", String::as_str);
+        if mde {
+            info!("DECISION direct play for path={decided_path}");
+        } else {
+            info!("DECISION direct play (no MDE, {profile_name}) for path={decided_path}");
+        }
         if mde {
             fields.insert("mdeDecisionCode".to_string(), json!(1000));
             fields.insert("mdeDecisionText".to_string(), json!("Direct play OK."));
@@ -9713,6 +9759,11 @@ impl Runtime {
             self.push_event(
                 "playing",
                 json!({"PlaySessionStateNotification": Value::Object(frame)}),
+            );
+            info!(
+                "TIMELINE {} state={state} t={}ms session={session_key}",
+                query.get("ratingKey").map_or("", String::as_str),
+                logging::py_opt(query.get("time"))
             );
         }
         self.save_if_dirty();
@@ -11569,6 +11620,7 @@ impl Runtime {
             }
             let id = self.next_queue.to_string();
             self.next_queue += 1;
+            let row_count = rows.len();
             let mut items = Vec::new();
             for row in rows {
                 let Some(key) = key_of(&row) else { continue };
@@ -11622,6 +11674,13 @@ impl Runtime {
                 playlist_title,
             };
             let response = self.queue_container(&queue, query);
+            let source = query
+                .get("uri")
+                .filter(|uri| !uri.is_empty())
+                .or_else(|| query.get("playlistID").filter(|id| !id.is_empty()))
+                .map(|value| value.chars().take(80).collect::<String>())
+                .unwrap_or_default();
+            info!("PLAYQUEUE {id} -> {row_count} item(s) from uri={source}");
             self.queues.insert(id, queue);
             return response;
         }
@@ -11714,6 +11773,11 @@ impl Runtime {
                         position
                     };
                     let mut added_ids = Vec::new();
+                    info!(
+                        "PLAYQUEUE {id} {} {} item(s)",
+                        if query.get("next") == Some(&"1".to_string()) { "next" } else { "append" },
+                        rows.len()
+                    );
                     for row in rows {
                         let Some(key) = key_of(&row) else { continue };
                         let item = QueueItem {
@@ -12114,6 +12178,10 @@ impl Runtime {
                 if !self.decided_sessions.contains(&(session, key)) {
                     return Response::error(400, "plexsim: no decision for this session");
                 }
+                warning!(
+                    "TRANSCODE REQUESTED -- client refused direct play: {}",
+                    logging::py_opt(query.get("path"))
+                );
                 return Response::error(404, "plexsim: no transcoder");
             }
             if matches!(leaf, "ping" | "stop") {
@@ -12301,7 +12369,8 @@ impl Runtime {
         }
         if path == "/updater/apply" {
             return if request.method == "PUT" {
-                Response::error(400, "plexsim: no update downloaded")
+                warning!("UPDATER apply requested -- nothing downloaded");
+                Response::error(400, "plexsim: bad request")
             } else {
                 Response::error(404, "plexsim: not found")
             };
@@ -12344,6 +12413,7 @@ impl Runtime {
             );
             // Database optimization is the measured spelling-index rebuild point.
             self.rebuild_spelling();
+            info!("OPTIMIZE database -- rebuilt the search vocabulary");
             return Response::empty(200);
         }
         if segments == ["playQueues"] && matches!(request.method.as_str(), "GET" | "HEAD") {
@@ -12418,8 +12488,9 @@ impl Runtime {
                 full != history_key && full.rsplit('/').next().unwrap_or_default() != history_key
             });
             if self.history.len() == before {
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "plexsim: no such history row");
             }
+            info!("HISTORY delete {history_key}");
             self.dirty = true;
             return Response::json(
                 200,
@@ -12483,8 +12554,9 @@ impl Runtime {
                         == Some(session_id.as_str())
             });
             if !found {
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "plexsim: no such session");
             }
+            info!("TERMINATE {session_id}: {}", logging::py_opt(query.get("reason")));
             self.terminated_sessions.insert(
                 session_id.clone(),
                 query
@@ -15932,7 +16004,13 @@ impl Runtime {
             });
         let rows = match self.sort_rows(rows, sort) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "plexsim: bad request"),
+            Err(status) => {
+                // `section_listing`: the one sorter that names the key it refused.
+                if let Some(key) = peek_unsupported_sort() {
+                    warning!("UNSUPPORTED sort key {}", crate::filters::py_repr(&key));
+                }
+                return Response::error(status, "plexsim: bad request");
+            }
         };
         let rows = if let Some(group) = query.get("group") {
             match self.grouped(rows, group) {
@@ -17827,25 +17905,29 @@ impl Runtime {
                 if request.body.is_empty() {
                     return Response::error(406, "plexsim: not acceptable");
                 }
+                // `upload_subtitle`: no title, or one with no `.`, is a 500; the stem is
+                // what `rpartition(".")` leaves, an empty one included.
                 let Some(title) = query.get("title").filter(|value| !value.is_empty()) else {
-                    return Response::error(500, "plexsim: title required");
+                    return Response::error(500, "plexsim: internal error");
                 };
                 let Some((stem, extension)) = title.rsplit_once('.') else {
-                    return Response::error(500, "plexsim: title extension required");
+                    return Response::error(500, "plexsim: internal error");
                 };
-                if stem.is_empty() {
-                    return Response::error(500, "plexsim: title extension required");
-                }
-                let format = query.get("format").map(String::as_str).unwrap_or(extension);
+                // `query.get("format") or extension`: an EMPTY format is the extension.
+                let format = query
+                    .get("format")
+                    .filter(|value| !value.is_empty())
+                    .map(String::as_str)
+                    .unwrap_or(extension);
                 // PMS keys this validation off the form's exact, lower-case
                 // format value.  The filename extension is only metadata: a
                 // text file named `.txt` is accepted when the form says srt,
                 // while an upper-case SRT value is refused.
                 if !matches!(format, "psb" | "srt" | "ass" | "ssa" | "smi" | "txt") {
-                    return Response::error(400, "plexsim: unsupported subtitle format");
+                    return Response::error(400, "plexsim: bad request");
                 }
                 if request.body.is_empty() || !request.body_complete {
-                    return Response::error(406, "plexsim: subtitle body required");
+                    return Response::error(406, "plexsim: not acceptable");
                 }
                 // Measured on the copy: the new stream's id is the next after the
                 // highest the server holds, and it is the Stream the reference writes:
@@ -17894,35 +17976,44 @@ impl Runtime {
                 let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
                     return Response::error(404, "plexsim: not found");
                 };
-                let Some(media) = object.get_mut("Media").and_then(Value::as_array_mut) else {
-                    return Response::error(500, "plexsim: no media");
-                };
-                let Some(part) = media
-                    .first_mut()
-                    .and_then(|media| media.get_mut("Part"))
+                // Every part of every Media: the new track deselects the subtitle in all
+                // of them and joins the FIRST part, as `upload_subtitle` does.
+                let mut parts = object
+                    .get_mut("Media")
                     .and_then(Value::as_array_mut)
-                    .and_then(|parts| parts.first_mut())
-                else {
-                    return Response::error(500, "plexsim: no part");
-                };
-                let streams = part.as_object_mut().and_then(|part| {
-                    part.entry("Stream".to_string())
-                        .or_insert_with(|| Value::Array(Vec::new()))
-                        .as_array_mut()
-                });
-                let Some(streams) = streams else {
-                    return Response::error(500, "plexsim: no streams");
-                };
-                for existing in streams.iter_mut() {
-                    if existing.get("streamType").and_then(Value::as_i64) == Some(3) {
-                        if let Some(existing) = existing.as_object_mut() {
-                            existing.shift_remove("selected");
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|media| media.get_mut("Part").and_then(Value::as_array_mut))
+                    .flatten()
+                    .filter_map(Value::as_object_mut)
+                    .collect::<Vec<_>>();
+                if parts.is_empty() {
+                    return Response::error(404, "plexsim: not found");
+                }
+                for part in parts.iter_mut() {
+                    for existing in part
+                        .get_mut("Stream")
+                        .and_then(Value::as_array_mut)
+                        .into_iter()
+                        .flatten()
+                    {
+                        if existing.get("streamType").and_then(Value::as_i64) == Some(3) {
+                            if let Some(existing) = existing.as_object_mut() {
+                                existing.shift_remove("selected");
+                            }
                         }
                     }
                 }
-                streams.push(stream);
+                if let Some(streams) = parts[0]
+                    .entry("Stream".to_string())
+                    .or_insert_with(|| Value::Array(Vec::new()))
+                    .as_array_mut()
+                {
+                    streams.push(stream);
+                }
                 self.dirty = true;
                 self.save_if_dirty();
+                info!("SUBTITLE upload {key} -> stream {id} ({format})");
                 Response::empty(200)
             }
             "posters" | "arts" => {
@@ -18966,7 +19057,10 @@ impl Runtime {
                     .and_then(Value::as_str)
                     .filter(|link| !link.is_empty())
                     .map_or(true, |link| {
-                        self.resolver.resolve(link) != Err(upstream::ResolveError::Unavailable)
+                        !matches!(
+                            self.resolver.resolve(link),
+                            Err(upstream::ResolveError::Unavailable(_))
+                        )
                     });
                 if let Some(object) = part.as_object_mut() {
                     object.insert("accessible".to_string(), json!(available));
@@ -19581,6 +19675,7 @@ impl Runtime {
                     .or_default()
                     .insert("updatedAt".to_string(), json!(now()));
             }
+            info!("PLAYLIST {} += {added} item(s)", playlist.id);
             self.dirty = true;
             self.save_if_dirty();
             let updated = self
@@ -20049,11 +20144,15 @@ impl Runtime {
             }
         }
         wanted.retain(|entry| !entry.1.is_empty());
+        let owner_key = key_of(&owner).unwrap_or_default();
         for (stream_type, chosen) in &wanted {
             if *stream_type == 3 && chosen == "0" {
                 continue;
             }
             if !streams_of(*stream_type).contains(chosen) {
+                warning!(
+                    "STREAM SELECT refused: {chosen} is not a type-{stream_type} stream of {owner_key}"
+                );
                 return Response::error(400, "plexsim: bad request");
             }
         }
@@ -20100,6 +20199,15 @@ impl Runtime {
         }
         self.dirty = true;
         self.save_if_dirty();
+        // `%s` of the oracle's `{stream_type: "id"}` dict.
+        info!(
+            "STREAM SELECT part={part_id} item={owner_key} {{{}}}",
+            wanted
+                .iter()
+                .map(|(stream_type, chosen)| format!("{stream_type}: {}", crate::filters::py_repr(chosen)))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
         Response::empty(200)
     }
 
@@ -20127,6 +20235,10 @@ impl Runtime {
             .or_else(|| request.headers.get("x-plex-session-identifier"))
         {
             if self.terminated_sessions.remove(session_id).is_some() {
+                info!(
+                    "PART {} refused: session {session_id} terminated",
+                    segments.first().copied().unwrap_or_default()
+                );
                 return Response::error(503, "plexsim: session terminated");
             }
         }
@@ -20327,6 +20439,11 @@ impl Runtime {
             redirect: self.part_mode == "redirect",
             window,
             head: request.method == "HEAD",
+            part_id: part_id.to_string(),
+            method: request.method.clone(),
+            route: request.target.split('?').next().unwrap_or_default().to_string(),
+            range: range.clone(),
+            download: download.is_some(),
         });
         response
     }
@@ -20458,6 +20575,26 @@ thread_local! {
 
 fn take_error_note() -> Option<(u16, String)> {
     ERROR_NOTE.with(|note| note.borrow_mut().take())
+}
+
+thread_local! {
+    /// The sort key `_sorted` could not order by, for the request being answered: the
+    /// oracle's refusal names it (`plexsim: unsupported sort key <key>`), where the
+    /// native sorters carry only the status back up.
+    static UNSUPPORTED_SORT: std::cell::RefCell<Option<String>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+fn note_unsupported_sort(key: &str) {
+    UNSUPPORTED_SORT.with(|note| *note.borrow_mut() = Some(key.to_string()));
+}
+
+fn take_unsupported_sort() -> Option<String> {
+    UNSUPPORTED_SORT.with(|note| note.borrow_mut().take())
+}
+
+fn peek_unsupported_sort() -> Option<String> {
+    UNSUPPORTED_SORT.with(|note| note.borrow().clone())
 }
 
 #[derive(Debug, Clone)]
@@ -20912,7 +21049,7 @@ fn start_state_saver(runtime: SharedRuntime) {
     unsafe {
         libc::signal(libc::SIGTERM, on_sigterm as libc::sighandler_t);
     }
-    thread::spawn(move || {
+    let _ = thread::Builder::new().name("state-saver".to_string()).spawn(move || {
         // `run()` waits for the dirty flag and then a whole interval, so a write is
         // saved two seconds after the first request that dirtied the state.
         let interval = std::time::Duration::from_secs(2);
@@ -21449,7 +21586,19 @@ fn handle_connection<S: Read + Write + PollRead>(
             guard.pending_claim = None;
             guard.refused_for_token = false;
             crate::filters::clear_refusal();
-            let response = guard.route(&request);
+            take_unsupported_sort();
+            // `except Exception: logger.exception("handler failed ...")`: a handler that
+            // fails answers 500 and the server keeps serving, rather than the panic
+            // taking the connection down and poisoning the lock for every later request.
+            let response = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                guard.route(&request)
+            })) {
+                Ok(response) => response,
+                Err(_) => {
+                    error!("handler failed for {} {}", request.method, request.target);
+                    Response::error(500, "plexsim: internal error")
+                }
+            };
             part_plan = guard.pending_part.take();
             let image = guard.pending_image.take();
             let claim = guard.pending_claim.take();
@@ -21477,6 +21626,7 @@ fn handle_connection<S: Read + Write + PollRead>(
         // `handle()`'s `except FilterError`: the refusal is logged by its detail, and
         // that detail is the sentence the refusal answers with.
         let refusal = crate::filters::take_refusal();
+        let unsupported = take_unsupported_sort();
         if let Some((status, sentence)) = take_error_note() {
             if status == response.status {
                 match refusal.filter(|(refused, _)| *refused == status) {
@@ -21484,7 +21634,13 @@ fn handle_connection<S: Read + Write + PollRead>(
                         warning!("REFUSED {request_path}: {detail}");
                         info!("{status} {} {request_path} -- plexsim: {detail}", request.method);
                     }
-                    None => info!("{status} {} {request_path} -- {sentence}", request.method),
+                    None => match unsupported.filter(|_| status == 500) {
+                        Some(key) => info!(
+                            "{status} {} {request_path} -- plexsim: unsupported sort key {key}",
+                            request.method
+                        ),
+                        None => info!("{status} {} {request_path} -- {sentence}", request.method),
+                    },
                 }
             }
         }
@@ -23584,6 +23740,13 @@ struct PartProxy {
     redirect: bool,
     window: PartWindow,
     head: bool,
+    /// For the oracle's `PART` log lines: the part id, the request's method and route,
+    /// its `Range` header, and whether it was a download.
+    part_id: String,
+    method: String,
+    route: String,
+    range: Option<String>,
+    download: bool,
 }
 
 /// `_serve_image`'s upstream half, outside the lock: the remote bytes and their type
@@ -23621,19 +23784,30 @@ fn serve_part_proxy<S: Write>(
     envelope: &wire::Wire,
     keep: bool,
 ) -> Result<bool, String> {
+    let part_id = plan.part_id.clone();
+    // `_send_error` logs its sentence as it answers, here as for any other refusal.
+    let refuse = |stream: &mut S, status: u16, sentence: &str| {
+        info!("{status} {} {} -- {sentence}", plan.method, plan.route);
+        wire::write_enveloped(stream, &Response::error(status, sentence), envelope, keep)
+    };
     let url = match plan.resolver.resolve(&plan.link) {
         Ok((url, _size)) => url,
         // Cycle 44: the provider saying the FILE is gone is a plain 404, as a real PMS
         // answers for a part it cannot open; any other resolve failure is the 502.
-        Err(upstream::ResolveError::Unavailable) => {
-            return wire::write_enveloped(stream, &Response::error(404, "plexsim: not found"), envelope, keep);
+        Err(upstream::ResolveError::Unavailable(detail)) => {
+            error!("part {part_id} is unavailable upstream: {detail}");
+            return refuse(stream, 404, "plexsim: not found");
         }
-        Err(upstream::ResolveError::Failed) => {
-            let refusal = Response::error(502, "plexsim: debrid resolve failed");
-            return wire::write_enveloped(stream, &refusal, envelope, keep);
+        Err(upstream::ResolveError::Failed(detail)) => {
+            error!("unrestrict failed for part {part_id}: {detail}");
+            return refuse(stream, 502, "plexsim: debrid resolve failed");
         }
     };
     if plan.redirect {
+        info!(
+            "PART {part_id} -> 302 CDN{}",
+            if plan.download { " (download)" } else { "" }
+        );
         let mut redirect = Response::bytes(302, "");
         redirect.headers.push(("Location".to_string(), url));
         return wire::write_enveloped(stream, &redirect, envelope, keep);
@@ -23641,6 +23815,7 @@ fn serve_part_proxy<S: Write>(
     let mut headers = vec![("User-Agent", upstream::UPSTREAM_UA.to_string())];
     let want = match &plan.window {
         PartWindow::Unsatisfiable => {
+            info!("416 {} {} -- plexsim: range not satisfiable", plan.method, plan.route);
             let refusal = Response {
                 status: 416,
                 content_type: "text/html".to_string(),
@@ -23672,12 +23847,16 @@ fn serve_part_proxy<S: Write>(
             // The CDN refused a url the cache still holds: resolve afresh next time
             // rather than replaying a dead url until the TTL runs out.
             plan.resolver.invalidate(&plan.link);
-            let refusal = Response::error(refused.status, "plexsim: upstream refused");
-            return wire::write_enveloped(stream, &refusal, envelope, keep);
+            error!(
+                "PART {part_id} upstream {} for range {}",
+                refused.status,
+                logging::py_opt(plan.range.as_ref())
+            );
+            return refuse(stream, refused.status, "plexsim: upstream refused");
         }
-        Err(_) => {
-            let refusal = Response::error(502, "plexsim: upstream failed");
-            return wire::write_enveloped(stream, &refusal, envelope, keep);
+        Err(error) => {
+            error!("PART {part_id} upstream failed: <urlopen error {error}>");
+            return refuse(stream, 502, "plexsim: upstream failed");
         }
     };
     let length = match (&plan.window, want) {
@@ -23697,6 +23876,12 @@ fn serve_part_proxy<S: Write>(
                 .and_then(|value| value.trim().parse::<u64>().ok())
         }
     };
+    info!(
+        "PART {part_id} range={} -> {} len={}",
+        plan.range.as_deref().unwrap_or("-"),
+        response.status,
+        length.map_or_else(|| "None".to_string(), |length| length.to_string())
+    );
     let still_open = wire::write_enveloped_head(stream, &response, envelope, keep, length)?;
     if plan.head {
         return Ok(still_open);
@@ -23714,6 +23899,7 @@ fn serve_part_proxy<S: Write>(
         };
         // A seek or a stop closes the socket mid-body. Normal.
         if stream.write_all(&buffer[..count]).is_err() {
+            debug!("PART {part_id} client closed");
             break;
         }
         written += count as u64;

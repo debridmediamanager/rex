@@ -300,6 +300,7 @@ impl Runtime {
         object.insert("updatedAt".to_string(), json!(stamp));
         self.store_row(key, row);
         self.cascade_artwork_from(key);
+        info!("ARTWORK upload {key} {kind} {} bytes -> {upload}", body.len());
         self.push_timeline(key, 5, None);
         self.dirty = true;
         Response::empty(200)
@@ -375,6 +376,10 @@ impl Runtime {
             .to_string();
         self.store_row(key, row);
         self.cascade_artwork_from(key);
+        info!(
+            "ARTWORK {key} {kind} -> {}",
+            chosen.chars().take(80).collect::<String>()
+        );
         self.push_timeline(key, 5, None);
         self.dirty = true;
         Response::plain(200, body.into_bytes())
