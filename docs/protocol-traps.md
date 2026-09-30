@@ -2925,3 +2925,9 @@ are changing; replay the client's exact request before altering behavior.
   `/hubs/home/` `continueWatching`, `onDeck` and `recentlyAdded`; both servers already agreed.
   (The sweep that found it showed the native answer "matching" early on: both requests had failed
   identically with the client out of ports, which `ndiff` does not report.)
+- **A `/web/*` 404 IS gzipped; only the 200 asset is not.** Measured on kids (1.43.4, 2026-09-30)
+  with `Accept-Encoding: gzip`: `/web/zzNoSuchLeaf` and `/web/js/zz.js` answer the 85-byte Not
+  Found document as `Content-Encoding: gzip`, `X-Plex-Content-Original-Length: 85`, 78 bytes on the
+  wire, and no connection state (the socket closes). The cycle-16 rule "a web asset is never
+  gzipped" is about the served FILE; the native server applied it to every `/web` path. `/web/`
+  (trailing slash) is the same absolute 302 as `/web`, which the native server 404'd.

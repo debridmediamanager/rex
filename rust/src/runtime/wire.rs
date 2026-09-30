@@ -599,7 +599,9 @@ pub(super) fn envelope(
         && !part
         && !names.contains("content-encoding")
     {
-        let asset = wire.path.starts_with("/web") || names.contains("accept-ranges");
+        // Measured on kids: a `/web/*` ASSET is never gzipped, but its 404 is the ordinary
+        // error document and is gzipped like any other (85 bytes to 78) when gzip is offered.
+        let asset = (wire.path.starts_with("/web") && status < 400) || names.contains("accept-ranges");
         if offered
             && !asset
             && !body.is_empty()

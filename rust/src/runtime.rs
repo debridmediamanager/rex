@@ -6552,7 +6552,8 @@ impl Runtime {
                 home_theater_version(&mut body, &query, &request.headers);
                 Response::json(200, body)
             }
-            ("GET" | "HEAD", "/manage") | ("GET" | "HEAD", "/web") => {
+            // `/web/` keeps its slash through the trim above; kids answers it the same 302.
+            ("GET" | "HEAD", "/manage") | ("GET" | "HEAD", "/web" | "/web/") => {
                 let host = request.headers.get("host").cloned().unwrap_or_default();
                 Response {
                     status: if request

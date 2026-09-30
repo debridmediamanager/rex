@@ -97,21 +97,36 @@ def start():
     raise SystemExit("server did not start")
 
 
-def replay(port, rule, what):
-    """Every fixture exchange of RULE: the same status and the same body."""
+def header(pairs, name):
+    values = [value for key, value in pairs if key.lower() == name.lower()]
+    return values or None
+
+
+def replay(port, rule, what, headers=()):
+    """Every fixture exchange of RULE: the same status, the same (decoded) body, and the
+    same values of HEADERS -- absent where the reference sends none."""
     for row in fixture(rule):
         req, ref = row["request"], row["response"]
         path = local_path(req["path"])
-        status, _, body = send(port, req["method"], path, req["headers"])
+        status, got, body = send(port, req["method"], path, req["headers"])
+        want = {name: header(ref["headers"], name) for name in headers}
+        have = {name: header(got, name) for name in headers}
         check("%s: %s %s is the measured %d" % (what, req["method"], path, ref["status"]),
-              status == ref["status"] and body.decode("utf-8", "replace") == ref["body"],
-              "%s %r" % (status, body[:200]))
+              status == ref["status"] and body.decode("utf-8", "replace") == ref["body"]
+              and want == have,
+              "%s %r %s, measured %s" % (status, body[:200], have, want))
 
 
 def run(port):
     # 1. A leaf the server does not route under `/hubs/sections/{id}/` is the Not Found
     #    document, not the section's Recommended page.
     replay(port, "hub-leaf", "an unknown section hub leaf")
+
+    # 2. A `/web/*` 404 is the error document, gzipped like any other when gzip is
+    #    offered (only the 200 asset is never gzipped); `/web/` is the same 302 as `/web`.
+    replay(port, "web-404-gzip", "a missing web asset", headers=(
+        "Content-Encoding", "X-Plex-Content-Original-Length",
+        "X-Plex-Content-Compressed-Length", "Content-Length", "Connection", "Cache-Control"))
 
 
 def main():
