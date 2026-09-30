@@ -484,6 +484,28 @@ impl Runtime {
         catalog.normalize();
         catalog.retitle_streams();
         number_catalog_tags(&mut catalog.items);
+        // The catalog's `_strip_show_fields`: an episode carries no Genre, Country,
+        // studio, tagline, originalTitle, rating or Label of its own -- the enriched
+        // file row copied the SHOW's. Dropped from storage at load, so nothing that
+        // reads the rows (the tag table, a filter) sees the show's copies either.
+        for item in &mut catalog.items {
+            if item.get("type").and_then(Value::as_str) != Some("episode") {
+                continue;
+            }
+            if let Some(object) = item.as_object_mut() {
+                for field in [
+                    "Genre",
+                    "Country",
+                    "studio",
+                    "tagline",
+                    "originalTitle",
+                    "rating",
+                    "Label",
+                ] {
+                    object.shift_remove(field);
+                }
+            }
+        }
         // Cycle 41: `Part.accessible`/`exists` are a DETAIL option (`checkFiles=1`), never
         // a stored field a listing or a plain read carries; the checked read computes them.
         for item in &mut catalog.items {
@@ -1330,9 +1352,9 @@ impl Runtime {
                     }
                 }
             }
-            for field in ["Genre", "studio", "tagline", "Country"] {
-                object.shift_remove(field);
-            }
+            // An episode's copies of its show's Genre, studio, tagline and Country are
+            // dropped from storage at load (`_strip_show_fields`); what an edit writes
+            // onto the episode afterwards is its own and shows, as the oracle's does.
             // Cycle 14/15: a flattened show's episodes skip the season level.
             self.apply_flatten_projection(object);
         }
@@ -15973,17 +15995,8 @@ impl Runtime {
             Err(status) => return Response::error(status, "plexsim: bad request"),
         };
         rows.retain(|row| row.get("type").and_then(Value::as_str) == Some(wanted));
-        // An episode carries no Genre, studio, tagline or Country of its own (the
-        // show's are the catalog's copy; the detail row drops them too).
-        for row in rows.iter_mut() {
-            if row.get("type").and_then(Value::as_str) == Some("episode") {
-                if let Some(object) = row.as_object_mut() {
-                    for field in ["Genre", "studio", "tagline", "Country"] {
-                        object.shift_remove(field);
-                    }
-                }
-            }
-        }
+        // An episode's copies of its show's Genre, studio, tagline and Country are
+        // dropped from storage at load (`_strip_show_fields`); an edited value is its own.
         let value = |row: &Value, field: &str| -> Value {
             match field {
                 "titleSort" => row
