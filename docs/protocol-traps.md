@@ -3146,3 +3146,8 @@ are changing; replay the client's exact request before altering behavior.
   1.42.2, two rows of a throwaway library, `tests/fixtures/delete_key_list.json`); both rows read
   back unchanged and the key-list GET beside it is the ordinary listing. The oracle answered the
   DELETE with that listing, a 200; the native server already answered the 404.
+- **`--state` keeps the play queues and the id counters.** Cycle 73 measured a restart keeping play
+  queues with their selected item and ids counting UP. The native state file kept neither: after a
+  SIGTERM or a SIGKILL every client's last play queue answered 404, the next queue took id 2 again,
+  and `playlistItemID` restarted at 1 beside restored items already holding 1 and 2 (found by
+  `tests/test_concurrency.py` under load, 2026-09-30). The oracle pickles all three.

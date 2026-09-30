@@ -992,6 +992,69 @@ impl Runtime {
                     .get("spelling")
                     .and_then(spellfix::SearchIndex::from_value);
             }
+            for value in state.get("queues").and_then(Value::as_array).into_iter().flatten() {
+                let text = |name: &str| value.get(name).and_then(Value::as_str).map(str::to_string);
+                let Some(id) = value.get("id").map(string_value).filter(|id| !id.is_empty()) else {
+                    continue;
+                };
+                let items = value
+                    .get("items")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|item| {
+                        Some(QueueItem {
+                            id: item.get("id")?.as_i64()?,
+                            rating_key: item.get("ratingKey").map(string_value)?,
+                            added: item.get("added").and_then(Value::as_bool).unwrap_or(false),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                self.next_queue = self.next_queue.max(id.parse::<i64>().unwrap_or(0) + 1);
+                if let Some(highest) = items.iter().map(|item| item.id).max() {
+                    self.next_queue_item = self.next_queue_item.max(highest + 1);
+                }
+                self.queues.insert(
+                    id.clone(),
+                    Queue {
+                        id,
+                        version: value.get("version").and_then(Value::as_i64).unwrap_or(1),
+                        selected: value.get("selected").and_then(Value::as_i64),
+                        items,
+                        source: text("source").unwrap_or_default(),
+                        natural: value
+                            .get("natural")
+                            .and_then(Value::as_array)
+                            .map(|keys| keys.iter().map(string_value).collect())
+                            .unwrap_or_default(),
+                        shuffled: value.get("shuffled").and_then(Value::as_bool).unwrap_or(false),
+                        last_added: value.get("lastAdded").and_then(Value::as_i64),
+                        client: text("client").unwrap_or_default(),
+                        playlist_id: text("playlistId"),
+                        playlist_title: text("playlistTitle"),
+                    },
+                );
+            }
+            // The counters as they stood; a file from before they were kept falls back to
+            // the highest id still held, which is all it can know.
+            let highest_item = self
+                .playlists
+                .values()
+                .flat_map(|playlist| playlist.item_ids.iter().copied())
+                .max()
+                .unwrap_or(0);
+            self.next_playlist_item = self.next_playlist_item.max(highest_item);
+            for (name, counter) in [
+                ("nextQueue", &mut self.next_queue),
+                ("nextQueueItem", &mut self.next_queue_item),
+                ("nextPlaylist", &mut self.next_playlist),
+                ("nextPlaylistItem", &mut self.next_playlist_item),
+                ("nextCollection", &mut self.next_collection),
+            ] {
+                if let Some(saved) = state.get(name).and_then(Value::as_i64) {
+                    *counter = (*counter).max(saved);
+                }
+            }
         }
         // `persist.py` SESSION_FIELDS: the device table in first-seen order (the ids the
         // Devices page, history rows and statistics name), and the play and bandwidth
@@ -1103,6 +1166,18 @@ impl Runtime {
             "devices": self.devices.iter().map(|(key, value)| (key.clone(), json!({"name":value.name,"product":value.product,"platform":value.platform,"lastSeenAt":value.last_seen}))).collect::<Map<String, Value>>(),
             "playlists": self.playlists.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri})).collect::<Vec<_>>(),
             "collections": self.collections.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items,"smart":value.smart,"section":value.section,"subtype":value.subtype,"prefs":value.prefs,"uri":value.uri,"tag":value.tag,"extra":value.extra})).collect::<Vec<_>>(),
+            // `persist.py` SIM_FIELDS `play_queues`, `next_play_queue(_item)` and the
+            // library's own counters: cycle 73 measured a restart keeping play queues
+            // with their selected item, and ids counting UP from where they were -- a
+            // counter re-derived from the surviving rows hands a deleted list's id out
+            // again, and one not kept at all restarts `playlistItemID` at 1 beside the
+            // restored items that already hold it.
+            "queues": self.queues.values().map(|queue| json!({"id":queue.id,"version":queue.version,"selected":queue.selected,"items":queue.items.iter().map(|item| json!({"id":item.id,"ratingKey":item.rating_key,"added":item.added})).collect::<Vec<_>>(),"source":queue.source,"natural":queue.natural,"shuffled":queue.shuffled,"lastAdded":queue.last_added,"client":queue.client,"playlistId":queue.playlist_id,"playlistTitle":queue.playlist_title})).collect::<Vec<_>>(),
+            "nextQueue": self.next_queue,
+            "nextQueueItem": self.next_queue_item,
+            "nextPlaylist": self.next_playlist,
+            "nextPlaylistItem": self.next_playlist_item,
+            "nextCollection": self.next_collection,
             "items": self.catalog.items,
             "sections": self.catalog.sections,
             "tagTable": self.tag_table.iter().map(|((field, lowered), value)| json!([field, lowered, value])).collect::<Vec<_>>(),
