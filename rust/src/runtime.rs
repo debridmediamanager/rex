@@ -2947,7 +2947,7 @@ impl Runtime {
         &self,
         requested: &str,
         media: bool,
-        _query: &HashMap<String, String>,
+        query: &HashMap<String, String>,
     ) -> Response {
         let wanted = requested
             .parse::<i64>()
@@ -3035,6 +3035,28 @@ impl Runtime {
             );
         }
         let tag_type = person.get("tagType").and_then(Value::as_i64).unwrap_or(0);
+        // Cycle 11: the list is a QUERY -- the library filters narrow it (`?year=`) --
+        // ordered by titleSort. The field map is the library's, read off the rows.
+        let pairs = query
+            .iter()
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect::<Vec<_>>();
+        let section_type = if rows
+            .iter()
+            .all(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
+        {
+            "movie"
+        } else {
+            "show"
+        };
+        let rows = match self.filter_rows(rows, &pairs, section_type) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad request"),
+        };
+        let rows = match self.sort_rows(rows, Some("titleSort")) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad request"),
+        };
         let shown = rows
             .iter()
             .map(|row| self.listing_row(row))
@@ -22889,9 +22911,6 @@ fn content_type(path: &str) -> String {
         "application/octet-stream".to_string()
     }
 }
-fn jpeg_placeholder() -> Vec<u8> {
-    b"\xff\xd8\xff\xd9".to_vec()
-}
 
 fn generated_png(width: u32, height: u32, rgb: [u8; 3]) -> Vec<u8> {
     let width = width.clamp(1, 2000);
@@ -22928,6 +22947,10 @@ fn generated_png(width: u32, height: u32, rgb: [u8; 3]) -> Vec<u8> {
     output.extend_from_slice(&chunk(b"IDAT", &compressed));
     output.extend_from_slice(&chunk(b"IEND", &[]));
     output
+}
+
+fn jpeg_placeholder() -> Vec<u8> {
+    b"\xff\xd8\xff\xd9".to_vec()
 }
 
 fn generated_jpeg(width: u32, height: u32) -> Vec<u8> {
