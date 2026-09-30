@@ -5,6 +5,8 @@ re-measured on a real PMS and checked here against the measured values.
 - container paging over its two transports: a lone header or query parameter never
   pages, and header and query merge PER PARAMETER, the header winning
   (`tests/fixtures/paging_grammar.json`, kids);
+- the grammar of the two paging values: a Size is parsed whenever sent, a lone one
+  included, a Start only beside a Size, as a 32-bit signed integer (the same fixture);
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -132,12 +134,20 @@ def run(port):
     with open(os.path.join(FIXTURES, "paging_grammar.json")) as handle:
         fixture = json.load(handle)
     transport = [cell for cell in fixture["cells"] if "'" not in cell["case"]]
+    grammar = [cell for cell in fixture["cells"] if "'" in cell["case"]]
 
     # 1. The transports: a lone header or query parameter never pages; the header wins
     #    per parameter over the query, so a header Size beside a query Start pages.
     wrong = paging_cells(port, transport)
     for family in fixture["families"]:
         check("paging transport on %s follows the measured header/query merge" % family,
+              family not in wrong, wrong.get(family))
+
+    # 2. The grammar: a lone Size is parsed (`abc` is the 500), a lone Start is not, and
+    #    both are 32-bit signed integers with no space, point, exponent or underscore.
+    wrong = paging_cells(port, grammar)
+    for family in fixture["families"]:
+        check("paging values on %s follow the measured int32 grammar" % family,
               family not in wrong, wrong.get(family))
 
 

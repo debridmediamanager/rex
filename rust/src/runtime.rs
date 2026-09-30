@@ -59,7 +59,7 @@ use artwork::owns_artwork;
 use logging::{debug, error, info, warning};
 use resume::{
     bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param,
-    page_window,
+    page_window, paging_values,
 };
 
 const VERSION: &str = "1.42.2.10156-plexsim";
@@ -24659,32 +24659,31 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
     let rewrite = |response: &mut Response, document: &Value| {
         response.body = serde_json::to_vec(document).unwrap_or_default();
     };
-    if body.contains_key("totalSize")
-        || body.contains_key("noHistory")
-        || path.trim_end_matches('/') == "/system/search"
-    {
+    let exempt =
+        body.contains_key("noHistory") || path.trim_end_matches('/') == "/system/search";
+    // Cycle 83, kids and zen: the paging values are parsed wherever this rule pages, a
+    // lone Size included, even on a container its handler paged or windowed itself --
+    // `/identity?X-Plex-Container-Size=abc` is the 500 (`paging_values`).
+    let window = if exempt {
+        None
+    } else {
+        match paging_values(query) {
+            Ok(Some((start, size))) if start >= 0 && size >= 0 => {
+                Some((start as usize, size as usize))
+            }
+            Ok(_) => None,
+            Err(status) => {
+                *response = Response::error(status, "plexsim: bad container parameter");
+                return;
+            }
+        }
+    };
+    if exempt || body.contains_key("totalSize") {
         if flat.is_some() {
             rewrite(response, &document);
         }
         return;
     }
-    let start_raw = query.get("X-Plex-Container-Start");
-    let size_raw = query.get("X-Plex-Container-Size");
-    let window = match (start_raw, size_raw) {
-        (Some(start), Some(size)) => {
-            match (start.trim().parse::<i64>(), size.trim().parse::<i64>()) {
-                (Ok(start), Ok(size)) if start >= 0 && size >= 0 => {
-                    Some((start as usize, size as usize))
-                }
-                (Ok(_), Ok(_)) => None,
-                _ => {
-                    *response = Response::error(500, "plexsim: bad container parameter");
-                    return;
-                }
-            }
-        }
-        _ => None,
-    };
     if let Some(flat) = flat {
         let names = flat
             .as_array()

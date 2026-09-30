@@ -13927,21 +13927,48 @@ class PlexSim:
         `Size=-1` quietly served every row but the last.
         """
         query = query or {}
-        start_raw = query.get("X-Plex-Container-Start")
-        size_raw = query.get("X-Plex-Container-Size")
-        if size_raw == "":
-            # Measured: an EMPTY size is a 500 even with no start beside it.
-            raise filters_module.FilterError(500, "bad container parameter")
-        if start_raw is None or size_raw is None:
+        window = PlexSim.paging_values(query)
+        if window is None:
             return list(rows), False, 0, len(rows)
-        try:
-            start = int(start_raw)
-            size = int(size_raw)
-        except (TypeError, ValueError):
-            raise filters_module.FilterError(500, "bad container parameter")
+        start, size = window
         if size < 0 or start < 0:
             return list(rows), False, 0, len(rows)
         return list(rows)[start:start + size], True, start, len(rows)
+
+    @staticmethod
+    def paging_values(query):
+        """`(start, size)` when both paging parameters are sent, else None; a value that
+        does not parse is the 500.
+
+        Cycle 83, measured on kids and zen over the grid, `/folder`,
+        `/recentlyViewedShows`, `/children`, `/library/sections`, `/identity`, `/:/prefs`,
+        a hub page and `/hubs/search`: a SIZE is parsed whenever it is sent, alone
+        included -- `X-Plex-Container-Size=abc` with no Start is the 500, header or
+        query -- and a START only when a Size is beside it (a lone `Start=abc` is
+        ignored). The grammar is a 32-bit signed integer: an optional `+`/`-` and ASCII
+        digits, `-2147483648` to `2147483647`; an empty value, `1.5`, `1e2`, `0x10`,
+        `1_0`, a space either side and `2147483648` are 500s (`+1` and `01` page). The
+        oracle used `int()`, which takes all but the first two, and read a lone Size not
+        at all.
+        """
+        start_raw = query.get("X-Plex-Container-Start")
+        size_raw = query.get("X-Plex-Container-Size")
+        if size_raw is None:
+            return None
+
+        def parse(raw):
+            text = str(raw)
+            if not re.fullmatch(r"[+-]?[0-9]+", text, re.ASCII):
+                raise filters_module.FilterError(500, "bad container parameter")
+            value = int(text)
+            if not -2 ** 31 <= value < 2 ** 31:
+                raise filters_module.FilterError(500, "bad container parameter")
+            return value
+
+        size = parse(size_raw)
+        if start_raw is None:
+            return None
+        return parse(start_raw), size
 
     def paged_container(self, rows, query, **fields):
         """A bare container that pages when the client asks, and not otherwise.
@@ -24123,7 +24150,7 @@ class Handler(BaseHTTPRequestHandler):
         if not isinstance(result, dict) or list(result) != ["MediaContainer"]:
             return result
         body = result["MediaContainer"]
-        if not isinstance(body, dict) or "totalSize" in body or "noHistory" in body:
+        if not isinstance(body, dict) or "noHistory" in body:
             return result
         route, raw_query = _target_parts(self.path)
         if route.rstrip("/") == "/system/search":
@@ -24144,6 +24171,13 @@ class Handler(BaseHTTPRequestHandler):
             # had not named, so a client sending both got the query's page.
             if self.headers.get(name) is not None:
                 query[name] = self.headers.get(name)
+        # Cycle 83, kids and zen: the paging values are parsed wherever this rule pages,
+        # a lone Size included, even on a container its handler paged (or windowed, as
+        # `/recentlyViewedShows` does) itself -- `/identity?X-Plex-Container-Size=abc`
+        # is the 500. See `paging_values`.
+        self.server.sim.paging_values(query)
+        if "totalSize" in body:
+            return result
         # Cycle 45, read out of the PMS binary's own string table (its log line is
         # `Setting container serialization range with focusKey to [%s, %d]`) and then
         # measured on kids: `X-Plex-Container-Focus-Key` supplies the container START,

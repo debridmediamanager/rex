@@ -1014,18 +1014,10 @@ pub(super) fn page_window(
     rows: Vec<Value>,
     query: &HashMap<String, String>,
 ) -> Result<(Vec<Value>, bool, usize, usize), u16> {
-    let start_raw = query.get("X-Plex-Container-Start");
-    let size_raw = query.get("X-Plex-Container-Size");
-    if size_raw.is_some_and(|size| size.is_empty()) {
-        return Err(500);
-    }
     let total = rows.len();
-    let (Some(start_raw), Some(size_raw)) = (start_raw, size_raw) else {
+    let Some((start, size)) = paging_values(query)? else {
         return Ok((rows, false, 0, total));
     };
-    let parse = |text: &str| text.trim().parse::<i64>().map_err(|_| 500_u16);
-    let start = parse(start_raw)?;
-    let size = parse(size_raw)?;
     if size < 0 || start < 0 {
         return Ok((rows, false, 0, total));
     }
@@ -1035,6 +1027,35 @@ pub(super) fn page_window(
         .take(size as usize)
         .collect();
     Ok((page, true, start as usize, total))
+}
+
+/// `(start, size)` when both paging parameters are sent, `None` otherwise, and `Err(500)`
+/// for a value that does not parse (`server.py` `paging_values`).
+///
+/// Cycle 83, measured on kids and zen over the grid, `/folder`, `/recentlyViewedShows`,
+/// `/children`, `/library/sections`, `/identity`, `/:/prefs`, a hub page and
+/// `/hubs/search`: a SIZE is parsed whenever it is sent, alone included (a lone
+/// `X-Plex-Container-Size=abc` is the 500), a START only beside a Size. The grammar is a
+/// 32-bit signed integer -- an optional `+`/`-` and ASCII digits; an empty value, `1.5`,
+/// a space either side and `2147483648` are 500s. `trim().parse::<i64>()` took spaces and
+/// 64-bit values, and a lone Size was never read.
+pub(super) fn paging_values(query: &HashMap<String, String>) -> Result<Option<(i64, i64)>, u16> {
+    fn parse(text: &str) -> Result<i64, u16> {
+        let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
+        if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+            return Err(500);
+        }
+        let value = text.parse::<i32>().map_err(|_| 500_u16)?;
+        Ok(i64::from(value))
+    }
+    let Some(size) = query.get("X-Plex-Container-Size") else {
+        return Ok(None);
+    };
+    let size = parse(size)?;
+    let Some(start) = query.get("X-Plex-Container-Start") else {
+        return Ok(None);
+    };
+    Ok(Some((parse(start)?, size)))
 }
 
 /// Strip `Guid` from a listing row unless the client asked for it; under

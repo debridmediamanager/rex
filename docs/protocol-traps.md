@@ -3012,9 +3012,8 @@ are changing; replay the client's exact request before altering behavior.
   `X-Plex-Container-Size` it answers the first 25 rows at `offset` 0 with the full `totalSize`, a
   lone Start ignored; once a Size is sent the shared rule applies (both page, a lone Size or a
   negative value is every row with neither field). `/folder` follows the shared rule plainly.
-  Measured beside it and not fixed here (the shared reader): a NON-INTEGER lone Size
-  (`X-Plex-Container-Size=abc`) is a 500 on kids and zen on the grid, `/folder` and
-  `/recentlyViewedShows`, where both servers ignore it.
+  A NON-INTEGER lone Size (`X-Plex-Container-Size=abc`) is a 500 on kids and zen on the grid,
+  `/folder` and `/recentlyViewedShows` -- see the paging grammar below.
 - **A scope that names no relative of the row reads the ROW ITSELF** (cycle 83, kids' movie
   library): `episode.title=Sintel`, `show.title=`, `season.title=` and even `artist.title=Sintel`
   each find Sintel, and an empty `episode.addedAt=` is the date column's 500. So does an unknown
@@ -3100,3 +3099,13 @@ are changing; replay the client's exact request before altering behavior.
   pages, and a header half overrides only its own half of a query pair. Cycle 16's "header wins" and
   the handover's "a lone header does nothing" are the same rule; both servers already followed it at
   `27d76b2` (the handover's "native pages on a lone header" did not reproduce on any family).
+- **The paging VALUES are 32-bit signed integers, and a lone Size is parsed** (cycle 83, kids and
+  zen, the same families and fixture). Wherever a container pages, a Size is read whenever it is
+  sent -- `X-Plex-Container-Size=abc` ALONE, header or query, is the 109-byte 500 on `/identity` as on
+  the grid -- and a Start only beside a Size (a lone `Start=abc` is ignored; `Start=abc&Size=-1` is
+  the 500). The grammar: an optional `+`/`-` and ASCII digits, `-2147483648` to `2147483647`; an
+  empty value, `1.5`, `1e2`, `0x10`, `1_0`, a leading or trailing space and `2147483648` are 500s,
+  `+1` and `01` page, a negative value still turns paging off. A plug-in container (`noHistory`),
+  `/system/search`, a non-container root (`/butler`, `/myplex/account`), an image and an earlier
+  refusal (a 404, `/:/timeline`'s 400) are untouched. Both servers read a Size only beside a Start
+  and parsed with `int()` / `trim().parse::<i64>()`, so every one of these was a 200.
