@@ -362,6 +362,10 @@ def run(port):
           detail.get("episodeSort") == "1" and detail.get("showOrdering") == "dvd", detail.keys())
     # An unmatched show loses its poster, so its episodes borrow none.
     request(port, "PUT", "/library/metadata/20001/unmatch")
+    seasons = mc(port, "/library/sections/2/all?type=3").get("Metadata") or []
+    check("an unmatched show's seasons no longer carry its poster as parentThumb",
+          seasons and not any("parentThumb" in r for r in seasons),
+          [r.get("parentThumb") for r in seasons])
     episodes = mc(port, "/library/sections/2/all?type=4").get("Metadata") or []
     posterless = [row for row in episodes if not row.get("grandparentThumb")]
     check("an episode without a show poster leads its Image list with its own coverPoster",
