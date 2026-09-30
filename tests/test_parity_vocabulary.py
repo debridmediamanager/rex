@@ -315,6 +315,25 @@ def run(port):
     check("include* blocks: 01 and +1 turn them on, -1, 2 and 0 do not",
           got == {"-1": [], "2": [], "01": on, "%2B1": on, "0": []}, got)
 
+    # 12. A tag-table axis under a leaf-count filter is empty; a column axis filters.
+    def entries(path):
+        status, mc = request(port, path)
+        return status, len((mc or {}).get("Directory") or [])
+    got = {path: entries(path) for path in (
+        "/library/sections/1/genre?unwatchedLeaves=0",
+        "/library/sections/1/director?type=1&viewedLeafCount=0",
+        "/library/sections/2/genre?type=2&unwatchedLeaves=1",
+        "/library/sections/1/actor?type=1&unviewedLeafCount%3E%3E=0",
+        "/library/sections/1/year?type=1&unwatchedLeaves=0",
+        "/library/sections/1/genre")}
+    check("leaf-count filters empty the tag axes and leave the year axis whole",
+          got == {"/library/sections/1/genre?unwatchedLeaves=0": (200, 0),
+                  "/library/sections/1/director?type=1&viewedLeafCount=0": (200, 0),
+                  "/library/sections/2/genre?type=2&unwatchedLeaves=1": (200, 0),
+                  "/library/sections/1/actor?type=1&unviewedLeafCount%3E%3E=0": (200, 0),
+                  "/library/sections/1/year?type=1&unwatchedLeaves=0": (200, 4),
+                  "/library/sections/1/genre": (200, 6)}, got)
+
 
 def main():
     process, port = start()

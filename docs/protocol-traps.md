@@ -3026,3 +3026,9 @@ are changing; replay the client's exact request before altering behavior.
 - **An `include*` block turns on for the integer ONE only** (cycle 83, kids' hub page): `01` and
   `%2B1` draw the blocks, `-1`, `2` and `0` do not -- the `_include_int` rule cycles 22 and 29
   recorded, which the native full-row passes read as "any non-zero integer".
+- **A TAG-TABLE axis under any leaf-count filter is EMPTY** (cycle 83, kids and zen):
+  `unwatchedLeaves`, `viewedLeafCount`, `unviewedLeafCount` and `viewedOrInProgressLeafCount`, any
+  value and operator, empty the genre, director, actor, country, network and collection axes of a
+  movie and a show library (zen's show genre axis: 39 entries, 0 for `unwatchedLeaves=1` and for
+  `=0`), while the COLUMN axes -- `year`, `contentRating`, `studio` -- apply the filter to their
+  rows (zen's show year axis: 46 at `=1`, 2 at `=0`). A value that does not parse still refuses.

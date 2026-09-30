@@ -12366,6 +12366,17 @@ class PlexSim:
         """
         rows = self.typed_rows(section_id, query or {})
         rows, _ = self.apply_filters(rows, query or {}, section)
+        if leaf in SECONDARY_TAGS and any(
+                filters_module.split_key(name)[0] in LEAF_COUNT_FILTERS + ("unwatchedLeaves",)
+                for name, _value in (query or {}).get("_pairs") or []):
+            # Cycle 83, measured on kids and zen: a TAG-TABLE axis under any leaf-count
+            # filter is EMPTY -- `unwatchedLeaves`, `viewedLeafCount`, `unviewedLeafCount`
+            # and `viewedOrInProgressLeafCount`, any value and operator, on the genre,
+            # director, actor, country, network and collection axes of a movie and a show
+            # library alike (zen's show genre axis: 39 entries, then 0 for `=1` and for
+            # `=0`) -- while the COLUMN axes (`year`, `contentRating`, `studio`) apply the
+            # filter to their rows. The filter still has to parse: a bad value is its 500.
+            rows = []
         if leaf == "label":
             # Cycle 15, measured on the copy: a label written onto a COLLECTION is in
             # this axis too, under a bare call and under every `type=`. plexsim built

@@ -622,6 +622,21 @@ impl Runtime {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad filter"),
         };
+        // Cycle 83, measured on kids and zen: a TAG-TABLE axis under any leaf-count
+        // filter is EMPTY (any value and operator) where a column axis applies it.
+        if lookup(SECONDARY_TAGS, leaf).is_some()
+            && pairs.iter().any(|(name, _)| {
+                matches!(
+                    crate::filters::split_key(name).0.as_str(),
+                    "unwatchedLeaves"
+                        | "viewedLeafCount"
+                        | "unviewedLeafCount"
+                        | "viewedOrInProgressLeafCount"
+                )
+            })
+        {
+            rows.clear();
+        }
         if leaf == "label" {
             // Cycle 15: a label written onto a COLLECTION is in this axis too.
             rows.extend(self.collection_rows_for_axis(section_id));
