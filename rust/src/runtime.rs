@@ -21106,7 +21106,11 @@ fn handle_connection<S: Read + Write + PollRead>(
         }
         wire::exclude_container(&mut response, &query, &request_path);
         page_container(&mut response, &query, &request_path);
-        add_paging_headers(&mut response, &query);
+        // server.py cycle 18: `/system/search` does not page at all -- no body fields
+        // and no paging headers, even with both parameters.
+        if request_path.trim_end_matches('/') != "/system/search" {
+            add_paging_headers(&mut response, &query);
+        }
         response = xml_or_json(response, request.headers.get("accept").map(String::as_str));
         order_json_body(&mut response, &request_path);
         if response.content_type.starts_with("application/json") {
