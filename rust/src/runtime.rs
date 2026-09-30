@@ -5810,9 +5810,9 @@ impl Runtime {
         {
             return Response::error(400, "plexsim: bad request");
         }
-        // Empty path components are refused by the route table.  A small set
-        // of top-level plugin prefixes is the measured exception: PMS sends
-        // its normal empty plugin container for the doubled form.  Do this
+        // Empty path components are refused by the route table.  A finite
+        // measured table of routes is the exception (cycle 50): the doubled
+        // form answers the parent's own response.  Do this
         // before the ordinary trailing-slash normalization so `/identity//`
         // cannot become the valid `/identity` route.
         if path == "/:/plugins//" {
@@ -5842,14 +5842,18 @@ impl Runtime {
                 && path.ends_with("//")
                 && path != "/library/metadata//")
             {
-                return Response::json(200, plugin_container(Vec::new()));
+                // `server.py` `handle`: these exact routes return their PARENT's own
+                // response -- the doubled slash drops to one, which the trailing-slash
+                // normalisation below then strips.
+                path.pop();
+            } else {
+                // Cycle 53: under `/system` an empty segment is still the FRAMEWORK's
+                // 404 -- empty body, no `Content-Type`.
+                if path.starts_with("/system/") {
+                    return Response::bare(404);
+                }
+                return Response::error(404, "plexsim: not found");
             }
-            // Cycle 53: under `/system` an empty segment is still the FRAMEWORK's 404 --
-            // empty body, no `Content-Type`.
-            if path.starts_with("/system/") {
-                return Response::bare(404);
-            }
-            return Response::error(404, "plexsim: not found");
         }
         let resource_root_with_slash = path == "/:/resources/";
         if path == "/:/plugins/" {
