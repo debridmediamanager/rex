@@ -215,6 +215,21 @@ def run(port):
           order == sorted(order, key=lambda pair: (-(pair[0] or 0), pair[1] or 0))
           and len(order) > 3, order)
 
+    # -- type= and group= ---------------------------------------------------------------
+    both = mc(port, "/library/sections/1/all?type=2&type=1")
+    ok, bad = has(both, size=0, allowSync=True, art=MOVIE_ART, librarySectionID=1,
+                  title2="All Debrid Movies", viewGroup="movie", viewMode=65592)
+    check("two different types select nothing, in the ordinary listing container",
+          ok and not both.get("Metadata"), bad or both)
+    same = mc(port, "/library/sections/1/all?type=1&type=1")
+    check("the same type twice is that type", len(same.get("Metadata") or []) == 6,
+          same.get("size"))
+    grouped = mc(port, "/library/sections/2/all?type=4&group=season.index").get("Metadata") or []
+    seasons = {r.get("parentRatingKey") for r in
+               mc(port, "/library/sections/2/all?type=4").get("Metadata") or []}
+    check("a prefixed group= reads the season's index: one episode per season",
+          len(grouped) == len(seasons) == 4, [r.get("ratingKey") for r in grouped])
+
     # -- the tag tables ------------------------------------------------------------
     genre = mc(port, "/library/sections/1/genre/top")
     rows = genre.get("Directory") or []
