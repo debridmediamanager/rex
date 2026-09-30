@@ -6447,7 +6447,7 @@ impl Runtime {
             );
             return Response::empty(200);
         }
-        if request.method == "OPTIONS" {
+        if request.method == "OPTIONS" && !options_routed(&path) {
             {
                 // Cycle 25: `/match` answers EVERY verb, a bare OPTIONS included,
                 // with its own no-parameters 400.
@@ -6622,7 +6622,10 @@ impl Runtime {
             ("GET" | "HEAD", "/video/:/transcode/universal/subtitles") => {
                 Response::error(400, "plexsim: bad request")
             }
-            ("GET" | "HEAD", "/photo/:/transcode") => self.route_photo_transcode(request, &query),
+            // `OPTIONS` too: see `options_routed`.
+            ("GET" | "HEAD" | "OPTIONS", "/photo/:/transcode") => {
+                self.route_photo_transcode(request, &query)
+            }
             ("GET" | "HEAD", "/service/ultrablur/colors" | "/services/ultrablur/colors") => {
                 self.route_ultrablur_colors(request, &query)
             }
@@ -6809,20 +6812,22 @@ impl Runtime {
             // The play-state writers answer on every verb the dispatcher routes, as
             // the Python oracle does: the suite's own `PUT /:/scrobble` wrote
             // nothing here and every Dashboard check after it read no history.
-            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/progress") => {
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE" | "OPTIONS", "/:/progress") => {
                 self.route_progress(&query)
             }
-            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/timeline") => {
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE" | "OPTIONS", "/:/timeline") => {
                 self.route_timeline(&query, &request.headers)
             }
-            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/scrobble") => {
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE" | "OPTIONS", "/:/scrobble") => {
                 self.route_scrobble(&query, true)
             }
-            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/unscrobble") => {
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE" | "OPTIONS", "/:/unscrobble") => {
                 self.route_scrobble(&query, false)
             }
-            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE", "/:/rate") => self.route_rate(&query),
-            ("GET" | "HEAD", "/video/:/transcode/universal/decision") => {
+            ("GET" | "HEAD" | "PUT" | "POST" | "DELETE" | "OPTIONS", "/:/rate") => {
+                self.route_rate(&query)
+            }
+            ("GET" | "HEAD" | "OPTIONS", "/video/:/transcode/universal/decision") => {
                 self.route_decision(&query, &request.headers)
             }
             ("GET" | "HEAD", "/subtitles/:/transcode/universal/start") => {
@@ -12463,8 +12468,15 @@ impl Runtime {
                 json!({"MediaContainer": {"size": 1, "Metadata": [projection]}}),
             );
         }
-        if path == "/status/sessions/terminate" && request.method == "GET" {
+        if path == "/status/sessions/terminate" && matches!(request.method.as_str(), "GET" | "OPTIONS") {
             return self.route_terminate(query);
+        }
+        if path == "/services/codecs" && matches!(request.method.as_str(), "GET" | "HEAD" | "OPTIONS")
+        {
+            // server.py, cycle 45: a 403 on kids and zen (both unclaimed copies 404 it,
+            // so it tracks claimed state, and plexsim reports `claimed="1"`). Never
+            // ported: this server answered the ordinary 404.
+            return Response::error(403, "plexsim: forbidden");
         }
         if path == "/hubs/continueWatching/items" {
             return self.route_continue_watching_items(query);
@@ -22695,6 +22707,34 @@ fn split_target(target: &str) -> (String, String) {
     } else {
         (percent_decode(&target.replace('+', "%2B")), String::new())
     }
+}
+/// Whether a bare `OPTIONS` on this multi-segment path reaches its handler, as it does
+/// on a real PMS -- server.py `OPTIONS_ROUTED`. Measured 2026-09-30 on kids (1.43.4)
+/// and plexscratch42 (1.42.2): the transcoders, the `/:/` timeline writers, the bundled
+/// resources and five more answer OPTIONS exactly as they answer a GET (their own 400,
+/// the image, `/log/networked`'s empty 200), where every GET-only read route is a 404.
+/// This server 404'd all of them.
+fn options_routed(path: &str) -> bool {
+    const PREFIXES: [&str; 3] = [
+        "/:/resources/",
+        "/video/:/transcode/universal/",
+        "/subtitles/:/transcode/universal/",
+    ];
+    const EXACT: [&str; 11] = [
+        "/:/progress",
+        "/:/rate",
+        "/:/scrobble",
+        "/:/timeline",
+        "/:/unscrobble",
+        "/log/networked",
+        "/photo/:/transcode",
+        "/security/resources",
+        "/security/token",
+        "/services/codecs",
+        "/status/sessions/terminate",
+    ];
+    PREFIXES.iter().any(|prefix| path.starts_with(prefix))
+        || EXACT.contains(&path.trim_end_matches('/'))
 }
 fn parse_query(query: &str) -> Vec<(String, String)> {
     query

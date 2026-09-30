@@ -1475,6 +1475,23 @@ SINGLE_SEGMENT_WRITERS = {("POST", "/playlists"), ("POST", "/playQueues"),
                           ("POST", "/downloadQueue"), ("PUT", "/downloadQueue"),
                           ("DELETE", "/downloadQueue")}
 
+# The MULTI-segment paths a bare OPTIONS reaches the handler of. Swept 2026-09-30 over
+# every multi-segment route this server names, on kids (1.43.4) and plexscratch42
+# (1.42.2): these answer OPTIONS exactly as they answer a GET -- the transcoders' and
+# the `/:/` timeline writers' no-parameter 400s, the bundled image, `/log/networked`'s
+# empty 200 -- and EVERY other one is the ordinary 404, the GET-only read routes
+# (`/hubs/home/onDeck`, `/accounts/{id}`, `/myplex/account`, `/livetv/*`, the
+# statistics and session paths, ...) included. plexsim routed OPTIONS like any verb
+# everywhere, so those answered their whole GET body, a 400 of their own, or -- on
+# `/:/eventsource/notifications` -- an event stream that never ends. `/system`,
+# `/:/plugins`, `/library/metadata/{id}/match` and `/:/viewChange` keep their own
+# measured envelopes (cycles 21, 52, 25 and 45) and are decided before this.
+OPTIONS_ROUTED_PREFIXES = ("/:/resources/", "/video/:/transcode/universal/",
+                           "/subtitles/:/transcode/universal/")
+OPTIONS_ROUTED = {"/:/progress", "/:/rate", "/:/scrobble", "/:/timeline", "/:/unscrobble",
+                  "/log/networked", "/photo/:/transcode", "/security/resources",
+                  "/security/token", "/services/codecs", "/status/sessions/terminate"}
+
 
 def plugin_container(route):
     """The dispatcher's answer for one single-segment path."""
@@ -5743,6 +5760,16 @@ class PlexSim:
             if headers.get(name) is not None:
                 query[name] = headers.get(name)
         segments = [s for s in route.split("/") if s]
+        if method == "OPTIONS" and len(segments) > 1 and not (
+                segments[0] == "system" or route.startswith("/:/plugins")
+                or route.rstrip("/") == "/:/viewChange"
+                or (len(segments) == 4 and segments[:2] == ["library", "metadata"]
+                    and segments[3] == "match")
+                or route.startswith(OPTIONS_ROUTED_PREFIXES)
+                or route.rstrip("/") in OPTIONS_ROUTED):
+            # A bare OPTIONS reaches only the handlers that take any verb; see
+            # `OPTIONS_ROUTED`.
+            return ("error", 404, "plexsim: not found")
 
         # Cycle 18, measured on plexscratch over four `/system` paths and six verbs: the
         # `/system` subtree is a DIFFERENT SERVER with an envelope of its own. `PATCH`

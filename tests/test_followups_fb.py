@@ -7,7 +7,10 @@ not copy", each re-measured on a real PMS before either server changed:
 - `/photo/:/transcode` output caches (`max-age=259200`) whatever it transcodes, a
   bundled resource and an uploaded poster included, where the same files read directly
   are `no-cache`;
-- a collection's `/children` container carries `librarySectionID` as a NUMBER.
+- a collection's `/children` container carries `librarySectionID` as a NUMBER;
+- a bare `OPTIONS` on a multi-segment path reaches only the handlers that take any
+  verb, and is the ordinary 404 on every GET-only read route;
+- `GET /services/codecs` is a claimed server's 403 (never ported to the native server).
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -246,10 +249,78 @@ def collection_section_id(port):
           seen)
 
 
+# --- a bare OPTIONS on a multi-segment path --------------------------------------------
+
+# Measured 2026-09-30 on kids (1.43.4) and, for the writers kids must not be sent,
+# plexscratch42 (1.42.2): (status, content type) for a bare OPTIONS with no parameters.
+OPTIONS_MEASURED = {
+    "/hubs/home/onDeck": (404, "text/html"),
+    "/hubs/home/continueWatching": (404, "text/html"),
+    "/hubs/continueWatching/items": (404, "text/html"),
+    "/hubs/search/voice": (404, "text/html"),
+    "/accounts/1": (404, "text/html"),
+    "/myplex/account": (404, "text/html"),
+    "/channels/recentlyViewed": (404, "text/html"),
+    "/library/search": (404, "text/html"),
+    "/library/all/top": (404, "text/html"),
+    "/livetv/sessions": (404, "text/html"),
+    "/media/providers/metadata/group": (404, "text/html"),
+    "/status/sessions/background": (404, "text/html"),
+    "/:/websockets/notifications": (404, "text/html"),
+    "/:/eventsource/notifications": (404, "text/html"),
+    "/actions/removeFromContinueWatching": (404, "text/html"),
+    "/diagnostics/logs": (404, "text/html"),
+    "/library/sections": (404, "text/html"),
+    "/library/metadata/1007": (404, "text/html"),
+    "/:/resources/movie.png": (200, "image/png"),
+    "/photo/:/transcode": (400, "text/html"),
+    "/video/:/transcode/universal/decision": (400, "text/html"),
+    "/video/:/transcode/universal/start": (400, "text/html"),
+    "/subtitles/:/transcode/universal/start": (400, "text/html"),
+    "/:/scrobble": (400, "text/html"),
+    "/:/timeline": (400, "text/html"),
+    "/:/progress": (400, "text/html"),
+    "/security/resources": (400, "text/html"),
+    "/security/token": (400, "text/html"),
+    "/status/sessions/terminate": (400, "text/html"),
+    "/services/codecs": (403, "text/html"),
+    "/log/networked": (200, "text/html"),
+}
+
+
+def options(port):
+    wrong = {}
+    for path, want in OPTIONS_MEASURED.items():
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        try:
+            connection.request("OPTIONS", path, headers={"Connection": "close"})
+            response = connection.getresponse()
+            response.read()
+            got = (response.status, (response.getheader("Content-Type") or "").split(";")[0])
+        except (OSError, http.client.HTTPException) as error:
+            got = type(error).__name__
+        finally:
+            connection.close()
+        if got != want:
+            wrong[path] = (got, want)
+    check("a bare OPTIONS answers what a real PMS does on %d multi-segment paths"
+          % len(OPTIONS_MEASURED), not wrong, wrong)
+
+
+# --- /services/codecs ---------------------------------------------------------------------
+
+def services_codecs(port):
+    # kids (1.43.4), claimed like this server, 2026-09-30: GET is the 403 (cycle 45).
+    status = request(port, "GET", "/services/codecs")[0]
+    check("GET /services/codecs is the claimed server's 403", status == 403, status)
+
+
 def run(port):
     empty_body(port)
     transcoder_cache(port)
     collection_section_id(port)
+    options(port)
+    services_codecs(port)
 
 
 def main():

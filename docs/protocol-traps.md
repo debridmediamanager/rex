@@ -2883,3 +2883,15 @@ are changing; replay the client's exact request before altering behavior.
 - **A collection's `/library/metadata/{id}/children` names its section by NUMBER** --
   `librarySectionID: 1` on the container, paged or not, as on every other container (plexscratch42,
   four movie collections). Both servers sent the create request's `sectionId` string.
+- **A bare `OPTIONS` on a multi-segment path reaches only the handlers that take any verb.** Swept
+  2026-09-30 over every multi-segment route the oracle names, on kids and plexscratch42: the
+  transcoders (`/photo/:/transcode`, `/video|subtitles/:/transcode/universal/*`), the `/:/` timeline
+  writers, `/:/resources/*`, `/log/networked`, `/security/{resources,token}`,
+  `/status/sessions/terminate` and `/services/codecs` answer it exactly as a GET (their own 400, the
+  image, an empty 200, the 403), beside the envelopes already recorded for `/system`, `/:/plugins`,
+  `/match` and `/:/viewChange`. Every GET-only read route is the ordinary 404 -- the hubs, `/accounts/{id}`,
+  `/myplex/account`, `/livetv/*`, `/:/eventsource/notifications` (where the oracle opened an event
+  stream that never ended). The oracle routed OPTIONS like any verb everywhere; the native server
+  404'd the any-verb handlers too. Not settled: `/search/{type}`, `/services/browse/`, `/web/*`,
+  `/manage/` and the empty-segment forms (`/accounts//`) differ from the reference on BOTH servers,
+  on their GET as much as their OPTIONS.
