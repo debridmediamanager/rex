@@ -2852,3 +2852,15 @@ are changing; replay the client's exact request before altering behavior.
   `viewCount`/`lastViewedAt` the scrobble stamped on its season and show. The unmatch cascade was NOT
   re-measured flattened (an unmatch cannot be undone on a copy with no metadata provider); both
   servers apply the ordinary cascade to the flattened show's episodes.
+- **A collection over a SECTION uri holds that library's rows at the COLLECTION's level.** Measured
+  on plexscratch42 (1.42.2, `tests/fixtures/collection_section_uri.json`): `type=2&sectionId=3` over
+  `/library/sections/3/all` holds the library's two shows (`subtype: show`, `childCount: 2`), `type=3`
+  its four seasons and `type=4` its twelve episodes; the uri's own `type=` is ignored (`type=2` over
+  `all?type=4` is still the shows) while its filters apply, and an items add reads a section uri the
+  same way. `type` is an INTEGER naming the members' type: `abc`, `2.0` and an empty value are 400s;
+  no `type`, or a negative one, is the library's own type; 5 `trailer`, 8 `artist`, 18 `collection`
+  and so on hold nothing. A create keeps only rows of that type in its OWN library -- `type=4` over a
+  show's key, `type=2` over an episode's, another library's key or section are empty collections of
+  the named type. The oracle expanded a section's shows into episodes as a play queue does; the
+  native server listed the shows whatever the type. An EMPTY collection carries no `childCount` on
+  1.42.2, where plexsim sends 0 -- recorded, not yet changed.

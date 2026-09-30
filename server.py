@@ -16054,27 +16054,9 @@ class PlexSim:
         # A library section, with whatever filter and sort the URI carries. A
         # smart playlist or collection IS that query -- dropping it would make
         # every smart list the whole section, which looks like a working list.
-        match = re.search(r"/library/sections/([^/]+)/all", path)
-        if match:
-            section_id = match.group(1)
-            section = self.catalog.section(section_id) or {}
-            pairs = urllib.parse.parse_qsl(path.partition("?")[2],
-                                           keep_blank_values=True)
-            inner = {k: v for k, v in pairs}
-            inner["_pairs"] = pairs
-            rows = self.typed_rows(section_id, inner)
-            rows, _ = self.apply_filters(rows, inner, section)
-            rows, unsupported = self._sorted(rows, inner.get("sort") or "")
-            if unsupported:
-                raise filters_module.FilterError(
-                    500, "unsupported sort key %s" % unsupported)
-            # `limit` is part of the query a smart list stores, measured on a writable copy
-            # of the reference: a list saved with `sort=titleSort:desc&limit=2` reads back
-            # two rows and its `leafCount` follows. plexsim applied the filter and the sort
-            # and ignored the limit, so every capped smart list was the whole section.
-            if str(inner.get("limit") or "").isdigit() and int(inner["limit"]) > 0:
-                rows = rows[:int(inner["limit"])]
-            return self._playable(rows)
+        listed = self._section_uri_rows(path)
+        if listed is not None:
+            return self._playable(listed[1])
         # A playlist's items, which is what Play on a playlist sends.
         match = re.search(r"/playlists/(\d+)/items", path)
         if match:
@@ -16114,6 +16096,97 @@ class PlexSim:
             rows = [self.catalog.items[int(tail)]]
             return self._playable(rows) if expand else rows
         return []
+
+    def _section_uri_rows(self, path, level=None):
+        """(section id, rows) a `/library/sections/{id}/all` uri lists, or None.
+
+        `level` is a Plex type number that REPLACES the uri's own `type=`: a collection
+        reads a section uri at its own members' level (`_collection_uri_rows`).
+        """
+        match = re.search(r"/library/sections/([^/]+)/all", path)
+        if not match:
+            return None
+        section_id = match.group(1)
+        section = self.catalog.section(section_id) or {}
+        pairs = urllib.parse.parse_qsl(path.partition("?")[2],
+                                       keep_blank_values=True)
+        if level is not None:
+            pairs = [(k, v) for k, v in pairs if k != "type"] + [("type", str(level))]
+        inner = {k: v for k, v in pairs}
+        inner["_pairs"] = pairs
+        rows = self.typed_rows(section_id, inner)
+        rows, _ = self.apply_filters(rows, inner, section)
+        rows, unsupported = self._sorted(rows, inner.get("sort") or "")
+        if unsupported:
+            raise filters_module.FilterError(
+                500, "unsupported sort key %s" % unsupported)
+        # `limit` is part of the query a smart list stores, measured on a writable copy
+        # of the reference: a list saved with `sort=titleSort:desc&limit=2` reads back
+        # two rows and its `leafCount` follows. plexsim applied the filter and the sort
+        # and ignored the limit, so every capped smart list was the whole section.
+        if str(inner.get("limit") or "").isdigit() and int(inner["limit"]) > 0:
+            rows = rows[:int(inner["limit"])]
+        return section_id, rows
+
+    # The `subtype` a collection takes from its create's `type` NUMBER, measured on
+    # plexscratch42 (1.42.2) over 0-21, 42, 99-101 and 1000; a number not listed is
+    # `unknown` (0, 6, 7, 11, 17, 19, 99, 100 and 1000 were). Only 1-4 can hold rows here.
+    COLLECTION_SUBTYPES = {1: "movie", 2: "show", 3: "season", 4: "episode", 5: "trailer",
+                           8: "artist", 9: "album", 10: "track", 12: "clip", 13: "photo",
+                           14: "photo", 15: "playlist", 16: "directory", 18: "collection",
+                           20: "author", 21: "audiobook", 42: "playlist", 101: "movie"}
+
+    def _collection_level(self, section_id, raw):
+        """(type number, subtype) of a collection created with `type=raw`, or None.
+
+        Measured on plexscratch42: `type` is an INTEGER -- `abc`, `2.0` and an empty
+        value are each a 400 (None here), `02` and `+2` are 2 -- and it NAMES THE
+        MEMBERS' TYPE whatever the uri holds. With no `type`, or a negative one, the
+        collection takes its LIBRARY's type: `show` in a show library, with or without
+        a uri. plexsim read the subtype off the first row the uri resolved to and fell
+        back to `movie`, so an empty collection in a show library was a movie one.
+        """
+        if raw is not None and not re.fullmatch(r"[+-]?[0-9]+", raw):
+            return None
+        number = int(raw) if raw is not None else -1
+        if number < 0:
+            kind = (self.catalog.section(section_id) or {}).get("type") or "movie"
+            return TYPE_NUMBERS.get(kind, 1), kind
+        return number, self.COLLECTION_SUBTYPES.get(number, "unknown")
+
+    def _collection_uri_rows(self, uri, section_id, number, subtype, create=True):
+        """The rows a collection of `subtype` members in `section_id` takes from a uri.
+
+        Measured on plexscratch42 (tests/fixtures/collection_section_uri.json). A
+        SECTION uri is read at the COLLECTION's level, not the uri's and not the
+        player's: `type=2` over `/library/sections/3/all` holds the library's two
+        shows (`subtype: show`, `childCount: 2`), `type=3` its four seasons and
+        `type=4` its twelve episodes, and the uri's own `type=` is ignored -- `type=2`
+        over `all?type=4` is still the two shows -- while its filters apply
+        (`all?title=Twofold` holds one show, `type=4` over `all?show.title=Twofold`
+        three episodes). plexsim resolved the uri the way a play queue does, which
+        expands every show into episodes, so a show collection built from its library
+        held eight episodes and called itself an episode collection.
+
+        A create keeps only rows of the collection's type in the collection's OWN
+        library: `type=4` over a show's key and `type=2` over an episode's are empty
+        collections of the named type, three keys of which two are shows keep the two,
+        and a key or a section of another library adds nothing.
+        """
+        if uri and not str(uri).startswith(("server://", "library://")):
+            return []
+        if self._foreign_uri(uri):
+            return []
+        listed = self._section_uri_rows(urllib.parse.unquote(uri or ""), level=number)
+        if listed is not None:
+            if create and str(listed[0]) != str(section_id):
+                return []
+            return listed[1]
+        rows = self._items_for_uri(uri, expand=False)
+        if not create:
+            return rows
+        return [row for row in rows if row.get("type") == subtype
+                and str(row.get("librarySectionID")) == str(section_id)]
 
     def _playable(self, rows):
         """Expand any show or season into the episodes a player can actually play.
@@ -18569,10 +18642,13 @@ class PlexSim:
                 # Measured on a writable copy of the reference: a collection over a show
                 # holds the SHOW (`subtype: show`, one child) and one over a season holds
                 # the season, where plexsim expanded both into episodes.
-                rows = self._items_for_uri(query.get("uri", ""), expand=False)
-                section = query.get("sectionId") or (
-                    rows[0].get("librarySectionID") if rows else None)
-                subtype = rows[0].get("type") if rows else "movie"
+                section = query.get("sectionId")
+                level = self._collection_level(section, query.get("type"))
+                if level is None:
+                    return ("error", 400, "plexsim: bad request")
+                number, subtype = level
+                rows = self._collection_uri_rows(query.get("uri", ""), section,
+                                                 number, subtype)
                 collection = self.library.create_collection(
                     query.get("title") or "", section, rows, subtype=subtype,
                     smart=query.get("smart") == "1", uri=query.get("uri"))
@@ -18797,7 +18873,14 @@ class PlexSim:
             # The Edit-smart-collection Save, the same as a playlist's above.
             return self.save_smart_query(collection, query, "collection")
         if leaf == "items" and method == "PUT":
-            rows = self._items_for_uri(query.get("uri", ""), expand=False)
+            # Measured on plexscratch42: an add reads a SECTION uri at the collection's
+            # level as the create does -- `/library/sections/3/all` into a show
+            # collection adds the library's other show, and `all?type=2` into an
+            # episode collection adds every episode.
+            rows = self._collection_uri_rows(
+                query.get("uri", ""), collection.get("librarySectionID"),
+                TYPE_NUMBERS.get(collection.get("subtype"), 0), collection.get("subtype"),
+                create=False)
             # Measured on a writable copy of the reference: a smart collection's members
             # are its query, and an add with no uri or an unknown key is a 400.
             #

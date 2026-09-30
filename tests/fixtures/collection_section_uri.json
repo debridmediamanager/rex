@@ -1,0 +1,1120 @@
+{
+ "_about": "What PMS 1.42.2.10156-f737b826c (plexscratch42, a writable copy with no route out) creates for POST /library/collections with smart=0, measured 2026-09-30: every create was followed by GET /library/collections/{id}/children and DELETE /library/collections/{id}. The machine identifier is redacted. Section 3 is a show library of two shows (15 Threefold: three seasons, nine episodes; 391 Twofold: one season, three episodes), section 2 a show library of one show (6: two seasons, six episodes), section 1 a movie library. `listings` holds the reference's own GET /library/sections/{id}/all?{query} rating keys, which is what a section uri's cell is compared with. Creates that answered 500 while the copy's database was busy (its log: 'Waited over 10 seconds for a busy database') are left out: each was repeated and answered as recorded here.",
+ "version": "1.42.2.10156-f737b826c",
+ "listings": {
+  "3?type=2": [
+   "15",
+   "391"
+  ],
+  "3?type=3": [
+   "20",
+   "24",
+   "386",
+   "392"
+  ],
+  "3?type=4": [
+   "21",
+   "22",
+   "23",
+   "25",
+   "26",
+   "27",
+   "387",
+   "388",
+   "393",
+   "394",
+   "395",
+   "396"
+  ],
+  "3?type=2&title=Twofold": [
+   "391"
+  ],
+  "3?type=4&show.title=Twofold": [
+   "393",
+   "394",
+   "395"
+  ],
+  "2?type=2": [
+   "6"
+  ],
+  "2?type=3": [
+   "7",
+   "11"
+  ],
+  "2?type=4": [
+   "8",
+   "9",
+   "10",
+   "12",
+   "13",
+   "14"
+  ],
+  "1?type=1&title=Elephants Dream": [
+   "3"
+  ]
+ },
+ "cells": [
+  {
+   "request": "POST /library/collections?type=2&title=b&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all?type=2",
+   "type": "2",
+   "sectionId": "3",
+   "uri": "/library/sections/3/all?type=2",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 2,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ],
+    [
+     "391",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?type=4&title=c&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all?type=4",
+   "type": "4",
+   "sectionId": "3",
+   "uri": "/library/sections/3/all?type=4",
+   "status": 200,
+   "subtype": "episode",
+   "childCount": 12,
+   "ratingCount": 4,
+   "children": [
+    [
+     "396",
+     "episode"
+    ],
+    [
+     "21",
+     "episode"
+    ],
+    [
+     "22",
+     "episode"
+    ],
+    [
+     "23",
+     "episode"
+    ],
+    [
+     "25",
+     "episode"
+    ],
+    [
+     "26",
+     "episode"
+    ],
+    [
+     "27",
+     "episode"
+    ],
+    [
+     "394",
+     "episode"
+    ],
+    [
+     "395",
+     "episode"
+    ],
+    [
+     "387",
+     "episode"
+    ],
+    [
+     "388",
+     "episode"
+    ],
+    [
+     "393",
+     "episode"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?type=2&title=d&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all?type=4",
+   "type": "2",
+   "sectionId": "3",
+   "uri": "/library/sections/3/all?type=4",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 2,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ],
+    [
+     "391",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?type=3&title=e&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all?type=3",
+   "type": "3",
+   "sectionId": "3",
+   "uri": "/library/sections/3/all?type=3",
+   "status": 200,
+   "subtype": "season",
+   "childCount": 4,
+   "ratingCount": 3,
+   "children": [
+    [
+     "386",
+     "season"
+    ],
+    [
+     "20",
+     "season"
+    ],
+    [
+     "24",
+     "season"
+    ],
+    [
+     "392",
+     "season"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?type=4&title=f&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all",
+   "type": "4",
+   "sectionId": "3",
+   "uri": "/library/sections/3/all",
+   "status": 200,
+   "subtype": "episode",
+   "childCount": 12,
+   "ratingCount": 4,
+   "children": [
+    [
+     "396",
+     "episode"
+    ],
+    [
+     "21",
+     "episode"
+    ],
+    [
+     "22",
+     "episode"
+    ],
+    [
+     "23",
+     "episode"
+    ],
+    [
+     "25",
+     "episode"
+    ],
+    [
+     "26",
+     "episode"
+    ],
+    [
+     "27",
+     "episode"
+    ],
+    [
+     "394",
+     "episode"
+    ],
+    [
+     "395",
+     "episode"
+    ],
+    [
+     "387",
+     "episode"
+    ],
+    [
+     "388",
+     "episode"
+    ],
+    [
+     "393",
+     "episode"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?type=2&title=g&smart=0&sectionId=2&uri=server://{machine}/com.plexapp.plugins.library/library/sections/2/all",
+   "type": "2",
+   "sectionId": "2",
+   "uri": "/library/sections/2/all",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 1,
+   "ratingCount": 2,
+   "children": [
+    [
+     "6",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?type=2&title=a2&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all",
+   "type": "2",
+   "sectionId": "3",
+   "uri": "/library/sections/3/all",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 2,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ],
+    [
+     "391",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?type=1&title=h&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all",
+   "type": "1",
+   "sectionId": "3",
+   "uri": "/library/sections/3/all",
+   "status": 200,
+   "subtype": "movie",
+   "childCount": null,
+   "ratingCount": 1,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?type=4&title=j&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "4",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "episode",
+   "childCount": null,
+   "ratingCount": 4,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?type=2&title=k&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/21",
+   "type": "2",
+   "sectionId": "3",
+   "uri": "/library/metadata/21",
+   "status": 200,
+   "subtype": "show",
+   "childCount": null,
+   "ratingCount": 2,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?type=3&title=l&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all",
+   "type": "3",
+   "sectionId": "3",
+   "uri": "/library/sections/3/all",
+   "status": 200,
+   "subtype": "season",
+   "childCount": 4,
+   "ratingCount": 3,
+   "children": [
+    [
+     "386",
+     "season"
+    ],
+    [
+     "20",
+     "season"
+    ],
+    [
+     "24",
+     "season"
+    ],
+    [
+     "392",
+     "season"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?type=2&title=m&smart=0&sectionId=1&uri=server://{machine}/com.plexapp.plugins.library/library/sections/1/all?title=Elephants%20Dream",
+   "type": "2",
+   "sectionId": "1",
+   "uri": "/library/sections/1/all?title=Elephants%20Dream",
+   "status": 200,
+   "subtype": "show",
+   "childCount": null,
+   "ratingCount": 2,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?type=1&title=n&smart=0&sectionId=1&uri=server://{machine}/com.plexapp.plugins.library/library/sections/1/all?title=Elephants%20Dream",
+   "type": "1",
+   "sectionId": "1",
+   "uri": "/library/sections/1/all?title=Elephants%20Dream",
+   "status": 200,
+   "subtype": "movie",
+   "childCount": 1,
+   "ratingCount": 1,
+   "children": [
+    [
+     "3",
+     "movie"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=notype&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all",
+   "type": null,
+   "sectionId": "3",
+   "uri": "/library/sections/3/all",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 2,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ],
+    [
+     "391",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=p4&smart=0&sectionId=3&type=2",
+   "type": "2",
+   "sectionId": "3",
+   "uri": null,
+   "status": 200,
+   "subtype": "show",
+   "childCount": null,
+   "ratingCount": 2,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?title=p5&smart=0&sectionId=1",
+   "type": null,
+   "sectionId": "1",
+   "uri": null,
+   "status": 200,
+   "subtype": "movie",
+   "childCount": null,
+   "ratingCount": 1,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?title=p6&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all?type=4",
+   "type": null,
+   "sectionId": "3",
+   "uri": "/library/sections/3/all?type=4",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 2,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ],
+    [
+     "391",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=p7&smart=0&sectionId=3&type=2&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15,21,391",
+   "type": "2",
+   "sectionId": "3",
+   "uri": "/library/metadata/15,21,391",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 2,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ],
+    [
+     "391",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=p8&smart=0&sectionId=3&type=2&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all?title=Twofold",
+   "type": "2",
+   "sectionId": "3",
+   "uri": "/library/sections/3/all?title=Twofold",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 1,
+   "ratingCount": 2,
+   "children": [
+    [
+     "391",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=p9&smart=0&sectionId=3&type=4&uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all?show.title=Twofold",
+   "type": "4",
+   "sectionId": "3",
+   "uri": "/library/sections/3/all?show.title=Twofold",
+   "status": 200,
+   "subtype": "episode",
+   "childCount": 3,
+   "ratingCount": 4,
+   "children": [
+    [
+     "394",
+     "episode"
+    ],
+    [
+     "395",
+     "episode"
+    ],
+    [
+     "393",
+     "episode"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=p10&smart=0&sectionId=3&type=2&uri=server://{machine}/com.plexapp.plugins.library/library/sections/2/all",
+   "type": "2",
+   "sectionId": "3",
+   "uri": "/library/sections/2/all",
+   "status": 200,
+   "subtype": "show",
+   "childCount": null,
+   "ratingCount": 2,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?title=q1&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/21",
+   "type": null,
+   "sectionId": "3",
+   "uri": "/library/metadata/21",
+   "status": 200,
+   "subtype": "show",
+   "childCount": null,
+   "ratingCount": 2,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?title=q2&smart=0&sectionId=3&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": null,
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 1,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=q3&smart=0&sectionId=3",
+   "type": null,
+   "sectionId": "3",
+   "uri": null,
+   "status": 200,
+   "subtype": "show",
+   "childCount": null,
+   "ratingCount": 2,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?title=r4&smart=0&sectionId=2&type=3&uri=server://{machine}/com.plexapp.plugins.library/library/sections/2/all",
+   "type": "3",
+   "sectionId": "2",
+   "uri": "/library/sections/2/all",
+   "status": 200,
+   "subtype": "season",
+   "childCount": 2,
+   "ratingCount": 3,
+   "children": [
+    [
+     "7",
+     "season"
+    ],
+    [
+     "11",
+     "season"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=r1&smart=0&sectionId=3&type=2&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/6",
+   "type": "2",
+   "sectionId": "3",
+   "uri": "/library/metadata/6",
+   "status": 200,
+   "subtype": "show",
+   "childCount": null,
+   "ratingCount": 2,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?title=r2&smart=0&sectionId=3&type=2&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/6,15",
+   "type": "2",
+   "sectionId": "3",
+   "uri": "/library/metadata/6,15",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 1,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=r3&smart=0&sectionId=2&type=4&uri=server://{machine}/com.plexapp.plugins.library/library/sections/2/all",
+   "type": "4",
+   "sectionId": "2",
+   "uri": "/library/sections/2/all",
+   "status": 200,
+   "subtype": "episode",
+   "childCount": 6,
+   "ratingCount": 4,
+   "children": [
+    [
+     "8",
+     "episode"
+    ],
+    [
+     "9",
+     "episode"
+    ],
+    [
+     "10",
+     "episode"
+    ],
+    [
+     "12",
+     "episode"
+    ],
+    [
+     "13",
+     "episode"
+    ],
+    [
+     "14",
+     "episode"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=tabc&smart=0&sectionId=3&type=abc&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "abc",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 400
+  },
+  {
+   "request": "POST /library/collections?title=t0&smart=0&sectionId=3&type=0&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "0",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "unknown",
+   "childCount": null,
+   "ratingCount": null,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?title=t18&smart=0&sectionId=3&type=18&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "18",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "collection",
+   "childCount": null,
+   "ratingCount": 18,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?title=t8&smart=0&sectionId=3&type=8&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "8",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "artist",
+   "childCount": null,
+   "ratingCount": 8,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?title=t&smart=0&sectionId=3&type=&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 400
+  },
+  {
+   "request": "POST /library/collections?title=t02&smart=0&sectionId=3&type=02&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "02",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 1,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=t+2&smart=0&sectionId=3&type=+2&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "+2",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 1,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=t2.0&smart=0&sectionId=3&type=2.0&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "2.0",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 400
+  },
+  {
+   "request": "POST /library/collections?title=t-1&smart=0&sectionId=3&type=-1&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "-1",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 1,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ]
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=t5&smart=0&sectionId=3&type=5&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "5",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "trailer",
+   "childCount": null,
+   "ratingCount": 5,
+   "children": []
+  },
+  {
+   "request": "POST /library/collections?title=ty1&smart=0&sectionId=3&type=1&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "1",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "movie",
+   "childCount": null,
+   "ratingCount": 1,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty2&smart=0&sectionId=3&type=2&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "2",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "show",
+   "childCount": 1,
+   "ratingCount": 2,
+   "children": [
+    [
+     "15",
+     "show"
+    ]
+   ],
+   "adds": [
+    {
+     "request": "PUT /library/collections/{id}/items?uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all",
+     "uri": "/library/sections/3/all",
+     "status": 200,
+     "subtype": "show",
+     "childCount": 2,
+     "children": [
+      [
+       "15",
+       "show"
+      ],
+      [
+       "391",
+       "show"
+      ]
+     ]
+    },
+    {
+     "request": "PUT /library/collections/{id}/items?uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all?type=4",
+     "uri": "/library/sections/3/all?type=4",
+     "status": 200,
+     "subtype": "show",
+     "childCount": 2,
+     "children": [
+      [
+       "15",
+       "show"
+      ],
+      [
+       "391",
+       "show"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "request": "POST /library/collections?title=ty3&smart=0&sectionId=3&type=3&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "3",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "season",
+   "childCount": null,
+   "ratingCount": 3,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty6&smart=0&sectionId=3&type=6&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "6",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "unknown",
+   "childCount": null,
+   "ratingCount": 6,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty7&smart=0&sectionId=3&type=7&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "7",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "unknown",
+   "childCount": null,
+   "ratingCount": 7,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty9&smart=0&sectionId=3&type=9&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "9",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "album",
+   "childCount": null,
+   "ratingCount": 9,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty10&smart=0&sectionId=3&type=10&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "10",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "track",
+   "childCount": null,
+   "ratingCount": 10,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty11&smart=0&sectionId=3&type=11&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "11",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "unknown",
+   "childCount": null,
+   "ratingCount": 11,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty12&smart=0&sectionId=3&type=12&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "12",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "clip",
+   "childCount": null,
+   "ratingCount": 12,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty13&smart=0&sectionId=3&type=13&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "13",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "photo",
+   "childCount": null,
+   "ratingCount": 13,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty14&smart=0&sectionId=3&type=14&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "14",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "photo",
+   "childCount": null,
+   "ratingCount": 14,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty15&smart=0&sectionId=3&type=15&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "15",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "playlist",
+   "childCount": null,
+   "ratingCount": 15,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty16&smart=0&sectionId=3&type=16&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "16",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "directory",
+   "childCount": null,
+   "ratingCount": 16,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty17&smart=0&sectionId=3&type=17&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "17",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "unknown",
+   "childCount": null,
+   "ratingCount": 17,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty19&smart=0&sectionId=3&type=19&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "19",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "unknown",
+   "childCount": null,
+   "ratingCount": 19,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty20&smart=0&sectionId=3&type=20&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "20",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "author",
+   "childCount": null,
+   "ratingCount": 20,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty21&smart=0&sectionId=3&type=21&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "21",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "audiobook",
+   "childCount": null,
+   "ratingCount": 21,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty42&smart=0&sectionId=3&type=42&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "42",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "playlist",
+   "childCount": null,
+   "ratingCount": 42,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty99&smart=0&sectionId=3&type=99&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "99",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "unknown",
+   "childCount": null,
+   "ratingCount": 99,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty100&smart=0&sectionId=3&type=100&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "100",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "unknown",
+   "childCount": null,
+   "ratingCount": 100,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty101&smart=0&sectionId=3&type=101&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "101",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "movie",
+   "childCount": null,
+   "ratingCount": 101,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=ty1000&smart=0&sectionId=3&type=1000&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/15",
+   "type": "1000",
+   "sectionId": "3",
+   "uri": "/library/metadata/15",
+   "status": 200,
+   "subtype": "unknown",
+   "childCount": null,
+   "ratingCount": 1000,
+   "children": null
+  },
+  {
+   "request": "POST /library/collections?title=add4&smart=0&sectionId=3&type=4&uri=server://{machine}/com.plexapp.plugins.library/library/metadata/21",
+   "type": "4",
+   "sectionId": "3",
+   "uri": "/library/metadata/21",
+   "status": 200,
+   "subtype": "episode",
+   "childCount": 1,
+   "ratingCount": 4,
+   "children": [
+    [
+     "21",
+     "episode"
+    ]
+   ],
+   "adds": [
+    {
+     "request": "PUT /library/collections/{id}/items?uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all?show.title=Twofold",
+     "uri": "/library/sections/3/all?show.title=Twofold",
+     "status": 200,
+     "subtype": "episode",
+     "childCount": 4,
+     "children": [
+      [
+       "21",
+       "episode"
+      ],
+      [
+       "394",
+       "episode"
+      ],
+      [
+       "395",
+       "episode"
+      ],
+      [
+       "393",
+       "episode"
+      ]
+     ]
+    },
+    {
+     "request": "PUT /library/collections/{id}/items?uri=server://{machine}/com.plexapp.plugins.library/library/sections/3/all?type=2",
+     "uri": "/library/sections/3/all?type=2",
+     "status": 200,
+     "subtype": "episode",
+     "childCount": 12,
+     "children": [
+      [
+       "396",
+       "episode"
+      ],
+      [
+       "21",
+       "episode"
+      ],
+      [
+       "22",
+       "episode"
+      ],
+      [
+       "23",
+       "episode"
+      ],
+      [
+       "25",
+       "episode"
+      ],
+      [
+       "26",
+       "episode"
+      ],
+      [
+       "27",
+       "episode"
+      ],
+      [
+       "394",
+       "episode"
+      ],
+      [
+       "395",
+       "episode"
+      ],
+      [
+       "387",
+       "episode"
+      ],
+      [
+       "388",
+       "episode"
+      ],
+      [
+       "393",
+       "episode"
+      ]
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -5136,6 +5136,12 @@ impl Runtime {
     }
 
     fn rows_for_uri(&self, uri: &str) -> Vec<Value> {
+        self.rows_for_uri_at(uri, None)
+    }
+
+    /// `rows_for_uri`, with a section uri listed at `level` (a Plex type number)
+    /// when one is given instead of at the uri's own.
+    fn rows_for_uri_at(&self, uri: &str, level: Option<i64>) -> Vec<Value> {
         let decoded = percent_decode(uri);
         // Cycle 16, measured on plexscratch: a uri that is not this server's own
         // `server://<machine>/...` or a stored `library://` resolves to NOTHING -- a
@@ -5178,7 +5184,12 @@ impl Runtime {
             let section = parts.next().unwrap_or("");
             if !section.is_empty() {
                 if parts.next() == Some("all") {
-                    let rows = self.section_rows(section);
+                    // `level` (a collection's own member type) REPLACES the uri's
+                    // `type=`: see `collection_uri_rows`.
+                    let rows = match level {
+                        Some(number) => self.typed_section_rows(section, number),
+                        None => self.section_rows(section),
+                    };
                     if !query_tail.is_empty() {
                         let pairs = parse_query(query_tail);
                         let section_type = self
@@ -5201,7 +5212,11 @@ impl Runtime {
                             .filter(|limit| *limit > 0);
                         let filter_pairs = pairs
                             .iter()
-                            .filter(|(name, _)| name != "sort" && name != "limit")
+                            .filter(|(name, _)| {
+                                name != "sort"
+                                    && name != "limit"
+                                    && !(level.is_some() && name == "type")
+                            })
                             .cloned()
                             .collect::<Vec<_>>();
                         let mut rows = self

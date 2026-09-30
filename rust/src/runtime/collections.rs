@@ -432,6 +432,115 @@ impl Runtime {
         added
     }
 
+    /// `(type number, subtype)` of a collection created with `type=raw`, or None for
+    /// the 400. Measured on plexscratch42 (1.42.2): `type` is an INTEGER -- `abc`,
+    /// `2.0` and an empty value are each a 400, `02` and `+2` are 2 -- and it NAMES THE
+    /// MEMBERS' TYPE whatever the uri holds. With no `type`, or a negative one, the
+    /// collection takes its LIBRARY's type: `show` in a show library, with or without
+    /// a uri. The subtype used to be read off the first row the uri resolved to, with
+    /// `movie` as the fallback, so an empty collection in a show library was a movie
+    /// one. The names are measured over 0-21, 42, 99-101 and 1000 (a number not listed
+    /// was `unknown`); only 1-4 hold rows.
+    fn collection_level(&self, section: &str, raw: Option<&str>) -> Option<(i64, String)> {
+        let number = match raw {
+            None => -1,
+            Some(raw) => {
+                let digits = raw.strip_prefix(['+', '-']).unwrap_or(raw);
+                if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
+                    return None;
+                }
+                // Past i64 the value is still a number; no library holds its type.
+                raw.trim_start_matches('+').parse::<i64>().unwrap_or(i64::MAX)
+            }
+        };
+        if number < 0 {
+            let kind = self
+                .section(section)
+                .and_then(|value| value.get("type"))
+                .and_then(Value::as_str)
+                .unwrap_or("movie")
+                .to_string();
+            let number = match kind.as_str() {
+                "show" => 2,
+                "season" => 3,
+                "episode" => 4,
+                "artist" => 8,
+                "photo" => 13,
+                _ => 1,
+            };
+            return Some((number, kind));
+        }
+        let subtype = match number {
+            1 | 101 => "movie",
+            2 => "show",
+            3 => "season",
+            4 => "episode",
+            5 => "trailer",
+            8 => "artist",
+            9 => "album",
+            10 => "track",
+            12 => "clip",
+            13 | 14 => "photo",
+            15 | 42 => "playlist",
+            16 => "directory",
+            18 => "collection",
+            20 => "author",
+            21 => "audiobook",
+            _ => "unknown",
+        };
+        Some((number, subtype.to_string()))
+    }
+
+    /// The rows a collection of `subtype` members in `section` takes from a uri.
+    /// Measured on plexscratch42 (`tests/fixtures/collection_section_uri.json`). A
+    /// SECTION uri is read at the COLLECTION's level, not the uri's and not the
+    /// player's: `type=2` over `/library/sections/3/all` holds the library's two shows
+    /// (`subtype: show`, `childCount: 2`), `type=3` its four seasons and `type=4` its
+    /// twelve episodes, and the uri's own `type=` is ignored -- `type=2` over
+    /// `all?type=4` is still the two shows -- while its filters apply. The native
+    /// server listed the shows whatever the collection's type, and the oracle expanded
+    /// them into episodes as a play queue does.
+    ///
+    /// A create keeps only rows of the collection's type in the collection's OWN
+    /// library: `type=4` over a show's key and `type=2` over an episode's are empty
+    /// collections of the named type, and a key or a section of another library adds
+    /// nothing.
+    fn collection_uri_rows(
+        &self,
+        uri: &str,
+        section: &str,
+        number: i64,
+        subtype: &str,
+        create: bool,
+    ) -> Vec<Value> {
+        let decoded = percent_decode(uri);
+        let named = decoded.find("/library/sections/").and_then(|start| {
+            let tail = &decoded[start + "/library/sections/".len()..];
+            let path = tail.split('?').next().unwrap_or("");
+            let mut parts = path.split('/');
+            let id = parts.next().filter(|id| !id.is_empty())?;
+            (parts.next() == Some("all")).then(|| id.to_string())
+        });
+        // `rows_for_uri` reads a metadata key before a section, so a uri is a section
+        // one here only when it names no key.
+        if let Some(named) = named.filter(|_| metadata_keys_from_uri(uri).is_empty()) {
+            if create && named != section {
+                return Vec::new();
+            }
+            return self.rows_for_uri_at(uri, Some(number));
+        }
+        let rows = self.rows_for_uri(uri);
+        if !create {
+            return rows;
+        }
+        rows.into_iter()
+            .filter(|row| {
+                row.get("type").and_then(Value::as_str) == Some(subtype)
+                    && row.get("librarySectionID").map(string_value).as_deref() == Some(section)
+            })
+            .collect()
+    }
+
     /// `POST /library/collections?type=&title=&smart=&sectionId=&uri=`. Measured: a
     /// `title` and a `sectionId` are required (400 each); a collection over a show
     /// holds the SHOW; the members' tag is the title with its first ASCII letter
@@ -445,12 +554,12 @@ impl Runtime {
             return Response::error(400, "plexsim: bad request");
         };
         let uri = query.get("uri").cloned().unwrap_or_default();
-        let rows = self.rows_for_uri(&uri);
-        let subtype = rows
-            .first()
-            .and_then(|row| row.get("type").and_then(Value::as_str))
-            .unwrap_or("movie")
-            .to_string();
+        let Some((number, subtype)) =
+            self.collection_level(section, query.get("type").map(String::as_str))
+        else {
+            return Response::error(400, "plexsim: bad request");
+        };
+        let rows = self.collection_uri_rows(&uri, section, number, &subtype, true);
         let smart = query.get("smart").map(String::as_str) == Some("1");
         let id = self.next_collection.to_string();
         self.next_collection += 1;
@@ -1108,7 +1217,24 @@ impl Runtime {
             }
             // Cycle 17: a comma-joined uri tolerates members it cannot use; only a
             // single-key uri of the wrong type (or none at all) is a 400.
-            let rows = self.rows_for_uri(query.get("uri").map(String::as_str).unwrap_or(""));
+            // Measured on plexscratch42: an add reads a SECTION uri at the collection's
+            // level as the create does -- `/library/sections/3/all` into a show
+            // collection adds the library's other show, and `all?type=2` into an
+            // episode collection adds every episode.
+            let level = match collection.subtype.as_str() {
+                "movie" => 1,
+                "show" => 2,
+                "season" => 3,
+                "episode" => 4,
+                _ => 0,
+            };
+            let rows = self.collection_uri_rows(
+                query.get("uri").map(String::as_str).unwrap_or(""),
+                &collection.section,
+                level,
+                &collection.subtype,
+                false,
+            );
             let usable = rows
                 .iter()
                 .filter(|row| {
