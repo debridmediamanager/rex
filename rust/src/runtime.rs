@@ -9844,16 +9844,26 @@ impl Runtime {
             hubs.insert(position, Value::Object(playlist));
         }
 
+        // `section_hubs` answers through `hub_container`: `size`, `allowSync` and
+        // `identifier`, then the library's id -- an INT when the id is all digits --
+        // title and uuid, and no media-tag pair (a hub response never carries one).
+        let section_id = if !section_key.is_empty() && section_key.bytes().all(|b| b.is_ascii_digit()) {
+            section_key
+                .parse::<u64>()
+                .map(|id| json!(id))
+                .unwrap_or_else(|_| json!(section_key))
+        } else {
+            json!(section_key)
+        };
         let mut fields = Map::from_iter([
-            ("Hub".to_string(), Value::Array(hubs)),
-            ("librarySectionID".to_string(), json!(section_key)),
+            ("librarySectionID".to_string(), section_id),
             ("librarySectionTitle".to_string(), json!(title)),
-            ("allowSync".to_string(), json!(true)),
         ]);
-        if let Some(uuid) = section.get("uuid") {
+        if let Some(uuid) = section.get("uuid").filter(|uuid| !uuid.is_null()) {
             fields.insert("librarySectionUUID".to_string(), uuid.clone());
         }
-        Response::json(200, self.container(fields, true))
+        fields.insert("Hub".to_string(), Value::Array(hubs));
+        Response::json(200, self.hub_container(fields))
     }
 
     fn valid_content_directory(query: &HashMap<String, String>) -> bool {
