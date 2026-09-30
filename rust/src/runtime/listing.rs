@@ -381,6 +381,12 @@ impl Runtime {
                     return self.public_row(row, false);
                 }
                 let mut shown = self.grid_row(row, true, keep_guid, false);
+                if keep_guid && unmatched_guid(row) {
+                    // Cycle 83: no listing gives an unmatched row a `Guid` key.
+                    if let Some(object) = shown.as_object_mut() {
+                        object.shift_remove("Guid");
+                    }
+                }
                 if type_number.is_none() {
                     if let Some(object) = shown.as_object_mut() {
                         object.shift_remove("Media");

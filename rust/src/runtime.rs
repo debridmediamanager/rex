@@ -58,8 +58,8 @@ mod wire;
 use artwork::owns_artwork;
 use logging::{debug, error, info, warning};
 use resume::{
-    bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param,
-    page_window, paging_values,
+    apply_listing_guids, bool_option, content_directories, exclude_continue_watching, guid_gate,
+    hub_refusal, int_param, page_window, paging_values, unmatched_guid,
 };
 
 const VERSION: &str = "1.42.2.10156-plexsim";
@@ -10268,25 +10268,8 @@ impl Runtime {
                         // without Streams) and its librarySection fields.
                         let mut shown = self.grid_row(&row, true, false, false);
                         if include_guids {
-                            let guids = row
-                                .get("Guid")
-                                .filter(|guids| {
-                                    guids.as_array().is_some_and(|list| !list.is_empty())
-                                })
-                                .cloned()
-                                .or_else(|| {
-                                    // Cycle 56: except on a `local://` row, which has
-                                    // no Guid list (the oracle's section-hub pass).
-                                    row.get("guid")
-                                        .filter(|guid| {
-                                            let text = string_value(guid);
-                                            !text.is_empty() && !text.starts_with("local://")
-                                        })
-                                        .map(|guid| json!([{"id": guid}]))
-                                });
-                            if let (Some(guids), Some(object)) = (guids, shown.as_object_mut()) {
-                                object.insert("Guid".to_string(), guids);
-                            }
+                            // Except on an unmatched row, which has no Guid key.
+                            apply_listing_guids(&mut shown, &row);
                         }
                         shown
                     }
@@ -16644,16 +16627,7 @@ impl Runtime {
             .map(|row| {
                 let mut shown = self.grid_row(row, false, include_guids, false);
                 if include_guids {
-                    if let Some(object) = shown.as_object_mut() {
-                        if !object.contains_key("Guid") {
-                            if let Some(guid) = row
-                                .get("guid")
-                                .filter(|guid| !string_value(guid).is_empty())
-                            {
-                                object.insert("Guid".to_string(), json!([{"id": guid}]));
-                            }
-                        }
-                    }
+                    apply_listing_guids(&mut shown, row);
                 }
                 shown
             })
@@ -17813,13 +17787,7 @@ impl Runtime {
                     .map(|child| {
                         let mut shown = self.grid_row(child, false, include_guids, false);
                         if include_guids {
-                            if let Some(object) = shown.as_object_mut() {
-                                if object.get("Guid").is_none() {
-                                    if let Some(guid) = object.get("guid").cloned() {
-                                        object.insert("Guid".to_string(), json!([{"id": guid}]));
-                                    }
-                                }
-                            }
+                            apply_listing_guids(&mut shown, child);
                         }
                         shown
                     })

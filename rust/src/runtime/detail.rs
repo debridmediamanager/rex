@@ -8,7 +8,7 @@
 
 use super::*;
 
-fn unmatched_guid(row: &Value) -> bool {
+fn unmatched_or_none_guid(row: &Value) -> bool {
     row.get("guid").and_then(Value::as_str).is_some_and(|guid| {
         guid.starts_with("local://")
             || guid.starts_with("tv.plex.agents.none://")
@@ -57,7 +57,9 @@ impl Runtime {
                     object.insert("originallyAvailableAt".to_string(), json!(earliest));
                 }
             }
-            if object.get("Guid").is_none() {
+            // Measured on plexscratch42 (1.42.2): a `local://` show's detail has no
+            // `Guid` key; the one-entry list is a MATCHED row's.
+            if object.get("Guid").is_none() && !unmatched_guid(row) {
                 if let Some(guid) = row
                     .get("guid")
                     .filter(|guid| !string_value(guid).is_empty())
@@ -164,7 +166,7 @@ impl Runtime {
             // Cycle 16: an UNMATCHED item loses its AGENT-driven settings.  A show
             // drops `languageOverride` and `useOriginalTitle`; a MOVIE loses the whole
             // block; a season keeps its three.
-            if unmatched_guid(row) {
+            if unmatched_or_none_guid(row) {
                 if kind == "movie" {
                     settings.clear();
                 } else if kind == "show" {

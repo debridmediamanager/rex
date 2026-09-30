@@ -3508,6 +3508,35 @@ class _TitleValue(str):
         return value
 
 
+# The two guid forms an UNMATCHED row carries: `local://` (never matched, a season or
+# episode unmatch) and `tv.plex.agents.none://` (a movie or show unmatch, or a library
+# on the none agent).
+UNMATCHED_GUID_PREFIXES = ("local://", "tv.plex.agents.none://")
+
+
+def _unmatched(row):
+    return str((row or {}).get("guid") or "").startswith(UNMATCHED_GUID_PREFIXES)
+
+
+def _listing_guids(row):
+    """The `Guid` list a LISTING row carries under `includeGuids=1`, or None for no key.
+
+    One gate for every listing -- the grid, `/unwatched`, `/children`, `/grandchildren`,
+    `/allLeaves`, a section search, the hub page, `/hubs` and home's Recently Added.
+    Measured on plexscratch (1.43.4) after unmatching a movie and an episode, and on
+    plexscratch42 (1.42.2) on a `tv.plex.agents.none://` movie and `local://` rows: an
+    unmatched row carries NO `Guid` key on any of them, even where its DETAIL still
+    answers the imdb/tmdb/tvdb list the unmatch kept (movie 1, episode 9). A matched
+    row keeps its list, and one with no external ids gets a one-entry list naming its
+    own guid. plexsim gated `local://` alone and only where no list was stored, so an
+    unmatched movie kept its old ids in every listing and `/hubs` named `local://` rows.
+    """
+    if _unmatched(row):
+        return None
+    guid = (row or {}).get("guid")
+    return (row or {}).get("Guid") or ([{"id": guid}] if guid else None)
+
+
 def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     """A row as a GRID or a HUB shelf carries it -- lighter than the detail row.
 
@@ -4781,7 +4810,9 @@ class PlexSim:
             if earliest:
                 detail.setdefault("originallyAvailableAt", earliest[0])
 
-        if row.get("guid") and "Guid" not in detail:
+        # Measured on plexscratch42 (1.42.2): a `local://` show's detail has no `Guid`
+        # key; the one-entry list is a MATCHED row's.
+        if row.get("guid") and "Guid" not in detail and not _unmatched(row):
             detail["Guid"] = [{"id": row["guid"]}]
 
         return self.parent_detail(row, detail, query)
@@ -7443,6 +7474,8 @@ class PlexSim:
                     rows.append(_listing_row(row))
                     continue
                 entry = _grid_row(_listing_row(row), keep_guid=query.get("includeGuids") == "1")
+                if _unmatched(row):
+                    entry.pop("Guid", None)
                 if not kinds:
                     entry.pop("Media", None)
                     # Cycle 50: this legacy untyped query reads the metadata
@@ -7953,17 +7986,10 @@ class PlexSim:
             if query.get("includeGuids") == "1" and isinstance(answer, dict):
                 # Cycle 56, measured on zen and kids: the section hub page honours
                 # `includeGuids=1` as `/hubs` does -- python-plexapi's `section.hubs()`
-                # always sends it -- except on a `local://` row, which has no Guid list.
+                # always sends it -- except on an unmatched row (`_listing_guids`).
                 for hub in answer["MediaContainer"].get("Hub") or []:
                     for projected in hub.get("Metadata") or []:
-                        key = str(projected.get("ratingKey") or "")
-                        stored = self.catalog.items.get(int(key)) if key.isdigit() else None
-                        if stored is None or projected.get("Guid"):
-                            continue
-                        if stored.get("Guid"):
-                            projected["Guid"] = stored["Guid"]
-                        elif stored.get("guid") and not str(stored["guid"]).startswith("local://"):
-                            projected["Guid"] = [{"id": stored["guid"]}]
+                        self._gate_hub_row(projected)
             return answer
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 5
                 and segments[3] == "continueWatching"):
@@ -12221,6 +12247,20 @@ class PlexSim:
             return rows
         return rows[:max(count, 1)]
 
+    def _gate_hub_row(self, projected):
+        """A hub row under `includeGuids=1`: the stored row's listing `Guid`, or no key."""
+        key = str(projected.get("ratingKey") or "")
+        stored = self.catalog.items.get(int(key)) if key.isdigit() else None
+        if stored is None:
+            return
+        # Cycle 83: `/hubs` gave a `local://` row a one-entry list, and both hub passes
+        # kept an unmatched row's stored ids; `_listing_guids` is the one rule.
+        guids = _listing_guids(stored)
+        if guids is None:
+            projected.pop("Guid", None)
+        elif not projected.get("Guid"):
+            projected["Guid"] = guids
+
     @staticmethod
     def _guid_gate(rows, query):
         """Strip `Guid` from listing rows unless the client asked for it.
@@ -12234,13 +12274,13 @@ class PlexSim:
             # Some rows (notably seasons and episodes) have only their primary
             # `guid`, with no external-id `Guid` list. Both references still emit a
             # one-entry Guid element for those rows when the listing asks for it --
-            # except an UNMATCHED row: cycle 83, on kids, `local://12`..`14` carry no
-            # Guid under `includeGuids=1` on the grid and on `/grandchildren` alike,
-            # the exception cycle 56 recorded for the hub page.
-            return [dict(row, Guid=[{"id": row["guid"]}])
-                    if row.get("guid") and not row.get("Guid")
-                    and not str(row["guid"]).startswith("local://") else row
-                    for row in rows]
+            # except an UNMATCHED row, which carries none at all (`_listing_guids`).
+            gated = []
+            for row in rows:
+                guids = _listing_guids(row)
+                gated.append(dict(row, Guid=guids) if guids
+                             else {k: v for k, v in row.items() if k != "Guid"})
+            return gated
         return [{k: v for k, v in row.items() if k != "Guid"} for row in rows]
 
     def listing_container(self, section_id, section, rows, view_group=None,
@@ -14885,15 +14925,7 @@ class PlexSim:
         if query.get("includeGuids") == "1":
             for hub in hubs:
                 for projected in hub.get("Metadata") or []:
-                    key = str(projected.get("ratingKey") or "")
-                    stored = self.catalog.items.get(int(key)) if key.isdigit() else None
-                    if stored is None or projected.get("Guid"):
-                        continue
-                    guids = stored.get("Guid")
-                    if guids:
-                        projected["Guid"] = guids
-                    elif stored.get("guid"):
-                        projected["Guid"] = [{"id": stored["guid"]}]
+                    self._gate_hub_row(projected)
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id, count=None, library_playlists=False, query=None):

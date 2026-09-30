@@ -1765,6 +1765,137 @@
      }
     ]
    }
+  ],
+  "writes_second_pass": [
+   {
+    "method": "PUT",
+    "path": "/library/metadata/1/unmatch",
+    "status": 200
+   },
+   {
+    "method": "PUT",
+    "path": "/library/metadata/6/unmatch",
+    "status": 200
+   }
+  ],
+  "second_pass": [
+   {
+    "method": "GET",
+    "path": "/library/all?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     },
+     {
+      "ratingKey": "6",
+      "type": "show",
+      "title": "Firefly",
+      "guid": "tv.plex.agents.none://6"
+     },
+     {
+      "ratingKey": "9",
+      "type": "episode",
+      "title": "Episode 2",
+      "guid": "local://9"
+     },
+     {
+      "ratingKey": "17",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/all?type=1&includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     },
+     {
+      "ratingKey": "17",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/1/search?type=1&query=b&includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/hubs/search?query=big&includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/metadata/6?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "6",
+      "type": "show",
+      "title": "Firefly",
+      "guid": "tv.plex.agents.none://6",
+      "Guid": [
+       "imdb://tt0303461",
+       "tmdb://1437",
+       "tvdb://78874"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/2/all?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "6",
+      "type": "show",
+      "title": "Firefly",
+      "guid": "tv.plex.agents.none://6"
+     }
+    ]
+   }
   ]
  },
  "agents_none_1_42": {

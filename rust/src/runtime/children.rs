@@ -35,13 +35,7 @@ impl Runtime {
         let include_guids = query.get("includeGuids").is_some_and(|value| value == "1");
         let mut shown = self.grid_row(row, false, include_guids, false);
         if include_guids {
-            if let Some(object) = shown.as_object_mut() {
-                if object.get("Guid").is_none() {
-                    if let Some(guid) = object.get("guid").cloned() {
-                        object.insert("Guid".to_string(), json!([{"id": guid}]));
-                    }
-                }
-            }
+            apply_listing_guids(&mut shown, row);
         }
         shown
     }

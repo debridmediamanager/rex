@@ -3009,6 +3009,7 @@ are changing; replay the client's exact request before altering behavior.
 - **`includeGuids=1` never gives an unmatched `local://` row a Guid** -- on the grid, on
   `/grandchildren` and on a hub page alike (cycle 83, kids' episodes 12-14), where a matched row
   with no external ids gets the one-entry list. `/grandchildren` honours the option at all.
+  Widened below to `tv.plex.agents.none://` and to rows whose detail keeps its ids: one gate.
 - **`/recentlyViewedShows` is a DEFAULT window** (cycle 83, zen's 509 shows and kids): with no
   `X-Plex-Container-Size` it answers the first 25 rows at `offset` 0 with the full `totalSize`, a
   lone Start ignored; once a Size is sent the shared rule applies (both page, a lone Size or a
@@ -3194,3 +3195,13 @@ are changing; replay the client's exact request before altering behavior.
   unchanged, while 17 keeps its own Media and its `updatedAt` (neither call moved it); 3 stays a
   404. 1.42.2 agrees on the guid: plexscratch42's row 353 carries the first row's `local://297`.
   Both servers minted `local://<new key>`, dropped the locks and stamped the source.
+- **No listing gives an UNMATCHED row a `Guid` key under `includeGuids=1`** (cycle 83, one gate
+  with the `local://` bullet above; plexscratch 1.43.4 and plexscratch42 1.42.2,
+  `tests/fixtures/split_guid.json`). `local://` and `tv.plex.agents.none://` alike: the grid,
+  `?type=1`, `/unwatched`, `/recentlyAdded`, `/children`, `/allLeaves`, `/grandchildren`, the hub
+  page, `/hubs` and home's Recently Added answer the row with no `Guid` key at all -- even a
+  movie or episode whose DETAIL still answers the imdb/tmdb/tvdb list the unmatch kept (plexscratch
+  movie 1 and episode 9). The detail keeps that list; an unmatched row with none (a never-matched
+  `local://` episode or show, a none-agent library's movie) has no key on its detail either. Both
+  servers kept an unmatched movie's stored ids in every listing, and `/hubs` and the native child
+  lists gave `local://` rows a one-entry list.

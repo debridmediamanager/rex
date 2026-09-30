@@ -758,25 +758,9 @@ impl Runtime {
                         let Some(stored) = self.catalog.get(&key) else {
                             continue;
                         };
-                        if projected
-                            .get("Guid")
-                            .is_some_and(|g| g.as_array().map_or(true, |a| !a.is_empty()))
-                        {
-                            continue;
-                        }
-                        let guids = match stored.get("Guid") {
-                            Some(Value::Array(list)) if !list.is_empty() => {
-                                Some(Value::Array(list.clone()))
-                            }
-                            _ => stored
-                                .get("guid")
-                                .and_then(Value::as_str)
-                                .filter(|g| !g.is_empty())
-                                .map(|g| json!([{"id": g}])),
-                        };
-                        if let (Some(guids), Some(object)) = (guids, projected.as_object_mut()) {
-                            object.insert("Guid".to_string(), guids);
-                        }
+                        // Cycle 83: this pass gave a `local://` row a one-entry list
+                        // and kept an unmatched row's stored ids.
+                        apply_listing_guids(projected, stored);
                     }
                 }
             }
@@ -1058,29 +1042,66 @@ pub(super) fn paging_values(query: &HashMap<String, String>) -> Result<Option<(i
     Ok(Some((parse(start)?, size)))
 }
 
-/// Strip `Guid` from a listing row unless the client asked for it; under
-/// `includeGuids=1` a row with only its primary `guid` gets a one-entry list.
-pub(super) fn guid_gate(mut row: Value, query: &HashMap<String, String>) -> Value {
-    let wanted = query.get("includeGuids").map(String::as_str) == Some("1");
-    if let Some(object) = row.as_object_mut() {
-        if wanted {
-            let empty = object.get("Guid").map_or(true, |guids| {
-                guids.is_null() || guids.as_array().is_some_and(Vec::is_empty)
-            });
-            if empty {
-                if let Some(guid) = object
-                    .get("guid")
-                    .and_then(Value::as_str)
-                    // Cycle 83, kids: an unmatched `local://` row gets no Guid.
-                    .filter(|g| !g.is_empty() && !g.starts_with("local://"))
-                {
-                    let guid = guid.to_string();
-                    object.insert("Guid".to_string(), json!([{"id": guid}]));
-                }
-            }
-        } else {
+/// An UNMATCHED row's guid: `local://` (never matched, a season or episode unmatch)
+/// or `tv.plex.agents.none://` (a movie or show unmatch, or the none agent).
+pub(super) fn unmatched_guid(row: &Value) -> bool {
+    row.get("guid")
+        .and_then(Value::as_str)
+        .is_some_and(|guid| guid.starts_with("local://") || guid.starts_with("tv.plex.agents.none://"))
+}
+
+/// The `Guid` list a LISTING row carries under `includeGuids=1`, or None for no key --
+/// the oracle's `_listing_guids`, one gate for every listing and hub.
+///
+/// Measured on plexscratch (1.43.4) after unmatching a movie and an episode, and on
+/// plexscratch42 (1.42.2) on a `tv.plex.agents.none://` movie and `local://` rows: an
+/// unmatched row carries NO `Guid` key in any listing, even where its DETAIL still
+/// answers the imdb/tmdb/tvdb list the unmatch kept. A matched row keeps its list, and
+/// one with no external ids gets a one-entry list naming its own guid.
+pub(super) fn listing_guids(row: &Value) -> Option<Value> {
+    if unmatched_guid(row) {
+        return None;
+    }
+    match row.get("Guid") {
+        Some(Value::Array(list)) if !list.is_empty() => Some(Value::Array(list.clone())),
+        _ => row
+            .get("guid")
+            .filter(|guid| !guid.is_null() && !string_value(guid).is_empty())
+            .map(|guid| json!([{"id": guid}])),
+    }
+}
+
+/// Put `stored`'s listing `Guid` on a projected row under `includeGuids=1`, keeping a
+/// list the projection already carries, or take the key off an unmatched row.
+pub(super) fn apply_listing_guids(shown: &mut Value, stored: &Value) {
+    let guids = listing_guids(stored);
+    let Some(object) = shown.as_object_mut() else {
+        return;
+    };
+    match guids {
+        None => {
             object.shift_remove("Guid");
         }
+        Some(guids) => {
+            let empty = object.get("Guid").map_or(true, |existing| {
+                existing.is_null() || existing.as_array().is_some_and(Vec::is_empty)
+            });
+            if empty {
+                object.insert("Guid".to_string(), guids);
+            }
+        }
+    }
+}
+
+/// Strip `Guid` from a listing row unless the client asked for it; under
+/// `includeGuids=1` it is `listing_guids`.
+pub(super) fn guid_gate(mut row: Value, query: &HashMap<String, String>) -> Value {
+    let wanted = query.get("includeGuids").map(String::as_str) == Some("1");
+    if wanted {
+        let stored = row.clone();
+        apply_listing_guids(&mut row, &stored);
+    } else if let Some(object) = row.as_object_mut() {
+        object.shift_remove("Guid");
     }
     row
 }

@@ -27405,11 +27405,21 @@ def main():
                           guid_rows_c46g(path_c46g, False),
                           guid_rows_c46g(path_c46g, True))
                          for path_c46g in paths_c46g]
+    # Cycle 83, measured on plexscratch and plexscratch42: an UNMATCHED row -- `local://`
+    # or `tv.plex.agents.none://` -- carries no `Guid` key in any listing even under
+    # `includeGuids=1` (home's Recently Added holds the suite's `local://` movie), so the
+    # matched rows are held to a list and the unmatched ones to its absence.
+    def unmatched_c46g(row_c46g):
+        return str(row_c46g.get("guid") or "").startswith(("local://", "tv.plex.agents.none://"))
+
     check("includeGuids reaches hubs, children and section subset listings",
           bool(season_c46g)
           and all(plain_c46g and guided_c46g
                   and not any("Guid" in row_c46g for row_c46g in plain_c46g)
-                  and all(row_c46g.get("Guid") for row_c46g in guided_c46g)
+                  and any(not unmatched_c46g(row_c46g) for row_c46g in guided_c46g)
+                  and all(bool(row_c46g.get("Guid")) != unmatched_c46g(row_c46g)
+                          and (not unmatched_c46g(row_c46g) or "Guid" not in row_c46g)
+                          for row_c46g in guided_c46g)
                   for _path_c46g, plain_c46g, guided_c46g in guid_surface_c46g),
           str([(path_c46g, len(plain_c46g),
                 sum(1 for row_c46g in guided_c46g if row_c46g.get("Guid")))
@@ -31223,13 +31233,15 @@ def main():
     _, unw_c55f6, _ = get(base, "/library/sections/%s/unwatched?includeGuids=1" % movie_section)
     rows_c55f6 = unw_c55f6.get("Metadata") or []
     _, plain_c55f6, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
-    # Cycle 83, re-measured on kids (episodes 12-14): an UNMATCHED `local://` row carries no
-    # `Guid` even under `includeGuids=1`, so this check holds matched rows to it and
-    # unmatched ones to its absence.
+    # Cycle 83, re-measured on kids (episodes 12-14), plexscratch (an unmatched movie and
+    # episode) and plexscratch42 (a `tv.plex.agents.none://` movie): an UNMATCHED row --
+    # `local://` or `tv.plex.agents.none://` -- carries no `Guid` key even under
+    # `includeGuids=1`, even where its detail keeps the ids the unmatch left, so this check
+    # holds matched rows to it and unmatched ones to its absence.
     if rows_c55f6:
         check("The unwatched list carries Guid under includeGuids=1",
-              all(("Guid" in r) != str(r.get("guid") or "").startswith("local://")
-                  for r in rows_c55f6)
+              all(("Guid" in r) != str(r.get("guid") or "").startswith(
+                  ("local://", "tv.plex.agents.none://")) for r in rows_c55f6)
               and not any("Guid" in r for r in plain_c55f6.get("Metadata") or []),
               "%s" % [sorted(k for k in r if k[:1].isupper()) for r in rows_c55f6])
 
@@ -31589,8 +31601,9 @@ def main():
     # on its rows (kids 5 of 5 on Recently Added), and python-plexapi's `section.hubs()`
     # always sends it (`_buildQueryKey` prepends `includeGuids=1`). plexsim sent none.
     _, hubs_c56f, _ = get(base, "/hubs/sections/%s?includeGuids=1" % movie_section)
+    # Cycle 83: an unmatched row (`local://` or `tv.plex.agents.none://`) has no Guid key.
     rows_c56f = [m for h in hubs_c56f.get("Hub") or [] for m in h.get("Metadata") or []
-                 if not str(m.get("guid") or "").startswith("local://")]
+                 if not str(m.get("guid") or "").startswith(("local://", "tv.plex.agents.none://"))]
     check("a library hub page honours includeGuids",
           rows_c56f and all(m.get("Guid") for m in rows_c56f),
           "%d of %d rows carry Guid" % (sum(1 for m in rows_c56f if m.get("Guid")), len(rows_c56f)))

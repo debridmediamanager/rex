@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""A split-off row's identity.
+"""A split-off row's identity, and the one `includeGuids` gate for unmatched rows.
 
-Driven from `tests/fixtures/split_guid.json`, recorded on plexscratch
+Both halves are driven from `tests/fixtures/split_guid.json`, recorded on plexscratch
 (1.43.4) and plexscratch42 (1.42.2) on 2026-10-01:
 
 - `PUT /library/metadata/17/merge?ids=3` then `PUT /library/metadata/17/split` hands
@@ -10,6 +10,11 @@ Driven from `tests/fixtures/split_guid.json`, recorded on plexscratch
   `plex://movie/...` guid, its whole `Guid` list, its `Field` locks, `addedAt` and
   `updatedAt` -- holding the absorbed item's Media. 17 keeps its own Media and its
   `updatedAt`. plexsim minted `local://<new key>`, dropped the locks and stamped 17.
+- Under `includeGuids=1`, NO listing gives an unmatched row (`local://` or
+  `tv.plex.agents.none://`) a `Guid` key -- the grid, `/unwatched`, Recently Added, the
+  hub page, `/hubs` and home's Recently Added -- even where its detail still answers
+  the imdb/tmdb list the unmatch kept. plexsim kept an unmatched movie's stored ids in
+  every listing and gave a `local://` row a one-entry list on `/hubs`.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -186,9 +191,80 @@ def run_split(port, fixture):
               guid_ids(found.get(key) or {}))
 
 
+def run_unmatched(port, fixture):
+    unmatched, older = fixture["unmatched"], fixture["agents_none_1_42"]
+    check("fixture: the unmatched movie's detail keeps its ids",
+          all(r["rows"][0].get("Guid") == ["imdb://tt1254207", "tmdb://10378", "tvdb://12352"]
+              and r["rows"][0]["guid"] == "tv.plex.agents.none://1"
+              for r in unmatched["movie_detail"]))
+    check("fixture: no listing gives the unmatched movie a Guid key, on 1.43.4 and 1.42.2",
+          all(r["rows"] and "Guid" not in r["rows"][0] for r in unmatched["movie_listings"])
+          and all(row.get("guid", "").startswith(("local://", "tv.plex.agents.none://"))
+                  and "Guid" not in row for r in older["listings"] + older["detail"]
+                  for row in r["rows"]))
+    status, _ = request(port, "PUT", "/library/metadata/%s/unmatch" % UNMATCH)
+    check("unmatch answers 200", status == 200, status)
+    row = detail(port, UNMATCH, "?includeGuids=1")
+    check("the unmatched movie is on the none agent and its detail keeps its ids",
+          row.get("guid") == "tv.plex.agents.none://%s" % UNMATCH
+          and guid_ids(row) == UNMATCH_GUIDS, (row.get("guid"), guid_ids(row)))
+    for recorded in unmatched["movie_listings"]:
+        path = recorded["path"]
+        found = rows(port, path)
+        for key, label in ((UNMATCH, "the none-agent row"), (LOCAL, "the local:// row")):
+            check("%s: %s carries no Guid key" % (path, label),
+                  key in found and "Guid" not in found[key], guid_ids(found.get(key) or {}))
+        check("%s: a matched row keeps its list" % path,
+              CONTROL in found and guid_ids(found[CONTROL]) == ["imdb://tt15479902", "tmdb://946327"],
+              guid_ids(found.get(CONTROL) or {}))
+    # The show half: an episode and a season unmatch to `local://`, and every child list
+    # under `includeGuids=1` leaves them without a key (plexscratch's 9, 11 and 12-14).
+    request(port, "PUT", "/library/metadata/1001/unmatch")
+    request(port, "PUT", "/library/metadata/30004/unmatch")
+    for path, keys in (("/library/metadata/20001/children?includeGuids=1", ["30004"]),
+                       ("/library/metadata/30001/children?includeGuids=1", ["1001"]),
+                       ("/library/metadata/20001/allLeaves?includeGuids=1", ["1001", "1005"]),
+                       ("/library/metadata/20001/grandchildren?includeGuids=1", ["1001", "1005"]),
+                       ("/library/sections/2/all?type=4&includeGuids=1", ["1001", "1005"])):
+        found = rows(port, path)
+        check("%s: the local:// rows carry no Guid key" % path,
+              all(k in found and "Guid" not in found[k] for k in keys),
+              {k: guid_ids(found.get(k) or {}) for k in keys})
+    # The second pass: `/library/all` and both searches follow the same gate, and a SHOW
+    # unmatched to the none agent keeps its ids on its detail and nowhere else.
+    second = {r["path"]: r["rows"] for r in unmatched["second_pass"]}
+    check("fixture: /library/all, the section search and /hubs/search give the none row no Guid",
+          all(row["guid"] != "tv.plex.agents.none://1" or "Guid" not in row
+              for rows_ in second.values() for row in rows_ if row["type"] != "show")
+          and all(any(row["ratingKey"] == "1" for row in second[p])
+                  for p in second if "metadata/6" not in p and "sections/2" not in p))
+    for recorded, path in (("/library/all?includeGuids=1", None),
+                           ("/library/all?type=1&includeGuids=1", None),
+                           ("/library/sections/1/search?type=1&query=b&includeGuids=1",
+                            "/library/sections/1/search?type=1&query=tuesday&includeGuids=1"),
+                           ("/hubs/search?query=big&includeGuids=1",
+                            "/hubs/search?query=tuesday&includeGuids=1")):
+        path = path or recorded
+        found = rows(port, path)
+        check("%s: the none-agent row carries no Guid key" % path,
+              recorded in second and UNMATCH in found and "Guid" not in found[UNMATCH],
+              guid_ids(found.get(UNMATCH) or {}))
+    show = second["/library/metadata/6?includeGuids=1"][0]
+    check("fixture: the none-agent show's detail keeps its ids, its grid row has no key",
+          show["guid"] == "tv.plex.agents.none://6" and show.get("Guid")
+          and "Guid" not in second["/library/sections/2/all?includeGuids=1"][0])
+    request(port, "PUT", "/library/metadata/20001/unmatch")
+    shown = detail(port, "20001", "?includeGuids=1")
+    grid = rows(port, "/library/sections/2/all?includeGuids=1").get("20001") or {}
+    check("an unmatched show keeps its ids on its detail and has no Guid key on the grid",
+          shown.get("guid") == "tv.plex.agents.none://20001"
+          and guid_ids(shown) == ["imdb://tt0096697", "tmdb://456"]
+          and grid and "Guid" not in grid, (shown.get("guid"), guid_ids(shown), guid_ids(grid)))
+
+
 def main():
     fixture = json.load(open(FIXTURE))
-    for part in (run_split,):
+    for part in (run_split, run_unmatched):
         process, port = start()
         try:
             part(port, fixture)
@@ -199,7 +275,7 @@ def main():
             except subprocess.TimeoutExpired:
                 process.kill()
     passed = sum(results)
-    print("PASS %d/%d split parity checks" % (passed, len(results)))
+    print("PASS %d/%d split and Guid-gate parity checks" % (passed, len(results)))
     return 0 if passed == len(results) else 1
 
 
