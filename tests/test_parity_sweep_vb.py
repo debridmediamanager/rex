@@ -212,6 +212,9 @@ def run(port):
     # 8. The bare `/library/metadata` is the Not Found document.
     replay(port, "bare-metadata", "the bare metadata path")
 
+    # 9. `/history` is the dispatcher's empty plug-in listing, not the history page.
+    replay(port, "history-plugin", "the single-segment /history")
+
 
 def run_gate():
     # 7b. With the token gate on, a /web-prefixed plug-in path is gated like any other.

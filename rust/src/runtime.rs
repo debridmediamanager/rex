@@ -6770,7 +6770,6 @@ impl Runtime {
             ("GET" | "HEAD", "/statistics/resources") => self
                 .statistics_refusal("resources", &query)
                 .unwrap_or_else(|| self.route_resource_statistics(&query)),
-            ("GET" | "HEAD", "/history") => self.route_history(&query),
             ("GET" | "HEAD", "/status/sessions") => self.route_sessions(&query),
             // `server.py`: the running activities -- every native activity starts and
             // ends inside the request that ran it, so the list between requests is empty.

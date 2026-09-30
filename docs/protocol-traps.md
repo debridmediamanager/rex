@@ -2971,3 +2971,8 @@ are changing; replay the client's exact request before altering behavior.
 - **The bare `/library/metadata` is a 404.** Measured on kids (1.43.4, 2026-09-30): GET and HEAD,
   with or without paging, answer the 85-byte Not Found document, as the oracle does. The native
   server answered a 400 there, with no measurement behind it.
+- **`/history` is the plug-in dispatcher's empty listing, not the history page.** Measured on kids
+  (1.43.4, 2026-09-30): `{"size":0,"content":"plugins"}` (49 bytes), with any query --
+  `accountID=abc` is not validated there. The history page is `/status/sessions/history/all`; the
+  native server also routed the single segment to it, so `/history` listed plays and refused a bad
+  `accountID` with a 400.
