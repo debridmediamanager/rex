@@ -419,6 +419,49 @@ def run_livetv(s):
         check("%s /security/resources is a 400" % method, status == 400, status)
 
 
+def run_verbs(s):
+    # -- the Live TV tree with no tuner -----------------------------------------------
+    for method in ("GET", "POST"):
+        for path in ("/livetv/zzz", "/livetv/epg/countries", "/livetv/dvrs", "/livetv/sessions"):
+            status, _, doc = s.json(method, path)
+            check("%s %s is {size: 0}" % (method, path),
+                  status == 200 and doc == {"MediaContainer": {"size": 0}}, (status, doc))
+        for path in ("/livetv/epg/lineup", "/livetv/epg/channelmap", "/livetv/epg/channels"):
+            status, _, _ = s.json(method, path)
+            check("%s %s is a 400" % (method, path), status == 400, status)
+        for path in ("/livetv/epg/guide", "/livetv/recordings", "/livetv/dvrs/1"):
+            status, _, _ = s.json(method, path)
+            check("%s %s is a 404" % (method, path), status == 404, status)
+    # -- /channels: two real leaves, nothing below them --------------------------------
+    for method, path, want in (("HEAD", "/channels/all", 200), ("HEAD", "/channels/recentlyViewed", 200),
+                               ("PUT", "/channels/recentlyViewed", 200),
+                               ("GET", "/channels/x", 404), ("GET", "/channels/all/x", 404)):
+        status, _, _ = s.raw(method, path)
+        check("%s %s is a %d" % (method, path, want), status == want, status)
+    # -- routes the oracle answers on every verb ---------------------------------------
+    for method in ("POST", "PUT", "DELETE"):
+        status, heads, body = s.raw(method, "/diagnostics/logs")
+        check("%s /diagnostics/logs is the zip" % method,
+              status == 200 and body[:2] == b"PK", (status, body[:20]))
+        status, _, body = s.raw(method, "/log/networked")
+        check("%s /log/networked is an empty 200" % method,
+              status == 200 and body == b"", (status, body[:40]))
+        status, _, doc = s.json(method, "/myplex/account")
+        check("%s /myplex/account is the MyPlex document" % method,
+              status == 200 and "MyPlex" in (doc or {}), (status, str(doc)[:120]))
+        status, _, _ = s.json(method, "/security/token")
+        check("%s /security/token without type and scope is a 400" % method,
+              status == 400, status)
+    status, _, doc = s.json("PUT", "/accounts/1")
+    check("PUT /accounts/1 answers the account row",
+          status == 200 and container(doc).get("size") == 1, (status, doc))
+    for method in ("POST", "DELETE"):
+        status, _, _ = s.json(method, "/accounts/1")
+        check("%s /accounts/1 is a 404" % method, status == 404, status)
+    status, _, _ = s.raw("HEAD", "/services/defaultLibraries")
+    check("HEAD /services/defaultLibraries is its 400", status == 400, status)
+
+
 def run_writes(s):
     # -- a created section's uuid is the oracle's crc32 of "{title}-{type}" -----------
     status, _, _ = s.raw("POST", "/library/sections?name=Parity%20Create&type=movie"
@@ -459,6 +502,7 @@ def main():
         run_resources(server)
         run_misc(server)
         run_livetv(server)
+        run_verbs(server)
         run_writes(server)
     finally:
         proc.send_signal(signal.SIGTERM)

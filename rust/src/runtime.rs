@@ -6223,10 +6223,11 @@ impl Runtime {
             }
             ("PATCH", "/myplex/claim") => Response::plain(500, b"500".to_vec()),
             ("PUT", "/myplex/refreshReachability") => Response::empty(200),
-            ("GET" | "HEAD", "/myplex/account") => self.myplex_account(),
-            ("GET" | "HEAD", "/security/token") => self.route_security_token(&request, &query),
-            ("GET" | "HEAD", "/log/networked") => Response::empty(200),
-            ("GET" | "HEAD", "/diagnostics/logs") => {
+            // server.py checks no verb on these four routes.
+            (_, "/myplex/account") => self.myplex_account(),
+            (_, "/security/token") => self.route_security_token(&request, &query),
+            (_, "/log/networked") => Response::empty(200),
+            (_, "/diagnostics/logs") => {
                 let mut response = Response::bytes(200, "application/zip");
                 response.body = self.log_archive();
                 response.headers.push((
@@ -6312,12 +6313,6 @@ impl Runtime {
                 200,
                 plugin_container(vec![("dvrs", false), ("epg", false), ("sessions", false)]),
             ),
-            ("GET" | "HEAD", "/livetv/dvrs" | "/livetv/sessions") => {
-                Response::json(200, json!({"MediaContainer": {"size": 0}}))
-            }
-            ("GET" | "HEAD", "/livetv/epg/channels") => {
-                Response::error(400, "plexsim: bad request")
-            }
             ("GET" | "HEAD", "/servers") => {
                 let rows = self.gdm_server_rows();
                 Response::json(
@@ -11497,6 +11492,29 @@ impl Runtime {
                 self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
             );
         }
+        if segments.first() == Some(&"livetv") && segments.len() > 1 {
+            // server.py: with no tuner, the lineup reads and the channel list are 400s;
+            // the guide, EPG search, recordings, a named DVR and a named session are
+            // 404s; every other Live TV path, the two collection roots included, is an
+            // empty container -- on every verb.
+            if matches!(
+                path,
+                "/livetv/epg/lineup"
+                    | "/livetv/epg/channelmap"
+                    | "/livetv/epg/lineupchannels"
+                    | "/livetv/epg/channels"
+            ) {
+                return Response::error(400, "plexsim: bad request");
+            }
+            if matches!(
+                path,
+                "/livetv/epg" | "/livetv/epg/guide" | "/livetv/epg/search" | "/livetv/recordings"
+            ) || (matches!(segments[1], "dvrs" | "sessions") && segments.len() > 2)
+            {
+                return Response::error(404, "plexsim: not found");
+            }
+            return Response::json(200, json!({"MediaContainer": {"size": 0}}));
+        }
         if path == "/security/resources" {
             // server.py: a 400 on every verb.
             return Response::error(400, "plexsim: bad request");
@@ -11529,7 +11547,7 @@ impl Runtime {
             }
             return Response::json(200, json!({"MediaContainer": {"size": 0}}));
         }
-        if path == "/services/defaultLibraries" && request.method == "GET" {
+        if path == "/services/defaultLibraries" && matches!(request.method.as_str(), "GET" | "HEAD") {
             return Response::error(400, "plexsim: bad request");
         }
         if path == "/library/all" && !matches!(request.method.as_str(), "GET" | "HEAD") {
@@ -11553,12 +11571,10 @@ impl Runtime {
         if segments.first() == Some(&"downloadQueue") {
             return self.route_download_queue(&segments[1..], request, query);
         }
-        if segments.first() == Some(&"accounts")
-            && segments.len() >= 2
-            && matches!(request.method.as_str(), "GET" | "HEAD")
-        {
-            // Cycle 52: an extra segment after the account id is a 404.
-            if segments.len() > 2 {
+        if segments.first() == Some(&"accounts") && segments.len() >= 2 {
+            // Cycle 52: an extra segment after the account id is a 404; cycle 19: so is
+            // a DELETE (and cycle 31 a POST); server.py answers the row to any other verb.
+            if segments.len() > 2 || matches!(request.method.as_str(), "POST" | "DELETE") {
                 return Response::error(404, "plexsim: not found");
             }
             return self.route_account(Some(segments[1]));
@@ -11666,7 +11682,9 @@ impl Runtime {
                 Response::error(404, "plexsim: not found")
             };
         }
-        if path.starts_with("/channels/") && request.method == "GET" {
+        // server.py: `/channels/all` (a read-only route) and `/channels/recentlyViewed`
+        // are the dispatcher's empty listing; nothing else under `/channels` exists.
+        if path == "/channels/all" || path == "/channels/recentlyViewed" {
             return Response::json(200, plugin_container(Vec::new()));
         }
         if path == "/library/tags" {
