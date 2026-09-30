@@ -153,6 +153,67 @@ def checks(srv):
     check("voice search with a type that has no hub still says size 0",
           body == {"size": 0}, body)
 
+    # -- /library/sections/{id}/autocomplete -----------------------------------------
+    rows = srv.container("/library/sections/1/autocomplete?type=1&limit=10&title.query=Ste") \
+        .get("Metadata") or []
+    check("autocomplete rows are light grid rows without their library fields",
+          keys(rows) == ["1007", "1008", "1009"]
+          and all("Media" in r and "librarySectionID" not in r and len(r.get("Role") or []) <= 3
+                  for r in rows),
+          [(r.get("ratingKey"), "Media" in r, "librarySectionID" in r) for r in rows])
+    rows = srv.container("/library/sections/2/autocomplete?type=4&title.query=e") \
+        .get("Metadata") or []
+    check("autocomplete's queryRange is the FIRST occurrence, not the matching word",
+          [r.get("title.queryRange") for r in rows[:2]] == ["0,0", "6,6"],
+          [(r.get("title"), r.get("title.queryRange")) for r in rows[:2]])
+    status, body = srv.json("/library/sections/1/autocomplete?type=1&summary.query=the")
+    rows = ((body or {}).get("MediaContainer") or {}).get("Metadata") or []
+    check("autocomplete answers a text field other than title (summary)",
+          status == 200 and keys(rows) == ["1007", "1008", "1009", "1012", "1013"],
+          (status, keys(rows)))
+    rows = srv.container("/library/sections/1/autocomplete?type=1&limit=0&title.query=t") \
+        .get("Metadata") or []
+    check("autocomplete's limit=0 answers one row", keys(rows) == ["1007"], keys(rows))
+    rows = srv.container("/library/sections/1/autocomplete?type=1&actor.query=d") \
+        .get("Directory") or []
+    check("autocomplete's tag rows are alphabetical and carry a person's tagKey and thumb",
+          [r.get("tag") for r in rows] == ["Denise Rebergen", "Derek de Lint"]
+          and all(r.get("tagKey") and r.get("thumb") for r in rows),
+          rows)
+
+    # -- /hubs/items is the named shelf, built as its page builds it -----------------
+    body = srv.container("/hubs/items?identifier=movie.recentlyadded.1")
+    rows = body.get("Metadata") or []
+    check("/hubs/items is a hub container of the shelf's own light rows",
+          list(body) == ["size", "allowSync", "identifier", "Metadata"]
+          and rows and all("Media" in r and len(r.get("Role") or []) <= 3 for r in rows),
+          (list(body), [("Media" in r, len(r.get("Role") or [])) for r in rows]))
+    rows = srv.container("/hubs/items?identifier=movie.recentlyadded.1&excludeElements=Media") \
+        .get("Metadata") or []
+    check("/hubs/items with excludeElements=Media counts the dropped Media",
+          rows and all(r.get("mediaCount") == 1 and "Media" not in r for r in rows),
+          [r.get("mediaCount") for r in rows])
+    status, body = srv.json("/hubs/items?identifier=home.movies.recent&contentDirectoryID=2")
+    check("/hubs/items scoped to a library without the shelf's rows is an empty 200",
+          status == 200 and body == {"MediaContainer": {
+              "size": 0, "allowSync": True, "identifier": "com.plexapp.plugins.library"}},
+          (status, body))
+    status, body = srv.json("/hubs/items?identifier=movie.recentlyadded.1&count=abc")
+    rows = ((body or {}).get("MediaContainer") or {}).get("Metadata") or []
+    check("/hubs/items with a count that does not parse is the shelf's default six",
+          status == 200 and len(rows) == 6, (status, len(rows)))
+
+    # -- the measured double-slash routes answer their parent's own response ----------
+    body = srv.container("/hubs//")
+    check("/hubs// answers /hubs itself",
+          body.get("identifier") == "com.plexapp.plugins.library" and body.get("size") == 8
+          and len(body.get("Hub") or []) == 8, {k: v for k, v in body.items() if k != "Hub"})
+    rows = srv.container("/library/metadata/1007//").get("Metadata") or []
+    check("/library/metadata/1007// answers the item's detail", keys(rows) == ["1007"], rows[:1])
+    status, _ = srv.raw("/library/metadata/1007/children//")
+    check("a doubled slash after a leaf the table does not name is still a 404",
+          status == 404, status)
+
 
 def write_checks(srv):
     """Checks that write: run last, after every read-only check."""
@@ -171,6 +232,32 @@ def write_checks(srv):
     check("a movie's written useOriginalTitle stays off its search rows",
           movies and not any("useOriginalTitle" in row for row in movies),
           [row.get("useOriginalTitle") for row in movies])
+    # -- autocomplete lists its rows in sort-title order ------------------------------
+    srv.raw("/library/metadata/1009?titleSort.value=Aardvark&titleSort.locked=1", "PUT")
+    rows = srv.container("/library/sections/1/autocomplete?type=1&title.query=tears") \
+        .get("Metadata") or []
+    check("autocomplete orders its rows by sort title",
+          keys(rows) == ["1009", "1007", "1008"], keys(rows))
+    # -- Recent Playlists ties back to the /playlists order (smart, then title) --------
+    machine = (srv.json("/identity")[1] or {}).get("MediaContainer", {}).get("machineIdentifier")
+    uri = urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/metadata/1007"
+                             % machine, safe="")
+    order = None
+    for _attempt in range(3):
+        made = []
+        for title in ("zeta list", "alpha list", "mid list"):
+            body = srv.json("/playlists?type=video&title=%s&smart=0&uri=%s"
+                            % (urllib.parse.quote(title), uri), "POST")[1] or {}
+            made.append(((body.get("MediaContainer") or {}).get("Metadata") or [{}])[0])
+        stamps = {row.get("addedAt") for row in made}
+        hubs = srv.container("/hubs?identifier=home.playlists").get("Hub") or [{}]
+        order = [row.get("title") for row in hubs[0].get("Metadata") or []]
+        if len(stamps) == 1:
+            break
+        for row in made:
+            srv.raw("/playlists/%s" % row.get("ratingKey"), "DELETE")
+    check("Recent Playlists made in one second keep the title order",
+          order == ["alpha list", "mid list", "zeta list"], order)
     show = (srv.container("/library/metadata/20001").get("Metadata") or [{}])[0]
     movie = (srv.container("/library/metadata/1008").get("Metadata") or [{}])[0]
     check("...and both echo on the item's own detail read",
