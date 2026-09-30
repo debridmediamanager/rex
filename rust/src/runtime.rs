@@ -3746,7 +3746,21 @@ impl Runtime {
             if let Some(title) = file_title {
                 object.insert("title".to_string(), json!(title));
             }
-            object.insert("updatedAt".to_string(), json!(now()));
+            let stamp = now();
+            object.insert("updatedAt".to_string(), json!(stamp));
+            if kind == "movie" {
+                // Measured on plexscratch by unmatching a matched movie: `updatedAt`
+                // moves AND the artwork the row owns follows it (cycle 20: an owned
+                // artwork version IS the row's `updatedAt`). Keeping the old version
+                // named a stamp the row no longer carried.
+                for field in ["thumb", "art"] {
+                    let owned = format!("/library/metadata/{key}/{field}/");
+                    let current = object.get(field).map(string_value).unwrap_or_default();
+                    if current.starts_with(&owned) {
+                        object.insert(field.to_string(), json!(format!("{owned}{stamp}")));
+                    }
+                }
+            }
         }
         if kind == "show" {
             // A SHOW unmatch cascades the whole way down: every season and
