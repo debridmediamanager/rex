@@ -3769,6 +3769,18 @@ def _target_parts(target):
     return route, query if marker else ""
 
 
+def _is_web_route(route):
+    """Whether ROUTE is the web client's own tree: `/web` or under `/web/`.
+
+    Measured on kids (2026-09-30): `/webclient`, `/webm`, `/websocket` and `/web2` are
+    ordinary single-segment plug-in paths -- the dispatcher's empty listing, gzipped and in
+    container header order, 403 without a token, and 404 with an empty trailing segment.
+    Matching the bare prefix `/web` gave them the web client's asset order, let them
+    through the token gate and exempted them from the empty-segment rule.
+    """
+    return route == "/web" or route.startswith("/web/")
+
+
 def int32_segment(value):
     """How a real PMS reads an id segment on the four paths that bound it.
 
@@ -5621,7 +5633,7 @@ class PlexSim:
             # `//identity` as a HOST named identity with an empty path.
             return ("error", 404, "plexsim: not found")
         route, raw_query = _target_parts(path)
-        if not route.startswith("/web"):
+        if not _is_web_route(route):
             # Cycle 50 measured the exceptions to the empty-segment rule on kids, zen
             # and both copies. These exact routes accept a second trailing slash and
             # return their parent's own response; no algorithm explained the split, so
@@ -22206,7 +22218,7 @@ class Handler(BaseHTTPRequestHandler):
         # error, and cycle 49 also found it names no connection state at all.
         if status < 400 and path.startswith("/photo/:/transcode"):
             return "photo"
-        if status < 400 and (path.startswith("/web") or path.startswith("/:/resources")
+        if status < 400 and (_is_web_route(path) or path.startswith("/:/resources")
                              or path == "/favicon.ico"):
             # Cycle 52: the favicon orders like a `/web` asset and the two XML policies
             # like artwork (type first), which the `accept-ranges` fallback below reaches.
@@ -23186,7 +23198,7 @@ class Handler(BaseHTTPRequestHandler):
         if not wanted:
             return True
         route, raw_query = _target_parts(path)
-        if route == "/identity" or route.startswith("/web"):
+        if route == "/identity" or _is_web_route(route):
             return True
         if route in ("/manage", "/manage/"):
             # Cycle 52, measured on kids and zen with no token: `/manage` answers its 302

@@ -410,7 +410,7 @@ fn header_family(
         return ORDER_PHOTO;
     }
     if status < 400
-        && (path.starts_with("/web") || path.starts_with("/:/resources") || path == "/favicon.ico")
+        && (is_web_route(path) || path.starts_with("/:/resources") || path == "/favicon.ico")
     {
         return ORDER_ASSET;
     }
@@ -601,7 +601,7 @@ pub(super) fn envelope(
     {
         // Measured on kids: a `/web/*` ASSET is never gzipped, but its 404 is the ordinary
         // error document and is gzipped like any other (85 bytes to 78) when gzip is offered.
-        let asset = (wire.path.starts_with("/web") && status < 400) || names.contains("accept-ranges");
+        let asset = (is_web_route(&wire.path) && status < 400) || names.contains("accept-ranges");
         if offered
             && !asset
             && !body.is_empty()
@@ -843,4 +843,12 @@ pub(super) fn exclude_container(
         walk(body, &excluded);
     }
     response.body = serde_json::to_vec(&document).unwrap_or_default();
+}
+
+/// `/web` or a path under `/web/`. Measured on kids: `/webclient`, `/webm`, `/websocket` and
+/// `/web2` are ordinary plug-in paths -- their empty listing is gzipped and ordered like any
+/// container -- so the bare prefix `/web` is not the web client's tree.
+fn is_web_route(path: &str) -> bool {
+    let route = path.split('?').next().unwrap_or_default();
+    route == "/web" || route.starts_with("/web/")
 }

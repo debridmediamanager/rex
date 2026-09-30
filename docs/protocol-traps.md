@@ -2960,3 +2960,11 @@ are changing; replay the client's exact request before altering behavior.
   `en` alike (2026-09-30): `"mediaTagVersion":1786914632`, as on every other library container. The
   native server sent it as a string on `/library/metadata/{a},{b}` only, in every language; the
   sweep saw it only under the language headers because the family's base already carried it.
+- **`/webclient`, `/websocket`, `/webm`, `/web2` are NOT the web client's tree.** Measured on kids
+  (1.43.4, 2026-09-30): each is an ordinary single-segment plug-in path -- the dispatcher's
+  `{"size":0,"content":"plugins"}`, gzipped when offered, in the container header order
+  (`Content-Type`, `Connection`, `Keep-Alive`, the gzip trio, `Content-Length`, `Cache-Control`), a
+  403 with no token, and a 404 with an empty trailing segment (`/webclient//`). Both servers tested
+  the bare prefix `/web`: the oracle gave these paths the asset header order, let them through the
+  token gate and exempted them from the empty-segment rule; the native server also refused to gzip
+  them. The web tree is `/web` and what is under `/web/`.

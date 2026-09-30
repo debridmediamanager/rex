@@ -78,11 +78,11 @@ def send(port, method, path, headers=()):
     return response.status, response.getheaders(), body
 
 
-def start():
+def start(*extra):
     port = free_port()
     process = subprocess.Popen(
         server_command("--port", port, "--catalog", CATALOG, "--assert-claimed",
-                       "--gdm", "off", root=ROOT),
+                       "--gdm", "off", *extra, root=ROOT),
         cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(100):
         if process.poll() is not None:
@@ -102,15 +102,19 @@ def header(pairs, name):
     return values or None
 
 
-def replay(port, rule, what, headers=()):
+def replay(port, rule, what, headers=(), order=False):
     """Every fixture exchange of RULE: the same status, the same (decoded) body, and the
-    same values of HEADERS -- absent where the reference sends none."""
+    same values of HEADERS -- absent where the reference sends none -- and with ORDER the
+    same response header names in the same order (`Date` aside)."""
     for row in fixture(rule):
         req, ref = row["request"], row["response"]
         path = local_path(req["path"])
         status, got, body = send(port, req["method"], path, req["headers"])
         want = {name: header(ref["headers"], name) for name in headers}
         have = {name: header(got, name) for name in headers}
+        if order:
+            want["order"] = [name for name, _ in ref["headers"] if name.lower() != "date"]
+            have["order"] = [name for name, _ in got if name.lower() != "date"]
         check("%s: %s %s is the measured %d" % (what, req["method"], path, ref["status"]),
               status == ref["status"] and body.decode("utf-8", "replace") == ref["body"]
               and want == have,
@@ -199,6 +203,22 @@ def run(port):
         check("%s's mediaTagVersion is a %s" % (path, type(want).__name__),
               status == 200 and type(got) is type(want), repr(got))
 
+    # 7. `/webclient`, `/websocket`, `/webm`: plug-in paths that merely START with `/web` --
+    #    the dispatcher's listing, gzipped and in container header order, and the
+    #    empty-segment 404 -- not the web client's tree.
+    replay(port, "web-prefix-plugin", "a /web-prefixed plug-in path", headers=(
+        "Content-Encoding", "X-Plex-Content-Original-Length"), order=True)
+
+
+def run_gate():
+    # 7b. With the token gate on, a /web-prefixed plug-in path is gated like any other.
+    process, port = start("--token", "c83-vb-secret")
+    try:
+        replay(port, "web-prefix-gate", "a /web-prefixed plug-in path with no token")
+    finally:
+        process.terminate()
+        process.wait(timeout=10)
+
 
 def run_last(port):
     # 4b. ...so a first request whose platform is a NUMBER lists the row that the measured
@@ -222,6 +242,7 @@ def main():
             process.wait(timeout=10)
         except subprocess.TimeoutExpired:
             process.kill()
+    run_gate()
     passed = sum(results)
     print("PASS %d/%d sweep parity checks" % (passed, len(results)))
     return 0 if passed == len(results) else 1
