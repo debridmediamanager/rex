@@ -4775,17 +4775,7 @@ impl Runtime {
         for (name, _) in pairs {
             let (field, _) = crate::filters::split_key(name);
             let (_, bare) = crate::filters::split_scope(&field);
-            if matches!(
-                bare.as_str(),
-                "parentIndex"
-                    | "slug"
-                    | "extraType"
-                    | "theme"
-                    | "banner"
-                    | "art"
-                    | "thumb"
-                    | "userFields"
-            ) {
+            if resume::REFUSED_FILTER_FIELDS.contains(&bare.as_str()) {
                 return Err(500);
             }
         }

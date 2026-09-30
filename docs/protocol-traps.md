@@ -2976,3 +2976,10 @@ are changing; replay the client's exact request before altering behavior.
   `accountID=abc` is not validated there. The history page is `/status/sessions/history/all`; the
   native server also routed the single segment to it, so `/history` listed plays and refused a bad
   `accountID` with a 400.
+- **The columns a listing REFUSES are refused wherever the filter grammar runs** (cycle 83, kids
+  and zen). `art`, `banner`, `theme`, `thumb`, `slug`, `extraType`, `parentIndex` and `userFields`
+  are 500s on a show's `/children` and `/grandchildren`, every tag axis, `/common`, `/search`,
+  `/autocomplete`, `/unwatched`, `/firstCharacter`, `/collection` and `/recentlyViewedShows`, not
+  only on the grid, `/library/all` and `/playlists`; and the hub pages refuse all eight on the
+  fifteen's terms (non-empty value, a show library's shelf in scope), so the hub set is the
+  fifteen PLUS the listing's refusals. The section extras leaf still filters on `extraType`.

@@ -1533,6 +1533,13 @@ def plugin_container(route):
 HUB_REFUSED_FIELDS = ("duration", "lastViewedAt", "lastRatedAt", "viewCount", "skipCount",
                       "viewOffset", "userRating", "unwatched", "resolution", "hdr",
                       "mediaSize", "file", "parentIndex", "slug", "group")
+# Cycle 83, measured on kids and zen: the 76 names cycle 18 swept predate the columns a
+# LISTING refuses, and every one of those is refused here on the same terms -- `art`,
+# `banner`, `theme`, `thumb`, `extraType` and `userFields` are 500s on `/hubs`, a show
+# library's `/hubs/sections/{id}` and a show-scoped `/hubs/promoted` for any non-empty
+# value and operator, 200s empty and 200s on a movie library's hub page. So the set is
+# the fifteen plus the listing's refusals, not a list of its own.
+HUB_REFUSED_FIELDS = tuple(sorted(set(HUB_REFUSED_FIELDS) | REFUSED_FILTER_FIELDS))
 
 
 def hub_refusal(query):
@@ -10799,7 +10806,7 @@ class PlexSim:
             if name == "extraType":
                 rows = [row for row in rows
                         if str(row.get("extraType") or "") == str(value)]
-        rows, _tree = self.apply_filters(rows, query or {}, section)
+        rows, _tree = self.apply_filters(rows, query or {}, section, allow=("extraType",))
         rows, unsupported = self._sorted(rows, (query or {}).get("sort") or "index")
         if unsupported:
             return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
@@ -11982,7 +11989,7 @@ class PlexSim:
                 return ("error", error.status, "plexsim: %s" % error.detail)
         return None
 
-    def apply_filters(self, rows, query, section=None, parse_only=()):
+    def apply_filters(self, rows, query, section=None, parse_only=(), allow=()):
         """Filter rows by the query, or raise the status a real PMS answers with.
 
         The advertised field map is global rather than per-section: measured, a
@@ -11991,6 +11998,20 @@ class PlexSim:
         which plexsim looked up after stripping the prefix, in a map keyed by the
         prefixed names, so no filter on a show grid ever constrained anything.
         """
+        # Cycle 83, measured on kids (1.43.4) and zen (1.42.2), which agree: the columns
+        # a listing REFUSES are a 500 wherever the grammar runs, not only on the section
+        # grid, `/library/all` and `/playlists` that `_listing_refusals` guards --
+        # `art=1`, `extraType=1`, `parentIndex=1`, `slug=1` and `userFields=1` are 500s on
+        # a show's `/children` and `/grandchildren`, every tag axis, `/common`, `/search`,
+        # `/autocomplete`, `/unwatched`, `/firstCharacter` and `/recentlyViewedShows`,
+        # where plexsim answered those paths' rows unfiltered. So the refusal belongs to
+        # the grammar, here, and each path's own guard is only an earlier copy of it.
+        refused = next((key for key in query if key != "_pairs"
+                        and key.rstrip("<>=!") in REFUSED_FILTER_FIELDS
+                        and key.rstrip("<>=!") not in allow), None)
+        if refused:
+            raise filters_module.FilterError(500, "cannot filter on %s" % refused)
+
         def field_type(name):
             return (FILTER_FIELD_TYPES.get(name)
                     or (PARSE_ONLY_FIELD_TYPES.get(name) if name in parse_only else None))

@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""The gaps a differential VOCABULARY sweep found (cycle 83).
+
+`handover/tools/vsweep.py` appended every parameter name the oracle's source reads to
+every request path Plex Web builds and diffed the oracle against the native server.
+Each rule below was then measured on kids (1.43.4) and zen (1.42.2), and every check
+asserts that measured answer on `tests/catalog_ui.json`, not "the two servers agree":
+
+- the columns a listing REFUSES (`art`, `banner`, `theme`, `thumb`, `slug`, `extraType`,
+  `parentIndex`, `userFields`) are a 500 wherever the filter grammar runs, and on a hub
+  page's TV shelf on the hub-refusal terms (non-empty value, show library in scope);
+- `guid=` is a grammar field everywhere: a case-sensitive prefix, comma is OR;
+- the filter field table is the Meta's: `dovi` and `network` filter, `role` is no field;
+- `/hubs/promoted` scoped to a movie library runs no TV filters;
+- `/library/metadata/{id}/allLeaves` ignores `sort=`;
+- the `include*` blocks reach a hub page's and `/common?id=`'s FULL rows;
+- `includeGuids=1` never gives an unmatched `local://` row a Guid, and reaches
+  `/grandchildren`;
+- `X-Plex-Container-*` as QUERY parameters on `/folder` and `/recentlyViewedShows`.
+
+    python3 tests/test_parity_vocabulary.py            # native
+    PLEXSIM_SERVER=python python3 tests/test_parity_vocabulary.py
+"""
+import http.client
+import json
+import os
+import socket
+import subprocess
+import sys
+import time
+
+from server_command import server_command
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+CATALOG = os.path.join("tests", "catalog_ui.json")
+ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
+           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+    ENV.pop(name, None)
+HEADERS = {"Accept": "application/json", "X-Plex-Client-Identifier": "parity-vocabulary",
+           "X-Plex-Product": "Plex Web", "X-Plex-Version": "4.147.1",
+           "X-Plex-Platform": "Chrome"}
+
+results = []
+
+
+def check(name, ok, detail=""):
+    results.append(bool(ok))
+    print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + str(detail)[:600]))
+
+
+def free_port():
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    return port
+
+
+def request(port, path, headers=None):
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
+    sent = dict(HEADERS, Connection="close")
+    sent.update(headers or {})
+    try:
+        connection.request("GET", path, headers=sent)
+        response = connection.getresponse()
+        raw = response.read()
+    finally:
+        connection.close()
+    try:
+        body = json.loads(raw) if raw else None
+    except ValueError:
+        body = None
+    return response.status, (body or {}).get("MediaContainer") if isinstance(body, dict) else None
+
+
+def start():
+    port = free_port()
+    process = subprocess.Popen(
+        server_command("--port", port, "--catalog", CATALOG, "--assert-claimed",
+                       "--gdm", "off", root=ROOT),
+        cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(100):
+        if process.poll() is not None:
+            break
+        try:
+            if request(port, "/identity")[0] == 200:
+                return process, port
+        except OSError:
+            pass
+        time.sleep(0.1)
+    process.kill()
+    raise SystemExit("server did not start")
+
+
+def join(path, extra):
+    return path + ("&" if "?" in path else "?") + extra
+
+
+def keys(mc, element="Metadata"):
+    return [row.get("ratingKey") or row.get("key") or row.get("title")
+            for row in (mc or {}).get(element) or []]
+
+
+def hub(mc, prefix):
+    return next((h for h in (mc or {}).get("Hub") or []
+                 if str(h.get("hubIdentifier", "")).startswith(prefix)), None)
+
+
+# The consumers of the listing grammar that kids and zen refuse the refused columns on.
+GRAMMAR_PATHS = [
+    "/library/metadata/20001/children?excludeAllLeaves=1",
+    "/library/metadata/20001/grandchildren",
+    "/library/sections/1/genre",
+    "/library/sections/1/year?type=1",
+    "/library/sections/1/common?type=1&id=1007",
+    "/library/sections/1/search?type=1&query=th",
+    "/library/sections/1/autocomplete?type=1&title.query=th",
+    "/library/sections/1/unwatched",
+    "/library/sections/1/firstCharacter",
+    "/library/sections/1/collection?type=1",
+    "/library/sections/2/recentlyViewedShows",
+]
+REFUSED = ["art", "banner", "theme", "thumb", "slug", "extraType", "parentIndex", "userFields"]
+
+
+def run(port):
+    # 1. The refused columns: a 500 wherever the grammar runs.
+    wrong = [(path, name, status) for path in GRAMMAR_PATHS for name in REFUSED
+             for status in [request(port, join(path, name + "=1"))[0]] if status != 500]
+    check("the refused columns are a 500 on every listing-grammar consumer", not wrong, wrong)
+    base = [(path, request(port, path)[0]) for path in GRAMMAR_PATHS]
+    check("...and each of those paths answers 200 without them",
+          all(status == 200 for _path, status in base), base)
+    status, _ = request(port, "/library/sections/1/extras/all?extraType=1")
+    check("the section extras leaf still filters on extraType (200)", status == 200, status)
+
+    # ...and on a hub page with a TV shelf, on the hub-refusal terms.
+    hub_pages = ["/hubs", "/hubs/sections/2?count=12",
+                 "/hubs/promoted?contentDirectoryID=2&count=12"]
+    wrong = [(path, name, status) for path in hub_pages for name in REFUSED
+             for status in [request(port, join(path, name + "=1"))[0]] if status != 500]
+    check("the refused columns are a 500 on /hubs, a show hub page and show-scoped promoted",
+          not wrong, wrong)
+    lenient = [(path, name, status) for path in hub_pages for name in ("art", "userFields")
+               for status in [request(port, join(path, name + "="))[0]] if status != 200]
+    lenient += [("/hubs/sections/1", name, status) for name in REFUSED
+                for status in [request(port, "/hubs/sections/1?count=12&%s=1" % name)[0]]
+                if status != 200]
+    check("...an empty value, and a movie library's hub page, are 200s", not lenient, lenient)
+
+
+def main():
+    process, port = start()
+    try:
+        run(port)
+    finally:
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+    passed = sum(results)
+    print("PASS %d/%d vocabulary parity checks" % (passed, len(results)))
+    return 0 if passed == len(results) else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

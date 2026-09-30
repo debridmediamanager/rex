@@ -932,7 +932,22 @@ impl Runtime {
     }
 }
 
-/// The fifteen fields a hub request refuses with a value (a 500).
+/// The columns a LISTING refuses -- a 500 wherever the filter grammar runs (`filters.py`'s
+/// `REFUSED_FILTER_FIELDS`, and `filter_rows`).
+pub(super) const REFUSED_FILTER_FIELDS: &[&str] = &[
+    "parentIndex",
+    "slug",
+    "extraType",
+    "theme",
+    "banner",
+    "art",
+    "thumb",
+    "userFields",
+];
+
+/// The fifteen fields a hub request refuses with a value (a 500). Cycle 83, measured on
+/// kids and zen: the listing's refusals (`REFUSED_FILTER_FIELDS`) are refused here on the
+/// same terms, so `hub_refusal` checks both lists.
 const HUB_REFUSED_FIELDS: &[&str] = &[
     "duration",
     "lastViewedAt",
@@ -955,7 +970,9 @@ const HUB_REFUSED_FIELDS: &[&str] = &[
 pub(super) fn hub_refusal(query: &HashMap<String, String>) -> Option<Response> {
     for (key, value) in query {
         let bare = key.trim_end_matches(['<', '>', '=', '!']);
-        if HUB_REFUSED_FIELDS.contains(&bare) && !value.trim().is_empty() {
+        if (HUB_REFUSED_FIELDS.contains(&bare) || REFUSED_FILTER_FIELDS.contains(&bare))
+            && !value.trim().is_empty()
+        {
             return Some(Response::error(
                 500,
                 &format!("plexsim: cannot filter a hub on {key}"),
