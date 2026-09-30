@@ -1187,6 +1187,12 @@ impl Runtime {
     /// attributes, which `server.py` does on an item's OWN detail read alone (a movie in
     /// its metadata leaf, a show or season in `parent_detail`) -- never on a listing,
     /// shelf, search row or multi-key read of the same item.
+    /// `server.py`'s `_public_row`: the detail projection, with the written settings
+    /// only when `with_prefs` (the item's own detail read).
+    fn public_row(&self, original: &Value, with_prefs: bool) -> Value {
+        self.detail_row_prefs(original, with_prefs)
+    }
+
     fn detail_row_prefs(&self, original: &Value, prefs: bool) -> Value {
         let mut row = strip_private_value(original);
         let Some(object) = row.as_object_mut() else {
@@ -1500,7 +1506,7 @@ impl Runtime {
     }
 
     fn listing_row(&self, original: &Value) -> Value {
-        let mut row = self.detail_row(original);
+        let mut row = self.public_row(original, false);
         if let Some(object) = row.as_object_mut() {
             object.shift_remove("Media");
             object.shift_remove("Guid");
@@ -1561,7 +1567,7 @@ impl Runtime {
         keep_guid: bool,
         keep_location: bool,
     ) -> Value {
-        let mut row = self.detail_row(original);
+        let mut row = self.public_row(original, false);
         let Some(object) = row.as_object_mut() else {
             return row;
         };
@@ -1702,7 +1708,7 @@ impl Runtime {
         // `/allLeaves` keeps Media so clients can calculate storage and
         // duration without opening every item. Ordinary grid rows omit Media;
         // using that projection here loses the measured Media/mediaCount split.
-        let mut row = self.detail_row(original);
+        let mut row = self.public_row(original, false);
         if let Some(object) = row.as_object_mut() {
             for name in ["Guid", "Rating", "Field", "Preferences", "OnDeck"] {
                 object.shift_remove(name);
@@ -13011,7 +13017,8 @@ impl Runtime {
                     let rows = rows
                         .iter()
                         .map(|row| {
-                            let mut entry = self.detail_row(row);
+                            // `_listing_row`: the full row, without the detail's settings.
+                            let mut entry = self.public_row(row, false);
                             if let Some(object) = entry.as_object_mut() {
                                 object.shift_remove("Field");
                                 object.shift_remove("librarySectionKey");
