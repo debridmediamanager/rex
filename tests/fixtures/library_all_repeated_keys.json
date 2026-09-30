@@ -1,0 +1,121 @@
+{
+ "_about": "PMS 1.43.4 (kids), 2026-09-30, GETs: a REPEATED query key on /library/all (last occurrence wins) against the section grid (a conjunction). Movie section 1 holds 1 Big Buck Bunny (2008, guid ...e4c9), 18 Cosmos Laundromat, 17 Elephants Dream, 3 Sintel (2010, guid ...d3df), 4 Tears of Steel; show 6 is Firefly. zen (1.42.2) agreed on year=1999&year=2001 against year=2001&year=1999 (the last year's rows).",
+ "version": "1.43.4",
+ "cells": [
+  {
+   "request": "GET /library/all?type=1&guid=plex%3A%2F%2Fmovie%2F5d7768352e80df001ebde4c9&guid=plex%3A%2F%2Fmovie%2F5d77688123d5a3001f4ed3df",
+   "status": 200,
+   "ratingKeys": [
+    "3"
+   ]
+  },
+  {
+   "request": "GET /library/all?type=1&guid=plex%3A%2F%2Fmovie%2F5d77688123d5a3001f4ed3df&guid=plex%3A%2F%2Fmovie%2F5d7768352e80df001ebde4c9",
+   "status": 200,
+   "ratingKeys": [
+    "1"
+   ]
+  },
+  {
+   "request": "GET /library/all?guid=plex%3A%2F%2Fmovie%2F5d7768352e80df001ebde4c9&guid=plex%3A%2F%2Fmovie%2F5d77688123d5a3001f4ed3df",
+   "status": 200,
+   "ratingKeys": [
+    "3"
+   ]
+  },
+  {
+   "request": "GET /library/all?type=1&guid=plex%3A%2F%2Fmovie%2F5d7768352e80df001ebde4c9,plex%3A%2F%2Fmovie%2F5d77688123d5a3001f4ed3df",
+   "status": 200,
+   "ratingKeys": [
+    "1",
+    "3"
+   ]
+  },
+  {
+   "request": "GET /library/all?type=1&year=2008&year=2010",
+   "status": 200,
+   "ratingKeys": [
+    "3"
+   ]
+  },
+  {
+   "request": "GET /library/all?year=2010&type=1&year=2008",
+   "status": 200,
+   "ratingKeys": [
+    "1"
+   ]
+  },
+  {
+   "request": "GET /library/all?type=2&type=1",
+   "status": 200,
+   "ratingKeys": [
+    "1",
+    "18",
+    "17",
+    "3",
+    "4"
+   ]
+  },
+  {
+   "request": "GET /library/all?type=1&type=2",
+   "status": 200,
+   "ratingKeys": [
+    "6"
+   ]
+  },
+  {
+   "request": "GET /library/all?type=abc&type=1",
+   "status": 200,
+   "ratingKeys": [
+    "1",
+    "18",
+    "17",
+    "3",
+    "4"
+   ]
+  },
+  {
+   "request": "GET /library/all?type=1&type=abc",
+   "status": 400,
+   "ratingKeys": null
+  },
+  {
+   "request": "GET /library/all?type=1&addedAt%3E=abc&addedAt%3E=1",
+   "status": 200,
+   "ratingKeys": [
+    "1",
+    "18",
+    "17",
+    "3",
+    "4"
+   ]
+  },
+  {
+   "request": "GET /library/all?type=1&addedAt%3E=1&addedAt%3E=abc",
+   "status": 500,
+   "ratingKeys": null
+  },
+  {
+   "request": "GET /library/sections/1/all?guid=plex%3A%2F%2Fmovie%2F5d7768352e80df001ebde4c9&guid=plex%3A%2F%2Fmovie%2F5d77688123d5a3001f4ed3df",
+   "status": 200,
+   "ratingKeys": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=1&guid=plex%3A%2F%2Fmovie%2F5d7768352e80df001ebde4c9&guid=plex%3A%2F%2Fmovie%2F5d77688123d5a3001f4ed3df",
+   "status": 200,
+   "ratingKeys": []
+  },
+  {
+   "request": "GET /library/sections/1/all?year=2008&year=2010",
+   "status": 200,
+   "ratingKeys": []
+  },
+  {
+   "request": "GET /library/sections/1/all?guid=plex%3A%2F%2Fmovie%2F5d7768352e80df001ebde4c9&guid=plex%3A%2F%2Fmovie%2F5d7768352e80df001ebde4c9",
+   "status": 200,
+   "ratingKeys": [
+    "1"
+   ]
+  }
+ ]
+}

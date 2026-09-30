@@ -220,6 +220,19 @@ impl Runtime {
         query: &HashMap<String, String>,
         pairs: &[(String, String)],
     ) -> Response {
+        // Cycle 83, measured on kids (1.43.4) and zen (1.42.2): this query reads each
+        // parameter ONCE, its LAST occurrence -- `guid=<a>&guid=<b>` is the <b> row,
+        // `year=2010&type=1&year=2008` the 2008 movie, `type=2&type=1` the movies, and a
+        // bad value before a good one is never parsed. A section listing ANDs a repeated
+        // key instead; the filter pass here ran that conjunction over every pair.
+        let pairs = &pairs
+            .iter()
+            .enumerate()
+            .filter(|(index, (name, _))| {
+                !pairs[index + 1..].iter().any(|(later, _)| later == name)
+            })
+            .map(|(_, pair)| pair.clone())
+            .collect::<Vec<_>>();
         // Measured: an unparseable `type=` is a 400 here and an empty one a 500.
         let type_number = match parsed_type(query, 400, None) {
             Ok(number) => number,

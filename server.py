@@ -7332,6 +7332,17 @@ class PlexSim:
             # plexsim answered the listing to what looks like an edit.
             return ("error", 404, "plexsim: not found")
         if route == "/library/all":
+            # Cycle 83, measured on kids (1.43.4) and zen (1.42.2): this query reads each
+            # parameter ONCE, its LAST occurrence -- `guid=<a>&guid=<b>` is the <b> row,
+            # `year=2010&type=1&year=2008` the 2008 movie, `type=2&type=1` the movies,
+            # and a bad value before a good one is never parsed (`type=abc&type=1` is a
+            # 200, `type=1&type=abc` the 400). A section listing ANDs a repeated key
+            # instead (both guids: no row). plexsim ran the grid's conjunction here.
+            last = {name: index for index, (name, _value)
+                    in enumerate(query.get("_pairs") or [])}
+            query = dict(query)
+            query["_pairs"] = [pair for index, pair in enumerate(query.get("_pairs") or [])
+                               if last[pair[0]] == index]
             # Measured: a real query endpoint, not a dump. `type=` selects the rows,
             # filters and `sort=` apply as on a section, the default order is the
             # ratingKey, and a row carries its Media only when a `type` was given.

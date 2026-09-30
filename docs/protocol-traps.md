@@ -2989,7 +2989,7 @@ are changing; replay the client's exact request before altering behavior.
   prefix is CASE-SENSITIVE (`guid=PLEX` nothing), the `<=` key is the same prefix, and a comma is
   the grammar's OR (`guid=<a>,<b>` is both rows) -- a private prefix pass read it as one guid.
   kids answers `/library/all?type=1&guid=<a>&guid=<b>` with ONE row where the section grid
-  answers none; not modelled.
+  answers none -- the last-occurrence rule below.
 - **The filter field table is the Meta's, not a hand list** (cycle 83, kids and zen). `dovi` and
   `network` are advertised Fields and filter (`dovi=1`, `network=1` empty every consumer on
   kids), and `role` is no field at all: `role=1` answers every row where `actor=1` answers none.
@@ -3115,3 +3115,10 @@ are changing; replay the client's exact request before altering behavior.
   200. A repeated `parent` takes its LAST value (`parent=7&parent=8` is folder 8, `parent=7&parent=abc`
   the top). The handover's "empty 200 on kids, 500 on both ours" predates `69f8720`; at `27d76b2` both
   servers already answered this, and the check pins it.
+- **`/library/all` reads a repeated parameter's LAST occurrence; the section grid ANDs it**
+  (cycle 83, kids and zen, `tests/fixtures/library_all_repeated_keys.json`). `guid=<a>&guid=<b>` is
+  the <b> row, `year=2010&type=1&year=2008` the 2008 movie, `type=2&type=1` the movies, and a bad
+  value BEFORE a good one is never parsed (`type=abc&type=1` a 200, `type=1&type=abc` the 400;
+  `addedAt>=abc&addedAt>=1` a 200, the reverse the 500) -- the whole query is a map. The grid answers
+  both guids with no row, as a conjunction. Both servers ran the grid's conjunction here (the oracle
+  also emptied `type=2&type=1`, reading every `type`).

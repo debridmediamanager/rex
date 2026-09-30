@@ -9,6 +9,8 @@ re-measured on a real PMS and checked here against the measured values.
   included, a Start only beside a Size, as a 32-bit signed integer (the same fixture);
 - `/folder?parent=` that is not all digits (`1,2`, `-1`, `+7`) is the top folder, an empty
   or unknown numeric one the empty list, and a REPEATED `parent` takes its last value (kids);
+- `/library/all` reads a repeated parameter's LAST value where the section grid ANDs it
+  (kids and zen);
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -167,6 +169,34 @@ def run(port):
                      ("parent=", "parent=99999", "parent=abc&parent=99999")})
     check("a non-digit folder parent is the top folder and the last repeated parent wins",
           top and answers == expected, {"top": top, "answers": answers})
+
+    # 4. `/library/all` takes a repeated key's LAST value; the section grid ANDs it.
+    trust = urllib.parse.quote("plex://movie/614ee97b618cd92600cef3e1", safe="")
+    tuesday = urllib.parse.quote("plex://movie/60a69a74ba9733002ddf78f6", safe="")
+
+    def keys(path):
+        body = mc(port, path)
+        return body.get("_status", 200), [row.get("ratingKey") for row in body.get("Metadata") or []]
+    movies = keys("/library/sections/1/all")[1]
+    answers = {query: keys("/library/all?" + query) for query in (
+        "type=1&guid=%s&guid=%s" % (trust, tuesday), "type=1&guid=%s&guid=%s" % (tuesday, trust),
+        "guid=%s&guid=%s" % (trust, tuesday), "type=1&year=2022&year=2024",
+        "year=2024&type=1&year=2022", "type=2&type=1", "type=abc&type=1")}
+    answers["type=1&type=abc"] = (mc(port, "/library/all?type=1&type=abc").get("_status"), [])
+    answers["grid"] = keys("/library/sections/1/all?guid=%s&guid=%s" % (trust, tuesday))
+    expected = {
+        "type=1&guid=%s&guid=%s" % (trust, tuesday): (200, ["1013"]),
+        "type=1&guid=%s&guid=%s" % (tuesday, trust): (200, ["1012"]),
+        "guid=%s&guid=%s" % (trust, tuesday): (200, ["1013"]),
+        "type=1&year=2022&year=2024": (200, ["1013"]),
+        "year=2024&type=1&year=2022": (200, ["1012"]),
+        "type=2&type=1": (200, movies),
+        "type=abc&type=1": (200, movies),
+        "type=1&type=abc": (400, []),
+        "grid": (200, []),
+    }
+    check("/library/all takes a repeated key's last value and the grid ANDs it",
+          len(movies) == 6 and answers == expected, answers)
 
 
 def main():
