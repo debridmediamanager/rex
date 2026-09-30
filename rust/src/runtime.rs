@@ -8941,6 +8941,12 @@ impl Runtime {
     /// `view_type` is the history row's `viewType`: 1 for a scrobble, none for a
     /// play a session completed (cycle 70's offline sync is one).
     fn scrobble_key(&mut self, key: &str, watched: bool, view_type: Option<i64>) {
+        self.scrobble_key_on(key, watched, view_type, 1);
+    }
+
+    /// `library.scrobble(..., device_id=)`: the history rows a scrobble writes name the
+    /// device it came from -- the playing client's on an offline timeline, 1 otherwise.
+    fn scrobble_key_on(&mut self, key: &str, watched: bool, view_type: Option<i64>, device_id: i64) {
         let key = key.to_string();
         if self.catalog.get(&key).is_none() {
             let is_collection = self.collections.contains_key(&key);
@@ -9016,7 +9022,7 @@ impl Runtime {
                 self.update_view(leaf, "viewOffset", None);
                 if let Some(row) = self.catalog.get(leaf).cloned() {
                     self.next_dynamic_key = self.next_dynamic_key.saturating_add(1);
-                    let mut history = self.history_row(&row);
+                    let mut history = self.history_row_for_device(&row, device_id);
                     if let (Some(object), Some(view_type)) = (history.as_object_mut(), view_type) {
                         object.insert("viewType".to_string(), json!(view_type));
                     }

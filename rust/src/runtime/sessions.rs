@@ -896,10 +896,10 @@ impl Runtime {
                         .unwrap_or(0)
                         > 0;
                     if count >= 1 {
-                        self.scrobble_key(&key, true, None);
+                        self.scrobble_key_on(&key, true, None, device);
                         playback_state = "complete";
                     } else if watched {
-                        self.scrobble_key(&key, false, None);
+                        self.scrobble_key_on(&key, false, None, device);
                         playback_state = "complete";
                     }
                 }
