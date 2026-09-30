@@ -5574,6 +5574,7 @@ impl Runtime {
         }
         let mut response = self.request_route(request);
         self.refresh_session_rows();
+        self.alternates_response(request, &mut response);
         exclude_fields_response(request, &mut response);
         sync_version_response(request, &mut response);
         self.stream_titles_response(request, &mut response);
@@ -5604,6 +5605,108 @@ impl Runtime {
             self.save_if_dirty();
         }
         response
+    }
+
+    /// The oracle's `_alternates_container`: `includeAlternates=1` is a property of
+    /// the RESPONSE. Every FULL row in the container -- a detail row, `/library/onDeck`,
+    /// both `related` paths, a detail row's `Related`, `OnDeck`, `Children` and
+    /// `Extras` blocks, a hub's full-row shelf -- inlines the agent's remote artwork as
+    /// `Thumb`/`Art` `{key, source}` blocks; a LIGHT row (the `_light` marker a grid
+    /// row carries) never does, and a season's or an episode's background candidates
+    /// are their own, so neither inlines an `Art`.
+    fn alternates_response(&self, request: &Request, response: &mut Response) {
+        if response.status != 200 || !response.content_type.starts_with("application/json") {
+            return;
+        }
+        let (path, raw_query) = split_target(&request.target);
+        if path.starts_with("/video/:/transcode/universal/decision") {
+            return;
+        }
+        let wanted = parse_query(&raw_query)
+            .into_iter()
+            .filter(|(name, _)| name == "includeAlternates")
+            .last()
+            .is_some_and(|(_, value)| is_true_option(&value));
+        if !wanted {
+            return;
+        }
+        let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+            return;
+        };
+        let Some(object) = document.as_object_mut() else {
+            return;
+        };
+        if object.len() != 1 {
+            return;
+        }
+        let Some(body) = object.get_mut("MediaContainer") else {
+            return;
+        };
+        if !body.is_object() {
+            return;
+        }
+        fn inline(runtime: &Runtime, row: &mut Value) {
+            let Some(object) = row.as_object_mut() else {
+                return;
+            };
+            if object.contains_key("_light") {
+                return;
+            }
+            let key = object.get("ratingKey").map(string_value).unwrap_or_default();
+            if key.is_empty() || !key.bytes().all(|byte| byte.is_ascii_digit()) {
+                return;
+            }
+            let Some(stored) = runtime.catalog.get(&key) else {
+                return;
+            };
+            let kind = stored.get("type").and_then(Value::as_str).unwrap_or_default();
+            for (name, private) in [("Thumb", "_poster_url"), ("Art", "_art_url")] {
+                if name == "Art" && matches!(kind, "season" | "episode") {
+                    continue;
+                }
+                if let Some(url) = stored
+                    .get(private)
+                    .and_then(Value::as_str)
+                    .filter(|url| !url.is_empty())
+                {
+                    object.insert(name.to_string(), json!([{"key": url, "source": "tmdb"}]));
+                }
+            }
+        }
+        fn walk(runtime: &Runtime, node: &mut Value) {
+            match node {
+                Value::Object(object) => {
+                    for (name, value) in object.iter_mut() {
+                        match (name.as_str(), &mut *value) {
+                            ("Metadata", Value::Array(rows)) => {
+                                for row in rows.iter_mut() {
+                                    walk(runtime, row);
+                                    inline(runtime, row);
+                                }
+                            }
+                            ("Metadata", Value::Object(_)) => {
+                                walk(runtime, value);
+                                inline(runtime, value);
+                            }
+                            ("Hub" | "Related" | "Extras" | "Children" | "OnDeck", _) => {
+                                walk(runtime, value);
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                Value::Array(items) => {
+                    for item in items.iter_mut() {
+                        walk(runtime, item);
+                    }
+                }
+                _ => {}
+            }
+        }
+        walk(self, body);
+        if let Ok(bytes) = serde_json::to_vec(&document) {
+            response.body = bytes;
+        }
     }
 
     fn localize_response(&self, request: &Request, response: &mut Response) {
