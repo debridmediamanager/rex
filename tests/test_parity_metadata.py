@@ -237,6 +237,19 @@ def run(server):
           and tags.get("size") == len(names)
           and all(tags.get(key) == value for key, value in LIBRARY.items()), names)
 
+    # -- the table keeps insertion order: a renamed, deleted collection lists its first name
+    server.call("POST", "/library/collections?type=1&title=parity%20ren0&smart=0&sectionId=1")
+    renamed = next((row.get("ratingKey") for row in server.rows("/library/sections/1/collections")
+                    if row.get("title") == "parity ren0"), None)
+    for step in range(1, 13):
+        server.call("PUT", "/library/sections/1/all?type=18&id=%s&title.value=parity%%20ren%d"
+                    % (renamed, step))
+    server.call("DELETE", "/library/collections/%s" % renamed)
+    left = [row.get("tag") for row in server.rows("/library/tags?type=2", "Directory")
+            if str(row.get("tag", "")).lower().startswith("parity ren")]
+    check("a renamed collection's tag row keeps the FIRST name the table took for it",
+          renamed and left == ["parity ren1"], (renamed, left))
+
     # -- top users count every view ever recorded ----------------------------------
     for _ in range(2):
         server.call("GET", "/:/scrobble?key=1008&identifier=com.plexapp.plugins.library")
