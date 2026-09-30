@@ -2980,10 +2980,10 @@ impl Runtime {
                 .collect::<Vec<_>>();
             return Response::json(
                 200,
-                self.container(
-                    Map::from_iter([("Directory".to_string(), Value::Array(rows))]),
-                    false,
-                ),
+                self.tag_container(Map::from_iter([
+                    ("size".to_string(), json!(rows.len())),
+                    ("Directory".to_string(), Value::Array(rows)),
+                ])),
             );
         }
         let (element, filter_name) = match type_number {
@@ -2995,55 +2995,61 @@ impl Runtime {
             7 => ("Producer", "producer"),
             8 => ("Country", "country"),
             319 => ("Network", "network"),
-            _ => {
-                return Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([("Directory".to_string(), Value::Array(Vec::new()))]),
-                        false,
-                    ),
-                )
-            }
+            _ => return Response::json(200, self.tag_container(Map::new())),
         };
+        // It is the TABLE, not what is currently on a row: a tag an edit minted is
+        // listed after every row stops carrying it. Rows first, then the table, each
+        // tag keyed by its id; a tag with no id or no name is not a table entry.
         let mut found = HashMap::<String, Value>::new();
-        for row in &self.catalog.items {
-            for tag in row
-                .get(element)
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-            {
-                let Some(name) = tag.get("tag").and_then(Value::as_str) else {
-                    continue;
-                };
-                let id = tag
-                    .get("id")
-                    .map(string_value)
-                    .filter(|value| !value.is_empty())
-                    .unwrap_or_else(|| tag_id(element, name).to_string());
-                found.entry(id).or_insert_with(|| tag.clone());
+        let mut seen = Vec::<String>::new();
+        let table = self
+            .tag_table
+            .iter()
+            .filter(|((field, _), _)| field == element)
+            .map(|(_, tag)| tag);
+        let on_rows = self
+            .catalog
+            .items
+            .iter()
+            .flat_map(|row| row.get(element).and_then(Value::as_array).into_iter().flatten());
+        for tag in on_rows.chain(table) {
+            let Some(id) = tag.get("id").filter(|value| !value.is_null()).map(string_value) else {
+                continue;
+            };
+            if !tag.get("tag").is_some_and(truthy) || found.contains_key(&id) {
+                continue;
             }
+            seen.push(id.clone());
+            found.insert(id, tag.clone());
         }
-        let mut ids = found.keys().cloned().collect::<Vec<_>>();
-        ids.sort_by(|left, right| {
-            left.parse::<i64>()
-                .unwrap_or(i64::MAX)
-                .cmp(&right.parse::<i64>().unwrap_or(i64::MAX))
-                .then_with(|| left.cmp(right))
+        // `sorted(key=int if digits else 0)`: stable, so non-numeric ids keep their
+        // first-seen place at the head.
+        let mut ids = seen;
+        ids.sort_by_key(|id| {
+            if !id.is_empty() && id.bytes().all(|byte| byte.is_ascii_digit()) {
+                id.parse::<i64>().unwrap_or(0)
+            } else {
+                0
+            }
         });
         let rows = ids
             .into_iter()
             .filter_map(|id| {
                 let tag = found.get(&id)?;
                 let name = tag.get("tag")?.as_str()?;
+                let filter = tag
+                    .get("filter")
+                    .filter(|value| truthy(value))
+                    .map(string_value)
+                    .unwrap_or_else(|| format!("{filter_name}={id}"));
                 let mut row = Map::from_iter([
-                    ("id".to_string(), json!(id.parse::<i64>().unwrap_or(0))),
-                    ("filter".to_string(), json!(format!("{filter_name}={id}"))),
+                    ("id".to_string(), tag.get("id").cloned().unwrap_or(Value::Null)),
+                    ("filter".to_string(), json!(filter)),
                     ("tag".to_string(), json!(name)),
                     ("tagType".to_string(), json!(type_number)),
                 ]);
                 for extra in ["tagKey", "thumb"] {
-                    if let Some(value) = tag.get(extra).filter(|value| !value.is_null()) {
+                    if let Some(value) = tag.get(extra).filter(|value| truthy(value)) {
                         row.insert(extra.to_string(), value.clone());
                     }
                 }
@@ -3052,10 +3058,10 @@ impl Runtime {
             .collect::<Vec<_>>();
         Response::json(
             200,
-            self.container(
-                Map::from_iter([("Directory".to_string(), Value::Array(rows))]),
-                false,
-            ),
+            self.tag_container(Map::from_iter([
+                ("size".to_string(), json!(rows.len())),
+                ("Directory".to_string(), Value::Array(rows)),
+            ])),
         )
     }
 
