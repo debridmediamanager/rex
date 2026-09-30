@@ -3277,16 +3277,16 @@ impl Runtime {
                 }));
             }
         }
-        Response::json(
-            200,
-            self.container(
-                Map::from_iter([
-                    ("allowSync".to_string(), json!(false)),
-                    ("Metadata".to_string(), Value::Array(rows.clone())),
-                ]),
-                false,
-            ),
-        )
+        let mut fields = Map::from_iter([
+            ("allowSync".to_string(), json!(false)),
+            ("Metadata".to_string(), Value::Array(rows.clone())),
+        ]);
+        if section_filter.is_none() {
+            // `/library/arts` is the oracle's `tag_container(allowSync=False)`.
+            fields.insert("size".to_string(), json!(rows.len()));
+            return Response::json(200, self.tag_container(fields));
+        }
+        Response::json(200, self.container(fields, false))
     }
 
     fn route_library_matches(&self, query: &HashMap<String, String>) -> Response {
@@ -16817,6 +16817,12 @@ impl Runtime {
                         ),
                     ),
                     (
+                        "identifier".to_string(),
+                        json!("com.plexapp.plugins.library"),
+                    ),
+                    ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
+                    ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
+                    (
                         "title1".to_string(),
                         section.get("title").cloned().unwrap_or(Value::Null),
                     ),
@@ -17185,10 +17191,8 @@ impl Runtime {
                         return Response::error(400, "plexsim: bad request");
                     }
                 }
-                Response::json(
-                    200,
-                    self.container(Map::from_iter([("size".to_string(), json!(0))]), true),
-                )
+                // `tag_container(size=0)`: no `allowSync`.
+                Response::json(200, self.tag_container(Map::new()))
             }
             "related" => {
                 // NOT /hubs/metadata/{id}/related: this one carries the SAME hub plus
@@ -17263,12 +17267,14 @@ impl Runtime {
                 if request.method == "POST" {
                     return Response::error(400, "plexsim: bad request");
                 }
+                // The oracle's `tag_container(allowSync=False)`: the identifier and
+                // media-tag pair ride along with an explicit `allowSync`.
                 Response::json(
                     200,
-                    self.container(
-                        Map::from_iter([("Metadata".to_string(), Value::Array(Vec::new()))]),
-                        false,
-                    ),
+                    self.tag_container(Map::from_iter([
+                        ("allowSync".to_string(), json!(false)),
+                        ("Metadata".to_string(), Value::Array(Vec::new())),
+                    ])),
                 )
             }
             "subtitles" => {
@@ -17966,13 +17972,9 @@ impl Runtime {
                 "MATCHES {} -- no TMDB key configured",
                 key_of(row).unwrap_or_default()
             );
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([("Metadata".to_string(), Value::Array(Vec::new()))]),
-                    false,
-                ),
-            );
+            // `tag_container(size=0)`: identifier and the media-tag pair, as the
+            // candidate answer carries them.
+            return Response::json(200, self.tag_container(Map::new()));
         };
         let title = query
             .get("title")
