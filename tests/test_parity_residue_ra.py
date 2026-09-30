@@ -174,8 +174,11 @@ def run(port):
     status_direct, _, _, values_direct, _ = raw(port, "GET", art)
     status, _, names, values, body = raw(
         port, "GET", "/photo/:/transcode?width=200&height=300&url=%s" % urllib.parse.quote(art, safe=""))
-    check("a non-image upload's direct read is a 200 octet-stream, and the transcoder 500s it",
-          status_direct == 200 and values_direct.get("content-type") == "application/octet-stream"
+    # Cycle 83, plexscratch42: an upload reads back `image/jpeg` whatever its bytes
+    # (`tests/fixtures/upload_non_image.json`), text and PNG alike, directly and through
+    # the transcoder -- the octet-stream and image/png this checked were plexsim's sniff.
+    check("a non-image upload's direct read is a 200 image/jpeg, and the transcoder 500s it",
+          status_direct == 200 and values_direct.get("content-type") == "image/jpeg"
           and status == 500 and len(body) == 109 and order(names) == ERROR_ORDER,
           (status_direct, values_direct.get("content-type"), status, names, body[:60]))
     for leaf in ("/service/ultrablur/colors", "/services/ultrablur/colors"):
@@ -190,7 +193,7 @@ def run(port):
     status, _, names, values, body = raw(
         port, "GET", "/photo/:/transcode?width=200&height=300&url=%s" % urllib.parse.quote(art, safe=""))
     check("... while an uploaded PNG transcodes to itself, cached three days",
-          status == 200 and body == png and values.get("content-type") == "image/png"
+          status == 200 and body == png and values.get("content-type") == "image/jpeg"
           and values.get("cache-control") == "max-age=259200", (status, values, body[:20]))
     status, _, names, _, body = raw(port, "GET", "/service/ultrablur/colors?url=%2Flibrary%2Fmetadata%2F1007%2Fthumb")
     check("... and ultrablur answers its container, type first",
