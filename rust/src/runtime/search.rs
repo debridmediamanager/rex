@@ -1376,7 +1376,16 @@ impl Runtime {
                         .map(string_value)
                         .unwrap_or_default();
                     let number = |name: &str| row.get(name).and_then(value_as_i64).unwrap_or(0);
-                    (title, number("parentIndex"), number("index"))
+                    // The oracle's rows carry the season's CURRENT index (an index edit
+                    // writes it down to the episodes); here it is read off the season.
+                    let parent_index = row
+                        .get("parentRatingKey")
+                        .map(string_value)
+                        .and_then(|key| self.catalog.get(&key))
+                        .and_then(|season| season.get("index"))
+                        .and_then(value_as_i64)
+                        .unwrap_or_else(|| number("parentIndex"));
+                    (title, parent_index, number("index"))
                 };
                 key(left).cmp(&key(right))
             });

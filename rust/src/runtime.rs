@@ -13218,7 +13218,10 @@ impl Runtime {
                     }
                     if leaf == "allLeaves" {
                         let type_number = if is_show { 4 } else { 1 };
-                        let mut rows = self.choose_rows(Some(section_key), Some(type_number));
+                        // `typed_rows`: a show library's episodes in BROADCAST order --
+                        // show title, season index, episode index -- which a season's
+                        // index edit moves.
+                        let mut rows = self.typed_section_rows(section_key, type_number);
                         if let Some(asked) = query.get("type") {
                             let Ok(number) = asked.parse::<i64>() else {
                                 return Response::error(500, "plexsim: bad request");
