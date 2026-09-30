@@ -617,6 +617,10 @@ class Load:
             done = sum(1 for _, entry in self.entries("scrobble") if entry[1] == item and ok(entry))
             flying = sum(1 for _, entry in self.entries("scrobble") if entry[1] == item and unknown(entry))
             scrobbles[item] = (done, done + flying)
+        # One owner writes these in order, so what was kept is the state after the last
+        # answered write or after any later write in flight: a server that keeps serving
+        # open connections after a SIGTERM can land several, and a write whose answer
+        # was lost to the shutdown may still have landed.
         toggles = {}
         for index, ledger in enumerate(self.ledgers):
             if index >= len(EPISODES):
@@ -625,27 +629,31 @@ class Load:
             for entry in ledger:
                 if not entry[0].startswith("toggle-"):
                     continue
-                if unknown(entry):
-                    after = count + 1 if entry[2] == "scrobble" else 0
-                    possible = {count, after}
-                    break
-                if ok(entry):
-                    count = count + 1 if entry[2] == "scrobble" else 0
+                if possible is None and not unknown(entry):
+                    if ok(entry):
+                        count = count + 1 if entry[2] == "scrobble" else 0
+                    continue
+                possible = possible or {count}
+                count = count + 1 if entry[2] == "scrobble" else 0
+                possible.add(count)
             toggles[EPISODES[index]] = possible or {count}
         owned = {}
         for op, item in (("owned-rate", OWNED_RATING), ("owned-edit", OWNED_SUMMARY)):
             last, possible = None, None
             for _, entry in self.entries(op):
-                if unknown(entry):
-                    possible = {last, entry[2]}
-                    break
-                if ok(entry):
-                    last = entry[2]
+                if possible is None and not unknown(entry):
+                    if ok(entry):
+                        last = entry[2]
+                    continue
+                possible = possible or {last}
+                possible.add(entry[2])
             owned[item] = possible or {last}
         shared = {}
         for op, item in (("rate", RATED), ("edit", EDITED)):
             shared[item] = {entry[2] for _, entry in self.entries(op)
                             if ok(entry) or unknown(entry)}
+        # A client's newer queue retires its older one, so a create in flight leaves the
+        # last answered queue's fate open.
         queues = {}
         for index, ledger in enumerate(self.ledgers):
             creates = [entry for entry in ledger if entry[0] == "pq-create"]
@@ -655,7 +663,7 @@ class Load:
                 "owned": owned, "shared": shared, "queues": queues}
 
 
-def verify_state(port, load, expected, baseline, label, strict_lists=True):
+def verify_state(port, load, expected, baseline, label, record=True):
     """Compare the server's state with what the ledgers say must be there."""
     problems = []
     listings = {"playlist": ("/playlists", "/playlists/%s/items", "leafCount"),
@@ -720,8 +728,11 @@ def verify_state(port, load, expected, baseline, label, strict_lists=True):
             unread.append((client, queue, status))
     if unread:
         problems.append("%d clients' last answered play queue unreadable %s" % (len(unread), unread[:4]))
-    check("%s: the state holds exactly what the answers said" % label, not problems,
-          "; ".join(problems))
+    if record:
+        check("%s: the state holds exactly what the answers said" % label, not problems,
+              "; ".join(problems))
+    elif problems:
+        note("%s: %s" % (label, "; ".join(problems)[:600]))
     return problems
 
 
@@ -932,6 +943,10 @@ def prop_state(catalog, seconds, threads, sig, label):
                   took is not None and took < 10, "took %s" % took)
         parses, detail = state_parses(state)
         check("%s: the state file parses" % label, parses, detail)
+        before = server.output()
+        unsaved = [line for line in before.splitlines() if "state not saved" in line]
+        if unsaved:
+            note("%s: the server logged %d unsaved states, e.g. %s" % (label, len(unsaved), unsaved[0][-200:]))
         server.start()
         port = server.port
         restored = "unreadable" not in server.output() and not os.path.exists(state + ".corrupt")
@@ -948,7 +963,8 @@ def prop_state(catalog, seconds, threads, sig, label):
                                 "%s: every answered write survives" % label)
         if problems:
             verify_state(port, load, load.expected(cutoff=killed_at - 2), baseline,
-                         "%s: (diagnostic) every write answered 2 s before survives" % label)
+                         "%s: of the writes answered 2 s before the signal, lost" % label,
+                         record=False)
         devices = {device.get("clientIdentifier") for device in
                    rows(call(port, "GET", "/devices")[1], "Device")}
         seen = {load.client_name(index) for index, ledger in enumerate(load.ledgers)
