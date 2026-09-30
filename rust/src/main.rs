@@ -50,7 +50,11 @@ fn parse_server_args(args: &[String]) -> Result<runtime::RuntimeOptions, String>
             "--state" => options.state = Some(PathBuf::from(value(&mut index, option)?)),
             "--announce-url" => options.announce_url = Some(value(&mut index, option)?),
             "--device-id" => options.device_id = Some(value(&mut index, option)?),
-            "--verbose" | "--no-gdm" | "--help" => {
+            "--verbose" => {
+                options.verbose = true;
+                index += 1;
+            }
+            "--no-gdm" | "--help" => {
                 index += 1;
             }
             "--heartbeat-interval" | "--account-state-interval" | "--plex-direct-host" => {

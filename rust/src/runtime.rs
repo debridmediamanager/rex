@@ -38,6 +38,7 @@ mod gates;
 mod i18n;
 mod item_hubs;
 mod listing;
+mod logging;
 mod merge;
 mod notify;
 mod playlists;
@@ -53,6 +54,7 @@ mod transcoder;
 mod upstream;
 mod wire;
 use artwork::owns_artwork;
+use logging::{debug, error, info, warning};
 use resume::{
     bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param,
     page_window,
@@ -213,6 +215,7 @@ pub struct RuntimeOptions {
     pub state: Option<PathBuf>,
     pub announce_url: Option<String>,
     pub device_id: Option<String>,
+    pub verbose: bool,
 }
 
 impl Default for RuntimeOptions {
@@ -234,6 +237,7 @@ impl Default for RuntimeOptions {
             state: std::env::var("PLEXSIM_STATE").ok().map(PathBuf::from),
             announce_url: None,
             device_id: None,
+            verbose: false,
         }
     }
 }
@@ -343,6 +347,15 @@ pub struct Runtime {
     /// A remote artwork url the router answered with (`_serve_image`); fetched, cached,
     /// after the lock is released, so a slow image host never holds up the API.
     pending_image: Option<String>,
+    /// `sim.requests`: `METHOD path` for every request the router answered, for the
+    /// `requests.log` in Download Logs.
+    requests: Vec<String>,
+    /// `sim.unknown`: the unrouted requests, for `unrouted.log`.
+    unknown: Vec<String>,
+    /// The request was refused for its token, so it is not a `requests.log` row.
+    refused_for_token: bool,
+    /// What restoring `--state` did, for `main()`'s `state file %s: %s` line.
+    pub state_summary: String,
     decision_profiles: decision::Profiles,
     pub part_mode: String,
     pub public_url: Option<String>,
@@ -512,6 +525,10 @@ impl Runtime {
             match_candidates: HashMap::new(),
             pending_part: None,
             pending_image: None,
+            requests: Vec::new(),
+            unknown: Vec::new(),
+            refused_for_token: false,
+            state_summary: "no saved state".to_string(),
             decision_profiles,
             part_mode: options.part_mode,
             public_url: options.public_url,
@@ -586,12 +603,16 @@ impl Runtime {
         };
         let state: Value = match serde_json::from_slice(&bytes) {
             Ok(value) => value,
-            Err(_) => {
+            Err(parse_error) => {
                 if bytes.starts_with(&[0x80]) {
                     eprintln!("state files hold no classes");
                 }
                 let corrupt = sidecar(&path, "corrupt");
-                let _ = fs::rename(&path, corrupt);
+                let _ = fs::rename(&path, &corrupt);
+                error!(
+                    "state file unreadable ({parse_error}); moved to {} and starting fresh",
+                    corrupt.display()
+                );
                 return Ok(());
             }
         };
@@ -606,7 +627,6 @@ impl Runtime {
         let mut rebuilt = false;
         if let Some(saved_digest) = state.get("catalogDigest").and_then(Value::as_str) {
             if saved_digest != self.source_digest {
-                eprintln!("state catalog digest changed; migrating view state");
                 let stale = sidecar(&path, "stale");
                 let _ = fs::rename(&path, stale);
                 rebuilt = true;
@@ -641,6 +661,7 @@ impl Runtime {
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default();
+        let mut carried = 0;
         if let Some(rows) = state
             .get("viewState")
             .and_then(Value::as_object)
@@ -648,6 +669,7 @@ impl Runtime {
         {
             for (key, patch) in rows {
                 if let Some(row) = self.catalog.get_mut(key) {
+                    carried += 1;
                     if let (Some(row), Some(patch)) = (row.as_object_mut(), patch.as_object()) {
                         for field in [
                             "viewCount",
@@ -917,6 +939,16 @@ impl Runtime {
         if let Some(bytes) = state.get("bandwidthBytes").and_then(Value::as_u64) {
             self.bandwidth_bytes = bytes;
         }
+        // `Store.restore`'s answer, which `main()` logs.
+        self.state_summary = if rebuilt {
+            warning!(
+                "catalog changed since the state was saved: carried view state for {carried} rows and the server settings; edits, lists, history and library changes stay in {}",
+                sidecar(&path, "stale").display()
+            );
+            format!("carried over {carried} rows")
+        } else {
+            "restored".to_string()
+        };
         Ok(())
     }
 
@@ -3317,6 +3349,14 @@ impl Runtime {
     fn save_if_dirty(&mut self) {
         if self.dirty && self.state_path.is_some() {
             let _ = self.save_state();
+        }
+    }
+
+    /// `push_log`: the lines logged since the last drain, as `LogSentNotification`s for
+    /// the channels opened with `filters=log`.
+    fn absorb_logs(&mut self) {
+        for row in logging::drain_rows() {
+            self.push_event("log", json!({"LogSentNotification": [row]}));
         }
     }
 
@@ -5775,7 +5815,15 @@ impl Runtime {
             }
         }
         if !self.authorized(&path, &request, &query) {
-            return self.unauthorized_route(&path, request);
+            let response = self.unauthorized_route(&path, request);
+            self.refused_for_token = true;
+            warning!(
+                "{} {} {} -- no valid token",
+                response.status,
+                request.method,
+                split_target(&request.target).0
+            );
+            return response;
         }
         if path == "/player" || path.starts_with("/player/") {
             // Player commands go to a PLAYER, not to a server: a real PMS answers 400
@@ -6032,14 +6080,17 @@ impl Runtime {
                 if !valid_level || !query.contains_key("message") {
                     Response::error(400, "plexsim: bad request")
                 } else {
-                    self.push_event(
-                        "log",
-                        json!({"LogSentNotification": {
-                            "level": query.get("level").cloned().unwrap_or_default(),
-                            "thread": "plexsim",
-                            "time": now(),
-                            "message": query.get("message").cloned().unwrap_or_default(),
-                        }}),
+                    // The web client posts its OWN errors here; they land in the log,
+                    // where Download Logs and a `filters=log` channel hand them back.
+                    let message = query.get("message").cloned().unwrap_or_default();
+                    info!(
+                        "CLIENT LOG [{}] {}: {}",
+                        query.get("level").cloned().unwrap_or_default(),
+                        query
+                            .get("source")
+                            .filter(|source| !source.is_empty())
+                            .map_or("client", String::as_str),
+                        message.chars().take(400).collect::<String>()
                     );
                     Response::empty(200)
                 }
@@ -6048,7 +6099,7 @@ impl Runtime {
             ("GET" | "HEAD", "/log/networked") => Response::empty(200),
             ("GET" | "HEAD", "/diagnostics/logs") => {
                 let mut response = Response::bytes(200, "application/zip");
-                response.body = b"PK\x03\x04plexsim\n".to_vec();
+                response.body = self.log_archive();
                 response
             }
             ("GET" | "HEAD", "/diagnostics") => Response::json(200, plugin_container(Vec::new())),
@@ -15405,6 +15456,14 @@ impl Runtime {
             };
         }
         let _ = pairs;
+        // The oracle's unrouted tail: logged loudly and kept for `unrouted.log`, then
+        // answered with the measured 404.
+        let method = request.method.clone();
+        self.unknown.push(format!("{method} {path}"));
+        if self.unknown.len() > 2000 {
+            self.unknown.drain(..1000);
+        }
+        warning!("UNKNOWN {method} {path}");
         Response::error(404, "plexsim: not found")
     }
 
@@ -20298,6 +20357,17 @@ pub struct Request {
     body_complete: bool,
 }
 
+thread_local! {
+    /// The sentence of the last refusal built on this connection thread, which
+    /// `handle_connection` logs the way `_send_error` does.
+    static ERROR_NOTE: std::cell::RefCell<Option<(u16, String)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+fn take_error_note() -> Option<(u16, String)> {
+    ERROR_NOTE.with(|note| note.borrow_mut().take())
+}
+
 #[derive(Debug, Clone)]
 pub struct Response {
     pub status: u16,
@@ -20376,7 +20446,7 @@ impl Response {
         // Cycle 36, measured on kids and zen: every refusal on the surface answers the
         // reference's own `text/html` document (85 bytes for a 404, 89 for a 400), never
         // a plexsim sentence. The sentence is kept for the log only.
-        let _ = message;
+        ERROR_NOTE.with(|note| *note.borrow_mut() = Some((status, message.to_string())));
         Self {
             status,
             content_type: "text/html".to_string(),
@@ -20681,6 +20751,7 @@ fn start_state_saver(runtime: SharedRuntime) {
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             if terminate {
+                info!("stopping");
                 guard.save_if_dirty();
                 std::process::exit(0);
             }
@@ -20701,9 +20772,16 @@ fn start_state_saver(runtime: SharedRuntime) {
 }
 
 pub fn serve(options: RuntimeOptions) -> Result<(), String> {
+    logging::set_verbose(options.verbose);
     let host = options.host.clone();
     let port = options.port;
     let gdm_mode = options.gdm.clone();
+    let announce = options.announce_url.is_some();
+    let gated = options.token.is_some();
+    let tls_cert = options.tls_cert.clone();
+    if std::env::var("TMDB_KEY").map_or(true, |key| key.is_empty()) {
+        info!("no TMDB_KEY: Fix Match will report no candidates");
+    }
     let tls_config = match options.tls_cert.as_deref() {
         Some(cert_path) => Some(Arc::new(load_tls_config(
             cert_path,
@@ -20711,11 +20789,53 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         )?)),
         None => None,
     };
-    let runtime = Arc::new(Mutex::new(Runtime::load(options)?));
-    start_state_saver(Arc::clone(&runtime));
-    start_gdm(Arc::clone(&runtime), &gdm_mode, port);
+    let loaded = Runtime::load(options)?;
+    if let Some(path) = &loaded.state_path {
+        info!("state file {}: {}", path.display(), loaded.state_summary);
+    }
+    let runtime = Arc::new(Mutex::new(loaded));
+    // `logger.addHandler(_Capture())`: Download Logs and the Console see what follows.
+    logging::start_capture();
+    if let Some(cert) = &tls_cert {
+        info!("TLS multiplexed on tcp/{port} from {}", cert.display());
+    }
     let listener = TcpListener::bind((host.as_str(), port))
         .map_err(|e| format!("cannot bind {host}:{port}: {e}"))?;
+    let (machine, items, part_mode) = {
+        let guard = runtime
+            .lock()
+            .map_err(|_| "runtime lock poisoned".to_string())?;
+        (
+            guard.machine.clone(),
+            guard.catalog.items.len(),
+            guard.part_mode.clone(),
+        )
+    };
+    // No plex.tv claim is performed by this runtime yet.
+    info!("claim state: unclaimed");
+    // Said out loud either way: without a token every peer that can reach the port
+    // reads the library, preferences, sessions and media bytes alike.
+    info!(
+        "token gate: {}",
+        if gated {
+            "ENFORCED"
+        } else {
+            "OFF -- every peer that can reach this port can read the library"
+        }
+    );
+    info!(
+        "plexsim on http://{}:{port}  machine={machine}  items={items}  parts={part_mode}",
+        hostname()
+    );
+    if announce && part_mode == "proxy" {
+        // Measured behind a Cloudflare tunnel: a prefix Range reaches the origin as a
+        // full fetch, so every play start drains the whole title from the provider.
+        warning!(
+            "part-mode=proxy behind a public URL: a CDN may strip Range and turn every play start into a FULL-FILE fetch from the provider. Use --part-mode redirect unless you have verified Range passthrough."
+        );
+    }
+    start_gdm(Arc::clone(&runtime), &gdm_mode, port);
+    start_state_saver(Arc::clone(&runtime));
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -20729,7 +20849,9 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                     .peer_addr()
                     .map(|address| address.to_string())
                     .unwrap_or_else(|_| "???".to_string());
+                let thread_name = logging::request_thread_name();
                 thread::spawn(move || {
+                    logging::name_thread(thread_name);
                     let _live = LiveConnectionGuard::register(peer);
                     if let Some(config) = tls_config {
                         // A TLS ClientHello is identified by the content-type
@@ -21008,6 +21130,27 @@ fn handle_connection<S: Read + Write>(
                 }
                 guard.mark_device(&request.headers);
                 guard.register_request_device(&request);
+                // Logged before the channel's cursor is taken: the opening socket is
+                // not yet a log sink when the oracle logs it.
+                let filters = query
+                    .get("filters")
+                    .map(|value| {
+                        value
+                            .split(',')
+                            .filter(|filter| !filter.is_empty())
+                            .map(|filter| format!("'{filter}'"))
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                info!(
+                    "websocket event channel opened filters={}",
+                    if filters.is_empty() {
+                        "all".to_string()
+                    } else {
+                        format!("[{}]", filters.join(", "))
+                    }
+                );
+                guard.absorb_logs();
                 guard.event_cursor()
             };
             return handle_websocket(&mut stream, &runtime, &request, event_start);
@@ -21024,6 +21167,7 @@ fn handle_connection<S: Read + Write>(
                 }
                 guard.mark_device(&request.headers);
                 guard.register_request_device(&request);
+                guard.absorb_logs();
                 guard.event_cursor()
             };
             return handle_eventsource(&mut stream, &runtime, &request, event_start);
@@ -21060,9 +21204,21 @@ fn handle_connection<S: Read + Write>(
                 .map_err(|_| "runtime lock poisoned".to_string())?;
             guard.pending_part = None;
             guard.pending_image = None;
+            guard.refused_for_token = false;
             let response = guard.route(&request);
             part_plan = guard.pending_part.take();
             let image = guard.pending_image.take();
+            if guard.refused_for_token {
+                take_error_note();
+            } else {
+                // `sim.requests.append((method, self.path))`.
+                let row = format!("{} {}", request.method, request.target);
+                guard.requests.push(row);
+                if guard.requests.len() > 4000 {
+                    guard.requests.drain(..2000);
+                }
+            }
+            guard.absorb_logs();
             drop(guard);
             match image {
                 Some(url) if response.status == 200 && response.body.is_empty() => {
@@ -21071,6 +21227,17 @@ fn handle_connection<S: Read + Write>(
                 _ => response,
             }
         };
+        // `_send_error`: a refusal logs its sentence, which the wire never carries.
+        if let Some((status, sentence)) = take_error_note() {
+            if status == response.status {
+                info!("{status} {} {request_path} -- {sentence}", request.method);
+            }
+        }
+        // `log_request`: under --verbose, every answered request line at DEBUG.
+        debug!(
+            "\"{} {} {}\" {} -",
+            request.method, request.target, request.version, response.status
+        );
         // Cycle 30/49: a refusal of the request's ENVELOPE closes the socket -- the
         // malformed query pair among them -- while a refusal of its MEANING keeps it.
         if invalid_absolute_target
@@ -21248,9 +21415,10 @@ fn handle_websocket<S: Write>(
     let mut last_write = std::time::Instant::now();
     while started.elapsed() < std::time::Duration::from_secs(120) {
         let (events, next) = {
-            let guard = runtime
+            let mut guard = runtime
                 .lock()
                 .map_err(|_| "runtime lock poisoned".to_string())?;
+            guard.absorb_logs();
             (guard.events_since(cursor), guard.event_cursor())
         };
         cursor = next;
@@ -21346,9 +21514,10 @@ fn handle_eventsource<S: Write>(
         .find(|(key, _)| key == "filters")
         .map(|(_, value)| value);
     let (events, language, catalog_path) = {
-        let guard = runtime
+        let mut guard = runtime
             .lock()
             .map_err(|_| "runtime lock poisoned".to_string())?;
+        guard.absorb_logs();
         (
             guard.events_since(event_start),
             i18n::socket_language(&guard.catalog_path, request),
@@ -22170,6 +22339,21 @@ fn percent_encode(value: &str) -> String {
         })
         .collect()
 }
+/// `socket.gethostname()`.
+fn hostname() -> String {
+    let mut buffer = [0_u8; 256];
+    // SAFETY: gethostname writes at most `len` bytes into the buffer it is given.
+    let result = unsafe { libc::gethostname(buffer.as_mut_ptr().cast(), buffer.len()) };
+    if result != 0 {
+        return String::new();
+    }
+    let end = buffer
+        .iter()
+        .position(|byte| *byte == 0)
+        .unwrap_or(buffer.len());
+    String::from_utf8_lossy(&buffer[..end]).into_owned()
+}
+
 fn now() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
