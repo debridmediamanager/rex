@@ -435,10 +435,8 @@ fn activity_text(text: &str, language: &str, table: &Value) -> String {
 /// (cycle 65): `X-Plex-Language` in the query, else the handshake's
 /// `Accept-Language` -- all Plex Web sends.
 pub(super) fn socket_language(catalog: &std::path::Path, request: &Request) -> Option<String> {
-    let strings = load_json_sidecar(catalog, "translations.json")?
-        .get("strings")
-        .cloned()?;
-    let languages = Languages::from_strings(&strings);
+    let table = translation_table(catalog)?;
+    let languages = &table.languages;
     let (_, raw_query) = split_target(&request.target);
     let pairs = parse_query(&raw_query);
     request_language(&pairs, &request.headers, true, &languages)

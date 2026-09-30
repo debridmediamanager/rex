@@ -5986,12 +5986,10 @@ impl Runtime {
         if path == "/:/prefs" && matches!(explicit.as_str(), "pt-pt" | "pt-br" | "hu-hu") {
             return;
         }
-        let Some(strings) = load_json_sidecar(&self.catalog_path, "translations.json")
-            .and_then(|value| value.get("strings").cloned())
-        else {
+        let Some(table) = translation_table(&self.catalog_path) else {
             return;
         };
-        let languages = i18n::Languages::from_strings_pub(&strings);
+        let (strings, languages) = (&table.strings, &table.languages);
         // Cycle 16/45: X-Plex-Language > X-Plex-Accept-Language > Accept-Language.
         let Some(language) = i18n::request_language(&pairs, &request.headers, false, &languages)
         else {
@@ -6012,9 +6010,9 @@ impl Runtime {
             return;
         }
         let templates = load_json_sidecar(&self.catalog_path, "title_templates.json");
-        let enum_hook = |text: &str| self.localized_language_enum(text, &language, &strings);
+        let enum_hook = |text: &str| self.localized_language_enum(text, &language, strings);
         let localiser = i18n::Localiser {
-            strings: &strings,
+            strings,
             templates: templates.as_ref().and_then(|doc| doc.get("templates")),
             enum_leads: templates.as_ref().and_then(|doc| doc.get("enum_leads")),
             language: &language,
@@ -23531,11 +23529,67 @@ fn sidecar_roots(catalog: &Path) -> Vec<PathBuf> {
 }
 
 fn load_json_sidecar(catalog: &Path, name: &str) -> Option<Value> {
-    sidecar_roots(catalog)
+    shared_json_sidecar(catalog, name).map(|document| (*document).clone())
+}
+
+/// The sidecars are measurements shipped with the checkout, read once -- as the oracle
+/// reads them at import. Re-reading and re-parsing them on each request put the
+/// 1.4 MB `translations.json` behind every JSON answer, under the runtime lock: 8 ms
+/// of every request, /identity included, so 32 clients held the whole server to about
+/// 120 requests a second and a lone `/identity` waited up to 0.8 s behind them
+/// (`tests/test_concurrency.py`).
+fn shared_json_sidecar(catalog: &Path, name: &str) -> Option<Arc<Value>> {
+    static DOCUMENTS: Mutex<Option<HashMap<(PathBuf, String), Option<Arc<Value>>>>> =
+        Mutex::new(None);
+    let key = (catalog.to_path_buf(), name.to_string());
+    if let Some(found) = DOCUMENTS
+        .lock()
+        .ok()
+        .and_then(|cache| cache.as_ref().and_then(|cache| cache.get(&key).cloned()))
+    {
+        return found;
+    }
+    let document = sidecar_roots(catalog)
         .into_iter()
         .map(|root| root.join(name))
         .find_map(|path| fs::read(path).ok())
         .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .map(Arc::new);
+    if let Ok(mut cache) = DOCUMENTS.lock() {
+        cache.get_or_insert_with(HashMap::new).insert(key, document.clone());
+    }
+    document
+}
+
+/// `translations.json`'s `strings` and the language sets derived from them, built
+/// once per catalog path rather than walked on every localised answer.
+struct TranslationTable {
+    strings: Value,
+    languages: i18n::Languages,
+}
+
+fn translation_table(catalog: &Path) -> Option<Arc<TranslationTable>> {
+    static TABLES: Mutex<Option<HashMap<PathBuf, Option<Arc<TranslationTable>>>>> =
+        Mutex::new(None);
+    if let Some(found) = TABLES
+        .lock()
+        .ok()
+        .and_then(|cache| cache.as_ref().and_then(|cache| cache.get(catalog).cloned()))
+    {
+        return found;
+    }
+    let table = shared_json_sidecar(catalog, "translations.json")
+        .and_then(|document| document.get("strings").cloned())
+        .map(|strings| {
+            let languages = i18n::Languages::from_strings_pub(&strings);
+            Arc::new(TranslationTable { strings, languages })
+        });
+    if let Ok(mut cache) = TABLES.lock() {
+        cache
+            .get_or_insert_with(HashMap::new)
+            .insert(catalog.to_path_buf(), table.clone());
+    }
+    table
 }
 
 fn static_sidecar_response(catalog: &Path, name: &str, content_type: &str, head: bool) -> Response {
