@@ -19838,11 +19838,15 @@ impl Runtime {
                 .keys()
                 .any(|name| name.starts_with(&format!("{relative}/")))
         {
+            // A directory is the oracle's `asset` result like any file: rangeable.
             return Response {
                 status: 200,
                 content_type: "application/octet-stream".to_string(),
                 body: Vec::new(),
-                headers: Vec::new(),
+                headers: vec![
+                    ("Cache-Control".to_string(), "no-cache".to_string()),
+                    ("Accept-Ranges".to_string(), "bytes".to_string()),
+                ],
                 close: false,
             };
         }
