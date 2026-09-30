@@ -20263,6 +20263,7 @@ pub struct Response {
 
 impl Response {
     fn json(status: u16, value: Value) -> Self {
+        note_paired_hubs(&value);
         let body =
             upper_json_escapes(serde_json::to_vec(&drop_empty_value(&value)).unwrap_or_default());
         Self {
@@ -23902,13 +23903,17 @@ fn http_date_at(seconds: i64) -> String {
 }
 
 pub fn xml_or_json(response: Response, accept: Option<&str>) -> Response {
+    let paired = PAIRED_HUBS.with(|noted| std::mem::take(&mut *noted.borrow_mut()));
     let want_xml = accept_wants_xml(accept.unwrap_or(""));
     if response.status != 200 || !want_xml || response.content_type != "application/json" {
         return response;
     }
-    let Ok(value) = serde_json::from_slice::<Value>(&response.body) else {
+    let Ok(mut value) = serde_json::from_slice::<Value>(&response.body) else {
         return response;
     };
+    if !paired.is_empty() {
+        restore_paired_hubs(&mut value, &paired);
+    }
     let body = xmlout::to_xml(&value, None);
     Response {
         status: response.status,
