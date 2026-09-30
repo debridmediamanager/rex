@@ -1,10 +1,12 @@
 """Select the server executable used by black-box test processes.
 
-The default is the historical Python invocation.  ``PLEXSIM_SERVER`` is an
-executable command, rather than only a path, so a Rust binary can be selected
-with fixed arguments while retaining the test's own server arguments.  Shell
-quoting is interpreted once with :func:`shlex.split`; no shell is introduced
-for the child process.
+The default is the native Rust server, `rust/target/release/plexsim` (build it with
+`cargo build --release --manifest-path rust/Cargo.toml`). `PLEXSIM_SERVER=python`
+selects the Python server, which stays in the tree as the measured oracle the
+native port is compared against. Any other value is an executable command rather
+than only a path, so a binary can be selected with fixed arguments while retaining
+the test's own server arguments. Shell quoting is interpreted once with
+:func:`shlex.split`; no shell is introduced for the child process.
 """
 
 import os
@@ -15,10 +17,10 @@ import sys
 def server_command(*args, root=None):
     """Return a subprocess argv for a test-owned plexsim server.
 
-    With no environment override this is the same ``python server.py``
-    command used by the suites before native-server selection was added.  An
-    override may contain a quoted executable path and additional fixed
-    arguments, for example ``'/tmp/rust build/plexsim' --serve``.
+    With no environment override this is the native release binary under
+    ``root``; ``PLEXSIM_SERVER=python`` is the Python oracle. Any other override
+    may contain a quoted executable path and additional fixed arguments, for
+    example ``'/tmp/rust build/plexsim' --serve``.
     """
 
     if root is None:
@@ -26,6 +28,14 @@ def server_command(*args, root=None):
 
     configured = os.environ.get("PLEXSIM_SERVER")
     if configured is None:
+        native = os.path.join(root, "rust", "target", "release", "plexsim")
+        if not os.path.exists(native):
+            raise FileNotFoundError(
+                "%s is not built: run `cargo build --release --manifest-path "
+                "rust/Cargo.toml`, or set PLEXSIM_SERVER=python for the Python oracle"
+                % native)
+        command = [native]
+    elif configured.strip() == "python":
         command = [sys.executable, os.path.join(root, "server.py")]
     else:
         try:

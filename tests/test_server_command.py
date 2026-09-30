@@ -14,8 +14,23 @@ from server_command import server_command
 def main():
     old = os.environ.pop("PLEXSIM_SERVER", None)
     try:
-        default = server_command("--port", 32500, root="/repo with spaces")
-        assert default == [sys.executable, "/repo with spaces/server.py", "--port", "32500"]
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="repo with spaces ") as repo:
+            try:
+                server_command("--port", 32500, root=repo)
+            except FileNotFoundError as error:
+                assert "cargo build" in str(error) and "PLEXSIM_SERVER=python" in str(error)
+            else:
+                raise AssertionError("an unbuilt native default must fail clearly")
+            native = os.path.join(repo, "rust", "target", "release", "plexsim")
+            os.makedirs(os.path.dirname(native))
+            open(native, "w").close()
+            default = server_command("--port", 32500, root=repo)
+            assert default == [native, "--port", "32500"]
+
+        os.environ["PLEXSIM_SERVER"] = "python"
+        oracle = server_command("--port", 32500, root="/repo with spaces")
+        assert oracle == [sys.executable, "/repo with spaces/server.py", "--port", "32500"]
 
         os.environ["PLEXSIM_SERVER"] = '"/tmp/native build/plexsim" --profile "test mode"'
         selected = server_command("--port", 32501, "--catalog", "/tmp/catalog.json",
@@ -44,7 +59,7 @@ def main():
         else:
             os.environ["PLEXSIM_SERVER"] = old
 
-    print("PASS default Python command and quoted executable override")
+    print("PASS native default, python oracle and quoted executable override")
     return 0
 
 
