@@ -18840,9 +18840,10 @@ class PlexSim:
                 number, subtype = level
                 rows = self._collection_uri_rows(query.get("uri", ""), section,
                                                  number, subtype)
-                collection = self.library.create_collection(
-                    query.get("title") or "", section, rows, subtype=subtype,
-                    smart=query.get("smart") == "1", uri=query.get("uri"))
+                with self.lock:
+                    collection = self.library.create_collection(
+                        query.get("title") or "", section, rows, subtype=subtype,
+                        smart=query.get("smart") == "1", uri=query.get("uri"))
                 logger.info("COLLECTION create %s smart=%s (%d item(s))",
                             collection["title"], collection["smart"], len(rows))
                 # Measured: a create pushes one frame -- type 18, state 0 "created",
@@ -19034,10 +19035,11 @@ class PlexSim:
             # collection row, and it is idempotent.
             row = self.catalog.items.get(int(segments[4])) \
                 if segments[4].isdigit() else None
-            if row is not None:
-                self.library.remove_collection_item(collection, row)
-            return self.bare_container(
-                size=1, Metadata=[self.library._collection_row(collection)])
+            with self.lock:
+                if row is not None:
+                    self.library.remove_collection_item(collection, row)
+                answer = self.library._collection_row(collection)
+            return self.bare_container(size=1, Metadata=[answer])
         if leaf in ("items", "children") and len(segments) == 6 \
                 and segments[5] == "move":
             # Cycle 17, measured on plexscratch case by case with the order restored
@@ -19084,13 +19086,14 @@ class PlexSim:
             usable = [r for r in rows if r.get("type") == collection.get("subtype")]
             if not rows or (len(rows) == 1 and not usable):
                 return ("error", 400, "plexsim: bad request")
-            self.library.add_collection_items(collection, usable)
+            with self.lock:
+                self.library.add_collection_items(collection, usable)
+                answer = self.library._collection_row(collection)
             # Measured: a collection add answers the collection ROW -- with its new
             # childCount and year span -- and not the leafCountAdded/Requested pair a
             # PLAYLIST add answers. plexsim sent the playlist shape here, so the
             # collection page had nothing to update itself from.
-            return self.bare_container(
-                size=1, Metadata=[self.library._collection_row(collection)])
+            return self.bare_container(size=1, Metadata=[answer])
         if leaf == "composite":
             art = self.composite_for("collection", segments[2])
             if art:
@@ -19245,9 +19248,11 @@ class PlexSim:
                 # `icon: "playlist://image.smart"`, `leafCount: 3` and
                 # `content: library://x/directory/%2Flibrary%2Fmetadata%2F1%2C2`. So on
                 # 1.42.2 a key list is a legal stored query, and plexsim refused it.
-                playlist = self.library.create_playlist(
-                    query.get("title") or "", query.get("type") or "video", rows,
-                    smart=query.get("smart") == "1", uri=query.get("uri"))
+                with self.lock:
+                    playlist = self.library.create_playlist(
+                        query.get("title") or "", query.get("type") or "video", rows,
+                        smart=query.get("smart") == "1", uri=query.get("uri"))
+                    answer = self.library._playlist_row(playlist, state=False)
                 logger.info("PLAYLIST create %s smart=%s (%d item(s))",
                             playlist["title"], playlist["smart"], len(rows))
                 self.notify_created({"ratingKey": playlist["ratingKey"],
@@ -19259,8 +19264,7 @@ class PlexSim:
                 # list does; only /playlists/{id} carries it. Cycle 21: it omits the
                 # per-user-state block too, although the playlist is already born
                 # `viewCount: 1` -- `/playlists` shows the 1 that this response does not.
-                return self.bare_container(
-                    size=1, Metadata=[self.library._playlist_row(playlist, state=False)])
+                return self.bare_container(size=1, Metadata=[answer])
             rows = self.library.playlists(query.get("playlistType"))
             # Cycle 16, measured on plexscratch: this listing FILTERS. plexsim honoured
             # only `smart=0`, so a library's Recent Playlists shelf -- keyed by
@@ -19398,11 +19402,13 @@ class PlexSim:
                 # "no such item" where a real PMS says a smart list has no items to move.
                 return ("error", 400, "plexsim: bad request")
             if len(segments) == 5 and segments[4] == "move" and method == "PUT":
-                if not self.library.move_playlist_item(playlist, segments[3],
-                                                       query.get("after")):
+                with self.lock:
+                    moved = self.library.move_playlist_item(playlist, segments[3],
+                                                            query.get("after"))
+                    answer = self.library._playlist_row(playlist)
+                if not moved:
                     return ("error", 404, "plexsim: no such playlist item")
-                return self.bare_container(
-                    size=1, Metadata=[self.library._playlist_row(playlist)])
+                return self.bare_container(size=1, Metadata=[answer])
             if playlist.get("smart") and len(segments) == 3 and method == "PUT":
                 # Measured on a writable copy of the reference: this is the Edit-smart-
                 # playlist Save. A LISTING uri REPLACES the stored query and answers the
@@ -19423,18 +19429,21 @@ class PlexSim:
                     return ("error", 404, "plexsim: no such playlist item")
                 return ("error", 400, "plexsim: bad request")
             if len(segments) == 4 and method == "DELETE":
-                if not self.library.remove_playlist_item(playlist, segments[3]):
+                with self.lock:
+                    removed = self.library.remove_playlist_item(playlist, segments[3])
+                    answer = self.library._playlist_row(playlist)
+                if not removed:
                     # Measured: an item id the playlist does not hold is a 404 -- and a
                     # ratingKey is not an item id -- where plexsim answered 200.
                     return ("error", 404, "plexsim: no such playlist item")
-                return self.bare_container(
-                    size=1, Metadata=[self.library._playlist_row(playlist)])
+                return self.bare_container(size=1, Metadata=[answer])
             if len(segments) == 3 and method == "DELETE":
                 # Measured: DELETE on the items CLEARS the playlist. plexsim answered the
                 # item listing and removed nothing.
-                self.library.clear_playlist(playlist)
-                return self.bare_container(
-                    size=1, Metadata=[self.library._playlist_row(playlist)])
+                with self.lock:
+                    self.library.clear_playlist(playlist)
+                    answer = self.library._playlist_row(playlist)
+                return self.bare_container(size=1, Metadata=[answer])
             if method == "PUT":
                 rows = self._items_for_uri(query.get("uri", ""))
                 if not rows and str(query.get("playQueueID") or "").isdigit():
@@ -19442,11 +19451,17 @@ class PlexSim:
                     rows = [self.catalog.items[e["ratingKey"]]
                             for e in queue.get("items") or []
                             if e["ratingKey"] in self.catalog.items]
-                added = self.library.add_playlist_items(playlist, rows)
+                # Cycle 83: a list-member write and the row it answers are one critical
+                # section, as cycle 32 made every play-queue mutation. Two adds released
+                # by one barrier each answered the list as the LATER one left it
+                # (`leafCount` 3 and 3) and could mint one `playlistItemID` twice.
+                with self.lock:
+                    added = self.library.add_playlist_items(playlist, rows)
+                    answer = self.library._playlist_row(playlist)
                 logger.info("PLAYLIST %s += %d item(s)", playlist["ratingKey"], added)
                 return self.bare_container(
                     size=1, leafCountAdded=added, leafCountRequested=len(rows),
-                    Metadata=[self.library._playlist_row(playlist)])
+                    Metadata=[answer])
             # Cycle 16, measured on plexscratch: this is a real typed QUERY. A
             # `type=` selects the members of that type -- and above the leaf it
             # selects the PARENTS the members belong to, so a list of episodes

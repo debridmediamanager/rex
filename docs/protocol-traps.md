@@ -3151,3 +3151,9 @@ are changing; replay the client's exact request before altering behavior.
   SIGTERM or a SIGKILL every client's last play queue answered 404, the next queue took id 2 again,
   and `playlistItemID` restarted at 1 beside restored items already holding 1 and 2 (found by
   `tests/test_concurrency.py` under load, 2026-09-30). The oracle pickles all three.
+- **A list-member write builds its answer inside the lock too.** Cycle 32's rule, measured on play
+  queues, held nowhere else in the oracle: two playlist adds released by one barrier answered
+  `leafCount` 3 and 3 (9 to 15 of 30 pairs in five runs, 2026-09-30), because the add and the answer's row ran
+  outside `sim.lock` -- as did the create's id and the server-wide `playlistItemID` step. Playlist
+  create/add/remove/move/clear and collection create/add/remove now hold it. Not re-measured on a
+  reference for lists (this task allowed no reference writes): fire barrier pairs at plexscratch.
