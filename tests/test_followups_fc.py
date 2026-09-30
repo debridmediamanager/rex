@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""One HANDOVER §2a follow-up, each against its measurement:
+"""Two HANDOVER §2a follow-ups, each against its measurement:
 
 - a collection built from a SECTION uri holds the section's rows at the collection's own
   level (`type=2` the shows, `3` the seasons, `4` the episodes), never the episodes a play
   queue would expand them into; its `type` is an integer that names the members' type
   whatever the uri holds (`tests/fixtures/collection_section_uri.json`, plexscratch42);
+- `X-Plex-Container-Start` / `-Size` request HEADERS win over the query parameters of the
+  same name, per parameter, on every paged route family
+  (`tests/fixtures/paging_header_precedence.json`, kids, zen and plexscratch42);
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
 
@@ -239,6 +242,60 @@ def collections(port, fixture, show, episode, movie, show_title, movie_title):
         delete(row)
 
 
+# -- 2. paging headers win over the query -------------------------------------------
+
+def paging(port, fixture, show, movie, collection, playlist):
+    # The fixture's own rule, cell by cell: the header wins per parameter.
+    for cell in fixture["cells"]:
+        query, headers = cell["query"], cell["headers"]
+        if "abc" in headers.values():
+            ok = cell["status"] == 500
+        else:
+            start = int(headers.get(START, query.get(START)))
+            ok = (cell["status"] == 200 and cell["offset"] == start
+                  and cell["h_start"] == str(start))
+        if not ok:
+            check("fixture: %s %s q%s h%s" % (cell["ref"], cell["path"], query, headers),
+                  False, cell)
+    families = sorted({cell["path"] for cell in fixture["cells"]})
+    check("fixture: the measured families cover listings, children, hubs and lists",
+          {"/library/sections/1/all", "/library/metadata/6/children", "/hubs",
+           "/playlists", "/library/sections/1/collections"} <= set(families), families)
+    here = ["/library/sections/1/all", "/library/sections/2/all?type=4",
+            "/library/metadata/%s/children" % show, "/library/metadata/%s/allLeaves" % show,
+            "/hubs", "/hubs/sections/1", "/library/recentlyAdded", "/library/onDeck",
+            "/library/sections", "/hubs/search?query=tears", "/status/sessions/history/all",
+            "/:/prefs", "/library/metadata/%s" % movie, "/identity", "/playlists",
+            "/library/sections/1/collections", "/library/collections/%s/children" % collection,
+            "/playlists/%s/items" % playlist, "/library/all?type=18"]
+    forms = [({START: "0", SIZE: "2"}, {START: "1", SIZE: "1"}),
+             ({}, {START: "1", SIZE: "1"}),
+             ({START: "0", SIZE: "2"}, {SIZE: "1"}),
+             ({START: "0", SIZE: "2"}, {START: "1"}),
+             ({START: "1", SIZE: "1"}, {START: "0", SIZE: "3"}),
+             ({START: "0", SIZE: "2"}, {START: "abc"})]
+    for path in here:
+        for query, headers in forms:
+            sep = "&" if "?" in path else "?"
+            target = path + sep + urllib.parse.urlencode(query) if query else path
+            status, body, head = request(port, "GET", target, headers)
+            label = "paging %s q%s h%s" % (path, query, headers)
+            if "abc" in headers.values():
+                check(label + " is a 500", status == 500, "HTTP %s" % status)
+                continue
+            start = int(headers.get(START, query.get(START)))
+            size = int(headers.get(SIZE, query.get(SIZE)))
+            box = (body or {}).get("MediaContainer", {}) if isinstance(body, dict) else {}
+            total = box.get("totalSize")
+            # A show's "All episodes" Directory rides OUTSIDE the page (protocol-traps).
+            rows = len(box["Metadata"]) if "Metadata" in box else \
+                sum(len(v) for v in box.values() if isinstance(v, list))
+            wanted = (200, start, str(start), min(size, max(0, (total or 0) - start)))
+            got = (status, box.get("offset"), head.get("x-plex-container-start"), rows)
+            check(label + " answers the header's window", got == wanted,
+                  "%s != %s (totalSize %s)" % (got, wanted, total))
+
+
 def main():
     process, port = start()
     try:
@@ -253,6 +310,22 @@ def main():
         with open(os.path.join(FIXTURES, "collection_section_uri.json")) as handle:
             collections(port, json.load(handle), show, episodes[0], movie, show_title,
                         movie_title)
+
+        machine = mc(port, "/identity").get("machineIdentifier")
+        movies = keys(mc(port, "/library/sections/1/all"))
+        made = []
+        for index in range(3):
+            made.append(keys(mc(port, "/library/collections?type=1&smart=0&sectionId=1"
+                                "&title=fcpage%d&uri=%s" % (index, urllib.parse.quote(
+                                    "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                    % (machine, ",".join(movies[:3])), safe="")), "POST"))[0])
+            keys(mc(port, "/playlists?type=video&smart=0&title=fcpage%d&uri=%s" % (
+                index, urllib.parse.quote(
+                    "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                    % (machine, ",".join(movies[:3])), safe="")), "POST"))
+        playlist = keys(mc(port, "/playlists"))[0]
+        with open(os.path.join(FIXTURES, "paging_header_precedence.json")) as handle:
+            paging(port, json.load(handle), show, movie, made[0], playlist)
 
     finally:
         stop(process)

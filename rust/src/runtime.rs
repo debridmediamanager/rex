@@ -6285,11 +6285,17 @@ impl Runtime {
             map.insert(key.clone(), value.clone());
             map
         });
+        // Cycle 16, re-measured cycle 83 on kids, zen and plexscratch42 over listings,
+        // `/children`, `/allLeaves`, hubs, search, On Deck, `/playlists`, a section's
+        // `/collections`, a collection's children and a playlist's items: when BOTH are
+        // sent the HEADER wins, per parameter -- query `Start=0&Size=2` with header
+        // `Start=1&Size=1` answers offset 1 size 1, a header naming only the size takes
+        // the size from the header and the offset from the query, and a header
+        // `Start=abc` beside a valid query is a 500. This read the header only when the
+        // query had not named it, so a client sending both got the query's page.
         for name in ["X-Plex-Container-Start", "X-Plex-Container-Size"] {
-            if !query.contains_key(name) {
-                if let Some(value) = request.headers.get(&name.to_ascii_lowercase()) {
-                    query.insert(name.to_string(), value.clone());
-                }
+            if let Some(value) = request.headers.get(&name.to_ascii_lowercase()) {
+                query.insert(name.to_string(), value.clone());
             }
         }
         if !query.contains_key("X-Plex-Language") {
@@ -21442,15 +21448,15 @@ fn handle_connection<S: Read + Write + PollRead>(
             });
         // Plex accepts the container window in either the query string or the
         // two X-Plex headers.  Keep the canonical query names here so every
-        // route shares the same measured paging implementation.
+        // route shares the same measured paging implementation -- and the HEADER
+        // wins over the query, per parameter (cycle 16, re-measured cycle 83; see
+        // `request_route`).
         for (header, query_name) in [
             ("x-plex-container-start", "X-Plex-Container-Start"),
             ("x-plex-container-size", "X-Plex-Container-Size"),
         ] {
-            if !query.contains_key(query_name) {
-                if let Some(value) = request.headers.get(header) {
-                    query.insert(query_name.to_string(), value.clone());
-                }
+            if let Some(value) = request.headers.get(header) {
+                query.insert(query_name.to_string(), value.clone());
             }
         }
         if request_path == "/:/websockets/notifications"

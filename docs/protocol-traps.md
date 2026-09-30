@@ -2864,3 +2864,10 @@ are changing; replay the client's exact request before altering behavior.
   the named type. The oracle expanded a section's shows into episodes as a play queue does; the
   native server listed the shows whatever the type. An EMPTY collection carries no `childCount` on
   1.42.2, where plexsim sends 0 -- recorded, not yet changed.
+- **The paging HEADER beats the query on every route family** (cycle 16, re-measured cycle 83 with
+  GETs on kids, zen and plexscratch42, `tests/fixtures/paging_header_precedence.json`): section
+  listings, `/children`, `/allLeaves`, `/hubs`, section hubs, `/hubs/search`, On Deck, Recently
+  Added, `/library/sections`, history, `/:/prefs`, a detail row, `/identity`, `/playlists`, a
+  section's `/collections`, a collection's children and a playlist's items all answer the header's
+  start and size, per parameter, and a header `Start=abc` beside a valid query is a 500. The native
+  server took a header only when the query had not named it; both now override at the door.
