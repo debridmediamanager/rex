@@ -320,7 +320,9 @@ def run(port):
     request(port, "PUT", "/library/metadata/1007/prefs?useOriginalTitle=1")
     setting_names = ("episodeSort", "flattenSeasons", "showOrdering", "useOriginalTitle",
                      "languageOverride")
+    request(port, "PUT", "/:/scrobble?key=1007&identifier=com.plexapp.plugins.library")
     for path in ("/library/sections/2/all?type=2", "/library/sections/1/all", "/library/all",
+                 "/library/all/top?type=1",
                  "/library/sections/1/newest", "/library/sections/1/folder",
                  "/library/sections/2/recentlyViewedShows?type=2"):
         rows = mc(port, path).get("Metadata") or []
