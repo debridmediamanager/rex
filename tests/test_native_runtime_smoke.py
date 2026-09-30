@@ -4,13 +4,12 @@
 The large UI suite owns the exhaustive measured surface.  This driver keeps a
 short, repeatable denominator for the native routes added during phase 3, so a
 build check cannot accidentally become the only runtime evidence.  It is run
-on zen with ``PLEXSIM_SERVER`` pointing at the Rust binary; the default Python
-selection remains unchanged for the historical suites.
+against the native server, which ``tests/server_command.py`` selects by default;
+``PLEXSIM_SERVER=python`` is refused because these routes are native-only checks.
 """
 
 import json
 import os
-import shlex
 import socket
 import subprocess
 import sys
@@ -45,8 +44,8 @@ def check(results, label, condition, detail=""):
 
 
 def main():
-    if not os.environ.get("PLEXSIM_SERVER"):
-        print("PLEXSIM_SERVER must select the native executable", file=sys.stderr)
+    if (os.environ.get("PLEXSIM_SERVER") or "").strip() == "python":
+        print("this suite checks the native executable, not the Python oracle", file=sys.stderr)
         return 2
     port = 32620
     with socket.socket() as probe:
@@ -114,7 +113,7 @@ def main():
         status, _, _ = request(base, "/myplex/claim", method="POST")
         check(results, "claim without token follows Python's 400 contract", status == 400)
 
-        native = shlex.split(os.environ["PLEXSIM_SERVER"])[0]
+        native = command[0]
         malformed = subprocess.run([native, "--unknown-native-option"], cwd=ROOT, capture_output=True)
         check(results, "native CLI rejects an unconsumed option", malformed.returncode != 0)
         # `main()`'s argparse refuses these before serving anything; a CLI that
