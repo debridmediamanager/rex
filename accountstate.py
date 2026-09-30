@@ -18,6 +18,8 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
+from claim import plextv_url
+
 logger = logging.getLogger("plexsim.accountstate")
 
 DEFAULT_INTERVAL = 1800
@@ -283,7 +285,7 @@ class ScrobblingBearerProvider:
         if account_id is None:
             raise RuntimeError("account id unavailable for scrobbling service")
         query = urllib.parse.urlencode([("auth_token", self.claim.token)])
-        request = urllib.request.Request(SERVICES_URL + "?" + query,
+        request = urllib.request.Request(plextv_url(SERVICES_URL + "?" + query),
                                          headers=self._headers())
         with self._open(request, timeout=30) as response:
             root = ET.fromstring(response.read())
@@ -359,7 +361,7 @@ class WatchStateSync:
             return 0
 
         consent = self._read_json(urllib.request.Request(
-            CONSENT_URL % account_id,
+            plextv_url(CONSENT_URL % account_id),
             headers=self._server_headers(),
         ))
         # Every measured response was consent=true and deletionRequestedAt=null.
@@ -376,7 +378,7 @@ class WatchStateSync:
             ("count", 100),
         ])
         page = self._read_json(urllib.request.Request(
-            (STATE_URL % account_id) + "?" + query,
+            plextv_url((STATE_URL % account_id) + "?" + query),
             headers={
                 "User-Agent": "PlexMediaServer/%s" % self.claim.version,
                 "Accept": "*/*",

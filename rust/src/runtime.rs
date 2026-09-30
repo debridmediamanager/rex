@@ -38,9 +38,11 @@ mod gates;
 mod i18n;
 mod item_hubs;
 mod listing;
+mod logging;
 mod merge;
 mod notify;
 mod playlists;
+mod plextv;
 mod resume;
 mod search;
 mod showprefs;
@@ -53,6 +55,7 @@ mod transcoder;
 mod upstream;
 mod wire;
 use artwork::owns_artwork;
+use logging::{debug, error, info, warning};
 use resume::{
     bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param,
     page_window,
@@ -213,6 +216,10 @@ pub struct RuntimeOptions {
     pub state: Option<PathBuf>,
     pub announce_url: Option<String>,
     pub device_id: Option<String>,
+    pub verbose: bool,
+    pub heartbeat_interval: u64,
+    pub account_state_interval: u64,
+    pub plex_direct_host: Option<String>,
 }
 
 impl Default for RuntimeOptions {
@@ -234,6 +241,10 @@ impl Default for RuntimeOptions {
             state: std::env::var("PLEXSIM_STATE").ok().map(PathBuf::from),
             announce_url: None,
             device_id: None,
+            verbose: false,
+            heartbeat_interval: plextv::HEARTBEAT_INTERVAL,
+            account_state_interval: plextv::ACCOUNT_STATE_INTERVAL,
+            plex_direct_host: None,
         }
     }
 }
@@ -343,6 +354,22 @@ pub struct Runtime {
     /// A remote artwork url the router answered with (`_serve_image`); fetched, cached,
     /// after the lock is released, so a slow image host never holds up the API.
     pending_image: Option<String>,
+    /// A claim token `POST /myplex/claim` accepted: `handle_connection` redeems it with
+    /// plex.tv after the lock is released, so the exchange never holds up the API.
+    pending_claim: Option<String>,
+    /// `claim.Claim` and the account threads `main()` wires (`plextv.rs`).
+    plextv: Arc<plextv::PlexTv>,
+    /// `sim.requests`: `METHOD path` for every request the router answered, for the
+    /// `requests.log` in Download Logs.
+    requests: Vec<String>,
+    /// `sim.unknown`: the unrouted requests, for `unrouted.log`.
+    unknown: Vec<String>,
+    /// The request was refused for its token, so it is not a `requests.log` row.
+    refused_for_token: bool,
+    /// `--plex-direct-host`: the `Host:` line GDM answers with.
+    plex_direct_host: Option<String>,
+    /// What restoring `--state` did, for `main()`'s `state file %s: %s` line.
+    pub state_summary: String,
     decision_profiles: decision::Profiles,
     pub part_mode: String,
     pub public_url: Option<String>,
@@ -375,6 +402,10 @@ pub struct Runtime {
     pub next_queue_item: i64,
     pub next_dynamic_key: i64,
     pub sessions: HashMap<String, Value>,
+    /// When each session last beat (`sessions.touch`'s `seen`), for the reaper.
+    session_seen: HashMap<String, f64>,
+    /// The reaper's last tick: process-wide, anchored at start (`sessions._last_reap`).
+    last_reap: f64,
     pub started_sessions: HashSet<String>,
     timeline_offsets: HashMap<(String, String), i64>,
     completed_sessions: HashSet<(String, String)>,
@@ -481,6 +512,13 @@ impl Runtime {
             .unwrap_or("plexsim")
             .to_string();
         let started_at = now();
+        // `main()` builds the claim after the catalog and before restoring `--state`.
+        let claim = plextv::Claim::load(
+            &machine,
+            plextv::claim_path(&options.catalog),
+            &friendly,
+            VERSION,
+        );
         let mut runtime = Self {
             catalog,
             machine,
@@ -512,6 +550,13 @@ impl Runtime {
             match_candidates: HashMap::new(),
             pending_part: None,
             pending_image: None,
+            pending_claim: None,
+            plextv: Arc::new(plextv::PlexTv::new(claim, options.account_state_interval)),
+            requests: Vec::new(),
+            unknown: Vec::new(),
+            refused_for_token: false,
+            plex_direct_host: options.plex_direct_host,
+            state_summary: "no saved state".to_string(),
             decision_profiles,
             part_mode: options.part_mode,
             public_url: options.public_url,
@@ -544,6 +589,8 @@ impl Runtime {
             next_queue_item: 1,
             next_dynamic_key: 40000,
             sessions: HashMap::new(),
+            session_seen: HashMap::new(),
+            last_reap: now_seconds(),
             started_sessions: HashSet::new(),
             timeline_offsets: HashMap::new(),
             completed_sessions: HashSet::new(),
@@ -567,6 +614,8 @@ impl Runtime {
             activity_serial: 0,
         };
         runtime.load_state()?;
+        // The claim reports the server's name to plex.tv; a restored rename is it.
+        runtime.claim_mut().name = runtime.friendly.clone();
         // A restored vocabulary is kept as it stood (cycle 73); only a fresh start, or
         // a state file without one, builds it from the rows.
         if runtime.spelling.is_none() {
@@ -586,12 +635,16 @@ impl Runtime {
         };
         let state: Value = match serde_json::from_slice(&bytes) {
             Ok(value) => value,
-            Err(_) => {
+            Err(parse_error) => {
                 if bytes.starts_with(&[0x80]) {
                     eprintln!("state files hold no classes");
                 }
                 let corrupt = sidecar(&path, "corrupt");
-                let _ = fs::rename(&path, corrupt);
+                let _ = fs::rename(&path, &corrupt);
+                error!(
+                    "state file unreadable ({parse_error}); moved to {} and starting fresh",
+                    corrupt.display()
+                );
                 return Ok(());
             }
         };
@@ -606,7 +659,6 @@ impl Runtime {
         let mut rebuilt = false;
         if let Some(saved_digest) = state.get("catalogDigest").and_then(Value::as_str) {
             if saved_digest != self.source_digest {
-                eprintln!("state catalog digest changed; migrating view state");
                 let stale = sidecar(&path, "stale");
                 let _ = fs::rename(&path, stale);
                 rebuilt = true;
@@ -641,6 +693,7 @@ impl Runtime {
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default();
+        let mut carried = 0;
         if let Some(rows) = state
             .get("viewState")
             .and_then(Value::as_object)
@@ -648,6 +701,7 @@ impl Runtime {
         {
             for (key, patch) in rows {
                 if let Some(row) = self.catalog.get_mut(key) {
+                    carried += 1;
                     if let (Some(row), Some(patch)) = (row.as_object_mut(), patch.as_object()) {
                         for field in [
                             "viewCount",
@@ -917,6 +971,16 @@ impl Runtime {
         if let Some(bytes) = state.get("bandwidthBytes").and_then(Value::as_u64) {
             self.bandwidth_bytes = bytes;
         }
+        // `Store.restore`'s answer, which `main()` logs.
+        self.state_summary = if rebuilt {
+            warning!(
+                "catalog changed since the state was saved: carried view state for {carried} rows and the server settings; edits, lists, history and library changes stay in {}",
+                sidecar(&path, "stale").display()
+            );
+            format!("carried over {carried} rows")
+        } else {
+            "restored".to_string()
+        };
         Ok(())
     }
 
@@ -2046,8 +2110,10 @@ impl Runtime {
                 if let Some(id) = object.get("id").and_then(Value::as_str) {
                     if let Some(value) = self.prefs.get(id) {
                         object.insert("value".to_string(), value.clone());
-                    } else if id == "FriendlyName" {
-                        object.insert("value".to_string(), json!(self.friendly));
+                    } else if let Some(value) = self.identity_pref(id) {
+                        // `_identity_prefs`: the rows whose value IS this server's
+                        // identity, the claimed owner's email among them.
+                        object.insert("value".to_string(), value);
                     }
                 }
             }
@@ -2089,11 +2155,7 @@ impl Runtime {
                 ("version".to_string(), json!(VERSION)),
                 (
                     "claimed".to_string(),
-                    json!(if self.assert_claimed { 1 } else { 0 }),
-                ),
-                (
-                    "claimed".to_string(),
-                    json!(if self.assert_claimed { 1 } else { 0 }),
+                    json!(if self.claimed() { 1 } else { 0 }),
                 ),
             ]),
             false,
@@ -2123,7 +2185,13 @@ impl Runtime {
         Response::json(200, body)
     }
 
+    /// `main()`: `--plex-direct-host`, else the `--public-url` hostname only when it is a
+    /// real `*.plex.direct` name -- a tunnel hostname is not what the field carries on
+    /// either reference -- else no `Host:` line at all.
     fn gdm_host(&self) -> Option<String> {
+        if let Some(host) = &self.plex_direct_host {
+            return Some(host.clone());
+        }
         self.public_url.as_deref().and_then(|url| {
             let host = url
                 .split_once("://")
@@ -2135,7 +2203,9 @@ impl Runtime {
                 .split(':')
                 .next()
                 .unwrap_or("");
-            (!host.is_empty()).then(|| host.to_string())
+            // `urlsplit(...).hostname` is lower-cased.
+            let host = host.to_ascii_lowercase();
+            (!host.is_empty() && host.ends_with(".plex.direct")).then_some(host)
         })
     }
 
@@ -2270,41 +2340,25 @@ impl Runtime {
                 })
             })
             .collect::<Vec<_>>();
-        self.container(
-            Map::from_iter([
-                ("machineIdentifier".to_string(), json!(self.machine)),
-                ("version".to_string(), json!(VERSION)),
-                ("friendlyName".to_string(), json!(self.friendly)),
-                ("platform".to_string(), json!("Linux")),
-                ("platformVersion".to_string(), json!("")),
-                ("product".to_string(), json!("Plex Media Server")),
-                ("protocol".to_string(), json!(1)),
-                (
-                    "ownerFeatures".to_string(),
-                    json!("adaptive_bitrate,camera_upload,collections,content_filter,download_certificates,dvr,federated-auth,hardware_transcoding,home,hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,music-analysis,music_videos,pass,photosV6-edit,photosV6-tv-albums,premium_music_metadata,radio,server-manager,session_bandwidth_restrictions,session_kick,shared-radio,sync,trailers,tuner-sharing,type-first,unsupportedtuners,webhooks"),
-                ),
-                ("hubSearch".to_string(), json!(true)),
-                ("itemClusters".to_string(), json!(true)),
-                ("mediaProviders".to_string(), json!(true)),
-                ("livetv".to_string(), json!(7)),
-                ("multiuser".to_string(), json!(true)),
-                ("transcoderPhoto".to_string(), json!(true)),
-                (
-                    "transcoderVideoResolutions".to_string(),
-                    json!("128,128,160,240,320,480,768,720,720,1080,1080,1080,1080"),
-                ),
-                (
-                    "transcoderVideoBitrates".to_string(),
-                    json!("64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000"),
-                ),
-                (
-                    "transcoderVideoQualities".to_string(),
-                    json!("0,1,2,3,4,5,6,7,8,9,10,11,12"),
-                ),
-                ("Directory".to_string(), Value::Array(directories)),
-            ]),
-            false,
-        )
+        // `server_root`: the server-info scalars /media/providers carries -- the claim
+        // fields among them -- plus the five flags only `/` has, and the directories.
+        let mut fields = Map::new();
+        for (name, value) in self.server_info() {
+            if !value.is_null() {
+                fields.insert(name.to_string(), value);
+            }
+        }
+        for name in [
+            "hubSearch",
+            "itemClusters",
+            "mediaProviders",
+            "multiuser",
+            "transcoderPhoto",
+        ] {
+            fields.insert(name.to_string(), json!(true));
+        }
+        fields.insert("Directory".to_string(), Value::Array(directories));
+        self.container(fields, false)
     }
 
     /// Cycle 66, measured identically on kids, zen and plexscratch42: whether a Roku at
@@ -2335,6 +2389,76 @@ impl Runtime {
             .is_some_and(|patch| patch.parse::<u64>().unwrap_or(0) < 2)
     }
 
+    /// `server_info`: the capability scalars `/` and `/media/providers` share, the claim
+    /// fields among them (`_claimed`, `_owner`, `owner_features`).
+    fn server_info(&self) -> Vec<(&'static str, Value)> {
+        let claimed = self.claimed();
+        vec![
+            ("allowCameraUpload", json!(false)),
+            ("allowChannelAccess", json!(true)),
+            ("allowMediaDeletion", json!(true)),
+            ("allowSharing", json!(true)),
+            ("allowSync", json!(false)),
+            ("allowTuners", json!(false)),
+            ("apiVersion", json!("1.1.1")),
+            ("backgroundProcessing", json!(true)),
+            ("certificate", json!(true)),
+            ("companionProxy", json!(true)),
+            ("countryCode", json!("deu")),
+            ("diagnostics", json!("logs,streaminglogs")),
+            ("eventStream", json!(true)),
+            ("friendlyName", json!(self.friendly)),
+            ("livetv", json!(7)),
+            ("machineIdentifier", json!(self.machine)),
+            ("musicAnalysis", json!(2)),
+            ("myPlex", json!(true)),
+            ("myPlexMappingState", json!("mapped")),
+            (
+                "myPlexSigninState",
+                json!(if claimed { "ok" } else { "none" }),
+            ),
+            ("myPlexSubscription", json!(claimed)),
+            (
+                "myPlexUsername",
+                if claimed {
+                    json!(self.owner())
+                } else {
+                    Value::Null
+                },
+            ),
+            ("ownerFeatures", json!(self.owner_features())),
+            ("platform", json!("Linux")),
+            ("platformVersion", json!("6.1")),
+            ("pluginHost", json!(true)),
+            ("pushNotifications", json!(false)),
+            ("readOnlyLibraries", json!(false)),
+            ("streamingBrainABRVersion", json!(3)),
+            ("streamingBrainVersion", json!(2)),
+            ("sync", json!(true)),
+            ("transcoderActiveVideoSessions", json!(0)),
+            ("transcoderAudio", json!(false)),
+            ("transcoderLyrics", json!(false)),
+            ("transcoderSubtitles", json!(false)),
+            ("transcoderVideo", json!(false)),
+            (
+                "transcoderVideoBitrates",
+                json!("64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000"),
+            ),
+            (
+                "transcoderVideoQualities",
+                json!("0,1,2,3,4,5,6,7,8,9,10,11,12"),
+            ),
+            (
+                "transcoderVideoResolutions",
+                json!("128,128,160,240,320,480,768,720,720,1080,1080,1080,1080"),
+            ),
+            ("updatedAt", json!(1789127123)),
+            ("updater", json!(true)),
+            ("version", json!(VERSION)),
+            ("voiceSearch", json!(true)),
+        ]
+    }
+
     /// `/media/providers` -- the first call a modern client makes (the oracle's
     /// `media_providers`, `media_provider_rows` and `server_info`, in the order its
     /// JSON writer emits them).
@@ -2343,7 +2467,6 @@ impl Runtime {
         query: &HashMap<String, String>,
         headers: &HashMap<String, String>,
     ) -> Value {
-        let claimed = self.assert_claimed;
         let mut directories = vec![json!({"hubKey": "/hubs", "title": "Home"})];
         let option_on = |name: &str| {
             query.get(name).is_some_and(|value| {
@@ -2531,71 +2654,8 @@ impl Runtime {
             json!({"key": "/library/search", "type": "universalsearch"}),
         ];
         let mut body = Map::new();
-        for (name, value) in [
-            ("size", json!(1)),
-            ("allowCameraUpload", json!(false)),
-            ("allowChannelAccess", json!(true)),
-            ("allowMediaDeletion", json!(true)),
-            ("allowSharing", json!(true)),
-            ("allowSync", json!(false)),
-            ("allowTuners", json!(false)),
-            ("apiVersion", json!("1.1.1")),
-            ("backgroundProcessing", json!(true)),
-            ("certificate", json!(true)),
-            ("companionProxy", json!(true)),
-            ("countryCode", json!("deu")),
-            ("diagnostics", json!("logs,streaminglogs")),
-            ("eventStream", json!(true)),
-            ("friendlyName", json!(self.friendly)),
-            ("livetv", json!(7)),
-            ("machineIdentifier", json!(self.machine)),
-            ("musicAnalysis", json!(2)),
-            ("myPlex", json!(true)),
-            ("myPlexMappingState", json!("mapped")),
-            (
-                "myPlexSigninState",
-                json!(if claimed { "ok" } else { "none" }),
-            ),
-            ("myPlexSubscription", json!(claimed)),
-            (
-                "myPlexUsername",
-                if claimed {
-                    json!(self.owner_email)
-                } else {
-                    Value::Null
-                },
-            ),
-            ("ownerFeatures", json!(OWNER_FEATURES)),
-            ("platform", json!("Linux")),
-            ("platformVersion", json!("6.1")),
-            ("pluginHost", json!(true)),
-            ("pushNotifications", json!(false)),
-            ("readOnlyLibraries", json!(false)),
-            ("streamingBrainABRVersion", json!(3)),
-            ("streamingBrainVersion", json!(2)),
-            ("sync", json!(true)),
-            ("transcoderActiveVideoSessions", json!(0)),
-            ("transcoderAudio", json!(false)),
-            ("transcoderLyrics", json!(false)),
-            ("transcoderSubtitles", json!(false)),
-            ("transcoderVideo", json!(false)),
-            (
-                "transcoderVideoBitrates",
-                json!("64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000"),
-            ),
-            (
-                "transcoderVideoQualities",
-                json!("0,1,2,3,4,5,6,7,8,9,10,11,12"),
-            ),
-            (
-                "transcoderVideoResolutions",
-                json!("128,128,160,240,320,480,768,720,720,1080,1080,1080,1080"),
-            ),
-            ("updatedAt", json!(1789127123)),
-            ("updater", json!(true)),
-            ("version", json!(VERSION)),
-            ("voiceSearch", json!(true)),
-        ] {
+        body.insert("size".to_string(), json!(1));
+        for (name, value) in self.server_info() {
             if !value.is_null() {
                 body.insert(name.to_string(), value);
             }
@@ -3317,6 +3377,14 @@ impl Runtime {
     fn save_if_dirty(&mut self) {
         if self.dirty && self.state_path.is_some() {
             let _ = self.save_state();
+        }
+    }
+
+    /// `push_log`: the lines logged since the last drain, as `LogSentNotification`s for
+    /// the channels opened with `filters=log`.
+    fn absorb_logs(&mut self) {
+        for row in logging::drain_rows() {
+            self.push_event("log", json!({"LogSentNotification": [row]}));
         }
     }
 
@@ -5775,7 +5843,15 @@ impl Runtime {
             }
         }
         if !self.authorized(&path, &request, &query) {
-            return self.unauthorized_route(&path, request);
+            let response = self.unauthorized_route(&path, request);
+            self.refused_for_token = true;
+            warning!(
+                "{} {} {} -- no valid token",
+                response.status,
+                request.method,
+                split_target(&request.target).0
+            );
+            return response;
         }
         if path == "/player" || path.starts_with("/player/") {
             // Player commands go to a PLAYER, not to a server: a real PMS answers 400
@@ -5978,52 +6054,20 @@ impl Runtime {
                 }
             }
             ("POST", "/myplex/claim") => {
-                // The claim token is a request parameter, independent of the
-                // server's already-claimed state.  Python's do_claim rejects
-                // an absent token before attempting any exchange, and the
-                // native route must retain that observable error contract.
-                if query.get("token").is_none_or(String::is_empty) {
-                    Response::error(400, "plexsim: missing claim token")
-                } else {
-                    // Test instances use --assert-claimed as an injectable
-                    // local account state; no native runtime path performs a
-                    // plex.tv write.  A supplied token therefore marks the
-                    // local state claimed and returns the same empty success
-                    // shape used by the phase-3 smoke contract.
-                    self.assert_claimed = true;
-                    Response::empty(200)
+                // `do_claim`: an absent token is refused before any exchange. A present
+                // one is redeemed with plex.tv by `handle_connection` once the lock is
+                // released (`finish_claim`), which answers the claimed /myplex/account.
+                match query.get("token").filter(|token| !token.is_empty()) {
+                    None => Response::error(400, "plexsim: missing claim token"),
+                    Some(token) => {
+                        self.pending_claim = Some(token.clone());
+                        Response::empty(200)
+                    }
                 }
             }
             ("PATCH", "/myplex/claim") => Response::plain(500, b"500".to_vec()),
             ("PUT", "/myplex/refreshReachability") => Response::empty(200),
-            ("GET" | "HEAD", "/myplex/account") => {
-                // `server.py` `myplex_account`: the owner's EMAIL as `username`, the
-                // address pair moving together, and (cycle 45) `subscriptionFeatures`
-                // the SAME string as `/`'s `ownerFeatures`.
-                let claimed = self.assert_claimed || self.token.is_some();
-                let features = self
-                    .server_root()
-                    .pointer("/MediaContainer/ownerFeatures")
-                    .cloned()
-                    .unwrap_or(Value::Null);
-                let private = !self.private_address.is_empty();
-                Response::json(
-                    200,
-                    json!({"MyPlex":{
-                        "username": if claimed { json!(self.owner_email) } else { Value::Null },
-                        "mappingState":"mapped",
-                        "mappingError":"",
-                        "signInState": if claimed { "ok" } else { "none" },
-                        "publicAddress": "",
-                        "publicPort":0,
-                        "privateAddress": self.private_address,
-                        "privatePort": if private { self.private_port } else { 0 },
-                        "subscriptionFeatures": features,
-                        "subscriptionActive": claimed,
-                        "subscriptionState": if claimed { "Active" } else { "Unknown" },
-                    }}),
-                )
-            }
+            ("GET" | "HEAD", "/myplex/account") => self.myplex_account(),
             ("GET" | "HEAD", "/security/token") => self.route_security_token(&request, &query),
             ("GET", "/log") => {
                 let valid_level = query
@@ -6032,14 +6076,17 @@ impl Runtime {
                 if !valid_level || !query.contains_key("message") {
                     Response::error(400, "plexsim: bad request")
                 } else {
-                    self.push_event(
-                        "log",
-                        json!({"LogSentNotification": {
-                            "level": query.get("level").cloned().unwrap_or_default(),
-                            "thread": "plexsim",
-                            "time": now(),
-                            "message": query.get("message").cloned().unwrap_or_default(),
-                        }}),
+                    // The web client posts its OWN errors here; they land in the log,
+                    // where Download Logs and a `filters=log` channel hand them back.
+                    let message = query.get("message").cloned().unwrap_or_default();
+                    info!(
+                        "CLIENT LOG [{}] {}: {}",
+                        query.get("level").cloned().unwrap_or_default(),
+                        query
+                            .get("source")
+                            .filter(|source| !source.is_empty())
+                            .map_or("client", String::as_str),
+                        message.chars().take(400).collect::<String>()
                     );
                     Response::empty(200)
                 }
@@ -6048,7 +6095,7 @@ impl Runtime {
             ("GET" | "HEAD", "/log/networked") => Response::empty(200),
             ("GET" | "HEAD", "/diagnostics/logs") => {
                 let mut response = Response::bytes(200, "application/zip");
-                response.body = b"PK\x03\x04plexsim\n".to_vec();
+                response.body = self.log_archive();
                 response
             }
             ("GET" | "HEAD", "/diagnostics") => Response::json(200, plugin_container(Vec::new())),
@@ -6198,7 +6245,10 @@ impl Runtime {
                 .statistics_refusal("resources", &query)
                 .unwrap_or_else(|| self.route_resource_statistics(&query)),
             ("GET" | "HEAD", "/history") => self.route_history(&query),
-            ("GET" | "HEAD", "/status/sessions") => self.route_sessions(),
+            ("GET" | "HEAD", "/status/sessions") => {
+                self.reap_sessions();
+                self.route_sessions()
+            }
             ("GET" | "HEAD", "/status/sessions/background") => {
                 Response::json(200, self.container(Map::new(), false))
             }
@@ -7791,6 +7841,30 @@ impl Runtime {
                 false,
             ),
         )
+    }
+
+    /// `Sessions.live`'s reaper, measured in cycles 26 and 41: a process-wide tick every
+    /// 30 s drops each session whose last beat is older than the tick minus 180 s, so a
+    /// silent player stays in Now Playing for 180-210 s -- not a per-row timer.
+    fn reap_sessions(&mut self) {
+        const TTL: f64 = 180.0;
+        const INTERVAL: f64 = 30.0;
+        let elapsed = now_seconds() - self.last_reap;
+        if elapsed < INTERVAL {
+            return;
+        }
+        self.last_reap += (elapsed / INTERVAL).floor() * INTERVAL;
+        let cutoff = self.last_reap - TTL;
+        let expired = self
+            .session_seen
+            .iter()
+            .filter(|(_, seen)| **seen < cutoff)
+            .map(|(client, _)| client.clone())
+            .collect::<Vec<_>>();
+        for client in expired {
+            self.session_seen.remove(&client);
+            self.sessions.remove(&client);
+        }
     }
 
     fn route_sessions(&self) -> Response {
@@ -9520,6 +9594,7 @@ impl Runtime {
         let already_listed = self.sessions.contains_key(&client);
         if state == "stopped" {
             self.sessions.remove(&client);
+            self.session_seen.remove(&client);
             self.decided_sessions
                 .remove(&(session_identifier.clone(), key.clone()));
         } else if matches!(state.as_str(), "paused" | "buffering") && !already_listed {
@@ -9593,6 +9668,7 @@ impl Runtime {
                 .or_else(|| query.get("X-Plex-Client-Identifier").cloned())
                 .or_else(|| headers.get("x-plex-client-identifier").cloned())
                 .unwrap_or_default();
+            self.session_seen.insert(client.clone(), now_seconds());
             self.sessions.insert(client.clone(), session);
             let mut frame = Map::new();
             frame.insert("sessionKey".to_string(), json!(session_key));
@@ -15405,6 +15481,14 @@ impl Runtime {
             };
         }
         let _ = pairs;
+        // The oracle's unrouted tail: logged loudly and kept for `unrouted.log`, then
+        // answered with the measured 404.
+        let method = request.method.clone();
+        self.unknown.push(format!("{method} {path}"));
+        if self.unknown.len() > 2000 {
+            self.unknown.drain(..1000);
+        }
+        warning!("UNKNOWN {method} {path}");
         Response::error(404, "plexsim: not found")
     }
 
@@ -20298,6 +20382,17 @@ pub struct Request {
     body_complete: bool,
 }
 
+thread_local! {
+    /// The sentence of the last refusal built on this connection thread, which
+    /// `handle_connection` logs the way `_send_error` does.
+    static ERROR_NOTE: std::cell::RefCell<Option<(u16, String)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+fn take_error_note() -> Option<(u16, String)> {
+    ERROR_NOTE.with(|note| note.borrow_mut().take())
+}
+
 #[derive(Debug, Clone)]
 pub struct Response {
     pub status: u16,
@@ -20376,7 +20471,7 @@ impl Response {
         // Cycle 36, measured on kids and zen: every refusal on the surface answers the
         // reference's own `text/html` document (85 bytes for a 404, 89 for a 400), never
         // a plexsim sentence. The sentence is kept for the log only.
-        let _ = message;
+        ERROR_NOTE.with(|note| *note.borrow_mut() = Some((status, message.to_string())));
         Self {
             status,
             content_type: "text/html".to_string(),
@@ -20681,6 +20776,7 @@ fn start_state_saver(runtime: SharedRuntime) {
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             if terminate {
+                info!("stopping");
                 guard.save_if_dirty();
                 std::process::exit(0);
             }
@@ -20701,9 +20797,29 @@ fn start_state_saver(runtime: SharedRuntime) {
 }
 
 pub fn serve(options: RuntimeOptions) -> Result<(), String> {
+    logging::set_verbose(options.verbose);
+    // `main()`: parts resolve through Real-Debrid, and an empty key is no key.
+    if std::env::var("RD_TOKEN").map_or(true, |token| token.is_empty()) {
+        return Err("RD_TOKEN must be set (the Real-Debrid API key)".to_string());
+    }
     let host = options.host.clone();
     let port = options.port;
     let gdm_mode = options.gdm.clone();
+    let announce = options.announce_url.clone();
+    let device_id = options.device_id.clone();
+    let heartbeat_interval = options.heartbeat_interval;
+    let gated = options.token.is_some();
+    let tls_cert = options.tls_cert.clone();
+    // `main()`: registration WRITES to a plex.tv account, with the account token.
+    let plex_token = std::env::var("PLEX_TOKEN")
+        .ok()
+        .filter(|token| !token.is_empty());
+    if announce.is_some() && plex_token.is_none() {
+        return Err("--announce-url needs PLEX_TOKEN in the environment".to_string());
+    }
+    if std::env::var("TMDB_KEY").map_or(true, |key| key.is_empty()) {
+        info!("no TMDB_KEY: Fix Match will report no candidates");
+    }
     let tls_config = match options.tls_cert.as_deref() {
         Some(cert_path) => Some(Arc::new(load_tls_config(
             cert_path,
@@ -20711,11 +20827,85 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         )?)),
         None => None,
     };
-    let runtime = Arc::new(Mutex::new(Runtime::load(options)?));
-    start_state_saver(Arc::clone(&runtime));
-    start_gdm(Arc::clone(&runtime), &gdm_mode, port);
+    let loaded = Runtime::load(options)?;
+    if let Some(path) = &loaded.state_path {
+        info!("state file {}: {}", path.display(), loaded.state_summary);
+    }
+    let runtime = Arc::new(Mutex::new(loaded));
+    // `logger.addHandler(_Capture())`: Download Logs and the Console see what follows.
+    logging::start_capture();
+    if let Some(cert) = &tls_cert {
+        info!("TLS multiplexed on tcp/{port} from {}", cert.display());
+    }
     let listener = TcpListener::bind((host.as_str(), port))
         .map_err(|e| format!("cannot bind {host}:{port}: {e}"))?;
+    let (plextv, machine, friendly, items, part_mode) = {
+        let guard = runtime
+            .lock()
+            .map_err(|_| "runtime lock poisoned".to_string())?;
+        (
+            Arc::clone(&guard.plextv),
+            guard.machine.clone(),
+            guard.friendly.clone(),
+            guard.catalog.items.len(),
+            guard.part_mode.clone(),
+        )
+    };
+    let claim = plextv
+        .claim
+        .lock()
+        .map(|claim| claim.clone())
+        .map_err(|_| "claim lock poisoned".to_string())?;
+    info!(
+        "claim state: {}",
+        if claim.claimed() {
+            format!("CLAIMED by {}", claim.owner.as_deref().unwrap_or("None"))
+        } else {
+            "unclaimed".to_string()
+        }
+    );
+    // Said out loud either way: without a token every peer that can reach the port
+    // reads the library, preferences, sessions and media bytes alike.
+    info!(
+        "token gate: {}",
+        if gated {
+            "ENFORCED"
+        } else {
+            "OFF -- every peer that can reach this port can read the library"
+        }
+    );
+    info!(
+        "plexsim on http://{}:{port}  machine={machine}  items={items}  parts={part_mode}",
+        hostname()
+    );
+    if announce.is_some() && part_mode == "proxy" {
+        // Measured behind a Cloudflare tunnel: a prefix Range reaches the origin as a
+        // full fetch, so every play start drains the whole title from the provider.
+        warning!(
+            "part-mode=proxy behind a public URL: a CDN may strip Range and turn every play start into a FULL-FILE fetch from the provider. Use --part-mode redirect unless you have verified Range passthrough."
+        );
+    }
+    start_gdm(Arc::clone(&runtime), &gdm_mode, port);
+    if let (Some(url), Some(token)) = (announce, plex_token) {
+        // Cycle 44: announced on the server's own machineIdentifier.
+        plextv::start_heartbeat(
+            token,
+            device_id.unwrap_or_else(|| machine.clone()),
+            url,
+            friendly,
+            heartbeat_interval,
+        );
+    }
+    if claim.claimed() {
+        plextv.start_account(&runtime);
+        if plextv.sync.is_none() {
+            warning!(
+                "claimed-account watch/rating sync is OFF: {} is not configured",
+                plextv::DECRYPT_SECRET_ENV
+            );
+        }
+    }
+    start_state_saver(Arc::clone(&runtime));
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -20729,7 +20919,9 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                     .peer_addr()
                     .map(|address| address.to_string())
                     .unwrap_or_else(|_| "???".to_string());
+                let thread_name = logging::request_thread_name();
                 thread::spawn(move || {
+                    logging::name_thread(thread_name);
                     let _live = LiveConnectionGuard::register(peer);
                     if let Some(config) = tls_config {
                         // A TLS ClientHello is identified by the content-type
@@ -21008,6 +21200,27 @@ fn handle_connection<S: Read + Write>(
                 }
                 guard.mark_device(&request.headers);
                 guard.register_request_device(&request);
+                // Logged before the channel's cursor is taken: the opening socket is
+                // not yet a log sink when the oracle logs it.
+                let filters = query
+                    .get("filters")
+                    .map(|value| {
+                        value
+                            .split(',')
+                            .filter(|filter| !filter.is_empty())
+                            .map(|filter| format!("'{filter}'"))
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                info!(
+                    "websocket event channel opened filters={}",
+                    if filters.is_empty() {
+                        "all".to_string()
+                    } else {
+                        format!("[{}]", filters.join(", "))
+                    }
+                );
+                guard.absorb_logs();
                 guard.event_cursor()
             };
             return handle_websocket(&mut stream, &runtime, &request, event_start);
@@ -21024,6 +21237,7 @@ fn handle_connection<S: Read + Write>(
                 }
                 guard.mark_device(&request.headers);
                 guard.register_request_device(&request);
+                guard.absorb_logs();
                 guard.event_cursor()
             };
             return handle_eventsource(&mut stream, &runtime, &request, event_start);
@@ -21060,17 +21274,43 @@ fn handle_connection<S: Read + Write>(
                 .map_err(|_| "runtime lock poisoned".to_string())?;
             guard.pending_part = None;
             guard.pending_image = None;
+            guard.pending_claim = None;
+            guard.refused_for_token = false;
             let response = guard.route(&request);
             part_plan = guard.pending_part.take();
             let image = guard.pending_image.take();
+            let claim = guard.pending_claim.take();
+            if guard.refused_for_token {
+                take_error_note();
+            } else {
+                // `sim.requests.append((method, self.path))`.
+                let row = format!("{} {}", request.method, request.target);
+                guard.requests.push(row);
+                if guard.requests.len() > 4000 {
+                    guard.requests.drain(..2000);
+                }
+            }
+            guard.absorb_logs();
             drop(guard);
-            match image {
-                Some(url) if response.status == 200 && response.body.is_empty() => {
+            match (image, claim) {
+                (_, Some(token)) => plextv::finish_claim(&runtime, &token, &request.target),
+                (Some(url), _) if response.status == 200 && response.body.is_empty() => {
                     serve_remote_image(response, &url)
                 }
                 _ => response,
             }
         };
+        // `_send_error`: a refusal logs its sentence, which the wire never carries.
+        if let Some((status, sentence)) = take_error_note() {
+            if status == response.status {
+                info!("{status} {} {request_path} -- {sentence}", request.method);
+            }
+        }
+        // `log_request`: under --verbose, every answered request line at DEBUG.
+        debug!(
+            "\"{} {} {}\" {} -",
+            request.method, request.target, request.version, response.status
+        );
         // Cycle 30/49: a refusal of the request's ENVELOPE closes the socket -- the
         // malformed query pair among them -- while a refusal of its MEANING keeps it.
         if invalid_absolute_target
@@ -21248,9 +21488,10 @@ fn handle_websocket<S: Write>(
     let mut last_write = std::time::Instant::now();
     while started.elapsed() < std::time::Duration::from_secs(120) {
         let (events, next) = {
-            let guard = runtime
+            let mut guard = runtime
                 .lock()
                 .map_err(|_| "runtime lock poisoned".to_string())?;
+            guard.absorb_logs();
             (guard.events_since(cursor), guard.event_cursor())
         };
         cursor = next;
@@ -21346,9 +21587,10 @@ fn handle_eventsource<S: Write>(
         .find(|(key, _)| key == "filters")
         .map(|(_, value)| value);
     let (events, language, catalog_path) = {
-        let guard = runtime
+        let mut guard = runtime
             .lock()
             .map_err(|_| "runtime lock poisoned".to_string())?;
+        guard.absorb_logs();
         (
             guard.events_since(event_start),
             i18n::socket_language(&guard.catalog_path, request),
@@ -22170,6 +22412,29 @@ fn percent_encode(value: &str) -> String {
         })
         .collect()
 }
+/// `time.time()`.
+fn now_seconds() -> f64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs_f64()
+}
+
+/// `socket.gethostname()`.
+fn hostname() -> String {
+    let mut buffer = [0_u8; 256];
+    // SAFETY: gethostname writes at most `len` bytes into the buffer it is given.
+    let result = unsafe { libc::gethostname(buffer.as_mut_ptr().cast(), buffer.len()) };
+    if result != 0 {
+        return String::new();
+    }
+    let end = buffer
+        .iter()
+        .position(|byte| *byte == 0)
+        .unwrap_or(buffer.len());
+    String::from_utf8_lossy(&buffer[..end]).into_owned()
+}
+
 fn now() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
