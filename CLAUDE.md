@@ -346,6 +346,7 @@ python3 tests/test_mediainfo.py             # mediainfo.py against a real PMS's 
 python3 tests/test_decision.py              # decision.py against 1,872 measured decisions; no server
 python3 tests/test_gdm.py                   # gdm.py against four real servers' GDM; no server
 python3 tests/test_persist.py               # --state across SIGTERM, SIGKILL and a rebuilt catalog; starts its own
+python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
 python3 tests/test_plextv.py                # claim, announce, account import and restart against a LOCAL stub plex.tv
 python3 tests/test_session_reaper.py        # Now Playing's 180 s + 30 s-tick reaper; ~3.5 min of wall clock
 python3 tests/test_cli.py                   # main()'s argparse: --help anywhere, refusals, --flag=value, prefixes, --web-root default
