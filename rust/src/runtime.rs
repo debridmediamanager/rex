@@ -6242,25 +6242,7 @@ impl Runtime {
             ),
             ("GET" | "HEAD", "/clients/profiles") => self.route_client_profiles(&query),
             ("POST" | "PUT", "/search") => Response::error(400, "plexsim: bad request"),
-            ("GET" | "HEAD", "/media/grabbers") => Response::json(
-                200,
-                self.container(
-                    // server.py's MEDIA_GRABBERS, verbatim off the reference.
-                    Map::from_iter([
-                        ("size".to_string(), json!(4)),
-                        (
-                            "MediaGrabber".to_string(),
-                            json!([
-                                {"title":"HDHomerun","identifier":"tv.plex.grabbers.hdhomerun","protocol":"livetv"},
-                                {"title":"Stream","identifier":"tv.plex.grabbers.stream","protocol":"stream"},
-                                {"title":"Download","identifier":"tv.plex.grabbers.download","protocol":"download"},
-                                {"title":"Remote","identifier":"tv.plex.grabbers.tunerservice","protocol":"livetv"}
-                            ]),
-                        ),
-                    ]),
-                    false,
-                ),
-            ),
+            ("GET" | "HEAD", "/media/grabbers") => Response::json(200, self.media_grabbers()),
             ("GET" | "HEAD", "/media/providers") => {
                 let mut body = self.media_providers(&query, &request.headers);
                 home_theater_version(&mut body, &query, &request.headers);
@@ -6453,7 +6435,6 @@ impl Runtime {
             ("GET" | "HEAD", "/connections") => {
                 Response::plain(200, connection_lines(&self.owner_username).into_bytes())
             }
-            ("GET" | "HEAD", "/server/identity") => self.identity_response(&query),
             // The play-state writers answer on every verb the dispatcher routes, as
             // the Python oracle does: the suite's own `PUT /:/scrobble` wrote
             // nothing here and every Dashboard check after it read no history.
@@ -11457,6 +11438,16 @@ impl Runtime {
         Response::json(200, json!({"MediaContainer": fields}))
     }
 
+    /// server.py's MEDIA_GRABBERS, verbatim off the reference.
+    fn media_grabbers(&self) -> Value {
+        json!({"MediaContainer": {"size": 4, "MediaGrabber": [
+            {"title": "HDHomerun", "identifier": "tv.plex.grabbers.hdhomerun", "protocol": "livetv"},
+            {"title": "Stream", "identifier": "tv.plex.grabbers.stream", "protocol": "stream"},
+            {"title": "Download", "identifier": "tv.plex.grabbers.download", "protocol": "download"},
+            {"title": "Remote", "identifier": "tv.plex.grabbers.tunerservice", "protocol": "livetv"}
+        ]}})
+    }
+
     fn route_dynamic(
         &mut self,
         request: &Request,
@@ -11506,8 +11497,37 @@ impl Runtime {
                 self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
             );
         }
-        if path == "/media/subscriptions/template" && request.method == "GET" {
+        if path == "/security/resources" {
+            // server.py: a 400 on every verb.
             return Response::error(400, "plexsim: bad request");
+        }
+        if segments.len() > 1
+            && segments[0] == "media"
+            && matches!(segments[1], "grabbers" | "subscriptions")
+        {
+            // server.py: the two Live TV collection roots are real empty containers on
+            // every verb (`/media/grabbers` itself lists the four grabbers); every
+            // child is a 404 but the tuner-device list, the scheduled subscriptions and
+            // the template's own 400.
+            if segments.len() == 2 && segments[1] == "grabbers" {
+                return Response::json(200, self.media_grabbers());
+            }
+            if segments.len() > 2 {
+                if segments[1] == "grabbers" && segments[2] == "devices" && segments.len() == 3 {
+                    return Response::json(200, json!({"MediaContainer": {"size": 0}}));
+                }
+                if segments[1] == "subscriptions"
+                    && segments[2] == "template"
+                    && segments.len() == 3
+                    && matches!(request.method.as_str(), "GET" | "HEAD")
+                {
+                    return Response::error(400, "plexsim: bad request");
+                }
+                if !(segments[1] == "subscriptions" && segments[2] == "scheduled") {
+                    return Response::error(404, "plexsim: not found");
+                }
+            }
+            return Response::json(200, json!({"MediaContainer": {"size": 0}}));
         }
         if path == "/services/defaultLibraries" && request.method == "GET" {
             return Response::error(400, "plexsim: bad request");

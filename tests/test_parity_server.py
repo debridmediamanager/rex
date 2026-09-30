@@ -398,6 +398,27 @@ def run_misc(s):
           status == 200 and heads.get("location", "").endswith("/system"), (status, heads))
 
 
+def run_livetv(s):
+    # -- the Live TV collection roots and their children --------------------------------
+    for path in ("/media/grabbers/devices", "/media/subscriptions",
+                 "/media/subscriptions/scheduled"):
+        status, _, doc = s.json("GET", path)
+        check("%s is {size: 0}" % path,
+              status == 200 and doc == {"MediaContainer": {"size": 0}}, (status, doc))
+    for method in ("POST", "PUT", "DELETE"):
+        status, _, doc = s.json(method, "/media/grabbers")
+        check("%s /media/grabbers answers the grabber list" % method,
+              status == 200 and container(doc).get("size") == 4, (status, doc))
+    for path in ("/media/grabbers/x", "/media/subscriptions/1", "/server/identity"):
+        status, _, _ = s.json("GET", path)
+        check("%s is a 404" % path, status == 404, status)
+    status, _, _ = s.json("HEAD", "/media/subscriptions/template")
+    check("HEAD /media/subscriptions/template is its 400", status == 400, status)
+    for method in ("GET", "POST"):
+        status, _, _ = s.json(method, "/security/resources")
+        check("%s /security/resources is a 400" % method, status == 400, status)
+
+
 def run_writes(s):
     # -- a created section's uuid is the oracle's crc32 of "{title}-{type}" -----------
     status, _, _ = s.raw("POST", "/library/sections?name=Parity%20Create&type=movie"
@@ -437,6 +458,7 @@ def main():
         run_system(server)
         run_resources(server)
         run_misc(server)
+        run_livetv(server)
         run_writes(server)
     finally:
         proc.send_signal(signal.SIGTERM)
