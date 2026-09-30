@@ -16303,7 +16303,10 @@ impl Runtime {
                     .and_then(|key| key.parse::<i64>().ok())
                     .unwrap_or(0)
             });
-        } else if let Some(sort) = query.get("sort") {
+        } else if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
+            // Cycle 83, measured on kids: an EMPTY `sort=` is ignored here, on
+            // `/children` and on `/grandchildren` (a 200 in the default order), as it is
+            // on every listing; only an unknown key refuses.
             rows = match self.sort_rows(rows, Some(sort)) {
                 Ok(rows) => rows,
                 Err(status) => return Response::error(status, "plexsim: bad request"),
@@ -17285,7 +17288,7 @@ impl Runtime {
                         candidate_type == Some(type_number)
                     });
                 }
-                if let Some(sort) = query.get("sort") {
+                if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
                     rows = match self.sort_rows(rows, Some(sort)) {
                         Ok(rows) => rows,
                         Err(status) => return Response::error(status, "plexsim: bad request"),
@@ -17460,7 +17463,7 @@ impl Runtime {
                         Err(status) => return Response::error(status, "plexsim: bad request"),
                     };
                 }
-                if let Some(sort) = query.get("sort") {
+                if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
                     children = match self.sort_rows(children, Some(sort)) {
                         Ok(rows) => rows,
                         Err(status) => return Response::error(status, "plexsim: bad request"),

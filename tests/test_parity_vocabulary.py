@@ -334,6 +334,15 @@ def run(port):
                   "/library/sections/1/year?type=1&unwatchedLeaves=0": (200, 4),
                   "/library/sections/1/genre": (200, 6)}, got)
 
+    # 13. An empty sort= is ignored on /search, /children and /grandchildren.
+    got = {path: request(port, path)[0] for path in (
+        "/library/sections/1/search?type=1&query=t&sort=",
+        "/library/metadata/20001/children?sort=",
+        "/library/metadata/20001/grandchildren?sort=",
+        "/library/metadata/20001/children?sort=zzz")}
+    check("an empty sort= is a 200 on search, children and grandchildren; zzz still 500s",
+          list(got.values()) == [200, 200, 200, 500], got)
+
 
 def main():
     process, port = start()

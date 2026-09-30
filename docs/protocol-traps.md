@@ -3032,3 +3032,5 @@ are changing; replay the client's exact request before altering behavior.
   movie and a show library (zen's show genre axis: 39 entries, 0 for `unwatchedLeaves=1` and for
   `=0`), while the COLUMN axes -- `year`, `contentRating`, `studio` -- apply the filter to their
   rows (zen's show year axis: 46 at `=1`, 2 at `=0`). A value that does not parse still refuses.
+- **An EMPTY `sort=` is ignored on `/search`, `/children` and `/grandchildren`** as on every
+  listing (cycle 83, kids: 200s in the default order); only an unknown key refuses.
