@@ -232,16 +232,13 @@ impl Runtime {
             return Response::error(status, "plexsim: refused");
         }
         if type_number == Some(18) {
-            let mut rows = self
+            // Cycle 14: every collection the SERVER holds, across libraries, in title
+            // order (`server.py` takes no other parameter here).
+            let rows = self
                 .collections
                 .values()
                 .map(|collection| self.dynamic_collection_row(collection))
                 .collect::<Vec<_>>();
-            if let Some(section) = query.get("sectionId") {
-                rows.retain(|row| {
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == *section
-                });
-            }
             let rows = match self.sort_rows(
                 rows,
                 Some(query.get("sort").map(String::as_str).unwrap_or("titleSort")),
@@ -253,6 +250,11 @@ impl Runtime {
                 Ok(window) => window,
                 Err(status) => return Response::error(status, "plexsim: bad container parameter"),
             };
+            // `_listing_row`: each row with its `Image` list.
+            let page = page
+                .iter()
+                .map(|row| self.public_row(row, false))
+                .collect::<Vec<_>>();
             let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(page))]);
             if paged {
                 fields.insert("offset".to_string(), json!(start));
@@ -371,7 +373,8 @@ impl Runtime {
             .iter()
             .map(|row| {
                 if row.get("_collectionRow").is_some() {
-                    return strip_private_value(row);
+                    // `_listing_row`: the `?type=18` row, with its `Image` list.
+                    return self.public_row(row, false);
                 }
                 let mut shown = self.grid_row(row, true, keep_guid, false);
                 if type_number.is_none() {
