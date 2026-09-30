@@ -15476,8 +15476,55 @@ impl Runtime {
                 Ok(rows) => rows,
                 Err(status) => return Response::error(status, "plexsim: bad request"),
             };
-            let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(rows))]);
-            page_fields(&mut fields, query);
+            // `server.py`: the collections run through `listing_container` -- the
+            // library's listing container, and the light projection of each row
+            // (no librarySection fields, `Guid` only under `includeGuids`).
+            let rows = match listing::limited(rows, query) {
+                Ok(rows) => rows,
+                Err(status) => return Response::error(status, "plexsim: bad request"),
+            };
+            let rows = rows
+                .into_iter()
+                .map(|row| {
+                    let mut shown = guid_gate(strip_private_value(&row), query);
+                    if let Some(object) = shown.as_object_mut() {
+                        for name in ["librarySectionID", "librarySectionTitle", "librarySectionKey"] {
+                            object.shift_remove(name);
+                        }
+                        object.insert("_light".to_string(), json!(true));
+                    }
+                    shown
+                })
+                .collect::<Vec<_>>();
+            let (page, paged, start, total) = match page_window(rows, query) {
+                Ok(window) => window,
+                Err(status) => {
+                    return Response::error(status, "plexsim: bad container parameter")
+                }
+            };
+            let kind = self
+                .section(section_key)
+                .and_then(|section| section.get("type").and_then(Value::as_str))
+                .unwrap_or("movie")
+                .to_string();
+            let title2 = if kind == "show" {
+                "All Shows".to_string()
+            } else {
+                format!(
+                    "All {}",
+                    self.section(section_key)
+                        .and_then(|section| section.get("title"))
+                        .map(string_value)
+                        .unwrap_or_default()
+                )
+            };
+            let mut fields = self.listing_fields(section_key, &kind, &kind, &title2);
+            fields.shift_remove("nocache");
+            if paged {
+                fields.insert("offset".to_string(), json!(start));
+                fields.insert("totalSize".to_string(), json!(total));
+            }
+            fields.insert("Metadata".to_string(), Value::Array(page));
             return Response::json(200, self.container(fields, true));
         }
         let rows = self
