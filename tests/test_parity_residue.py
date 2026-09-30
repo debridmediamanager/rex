@@ -149,6 +149,21 @@ def run(port):
           phone is not None and ids and str(ids[-1]) == str(phone) and str(phone) != "1",
           "device %s, history deviceIDs %s" % (phone, ids))
 
+    # A split's new row is an item of its own: clearing the source's setting afterwards
+    # leaves the new row's alone.
+    request(port, "PUT", "/library/metadata/1007/prefs?useOriginalTitle=1")
+    request(port, "PUT", "/library/metadata/1007/merge?ids=1008")
+    before = {row.get("ratingKey") for row in mc(port, "/library/sections/1/all").get("Metadata") or []}
+    request(port, "PUT", "/library/metadata/1007/split")
+    after = {row.get("ratingKey") for row in mc(port, "/library/sections/1/all").get("Metadata") or []}
+    request(port, "PUT", "/library/metadata/1007/prefs?useOriginalTitle=")
+    created = sorted(after - before)
+    values = {key: (mc(port, "/library/metadata/%s" % key).get("Metadata") or [{}])[0]
+              .get("useOriginalTitle") for key in ["1007"] + created}
+    check("a split row keeps its own item setting when the source's is cleared",
+          created and values.get("1007") is None
+          and all(values.get(key) == "1" for key in created), values)
+
     # A remote artwork fetch: the oracle's urllib request carries no Accept header.
     stub = http.server.HTTPServer(("127.0.0.1", 0), Stub)
     threading.Thread(target=stub.serve_forever, daemon=True).start()
