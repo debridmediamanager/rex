@@ -20710,6 +20710,53 @@ fn load_tls_config(cert_path: &Path, key_path: Option<&Path>) -> Result<ServerCo
     Ok(config)
 }
 
+/// `Discovery._open`'s socket: `SO_REUSEADDR`, and `SO_REUSEPORT` where it exists, set
+/// BEFORE the bind -- which is what lets it share the port with a real PMS on the same
+/// host, as every Plex process there does.
+fn gdm_socket(port: u16) -> io::Result<UdpSocket> {
+    use std::os::fd::FromRawFd;
+    // SAFETY: plain socket-API calls on a descriptor this function owns until it hands
+    // it to `UdpSocket`, which then closes it.
+    unsafe {
+        let fd = libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0);
+        if fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        let one: libc::c_int = 1;
+        let size = std::mem::size_of::<libc::c_int>() as libc::socklen_t;
+        let option = &one as *const libc::c_int as *const libc::c_void;
+        libc::setsockopt(fd, libc::SOL_SOCKET, libc::SO_REUSEADDR, option, size);
+        libc::setsockopt(fd, libc::SOL_SOCKET, libc::SO_REUSEPORT, option, size);
+        let mut address: libc::sockaddr_in = std::mem::zeroed();
+        address.sin_family = libc::AF_INET as libc::sa_family_t;
+        address.sin_port = port.to_be();
+        address.sin_addr = libc::in_addr { s_addr: libc::INADDR_ANY };
+        if libc::bind(
+            fd,
+            &address as *const libc::sockaddr_in as *const libc::sockaddr,
+            std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ) < 0
+        {
+            let error = io::Error::last_os_error();
+            libc::close(fd);
+            return Err(error);
+        }
+        Ok(UdpSocket::from_raw_fd(fd))
+    }
+}
+
+/// `str(OSError)`: `[Errno 98] Address already in use`.
+fn py_os_error(error: &io::Error) -> String {
+    match error.raw_os_error() {
+        Some(code) => {
+            let text = error.to_string();
+            let text = text.split(" (os error").next().unwrap_or(&text).to_string();
+            format!("[Errno {code}] {text}")
+        }
+        None => error.to_string(),
+    }
+}
+
 fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
     if matches!(
         mode.to_ascii_lowercase().as_str(),
@@ -20730,19 +20777,32 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
         return;
     }
     let ports = configured_gdm_ports();
+    let mut bound = Vec::new();
     for port in &ports {
-        let Ok(socket) = UdpSocket::bind(("0.0.0.0", *port)) else {
-            continue;
+        let socket = match gdm_socket(*port) {
+            Ok(socket) => socket,
+            Err(error) => {
+                warning!(
+                    "GDM: could not bind udp/{port}: {} -- LAN clients will not discover this server on that port",
+                    py_os_error(&error)
+                );
+                continue;
+            }
         };
         let _ = socket.set_read_timeout(Some(std::time::Duration::from_millis(500)));
-        let _ = socket.join_multicast_v4(
+        // A host with no multicast route still answers unicast, which is what a
+        // Tailscale peer sends: losing the group is a reduced service, not a failure.
+        if let Err(error) = socket.join_multicast_v4(
             &GDM_GROUP
                 .parse()
                 .unwrap_or(std::net::Ipv4Addr::new(239, 0, 0, 250)),
             &std::net::Ipv4Addr::UNSPECIFIED,
-        );
+        ) {
+            warning!("GDM: could not join {GDM_GROUP} on {port}: {}", py_os_error(&error));
+        }
+        bound.push(socket.local_addr().map(|address| address.port()).unwrap_or(*port));
         let shared = Arc::clone(&runtime);
-        thread::spawn(move || {
+        let _ = thread::Builder::new().name(format!("gdm-{port}")).spawn(move || {
             let mut packet = [0_u8; 4096];
             loop {
                 match socket.recv_from(&mut packet) {
@@ -20755,11 +20815,14 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
                         {
                             let response = shared.lock().ok().map(|runtime| runtime.gdm_response());
                             if let Some(response) = response {
-                                let _ = socket.send_to(&response, address);
-                            }
-                        } else if packet[..length].starts_with(b"HTTP/1.0 200") {
-                            if let Ok(mut runtime) = shared.lock() {
-                                runtime.gdm_record(&packet[..length], &address.ip().to_string());
+                                if let Err(error) = socket.send_to(&response, address) {
+                                    debug!(
+                                        "GDM: could not answer ('{}', {}): {}",
+                                        address.ip(),
+                                        address.port(),
+                                        py_os_error(&error)
+                                    );
+                                }
                             }
                         }
                     }
@@ -20768,14 +20831,28 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
                             error.kind(),
                             io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
                         ) => {}
-                    Err(_) => break,
+                    // `_serve`: any other socket error is retried, as the oracle's is.
+                    Err(_) => {}
                 }
             }
         });
     }
+    // `Discovery.start`: the search runs, and the line is said, only with a socket.
+    if bound.is_empty() {
+        return;
+    }
+    let name = runtime
+        .lock()
+        .map(|runtime| runtime.friendly.clone())
+        .unwrap_or_default();
+    info!(
+        "GDM discovery on udp/{} (group {GDM_GROUP}) as {}",
+        bound.iter().map(u16::to_string).collect::<Vec<_>>().join(","),
+        crate::filters::py_repr(&name)
+    );
 
     let search_runtime = Arc::clone(&runtime);
-    thread::spawn(move || {
+    let _ = thread::Builder::new().name("gdm-search".to_string()).spawn(move || {
         let Ok(socket) = UdpSocket::bind("0.0.0.0:0") else {
             return;
         };
@@ -20786,7 +20863,11 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
             Err(_) => return,
         };
         loop {
-            let _ = socket.send_to(GDM_SEARCH, (group, ports.last().copied().unwrap_or(32414)));
+            if let Err(error) =
+                socket.send_to(GDM_SEARCH, (group, ports.last().copied().unwrap_or(32414)))
+            {
+                debug!("GDM: search failed: {}", py_os_error(&error));
+            }
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
             let mut packet = [0_u8; 4096];
             while std::time::Instant::now() < deadline {
