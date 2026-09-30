@@ -21621,9 +21621,33 @@ fn handle_connection<S: Read + Write + PollRead>(
                 write_response(&mut stream, &response, true)?;
                 continue;
             }
+            // The oracle's `_unknown_method` answers through `_send`, whose connection
+            // state is the REQUEST's like every other answer: a client that asked to
+            // close (or spoke HTTP/1.0, or disabled pipelining) is told `close` and
+            // loses the socket. plexsim kept every such socket open.
+            let (_, raw_query) = split_target(&request.target);
+            let pipeline_disabled = request
+                .headers
+                .get("x-plex-http-pipeline")
+                .map(|value| value == "disable")
+                .unwrap_or_else(|| {
+                    parse_query(&raw_query).iter().any(|(name, value)| {
+                        name == "X-Plex-Http-Pipeline" && value == "disable"
+                    })
+                });
+            let keep = request.version == "HTTP/1.1"
+                && request
+                    .headers
+                    .get("connection")
+                    .map(|v| !v.eq_ignore_ascii_case("close"))
+                    .unwrap_or(true)
+                && !pipeline_disabled;
             let mut response = Response::error(500, "plexsim: internal error");
             response.close = false;
-            write_response(&mut stream, &response, true)?;
+            write_response(&mut stream, &response, keep)?;
+            if !keep {
+                return Ok(());
+            }
             continue;
         }
         note_live_request(&request);
