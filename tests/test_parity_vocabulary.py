@@ -180,6 +180,19 @@ def run(port):
     check("guid< (the <= key) is the same prefix", sorted(keys(mc)) == ["1007", "1008", "1009"],
           keys(mc))
 
+    # 3. The field table is the Meta's: dovi and network filter, role is unknown.
+    table = {}
+    for path in ("/library/sections/1/all", "/library/sections/2/all",
+                 "/library/sections/1/genre", "/library/metadata/20001/grandchildren"):
+        element = "Directory" if path.endswith("genre") else "Metadata"
+        whole = len(keys(request(port, path)[1], element))
+        table[path] = (whole,) + tuple(
+            len(keys(request(port, join(path, query))[1], element))
+            for query in ("dovi=1", "network=1", "role=1"))
+    check("dovi=1 and network=1 filter (to nothing here) and role=1 is every row",
+          all(whole > 0 and dovi == 0 and network == 0 and role == whole
+              for whole, dovi, network, role in table.values()), table)
+
 
 def main():
     process, port = start()

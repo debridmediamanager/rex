@@ -11445,7 +11445,7 @@ class PlexSim:
                          "device": "Device", "autotag": "Autotag", "place": "Place",
                          "channel": "Channel",
                          "mediaProcessingTarget": "MediaProcessingTarget",
-                         "sharedWith": "SharedWith"}
+                         "sharedWith": "SharedWith", "network": "Network"}
 
     SCOPE_TYPES = ("movie", "show", "season", "episode")
 

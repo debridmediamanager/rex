@@ -4332,7 +4332,6 @@ impl Runtime {
             "label",
             "mood",
             "style",
-            "role",
             // Cycle 54: eighteen more tag-table fields from the binary's parameter names.
             "similar",
             "format",
@@ -4381,7 +4380,50 @@ impl Runtime {
                 "resolution".to_string()
             },
         );
+        // Cycle 83: the ADVERTISED half of the table is every `Field` either library's
+        // Meta carries, keyed by its bare name -- the oracle's FILTER_FIELD_TYPES is built
+        // that way. A hand list drifts: this one lacked `dovi` and `network`, so both
+        // answered every row where kids and zen filter on them, and it carried `role`,
+        // which is no field at all on either (`role=1` is every row, where `actor=1` is
+        // none) and filtered here as the actor tag.
+        for (field, kind) in self.meta_field_types() {
+            fields.entry(field).or_insert(kind);
+        }
         fields
+    }
+
+    /// Every `Field` the two section Meta templates advertise, as (bare name, type), the
+    /// first spelling winning -- `server.py`'s FILTER_FIELD_TYPES loop.
+    fn meta_field_types(&self) -> Vec<(String, String)> {
+        static CACHE: std::sync::OnceLock<Vec<(String, String)>> = std::sync::OnceLock::new();
+        CACHE
+            .get_or_init(|| {
+                let mut out: Vec<(String, String)> = Vec::new();
+                for name in ["section_meta.json", "section_meta_show.json"] {
+                    let Some(meta) = load_json_sidecar(&self.catalog_path, name) else {
+                        continue;
+                    };
+                    for entry in meta.get("Type").and_then(Value::as_array).into_iter().flatten() {
+                        for field in entry.get("Field").and_then(Value::as_array).into_iter().flatten() {
+                            let Some(key) = field.get("key").and_then(Value::as_str) else {
+                                continue;
+                            };
+                            let bare = key.rsplit('.').next().unwrap_or(key).to_string();
+                            if bare.is_empty() || out.iter().any(|(known, _)| *known == bare) {
+                                continue;
+                            }
+                            let kind = field
+                                .get("type")
+                                .and_then(Value::as_str)
+                                .filter(|kind| !kind.is_empty())
+                                .unwrap_or("string");
+                            out.push((bare, kind.to_string()));
+                        }
+                    }
+                }
+                out
+            })
+            .clone()
     }
 
     fn filter_value(&self, row: &Value, field: &str) -> Value {
@@ -4689,7 +4731,8 @@ impl Runtime {
             "director" => row.get("Director"),
             "writer" => row.get("Writer"),
             "producer" => row.get("Producer"),
-            "actor" | "role" => row.get("Role"),
+            "actor" => row.get("Role"),
+            "network" => row.get("Network"),
             "country" => row.get("Country"),
             "label" => row.get("Label"),
             "mood" => row.get("Mood"),

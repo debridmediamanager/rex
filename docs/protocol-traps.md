@@ -2990,3 +2990,7 @@ are changing; replay the client's exact request before altering behavior.
   the grammar's OR (`guid=<a>,<b>` is both rows) -- a private prefix pass read it as one guid.
   kids answers `/library/all?type=1&guid=<a>&guid=<b>` with ONE row where the section grid
   answers none; not modelled.
+- **The filter field table is the Meta's, not a hand list** (cycle 83, kids and zen). `dovi` and
+  `network` are advertised Fields and filter (`dovi=1`, `network=1` empty every consumer on
+  kids), and `role` is no field at all: `role=1` answers every row where `actor=1` answers none.
+  The native table lacked the first two and filtered `role` as the actor tag.
