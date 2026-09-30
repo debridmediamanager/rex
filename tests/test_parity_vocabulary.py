@@ -282,6 +282,18 @@ def run(port):
                   "X-Plex-Container-Start=1&X-Plex-Container-Size=abc":
                       (500, None, None, None)}, got)
 
+    # 9. A scope that names no relative of the row reads the row itself.
+    got = {}
+    for query in ("episode.title=Tuesday", "show.title=Tuesday", "season.title=Tuesday",
+                  "artist.title=Tuesday", "movie.genre%21=1"):
+        got[query] = keys(request(port, "/library/sections/1/all?" + query)[1])
+    whole = keys(request(port, "/library/sections/1/all")[1])
+    status, _ = request(port, "/library/sections/1/all?episode.addedAt=")
+    check("a scope naming no relative of a movie reads the movie itself",
+          all(got[q] == ["1013"] for q in list(got)[:4])
+          and sorted(got["movie.genre%21=1"]) == sorted(whole) and len(whole) == 6
+          and status == 500, (got, status))
+
 
 def main():
     process, port = start()

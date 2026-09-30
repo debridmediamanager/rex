@@ -4870,7 +4870,13 @@ impl Runtime {
                         .and_then(|parent| self.catalog.get(&parent).cloned())
                         .into_iter()
                         .collect(),
-                    _ => Vec::new(),
+                    // Cycle 83, measured on kids' movie library: a scope that names no
+                    // relative of the row reads the ROW ITSELF -- `episode.title=`,
+                    // `show.title=`, `season.title=` and `artist.title=Sintel` each find
+                    // Sintel, and an empty `episode.addedAt=` is the date column's 500 --
+                    // the oracle's `scope_rows`. An empty list matched nothing and never
+                    // parsed the value.
+                    _ => vec![value.clone()],
                 }
             };
             match crate::filters::evaluate_with(&tree, &row, &value_of, Some(&resolve)) {

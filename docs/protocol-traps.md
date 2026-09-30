@@ -3015,3 +3015,8 @@ are changing; replay the client's exact request before altering behavior.
   Measured beside it and not fixed here (the shared reader): a NON-INTEGER lone Size
   (`X-Plex-Container-Size=abc`) is a 500 on kids and zen on the grid, `/folder` and
   `/recentlyViewedShows`, where both servers ignore it.
+- **A scope that names no relative of the row reads the ROW ITSELF** (cycle 83, kids' movie
+  library): `episode.title=Sintel`, `show.title=`, `season.title=` and even `artist.title=Sintel`
+  each find Sintel, and an empty `episode.addedAt=` is the date column's 500. So does an unknown
+  scope prefix (`movie.genre!=1` keeps every row). The native resolver answered no rows, matching
+  nothing and never parsing the value.
