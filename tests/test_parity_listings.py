@@ -252,6 +252,20 @@ def run(port):
     check("/resolution/top is the resolution bucket, the whole library",
           len(resolution.get("Metadata") or []) == 6, resolution.get("size"))
 
+    # -- a show's stored listing columns -------------------------------------------------
+    summary = next(r for r in mc(port, "/library/sections?includeSummary=1")["Directory"]
+                   if r.get("type") == "show")["Summary"]
+    check("a show library's Summary counts the show's own stored duration",
+          summary.get("duration") == 9 * 1311769, summary)
+    before = (mc(port, "/library/metadata/20001").get("Metadata") or [{}])[0]
+    request(port, "PUT", "/library/metadata/1001?type=4&id=1001"
+            "&originallyAvailableAt.value=1990-01-01&originallyAvailableAt.locked=1")
+    after = (mc(port, "/library/metadata/20001").get("Metadata") or [{}])[0]
+    check("a show's first air date is stored at load, not recomputed from its episodes",
+          before.get("originallyAvailableAt") == after.get("originallyAvailableAt")
+          == "2007-12-16", (before.get("originallyAvailableAt"),
+                            after.get("originallyAvailableAt")))
+
     # -- /library/shared -------------------------------------------------------------
     shared = mc(port, "/library/shared/all")
     first = (shared.get("Metadata") or [{}])[0]
