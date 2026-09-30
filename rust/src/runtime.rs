@@ -6787,6 +6787,11 @@ impl Runtime {
             "uuid": format!("native-section-{key}"),
             "language": query.get("language").cloned().unwrap_or_else(|| "en-US".to_string()),
         });
+        info!(
+            "SECTION create {} ({})",
+            section.get("title").map_or_else(String::new, string_value),
+            section.get("type").map_or_else(String::new, string_value)
+        );
         self.catalog.sections.push(section.clone());
         self.added_sections.push(section.clone());
         self.catalog.document.insert(
@@ -13144,6 +13149,8 @@ impl Runtime {
                         if self.catalog.sections.len() <= 1 {
                             return Response::error(400, "plexsim: bad request");
                         }
+                        let title =
+                            section.get("title").map_or_else(|| "None".to_string(), string_value);
                         let uuid = format!("plexsim-library-delete-{}", now());
                         let activity = |event: &str, progress: i64| {
                             json!({"ActivityNotification": {
@@ -13161,6 +13168,7 @@ impl Runtime {
                             self.push_event("activity", activity("updated", progress));
                         }
                         self.push_event("activity", activity("ended", 100));
+                        info!("SECTION delete {section_key} ({title})");
                         self.catalog.sections.retain(|row| {
                             string_value(row.get("key").unwrap_or(&Value::Null)) != section_key
                         });
@@ -14031,9 +14039,15 @@ impl Runtime {
                             }
                             self.dirty = true;
                         }
-                        "refresh" if request.method == "DELETE" => {}
+                        "refresh" if request.method == "DELETE" => {
+                            info!("SECTION refresh cancelled {section_key}");
+                        }
                         "refresh" => self.refresh_section(&section_key, &section, query),
                         _ => {}
+                    }
+                    if matches!(segments[3], "emptyTrash" | "analyze") {
+                        let leaf = segments[3];
+                        info!("SECTION {leaf} {section_key} -- nothing to {leaf}, plexsim owns no files");
                     }
                     return Response::empty(200);
                 }
@@ -14917,6 +14931,7 @@ impl Runtime {
                                 }
                                 _ => escaped_pref(value),
                             };
+                            info!("SECTION PREF {section_key} {name} = {stored}");
                             self.section_prefs
                                 .insert((section_key.to_string(), name.clone()), stored);
                         }
@@ -15145,6 +15160,10 @@ impl Runtime {
                         pairs,
                         request,
                     );
+                }
+                // A leaf a real PMS does not have is a 404 there, not an empty container.
+                if let Some(leaf) = segments.get(3) {
+                    warning!("UNKNOWN section leaf {leaf} on section {section_key}");
                 }
             }
             return Response::error(404, "plexsim: not found");
@@ -17027,6 +17046,10 @@ impl Runtime {
                 }
                 self.push_delete_event(key);
                 self.dirty = true;
+                info!(
+                    "DELETE {key} ({})",
+                    row.get("title").map_or_else(|| "None".to_string(), string_value)
+                );
                 return Response::empty(200);
             }
             if request.method != "GET" && request.method != "HEAD" {
@@ -18051,13 +18074,25 @@ impl Runtime {
                     }
                     others.push((other.clone(), value));
                 }
+                // `logger.info("MERGE %s <- %s ...", row["ratingKey"], ids, ...)`: the
+                // ids as the Python list the oracle formats.
+                let ids_repr = format!(
+                    "[{}]",
+                    ids.iter()
+                        .map(|id| crate::filters::py_repr(id))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
                 if row.get("type").and_then(Value::as_str) == Some("show") {
-                    return self.merge_shows(key, &others);
+                    let (response, absorbed) = self.merge_shows(key, &others);
+                    info!("MERGE {key} <- {ids_repr} ({absorbed} row(s) absorbed)");
+                    return response;
                 }
                 // Cycle 14, the one DATA-LOSS bug: a merge whose target has no Media of
                 // its OWN (a season) absorbs nothing -- a 200, no frames, the tree
                 // unchanged.
                 if !row.get("Media").is_some_and(truthy) {
+                    info!("MERGE {key} <- {ids_repr} (0 row(s) absorbed)");
                     return Response::empty(200);
                 }
                 let mut media = row
@@ -18082,6 +18117,7 @@ impl Runtime {
                     merged.push(value);
                 }
                 if merged.is_empty() {
+                    info!("MERGE {key} <- {ids_repr} (0 row(s) absorbed)");
                     return Response::empty(200);
                 }
                 if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
@@ -18099,6 +18135,7 @@ impl Runtime {
                 }
                 self.dirty = true;
                 self.save_if_dirty();
+                info!("MERGE {key} <- {ids_repr} ({} row(s) absorbed)", merged.len());
                 Response::empty(200)
             }
             "split" => {
@@ -18125,15 +18162,22 @@ impl Runtime {
                         // Cycle 15: a refresh CASCADES -- a season runs its
                         // episodes inside its own activity, a show nests each
                         // season's block; a leaf is the seven-frame form.
+                        let title = row.get("title").map_or_else(|| "None".to_string(), string_value);
                         match kind.as_str() {
                             "show" => self.notify_show_cascade(key),
                             "season" => self.notify_season_cascade(key),
                             _ => self.notify_refreshed(key),
                         }
+                        if matches!(kind.as_str(), "show" | "season") {
+                            info!("REFRESH {key} ({title}) -- cascaded");
+                        } else {
+                            info!("REFRESH {key} ({title})");
+                        }
                     }
                     "analyze" => {
                         let row = row.clone();
-                        self.analyze_item(key, &row);
+                        let leaves = self.analyze_item(key, &row);
+                        info!("ANALYZE {key} -- {leaves} leaf frame set(s)");
                     }
                     _ => {
                         self.unmatch_row(key);
@@ -18152,13 +18196,24 @@ impl Runtime {
                             "movie" => self.notify_movie_unmatch(key),
                             _ => {}
                         }
+                        info!(
+                            "UNMATCH {key} -> guid={}",
+                            self.catalog
+                                .get(key)
+                                .and_then(|row| row.get("guid"))
+                                .map_or_else(|| "None".to_string(), string_value)
+                        );
                         self.dirty = true;
                         self.save_if_dirty();
                     }
                 }
                 Response::empty(200)
             }
-            _ => Response::error(404, "plexsim: not found"),
+            leaf => {
+                // Includes `/move`: ordering is done through the list that holds a row.
+                warning!("UNKNOWN item leaf {leaf} on {key}");
+                Response::error(404, "plexsim: not found")
+            }
         }
     }
 
@@ -18411,6 +18466,10 @@ impl Runtime {
         let Some(tmdb) = &self.tmdb else {
             // No TMDB key: the honest answer is no candidates. The client says "No
             // matches were found using this agent", which is true.
+            info!(
+                "MATCHES {} -- no TMDB key configured",
+                key_of(row).unwrap_or_default()
+            );
             return Response::json(
                 200,
                 self.container(
@@ -18496,6 +18555,12 @@ impl Runtime {
             }
         }
         self.match_candidates.extend(minted);
+        info!(
+            "MATCHES {} {} -> {} candidate(s)",
+            key_of(row).unwrap_or_default(),
+            crate::filters::py_repr(&title),
+            results.len()
+        );
         Response::json(
             200,
             self.tag_container(Map::from_iter([
@@ -18638,6 +18703,7 @@ impl Runtime {
                 self.push_timeline_entry(&survivor, 5, None, None, Some(-1), None);
             }
             self.notify_refreshed(&existing_key);
+            info!("MATCH {key} merged into {existing_key} ({guid})");
         } else {
             // Order matters: the re-identification runs FIRST and the chosen guid is
             // written last, because enrich mints its own guid from whichever external id
@@ -18669,13 +18735,14 @@ impl Runtime {
                 self.follow_parent(&updated, &written);
             }
             self.notify_refreshed(key);
+            info!("MATCH {key} -> {}", if guid.is_empty() { "(name only)" } else { guid.as_str() });
         }
         self.dirty = true;
         self.save_if_dirty();
         Response::empty(200)
     }
 
-    fn merge_shows(&mut self, key: &str, others: &[(String, Value)]) -> Response {
+    fn merge_shows(&mut self, key: &str, others: &[(String, Value)]) -> (Response, usize) {
         let target_leaves = self.leaves(key);
         let pair_key = |leaf: &Value| {
             (
@@ -18766,7 +18833,7 @@ impl Runtime {
         }
         self.dirty = true;
         self.save_if_dirty();
-        Response::empty(200)
+        (Response::empty(200), removed_rows.len())
     }
 
     fn route_art(
@@ -21276,6 +21343,7 @@ fn handle_connection<S: Read + Write>(
             guard.pending_image = None;
             guard.pending_claim = None;
             guard.refused_for_token = false;
+            crate::filters::clear_refusal();
             let response = guard.route(&request);
             part_plan = guard.pending_part.take();
             let image = guard.pending_image.take();
@@ -21301,9 +21369,18 @@ fn handle_connection<S: Read + Write>(
             }
         };
         // `_send_error`: a refusal logs its sentence, which the wire never carries.
+        // `handle()`'s `except FilterError`: the refusal is logged by its detail, and
+        // that detail is the sentence the refusal answers with.
+        let refusal = crate::filters::take_refusal();
         if let Some((status, sentence)) = take_error_note() {
             if status == response.status {
-                info!("{status} {} {request_path} -- {sentence}", request.method);
+                match refusal.filter(|(refused, _)| *refused == status) {
+                    Some((_, detail)) => {
+                        warning!("REFUSED {request_path}: {detail}");
+                        info!("{status} {} {request_path} -- plexsim: {detail}", request.method);
+                    }
+                    None => info!("{status} {} {request_path} -- {sentence}", request.method),
+                }
             }
         }
         // `log_request`: under --verbose, every answered request line at DEBUG.

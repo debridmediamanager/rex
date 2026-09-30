@@ -547,7 +547,7 @@ impl Runtime {
     /// `mediaState` analyzing, thumbnailing and none, then ONE chapter-thumbs activity,
     /// started then ended, whose subtitle is the target's frame title -- and nothing
     /// else (cycle 19: no `backgroundProcessingQueue` frame).
-    pub(super) fn analyze_item(&mut self, key: &str, row: &Value) {
+    pub(super) fn analyze_item(&mut self, key: &str, row: &Value) -> usize {
         let leaves = if matches!(
             row.get("type").and_then(Value::as_str),
             Some("show" | "season")
@@ -571,6 +571,7 @@ impl Runtime {
         self.notify_activity(&activity, "started");
         activity.insert("progress".to_string(), json!(100));
         self.notify_activity(&activity, "ended");
+        leaves.len()
     }
 
     /// `GET /library/sections/{id}/refresh`: `?path=` scopes the scan (cycles 19/36) --
@@ -600,17 +601,28 @@ impl Runtime {
             });
             if !inside {
                 self.notify_empty_section_scan(section_id, section);
+                info!(
+                    "SECTION refresh {section_id} path={} -> no folder",
+                    crate::filters::py_repr(wanted)
+                );
                 return;
             }
         }
         self.notify_section_scan(section_id, section);
-        if query.get("force").map(String::as_str) == Some("1") {
-            for row in self.section_rows(section_id) {
-                if let Some(key) = key_of(&row) {
+        let rows = self.section_rows(section_id);
+        let force = query.get("force").map(String::as_str) == Some("1");
+        if force {
+            for row in &rows {
+                if let Some(key) = key_of(row) {
                     self.push_refresh_events(&key);
                 }
             }
         }
+        info!(
+            "SECTION refresh {section_id} force={} -> {} row(s)",
+            if force { "True" } else { "False" },
+            rows.len()
+        );
     }
 
     /// `PUT /library/sections/{id}` -- the Edit Library dialog, validated as a real PMS
@@ -691,6 +703,12 @@ impl Runtime {
                 self.notify_section_scan(section_key, &updated);
             }
         }
+        info!(
+            "SECTION edit {section_key} -> {}",
+            self.section(section_key)
+                .and_then(|row| row.get("title"))
+                .map_or_else(|| "None".to_string(), string_value)
+        );
         self.dirty = true;
         Response::empty(200)
     }

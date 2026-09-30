@@ -683,7 +683,7 @@ impl Runtime {
         if section && has(SECTION_INTEGER_FIELDS, field) {
             let text = py_strip(value);
             if !signed_int_re().is_match(text) {
-                return Err(refuse(500, format!("unparseable {field} {value:?}")));
+                return Err(refuse(500, format!("unparseable {field} {}", crate::filters::py_repr(value))));
             }
             if has(SECTION_STORED_FIELDS, field) {
                 let number: i64 = text.trim_start_matches('+').parse().unwrap_or(0);
@@ -715,7 +715,7 @@ impl Runtime {
             // section path STORES a userRating, stamping lastRatedAt.
             let text = py_strip(value);
             if (text.is_empty() && !section) || (!text.is_empty() && !float_re().is_match(text)) {
-                return Err(refuse(500, format!("unparseable {field} {value:?}")));
+                return Err(refuse(500, format!("unparseable {field} {}", crate::filters::py_repr(value))));
             }
             let number = if text.is_empty() {
                 None
@@ -746,7 +746,7 @@ impl Runtime {
                 return Ok(());
             }
             if has(INTEGER_FIELDS, field) {
-                return Err(refuse(500, format!("unparseable {field} {value:?}")));
+                return Err(refuse(500, format!("unparseable {field} {}", crate::filters::py_repr(value))));
             }
             if has(KEEP_EMPTY_FIELDS, field) {
                 row.insert(field.to_string(), json!(""));
@@ -758,12 +758,12 @@ impl Runtime {
         if has(INTEGER_FIELDS, field) {
             let text = py_strip(value);
             if !signed_int_re().is_match(text) {
-                return Err(refuse(500, format!("unparseable {field} {value:?}")));
+                return Err(refuse(500, format!("unparseable {field} {}", crate::filters::py_repr(value))));
             }
             let digits = text.trim_start_matches('+');
             let number = digits.parse::<i128>().unwrap_or(i128::MAX);
             if field == "year" && !(-2_147_483_648..=2_147_483_647).contains(&number) {
-                return Err(refuse(500, format!("year out of range {value:?}")));
+                return Err(refuse(500, format!("year out of range {}", crate::filters::py_repr(value))));
             }
             if has(PARSED_NOT_STORED, field) || number < 0 || (field == "year" && number == 0) {
                 row.shift_remove(field);
@@ -778,7 +778,7 @@ impl Runtime {
                     row.insert(field.to_string(), json!(date));
                 }
                 None if section => {
-                    return Err(refuse(500, format!("unparseable {field} {value:?}")));
+                    return Err(refuse(500, format!("unparseable {field} {}", crate::filters::py_repr(value))));
                 }
                 None => {
                     row.shift_remove(field);
@@ -903,7 +903,7 @@ impl Runtime {
                     if !section {
                         continue;
                     }
-                    return Err(refuse(400, format!("unknown tag field {tag_type:?}")));
+                    return Err(refuse(400, format!("unknown tag field {}", crate::filters::py_repr(&tag_type))));
                 }
                 // The client double-encodes the list: each name is quoted, then the
                 // comma-joined list is quoted again.
@@ -921,7 +921,7 @@ impl Runtime {
                     if !section {
                         continue;
                     }
-                    return Err(refuse(400, format!("unknown tag field {tag_type:?}")));
+                    return Err(refuse(400, format!("unknown tag field {}", crate::filters::py_repr(&tag_type))));
                 }
                 // Measured: the INDEX orders the list, not the parameter's position.
                 let index = name
@@ -944,7 +944,7 @@ impl Runtime {
                     if !section {
                         continue;
                     }
-                    return Err(refuse(400, format!("unknown field {field:?}")));
+                    return Err(refuse(400, format!("unknown field {}", crate::filters::py_repr(field))));
                 }
                 if has(NO_OP_FIELDS, field) {
                     continue;
@@ -958,7 +958,7 @@ impl Runtime {
                         || value.trim_start_matches('0').len() > 1
                         || value.trim_start_matches('0') > "1"
                     {
-                        return Err(refuse(400, format!("bad lock {value:?}")));
+                        return Err(refuse(400, format!("bad lock {}", crate::filters::py_repr(value))));
                     }
                     set_lock(&mut row, field, value.trim_start_matches('0') == "1");
                 } else {
@@ -1005,7 +1005,7 @@ impl Runtime {
                     if !section {
                         continue;
                     }
-                    return Err(refuse(400, format!("unknown field {field:?}")));
+                    return Err(refuse(400, format!("unknown field {}", crate::filters::py_repr(field))));
                 }
                 Self::set_field(&mut row, field, value, section)?;
             }
@@ -1309,6 +1309,7 @@ impl Runtime {
                 Ok(edited) => edited,
                 Err(error) => {
                     self.save_if_dirty();
+                    warning!("EDIT REFUSED: {}", error.detail);
                     return Response::error(error.status, &format!("plexsim: {}", error.detail));
                 }
             };
@@ -1381,6 +1382,27 @@ impl Runtime {
         }
         self.dirty = true;
         self.save_if_dirty();
+        info!(
+            "EDIT {} <- {}",
+            keys.iter()
+                .filter(|key| self.catalog.get(key).is_some())
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(","),
+            query_names(pairs)
+        );
         Response::empty(200)
     }
+}
+
+/// `",".join(k for k in query if not k.startswith("X-Plex-") and k != "_pairs")`: the
+/// request's parameter NAMES, once each in first-seen order, as the oracle's dict holds them.
+pub(super) fn query_names(pairs: &[(String, String)]) -> String {
+    let mut seen = Vec::<&str>::new();
+    for (name, _) in pairs {
+        if !name.starts_with("X-Plex-") && name != "_pairs" && !seen.contains(&name.as_str()) {
+            seen.push(name);
+        }
+    }
+    seen.join(",")
 }

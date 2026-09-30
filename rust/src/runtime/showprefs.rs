@@ -161,9 +161,12 @@ impl Runtime {
             if name.starts_with("X-Plex-") {
                 continue;
             }
-            // The last spelling of a repeated name wins, as the query dict reads it.
-            writes.retain(|(known, _)| known != name);
-            writes.push((name.clone(), value.clone()));
+            // The last spelling of a repeated name wins, at its first position, as the
+            // query dict reads it.
+            match writes.iter_mut().find(|(known, _)| known == name) {
+                Some(slot) => slot.1 = value.clone(),
+                None => writes.push((name.clone(), value.clone())),
+            }
         }
         if writes.iter().any(|(name, _)| !settings.contains(name)) {
             return Response::error(400, "plexsim: bad request");
@@ -179,6 +182,7 @@ impl Runtime {
                     } else {
                         stored.insert(name.clone(), json!(value));
                     }
+                    info!("ITEM PREF {key} {name} = {value}");
                 }
             }
         }
@@ -189,6 +193,7 @@ impl Runtime {
         {
             if unmatched {
                 self.save_if_dirty();
+                info!("ITEM PREF showOrdering on an unmatched show -- 500");
                 return Response::error(500, "plexsim: internal error");
             }
             self.notify_show_cascade(key);

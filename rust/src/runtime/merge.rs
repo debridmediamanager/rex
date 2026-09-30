@@ -105,6 +105,7 @@ impl Runtime {
         }
         self.dirty = true;
         self.save_if_dirty();
+        info!("SPLIT {key} -> {} new row(s)", created.len());
         Response::empty(200)
     }
 }

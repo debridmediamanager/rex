@@ -498,6 +498,12 @@ impl Runtime {
             self.add_collection_items(&id, &keys);
         }
         let collection = self.collections.get(&id).cloned().expect("just inserted");
+        info!(
+            "COLLECTION create {} smart={} ({} item(s))",
+            collection.title,
+            if smart { "True" } else { "False" },
+            rows.len()
+        );
         let frame_row = json!({"ratingKey": id, "type": "collection", "title": collection.title,
             "librarySectionID": collection.section});
         self.push_timeline_collection(&frame_row, 0, Some("created"));
@@ -561,7 +567,10 @@ impl Runtime {
         let row = self.dynamic_collection_row(collection);
         let map = row.as_object().cloned().unwrap_or_default();
         match self.edit_row_copy(&map, pairs, false) {
-            Err(error) => Some(Response::error(error.status, "plexsim: edit refused")),
+            Err(error) => Some(Response::error(
+                error.status,
+                &format!("plexsim: {}", error.detail),
+            )),
             Ok(_) => None,
         }
     }
@@ -1168,6 +1177,13 @@ impl Runtime {
             }
             self.dirty = true;
             self.save_if_dirty();
+            // The oracle joins its query dict's names, and that dict carries its own
+            // `_pairs` entry last -- so the line names it too.
+            let names = edit::query_names(&pairs);
+            info!(
+                "COLLECTION PREF {id} {}",
+                if names.is_empty() { "_pairs".to_string() } else { format!("{names},_pairs") }
+            );
             return Response::empty(200);
         }
         if tail.len() == 1 && matches!(tail[0], "thumbs" | "banners") {
@@ -1433,6 +1449,7 @@ impl Runtime {
                 self.push_timeline_collection(&row, 5, None);
             }
             self.save_if_dirty();
+            info!("EDIT list {id} <- {}", edit::query_names(&pairs));
             return Response::empty(200);
         }
         if method == "DELETE" {

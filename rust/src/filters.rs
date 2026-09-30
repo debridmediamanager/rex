@@ -91,10 +91,65 @@ pub struct FilterError {
 pub type ResolveFn<'a> = &'a dyn Fn(&str, &Value) -> Vec<Value>;
 impl FilterError {
     fn new(detail: impl Into<String>) -> Self {
-        Self {
-            status: 500,
-            detail: detail.into(),
+        refusal(500, detail)
+    }
+}
+
+thread_local! {
+    static REFUSAL: std::cell::RefCell<Option<(u16, String)>> = const { std::cell::RefCell::new(None) };
+}
+
+/// A `FilterError` raised on this thread, noted for the request that raised it: the
+/// oracle's `handle()` catches the exception, logs `REFUSED <route>: <detail>` at
+/// WARNING and answers `plexsim: <detail>`, where the native routes carry only the
+/// status back up. The runtime clears the note before a request and reads it after.
+pub fn refusal(status: u16, detail: impl Into<String>) -> FilterError {
+    let detail = detail.into();
+    REFUSAL.with(|note| *note.borrow_mut() = Some((status, detail.clone())));
+    FilterError { status, detail }
+}
+
+pub fn clear_refusal() {
+    REFUSAL.with(|note| note.borrow_mut().take());
+}
+
+pub fn take_refusal() -> Option<(u16, String)> {
+    REFUSAL.with(|note| note.borrow_mut().take())
+}
+
+/// Python's `repr()` of a `str`: single quotes unless the text holds one and no
+/// double quote, with the escapes `%r` writes into every refusal detail.
+pub fn py_repr(text: &str) -> String {
+    let quote = if text.contains('\'') && !text.contains('"') { '"' } else { '\'' };
+    let mut out = String::with_capacity(text.len() + 2);
+    out.push(quote);
+    for c in text.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c == quote => {
+                out.push('\\');
+                out.push(c);
+            }
+            c if (c as u32) < 0x20 || c as u32 == 0x7f => out.push_str(&format!("\\x{:02x}", c as u32)),
+            c if (0x80..0xa0).contains(&(c as u32)) => out.push_str(&format!("\\x{:02x}", c as u32)),
+            c => out.push(c),
         }
+    }
+    out.push(quote);
+    out
+}
+
+/// `repr()` of a catalog value the way the oracle holds it: a str, a number or None.
+pub fn py_repr_value(value: &Value) -> String {
+    match value {
+        Value::String(text) => py_repr(text),
+        Value::Null => "None".to_string(),
+        Value::Bool(true) => "True".to_string(),
+        Value::Bool(false) => "False".to_string(),
+        other => other.to_string(),
     }
 }
 
@@ -129,7 +184,7 @@ pub fn language_code(value: &str) -> String {
 /// for deterministic tests and callers that already have a request clock.
 pub fn as_epoch(value: &str, now: Option<f64>) -> Result<f64, FilterError> {
     if value != value.trim() {
-        return Err(FilterError::new(format!("unparseable date {:?}", value)));
+        return Err(FilterError::new(format!("unparseable date {}", py_repr(value))));
     }
     let is_integer = !value.is_empty()
         && value
@@ -140,7 +195,7 @@ pub fn as_epoch(value: &str, now: Option<f64>) -> Result<f64, FilterError> {
     if is_integer {
         let parsed = value
             .parse::<i64>()
-            .map_err(|_| FilterError::new(format!("date out of range {:?}", value)))?;
+            .map_err(|_| FilterError::new(format!("date out of range {}", py_repr(value))))?;
         return Ok(parsed as f64);
     }
     if value.contains('.') {
@@ -151,7 +206,7 @@ pub fn as_epoch(value: &str, now: Option<f64>) -> Result<f64, FilterError> {
             .all(|c| c.is_ascii_digit())
             && unsigned.matches('.').count() == 1
         {
-            return Err(FilterError::new(format!("fractional date {:?}", value)));
+            return Err(FilterError::new(format!("fractional date {}", py_repr(value))));
         }
     }
     let (sign, rest) = match value.as_bytes().first() {
@@ -179,7 +234,7 @@ pub fn as_epoch(value: &str, now: Option<f64>) -> Result<f64, FilterError> {
             if !amount.is_empty() && amount.chars().all(|c| c.is_ascii_digit()) {
                 let amount = amount
                     .parse::<f64>()
-                    .map_err(|_| FilterError::new(format!("unparseable date {:?}", value)))?;
+                    .map_err(|_| FilterError::new(format!("unparseable date {}", py_repr(value))))?;
                 let base = now.unwrap_or_else(|| {
                     UNIX_EPOCH
                         .elapsed()
@@ -195,14 +250,14 @@ pub fn as_epoch(value: &str, now: Option<f64>) -> Result<f64, FilterError> {
     }
     value
         .parse::<f64>()
-        .map_err(|_| FilterError::new(format!("unparseable date {:?}", value)))
+        .map_err(|_| FilterError::new(format!("unparseable date {}", py_repr(value))))
 }
 
 pub fn as_number(value: &str) -> Result<f64, FilterError> {
     value
         .trim()
         .parse::<f64>()
-        .map_err(|_| FilterError::new(format!("unparseable number {:?}", value)))
+        .map_err(|_| FilterError::new(format!("unparseable number {}", py_repr(value))))
 }
 
 fn parse_iso_epoch(value: &str) -> Option<f64> {
@@ -382,13 +437,13 @@ fn num(value: &Value) -> Option<f64> {
     }
 }
 fn actual_num(value: &Value) -> Result<f64, FilterError> {
-    num(value).ok_or_else(|| FilterError::new(format!("unparseable number {:?}", value)))
+    num(value).ok_or_else(|| FilterError::new(format!("unparseable number {}", py_repr_value(value))))
 }
 fn wanted_num(wanted: &str) -> Result<f64, FilterError> {
     wanted
         .trim()
         .parse()
-        .map_err(|_| FilterError::new(format!("unparseable number {:?}", wanted)))
+        .map_err(|_| FilterError::new(format!("unparseable number {}", py_repr(wanted))))
 }
 fn date_actual(value: &Value) -> Result<Option<f64>, FilterError> {
     match value {
@@ -404,13 +459,13 @@ fn date_actual(value: &Value) -> Result<Option<f64>, FilterError> {
                 value
                     .parse::<f64>()
                     .map(Some)
-                    .map_err(|_| FilterError::new(format!("unparseable date {:?}", value)))
+                    .map_err(|_| FilterError::new(format!("unparseable date {}", py_repr(value))))
             } else {
                 as_epoch(value, None).map(Some)
             }
         }
         Value::Null => Ok(None),
-        _ => Err(FilterError::new(format!("unparseable date {:?}", value))),
+        _ => Err(FilterError::new(format!("unparseable date {}", py_repr_value(value)))),
     }
 }
 fn bool_actual(value: &Value) -> bool {
@@ -574,7 +629,7 @@ pub fn compare(
     if kind == "resolution" {
         let wanted = wanted.trim();
         if !RESOLUTIONS.contains(&wanted) {
-            return Err(FilterError::new(format!("unknown resolution {:?}", wanted)));
+            return Err(FilterError::new(format!("unknown resolution {}", py_repr(wanted))));
         }
         return Ok(exact("=", actual, wanted, field));
     }
@@ -624,7 +679,7 @@ pub fn compare(
     if kind == "tagId" {
         let wanted = wanted.trim();
         if wanted.is_empty() || !wanted.chars().all(|c| c.is_ascii_digit()) {
-            return Err(FilterError::new(format!("bad tagId {:?}", wanted)));
+            return Err(FilterError::new(format!("bad tagId {}", py_repr(wanted))));
         }
         // Python parses arbitrary-size decimal input, then compares its
         // canonical decimal spelling.  Keep this string based so a huge valid
@@ -699,12 +754,12 @@ pub fn compare(
                     !(-2_147_483_648..2_147_483_648).contains(&value)
                 }))
         {
-            return Err(FilterError::new(format!("bad {} {:?}", field, wanted)));
+            return Err(FilterError::new(format!("bad {} {}", field, py_repr(wanted))));
         }
         if FRACTIONAL_REFUSED.contains(&field) && wanted.contains('.') {
             return Err(FilterError::new(format!(
-                "fractional value {:?} on {}",
-                wanted, field
+                "fractional value {} on {}",
+                py_repr(wanted), field
             )));
         }
         let target = wanted_num(wanted)?;
@@ -763,7 +818,7 @@ pub fn compare(
                     .parse::<i64>()
                     .is_ok_and(|value| (-2_147_483_648..2_147_483_648).contains(&value)))
         {
-            return Err(FilterError::new(format!("bad {} {:?}", field, wanted)));
+            return Err(FilterError::new(format!("bad {} {}", field, py_repr(wanted))));
         }
         let Some(actual) = date_actual(actual)? else {
             if NULL_IS_ZERO_DATES.contains(&field) {
@@ -1082,13 +1137,13 @@ pub fn source_order(value: Option<&str>) -> Result<Option<Vec<Value>>, FilterErr
     let Some(value) = value else { return Ok(None) };
     let digits = value.strip_prefix(['+', '-']).unwrap_or(value);
     if digits.is_empty() || !digits.chars().all(|c| c.is_ascii_digit()) {
-        return Err(FilterError::new(format!("bad sourceType {:?}", value)));
+        return Err(FilterError::new(format!("bad sourceType {}", py_repr(value))));
     }
     let n: i64 = value
         .parse()
-        .map_err(|_| FilterError::new(format!("bad sourceType {:?}", value)))?;
+        .map_err(|_| FilterError::new(format!("bad sourceType {}", py_repr(value))))?;
     if !(-2_147_483_648..2_147_483_648).contains(&n) {
-        return Err(FilterError::new(format!("bad sourceType {:?}", value)));
+        return Err(FilterError::new(format!("bad sourceType {}", py_repr(value))));
     }
     Ok((n != 1).then(|| vec![json!({"field":"id","ascending":true})]))
 }
