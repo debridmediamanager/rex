@@ -1429,20 +1429,28 @@ impl Runtime {
             .unwrap_or_default()
             .to_string();
         let mut images = Vec::new();
-        if kind == "episode" {
-            if let Some(url) = object.get("grandparentThumb").and_then(Value::as_str) {
-                images.push(json!({"alt": title, "type": "coverPoster", "url": url}));
-            }
-            if let Some(url) = object.get("thumb").and_then(Value::as_str) {
+        // The oracle's `_public_row`: the snapshot split applies only while the
+        // episode HAS a show poster to borrow. An episode whose show lost its poster
+        // (an unmatched show) labels its own still the coverPoster again.
+        let nonempty = |name: &str| {
+            object
+                .get(name)
+                .and_then(Value::as_str)
+                .filter(|url| !url.is_empty())
+                .map(str::to_string)
+        };
+        if let (true, Some(poster)) = (kind == "episode", nonempty("grandparentThumb")) {
+            images.push(json!({"alt": title, "type": "coverPoster", "url": poster}));
+            if let Some(url) = nonempty("thumb") {
                 images.push(json!({"alt": title, "type": "snapshot", "url": url}));
             }
-        } else if let Some(url) = object.get("thumb").and_then(Value::as_str) {
+        } else if let Some(url) = nonempty("thumb") {
             images.push(json!({"alt": title, "type": "coverPoster", "url": url}));
         }
         // An episode's background is the art it borrows (measured on both servers,
         // detail and listing alike); a clip's borrowed art is no Image row.
         if kind != "clip" {
-            if let Some(url) = object.get("art").and_then(Value::as_str) {
+            if let Some(url) = nonempty("art") {
                 images.push(json!({"alt": title, "type": "background", "url": url}));
             }
         }
