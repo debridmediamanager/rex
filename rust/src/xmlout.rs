@@ -174,7 +174,14 @@ fn child_rank(name: &str, key: &str, row: &Map<String, Value>) -> usize {
     list.iter().position(|v| *v == key).unwrap_or(list.len())
 }
 fn attr_order(name: &str, row: &Map<String, Value>, key: &str) -> usize {
-    if row.get("_searchhit").is_some() {
+    // `xmlout.py` applies `_SEARCH_LEAD` only where the row's bucket HAS an attribute
+    // table (`if index:`); a bucket without one -- a playlist hit -- keeps its own
+    // order, `score` last where the builder appended it.
+    if row.get("_searchhit").is_some()
+        && row
+            .keys()
+            .any(|known| attr_order_base(name, row, known) != usize::MAX)
+    {
         // `xmlout.py` `_SEARCH_LEAD`: a search hit LEADS with `librarySectionTitle`
         // and then its `score`, ahead of the row's own order (cycle 25).
         return match key {

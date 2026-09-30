@@ -1004,6 +1004,18 @@ impl Runtime {
         let mut ordered = Map::new();
         // The marker the XML/JSON orderer leads the hit by; never serialised.
         ordered.insert("_searchhit".to_string(), json!(true));
+        if !flat {
+            // `hubs_search` builds the grid row and APPENDS `score`; the orderer then
+            // leads with `librarySectionTitle` and `score` wherever the row's element
+            // has an attribute table, and a row without one (a playlist) keeps it last.
+            for (key, value) in object.iter() {
+                ordered.insert(key.clone(), value.clone());
+            }
+            if let Some(score) = score {
+                ordered.insert("score".to_string(), json!(score));
+            }
+            return Value::Object(ordered);
+        }
         if let Some(title) = object.shift_remove("librarySectionTitle") {
             ordered.insert("librarySectionTitle".to_string(), title);
         }
