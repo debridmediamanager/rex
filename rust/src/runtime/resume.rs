@@ -515,12 +515,32 @@ impl Runtime {
                     == section.to_string()
             });
         }
+        // `apply_show_prefs` takes `parentRatingKey` off the STORED episodes of a show
+        // whose effective `flattenSeasons` skips the season level, and this roll-up reads
+        // the stored rows: such a show's episodes share no season, so none of them rolls
+        // up into a season or the show and each stays an episode.
+        let mut flattened: HashMap<String, bool> = HashMap::new();
+        let mut season_of = |leaf: &Value| -> String {
+            let show = string_value(leaf.get("grandparentRatingKey").unwrap_or(&Value::Null));
+            let skip = *flattened.entry(show.clone()).or_insert_with(|| {
+                self.catalog
+                    .get(&show)
+                    .is_some_and(|show| self.show_flattened(show))
+            });
+            if skip {
+                String::new()
+            } else {
+                string_value(leaf.get("parentRatingKey").unwrap_or(&Value::Null))
+            }
+        };
+        let seasons_of = leaves.iter().map(&mut season_of).collect::<Vec<_>>();
         let mut season_order: Vec<String> = Vec::new();
         let mut by_season: HashMap<String, Vec<Value>> = HashMap::new();
         let mut show_order: Vec<String> = Vec::new();
         let mut by_show: HashMap<String, Vec<Value>> = HashMap::new();
-        for leaf in &leaves {
-            let season = string_value(leaf.get("parentRatingKey").unwrap_or(&Value::Null));
+        let mut leaf_season: HashMap<String, String> = HashMap::new();
+        for (leaf, season) in leaves.iter().zip(seasons_of) {
+            leaf_season.insert(key_of(leaf).unwrap_or_default(), season.clone());
             let show = string_value(leaf.get("grandparentRatingKey").unwrap_or(&Value::Null));
             if !by_season.contains_key(&season) {
                 season_order.push(season.clone());
@@ -538,7 +558,10 @@ impl Runtime {
             let show = self.catalog.get(show_key);
             let mut seasons: Vec<String> = Vec::new();
             for leaf in show_leaves {
-                let season = string_value(leaf.get("parentRatingKey").unwrap_or(&Value::Null));
+                let season = leaf_season
+                    .get(&key_of(leaf).unwrap_or_default())
+                    .cloned()
+                    .unwrap_or_default();
                 if !seasons.contains(&season) {
                     seasons.push(season);
                 }
@@ -563,9 +586,9 @@ impl Runtime {
         }
         rows.retain(|row| {
             !(row.get("type").and_then(Value::as_str) == Some("episode")
-                && claimed.contains(&string_value(
-                    row.get("parentRatingKey").unwrap_or(&Value::Null),
-                )))
+                && leaf_season
+                    .get(&key_of(row).unwrap_or_default())
+                    .is_some_and(|season| claimed.contains(season)))
         });
         let mut dated = rows
             .into_iter()
