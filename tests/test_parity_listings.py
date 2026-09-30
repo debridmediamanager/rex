@@ -293,6 +293,31 @@ def run(port):
     check("an agent-reshaped form keeps the library's written values",
           reshaped.get("hidden") == "7", reshaped)
 
+    # -- the listing row projection ----------------------------------------------------
+    request(port, "PUT", "/library/metadata/20001/prefs?episodeSort=1&flattenSeasons=1"
+            "&showOrdering=dvd&useOriginalTitle=1&languageOverride=en")
+    request(port, "PUT", "/library/metadata/1007/prefs?useOriginalTitle=1")
+    setting_names = ("episodeSort", "flattenSeasons", "showOrdering", "useOriginalTitle",
+                     "languageOverride")
+    for path in ("/library/sections/2/all?type=2", "/library/sections/1/all", "/library/all",
+                 "/library/sections/1/newest", "/library/sections/1/folder",
+                 "/library/sections/2/recentlyViewedShows?type=2"):
+        rows = mc(port, path).get("Metadata") or []
+        leaked = sorted({name for row in rows for name in setting_names if name in row})
+        check("%s rows carry no item-setting attributes" % path, rows and not leaked, leaked)
+    detail = (mc(port, "/library/metadata/20001").get("Metadata") or [{}])[0]
+    check("the show's DETAIL row still carries its written settings",
+          detail.get("episodeSort") == "1" and detail.get("showOrdering") == "dvd", detail.keys())
+    # An unmatched show loses its poster, so its episodes borrow none.
+    request(port, "PUT", "/library/metadata/20001/unmatch")
+    episodes = mc(port, "/library/sections/2/all?type=4").get("Metadata") or []
+    posterless = [row for row in episodes if not row.get("grandparentThumb")]
+    check("an episode without a show poster leads its Image list with its own coverPoster",
+          posterless and all((row.get("Image") or [{}])[0].get("type") == "coverPoster"
+                             and "snapshot" not in [i.get("type") for i in row["Image"]]
+                             for row in posterless),
+          [(r.get("ratingKey"), r.get("Image")) for r in posterless[:2]])
+
     # -- empty write answers ---------------------------------------------------------
     for method, path in (("PUT", "/library/sections/1/analyze"),
                          ("PUT", "/library/sections/1/emptyTrash"),
