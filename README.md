@@ -54,7 +54,10 @@ plexsim serves **anyone who can reach the port** unless you give it a token:
 
 ## Quick start
 
+plexsim is a native Rust server (`rust/`). Build it, then run it:
+
 ```bash
+cargo build --release --manifest-path rust/Cargo.toml
 cp catalog.example.json catalog.json     # or build one: python3 build_catalog.py --help
 cp run.sh.example run.sh                 # fill in RD_TOKEN
 ./run.sh
@@ -63,26 +66,20 @@ cp run.sh.example run.sh                 # fill in RD_TOKEN
 Then open `http://127.0.0.1:32400/web/index.html` if you are serving a web
 client bundle with `--web-root`, or point any Plex client at the host.
 
-### Native Rust server
+### The Python oracle
 
-The migration server is built from the `rust/` crate and reads the same
-catalog and measured sidecars as the Python server. It has no Python runtime
-dependency:
-
-```bash
-cargo build --manifest-path rust/Cargo.toml --bin plexsim
-rust/target/debug/plexsim --catalog tests/catalog_ui.json --port 32500 \
-  --host 127.0.0.1 --assert-claimed
-```
-
-Use `PLEXSIM_SERVER` when a black-box test starts its own server, for example
-`PLEXSIM_SERVER=$PWD/rust/target/debug/plexsim`. The native binary accepts the
-same server flags used by the test launcher (`--catalog`, `--port`, `--host`,
-`--token`, `--state`, `--web-root`, `--tls-cert`, `--tls-key`, and `--gdm`).
-The default test command remains the Python server when `PLEXSIM_SERVER` is
-unset.
+The Python server (`server.py` and its modules) is kept in the tree as the
+measured reference the native server is ported from and compared against. It
+runs with the same flags (`python3 server.py ...`), and `PLEXSIM_SERVER=python`
+points the black-box test suites at it. Its `--state` file is a pickle that the
+native server does not read. The last Python-only `main` is the `python-server`
+branch.
 
 ## Tests
+
+The suites target the native server (`tests/server_command.py` starts
+`rust/target/release/plexsim`); set `PLEXSIM_SERVER=python` to run them against
+the Python oracle.
 
 ```bash
 python3 tests/test_navigation.py   # replays a client's request sequence, checks shape

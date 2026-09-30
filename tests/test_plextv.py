@@ -2,7 +2,7 @@
 """plexsim's plex.tv integration, black-box, against a LOCAL stub of plex.tv.
 
 Drives a real server process (`tests/server_command.py`: unset `PLEXSIM_SERVER` is the
-Python oracle, a path selects the native binary) through the four things a deployment
+native binary, `PLEXSIM_SERVER=python` the Python oracle) through the four things a deployment
 does with plex.tv:
 
 * announcing its connection URI on `--heartbeat-interval` (heartbeat.py),
@@ -25,8 +25,8 @@ already feeds them. No recorded plex.tv answer BODY is checked in -- the harness
 recording keeps request bodies and statuses -- so the answers are the smallest documents
 the oracle accepts, not transcriptions of plex.tv.
 
-    python3 tests/test_plextv.py                      # the Python oracle
-    PLEXSIM_SERVER=/path/to/plexsim python3 tests/test_plextv.py
+    python3 tests/test_plextv.py                      # the native server
+    PLEXSIM_SERVER=python python3 tests/test_plextv.py   # the Python oracle
 
 `PLEXSIM_TEST_PORT` picks the first of the three ports it binds (server, restarted
 server, stub); the default asks the OS for free ones.

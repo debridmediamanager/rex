@@ -392,19 +392,26 @@ Evidence: [current status and coverage](HANDOVER.md),
 [cycle 82 record](HANDOVER.md#cycle-82--python-plexapi-4183-clean-on-all-twelve-axes),
 [test suites](tests/), [reference harness](harness/README.md).
 
-## Native Rust implementation (not on `main`)
+## Implementation
 
-A native Rust port of the server (`rust/`) exists on the branch
-`fix/rust-ui-all`; `main` runs only the Python server described above. On that
-branch the native binary is selected for the test suites with `PLEXSIM_SERVER`.
-On 2026-09-30 it matched the Python server check for check on the UI surface
-(1,979/1,979 with real RD and TMDB credentials, 1,975/1,975 with 3 skips without),
-and passed python-plexapi conformance 38/38, the real-media playback/decode suite
-5/5, navigation 29/29, `--state` persistence 17/17, and the TLS, GDM,
-prefix-registry, regional-preference and part-byte suites.
+The server is the native Rust binary built from `rust/`. The Python server
+(`server.py` and the modules it imports, linked as sources above) stays in the
+tree as the measured oracle the native server is ported from; the black-box
+suites run against either (`PLEXSIM_SERVER=python` selects the oracle). The last
+Python-only `main` is the `python-server` branch.
 
-It resolves RD links, streams CDN bytes and matches against TMDB over HTTPS,
-using the system certificate bundle. It has not been run as a deployed server.
+On 2026-09-30 the native server matched the oracle check for check on the UI
+surface (1,979/1,979 with real RD and TMDB credentials, 1,975/1,975 with 3 skips
+without), and passed python-plexapi conformance 38/38, the real-media
+playback/decode suite 5/5, the plex.tv suite 47/47 (claim, announce, account
+import and a restart, against a local plex.tv stub), navigation 29/29, `--state`
+persistence 17/17, and the TLS, GDM, prefix-registry, regional-preference and
+part-byte suites. It has not yet run as the deployed instance.
+
+Known native differences from the oracle: the native `--state` file is JSON and
+does not read the oracle's pickle; `--web-root` does not default to `./webclient`;
+about sixty of the oracle's per-route log lines (edit, play queue, decision,
+timeline, part) are not written; and Console thread names differ slightly.
 
 ## Keeping this inventory current
 

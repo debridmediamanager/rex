@@ -7,6 +7,14 @@ backed by Real-Debrid links instead of local media.
 Not a Plex fork and not a client. It is the server side of the protocol,
 written from measurement against a real PMS.
 
+**The server is the native Rust binary in `rust/`.** The Python server
+(`server.py` and the modules it imports) stays in the tree as the **oracle**: it
+holds every measured behaviour, the native port is ported from it, and the parity
+suites (`test_native_phase2.py`, the decision corpus) compare against it. A new
+measurement lands in the Python oracle and the Rust server together, and the
+black-box suites must pass on both (`PLEXSIM_SERVER=python` selects the oracle).
+The last Python-only `main` is the `python-server` branch.
+
 ## The one rule that matters
 
 **Every emulated response is a measurement, not a guess.** When something does
@@ -28,7 +36,8 @@ searched on disk. The gate is usually one truthiness check in minified code.
 
 | Path | What it is |
 |---|---|
-| `server.py` | The PMS surface. Every route, ~4400 lines. Start here. |
+| `rust/` | The server: the native port (`runtime.rs` and `runtime/*.rs` hold the routes). Build with `cargo build --release --manifest-path rust/Cargo.toml` |
+| `server.py` | The Python oracle: every route as measured. Read it first for any behaviour, then its Rust counterpart. |
 | `library.py` | The mutable half: watch state, edits, playlists, collections, history |
 | `filters.py` | Plex's filter query language: the operator is part of the KEY |
 | `persist.py` | `--state`: the one file that keeps the mutable half across a restart |
@@ -71,9 +80,13 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 ## Running it
 
 ```bash
+cargo build --release --manifest-path rust/Cargo.toml
 cp run.sh.example run.sh     # fill in RD_TOKEN, then ./run.sh
 cp catalog.example.json catalog.json
 ```
+
+The native `--state` file is JSON and refuses the Python server's pickle, so a state
+file does not move between the two.
 
 `catalog.json` and `run.sh` are gitignored: both carry account-scoped
 credentials. `catalog.example.json` keeps the shape with the links redacted.
@@ -299,7 +312,10 @@ answering at `http://100.101.10.1:32410`:
 
 ## Testing
 
-Run both against a live server. Neither needs network beyond RD and TMDB.
+The black-box suites start or target the native server by default
+(`tests/server_command.py` runs `rust/target/release/plexsim`, so build it first);
+`PLEXSIM_SERVER=python` runs them against the Python oracle, and a fix is done when
+they pass on both. Neither needs network beyond RD and TMDB.
 
 ```bash
 python3 tests/test_navigation.py            # client request replay, shape conformance
@@ -321,7 +337,7 @@ without `--state` — but run it against a test instance, started on the fixture
 checks are written against:
 
 ```bash
-python3 server.py --port 32500 --catalog tests/catalog_ui.json --assert-claimed &
+RD_TOKEN=dummy rust/target/release/plexsim --port 32500 --catalog tests/catalog_ui.json --assert-claimed &
 python3 tests/test_ui_surface.py --base http://127.0.0.1:32500
 ```
 
@@ -358,7 +374,8 @@ the result before changing the emulation.
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
   not what the line does. Match the existing density.
-- Stdlib only on the server path. Tests may use `plexapi`; probes may use
+- The Rust server keeps its existing crate set; the Python oracle stays stdlib
+  only on the server path. Tests may use `plexapi`; probes may use
   anything.
 - Atomic commits, semantic single-line messages (`fix: emit totalSize on paged
   children`), authored as `Ben Adrian Sarmiento <me@bensarmiento.com>`.
