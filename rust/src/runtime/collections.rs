@@ -1284,7 +1284,8 @@ impl Runtime {
             if !matches!(method, "GET" | "HEAD") {
                 return Response::error(404, "plexsim: not found");
             }
-            return Response::image(jpeg_placeholder());
+            let rows = self.collection_members(collection);
+            return self.composite_image(&rows, query);
         }
         if tail.len() == 1
             && matches!(tail[0], "poster" | "art" | "thumb")

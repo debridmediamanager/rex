@@ -18261,6 +18261,57 @@ impl Runtime {
     /// and episodes disappear, and a shape whose leaves cannot be paired by season and
     /// episode index is left alone. Frames: every removed row state 9 untitled, then
     /// each changed episode state 3/5 under type -1.
+    /// `composite_for`'s image: a real PMS builds a 400x600 mosaic of the members'
+    /// posters; plexsim has no imaging library, so it serves the first member's own
+    /// poster (else its backdrop) at the TMDB variant nearest the width -- one of the
+    /// images that mosaic is made of -- fetched once the lock is released, and the
+    /// generated tile only when no member has artwork.
+    fn composite_image(&mut self, rows: &[Value], query: &HashMap<String, String>) -> Response {
+        let art = rows.iter().find_map(|row| {
+            ["_poster_url", "_art_url"]
+                .iter()
+                .filter_map(|field| row.get(*field).and_then(Value::as_str))
+                .find(|url| !url.is_empty())
+                .map(str::to_string)
+        });
+        let mut response = match art {
+            Some(url) => match self.uploads.get(&url) {
+                Some((body, content_type)) => {
+                    let mut response = Response::bytes(200, content_type.clone());
+                    response.body = body.clone();
+                    response
+                }
+                None => {
+                    self.pending_image = Some(transcoder::tmdb_at_width(
+                        &url,
+                        query.get("width").map(String::as_str),
+                    ));
+                    Response::bytes(200, "image/jpeg")
+                }
+            },
+            None => {
+                let size = |name: &str, default: u32| {
+                    query
+                        .get(name)
+                        .and_then(|value| value.trim().parse::<u32>().ok())
+                        .filter(|value| *value != 0)
+                        .unwrap_or(default)
+                };
+                let mut response = Response::bytes(200, "image/png");
+                response.body =
+                    generated_png(size("width", 342), size("height", 513), [32, 34, 38]);
+                response
+            }
+        };
+        response
+            .headers
+            .push(("Cache-Control".to_string(), "no-cache".to_string()));
+        response
+            .headers
+            .push(("Accept-Ranges".to_string(), "bytes".to_string()));
+        response
+    }
+
     /// `GET /library/metadata/{id}/matches` -- Fix Match candidates.
     ///
     /// Shape measured on a real PMS: SearchResult rows of {guid, name, year, score,
@@ -19281,7 +19332,12 @@ impl Runtime {
             if request.method != "GET" && request.method != "HEAD" {
                 return Response::error(404, "plexsim: not found");
             }
-            return Response::image(jpeg_placeholder());
+            let rows = self
+                .playlist_keys(playlist)
+                .iter()
+                .filter_map(|key| self.catalog.get(key).cloned())
+                .collect::<Vec<_>>();
+            return self.composite_image(&rows, query);
         }
         if tail.is_empty() && request.method == "PUT" {
             let pairs = Self::request_pairs(request);
@@ -22947,10 +23003,6 @@ fn generated_png(width: u32, height: u32, rgb: [u8; 3]) -> Vec<u8> {
     output.extend_from_slice(&chunk(b"IDAT", &compressed));
     output.extend_from_slice(&chunk(b"IEND", &[]));
     output
-}
-
-fn jpeg_placeholder() -> Vec<u8> {
-    b"\xff\xd8\xff\xd9".to_vec()
 }
 
 fn generated_jpeg(width: u32, height: u32) -> Vec<u8> {
