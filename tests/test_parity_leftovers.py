@@ -13,6 +13,8 @@ re-measured on a real PMS and checked here against the measured values.
   (kids and zen);
 - an EMPTY collection carries no `childCount` on any row
   (`tests/fixtures/collection_empty_childcount.json`, plexscratch42);
+- a CLIP's `/allLeaves` and `/grandchildren` are 404s beside `/children`'s 400 (kids' clip
+  5; driven on `catalog_features.json`'s trailer 201);
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -229,10 +231,40 @@ def run(port):
         request(port, "DELETE", "/library/collections/%s" % key)
 
 
+def run_features(port):
+    # 6. A clip (kids' 5, a movie's trailer): `/children` the 89-byte 400, `/allLeaves` and
+    #    `/grandchildren` the 85-byte 404, paged or not. A movie's stay empty 200s.
+    paging = "X-Plex-Container-Start=0&X-Plex-Container-Size=5"
+    seen = {}
+    for key in ("201", "101"):
+        for leaf in ("children", "allLeaves", "grandchildren"):
+            for suffix in ("", "?" + paging):
+                status, _, raw = exchange(port, "GET", "/library/metadata/%s/%s%s" % (key, leaf, suffix))
+                seen[(key, leaf, bool(suffix))] = (status, len(raw) if status >= 400 else None)
+    expected = {}
+    for paged in (False, True):
+        expected[("201", "children", paged)] = (400, 89)
+        expected[("201", "allLeaves", paged)] = (404, 85)
+        expected[("201", "grandchildren", paged)] = (404, 85)
+        expected[("101", "children", paged)] = (400, 89)
+        expected[("101", "allLeaves", paged)] = (200, None)
+        expected[("101", "grandchildren", paged)] = (200, None)
+    types = [mc(port, "/library/metadata/%s" % key).get("Metadata", [{}])[0].get("type")
+             for key in ("201", "101")]
+    check("a clip's allLeaves and grandchildren are 404s, a movie's empty 200s",
+          types == ["clip", "movie"] and seen == expected,
+          {"types": types, "wrong": {k: v for k, v in seen.items() if expected.get(k) != v}})
+
+
 def main():
     process, port = start()
     try:
         run(port)
+    finally:
+        stop(process)
+    process, port = start(FEATURES)
+    try:
+        run_features(port)
     finally:
         stop(process)
     passed = sum(results)

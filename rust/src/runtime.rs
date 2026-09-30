@@ -17277,6 +17277,14 @@ impl Runtime {
                 }
                 Response::json(200, self.tag_container(Map::new()))
             }
+            // Cycle 83, measured on kids' clip 5 (a movie's trailer): a clip's
+            // `/allLeaves` and `/grandchildren` are the 404, where a movie's and an
+            // episode's are empty 200s.
+            "allLeaves" | "grandchildren"
+                if row.get("type").and_then(Value::as_str) == Some("clip") =>
+            {
+                Response::error(404, "plexsim: not found")
+            }
             "grandchildren" => {
                 if request.method != "GET" && request.method != "HEAD" {
                     return Response::error(404, "plexsim: not found");

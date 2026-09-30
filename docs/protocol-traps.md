@@ -2935,8 +2935,8 @@ are changing; replay the client's exact request before altering behavior.
   an episode (8) and a clip (5) all answer the 89-byte Bad Request document, paged or not. Their
   `/allLeaves` and `/grandchildren` differ by type -- 200 for a movie and an episode, 404 for a clip.
   The oracle refused all four leaf types; the native server refused only a movie and answered an
-  episode an empty 200 container. (The fixture catalog has no clip, so the clip's 404s are recorded
-  here and not checked.)
+  episode an empty 200 container. (A clip's 404s are checked on `catalog_features.json`'s trailer --
+  see below.)
 - **A client's first request registers its device BEFORE the answer.** Measured on kids (1.43.4,
   2026-09-30) with a new synthetic identifier: the very first `GET /devices` it sent already listed
   its own row (`name`, `platform`, `clientIdentifier`). The oracle registered early only under
@@ -3129,3 +3129,7 @@ are changing; replay the client's exact request before altering behavior.
   where a one-member collection says `childCount: 1`. Both servers sent `0`. (The same copy's section
   `search?type=18&query=` finds the empty collection; both ours answer that search with no row --
   measured beside it, not changed here.)
+- **A CLIP's `/allLeaves` and `/grandchildren` are the 404** (cycle 83, kids' clip 5 re-measured,
+  paged or not): the 85-byte Not Found, beside `/children`'s 89-byte 400, where a movie's two are
+  empty 200s. `catalog_ui.json` holds no clip, but `catalog_features.json`'s trailer 201 is one, and
+  both servers answered it the movie's empty 200s.

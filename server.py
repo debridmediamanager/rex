@@ -13430,6 +13430,11 @@ class PlexSim:
             # Measured: `/children` of an item that cannot have any -- a movie, an
             # episode -- is a 400, where its `/allLeaves` is still a 200.
             return ("error", 400, "plexsim: bad request")
+        if leaf in ("allLeaves", "grandchildren") and row.get("type") == "clip":
+            # Cycle 83, measured on kids' clip 5 (a movie's trailer): its `/allLeaves` and
+            # `/grandchildren` are the 85-byte 404 -- not the empty 200 a movie's and an
+            # episode's answer -- paged or not, beside `/children`'s 400.
+            return ("error", 404, "plexsim: not found")
         if leaf == "file" and method in ("GET", "HEAD"):
             # Measured on both servers: the item's file endpoint without its `url` is a
             # 400. Cycle 17: WITH a `url` naming one of this row's own candidates it
