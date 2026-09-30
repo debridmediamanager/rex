@@ -385,6 +385,14 @@ def run(port):
     check("/library/metadata/1007,1008 has an integer mediaTagVersion",
           b'"mediaTagVersion":1655122614' in body, body[:300])
 
+    # 19. The TV Recently Added list parses an EMPTY refused column, and refuses it.
+    got = {query: request(port, "/hubs/home/recentlyAdded?type=2&" + query)[0]
+           for query in ("art=", "userFields=", "art=1", "zzzz=")}
+    got["/hubs art="] = request(port, "/hubs?art=")[0]
+    check("TV Recently Added refuses art= and userFields= even empty; a hub page does not",
+          got == {"art=": 500, "userFields=": 500, "art=1": 500, "zzzz=": 200,
+                  "/hubs art=": 200}, got)
+
 
 def main():
     process, port = start()

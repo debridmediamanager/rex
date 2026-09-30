@@ -3048,3 +3048,7 @@ are changing; replay the client's exact request before altering behavior.
   the last one (6,658 bytes to 679), where the oracle leaves the body alone.
 - **The multi-id read's `mediaTagVersion` is an INTEGER** (cycle 83, kids'
   `/library/metadata/1,3`), as on the single-id read; the native multi-id container sent a string.
+- **The TV Recently Added list refuses a refused column even EMPTY** (cycle 83, kids):
+  `/hubs/home/recentlyAdded?type=2` answers `art=`, `slug=`, `thumb=` and `userFields=` with a 500 --
+  that list parses empty values, where a hub page drops them (`/hubs?art=` is a 200). The native list
+  found no field in the pair and answered every row.

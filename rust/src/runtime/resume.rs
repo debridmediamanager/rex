@@ -618,6 +618,15 @@ impl Runtime {
             .map(|(name, value)| (name.clone(), value.clone()))
             .collect::<Vec<_>>();
         pairs.sort();
+        // The refused columns refuse before anything parses: kids' TV Recently Added
+        // list answers `art=` (EMPTY, which that list parses) with a 500, where the
+        // parse below finds no field in it and would answer every row.
+        if pairs.iter().any(|(name, _)| {
+            let (field, _) = crate::filters::split_key(name);
+            REFUSED_FILTER_FIELDS.contains(&crate::filters::split_scope(&field).1.as_str())
+        }) {
+            return Err(500);
+        }
         let types = self.filter_field_types("show");
         let mut errors = Vec::new();
         if crate::filters::parse(&pairs, &types, &mut errors).is_none() {
