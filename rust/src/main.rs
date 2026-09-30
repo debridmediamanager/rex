@@ -11,93 +11,288 @@ fn usage() -> &'static str {
     "Usage: plexsim [server options] | plexsim <decision|mediainfo|normalize-media|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
 }
 
-fn parse_server_args(args: &[String]) -> Result<runtime::RuntimeOptions, String> {
-    let mut options = runtime::RuntimeOptions::default();
-    let mut index = 0;
-    while index < args.len() {
-        let option = args[index].as_str();
-        let value = |index: &mut usize, name: &str| -> Result<String, String> {
-            let value = args
-                .get(*index + 1)
-                .ok_or_else(|| format!("{name} needs a value"))?;
-            if value.starts_with("--") {
-                return Err(format!("{name} needs a value"));
-            }
-            *index += 2;
-            Ok(value.clone())
-        };
-        match option {
-            "--catalog" => options.catalog = PathBuf::from(value(&mut index, option)?),
-            "--port" => {
-                options.port = value(&mut index, option)?
-                    .parse()
-                    .map_err(|_| "bad --port".to_string())?
-            }
-            "--host" => options.host = value(&mut index, option)?,
-            "--part-mode" => options.part_mode = value(&mut index, option)?,
-            "--public-url" => options.public_url = Some(value(&mut index, option)?),
-            "--token" => options.token = Some(value(&mut index, option)?),
-            "--assert-claimed" => {
-                options.assert_claimed = true;
-                index += 1;
-            }
-            "--web-root" => options.web_root = Some(PathBuf::from(value(&mut index, option)?)),
-            "--owner-email" => options.owner_email = value(&mut index, option)?,
-            "--owner-username" => options.owner_username = value(&mut index, option)?,
-            "--tls-cert" => options.tls_cert = Some(PathBuf::from(value(&mut index, option)?)),
-            "--tls-key" => options.tls_key = Some(PathBuf::from(value(&mut index, option)?)),
-            "--gdm" => options.gdm = value(&mut index, option)?,
-            "--state" => options.state = Some(PathBuf::from(value(&mut index, option)?)),
-            "--announce-url" => options.announce_url = Some(value(&mut index, option)?),
-            "--device-id" => options.device_id = Some(value(&mut index, option)?),
-            "--verbose" => {
-                options.verbose = true;
-                index += 1;
-            }
-            "--no-gdm" | "--help" => {
-                index += 1;
-            }
-            "--heartbeat-interval" => {
-                options.heartbeat_interval = value(&mut index, option)?
-                    .parse()
-                    .map_err(|_| "bad --heartbeat-interval".to_string())?
-            }
-            "--account-state-interval" => {
-                options.account_state_interval = value(&mut index, option)?
-                    .parse()
-                    .map_err(|_| "bad --account-state-interval".to_string())?
-            }
-            "--plex-direct-host" => options.plex_direct_host = Some(value(&mut index, option)?),
-            _ if option.starts_with('-') => return Err(format!("unknown option {option}")),
-            _ => return Err(format!("unexpected argument {option}")),
+/// `main()`'s `argparse` options, in its declaration order: (flag, metavar, takes a value).
+const SERVER_OPTIONS: &[(&str, &str, bool)] = &[
+    ("--catalog", "CATALOG", true),
+    ("--port", "PORT", true),
+    ("--host", "HOST", true),
+    ("--part-mode", "{proxy,redirect}", true),
+    ("--public-url", "PUBLIC_URL", true),
+    ("--token", "TOKEN", true),
+    ("--verbose", "", false),
+    ("--assert-claimed", "", false),
+    ("--web-root", "WEB_ROOT", true),
+    ("--owner-email", "OWNER_EMAIL", true),
+    ("--owner-username", "OWNER_USERNAME", true),
+    ("--announce-url", "ANNOUNCE_URL", true),
+    ("--device-id", "DEVICE_ID", true),
+    ("--tls-cert", "TLS_CERT", true),
+    ("--tls-key", "TLS_KEY", true),
+    ("--gdm", "{auto,on,off}", true),
+    ("--plex-direct-host", "PLEX_DIRECT_HOST", true),
+    ("--heartbeat-interval", "HEARTBEAT_INTERVAL", true),
+    ("--account-state-interval", "ACCOUNT_STATE_INTERVAL", true),
+    ("--state", "STATE", true),
+];
+
+/// `parser.print_usage()`: argparse's wrapped usage block, with this binary's name.
+fn server_usage() -> String {
+    let indent = " ".repeat("usage: plexsim ".len());
+    let mut lines = vec![String::from("usage: plexsim")];
+    let mut parts = vec!["[-h]".to_string()];
+    parts.extend(SERVER_OPTIONS.iter().map(|(flag, metavar, takes)| {
+        if *takes {
+            format!("[{flag} {metavar}]")
+        } else {
+            format!("[{flag}]")
+        }
+    }));
+    for part in parts {
+        let last = lines.last_mut().expect("usage has a first line");
+        if last.len() + 1 + part.len() > 78 && last.trim() != "usage: plexsim" {
+            lines.push(format!("{indent}{part}"));
+        } else {
+            last.push(' ');
+            last.push_str(&part);
         }
     }
-    // `main()`'s argparse: two options take a fixed set of values, and a key file
-    // means nothing without the certificate it belongs to.
-    for (name, value, choices) in [
-        ("--part-mode", &options.part_mode, &["proxy", "redirect"][..]),
-        ("--gdm", &options.gdm, &["auto", "on", "off"][..]),
-    ] {
-        if !choices.contains(&value.as_str()) {
-            return Err(format!(
-                "argument {name}: invalid choice: '{value}' (choose from {})",
-                choices
-                    .iter()
-                    .map(|choice| format!("'{choice}'"))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ));
+    lines.join("\n")
+}
+
+/// `parser.print_help()`: the usage, the description, and one line per option with
+/// the oracle's own help text.
+fn server_help() -> String {
+    let helps: HashMap<&str, &str> = [
+        ("--part-mode", "proxy streams bytes through plexsim; redirect 302s to the debrid CDN"),
+        ("--token", "require this X-Plex-Token on every request except /identity and /web/* -- which is what a real PMS does. Default OFF, because the test suites and probes talk to plexsim without one; a real server always has a token, so leaving it off is a deliberate deviation."),
+        ("--assert-claimed", "report claimed=1 without performing a real plex.tv claim exchange"),
+        ("--web-root", "directory of the extracted Plex Web client, served at /web"),
+        ("--owner-email", "owner email, which is what a real PMS reports as myPlexUsername"),
+        ("--owner-username", "the Plex account that OWNS this server; shared users are not owners"),
+        ("--announce-url", "publicly reachable https URL to register with plex.tv, and keep registered"),
+        ("--device-id", "machineIdentifier to announce on; defaults to the catalog's own"),
+        ("--tls-cert", "PEM certificate chain to serve TLS with, on the same port as plain HTTP"),
+        ("--tls-key", "PEM private key for --tls-cert (defaults to the certificate file itself)"),
+        ("--gdm", "answer Plex's LAN discovery protocol on udp/32410 and udp/32414"),
+        ("--plex-direct-host", "the <hash>.plex.direct hostname to advertise in GDM's Host: line; omitted entirely when unknown, which is what a PMS with no certificate does"),
+        ("--account-state-interval", "seconds between claimed-account watch/rating imports"),
+        ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default OFF: without it a restart reloads the catalog as it is on disk, which the test suites rely on"),
+    ]
+    .into_iter()
+    .collect();
+    let wrap = |text: &str| -> Vec<String> {
+        let mut lines = vec![String::new()];
+        for word in text.split(' ') {
+            let last = lines.last_mut().expect("wrap has a line");
+            if !last.is_empty() && last.len() + 1 + word.len() > 54 {
+                lines.push(word.to_string());
+            } else {
+                if !last.is_empty() {
+                    last.push(' ');
+                }
+                last.push_str(word);
+            }
         }
+        lines
+    };
+    let mut out = format!(
+        "{}\n\nplexsim -- a PMS that owns no files\n\noptions:\n  -h, --help            show this help message and exit\n",
+        server_usage()
+    );
+    for (flag, metavar, takes) in SERVER_OPTIONS {
+        let head = if *takes { format!("  {flag} {metavar}") } else { format!("  {flag}") };
+        match helps.get(flag) {
+            None => out.push_str(&format!("{head}\n")),
+            Some(help) => {
+                let body = wrap(help);
+                let mut rest = body.iter();
+                if head.len() <= 22 {
+                    out.push_str(&format!("{head:<24}{}\n", rest.next().expect("help has a line")));
+                } else {
+                    out.push_str(&format!("{head}\n"));
+                }
+                for line in rest {
+                    out.push_str(&format!("{}{line}\n", " ".repeat(24)));
+                }
+            }
+        }
+    }
+    out.push_str(&format!("\n{}\n", usage()));
+    out
+}
+
+/// What the server command line asked for: to serve, or argparse's `-h`/`--help`.
+#[derive(Debug)]
+enum ServerArgs {
+    Serve(Box<runtime::RuntimeOptions>),
+    Help,
+}
+
+/// `argparse.ArgumentParser.parse_args()` for `main()`'s options: `--flag value` and
+/// `--flag=value`, unique prefixes of a long flag (`allow_abbrev`), `-h`/`--help`
+/// anywhere acting when it is reached, a value refused when it looks like a flag,
+/// and the options it does not know reported together once everything else parsed.
+fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
+    let mut options = runtime::RuntimeOptions::default();
+    let mut unknown: Vec<String> = Vec::new();
+    let negative_number = |text: &str| {
+        text.strip_prefix('-')
+            .is_some_and(|rest| !rest.is_empty() && rest.parse::<f64>().is_ok())
+    };
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index].as_str();
+        index += 1;
+        if arg == "-h" || arg == "--help" {
+            return Ok(ServerArgs::Help);
+        }
+        if !arg.starts_with('-') || arg == "-" || negative_number(arg) {
+            unknown.push(arg.to_string());
+            continue;
+        }
+        let (flag_text, inline) = match arg.split_once('=') {
+            Some((flag, value)) if arg.starts_with("--") => (flag, Some(value.to_string())),
+            _ => (arg, None),
+        };
+        let mut matches: Vec<&(&str, &str, bool)> = SERVER_OPTIONS
+            .iter()
+            .filter(|(flag, _, _)| *flag == flag_text)
+            .collect();
+        if matches.is_empty() && flag_text.starts_with("--") && flag_text.len() > 2 {
+            matches = SERVER_OPTIONS
+                .iter()
+                .filter(|(flag, _, _)| flag.starts_with(flag_text))
+                .collect();
+            if "--help".starts_with(flag_text) {
+                if matches.is_empty() {
+                    return Ok(ServerArgs::Help);
+                }
+                return Err(format!(
+                    "ambiguous option: {flag_text} could match --help, {}",
+                    matches.iter().map(|(flag, _, _)| *flag).collect::<Vec<_>>().join(", ")
+                ));
+            }
+            if matches.len() > 1 {
+                return Err(format!(
+                    "ambiguous option: {flag_text} could match {}",
+                    matches.iter().map(|(flag, _, _)| *flag).collect::<Vec<_>>().join(", ")
+                ));
+            }
+        }
+        let Some(&&(flag, _, takes)) = matches.first() else {
+            unknown.push(arg.to_string());
+            continue;
+        };
+        let value = if !takes {
+            if inline.is_some() {
+                return Err(format!("argument {flag}: ignored explicit argument '{}'", inline.unwrap_or_default()));
+            }
+            String::new()
+        } else if let Some(value) = inline {
+            value
+        } else {
+            match args.get(index) {
+                Some(next)
+                    if !(next.starts_with('-') && next.len() > 1 && !negative_number(next)) =>
+                {
+                    index += 1;
+                    next.clone()
+                }
+                _ => return Err(format!("argument {flag}: expected one argument")),
+            }
+        };
+        let int = |value: &str| -> Result<i64, String> {
+            value
+                .trim()
+                .replace('_', "")
+                .parse::<i64>()
+                .map_err(|_| format!("argument {flag}: invalid int value: '{value}'"))
+        };
+        match flag {
+            "--catalog" => options.catalog = PathBuf::from(value),
+            "--port" => {
+                options.port = u16::try_from(int(&value)?)
+                    .map_err(|_| format!("argument {flag}: port must be 0-65535"))?
+            }
+            "--host" => options.host = value,
+            "--part-mode" => options.part_mode = value,
+            "--public-url" => options.public_url = Some(value),
+            "--token" => options.token = Some(value),
+            "--verbose" => options.verbose = true,
+            "--assert-claimed" => options.assert_claimed = true,
+            "--web-root" => options.web_root = Some(PathBuf::from(value)),
+            "--owner-email" => options.owner_email = value,
+            "--owner-username" => options.owner_username = value,
+            "--announce-url" => options.announce_url = Some(value),
+            "--device-id" => options.device_id = Some(value),
+            "--tls-cert" => options.tls_cert = Some(PathBuf::from(value)),
+            "--tls-key" => options.tls_key = Some(PathBuf::from(value)),
+            "--gdm" => options.gdm = value,
+            "--plex-direct-host" => options.plex_direct_host = Some(value),
+            "--heartbeat-interval" => options.heartbeat_interval = int(&value)?.try_into().map_err(|_| format!("argument {flag}: invalid int value: '{value}'"))?,
+            "--account-state-interval" => options.account_state_interval = int(&value)?.try_into().map_err(|_| format!("argument {flag}: invalid int value: '{value}'"))?,
+            "--state" => options.state = Some(PathBuf::from(value)),
+            _ => unreachable!("every SERVER_OPTIONS flag is matched"),
+        }
+        // argparse checks `choices` as it consumes the option, before any later `-h`.
+        for (name, current, choices) in [
+            ("--part-mode", &options.part_mode, &["proxy", "redirect"][..]),
+            ("--gdm", &options.gdm, &["auto", "on", "off"][..]),
+        ] {
+            if name == flag && !choices.contains(&current.as_str()) {
+                return Err(format!(
+                    "argument {name}: invalid choice: '{current}' (choose from {})",
+                    choices
+                        .iter()
+                        .map(|choice| format!("'{choice}'"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+            }
+        }
+    }
+    if !unknown.is_empty() {
+        return Err(format!("unrecognized arguments: {}", unknown.join(" ")));
     }
     if options.tls_key.is_some() && options.tls_cert.is_none() {
         return Err("--tls-key needs --tls-cert".to_string());
     }
-    Ok(options)
+    // `--web-root` defaults to the `webclient` folder beside the program, and a root
+    // that is not a directory serves no client at all: `web_root=... if isdir else None`.
+    let root = options.web_root.take().or_else(default_web_root);
+    options.web_root = root.filter(|path| path.is_dir());
+    Ok(ServerArgs::Serve(Box::new(options)))
+}
+
+/// server.py's default is `webclient` beside itself. The native binary lives three
+/// levels under the checkout (`rust/target/release/plexsim`), so the same folder is
+/// `./webclient` when started from the checkout, or that one found from the binary.
+fn default_web_root() -> Option<PathBuf> {
+    let local = PathBuf::from("webclient");
+    if local.is_dir() {
+        return Some(local);
+    }
+    let exe = env::current_exe().ok()?;
+    let checkout = exe.parent()?.parent()?.parent()?.parent()?;
+    Some(checkout.join("webclient")).filter(|path| path.is_dir())
 }
 
 fn run_server(args: &[String]) -> Result<(), String> {
-    let options = parse_server_args(args)?;
-    runtime::serve(options)
+    // argparse's `parser.error()`: the usage block, then `prog: error: message`, exit 2.
+    let failed = |error: String| format!("{}\nplexsim: error: {error}", server_usage());
+    match parse_server_args(args).map_err(failed)? {
+        ServerArgs::Help => {
+            print!("{}", server_help());
+            Ok(())
+        }
+        ServerArgs::Serve(options) => runtime::serve(*options).map_err(|error| {
+            if error.starts_with("RD_TOKEN must be set") {
+                failed(error)
+            } else {
+                error
+            }
+        }),
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -709,9 +904,10 @@ fn run_core(command: &str, args: &[String]) -> Result<(), String> {
 
 fn main() -> ExitCode {
     let mut args = env::args().skip(1).collect::<Vec<_>>();
-    if args.is_empty() || args[0] == "--help" || args[0] == "-h" {
-        println!("{}", usage());
-        return ExitCode::SUCCESS;
+    // `python3 server.py` with no arguments serves on the defaults, and `--help`
+    // anywhere among the server options prints argparse's help.
+    if args.is_empty() {
+        args.push("serve".to_string());
     }
     let command = args.remove(0);
     let result = if command == "decision" {
@@ -726,7 +922,11 @@ fn main() -> ExitCode {
         run_core(&command, &args)
     };
     if let Err(error) = result {
-        eprintln!("plexsim: {error}");
+        if error.contains("\nplexsim: error: ") {
+            eprintln!("{error}");
+        } else {
+            eprintln!("plexsim: {error}");
+        }
         ExitCode::from(2)
     } else {
         ExitCode::SUCCESS
