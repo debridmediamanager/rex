@@ -3142,3 +3142,7 @@ are changing; replay the client's exact request before altering behavior.
   and `/services/ultrablur/colors` over that thumb are the 500s the `85996be` rule already answered.
   Both servers sniffed the bytes and served `image/png` or `application/octet-stream`. Playlist and
   collection uploads take the same type here (unmeasured on a list; the oracle has one upload path).
+- **`DELETE /library/metadata/{a},{b}` is the 404 and deletes nothing** (cycle 83, plexscratch42
+  1.42.2, two rows of a throwaway library, `tests/fixtures/delete_key_list.json`); both rows read
+  back unchanged and the key-list GET beside it is the ordinary listing. The oracle answered the
+  DELETE with that listing, a 200; the native server already answered the 404.

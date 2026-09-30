@@ -13255,11 +13255,14 @@ class PlexSim:
                     return ("error", 404, "plexsim: not found")
                 return self.library_metadata(segments[:2] + [numeric[0]] + segments[3:],  # noqa: E501
                                              query, method)
-            if method not in ("GET", "HEAD", "PUT", "DELETE"):
+            if method not in ("GET", "HEAD", "PUT"):
                 # Measured on plexscratch (1.43.4, 2026-09-30): a key LIST takes the one
                 # item's verbs, and `POST /library/metadata/1,3` and a bare OPTIONS are
                 # the same 404 `POST /library/metadata/1` is. plexsim answered the
-                # listing. (Its DELETE is held out: no reference may be sent one.)
+                # listing. Cycle 83, measured on plexscratch42 (1.42.2) over two rows of a
+                # throwaway library: `DELETE /library/metadata/743,744` is the 85-byte
+                # 404 and deletes neither row; plexsim answered the multi-id READ with a
+                # 200, which a caller takes as a delete that happened.
                 return ("error", 404, "plexsim: not found")
             keys = [int(p) for p in raw_key.split(",")
                     if p.isdigit() and int(p) in self.catalog.items]

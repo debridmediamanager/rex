@@ -17,6 +17,8 @@ re-measured on a real PMS and checked here against the measured values.
   5; driven on `catalog_features.json`'s trailer 201);
 - a poster upload is served `image/jpeg` whatever its bytes, and the transcoder still refuses
   one that is no image (`tests/fixtures/upload_non_image.json`, plexscratch42);
+- `DELETE /library/metadata/{a},{b}` is a 404 that deletes nothing
+  (`tests/fixtures/delete_key_list.json`, plexscratch42);
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -274,6 +276,17 @@ def run(port):
     }
     check("an upload is served image/jpeg whatever its bytes; the transcoder refuses a non-image",
           seen == expected, seen)
+
+    # 8. A key-list DELETE: the 404, neither row removed; the key-list GET still lists both.
+    with open(os.path.join(FIXTURES, "delete_key_list.json")) as handle:
+        recorded = {cell["request"]: cell for cell in json.load(handle)["cells"]}
+    want = recorded["DELETE /library/metadata/743,744"]
+    status, headers, raw = exchange(port, "DELETE", "/library/metadata/1008,1009")
+    after = [row.get("ratingKey") for row in mc(port, "/library/metadata/1008,1009")
+             .get("Metadata") or []]
+    check("a key-list DELETE is the 404 and deletes nothing",
+          (status, len(raw), after) == (want["status"], want["length"], ["1008", "1009"]),
+          (status, len(raw), after))
 
 
 def run_features(port):
