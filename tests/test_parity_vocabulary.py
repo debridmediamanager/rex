@@ -208,6 +208,36 @@ def run(port):
           plain and all(status == 200 and order == plain for status, order in got.values()),
           got)
 
+    # 6. include* blocks on a hub page's and /common?id='s FULL rows.
+    blocks = {"includeChildren": "Children", "includeExtras": "Extras",
+              "includeOnDeck": "OnDeck", "includePreferences": "Preferences",
+              "includeRelated": "Related"}
+    got = {}
+    for option, element in blocks.items():
+        _status, mc = request(port, "/hubs/sections/2?count=12&%s=1" % option)
+        shelf = hub(mc, "tv.recentlyadded.") or {}
+        rows = shelf.get("Metadata") or []
+        light = [row for h in (mc or {}).get("Hub") or [] if h is not shelf
+                 for row in h.get("Metadata") or []]
+        got[option] = (bool(rows) and all(element in row for row in rows),
+                       any(element in row for row in light))
+    check("each include* block reaches the show hub page's full rows and no light row",
+          all(value == (True, False) for value in got.values()), got)
+    got = {}
+    for option, element in blocks.items():
+        _status, mc = request(port, "/library/sections/1/common?type=1&id=1007&%s=1" % option)
+        got[element] = element in ((mc or {}).get("Metadata") or [{}])[0]
+    check("a movie's /common?id= row takes Extras and Related and nothing else",
+          got == {"Children": False, "Extras": True, "OnDeck": False, "Preferences": False,
+                  "Related": True}, got)
+    got = {}
+    for option, element in blocks.items():
+        _status, mc = request(port, "/library/sections/2/common?type=2&id=20001&%s=1" % option)
+        got[element] = element in ((mc or {}).get("Metadata") or [{}])[0]
+    check("a show's /common?id= row takes Extras and Related and nothing else",
+          got == {"Children": False, "Extras": True, "OnDeck": False, "Preferences": False,
+                  "Related": True}, got)
+
 
 def main():
     process, port = start()

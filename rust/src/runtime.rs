@@ -9943,7 +9943,14 @@ impl Runtime {
                     if identifier.starts_with("tv.recentlyadded.")
                         && row.get("type").and_then(Value::as_str) == Some("show")
                     {
-                        self.detail_row(&row)
+                        // Cycle 83, measured on kids: this FULL row takes the `include*`
+                        // blocks -- `includeChildren`, `includeExtras`, `includeOnDeck`,
+                        // `includePreferences` and `includeRelated` each add their block
+                        // to Firefly's row and to no light row -- the oracle's
+                        // `expand_full_rows` over `/hubs/sections/{id}`.
+                        let mut full = self.detail_row(&row);
+                        self.expand_full_rows(std::slice::from_mut(&mut full), query);
+                        full
                     } else {
                         // Cycle 56, measured on zen and kids: `includeGuids=1` carries
                         // `Guid` on a library hub page's rows too.
@@ -16639,6 +16646,27 @@ impl Runtime {
         // `server.py` stores it on the catalog tag, which this projection copies.
         if let Some(first) = rows.first().and_then(key_of) {
             self.stamp_collection_tags(&first, &mut common);
+        }
+        // Cycle 83, measured on kids (a movie's row and Firefly's) and zen: with `id=`
+        // the row takes the `Extras` and `Related` blocks and ONLY those -- no
+        // `Children`, `OnDeck` or `Preferences`, even on a show.
+        if query.get("id").is_some_and(|id| !id.is_empty()) {
+            let blocks = query
+                .iter()
+                .filter(|(name, _)| {
+                    matches!(
+                        name.as_str(),
+                        "includeExtras" | "includeRelated" | "includeRelatedCount"
+                    )
+                })
+                .map(|(name, value)| (name.clone(), value.clone()))
+                .collect::<HashMap<_, _>>();
+            let mut full = Value::Object(common);
+            self.expand_full_rows(std::slice::from_mut(&mut full), &blocks);
+            common = match full {
+                Value::Object(object) => object,
+                _ => Map::new(),
+            };
         }
         // The row is written as a `Common` element (the handler's `_xml` override).
         common.insert("_element".to_string(), json!("Common"));

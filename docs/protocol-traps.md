@@ -3000,3 +3000,8 @@ are changing; replay the client's exact request before altering behavior.
 - **`/library/metadata/{id}/allLeaves` ignores `sort=`** (cycle 83, kids' show): `title:desc`,
   `titleSort`, an empty value and the unknown key `zzz` all answer the episodes in broadcast
   order with a 200.
+- **The `include*` blocks reach a library hub page's FULL rows, and `/common?id=` takes two of
+  them** (cycle 83, kids and zen). `/hubs/sections/{id}`'s TV Recently Added show row takes
+  `Children`, `Extras`, `OnDeck`, `Preferences` and `Related`; no light row takes any. The Common
+  row takes `Extras` and `Related` ONLY -- a movie's and Firefly's alike, never `Children`,
+  `OnDeck` or `Preferences`.

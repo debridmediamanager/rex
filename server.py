@@ -5960,7 +5960,18 @@ class PlexSim:
                 result = ("bare", result[1])
             if isinstance(result, dict) and method in ("GET", "HEAD") \
                     and self._expands_full_rows(segments, query):
-                self.expand_full_rows(result, query)
+                if segments[:2] == ["library", "sections"] and segments[3:] == ["common"]:
+                    # Cycle 83, measured on kids (a movie's and Firefly's row) and zen:
+                    # the Common row takes `Extras` and `Related` ONLY -- the
+                    # parent blocks `Children` and `OnDeck` and the item's `Preferences`
+                    # are absent even on a show, where the hub page's full row takes all
+                    # five. plexsim handed the Common row every block.
+                    self.expand_full_rows(result, {
+                        name: value for name, value in query.items()
+                        if name in ("includeExtras", "includeRelated",
+                                    "includeRelatedCount")})
+                else:
+                    self.expand_full_rows(result, query)
             if isinstance(result, dict) and query.get("excludeFields"):
                 result = _exclude_fields(result, query["excludeFields"])
             language = request_language(query, headers)
