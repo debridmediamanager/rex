@@ -5007,13 +5007,34 @@ impl Runtime {
         Vec::new()
     }
 
+    /// `_items_for_uri` as a PLAYLIST reads it: a show or season expands into the
+    /// episodes a player can play. Measured: a list over a show holds its episodes,
+    /// never the show row -- a PUT of a show's uri answers `leafCountAdded` equal to
+    /// its episode count, and each episode takes its own server-wide
+    /// `playlistItemID`. plexsim stored the show itself, so every later list's item
+    /// ids ran short of the reference's by the episodes it never added.
+    fn playable_rows_for_uri(&self, uri: &str) -> Vec<Value> {
+        let mut out = Vec::new();
+        for row in self.rows_for_uri(uri) {
+            match row.get("type").and_then(Value::as_str) {
+                Some("show" | "season") => {
+                    if let Some(key) = key_of(&row) {
+                        out.extend(self.leaves(&key));
+                    }
+                }
+                _ => out.push(row),
+            }
+        }
+        out
+    }
+
     fn dynamic_playlist_row(&self, playlist: &Playlist) -> Value {
         self.playlist_row(playlist, true, true)
     }
 
     fn playlist_keys(&self, playlist: &Playlist) -> Vec<String> {
         if playlist.smart {
-            self.rows_for_uri(&playlist.uri)
+            self.playable_rows_for_uri(&playlist.uri)
                 .iter()
                 .filter_map(key_of)
                 .collect()
@@ -19451,31 +19472,57 @@ impl Runtime {
             } else {
                 None
             };
+            // Cycle 16, measured on plexscratch: a `type=` above the leaf reaches UP
+            // from each member to the parents it belongs to -- a list of episodes
+            // answers its show to `type=2` and its seasons to `type=3`, de-duplicated
+            // in member order -- the oracle's `_playlist_ancestry`. plexsim reached
+            // DOWN from a stored show instead, which only answered while a list could
+            // hold a show at all.
+            let wanted_kind = match type_filter {
+                Some(1) => Some("movie"),
+                Some(2) => Some("show"),
+                Some(3) => Some("season"),
+                Some(4) => Some("episode"),
+                _ => None,
+            };
             let mut typed_rows = Vec::new();
+            let mut seen = std::collections::HashSet::new();
             for key in self.playlist_keys(playlist) {
                 let Some(row) = self.catalog.get(&key).cloned() else {
                     continue;
                 };
-                let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
-                match type_filter {
-                    None | Some(-1) => typed_rows.push(row),
-                    Some(1) if kind == "movie" => typed_rows.push(row),
-                    Some(2) if kind == "show" => typed_rows.push(row),
-                    Some(3) if kind == "season" => typed_rows.push(row),
-                    Some(4) if kind == "episode" => typed_rows.push(row),
-                    Some(3) if kind == "show" => {
-                        let parent = key_of(&row).unwrap_or_default();
-                        typed_rows.extend(self.children(&parent).into_iter().filter(|child| {
-                            child.get("type").and_then(Value::as_str) == Some("season")
-                        }));
+                if matches!(type_filter, None | Some(-1)) {
+                    typed_rows.push(row);
+                    continue;
+                }
+                let Some(wanted_kind) = wanted_kind else {
+                    continue;
+                };
+                let mut ancestry = vec![row.clone()];
+                for field in ["parentRatingKey", "grandparentRatingKey"] {
+                    if let Some(parent) = row
+                        .get(field)
+                        .and_then(|value| match value {
+                            Value::String(text) => Some(text.clone()),
+                            Value::Number(number) => Some(number.to_string()),
+                            _ => None,
+                        })
+                        .filter(|text| !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()))
+                        .and_then(|parent| self.catalog.get(&parent).cloned())
+                    {
+                        ancestry.push(parent);
                     }
-                    Some(4) if matches!(kind, "show" | "season") => {
-                        let parent = key_of(&row).unwrap_or_default();
-                        typed_rows.extend(self.leaves(&parent).into_iter().filter(|child| {
-                            child.get("type").and_then(Value::as_str) == Some("episode")
-                        }));
+                }
+                for candidate in ancestry {
+                    if candidate.get("type").and_then(Value::as_str) != Some(wanted_kind) {
+                        continue;
                     }
-                    _ => {}
+                    let Some(candidate_key) = key_of(&candidate) else {
+                        continue;
+                    };
+                    if seen.insert(candidate_key) {
+                        typed_rows.push(candidate);
+                    }
                 }
             }
             let mut rows = typed_rows
@@ -19644,7 +19691,8 @@ impl Runtime {
             return self.save_smart_playlist(&playlist.id, query);
         }
         if tail.first() == Some(&"items") && request.method == "PUT" {
-            let mut keys = self.rows_for_uri(query.get("uri").map(String::as_str).unwrap_or(""));
+            let mut keys =
+                self.playable_rows_for_uri(query.get("uri").map(String::as_str).unwrap_or(""));
             if keys.is_empty() {
                 // Measured: a queue can be saved as a playlist by its id.
                 if let Some(queue) = query.get("playQueueID").and_then(|id| self.queues.get(id)) {

@@ -205,7 +205,7 @@ impl Runtime {
             return Response::error(500, "plexsim: bad playlist type");
         }
         let uri = query.get("uri").cloned().unwrap_or_default();
-        let mut rows = self.rows_for_uri(&uri);
+        let mut rows = self.playable_rows_for_uri(&uri);
         // Cycle 41: a type/content mismatch returns 400, but first creates an EMPTY
         // playlist of that type and pushes its ordinary type-15 `created` frame.
         let mismatched = kind != "video" && !rows.is_empty();
