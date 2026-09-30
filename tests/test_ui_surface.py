@@ -7493,11 +7493,15 @@ def main():
         skip("an episode scrobble counts on its season and show; a show scrobble does not count on the show",
              "need a show")
 
-    # Measured on plexscratch: a show puts ONE row on deck -- its in-progress episode with
-    # the lowest number, not the one played last -- removing any of its episodes from
-    # Continue Watching hides that row, a timeline on one of them brings it back, and with
-    # the first one watched the next one in progress is the row. plexsim listed every
-    # episode with a resume point.
+    # Measured on plexscratch: a show puts ONE row on deck -- removing any of its episodes
+    # from Continue Watching hides that row, a timeline on one of them brings it back, and
+    # with the first one watched the next one in progress is the row. plexsim listed every
+    # episode with a resume point. WHICH in-progress episode is the one viewed most
+    # recently: cycle 9 recorded "the lowest number" on ten-second clips and cycle 14
+    # re-measured it on long ones (see `continue_watching`). This check kept cycle 9's
+    # expectation and passed only when its beats shared a second -- `lastViewedAt` has
+    # one-second resolution and a tie falls back to the lowest -- so the beats are now
+    # spaced past a second and the restored row is the episode played last.
     leaves_w10c = sorted(get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or [],
                          key=lambda r: (r.get("parentIndex") or 0, r.get("index") or 0)) if show else []
     if len(leaves_w10c) >= 2:
@@ -7511,21 +7515,23 @@ def main():
                                  "&time=%s&duration=600000" % (key, key, ms))
         request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % show)
         play_w10c(second_w10c, 120000)
+        time.sleep(1.1)
         play_w10c(first_w10c, 180000)
         both_w10c = deck_w10c()
         request(base, "PUT", "/actions/removeFromContinueWatching?ratingKey=%s" % second_w10c)
         hidden_w10c = deck_w10c()
+        time.sleep(1.1)
         play_w10c(second_w10c, 150000)
         back_w10c = deck_w10c()
         request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % first_w10c)
         next_w10c = deck_w10c()
         request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % show)
-        check("On Deck holds one row per show: the lowest episode in progress, hidden and restored as one",
-              both_w10c == [first_w10c] and hidden_w10c == [] and back_w10c == [first_w10c]
+        check("On Deck holds one row per show: the episode in progress viewed last, hidden and restored as one",
+              both_w10c == [first_w10c] and hidden_w10c == [] and back_w10c == [second_w10c]
               and next_w10c == [second_w10c],
               "%s / %s / %s / %s" % (both_w10c, hidden_w10c, back_w10c, next_w10c))
     else:
-        skip("On Deck holds one row per show: the lowest episode in progress, hidden and restored as one",
+        skip("On Deck holds one row per show: the episode in progress viewed last, hidden and restored as one",
              "need a show with two episodes")
 
     # Measured on plexscratch without a session identifier: a completed play answers
