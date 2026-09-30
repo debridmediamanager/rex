@@ -5959,6 +5959,12 @@ impl Runtime {
                 query.insert("X-Plex-Language".to_string(), value.clone());
             }
         }
+        // `server.py` `handle`: the platform header, when sent, REPLACES the query's
+        // value for every route -- Plex Web sends it in the query string, the native
+        // apps as a header, and the header wins.
+        if let Some(value) = request.headers.get("x-plex-platform") {
+            query.insert("X-Plex-Platform".to_string(), value.clone());
+        }
         {
             // `server.py` `_dispatch`: the query grammar and the read-only verb gates
             // are refused before the token is even looked at.
