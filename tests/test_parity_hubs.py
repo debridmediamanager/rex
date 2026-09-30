@@ -310,6 +310,19 @@ def write_checks(srv):
           show.get("episodeSort") == "1" and movie.get("useOriginalTitle") == "1",
           (show.get("episodeSort"), movie.get("useOriginalTitle")))
 
+    # -- a flattened show's episodes do not roll up on Recently Added TV --------------
+    srv.raw("/library/metadata/20001/prefs?flattenSeasons=1", "PUT")
+    rows = srv.container("/hubs/home/recentlyAdded?type=2").get("Metadata") or []
+    check("Recently Added TV lists a flattened show's episodes, not the show",
+          [r.get("type") for r in rows] == ["episode"] * 8
+          and keys(rows)[:3] == ["1011", "1010", "1006"], [(r.get("ratingKey"), r.get("type"))
+                                                             for r in rows])
+    srv.raw("/library/metadata/20001/prefs?flattenSeasons=-1", "PUT")
+    rows = srv.container("/hubs/home/recentlyAdded?type=2").get("Metadata") or []
+    check("...and rolls them up into the show again once it is not flattened",
+          [(r.get("ratingKey"), r.get("type")) for r in rows] == [("20001", "show")],
+          [(r.get("ratingKey"), r.get("type")) for r in rows])
+
     # -- an episode whose show has no poster lists its own still as the coverPoster ----
     srv.raw("/library/metadata/20001/unmatch", "PUT")
     episode = (srv.container("/library/metadata/1003").get("Metadata") or [{}])[0]
