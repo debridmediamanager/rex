@@ -148,9 +148,14 @@ impl Runtime {
         if bare.is_empty() || !GROUPABLE.contains(&bare) {
             return Err(500);
         }
+        // `server.py` `filter_value`: the type prefix is a SCOPE -- `season.index` on an
+        // episode reads its SEASON's index (`scope_rows`, first match) -- where the bare
+        // field is read off the row itself.
+        let (scope, column) = field.rsplit_once('.').unwrap_or(("", field));
         let mut best: HashMap<String, ((i64, i64), usize)> = HashMap::new();
         for (index, row) in rows.iter().enumerate() {
-            let marker = string_value(&self.filter_value(row, field));
+            let target = self.scope_first(scope, row);
+            let marker = string_value(&self.filter_value(target.as_ref().unwrap_or(row), column));
             let rank = (
                 row.get("addedAt").and_then(Value::as_i64).unwrap_or(0),
                 key_of(row)
@@ -174,6 +179,29 @@ impl Runtime {
             .filter(|(index, _)| chosen.contains(index))
             .map(|(_, row)| row)
             .collect())
+    }
+
+    /// `server.py` `scope_rows(scope, row)[0]`: the row a type prefix names for one
+    /// listing row, or None when the prefix is not a type, is the row's own type, or
+    /// names nothing.
+    pub(super) fn scope_first(&self, scope: &str, row: &Value) -> Option<Value> {
+        let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
+        if !matches!(scope, "movie" | "show" | "season" | "episode") || scope == kind {
+            return None;
+        }
+        let lookup = |name: &str| {
+            row.get(name)
+                .map(string_value)
+                .and_then(|key| self.catalog.get(&key).cloned())
+        };
+        let own = || string_value(row.get("ratingKey").unwrap_or(&Value::Null));
+        match (kind, scope) {
+            ("episode", "season") | ("season", "show") => lookup("parentRatingKey"),
+            ("episode", "show") => lookup("grandparentRatingKey"),
+            ("show", "season") => self.children(&own()).into_iter().next(),
+            ("show" | "season", "episode") => self.leaves(&own()).into_iter().next(),
+            _ => None,
+        }
     }
 
     /// `/library/all` (`server.py`'s handler of the same route).
