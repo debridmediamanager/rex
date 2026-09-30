@@ -263,7 +263,8 @@ def run(server):
           first and [row.get("globalViewCount") for row in top.get("Account") or []] == [2],
           (first, top))
 
-    # -- a collection's /children on the metadata path names its stored section id -
+    # -- a collection's /children on the metadata path names its section by NUMBER -
+    # (plexscratch42, 1.42.2, 2026-09-30); both servers once sent the create's string.
     server.call("POST", "/library/collections?type=1&title=Parity%20Kids&smart=0&sectionId=1"
                         "&uri=server%3A%2F%2Fx%2Fcom.plexapp.plugins.library%2Flibrary%2F"
                         "metadata%2F1007")
@@ -271,8 +272,8 @@ def run(server):
                        server.rows("/library/sections/1/collections")
                        if row.get("title") == "Parity Kids"), None)
     kids = server.get("/library/metadata/%s/children" % collection)[1] or {}
-    check("a collection's metadata-path children name the library by the string sectionId",
-          collection and kids.get("librarySectionID") == "1",
+    check("a collection's metadata-path children name the library by number",
+          collection and kids.get("librarySectionID") == 1,
           (collection, kids.get("librarySectionID")))
 
     # -- a written item setting shows on the detail read alone ---------------------

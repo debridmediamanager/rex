@@ -6,7 +6,8 @@ not copy", each re-measured on a real PMS before either server changed:
   client's own `PUT /updater/check` in `tests/fixtures/reference-walk.jsonl`;
 - `/photo/:/transcode` output caches (`max-age=259200`) whatever it transcodes, a
   bundled resource and an uploaded poster included, where the same files read directly
-  are `no-cache`.
+  are `no-cache`;
+- a collection's `/children` container carries `librarySectionID` as a NUMBER.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -222,9 +223,33 @@ def transcoder_cache(port):
     check("and read directly it is no-cache", direct == (200, "no-cache"), direct)
 
 
+# --- a collection's /children names its section by number ------------------------------
+
+def collection_section_id(port):
+    identity = mc(port, "/identity")
+    uri = "server://%s/com.plexapp.plugins.library/library/metadata/1007" % identity.get(
+        "machineIdentifier")
+    made = mc(port, "/library/collections?type=1&title=fbSection&smart=0&sectionId=1&uri=%s"
+              % urllib.parse.quote(uri, safe=""), "POST")
+    key = (made.get("Metadata") or [{}])[0].get("ratingKey")
+    # plexscratch42 (1.42.2), 2026-09-30, a movie collection holding one movie, paged and
+    # unpaged: `librarySectionID: 1` on the container, and on each row of
+    # `/library/collections/{id}/children`.
+    seen = {}
+    for suffix in ("", "?X-Plex-Container-Start=0&X-Plex-Container-Size=20"):
+        container = mc(port, "/library/metadata/%s/children%s" % (key, suffix))
+        seen["metadata" + suffix[:1]] = container.get("librarySectionID")
+        rows = mc(port, "/library/collections/%s/children%s" % (key, suffix)).get("Metadata") or []
+        seen["collections" + suffix[:1]] = [row.get("librarySectionID") for row in rows]
+    check("a collection's /children names its section as a NUMBER",
+          key and seen == {"metadata": 1, "metadata?": 1, "collections": [1], "collections?": [1]},
+          seen)
+
+
 def run(port):
     empty_body(port)
     transcoder_cache(port)
+    collection_section_id(port)
 
 
 def main():

@@ -2880,3 +2880,6 @@ are changing; replay the client's exact request before altering behavior.
   (`url=/:/resources/movie.png`) answers `max-age=259200` on kids, fresh and cached alike, and so does an
   item's artwork; the same files read directly are `no-cache`. The oracle
   served a resource and an uploaded poster through the transcoder with the direct path's `no-cache`.
+- **A collection's `/library/metadata/{id}/children` names its section by NUMBER** --
+  `librarySectionID: 1` on the container, paged or not, as on every other container (plexscratch42,
+  four movie collections). Both servers sent the create request's `sectionId` string.

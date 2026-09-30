@@ -1384,11 +1384,10 @@ impl Runtime {
                 );
                 body.insert("parentTitle".to_string(), json!(collection.title));
                 body.insert("allowSync".to_string(), json!(true));
+                // A NUMBER, as on every other collection container: measured 2026-09-30
+                // on plexscratch42 (1.42.2) over four movie collections, paged and
+                // unpaged. This one had copied the oracle's stored `sectionId` string.
                 body.extend(self.collection_section_fields(collection));
-                // This one container names the library by the collection's STORED
-                // section id -- the create's `sectionId`, a string -- where every other
-                // collection container reads it as a number.
-                body.insert("librarySectionID".to_string(), json!(collection.section));
             }
             return Response::json(200, container);
         }

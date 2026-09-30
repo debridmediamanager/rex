@@ -12632,7 +12632,14 @@ class PlexSim:
             container["Metadata"] = [_grid_row(row, keep_section=False)
                                      for row in container.get("Metadata") or []]
             container["allowSync"] = True
-            container["librarySectionID"] = collection.get("librarySectionID")
+            # A NUMBER, as on every other container: measured 2026-09-30 on plexscratch42
+            # (1.42.2) over four movie collections, paged and unpaged. A collection keeps
+            # the `sectionId` its create request carried, a string, and this copied it
+            # through, so a collection page alone said "1".
+            container["librarySectionID"] = (
+                int(collection["librarySectionID"])
+                if str(collection.get("librarySectionID")).isdigit()
+                else collection.get("librarySectionID"))
             container["librarySectionTitle"] = section.get("title")
             container["librarySectionUUID"] = section.get("uuid")
             container.pop("thumb", None)
