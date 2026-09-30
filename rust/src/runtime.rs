@@ -11297,28 +11297,31 @@ impl Runtime {
         response
     }
 
-    /// `server.py` `download_queue`: `POST /downloadQueue` answers the calling client's
-    /// queue (the SAME one on a second POST), numbered by creation; `/downloadQueue/{id}`
-    /// reads any client's queue back by that number, `/items` is an empty container, and
-    /// every other verb on an existing queue is a 404.
-    fn route_download_queue(&mut self, segments: &[&str], request: &Request) -> Response {
-        let bare = |fields: Value| Response::json(200, json!({"MediaContainer": fields}));
+    /// server.py's `download_queue`: the bare GET is the dispatcher's empty listing;
+    /// `POST` answers the calling client's queue (the SAME queue on a second POST);
+    /// `/downloadQueue/{id}` reads any queue back by id and `/items` is an empty
+    /// container; an unknown id, and every verb but GET and HEAD below the root, is a 404.
+    fn route_download_queue(
+        &mut self,
+        segments: &[&str],
+        request: &Request,
+        query: &HashMap<String, String>,
+    ) -> Response {
         if segments.is_empty() {
             if request.method == "POST" {
-                let (_, raw_query) = split_target(&request.target);
-                let client = parse_query(&raw_query)
-                    .into_iter()
-                    .find(|(name, value)| name == "X-Plex-Client-Identifier" && !value.is_empty())
-                    .map(|(_, value)| value)
-                    .or_else(|| request.headers.get("x-plex-client-identifier").cloned())
+                let client = query
+                    .get("X-Plex-Client-Identifier")
+                    .filter(|value| !value.is_empty())
+                    .or_else(|| request.headers.get("x-plex-client-identifier"))
+                    .cloned()
                     .unwrap_or_default();
-                let next_id = self.download_queues.len() + 1;
+                let next = self.download_queues.len() + 1;
                 let queue = self
                     .download_queues
                     .entry(client.clone())
                     .or_insert_with(|| {
                         json!({
-                            "id": next_id,
+                            "id": next,
                             "owner": 1,
                             "clientIdentifier": client,
                             "itemCount": 0,
@@ -11326,26 +11329,36 @@ impl Runtime {
                         })
                     })
                     .clone();
-                return bare(json!({"size": 1, "DownloadQueue": [queue]}));
+                return Response::json(
+                    200,
+                    json!({"MediaContainer": {"size": 1, "DownloadQueue": [queue]}}),
+                );
             }
-            return bare(json!({"size": 0, "content": "plugins"}));
+            return Response::json(200, plugin_container(Vec::new()));
         }
-        let Some(queue) = self
+        let queue = self
             .download_queues
             .values()
-            .find(|queue| queue.get("id").map(string_value).as_deref() == Some(segments[0]))
-            .cloned()
-        else {
+            .find(|queue| {
+                queue.get("id").map(string_value).as_deref() == Some(segments[0])
+            })
+            .cloned();
+        let Some(queue) = queue else {
             return Response::error(404, "plexsim: not found");
         };
         if !matches!(request.method.as_str(), "GET" | "HEAD") {
             return Response::error(404, "plexsim: not found");
         }
-        match segments {
-            [_] => bare(json!({"size": 1, "DownloadQueue": [queue]})),
-            [_, "items"] => bare(json!({"size": 0})),
-            _ => Response::error(404, "plexsim: not found"),
+        if segments.len() == 1 {
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 1, "DownloadQueue": [queue]}}),
+            );
         }
+        if segments.len() == 2 && segments[1] == "items" {
+            return Response::json(200, json!({"MediaContainer": {"size": 0}}));
+        }
+        Response::error(404, "plexsim: not found")
     }
 
     fn route_dynamic(
@@ -11422,7 +11435,7 @@ impl Runtime {
             return Response::json(200, json!({"MediaContainer": {"size": 0}}));
         }
         if segments.first() == Some(&"downloadQueue") {
-            return self.route_download_queue(&segments[1..], request);
+            return self.route_download_queue(&segments[1..], request, query);
         }
         if segments.first() == Some(&"accounts")
             && segments.len() >= 2
