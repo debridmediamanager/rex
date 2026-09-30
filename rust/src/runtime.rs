@@ -6667,10 +6667,9 @@ impl Runtime {
             }
             Some(_) => return Response::error(400, "plexsim: bad request"),
         };
-        let all_names = load_json_sidecar(&self.catalog_path, "client_profiles.json")
-            .and_then(|value| value.as_object().cloned())
-            .map(|object| object.into_iter().map(|(name, _)| name).collect::<Vec<_>>())
-            .unwrap_or_default();
+        // server.py's CLIENT_PROFILE_ORDER (the reference's own listing order, which
+        // is not the sidecar's key order), or the seven local profiles for type=42;
+        // each row is its title alone.
         let local_names = [
             "Android",
             "iOS",
@@ -6680,30 +6679,18 @@ impl Runtime {
             "Windows",
             "Xbox One",
         ];
-        let names = if selected == Some(42) {
-            local_names
-                .iter()
-                .map(|name| (*name).to_string())
-                .collect::<Vec<_>>()
+        let names: &[&str] = if selected == Some(42) {
+            &local_names
         } else {
-            all_names
+            CLIENT_PROFILE_ORDER
         };
         let rows = names
-            .into_iter()
-            .map(|name| {
-                if selected == Some(42) {
-                    json!({"title":name,"selected":1})
-                } else {
-                    json!({"title":name})
-                }
-            })
+            .iter()
+            .map(|name| json!({"title": name}))
             .collect::<Vec<_>>();
         Response::json(
             200,
-            self.container(
-                Map::from_iter([("Profile".to_string(), Value::Array(rows))]),
-                false,
-            ),
+            json!({"MediaContainer": {"size": rows.len(), "Profile": rows}}),
         )
     }
 
@@ -22902,6 +22889,25 @@ fn page_fields(fields: &mut Map<String, Value>, query: &HashMap<String, String>)
         }
     }
 }
+
+/// server.py `CLIENT_PROFILE_ORDER`: `/clients/profiles` in the reference's order.
+const CLIENT_PROFILE_ORDER: &[&str] = &[
+    "Android", "Asus Transformer Prime TF201", "Chrome", "Chromecast", "Firefox", "Generic",
+    "HTML TV App", "Internet Explorer", "Konvergo", "Microsoft Edge", "Mystery 3", "Mystery 4",
+    "Mystery 5", "Opera TV App", "Opera", "Panasonic Viera 3D TV", "PlayStation 3 App",
+    "PlayStation 3", "PlayStation 4 App", "Plex Desktop", "Plex Home Theater-RaspberryPi",
+    "Plex Home Theater", "Plexamp", "Popcorn Hour", "Roku-3.1", "Roku-5.x", "Roku-5000X-6.0",
+    "Roku-6.x", "Roku-7.x", "Roku", "RokuDLNA-3.1", "RokuDLNA-4400X-7.x", "RokuDLNA-5.1",
+    "RokuDLNA-5000X-6.x", "RokuDLNA-5000X-7.x", "RokuDLNA-6.x", "RokuDLNA-6000X-7.x", "Safari",
+    "Samsung SmartTV", "Samsung Tizen", "Samsung", "Sonos", "Sony Blu-ray 2013", "Sony Blu-ray",
+    "Sony Bravia 2010", "Sony Bravia 2011", "Sony Bravia 2012", "Sony Bravia 2013",
+    "Sony Streaming Player", "Universal Mobile", "Universal Recording", "Universal TV",
+    "Unknown Browser", "Vivaldi", "Web", "Western Digital TV Live", "Wii U",
+    "Windows 10 Desktop", "Windows 10 Mobile", "Windows Phone", "Windows", "Xbox 360 App",
+    "Xbox 360", "Xbox One", "ZP", "iOS-iPad-1,1", "iOS-iPhone-1,1", "iOS-iPhone-1,2",
+    "iOS-iPhone-2,1", "iOS-iPhone-3,1", "iOS-iPhone-3,2", "iOS-iPhone-3,3", "iOS-iPod-1,1",
+    "iOS-iPod-2,1", "iOS-iPod-3,1", "iOS-iPod-4,1", "iOS", "tvOS",
+];
 
 fn plugin_container(rows: Vec<(&str, bool)>) -> Value {
     let directories = rows
