@@ -31,6 +31,7 @@ shows 20000+, seasons 30000+), so a ratingKey identifies its own kind on sight:
 playlists 40000+, collections 50000+.
 """
 
+import copy
 import datetime
 import logging
 import re
@@ -1895,7 +1896,11 @@ class Library:
         row["Media"] = kept
         created = []
         for source in extra:
-            clone = dict(row)
+            # Each new row is an item of its own: a shallow `dict(row)` shared the
+            # source's nested `_prefs`, tag lists and the rest, so clearing a setting on
+            # one row cleared it on the other.
+            clone = copy.deepcopy({name: value for name, value in row.items()
+                                   if name != "Media"})
             clone["Media"] = [source]
             clone.pop("Field", None)
             # A real PMS sends ratingKey as a STRING at every level; an int
