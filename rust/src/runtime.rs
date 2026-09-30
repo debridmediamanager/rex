@@ -6339,9 +6339,21 @@ impl Runtime {
             ("GET" | "HEAD", "/library") => Response::json(
                 200,
                 self.container(
+                    // The library root carries the secondary container's art/title
+                    // pair and the library identity, `content` and `title2` empty.
                     Map::from_iter([
                         ("size".to_string(), json!(3)),
+                        ("allowSync".to_string(), json!(false)),
+                        ("art".to_string(), json!("/:/resources/library-art.png")),
+                        ("content".to_string(), json!("")),
+                        (
+                            "identifier".to_string(),
+                            json!("com.plexapp.plugins.library"),
+                        ),
+                        ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
+                        ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
                         ("title1".to_string(), json!("Plex Library")),
+                        ("title2".to_string(), json!("")),
                         (
                             "Directory".to_string(),
                             json!([
