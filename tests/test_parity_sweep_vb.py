@@ -33,7 +33,7 @@ for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 
 # a reference's item -> the fixture catalog's item of the same kind
-KIDS_ITEMS = {"1": "1007", "8": "1001"}
+KIDS_ITEMS = {"1": "1007", "17": "1008", "8": "1001"}
 
 results = []
 
@@ -58,8 +58,8 @@ def fixture(rule):
 
 
 def local_path(path):
-    return re.sub(r"(/metadata/)(\d+)", lambda m: m.group(1) + KIDS_ITEMS.get(m.group(2), m.group(2)),
-                  path)
+    return re.sub(r"(/metadata/)([\d,]+)", lambda m: m.group(1) + ",".join(
+        KIDS_ITEMS.get(key, key) for key in m.group(2).split(",")), path)
 
 
 def send(port, method, path, headers=()):
@@ -188,6 +188,16 @@ def run(port):
               eof3 == row["idle"]["eof"] and len(idle) == row["idle"]["bytes"], (eof3, idle[:80]))
         sock.close()
 
+
+    # 6. The multi-id container's `mediaTagVersion` is a number, in any language.
+    for row in fixture("multi-id-json"):
+        req = row["request"]
+        want = json.loads(row["response"]["body"])["MediaContainer"]["mediaTagVersion"]
+        path = local_path(req["path"])
+        status, _, body = send(port, "GET", path, req["headers"])
+        got = json.loads(body)["MediaContainer"].get("mediaTagVersion") if status == 200 else None
+        check("%s's mediaTagVersion is a %s" % (path, type(want).__name__),
+              status == 200 and type(got) is type(want), repr(got))
 
 
 def run_last(port):

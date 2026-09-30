@@ -2955,3 +2955,8 @@ are changing; replay the client's exact request before altering behavior.
   line, closes the same way. The native server answered every such read timeout with a 400 before
   closing, which a client that believed the first `Content-Length` (python's `http.client` does)
   read as the rest of its body -- the sweep's "oracle IncompleteRead, native 206" cells.
+- **The multi-id container's `mediaTagVersion` is a NUMBER.** Measured on kids (1.43.4,
+  `/library/metadata/1,17` and `/8,9`) and zen (1.42.2, two movies), with `X-Plex-Language: de` and
+  `en` alike (2026-09-30): `"mediaTagVersion":1786914632`, as on every other library container. The
+  native server sent it as a string on `/library/metadata/{a},{b}` only, in every language; the
+  sweep saw it only under the language headers because the family's base already carried it.

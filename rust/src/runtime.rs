@@ -15040,10 +15040,10 @@ impl Runtime {
                         section.get("uuid").cloned().unwrap_or(Value::Null),
                     ),
                     ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
-                    (
-                        "mediaTagVersion".to_string(),
-                        json!(MEDIA_TAG_VERSION.to_string()),
-                    ),
+                    // Measured on kids and zen (2026-09-30), in German and English alike:
+                    // the multi-id container's `mediaTagVersion` is a JSON NUMBER, as on
+                    // every other library container. The native server sent a string.
+                    ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
                     (
                         "Metadata".to_string(),
                         Value::Array(
