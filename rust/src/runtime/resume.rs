@@ -1025,7 +1025,8 @@ pub(super) fn guid_gate(mut row: Value, query: &HashMap<String, String>) -> Valu
                 if let Some(guid) = object
                     .get("guid")
                     .and_then(Value::as_str)
-                    .filter(|g| !g.is_empty())
+                    // Cycle 83, kids: an unmatched `local://` row gets no Guid.
+                    .filter(|g| !g.is_empty() && !g.starts_with("local://"))
                 {
                     let guid = guid.to_string();
                     object.insert("Guid".to_string(), json!([{"id": guid}]));

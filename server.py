@@ -12199,9 +12199,13 @@ class PlexSim:
         if (query or {}).get("includeGuids") == "1":
             # Some rows (notably seasons and episodes) have only their primary
             # `guid`, with no external-id `Guid` list. Both references still emit a
-            # one-entry Guid element for those rows when the listing asks for it.
+            # one-entry Guid element for those rows when the listing asks for it --
+            # except an UNMATCHED row: cycle 83, on kids, `local://12`..`14` carry no
+            # Guid under `includeGuids=1` on the grid and on `/grandchildren` alike,
+            # the exception cycle 56 recorded for the hub page.
             return [dict(row, Guid=[{"id": row["guid"]}])
-                    if row.get("guid") and not row.get("Guid") else row
+                    if row.get("guid") and not row.get("Guid")
+                    and not str(row["guid"]).startswith("local://") else row
                     for row in rows]
         return [{k: v for k, v in row.items() if k != "Guid"} for row in rows]
 

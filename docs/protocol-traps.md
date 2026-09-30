@@ -3005,3 +3005,6 @@ are changing; replay the client's exact request before altering behavior.
   `Children`, `Extras`, `OnDeck`, `Preferences` and `Related`; no light row takes any. The Common
   row takes `Extras` and `Related` ONLY -- a movie's and Firefly's alike, never `Children`,
   `OnDeck` or `Preferences`.
+- **`includeGuids=1` never gives an unmatched `local://` row a Guid** -- on the grid, on
+  `/grandchildren` and on a hub page alike (cycle 83, kids' episodes 12-14), where a matched row
+  with no external ids gets the one-entry list. `/grandchildren` honours the option at all.

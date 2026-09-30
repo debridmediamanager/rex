@@ -9965,8 +9965,13 @@ impl Runtime {
                                 })
                                 .cloned()
                                 .or_else(|| {
+                                    // Cycle 56: except on a `local://` row, which has
+                                    // no Guid list (the oracle's section-hub pass).
                                     row.get("guid")
-                                        .filter(|guid| !string_value(guid).is_empty())
+                                        .filter(|guid| {
+                                            let text = string_value(guid);
+                                            !text.is_empty() && !text.starts_with("local://")
+                                        })
                                         .map(|guid| json!([{"id": guid}]))
                                 });
                             if let (Some(guids), Some(object)) = (guids, shown.as_object_mut()) {
@@ -17283,9 +17288,14 @@ impl Runtime {
                     ))
                     .cloned()
                     .unwrap_or_default();
+                // The oracle's `_guid_gate`: `includeGuids=1` reaches this list too
+                // (kids' show 6: a Guid on each matched episode with it, none without),
+                // and a row with only its primary `guid` carries a one-entry Guid.
                 let shown = rows
                     .iter()
-                    .map(|candidate| self.grid_row(candidate, false, true, false))
+                    .map(|candidate| {
+                        self.grid_row(&guid_gate(candidate.clone(), query), false, true, false)
+                    })
                     .collect::<Vec<_>>();
                 let mut fields = Map::from_iter([
                     (

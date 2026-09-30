@@ -238,6 +238,24 @@ def run(port):
           got == {"Children": False, "Extras": True, "OnDeck": False, "Preferences": False,
                   "Related": True}, got)
 
+    # 7. includeGuids: never on a local:// row, and it reaches /grandchildren.
+    _status, mc = request(port, "/hubs/sections/1?count=12&includeGuids=1")
+    rows = {row.get("ratingKey"): row.get("Guid") for h in (mc or {}).get("Hub") or []
+            for row in h.get("Metadata") or []}
+    check("a hub page's local:// row carries no Guid under includeGuids=1",
+          "1014" in rows and rows["1014"] is None and rows.get("1013"), rows)
+    _status, mc = request(port, "/library/sections/1/all?includeGuids=1")
+    rows = {row.get("ratingKey"): row.get("Guid") for row in (mc or {}).get("Metadata") or []}
+    check("a grid's local:// row carries no Guid under includeGuids=1",
+          "1014" in rows and rows["1014"] is None and rows.get("1012"), rows)
+    _status, mc = request(port, "/library/metadata/20001/grandchildren?includeGuids=1")
+    rows = [(row.get("guid"), row.get("Guid")) for row in (mc or {}).get("Metadata") or []]
+    check("/grandchildren honours includeGuids=1",
+          rows and all(guids == [{"id": guid}] for guid, guids in rows), rows)
+    _status, mc = request(port, "/library/metadata/20001/grandchildren")
+    check("...and carries no Guid without it",
+          not any("Guid" in row for row in (mc or {}).get("Metadata") or []), mc)
+
 
 def main():
     process, port = start()
