@@ -3172,3 +3172,16 @@ are changing; replay the client's exact request before altering behavior.
   client's `/identity` had a median of 20-23 ms (the oracle, saving outside its request lock:
   0.5 ms), and 32 loaded clients saw it take up to 0.78 s. The snapshot is still taken under the
   lock; the file is written after it, in snapshot order, before the status line (2026-09-30).
+- **`--state` keeps every kind `persist.py` keeps, not a list of the ones someone remembered.**
+  Checked kind by kind (`tests/test_parity_persist.py`, 2026-10-01): the native file lost the
+  section-pref overrides (with them `flattenSeasons`' row effects), custom metadata provider
+  groups and their id counter, the BYTES of uploaded posters/art/themes/logos (the candidates
+  survived on the row and their `/file?url=` answered 404), download queues, minted theme rows,
+  the retired-key set (a split after a restart reused the key a merge had freed), the history
+  counter (a restart handed out `/status/sessions/history/1` again beside the restored row
+  holding it), Continue Watching's hide and the in-session-view gate of a library's own
+  shelf, and re-stamped device 1's `createdAt`. Cycle 73 measured all of these kept by a real
+  PMS. Over a REBUILT catalog it carried view state by ratingKey -- which a rebuild reassigns --
+  and kept history; `persist.py` matches (type, guid), then (type, first part file), and leaves
+  history, edits, lists and section settings in `<file>.stale`, keeping only the server-level
+  settings, provider groups and the device/statistics tables.

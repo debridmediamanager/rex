@@ -663,6 +663,12 @@ impl Runtime {
             list_state: HashMap::new(),
             activity_serial: 0,
         };
+        // `Sessions.__init__`: the anonymous device 1 is created when the server starts,
+        // and its `createdAt` is that moment -- stored, so a restored table keeps it. It
+        // was re-stamped on every start, a Devices row that changed across a restart.
+        runtime
+            .device_first_seen
+            .insert(String::new(), started_at);
         runtime.load_state()?;
         // The claim reports the server's name to plex.tv; a restored rename is it.
         runtime.claim_mut().name = runtime.friendly.clone();
@@ -744,10 +750,13 @@ impl Runtime {
             .cloned()
             .unwrap_or_default();
         let mut carried = 0;
+        // Keyed by ratingKey, so only for a file from before the rows were kept: over a
+        // rebuilt catalog the saved rows are matched by `carry_view_state` instead.
+        let saved_rows = state.get("items").is_some_and(Value::is_array);
         if let Some(rows) = state
             .get("viewState")
             .and_then(Value::as_object)
-            .filter(|_| !restored_rows)
+            .filter(|_| !restored_rows && !(rebuilt && saved_rows))
         {
             for (key, patch) in rows {
                 if let Some(row) = self.catalog.get_mut(key) {
@@ -775,13 +784,22 @@ impl Runtime {
                 }
             }
         }
-        if let Some(history) = state.get("history").and_then(Value::as_array) {
+        // `persist.py` `_restore_portable`: over a rebuilt catalog a row's view state is
+        // matched by (type, guid), then by (type, first part file) -- never by ratingKey,
+        // which a rebuild reassigns -- and history stays in the `.stale` file. Matching
+        // by key carried a watch onto whatever row the new catalog gave that number.
+        if rebuilt && saved_rows {
+            carried = self.carry_view_state(state.get("items").and_then(Value::as_array));
+        }
+        if let Some(history) = state.get("history").and_then(Value::as_array).filter(|_| !rebuilt) {
             self.history = history.clone();
         }
         // The view counter outlives deleted history rows; a state file from before it
         // was kept starts it from the surviving rows.
         let mut counts = HashMap::new();
-        if let Some(saved) = state.get("viewCounts").and_then(Value::as_object) {
+        if rebuilt {
+            // `library._views` is not portable either: it names rows by key.
+        } else if let Some(saved) = state.get("viewCounts").and_then(Value::as_object) {
             for (key, value) in saved {
                 counts.insert(key.clone(), value.as_i64().unwrap_or(0));
             }
@@ -1041,6 +1059,59 @@ impl Runtime {
                     },
                 );
             }
+            for entry in state.get("sectionPrefs").and_then(Value::as_array).into_iter().flatten() {
+                if let (Some(section), Some(name), Some(value)) = (
+                    entry.get(0).map(string_value),
+                    entry.get(1).and_then(Value::as_str),
+                    entry.get(2).map(string_value),
+                ) {
+                    self.section_prefs.insert((section, name.to_string()), value);
+                }
+            }
+            for (key, value) in state.get("uploads").and_then(Value::as_object).into_iter().flatten() {
+                if let (Some(bytes), Some(kind)) = (
+                    value.get(0).and_then(Value::as_str).and_then(base64_decode_bytes),
+                    value.get(1).and_then(Value::as_str),
+                ) {
+                    self.uploads.insert(key.clone(), (bytes, kind.to_string()));
+                }
+            }
+            if let Some(rows) = state.get("themeRows").and_then(Value::as_object) {
+                self.theme_rows = rows.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+            }
+            if let Some(next) = state.get("themeNext").and_then(Value::as_i64) {
+                self.theme_next = self.theme_next.max(next);
+            }
+            if let Some(queues) = state.get("downloadQueues").and_then(Value::as_object) {
+                self.download_queues = queues.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+            }
+            if let Some(keys) = state.get("retiredKeys").and_then(Value::as_array) {
+                self.retired_keys = keys.iter().filter_map(Value::as_i64).collect();
+            }
+            for (name, set) in [
+                ("hiddenContinue", &mut self.hidden_continue),
+                ("viewedInSession", &mut self.viewed_in_session),
+            ] {
+                for key in state.get(name).and_then(Value::as_array).into_iter().flatten() {
+                    set.insert(string_value(key));
+                }
+            }
+            // The history key is monotonic and never reused; a file from before the
+            // counter was kept starts it above the highest key a restored row holds.
+            let highest_history = self
+                .history
+                .iter()
+                .filter_map(|entry| entry.get("historyKey").and_then(Value::as_str))
+                .filter_map(|key| key.rsplit('/').next()?.parse::<i64>().ok())
+                .max()
+                .unwrap_or(0);
+            self.history_counter.set(
+                state
+                    .get("historyCounter")
+                    .and_then(Value::as_i64)
+                    .unwrap_or(0)
+                    .max(highest_history),
+            );
             // The counters as they stood; a file from before they were kept falls back to
             // the highest id still held, which is all it can know.
             let highest_item = self
@@ -1061,6 +1132,28 @@ impl Runtime {
                     *counter = (*counter).max(saved);
                 }
             }
+        }
+        // `persist.py` SIM_PORTABLE: custom metadata provider groups and their counter
+        // mean the same thing over a rebuilt catalog, so they are kept over one too.
+        for value in state.get("metadataProviderGroups").and_then(Value::as_array).into_iter().flatten() {
+            let Some(id) = value.get("id").map(string_value).filter(|id| !id.is_empty()) else {
+                continue;
+            };
+            self.metadata_provider_groups.insert(
+                id.clone(),
+                MetadataProviderGroup {
+                    id,
+                    title: value.get("title").map(string_value).unwrap_or_default(),
+                    primary_identifier: value
+                        .get("primaryIdentifier")
+                        .map(string_value)
+                        .unwrap_or_default(),
+                    items: value.get("items").and_then(Value::as_array).cloned().unwrap_or_default(),
+                },
+            );
+        }
+        if let Some(next) = state.get("nextMetadataProviderGroup").and_then(Value::as_i64) {
+            self.next_metadata_provider_group = self.next_metadata_provider_group.max(next);
         }
         // `persist.py` SESSION_FIELDS: the device table in first-seen order (the ids the
         // Devices page, history rows and statistics name), and the play and bandwidth
@@ -1126,6 +1219,73 @@ impl Runtime {
         Ok(())
     }
 
+    /// `persist.Store._restore_portable`'s row half: each saved row holding any view
+    /// field lands on the new catalog's row of the same type and guid, else the same
+    /// type and first part file, and its view fields replace that row's (an absent one
+    /// is removed). Returns how many rows took state.
+    fn carry_view_state(&mut self, old_rows: Option<&Vec<Value>>) -> usize {
+        const VIEW_FIELDS: [&str; 6] = [
+            "viewCount",
+            "lastViewedAt",
+            "viewOffset",
+            "userRating",
+            "lastRatedAt",
+            "_viewUpdatedAt",
+        ];
+        fn part_file(row: &Value) -> Option<String> {
+            row.get("Media")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+                .find_map(|part| part.get("file").and_then(Value::as_str).filter(|f| !f.is_empty()))
+                .map(str::to_string)
+        }
+        let kind = |row: &Value| string_value(row.get("type").unwrap_or(&Value::Null));
+        // `setdefault`: the FIRST row holding a guid or a file answers for it.
+        let mut by_guid: HashMap<(String, String), usize> = HashMap::new();
+        let mut by_file: HashMap<(String, String), usize> = HashMap::new();
+        for (index, row) in self.catalog.items.iter().enumerate() {
+            if let Some(guid) = row.get("guid").and_then(Value::as_str).filter(|g| !g.is_empty()) {
+                by_guid.entry((kind(row), guid.to_string())).or_insert(index);
+            }
+            if let Some(file) = part_file(row) {
+                by_file.entry((kind(row), file)).or_insert(index);
+            }
+        }
+        // Counted per saved row, as `persist.py` appends: two saved rows on one guid
+        // count twice.
+        let mut carried = 0;
+        for old in old_rows.into_iter().flatten() {
+            if !VIEW_FIELDS.iter().any(|field| old.get(*field).is_some()) {
+                continue;
+            }
+            let guid = old.get("guid").and_then(Value::as_str).filter(|g| !g.is_empty());
+            let target = match guid {
+                Some(guid) => by_guid.get(&(kind(old), guid.to_string())).copied(),
+                None => None,
+            }
+            .or_else(|| part_file(old).and_then(|file| by_file.get(&(kind(old), file)).copied()));
+            let Some(index) = target else {
+                continue;
+            };
+            if let Some(row) = self.catalog.items[index].as_object_mut() {
+                for field in VIEW_FIELDS {
+                    match old.get(field) {
+                        Some(value) => {
+                            row.insert(field.to_string(), value.clone());
+                        }
+                        None => {
+                            row.shift_remove(field);
+                        }
+                    }
+                }
+            }
+            carried += 1;
+        }
+        carried
+    }
+
     pub fn save_state(&mut self) -> Result<(), String> {
         match self.snapshot_state()? {
             Some(snapshot) => write_snapshot(&snapshot),
@@ -1165,7 +1325,7 @@ impl Runtime {
                 view.insert(key, Value::Object(patch));
             }
         }
-        let state = json!({
+        let mut state = json!({
             "format": 1,
             "machineIdentifier": self.machine,
             "catalogPath": self.catalog_path,
@@ -1203,6 +1363,34 @@ impl Runtime {
             "bandwidthBytes": self.bandwidth_bytes,
             "byteBuckets": self.byte_buckets.iter().map(|((device, lan), seconds)| json!([device, lan, seconds])).collect::<Vec<_>>(),
         });
+        // The rest of what `persist.py` keeps and this file did not: SIM_FIELDS'
+        // section-pref overrides, custom metadata provider groups and their counter,
+        // uploaded artwork WITH its bytes, minted theme rows and download queues; the
+        // library's history counter (a restart handed `/status/sessions/history/1`
+        // out again beside the restored row that held it) and the retired-key set a
+        // split reads (a split after a restart reused the key a merge had freed); and
+        // two row flags the oracle keeps ON the row and this server keeps beside it,
+        // Continue Watching's hide and the in-session view.
+        // (Inserted after the literal: one `json!` this long overflows the macro's
+        // recursion limit.)
+        let extra = [
+            ("sectionPrefs", json!(self.section_prefs.iter().map(|((section, name), value)| json!([section, name, value])).collect::<Vec<_>>())),
+            ("metadataProviderGroups", json!(self.metadata_provider_groups.values().map(|group| json!({"id":group.id,"title":group.title,"primaryIdentifier":group.primary_identifier,"items":group.items})).collect::<Vec<_>>())),
+            ("nextMetadataProviderGroup", json!(self.next_metadata_provider_group)),
+            ("uploads", json!(self.uploads.iter().map(|(key, (bytes, kind))| (key.clone(), json!([base64_encode(bytes), kind]))).collect::<Map<String, Value>>())),
+            ("themeRows", json!(self.theme_rows)),
+            ("themeNext", json!(self.theme_next)),
+            ("downloadQueues", json!(self.download_queues)),
+            ("historyCounter", json!(self.history_counter.get())),
+            ("retiredKeys", json!(self.retired_keys)),
+            ("hiddenContinue", json!(self.hidden_continue.iter().collect::<Vec<_>>())),
+            ("viewedInSession", json!(self.viewed_in_session.iter().collect::<Vec<_>>())),
+        ];
+        if let Some(object) = state.as_object_mut() {
+            for (name, value) in extra {
+                object.insert(name.to_string(), value);
+            }
+        }
         let bytes = serde_json::to_vec_pretty(&state).map_err(|e| e.to_string())?;
         self.dirty = false;
         self.save_serial += 1;
