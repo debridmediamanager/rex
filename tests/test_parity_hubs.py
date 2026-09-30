@@ -214,6 +214,15 @@ def checks(srv):
     check("a doubled slash after a leaf the table does not name is still a 404",
           status == 404, status)
 
+    # -- /library/matches rows are light grid rows without their library fields -------
+    rows = srv.container("/library/matches?type=1&title=TEARS%20OF%20STEEL&year=2012") \
+        .get("Metadata") or []
+    check("/library/matches rows keep Media and leave the library fields to nobody",
+          keys(rows) == ["1007"]
+          and all(r.get("score") == 100 and "Media" in r and "librarySectionID" not in r
+                  and len(r.get("Role") or []) <= 3 for r in rows),
+          [(r.get("ratingKey"), "Media" in r, "librarySectionID" in r) for r in rows])
+
 
 def write_checks(srv):
     """Checks that write: run last, after every read-only check."""
