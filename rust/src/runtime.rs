@@ -12139,119 +12139,7 @@ impl Runtime {
             return self.route_hub_items(query);
         }
         if path == "/hubs/search/voice" {
-            let Some(raw) = query.get("query") else {
-                return Response::error(400, "plexsim: bad request");
-            };
-            let type_number = query
-                .get("type")
-                .and_then(|value| value.parse::<i64>().ok());
-            let (identifier, wanted) = match type_number {
-                Some(1) => ("results.search.1", Some("movie")),
-                Some(2) => ("results.search.2", Some("show")),
-                Some(4) => ("results.search.4", Some("episode")),
-                Some(8) => ("results.search.8", Some("artist")),
-                Some(_) => return Response::json(200, self.container(Map::new(), false)),
-                None => ("results.search.1", None),
-            };
-            let rows = self
-                .catalog
-                .items
-                .iter()
-                .filter(|row| {
-                    wanted
-                        .map(|kind| row.get("type").and_then(Value::as_str) == Some(kind))
-                        .unwrap_or(true)
-                        && row
-                            .get("title")
-                            .and_then(Value::as_str)
-                            .unwrap_or_default()
-                            .to_lowercase()
-                            .contains(&raw.to_lowercase())
-                })
-                .map(|row| self.listing_row(row))
-                .collect::<Vec<_>>();
-            if type_number.is_some() && rows.is_empty() {
-                return Response::json(200, self.container(Map::new(), false));
-            }
-            if type_number.is_none() {
-                let mut hubs = Vec::new();
-                for (number, kind) in [(1_i64, "movie"), (2, "show"), (4, "episode")] {
-                    let typed = self
-                        .catalog
-                        .items
-                        .iter()
-                        .filter(|row| {
-                            row.get("type").and_then(Value::as_str) == Some(kind)
-                                && row
-                                    .get("title")
-                                    .and_then(Value::as_str)
-                                    .unwrap_or_default()
-                                    .to_lowercase()
-                                    .contains(&raw.to_lowercase())
-                        })
-                        .map(|row| self.listing_row(row))
-                        .collect::<Vec<_>>();
-                    if typed.is_empty() {
-                        continue;
-                    }
-                    // Measured: a voice hub carries `hubKey` and NO `key`, and both
-                    // the hub and every row carry a `distance`.  The reference's
-                    // distance is its own fuzzy-match cost; plexsim reports the
-                    // query's length, which is what an exact word-prefix hit costs.
-                    let distance = raw.trim().chars().count();
-                    let keys = typed.iter().filter_map(key_of).collect::<Vec<_>>();
-                    let typed = typed
-                        .into_iter()
-                        .map(|mut row| {
-                            if let Some(object) = row.as_object_mut() {
-                                object.insert("distance".to_string(), json!(distance));
-                            }
-                            row
-                        })
-                        .collect::<Vec<_>>();
-                    hubs.push(json!({
-                        "hubKey": format!("/library/metadata/{}", keys.join(",")),
-                        "title": kind,
-                        "type": kind,
-                        "hubIdentifier": format!("results.search.{number}"),
-                        "context": "hub.results.search",
-                        "size": typed.len(),
-                        "more": false,
-                        "style": "shelf",
-                        "distance": distance,
-                        "Metadata": typed,
-                    }));
-                }
-                return Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([("Hub".to_string(), Value::Array(hubs))]),
-                        false,
-                    ),
-                );
-            }
-            let keys = rows.iter().filter_map(key_of).collect::<Vec<_>>();
-            let mut hub = Map::from_iter([
-                ("hubIdentifier".to_string(), json!(identifier)),
-                ("title".to_string(), json!(wanted.unwrap_or("movie"))),
-                ("context".to_string(), json!("hub.results.search")),
-                ("type".to_string(), json!(wanted.unwrap_or("movie"))),
-                ("style".to_string(), json!("shelf")),
-                ("distance".to_string(), json!(raw.trim().chars().count())),
-                ("size".to_string(), json!(rows.len())),
-                ("more".to_string(), json!(false)),
-                ("Metadata".to_string(), Value::Array(rows)),
-            ]);
-            if !keys.is_empty() {
-                hub.insert(
-                    "hubKey".to_string(),
-                    json!(format!("/library/metadata/{}", keys.join(","))),
-                );
-            }
-            return Response::json(
-                200,
-                self.container(Map::from_iter([("Hub".to_string(), json!([hub]))]), false),
-            );
+            return self.voice_search(query);
         }
         if path == "/hubs/promoted" {
             // Cycle 55, measured on zen and kids: the fifteen hub-refused keys are a
@@ -12494,13 +12382,10 @@ impl Runtime {
             .collect::<Vec<_>>();
             return Response::json(
                 200,
-                self.container(
-                    Map::from_iter([
-                        ("allowSync".to_string(), json!(true)),
-                        ("Hub".to_string(), Value::Array(shelves)),
-                    ]),
-                    false,
-                ),
+                self.hub_container(Map::from_iter([
+                    ("Hub".to_string(), Value::Array(shelves)),
+                    ("allowSync".to_string(), json!(true)),
+                ])),
             );
         }
         if segments.first() == Some(&"hubs")
@@ -20262,6 +20147,77 @@ thread_local! {
     /// `handle_connection` logs the way `_send_error` does.
     static ERROR_NOTE: std::cell::RefCell<Option<(u16, String)>> =
         const { std::cell::RefCell::new(None) };
+}
+
+thread_local! {
+    /// The Hubs of the last JSON bodies built on this thread whose every child
+    /// collection was EMPTY, which the JSON body prunes: `(identity, collection)`.
+    /// `server.py`'s XML writer sees the unpruned row, and a `Hub` that carries a
+    /// collection -- even an empty one -- is written paired (`<Hub ...>\n</Hub>`)
+    /// where one that carries none self-closes (cycle 23). `xml_or_json` puts the
+    /// empty collection back so the XML writer can tell the two apart.
+    static PAIRED_HUBS: std::cell::RefCell<Vec<(String, String)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn hub_identity(hub: &Map<String, Value>) -> String {
+    ["hubIdentifier", "key", "title"]
+        .iter()
+        .map(|name| hub.get(*name).map(string_value).unwrap_or_default())
+        .collect::<Vec<_>>()
+        .join("\u{1}")
+}
+
+fn carries_collection(hub: &Map<String, Value>) -> bool {
+    hub.iter().any(|(key, value)| {
+        !key.starts_with('_')
+            && match value {
+                Value::Array(items) => !items.is_empty(),
+                Value::Object(_) => true,
+                _ => false,
+            }
+    })
+}
+
+fn note_paired_hubs(value: &Value) {
+    let Some(hubs) = value
+        .get("MediaContainer")
+        .and_then(|body| body.get("Hub"))
+        .and_then(Value::as_array)
+    else {
+        return;
+    };
+    for hub in hubs.iter().filter_map(Value::as_object) {
+        if carries_collection(hub) {
+            continue;
+        }
+        let emptied = hub.iter().find(|(key, value)| {
+            !key.starts_with('_') && value.as_array().is_some_and(Vec::is_empty)
+        });
+        if let Some((key, _)) = emptied {
+            let entry = (hub_identity(hub), key.clone());
+            PAIRED_HUBS.with(|noted| noted.borrow_mut().push(entry));
+        }
+    }
+}
+
+fn restore_paired_hubs(value: &mut Value, noted: &[(String, String)]) {
+    let Some(hubs) = value
+        .get_mut("MediaContainer")
+        .and_then(|body| body.get_mut("Hub"))
+        .and_then(Value::as_array_mut)
+    else {
+        return;
+    };
+    for hub in hubs.iter_mut().filter_map(Value::as_object_mut) {
+        if carries_collection(hub) {
+            continue;
+        }
+        let identity = hub_identity(hub);
+        if let Some((_, key)) = noted.iter().find(|(known, _)| *known == identity) {
+            hub.insert(key.clone(), Value::Array(Vec::new()));
+        }
+    }
 }
 
 fn take_error_note() -> Option<(u16, String)> {
