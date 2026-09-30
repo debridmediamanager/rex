@@ -17917,10 +17917,16 @@ impl Runtime {
                     if !SUBTITLE_LANGUAGES.contains(&code.as_str()) {
                         return Response::error(500, "plexsim: internal error");
                     }
-                    return Response::json(
-                        200,
-                        self.container(Map::from_iter([("size".to_string(), json!(0))]), true),
-                    );
+                    // The oracle's `tag_container(size=0, Stream=[])`: the library
+                    // identity without `allowSync`.
+                    let mut body =
+                        self.container(Map::from_iter([("size".to_string(), json!(0))]), true);
+                    if let Some(object) =
+                        body.get_mut("MediaContainer").and_then(Value::as_object_mut)
+                    {
+                        object.shift_remove("allowSync");
+                    }
+                    return Response::json(200, body);
                 }
                 // Cycle 15, measured on the copy: the EMPTY-BODY check runs FIRST.
                 // With neither a title nor bytes the answer is 406, not the 500 a
