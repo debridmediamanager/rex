@@ -1180,6 +1180,14 @@ impl Runtime {
     }
 
     fn detail_row(&self, original: &Value) -> Value {
+        self.detail_row_prefs(original, false)
+    }
+
+    /// The detail projection; `prefs` also echoes the item's written settings as row
+    /// attributes, which `server.py` does on an item's OWN detail read alone (a movie in
+    /// its metadata leaf, a show or season in `parent_detail`) -- never on a listing,
+    /// shelf, search row or multi-key read of the same item.
+    fn detail_row_prefs(&self, original: &Value, prefs: bool) -> Value {
         let mut row = strip_private_value(original);
         let Some(object) = row.as_object_mut() else {
             return row;
