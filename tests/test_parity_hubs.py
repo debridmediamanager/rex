@@ -154,6 +154,30 @@ def checks(srv):
           body == {"size": 0}, body)
 
 
+def write_checks(srv):
+    """Checks that write: run last, after every read-only check."""
+    # -- a written item setting echoes on the item's OWN detail read alone ----------
+    srv.raw("/library/metadata/20001/prefs?episodeSort=1", "PUT")
+    srv.raw("/library/metadata/1008/prefs?useOriginalTitle=1", "PUT")
+    shelves = srv.container("/hubs/sections/2?count=12&includeMeta=1").get("Hub") or []
+    shows = [row for hub in shelves for row in hub.get("Metadata") or []
+             if row.get("ratingKey") == "20001"]
+    check("a show's written episodeSort stays off its shelf rows",
+          shows and not any("episodeSort" in row for row in shows),
+          [row.get("episodeSort") for row in shows])
+    hubs = srv.container("/hubs/search?query=tears&limit=30").get("Hub") or []
+    movies = [row for hub in hubs for row in hub.get("Metadata") or []
+              if row.get("ratingKey") == "1008"]
+    check("a movie's written useOriginalTitle stays off its search rows",
+          movies and not any("useOriginalTitle" in row for row in movies),
+          [row.get("useOriginalTitle") for row in movies])
+    show = (srv.container("/library/metadata/20001").get("Metadata") or [{}])[0]
+    movie = (srv.container("/library/metadata/1008").get("Metadata") or [{}])[0]
+    check("...and both echo on the item's own detail read",
+          show.get("episodeSort") == "1" and movie.get("useOriginalTitle") == "1",
+          (show.get("episodeSort"), movie.get("useOriginalTitle")))
+
+
 def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
     env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
@@ -181,6 +205,7 @@ def main():
             print("FAIL  server did not start")
             return 1
         checks(srv)
+        write_checks(srv)
     finally:
         proc.terminate()
         try:
