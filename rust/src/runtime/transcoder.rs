@@ -250,10 +250,8 @@ pub(super) fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, String)> {
     let fetched = super::upstream::fetch(
         "GET",
         url,
-        &[
-            ("User-Agent", super::upstream::UPSTREAM_UA.to_string()),
-            ("Accept", "*/*".to_string()),
-        ],
+        // `_serve_image`'s urllib request: the upstream User-Agent and no `Accept`.
+        &[("User-Agent", super::upstream::UPSTREAM_UA.to_string())],
         b"",
         std::time::Duration::from_secs(20),
     );
