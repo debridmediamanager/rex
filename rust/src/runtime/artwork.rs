@@ -99,7 +99,7 @@ pub(super) fn image_type(body: &[u8]) -> &'static str {
     }
 }
 
-fn sha1_hex(body: &[u8]) -> String {
+pub(super) fn sha1_hex(body: &[u8]) -> String {
     let mut hasher = Sha1::new();
     hasher.update(body);
     hasher

@@ -383,7 +383,6 @@ pub struct Runtime {
     pub history: Vec<Value>,
     playlists: HashMap<String, Playlist>,
     collections: HashMap<String, Collection>,
-    list_artwork: HashMap<String, (String, Vec<u8>)>,
     metadata_provider_groups: HashMap<String, MetadataProviderGroup>,
     next_metadata_provider_group: i64,
     queues: HashMap<String, Queue>,
@@ -570,7 +569,6 @@ impl Runtime {
             history: Vec::new(),
             playlists: HashMap::new(),
             collections: HashMap::new(),
-            list_artwork: HashMap::new(),
             uploads: HashMap::new(),
             tag_table: HashMap::new(),
             metadata_provider_groups: HashMap::new(),
@@ -5067,6 +5065,20 @@ impl Runtime {
             .unwrap_or((index + 1) as i64)
     }
 
+    /// The private candidate a list's artwork picker lists as SELECTED: whatever the
+    /// last pick or upload stored (`_poster_url` / `_art_url` on the oracle's row).
+    fn list_private_url(&self, id: &str, is_collection: bool, private: &str) -> Option<String> {
+        let value = if is_collection {
+            self.collections.get(id).and_then(|c| c.extra.get(private).cloned())
+        } else {
+            self.edits.get(id).and_then(|columns| columns.get(private).cloned())
+        };
+        value.map(|value| string_value(&value)).filter(|value| !value.is_empty())
+    }
+
+    /// `/library/metadata/{playlist or collection}/{posters,arts,clearLogos,themes}`
+    /// (the oracle's list branch of `library_metadata`, and `upload_artwork` on the
+    /// stored list row for a POST).
     fn list_artwork_response(
         &mut self,
         id: &str,
@@ -5078,69 +5090,130 @@ impl Runtime {
             if request.method != "GET" && request.method != "HEAD" {
                 return Response::error(404, "plexsim: not found");
             }
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([
-                        ("size".to_string(), json!(0)),
-                        ("Metadata".to_string(), Value::Array(Vec::new())),
-                    ]),
-                    false,
-                ),
-            );
+            // The oracle's `tag_container(size=0)`: the library identity triple.
+            return Response::json(200, self.tag_container(Map::new()));
         }
         if field != "posters" && field != "arts" {
             return Response::error(404, "plexsim: not found");
         }
+        let private = if field == "posters" { "_poster_url" } else { "_art_url" };
         if request.method == "POST" {
-            if field != "posters" {
-                return Response::error(404, "plexsim: not found");
-            }
+            // Cycle 36, measured on plexscratch and plexscratch42: a playlist and a
+            // collection take an artwork UPLOAD exactly as an item does -- an EMPTY 200,
+            // an `upload://{posters,art}/<sha1 of the bytes>` candidate, SELECTED, and ONE
+            // timeline frame of the list's own type. plexsim keyed the upload on the
+            // clock and refused a backdrop upload outright.
             if request.body.is_empty() {
                 return Response::error(406, "plexsim: not acceptable");
             }
-            let upload = format!("upload://posters/{}", now());
-            self.list_artwork
-                .insert(id.to_string(), (upload, request.body.clone()));
+            let target = if field == "posters" { "thumb" } else { "art" };
+            let prefix = if field == "posters" { "upload://posters" } else { "upload://art" };
+            let upload = format!("{prefix}/{}", artwork::sha1_hex(&request.body));
+            self.uploads.insert(
+                upload.clone(),
+                (request.body.clone(), artwork::image_type(&request.body).to_string()),
+            );
+            let stamp = now();
+            let reversion = |columns: &mut Map<String, Value>| {
+                columns.insert(private.to_string(), json!(upload));
+                for name in ["thumb", "art", "theme"] {
+                    let value = columns.get(name).map(string_value).unwrap_or_default();
+                    let owned = value.starts_with(&format!("/library/metadata/{id}/"));
+                    if !value.is_empty() && (name == target || owned) {
+                        columns.insert(
+                            name.to_string(),
+                            json!(format!("/library/metadata/{id}/{name}/{stamp}")),
+                        );
+                    }
+                }
+                if columns.get(target).is_none_or(Value::is_null) {
+                    columns.insert(
+                        target.to_string(),
+                        json!(format!("/library/metadata/{id}/{target}/{stamp}")),
+                    );
+                }
+                columns.insert("updatedAt".to_string(), json!(stamp));
+            };
+            if is_collection {
+                let Some(collection) = self.collections.get_mut(id) else {
+                    return Response::error(404, "plexsim: not found");
+                };
+                reversion(&mut collection.extra);
+                if let Some(stored) = self.collections.get(id).cloned() {
+                    let row = self.dynamic_collection_row(&stored);
+                    self.push_timeline_collection(&row, 5, None);
+                }
+            } else {
+                let Some(playlist) = self.playlists.get(id).cloned() else {
+                    return Response::error(404, "plexsim: not found");
+                };
+                reversion(self.edits.entry(id.to_string()).or_default());
+                self.push_timeline_playlist(&playlist, 5, None);
+            }
             self.dirty = true;
+            self.save_if_dirty();
             return Response::empty(200);
         }
         if request.method != "GET" && request.method != "HEAD" {
             return Response::error(404, "plexsim: not found");
         }
-        let mut fields = Map::from_iter([
-            (
-                "identifier".to_string(),
-                json!("com.plexapp.plugins.library"),
-            ),
-            ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
-            ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
-        ]);
         let mut entries = Vec::new();
         if field == "posters" {
-            let prefix = if is_collection {
-                format!("/library/collections/{id}/composite/1700000000")
+            // The list's composite at its own `updatedAt`, as its row names it.
+            let composite = if is_collection {
+                let stamp = self
+                    .collections
+                    .get(id)
+                    .map(|collection| collection.stamp())
+                    .unwrap_or_default();
+                format!("/library/collections/{id}/composite/{stamp}")
             } else {
-                format!("/playlists/{id}/composite/1700000000")
+                let row = self
+                    .playlists
+                    .get(id)
+                    .cloned()
+                    .map(|playlist| self.playlist_row(&playlist, false, false))
+                    .unwrap_or(Value::Null);
+                row.get("composite")
+                    .or_else(|| row.get("thumb"))
+                    .and_then(Value::as_str)
+                    .map(|value| value.split('?').next().unwrap_or("").to_string())
+                    .filter(|value| !value.is_empty())
+                    .unwrap_or_else(|| {
+                        let stamp = row
+                            .get("updatedAt")
+                            .or_else(|| row.get("addedAt"))
+                            .map(string_value)
+                            .unwrap_or_default();
+                        format!("/playlists/{id}/composite/{stamp}")
+                    })
             };
             entries.push(json!({
+                "_element": "Photo",
+                "key": format!("{composite}?width=400&height=600"),
                 "ratingKey": "default://",
-                "key": format!("{prefix}?width=400&height=600"),
-                "thumb": format!("{prefix}?width=200&height=300"),
-                "selected": self.list_artwork.get(id).is_none(),
+                "thumb": format!("{composite}?width=200&height=300"),
+                "selected": true,
             }));
-            if let Some((upload, _)) = self.list_artwork.get(id) {
-                entries.push(json!({
-                    "ratingKey": upload,
-                    "key": upload,
-                    "thumb": upload,
-                    "selected": true,
-                }));
-            }
         }
-        fields.insert("size".to_string(), json!(entries.len()));
-        fields.insert("Metadata".to_string(), Value::Array(entries));
-        Response::json(200, self.container(fields, false))
+        if let Some(uploaded) = self.list_private_url(id, is_collection, private) {
+            // The picked or uploaded candidate is the SELECTED one, and the composite row
+            // loses its flag -- measured on both copies.
+            for entry in &mut entries {
+                if let Some(object) = entry.as_object_mut() {
+                    object.shift_remove("selected");
+                }
+            }
+            entries.push(json!({"_element": "Photo", "key": uploaded, "ratingKey": uploaded,
+                "thumb": uploaded, "selected": true}));
+        }
+        Response::json(
+            200,
+            self.tag_container(Map::from_iter([(
+                "Metadata".to_string(),
+                Value::Array(entries),
+            )])),
+        )
     }
 
     /// The CORS preflight (`server.py` `do_OPTIONS`): with an `Origin` the echoed

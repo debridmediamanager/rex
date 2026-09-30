@@ -526,7 +526,7 @@ impl Runtime {
     }
 
     /// A type-18 frame for a collection row (`sectionID` its library).
-    fn push_timeline_collection(&mut self, row: &Value, state: i64, metadata_state: Option<&str>) {
+    pub(super) fn push_timeline_collection(&mut self, row: &Value, state: i64, metadata_state: Option<&str>) {
         let mut entry = Map::new();
         entry.insert(
             "identifier".to_string(),
@@ -1212,46 +1212,7 @@ impl Runtime {
             );
         }
         if tail.len() == 1 && matches!(tail[0], "posters" | "arts") {
-            if method == "POST" {
-                if request.body.is_empty() {
-                    return Response::error(406, "plexsim: not acceptable");
-                }
-                return self.list_artwork_response(&id, true, tail[0], request);
-            }
-            if !matches!(method, "GET" | "HEAD") {
-                return Response::error(404, "plexsim: not found");
-            }
-            let mut entries = Vec::new();
-            if tail[0] == "posters" {
-                let composite = format!(
-                    "/library/collections/{}/composite/{}",
-                    id,
-                    collection.stamp()
-                );
-                entries.push(
-                    json!({"_element": "Photo", "key": format!("{composite}?width=400&height=600"),
-                    "ratingKey": "default://", "thumb": format!("{composite}?width=200&height=300"),
-                    "selected": true}),
-                );
-            }
-            if let Some((upload, _)) = self.list_artwork.get(&id) {
-                for entry in &mut entries {
-                    if let Some(object) = entry.as_object_mut() {
-                        object.shift_remove("selected");
-                    }
-                }
-                entries.push(
-                    json!({"_element": "Photo", "key": upload, "ratingKey": upload,
-                    "thumb": upload, "selected": true}),
-                );
-            }
-            return Response::json(
-                200,
-                self.tag_container(Map::from_iter([(
-                    "Metadata".to_string(),
-                    Value::Array(entries),
-                )])),
-            );
+            return self.list_artwork_response(&id, true, tail[0], request);
         }
         if tail.len() == 1 && tail[0] == "children" {
             // Cycle 14/17: a full secondary container with LIGHT grid rows, the
@@ -1549,9 +1510,18 @@ impl Runtime {
         let field = if leaf == "poster" { "thumb" } else { "art" };
         let stamp = now();
         let path = format!("/library/metadata/{id}/{field}/{stamp}");
+        let chosen = query.get("url").map(|value| percent_decode(value)).unwrap_or_default();
         let Some(collection) = self.collections.get_mut(id) else {
             return Response::error(404, "plexsim: not found");
         };
+        // The oracle's `set_artwork` keeps what was picked as the row's private url --
+        // the candidate `/posters` then lists as selected -- except the placeholder.
+        let private = if leaf == "poster" { "_poster_url" } else { "_art_url" };
+        if chosen == format!("/library/metadata/{id}/{field}/1") {
+            collection.extra.shift_remove(private);
+        } else {
+            collection.extra.insert(private.to_string(), json!(chosen));
+        }
         collection.extra.insert(field.to_string(), json!(path));
         collection
             .extra

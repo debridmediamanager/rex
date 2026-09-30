@@ -508,7 +508,7 @@ impl Runtime {
 impl Runtime {
     /// A type-15 frame for a playlist, `sectionID "-1"` (`notify_timeline` on the
     /// stored list row, which carries no `type` of its own).
-    fn push_timeline_playlist(
+    pub(super) fn push_timeline_playlist(
         &mut self,
         playlist: &Playlist,
         state: i64,
