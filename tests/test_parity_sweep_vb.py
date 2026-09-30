@@ -131,11 +131,35 @@ def run(port):
     # 3. `/children` of a leaf -- an episode as well as a movie -- is the 400.
     replay(port, "leaf-children", "a leaf's children")
 
+    # 4. A client's FIRST request registers its device before the answer: kids' first
+    #    `GET /devices` from a new identifier already lists that identifier's row.
+    for row in fixture("devices-own-row"):
+        req, ref = row["request"], row["response"]
+        status, _, body = send(port, "GET", req["path"], req["headers"])
+        rows = (json.loads(body).get("MediaContainer", {}).get("Device") or []) if status == 200 else []
+        ident = dict(req["headers"])["X-Plex-Client-Identifier"]
+        own = [{k: v for k, v in r.items() if k not in ("id", "createdAt")}
+               for r in rows if r.get("clientIdentifier") == ident]
+        check("a first GET /devices lists the asking client's own new row",
+              status == ref["status"] and own == ref["own"], "%s %s" % (status, own))
+
+
+def run_last(port):
+    # 4b. ...so a first request whose platform is a NUMBER lists the row that the measured
+    #     `std::bad_cast` 500 (cycle 49, kids and zen) is about. Never sent to a reference;
+    #     it leaves the list broken, so it runs last.
+    status, _, _ = send(port, "GET", "/devices", [
+        ("Accept", "application/json"), ("X-Plex-Client-Identifier", "c83-vb-numeric"),
+        ("X-Plex-Platform", "0")])
+    check("a first GET /devices carrying a numeric platform is already the 500", status == 500,
+          status)
+
 
 def main():
     process, port = start()
     try:
         run(port)
+        run_last(port)
     finally:
         process.terminate()
         try:

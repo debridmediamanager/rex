@@ -2937,3 +2937,13 @@ are changing; replay the client's exact request before altering behavior.
   The oracle refused all four leaf types; the native server refused only a movie and answered an
   episode an empty 200 container. (The fixture catalog has no clip, so the clip's 404s are recorded
   here and not checked.)
+- **A client's first request registers its device BEFORE the answer.** Measured on kids (1.43.4,
+  2026-09-30) with a new synthetic identifier: the very first `GET /devices` it sent already listed
+  its own row (`name`, `platform`, `clientIdentifier`). The oracle registered early only under
+  `--state` (cycle 74's save-before-answer) and otherwise when it counted the response's bytes, so
+  without `--state` the row appeared one request late -- and a numeric `X-Plex-Platform` on that
+  first request answered 200 where the row it writes makes the list the measured `std::bad_cast`
+  500 (HANDOVER §9). The sweep's "500 on one server, 200 on the other" for `X-Plex-Platform: de` and
+  `Connection: de` was that same 500, left behind by a concurrent numeric-platform cell on one server
+  before the other; every later `/devices` 500s on both until a non-numeric platform overwrites the
+  row, as on a real PMS. Numeric spellings are never sent to a shared reference.
