@@ -382,7 +382,12 @@ fn header_family(
         {
             return ORDER_SYSTEM_NOCACHE_FIRST;
         }
-        return if path == "/system/agents" {
+        // `/system/agents` is the core's own handler: its container orders like one, but
+        // its refusal (`?mediaType=abc`, a 400 on kids) orders its length first like
+        // every other refusal.
+        return if path == "/system/agents" && status >= 400 {
+            ORDER_ERROR
+        } else if path == "/system/agents" {
             ORDER_CONTAINER
         } else {
             ORDER_SYSTEM

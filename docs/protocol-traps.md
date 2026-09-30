@@ -3055,3 +3055,8 @@ are changing; replay the client's exact request before altering behavior.
 - **The TV Recently Added list and a show-scoped `/hubs/promoted` pass the `include*` blocks
   to their FULL show rows** (cycle 83, kids' Firefly takes all five on both; cycle 55 recorded the
   list on zen) -- the native list and shelf applied none.
+- **`/system/agents` orders like a container only when it answers one.** Measured on kids
+  (1.43.4, 2026-09-30, raw socket): `GET /system/agents?mediaType=abc` is the 89-byte 400 as
+  `X-Plex-Protocol, Content-Length, Content-Type, Connection, Cache-Control, Date` -- the refusal
+  family -- while its 200 container is type-first. Both servers sent the container order to every
+  status there, the PATCH 500 included.

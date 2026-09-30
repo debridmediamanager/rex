@@ -22241,7 +22241,14 @@ class Handler(BaseHTTPRequestHandler):
             if path in CACHE_CONTROL_FIRST or (
                     path.rsplit("/", 1)[0] in ("/system/channels", "/system/plugins")):
                 return "system-nocache-first"
-            return "container" if path == "/system/agents" else "system"
+            if path == "/system/agents":
+                # Its CONTAINER orders like a container; its refusal does not. Measured
+                # 2026-09-30 on kids (1.43.4): `GET /system/agents?mediaType=abc` is the
+                # 89-byte 400 with `Content-Length` before `Content-Type`, like every
+                # other refusal. plexsim sent the container order to every status here,
+                # the PATCH 500 included.
+                return "error" if status >= 400 else "container"
+            return "system"
         if "set-cookie" in names:
             return "system"
         if "content-type" in names and names.get("content-type", "").startswith(
