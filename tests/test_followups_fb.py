@@ -10,7 +10,9 @@ not copy", each re-measured on a real PMS before either server changed:
 - a collection's `/children` container carries `librarySectionID` as a NUMBER;
 - a bare `OPTIONS` on a multi-segment path reaches only the handlers that take any
   verb, and is the ordinary 404 on every GET-only read route;
-- `GET /services/codecs` is a claimed server's 403 (never ported to the native server).
+- `GET /services/codecs` is a claimed server's 403 (never ported to the native server);
+- a lower-case first request line draws nothing and loses the socket at once, before
+  every other rule of the line.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -20,6 +22,7 @@ the oracle with `PLEXSIM_SERVER=python`.
 import http.client
 import json
 import os
+import re
 import socket
 import struct
 import subprocess
@@ -315,12 +318,58 @@ def services_codecs(port):
     check("GET /services/codecs is the claimed server's 403", status == 403, status)
 
 
+# --- a lower-case first request ---------------------------------------------------------
+
+def lower_case(port):
+    cases = {
+        "get": b"get /identity HTTP/1.1\r\nHost: h\r\n\r\n",
+        "gET": b"gET /identity HTTP/1.1\r\nHost: h\r\n\r\n",
+        "past the method bound": b"getgetgetget /identity HTTP/1.1\r\nHost: h\r\n\r\n",
+        "bad target": b"get /id%zzentity HTTP/1.1\r\nHost: h\r\n\r\n",
+        "bad version": b"get /identity HTTP/1\r\nHost: h\r\n\r\n",
+        "LF only": b"get /identity HTTP/1.1\nHost: h\n\n",
+        "two spaces": b"get  /identity HTTP/1.1\r\nHost: h\r\n\r\n",
+        "pipelined before a GET": b"get /identity HTTP/1.1\r\nHost: h\r\n\r\n"
+                                  b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\n",
+    }
+    # kids and plexscratch42, 2026-09-30: nothing written and EOF at 0.0 s for every one.
+    got = {}
+    for label, data in cases.items():
+        received, ended, took = raw_exchange(port, data, wait=5)
+        got[label] = (received[:24], ended, took < 3)
+    check("a lower-case first request line draws nothing and closes at once",
+          all(value == (b"", "EOF", True) for value in got.values()),
+          {k: v for k, v in got.items() if v != (b"", "EOF", True)})
+    # After a completed request the same token is the unknown-method 500 (cycle 50): kids,
+    # 2026-09-30, the second line sent half a second after the first was answered.
+    sock = socket.create_connection(("127.0.0.1", port), timeout=10)
+    received = b""
+    try:
+        sock.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\n")
+        time.sleep(0.5)
+        sock.sendall(b"get /identity HTTP/1.1\r\nHost: h\r\n\r\n")
+        sock.settimeout(3)
+        while True:
+            chunk = sock.recv(65536)
+            if not chunk:
+                break
+            received += chunk
+    except socket.timeout:
+        pass
+    finally:
+        sock.close()
+    statuses = re.findall(rb"HTTP/1\.1 (\d{3}) ", received)
+    check("after a served request a lower-case method is still the 500",
+          statuses == [b"200", b"500"], statuses)
+
+
 def run(port):
     empty_body(port)
     transcoder_cache(port)
     collection_section_id(port)
     options(port)
     services_codecs(port)
+    lower_case(port)
 
 
 def main():

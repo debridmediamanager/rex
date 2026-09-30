@@ -21393,7 +21393,7 @@ fn handle_connection<S: Read + Write + PollRead>(
     let mut pending = Vec::new();
     let mut served_any = false;
     loop {
-        let request = match read_request(&mut stream, &mut pending) {
+        let request = match read_request(&mut stream, &mut pending, !served_any) {
             Ok(Some(request)) => request,
             Ok(None) => return Ok(()),
             Err(error) if matches!(error.as_str(), "silence" | "request deadline") => return Ok(()),
@@ -21434,7 +21434,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                 // has already completed, the same token is a framework 500
                 // and the keep-alive connection remains usable.
                 if !served_any {
-                    continue;
+                    return Ok(());
                 }
                 let response = Response::error(500, "plexsim: internal error");
                 write_response(&mut stream, &response, true)?;
@@ -22191,33 +22191,51 @@ fn maybe_compress(response: &mut Response, accept_encoding: Option<&String>) {
     ));
 }
 
-fn read_request<S: Read>(stream: &mut S, pending: &mut Vec<u8>) -> Result<Option<Request>, String> {
+fn read_request<S: Read>(
+    stream: &mut S,
+    pending: &mut Vec<u8>,
+    first_request: bool,
+) -> Result<Option<Request>, String> {
     let mut first_byte_at = (!pending.is_empty()).then(std::time::Instant::now);
     let header_end = loop {
-        if let Some(pos) = pending.windows(4).position(|w| w == b"\r\n\r\n") {
-            break Some(pos + 4);
-        }
-        // The method token is bounded before the parser needs a delimiter.
-        // This is observable on a raw socket: the eleventh byte earns a 400,
-        // while a shorter unterminated token remains an idle connection.
-        if let Some(delimiter) = pending
-            .iter()
-            .position(|byte| matches!(*byte, b' ' | b'\t' | b'\r' | b'\n'))
-        {
-            if delimiter == 0 {
+        // A LOWER-CASE first byte on a connection's first request draws no answer at
+        // all, and the socket goes as soon as the line is complete -- before every
+        // other rule of the line: `get`, `getgetgetget` (past the method bound),
+        // `get /id%zz...`, `get ... HTTP/1`, an LF-only `get` line and `get  /` are each
+        // closed at once with nothing written, on kids (1.43.4) and plexscratch42
+        // (1.42.2), re-measured 2026-09-30. This server held such a line to the
+        // 20-second read timeout and then wrote a 400, and answered the other five 400.
+        let lower_first = first_request && pending.first().is_some_and(u8::is_ascii_lowercase);
+        if lower_first {
+            if pending.contains(&b'\n') {
                 return Err("silence".to_string());
             }
-            if delimiter > 10 {
+        } else {
+            if let Some(pos) = pending.windows(4).position(|w| w == b"\r\n\r\n") {
+                break Some(pos + 4);
+            }
+            // The method token is bounded before the parser needs a delimiter.
+            // This is observable on a raw socket: the eleventh byte earns a 400,
+            // while a shorter unterminated token remains an idle connection.
+            if let Some(delimiter) = pending
+                .iter()
+                .position(|byte| matches!(*byte, b' ' | b'\t' | b'\r' | b'\n'))
+            {
+                if delimiter == 0 {
+                    return Err("silence".to_string());
+                }
+                if delimiter > 10 {
+                    return Err("method length".to_string());
+                }
+            } else if pending.len() > 10 {
                 return Err("method length".to_string());
             }
-        } else if pending.len() > 10 {
-            return Err("method length".to_string());
-        }
-        // Cycle 27: a request line ended by a bare LF, with no CR, is a 400 on kids and
-        // zen. Waiting for a CRLF CRLF that never comes would leave it unanswered.
-        if let Some(newline) = pending.iter().position(|byte| *byte == b'\n') {
-            if newline > 0 && pending[newline - 1] != b'\r' {
-                return Err("bad request line".to_string());
+            // Cycle 27: a request line ended by a bare LF, with no CR, is a 400 on kids
+            // and zen. Waiting for a CRLF CRLF that never comes would leave it unanswered.
+            if let Some(newline) = pending.iter().position(|byte| *byte == b'\n') {
+                if newline > 0 && pending[newline - 1] != b'\r' {
+                    return Err("bad request line".to_string());
+                }
             }
         }
         if pending.len() >= MAX_HEADER_BYTES {

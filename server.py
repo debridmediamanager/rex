@@ -21452,7 +21452,10 @@ class Handler(BaseHTTPRequestHandler):
                 head = b""
             if (len(head) > self.METHOD_BYTES
                     and not re.match(rb"[^ \r\n\t]{0,%d}[ \r\n\t]" % self.METHOD_BYTES,
-                                     head)):
+                                     head)
+                    # A lower-case first request is silenced before the bound: see
+                    # `_request_line_ok`.
+                    and not (head[:1] != head[:1].upper() and self._responses_sent == 0)):
                 self.requestline = ""
                 self.request_version = ""
                 self.command = ""
@@ -21809,10 +21812,9 @@ class Handler(BaseHTTPRequestHandler):
         one space between the three tokens and none after, an ORIGIN- or absolute-form
         target (asterisk-form is refused), and the two version digits unconstrained.
         A lower-case method is the one case that is not a status at all: both references
-        send nothing and hold the connection to their own 20-second idle close. plexsim
-        closes it at once instead -- the same silence, sooner -- because holding a
-        thread for twenty seconds per malformed line is a self-inflicted denial of
-        service, and that difference is recorded rather than emulated.
+        send nothing. Cycle 27 recorded them holding the connection to their own 20-second
+        idle close; re-measured 2026-09-30 on kids and plexscratch42, a complete
+        lower-case line is closed AT ONCE on both versions, which is what this does.
         """
         # `send_error` before the base parser has run would write no status line at
         # all: `default_request_version` is HTTP/0.9, under which Python omits it.
@@ -21821,6 +21823,26 @@ class Handler(BaseHTTPRequestHandler):
         self.requestline = (getattr(self, "requestline", None)
                             or self.raw_requestline.decode("latin-1").strip())
         line = self.raw_requestline
+        if line[:1] != line[:1].upper() and self._responses_sent == 0:
+            # Cycle 50: it is the FIRST BYTE, not the whole token. Measured on both
+            # writable copies: `Get`, `Blah`, `HELLOGET` and `BLAH` are each the 500 an
+            # unrecognised method gets, while `get`, `gET`, `blah` and `helloGET` draw
+            # NOTHING -- so a mixed-case token that merely starts upper-case is answered.
+            # plexsim silenced anything that was not wholly upper-case, which is cycle
+            # 27's rule read one step too wide; the cell that shows it is a leftover body
+            # byte glued to the next request's `GET`.
+            # The silence applies only at the connection's first request. Re-sweeping
+            # exact-drained pipelines on kids and both disposable versions found that a
+            # lower-case token after a successful response reaches the ordinary unknown
+            # method handler: 500, with the socket still reusable. Let the base parser
+            # take that later line so `do_<token>` resolves to `_unknown_method`.
+            # Re-measured 2026-09-30 on kids (1.43.4) and plexscratch42 (1.42.2): this
+            # comes BEFORE every other rule of the line. `getgetgetget` (past the method
+            # bound), `get /id%zz...`, `get ... HTTP/1`, an LF-only `get` line and
+            # `get  /identity` all draw nothing and lose the socket at once, where the
+            # 400s below answered each of them.
+            self.close_connection = True
+            return False
         if line.endswith(b"\r\n"):
             text = line[:-2]
         elif line.endswith(b"\n"):
@@ -21877,21 +21899,6 @@ class Handler(BaseHTTPRequestHandler):
         if (not self._TARGET_BYTES.match(target)
                 or not self._path_escapes_ok(target.split(b"?", 1)[0])):
             self.send_error(400)
-            return False
-        if method[:1] != method[:1].upper() and self._responses_sent == 0:
-            # Cycle 50: it is the FIRST BYTE, not the whole token. Measured on both
-            # writable copies: `Get`, `Blah`, `HELLOGET` and `BLAH` are each the 500 an
-            # unrecognised method gets, while `get`, `gET`, `blah` and `helloGET` draw
-            # NOTHING -- so a mixed-case token that merely starts upper-case is answered.
-            # plexsim silenced anything that was not wholly upper-case, which is cycle
-            # 27's rule read one step too wide; the cell that shows it is a leftover body
-            # byte glued to the next request's `GET`.
-            # The silence applies only at the connection's first request. Re-sweeping
-            # exact-drained pipelines on kids and both disposable versions found that a
-            # lower-case token after a successful response reaches the ordinary unknown
-            # method handler: 500, with the socket still reusable. Let the base parser
-            # take that later line so `do_<token>` resolves to `_unknown_method`.
-            self.close_connection = True
             return False
         if version not in (b"HTTP/1.0", b"HTTP/1.1"):
             # Any other `HTTP/x.y` is answered as 1.1 rather than refused, so the line

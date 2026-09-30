@@ -2895,3 +2895,10 @@ are changing; replay the client's exact request before altering behavior.
   404'd the any-verb handlers too. Not settled: `/search/{type}`, `/services/browse/`, `/web/*`,
   `/manage/` and the empty-segment forms (`/accounts//`) differ from the reference on BOTH servers,
   on their GET as much as their OPTIONS.
+- **A lower-case first byte on a connection's first request is checked BEFORE every other rule of
+  the line, and the socket goes at once.** `get`, `getgetgetget` (past the method bound), `get
+  /id%zz...`, `get ... HTTP/1`, an LF-only `get` line and `get  /identity` all draw nothing and EOF at
+  0.0 s on kids (1.43.4) and plexscratch42 (1.42.2), re-measured 2026-09-30 -- which overturns cycle
+  27's "held to the 20-second idle close". An unterminated `get ` is held until the line completes.
+  The oracle answered the five malformed ones 400; the native server held every one to its read
+  timeout and then wrote a 400.

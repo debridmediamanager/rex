@@ -7103,6 +7103,9 @@ that error on kids and not on plexsim.
 - **A lower-case method holds the connection** on both references until their own 20-second idle
   close. plexsim closes it at once — the same silence, sooner — because holding a thread for
   twenty seconds per malformed request line is a self-inflicted denial of service.
+  **Overturned 2026-09-30:** a complete lower-case line is closed AT ONCE on kids (1.43.4) and
+  plexscratch42 (1.42.2), and the check runs before every other rule of the line (see
+  protocol-traps.md); only an unterminated one is held.
 - **The `width`/`height` 500s of `/photo/:/transcode`** (above): a resizer plexsim does not have.
 - **`PROFILE_NAMES` is single-witness by construction.** Neither read-only reference can be given
   a playback session, so the copy (1.43.4) is the only instrument, and plexsim reports 1.42.2.
