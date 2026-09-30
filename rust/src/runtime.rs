@@ -16104,6 +16104,10 @@ impl Runtime {
         let level = match query.get("parent") {
             None => Some(Vec::new()),
             Some(value) if value.is_empty() => None,
+            // Cycle 83, measured on kids: a parent that is not all DIGITS -- `-1`, `1,2`,
+            // `abc` -- is the TOP level (every row), the oracle's `isdigit` test; only a
+            // numeric id that names no directory is the empty list.
+            Some(value) if !value.bytes().all(|byte| byte.is_ascii_digit()) => Some(Vec::new()),
             Some(value) => value
                 .parse::<i64>()
                 .ok()

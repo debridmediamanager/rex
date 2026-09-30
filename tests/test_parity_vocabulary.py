@@ -351,6 +351,13 @@ def run(port):
           got == {"": (500, 0), "-1": (200, 0), "1,2": (200, 6), "1": (200, 6),
                   "abc": (500, 0)}, got)
 
+    # 15. /folder: a parent that is not all digits is the top level.
+    got = {value: len(keys(request(port, "/library/sections/1/folder?parent=" + value)[1]))
+           for value in ("-1", "1,2", "abc", "99")}
+    top = len(keys(request(port, "/library/sections/1/folder")[1]))
+    check("/folder?parent= non-digits is the top level, an unknown id empty",
+          top > 0 and got == {"-1": top, "1,2": top, "abc": top, "99": 0}, (top, got))
+
 
 def main():
     process, port = start()
