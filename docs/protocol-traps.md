@@ -3046,3 +3046,5 @@ are changing; replay the client's exact request before altering behavior.
   `/system/agents` carries repeated `Language` keys in its JSON on purpose, and a native
   `excludeFields=`/`includeAlternates=` pass that re-serialised the parsed body collapsed them to
   the last one (6,658 bytes to 679), where the oracle leaves the body alone.
+- **The multi-id read's `mediaTagVersion` is an INTEGER** (cycle 83, kids'
+  `/library/metadata/1,3`), as on the single-id read; the native multi-id container sent a string.

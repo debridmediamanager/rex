@@ -380,6 +380,11 @@ def run(port):
     check("/system/agents keeps its repeated Language keys under excludeFields/includeAlternates",
           plain.count(b'"Language"') > 5 and all(got.values()), (plain.count(b'"Language"'), got))
 
+    # 18. The multi-id read's container carries mediaTagVersion as an integer.
+    body = raw(port, "/library/metadata/1007,1008")
+    check("/library/metadata/1007,1008 has an integer mediaTagVersion",
+          b'"mediaTagVersion":1655122614' in body, body[:300])
+
 
 def main():
     process, port = start()
