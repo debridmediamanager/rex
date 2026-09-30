@@ -23179,8 +23179,12 @@ fn local_interface_address() -> Option<String> {
 /// Monday, the first of the month, or January 1 respectively; fixed epoch
 /// widths drift across both timezone and daylight-saving boundaries.
 fn statistics_bucket(timestamp: i64, timespan: i64) -> i64 {
-    if timespan == 6 {
-        return timestamp;
+    // `sessions.bucket_start`: 6 is per second and 5 per minute, fixed widths from the
+    // epoch; the rest are CALENDAR buckets in local time -- the hour (4), day (3), the
+    // Monday of the week (2), the 1st of the month (1) and January 1st (0 and below).
+    if timespan >= 5 {
+        let width = if timespan == 5 { 60 } else { 1 };
+        return timestamp - timestamp.rem_euclid(width);
     }
     #[cfg(unix)]
     unsafe {
@@ -23189,23 +23193,25 @@ fn statistics_bucket(timestamp: i64, timespan: i64) -> i64 {
         if libc::localtime_r(&source, &mut local).is_null() {
             return timestamp;
         }
-        local.tm_hour = 0;
         local.tm_min = 0;
         local.tm_sec = 0;
+        if timespan != 4 {
+            local.tm_hour = 0;
+        }
         match timespan {
-            3 => {}
+            4 | 3 => {}
             2 => {
                 // tm_wday is Sunday=0; move to the preceding Monday.
                 let days_since_monday = (local.tm_wday + 6) % 7;
                 local.tm_mday -= days_since_monday;
             }
             1 => local.tm_mday = 1,
-            0 => {
+            _ => {
                 local.tm_mon = 0;
                 local.tm_mday = 1;
             }
-            _ => return timestamp,
         }
+        local.tm_isdst = -1;
         return libc::mktime(&mut local) as i64;
     }
     #[cfg(not(unix))]
