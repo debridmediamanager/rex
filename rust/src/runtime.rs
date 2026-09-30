@@ -11318,8 +11318,10 @@ impl Runtime {
     }
 
     fn playlist_sort_rows(&self) -> Vec<Value> {
+        // `/playlists/sorts` marks nothing active: the oracle's `PLAYLIST_SORTS` carries
+        // no `active`/`activeDirection`, which only the listing's Meta sets, per request.
         vec![
-            json!({"active":true,"activeDirection":"asc","default":"asc","defaultDirection":"asc","descKey":"titleSort:desc","key":"titleSort","title":"Name"}),
+            json!({"default":"asc","defaultDirection":"asc","descKey":"titleSort:desc","key":"titleSort","title":"Name"}),
             json!({"defaultDirection":"desc","descKey":"viewCount:desc","key":"viewCount","title":"Plays"}),
             json!({"defaultDirection":"desc","descKey":"lastViewedAt:desc","key":"lastViewedAt","title":"Last Played"}),
             json!({"defaultDirection":"desc","descKey":"duration:desc","key":"duration","title":"Duration"}),
