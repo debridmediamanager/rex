@@ -6388,11 +6388,16 @@ impl Runtime {
                 self.reap_sessions();
                 self.route_sessions()
             }
+            // `server.py`: the running activities -- every native activity starts and
+            // ends inside the request that ran it, so the list between requests is empty.
+            ("GET" | "HEAD", "/activities") => {
+                Response::json(200, json!({"MediaContainer": {"size": 0}}))
+            }
             ("GET" | "HEAD", "/status/sessions/background") => {
-                Response::json(200, self.container(Map::new(), false))
+                Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }
             ("GET" | "HEAD", "/transcode/sessions") => {
-                Response::json(200, self.container(Map::new(), false))
+                Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }
             ("GET" | "HEAD", "/clients") => Response::json(200, self.container(Map::new(), false)),
             ("GET" | "HEAD", "/updater/status") => Response::json(
