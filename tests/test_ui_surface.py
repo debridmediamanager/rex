@@ -31223,9 +31223,13 @@ def main():
     _, unw_c55f6, _ = get(base, "/library/sections/%s/unwatched?includeGuids=1" % movie_section)
     rows_c55f6 = unw_c55f6.get("Metadata") or []
     _, plain_c55f6, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
+    # Cycle 83, re-measured on kids (episodes 12-14): an UNMATCHED `local://` row carries no
+    # `Guid` even under `includeGuids=1`, so this check holds matched rows to it and
+    # unmatched ones to its absence.
     if rows_c55f6:
         check("The unwatched list carries Guid under includeGuids=1",
-              all("Guid" in r for r in rows_c55f6)
+              all(("Guid" in r) != str(r.get("guid") or "").startswith("local://")
+                  for r in rows_c55f6)
               and not any("Guid" in r for r in plain_c55f6.get("Metadata") or []),
               "%s" % [sorted(k for k in r if k[:1].isupper()) for r in rows_c55f6])
 
