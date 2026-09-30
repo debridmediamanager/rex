@@ -3363,6 +3363,84 @@ impl Runtime {
         Response::json(200, self.container(fields, false))
     }
 
+    /// `server.py` `section_arts`: `/library/sections/{id}/arts` -- one `<Photo>` row
+    /// per movie or show with a backdrop, in ratingKey order, in the library's container
+    /// (with `nocache` and viewGroup `episode` on a show library).
+    fn section_arts(&self, section: &Value) -> Response {
+        let section_key = string_value(section.get("key").unwrap_or(&Value::Null));
+        let is_show = section.get("type").and_then(Value::as_str) == Some("show");
+        let mut members = self
+            .section_rows(&section_key)
+            .into_iter()
+            .filter(|row| row.get("art").is_some_and(truthy))
+            .collect::<Vec<_>>();
+        members.sort_by_key(|row| {
+            string_value(row.get("ratingKey").unwrap_or(&Value::Null))
+                .parse::<i64>()
+                .unwrap_or(0)
+        });
+        let rows = members
+            .iter()
+            .map(|row| {
+                json!({
+                    "title": row.get("title").cloned().unwrap_or(Value::Null),
+                    "type": "image",
+                    "key": row.get("art").cloned().unwrap_or(Value::Null),
+                    "thumb": "",
+                    "label": "",
+                    "mediaType": "",
+                    "summary": "",
+                    "rating": -1,
+                    "addDate": -1,
+                    "modDate": -1,
+                    "metaModDate": -1,
+                })
+            })
+            .collect::<Vec<_>>();
+        let mut fields = Map::from_iter([
+            ("size".to_string(), json!(rows.len())),
+            ("allowSync".to_string(), json!(false)),
+            (
+                "art".to_string(),
+                json!(if is_show {
+                    "/:/resources/show-fanart.jpg"
+                } else {
+                    "/:/resources/movie-fanart.jpg"
+                }),
+            ),
+            (
+                "identifier".to_string(),
+                json!("com.plexapp.plugins.library"),
+            ),
+            ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
+            ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
+            (
+                "thumb".to_string(),
+                json!(if is_show {
+                    "/:/resources/show.png"
+                } else {
+                    "/:/resources/movie.png"
+                }),
+            ),
+            (
+                "title1".to_string(),
+                section.get("title").cloned().unwrap_or(Value::Null),
+            ),
+            (
+                "viewGroup".to_string(),
+                json!(if is_show { "episode" } else { "movie" }),
+            ),
+            ("viewMode".to_string(), json!(65592)),
+        ]);
+        if is_show {
+            fields.insert("nocache".to_string(), json!(true));
+        }
+        if !rows.is_empty() {
+            fields.insert("Metadata".to_string(), Value::Array(rows));
+        }
+        Response::json(200, json!({"MediaContainer": fields}))
+    }
+
     fn route_library_matches(&self, query: &HashMap<String, String>) -> Response {
         let Some(raw_type) = query.get("type") else {
             return Response::error(400, "plexsim: bad request");
@@ -6813,7 +6891,10 @@ impl Runtime {
                 }
             }
         }
-        Response::json(200, self.container(fields, true))
+        // Measured on fun and on the 1.43.4 reference: this container carries `title1`
+        // and allowSync only -- no identifier and no media-tag pair.
+        fields.insert("allowSync".to_string(), json!(false));
+        Response::json(200, self.container(fields, false))
     }
 
     fn section_summary(&self, section: &Value) -> Value {
@@ -12816,20 +12897,37 @@ impl Runtime {
                                 object.shift_remove("Field");
                                 object.shift_remove("librarySectionKey");
                             }
-                            entry
+                            guid_gate(entry, query)
                         })
                         .collect::<Vec<_>>();
-                    return Response::json(
-                        200,
-                        self.container(
-                            Map::from_iter([
-                                ("title2".to_string(), json!("On Deck")),
-                                ("allowSync".to_string(), json!(true)),
-                                ("Metadata".to_string(), Value::Array(rows)),
-                            ]),
-                            false,
-                        ),
+                    // `server.py` answers `listing_container(..., full_rows=True)`: the
+                    // library's listing container (triple, title1, viewGroup, viewMode,
+                    // resource art/thumb, paging), and a show library's `mixedParents` and
+                    // `nocache`.
+                    let (page, paged, start, total) = match page_window(rows, query) {
+                        Ok(window) => window,
+                        Err(status) => {
+                            return Response::error(status, "plexsim: bad container parameter")
+                        }
+                    };
+                    let is_show = kind == "episode";
+                    let mut fields = self.listing_fields(
+                        section_key,
+                        if is_show { "show" } else { "movie" },
+                        kind,
+                        "On Deck",
                     );
+                    fields.shift_remove("nocache");
+                    if paged {
+                        fields.insert("offset".to_string(), json!(start));
+                        fields.insert("totalSize".to_string(), json!(total));
+                    }
+                    if is_show {
+                        fields.insert("mixedParents".to_string(), json!(true));
+                        fields.insert("nocache".to_string(), json!(true));
+                    }
+                    fields.insert("Metadata".to_string(), Value::Array(page));
+                    return Response::json(200, self.container(fields, true));
                 }
                 if segments.len() >= 4 && segments[3] == "extras" {
                     return self.section_extras(section_key, &segments[4..], query);
@@ -12858,7 +12956,7 @@ impl Runtime {
                     if request.method != "GET" && request.method != "HEAD" {
                         return Response::error(404, "plexsim: not found");
                     }
-                    return self.route_library_arts(Some(section_key), &HashMap::new());
+                    return self.section_arts(section);
                 }
                 if segments.len() == 4
                     && matches!(
@@ -12888,8 +12986,19 @@ impl Runtime {
                         return Response::error(400, "plexsim: bad request");
                     }
                     let is_show = kind == "show";
+                    // `server.py` `section_leaf`: the resource art/thumb pair rides on every
+                    // one of these; `computePath` answers before `nocache` and `viewMode`
+                    // are added.
                     let mut fields = Map::from_iter([
                         ("allowSync".to_string(), json!(false)),
+                        (
+                            "art".to_string(),
+                            json!(if is_show {
+                                "/:/resources/show-fanart.jpg"
+                            } else {
+                                "/:/resources/movie-fanart.jpg"
+                            }),
+                        ),
                         (
                             "identifier".to_string(),
                             json!("com.plexapp.plugins.library"),
@@ -12897,13 +13006,23 @@ impl Runtime {
                         ("mediaTagPrefix".to_string(), json!(MEDIA_TAG_PREFIX)),
                         ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
                         (
+                            "thumb".to_string(),
+                            json!(if is_show {
+                                "/:/resources/show.png"
+                            } else {
+                                "/:/resources/movie.png"
+                            }),
+                        ),
+                        (
                             "title1".to_string(),
                             section.get("title").cloned().unwrap_or(Value::Null),
                         ),
-                        ("viewMode".to_string(), json!(65592)),
                     ]);
-                    if is_show {
-                        fields.insert("nocache".to_string(), json!(true));
+                    if leaf != "computePath" {
+                        if is_show {
+                            fields.insert("nocache".to_string(), json!(true));
+                        }
+                        fields.insert("viewMode".to_string(), json!(65592));
                     }
                     if leaf == "computePath" {
                         let Some(start) = query.get("startID") else {
@@ -14062,27 +14181,15 @@ impl Runtime {
                     };
                     let mut values = values;
                     replace_section_placeholder(&mut values, section_key);
-                    let key = if segments[3] == "sorts" {
-                        "Directory"
-                    } else {
-                        "Directory"
-                    };
+                    // `server.py`: both lists answer in the SECONDARY container
+                    // (`secondary_container`), sorts included -- `content=secondary`, the
+                    // resource art/thumb, title1 and a show library's `nocache`.
                     return Response::json(
                         200,
-                        self.container(
-                            Map::from_iter([
-                                (key.to_string(), values),
-                                (
-                                    "content".to_string(),
-                                    json!(if segments[3] == "sorts" {
-                                        "sorts"
-                                    } else {
-                                        "secondary"
-                                    }),
-                                ),
-                                ("viewGroup".to_string(), json!("secondary")),
-                            ]),
-                            false,
+                        self.axis_container(
+                            section,
+                            None,
+                            Map::from_iter([("Directory".to_string(), values)]),
                         ),
                     );
                 }
@@ -15733,7 +15840,16 @@ impl Runtime {
                 fields.insert("Meta".to_string(), meta);
             }
         }
-        Response::json(200, self.container(fields, true))
+        // `server.py`: the SECONDARY container titled "By Folder", plus the
+        // librarySection triple and `allowSync`.
+        if fields
+            .get("Metadata")
+            .and_then(Value::as_array)
+            .is_some_and(Vec::is_empty)
+        {
+            fields.shift_remove("Metadata");
+        }
+        Response::json(200, self.axis_container(section, Some("By Folder"), fields))
     }
 
     /// In-library search is deliberately a substring matcher. Global search
