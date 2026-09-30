@@ -20672,19 +20672,29 @@ def main():
     # expectation is determined by the operator alone and not by how many buckets the
     # series happens to have -- a pivot inside the series makes several operators answer
     # the same count, which is a check that can pass for the wrong reason.
-    series_c26d = get(base, "/statistics/bandwidth?timespan=6")[1].get(
-        "StatisticsBandwidth") or []
-    ats_c26d = [row_c26d.get("at") for row_c26d in series_c26d]
-    at_c26d, want_c26d = {}, {}
-    if ats_c26d:
-        pivot_c26d = min(ats_c26d) - 1
-        all_c26d = len(ats_c26d)
-        want_c26d = {"at>": all_c26d, "at<": 0, "at=": 0,
-                     "at>=": all_c26d, "at<=": all_c26d, "at!=": all_c26d}
-        for op_c26d in want_c26d:
-            at_c26d[op_c26d] = len(get(
-                base, "/statistics/bandwidth?timespan=6&%s=%s"
-                % (quote(op_c26d), pivot_c26d))[1].get("StatisticsBandwidth") or [])
+    # The series is LIVE: a per-second bandwidth row can be added (or age out of the
+    # timespan) between reading it and the six operator queries, and the three
+    # "ignored" operators then count a series the expectation never saw -- on either
+    # server. So the window is held still: the series is read again after the queries,
+    # and the whole measurement is retaken until both reads name the same rows.
+    for _attempt_c26d in range(5):
+        series_c26d = get(base, "/statistics/bandwidth?timespan=6")[1].get(
+            "StatisticsBandwidth") or []
+        ats_c26d = [row_c26d.get("at") for row_c26d in series_c26d]
+        at_c26d, want_c26d = {}, {}
+        if ats_c26d:
+            pivot_c26d = min(ats_c26d) - 1
+            all_c26d = len(ats_c26d)
+            want_c26d = {"at>": all_c26d, "at<": 0, "at=": 0,
+                         "at>=": all_c26d, "at<=": all_c26d, "at!=": all_c26d}
+            for op_c26d in want_c26d:
+                at_c26d[op_c26d] = len(get(
+                    base, "/statistics/bandwidth?timespan=6&%s=%s"
+                    % (quote(op_c26d), pivot_c26d))[1].get("StatisticsBandwidth") or [])
+        if [row_c26d.get("at") for row_c26d in get(
+                base, "/statistics/bandwidth?timespan=6")[1].get(
+                    "StatisticsBandwidth") or []] == ats_c26d:
+            break
     check("at> means >=, at< means <=, at= is exact, and the other three are ignored",
           bool(want_c26d) and at_c26d == want_c26d,
           "series=%d got=%s want=%s" % (len(series_c26d), at_c26d, want_c26d))
