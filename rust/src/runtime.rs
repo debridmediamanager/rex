@@ -2203,12 +2203,10 @@ impl Runtime {
             Map::from_iter([
                 ("size".to_string(), json!(0)),
                 ("apiVersion".to_string(), json!("1.1.1")),
+                // A JSON boolean, as server.py's `_claimed()` answers; XML renders it `1`.
+                ("claimed".to_string(), json!(self.claimed())),
                 ("machineIdentifier".to_string(), json!(self.machine)),
                 ("version".to_string(), json!(VERSION)),
-                (
-                    "claimed".to_string(),
-                    json!(if self.claimed() { 1 } else { 0 }),
-                ),
             ]),
             false,
         )
