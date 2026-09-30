@@ -22870,7 +22870,8 @@ fn plugin_container(rows: Vec<(&str, bool)>) -> Value {
                     ("thumb".to_string(), json!("/:/resources/library-icon.png")),
                     ("key".to_string(), json!(name)),
                     ("title".to_string(), json!("Library")),
-                    ("share".to_string(), json!("0")),
+                    // JSON on all three witnesses pins `share` as the NUMBER 0.
+                    ("share".to_string(), json!(0)),
                     (
                         "identifier".to_string(),
                         json!("com.plexapp.plugins.library"),
