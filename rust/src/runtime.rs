@@ -5489,6 +5489,9 @@ impl Runtime {
                 let key = string_value(section.get("key").unwrap_or(&Value::Null));
                 let is_show = section.get("type").and_then(Value::as_str) == Some("show");
                 let mut out = Map::new();
+                // `server.py` renders these under `_xml={"Metadata": "Directory"}`: a
+                // `<Directory>` in XML, and the section row's attribute order in both.
+                out.insert("_element".to_string(), json!("Directory"));
                 out.insert("art".to_string(), json!(""));
                 out.insert("key".to_string(), json!(format!("/library/sections/{key}/all?type={}", if is_show { 2 } else { 1 })));
                 out.insert("thumb".to_string(), json!(""));
@@ -5502,7 +5505,9 @@ impl Runtime {
                 if query.get("includePreferences").map(String::as_str) == Some("1") {
                     out.insert(
                         "Preferences".to_string(),
-                        json!({"Setting": self.section_pref_rows(&key, if is_show { "show" } else { "movie" })}),
+                        // The same block `/library/sections?includePreferences=1` carries,
+                        // the show library's `episodeSort` in its per-SHOW form.
+                        json!({"Setting": self.section_preference_rows(&key, if is_show { "show" } else { "movie" })}),
                     );
                 }
                 if query.get("includeSummary").map(String::as_str) == Some("1") {
