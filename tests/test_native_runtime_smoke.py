@@ -59,7 +59,10 @@ def main():
         "--port", port, "--catalog", "tests/catalog_ui.json", "--gdm", "off",
         "--assert-claimed", root=ROOT
     )
-    process = subprocess.Popen(command, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Like `server.py`, the server refuses to start without a Real-Debrid key.
+    env = dict(os.environ, RD_TOKEN=os.environ.get("RD_TOKEN") or "dummy")
+    process = subprocess.Popen(command, cwd=ROOT, env=env,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     base = "http://127.0.0.1:%d" % port
     results = []
     try:
@@ -120,6 +123,7 @@ def main():
             ("an unknown --part-mode", ["--part-mode", "bogus"], b"invalid choice"),
             ("an unknown --gdm", ["--gdm", "sometimes"], b"invalid choice"),
             ("--tls-key without --tls-cert", ["--tls-key", "key.pem"], b"--tls-key needs --tls-cert"),
+            ("to serve without RD_TOKEN", [], b"RD_TOKEN must be set"),
         ):
             probe = socket.socket()
             probe.bind(("127.0.0.1", 0))
@@ -129,7 +133,8 @@ def main():
                 refused = subprocess.run(
                     [native, "--port", str(spare), "--catalog", "tests/catalog_ui.json",
                      "--gdm", "off"] + extra,
-                    cwd=ROOT, capture_output=True, timeout=5)
+                    cwd=ROOT, env=env if extra else dict(env, RD_TOKEN=""),
+                    capture_output=True, timeout=5)
                 ok = refused.returncode == 2 and wanted in refused.stderr
             except subprocess.TimeoutExpired:
                 ok = False

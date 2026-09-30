@@ -20798,6 +20798,10 @@ fn start_state_saver(runtime: SharedRuntime) {
 
 pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     logging::set_verbose(options.verbose);
+    // `main()`: parts resolve through Real-Debrid, and an empty key is no key.
+    if std::env::var("RD_TOKEN").map_or(true, |token| token.is_empty()) {
+        return Err("RD_TOKEN must be set (the Real-Debrid API key)".to_string());
+    }
     let host = options.host.clone();
     let port = options.port;
     let gdm_mode = options.gdm.clone();
