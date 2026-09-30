@@ -5507,7 +5507,15 @@ impl Runtime {
             // Cycle 33/52: the plug-in framework's session cookie rides every response it
             // writes itself -- but not the Tornado banner answer, which hands none back.
             let tornado = response.headers.iter().any(|(name, _)| name == "Server");
+            // server.py writes its `redirect` result (the system plug-in's `/root` 302)
+            // outside `_send`, so that envelope carries no cookie either.
+            let redirect = response.headers.iter().any(|(name, _)| name == "Location")
+                && response
+                    .headers
+                    .iter()
+                    .any(|(name, value)| name == "Cache-Control" && value == "public");
             if !tornado
+                && !redirect
                 && !response
                     .headers
                     .iter()

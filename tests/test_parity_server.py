@@ -379,6 +379,25 @@ def run_resources(s):
               (status, heads))
 
 
+def run_misc(s):
+    # -- Download Logs names its attachment ---------------------------------------------
+    status, heads, body = s.raw("GET", "/diagnostics/logs")
+    check("/diagnostics/logs is a zip named plexsim-logs.zip",
+          status == 200 and body[:2] == b"PK"
+          and heads.get("content-type") == "application/zip"
+          and heads.get("content-disposition") == 'attachment; filename="plexsim-logs.zip"',
+          (status, heads))
+    # -- the system plug-in's /root redirect ------------------------------------------
+    status, heads, _ = s.raw("GET", "/:/plugins/com.plexapp.system/root")
+    check("/:/plugins/com.plexapp.system/root is a 302 to /system with no cookie",
+          status == 302 and heads.get("location", "").endswith("/system")
+          and "set-cookie" not in heads, (status, heads))
+    status, heads, _ = s.raw("GET", "/:/plugins/com.plexapp.system/root",
+                             {"X-Plex-Neuter-Redirect": "1"})
+    check("and X-Plex-Neuter-Redirect: 1 answers it as an empty 200",
+          status == 200 and heads.get("location", "").endswith("/system"), (status, heads))
+
+
 def run_writes(s):
     # -- a created section's uuid is the oracle's crc32 of "{title}-{type}" -----------
     status, _, _ = s.raw("POST", "/library/sections?name=Parity%20Create&type=movie"
@@ -417,6 +436,7 @@ def main():
         run_browse(server)
         run_system(server)
         run_resources(server)
+        run_misc(server)
         run_writes(server)
     finally:
         proc.send_signal(signal.SIGTERM)

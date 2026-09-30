@@ -1020,8 +1020,14 @@ impl Runtime {
         if rest == ["root"] && bundle.is_some() {
             if owner == "com.plexapp.system" {
                 let host = request.headers.get("host").cloned().unwrap_or_default();
+                // server.py's `redirect` result: an exact `X-Plex-Neuter-Redirect: 1`
+                // keeps the envelope and answers an empty 200, as `/web` does.
+                let neutered = request
+                    .headers
+                    .get("x-plex-neuter-redirect")
+                    .is_some_and(|value| value == "1");
                 return Response {
-                    status: 302,
+                    status: if neutered { 200 } else { 302 },
                     content_type: String::new(),
                     body: Vec::new(),
                     headers: vec![
