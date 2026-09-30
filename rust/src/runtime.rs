@@ -4839,34 +4839,24 @@ impl Runtime {
         if sort.is_empty() {
             return Err(500);
         }
-        let mut specs = Vec::new();
-        let mut random_sort = false;
+        // `filters.sort_terms`: comma-separated terms, each `key:modifier...`; the
+        // modifiers are `asc`, `desc`, `nocollate` in any order, and any other one is a
+        // `random` seed.
+        let mut specs: Vec<(String, bool, Option<String>)> = Vec::new();
         for spec in sort.split(',') {
+            let spec = spec.trim();
+            if spec.is_empty() {
+                continue;
+            }
             let mut pieces = spec.split(':');
             let field = pieces.next().unwrap_or_default();
             let modifiers = pieces.collect::<Vec<_>>();
             if field == "random" || field.ends_with(".random") {
-                random_sort = true;
                 let seed = modifiers
                     .iter()
-                    .find_map(|modifier| modifier.parse::<u64>().ok())
-                    .unwrap_or_else(|| {
-                        SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .map(|duration| duration.as_nanos() as u64)
-                            .unwrap_or(0)
-                    });
-                // Fisher-Yates with a deterministic linear generator gives
-                // distinct, repeatable orders for seeds that happen to have
-                // the same modulo as the old rotate shortcut.
-                let mut state = seed;
-                for index in (1..rows.len()).rev() {
-                    state = state
-                        .wrapping_mul(6_364_136_223_846_793_005)
-                        .wrapping_add(1_442_695_040_888_963_407);
-                    let swap = (state as usize) % (index + 1);
-                    rows.swap(index, swap);
-                }
+                    .find(|modifier| !matches!(**modifier, "asc" | "desc" | "nocollate"))
+                    .map(|seed| seed.to_string());
+                specs.push((field.to_string(), modifiers.contains(&"desc"), Some(seed.unwrap_or_default())));
                 continue;
             }
             let direction = modifiers
@@ -4929,22 +4919,87 @@ impl Runtime {
                 note_unsupported_sort(field);
                 return Err(500);
             }
-            specs.push((field.to_string(), direction == "desc"));
+            let _ = direction;
+            specs.push((field.to_string(), modifiers.contains(&"desc"), None));
         }
-        if random_sort && specs.is_empty() {
-            return Ok(rows);
+        // `server.py` `_sorted`: ties break on titleSort ascending -- or, on a season or
+        // episode list, on the show/season/episode order -- unless the spec is exactly
+        // `titleSort` or names a random key.
+        let any_random = specs.iter().any(|(_, _, seed)| seed.is_some());
+        let only_title = specs.len() == 1 && specs[0].0 == "titleSort";
+        if !specs.is_empty() && !only_title && !any_random {
+            let natural = !rows.is_empty()
+                && rows.iter().all(|row| {
+                    matches!(row.get("type").and_then(Value::as_str), Some("season" | "episode"))
+                });
+            specs.push((
+                if natural { "_natural" } else { "titleSort" }.to_string(),
+                false,
+                None,
+            ));
         }
-        // Python's stable sort uses titleSort as the final tie breaker for
-        // every advertised key.  Seed that order before applying the explicit
-        // keys in reverse priority.
         // `server.py` `_sort_key`: `titleSort` alone stays case-FOLDED (every other
         // text key compares raw codepoints, cycle 22).
         let folded = |value: &Value| string_value(value).to_lowercase();
-        rows.sort_by(|left, right| {
-            folded(&self.sort_value(left, "titleSort"))
-                .cmp(&folded(&self.sort_value(right, "titleSort")))
-        });
-        for (field, descending) in specs.into_iter().rev() {
+        // Right to left, relying on the sort being stable: the leftmost key ends up
+        // dominant.
+        for (field, descending, seed) in specs.into_iter().rev() {
+            if let Some(seed) = seed {
+                // Cycle 73: a bare `sort=random` is a fresh order on every request;
+                // only a seed holds one.  The order is the CRC-32 of
+                // `<seed>/<ratingKey>`, and `desc` reverses it.
+                let salt = if seed.is_empty() {
+                    format!(
+                        "{}",
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .map(|duration| duration.as_nanos())
+                            .unwrap_or(0)
+                    )
+                } else {
+                    seed
+                };
+                rows.sort_by_key(|row| {
+                    let key = row.get("ratingKey").map(string_value).unwrap_or_else(|| "None".to_string());
+                    crc32(format!("{salt}/{key}").as_bytes())
+                });
+                if descending {
+                    rows.reverse();
+                }
+                continue;
+            }
+            if field == "_natural" {
+                let natural = |row: &Value| {
+                    let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
+                    let show = match kind {
+                        "episode" => row
+                            .get("grandparentRatingKey")
+                            .map(string_value)
+                            .and_then(|key| self.catalog.get(&key)),
+                        "season" => row
+                            .get("parentRatingKey")
+                            .map(string_value)
+                            .and_then(|key| self.catalog.get(&key)),
+                        _ => None,
+                    }
+                    .unwrap_or(row);
+                    let title = show
+                        .get("titleSort")
+                        .map(string_value)
+                        .filter(|value| !value.is_empty())
+                        .or_else(|| show.get("title").map(string_value))
+                        .unwrap_or_default()
+                        .to_lowercase();
+                    let index = row.get("index").and_then(Value::as_i64).unwrap_or(0);
+                    if kind == "episode" {
+                        (title, row.get("parentIndex").and_then(Value::as_i64).unwrap_or(0), index)
+                    } else {
+                        (title, index, 0)
+                    }
+                };
+                rows.sort_by_key(natural);
+                continue;
+            }
             let title_sort = field.rsplit('.').next() == Some("titleSort");
             rows.sort_by(|left, right| {
                 let left_owned = self.sort_value(left, &field);
