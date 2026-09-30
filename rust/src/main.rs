@@ -57,7 +57,17 @@ fn parse_server_args(args: &[String]) -> Result<runtime::RuntimeOptions, String>
             "--no-gdm" | "--help" => {
                 index += 1;
             }
-            "--heartbeat-interval" | "--account-state-interval" | "--plex-direct-host" => {
+            "--heartbeat-interval" => {
+                options.heartbeat_interval = value(&mut index, option)?
+                    .parse()
+                    .map_err(|_| "bad --heartbeat-interval".to_string())?
+            }
+            "--account-state-interval" => {
+                options.account_state_interval = value(&mut index, option)?
+                    .parse()
+                    .map_err(|_| "bad --account-state-interval".to_string())?
+            }
+            "--plex-direct-host" => {
                 let _ = value(&mut index, option)?;
             }
             _ if option.starts_with('-') => return Err(format!("unknown option {option}")),

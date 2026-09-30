@@ -42,6 +42,7 @@ mod logging;
 mod merge;
 mod notify;
 mod playlists;
+mod plextv;
 mod resume;
 mod search;
 mod showprefs;
@@ -216,6 +217,8 @@ pub struct RuntimeOptions {
     pub announce_url: Option<String>,
     pub device_id: Option<String>,
     pub verbose: bool,
+    pub heartbeat_interval: u64,
+    pub account_state_interval: u64,
 }
 
 impl Default for RuntimeOptions {
@@ -238,6 +241,8 @@ impl Default for RuntimeOptions {
             announce_url: None,
             device_id: None,
             verbose: false,
+            heartbeat_interval: plextv::HEARTBEAT_INTERVAL,
+            account_state_interval: plextv::ACCOUNT_STATE_INTERVAL,
         }
     }
 }
@@ -347,6 +352,11 @@ pub struct Runtime {
     /// A remote artwork url the router answered with (`_serve_image`); fetched, cached,
     /// after the lock is released, so a slow image host never holds up the API.
     pending_image: Option<String>,
+    /// A claim token `POST /myplex/claim` accepted: `handle_connection` redeems it with
+    /// plex.tv after the lock is released, so the exchange never holds up the API.
+    pending_claim: Option<String>,
+    /// `claim.Claim` and the account threads `main()` wires (`plextv.rs`).
+    plextv: Arc<plextv::PlexTv>,
     /// `sim.requests`: `METHOD path` for every request the router answered, for the
     /// `requests.log` in Download Logs.
     requests: Vec<String>,
@@ -494,6 +504,13 @@ impl Runtime {
             .unwrap_or("plexsim")
             .to_string();
         let started_at = now();
+        // `main()` builds the claim after the catalog and before restoring `--state`.
+        let claim = plextv::Claim::load(
+            &machine,
+            plextv::claim_path(&options.catalog),
+            &friendly,
+            VERSION,
+        );
         let mut runtime = Self {
             catalog,
             machine,
@@ -525,6 +542,8 @@ impl Runtime {
             match_candidates: HashMap::new(),
             pending_part: None,
             pending_image: None,
+            pending_claim: None,
+            plextv: Arc::new(plextv::PlexTv::new(claim, options.account_state_interval)),
             requests: Vec::new(),
             unknown: Vec::new(),
             refused_for_token: false,
@@ -584,6 +603,8 @@ impl Runtime {
             activity_serial: 0,
         };
         runtime.load_state()?;
+        // The claim reports the server's name to plex.tv; a restored rename is it.
+        runtime.claim_mut().name = runtime.friendly.clone();
         // A restored vocabulary is kept as it stood (cycle 73); only a fresh start, or
         // a state file without one, builds it from the rows.
         if runtime.spelling.is_none() {
@@ -2078,8 +2099,10 @@ impl Runtime {
                 if let Some(id) = object.get("id").and_then(Value::as_str) {
                     if let Some(value) = self.prefs.get(id) {
                         object.insert("value".to_string(), value.clone());
-                    } else if id == "FriendlyName" {
-                        object.insert("value".to_string(), json!(self.friendly));
+                    } else if let Some(value) = self.identity_pref(id) {
+                        // `_identity_prefs`: the rows whose value IS this server's
+                        // identity, the claimed owner's email among them.
+                        object.insert("value".to_string(), value);
                     }
                 }
             }
@@ -2121,11 +2144,7 @@ impl Runtime {
                 ("version".to_string(), json!(VERSION)),
                 (
                     "claimed".to_string(),
-                    json!(if self.assert_claimed { 1 } else { 0 }),
-                ),
-                (
-                    "claimed".to_string(),
-                    json!(if self.assert_claimed { 1 } else { 0 }),
+                    json!(if self.claimed() { 1 } else { 0 }),
                 ),
             ]),
             false,
@@ -2302,41 +2321,25 @@ impl Runtime {
                 })
             })
             .collect::<Vec<_>>();
-        self.container(
-            Map::from_iter([
-                ("machineIdentifier".to_string(), json!(self.machine)),
-                ("version".to_string(), json!(VERSION)),
-                ("friendlyName".to_string(), json!(self.friendly)),
-                ("platform".to_string(), json!("Linux")),
-                ("platformVersion".to_string(), json!("")),
-                ("product".to_string(), json!("Plex Media Server")),
-                ("protocol".to_string(), json!(1)),
-                (
-                    "ownerFeatures".to_string(),
-                    json!("adaptive_bitrate,camera_upload,collections,content_filter,download_certificates,dvr,federated-auth,hardware_transcoding,home,hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,music-analysis,music_videos,pass,photosV6-edit,photosV6-tv-albums,premium_music_metadata,radio,server-manager,session_bandwidth_restrictions,session_kick,shared-radio,sync,trailers,tuner-sharing,type-first,unsupportedtuners,webhooks"),
-                ),
-                ("hubSearch".to_string(), json!(true)),
-                ("itemClusters".to_string(), json!(true)),
-                ("mediaProviders".to_string(), json!(true)),
-                ("livetv".to_string(), json!(7)),
-                ("multiuser".to_string(), json!(true)),
-                ("transcoderPhoto".to_string(), json!(true)),
-                (
-                    "transcoderVideoResolutions".to_string(),
-                    json!("128,128,160,240,320,480,768,720,720,1080,1080,1080,1080"),
-                ),
-                (
-                    "transcoderVideoBitrates".to_string(),
-                    json!("64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000"),
-                ),
-                (
-                    "transcoderVideoQualities".to_string(),
-                    json!("0,1,2,3,4,5,6,7,8,9,10,11,12"),
-                ),
-                ("Directory".to_string(), Value::Array(directories)),
-            ]),
-            false,
-        )
+        // `server_root`: the server-info scalars /media/providers carries -- the claim
+        // fields among them -- plus the five flags only `/` has, and the directories.
+        let mut fields = Map::new();
+        for (name, value) in self.server_info() {
+            if !value.is_null() {
+                fields.insert(name.to_string(), value);
+            }
+        }
+        for name in [
+            "hubSearch",
+            "itemClusters",
+            "mediaProviders",
+            "multiuser",
+            "transcoderPhoto",
+        ] {
+            fields.insert(name.to_string(), json!(true));
+        }
+        fields.insert("Directory".to_string(), Value::Array(directories));
+        self.container(fields, false)
     }
 
     /// Cycle 66, measured identically on kids, zen and plexscratch42: whether a Roku at
@@ -2367,6 +2370,76 @@ impl Runtime {
             .is_some_and(|patch| patch.parse::<u64>().unwrap_or(0) < 2)
     }
 
+    /// `server_info`: the capability scalars `/` and `/media/providers` share, the claim
+    /// fields among them (`_claimed`, `_owner`, `owner_features`).
+    fn server_info(&self) -> Vec<(&'static str, Value)> {
+        let claimed = self.claimed();
+        vec![
+            ("allowCameraUpload", json!(false)),
+            ("allowChannelAccess", json!(true)),
+            ("allowMediaDeletion", json!(true)),
+            ("allowSharing", json!(true)),
+            ("allowSync", json!(false)),
+            ("allowTuners", json!(false)),
+            ("apiVersion", json!("1.1.1")),
+            ("backgroundProcessing", json!(true)),
+            ("certificate", json!(true)),
+            ("companionProxy", json!(true)),
+            ("countryCode", json!("deu")),
+            ("diagnostics", json!("logs,streaminglogs")),
+            ("eventStream", json!(true)),
+            ("friendlyName", json!(self.friendly)),
+            ("livetv", json!(7)),
+            ("machineIdentifier", json!(self.machine)),
+            ("musicAnalysis", json!(2)),
+            ("myPlex", json!(true)),
+            ("myPlexMappingState", json!("mapped")),
+            (
+                "myPlexSigninState",
+                json!(if claimed { "ok" } else { "none" }),
+            ),
+            ("myPlexSubscription", json!(claimed)),
+            (
+                "myPlexUsername",
+                if claimed {
+                    json!(self.owner())
+                } else {
+                    Value::Null
+                },
+            ),
+            ("ownerFeatures", json!(self.owner_features())),
+            ("platform", json!("Linux")),
+            ("platformVersion", json!("6.1")),
+            ("pluginHost", json!(true)),
+            ("pushNotifications", json!(false)),
+            ("readOnlyLibraries", json!(false)),
+            ("streamingBrainABRVersion", json!(3)),
+            ("streamingBrainVersion", json!(2)),
+            ("sync", json!(true)),
+            ("transcoderActiveVideoSessions", json!(0)),
+            ("transcoderAudio", json!(false)),
+            ("transcoderLyrics", json!(false)),
+            ("transcoderSubtitles", json!(false)),
+            ("transcoderVideo", json!(false)),
+            (
+                "transcoderVideoBitrates",
+                json!("64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000"),
+            ),
+            (
+                "transcoderVideoQualities",
+                json!("0,1,2,3,4,5,6,7,8,9,10,11,12"),
+            ),
+            (
+                "transcoderVideoResolutions",
+                json!("128,128,160,240,320,480,768,720,720,1080,1080,1080,1080"),
+            ),
+            ("updatedAt", json!(1789127123)),
+            ("updater", json!(true)),
+            ("version", json!(VERSION)),
+            ("voiceSearch", json!(true)),
+        ]
+    }
+
     /// `/media/providers` -- the first call a modern client makes (the oracle's
     /// `media_providers`, `media_provider_rows` and `server_info`, in the order its
     /// JSON writer emits them).
@@ -2375,7 +2448,6 @@ impl Runtime {
         query: &HashMap<String, String>,
         headers: &HashMap<String, String>,
     ) -> Value {
-        let claimed = self.assert_claimed;
         let mut directories = vec![json!({"hubKey": "/hubs", "title": "Home"})];
         let option_on = |name: &str| {
             query.get(name).is_some_and(|value| {
@@ -2563,71 +2635,8 @@ impl Runtime {
             json!({"key": "/library/search", "type": "universalsearch"}),
         ];
         let mut body = Map::new();
-        for (name, value) in [
-            ("size", json!(1)),
-            ("allowCameraUpload", json!(false)),
-            ("allowChannelAccess", json!(true)),
-            ("allowMediaDeletion", json!(true)),
-            ("allowSharing", json!(true)),
-            ("allowSync", json!(false)),
-            ("allowTuners", json!(false)),
-            ("apiVersion", json!("1.1.1")),
-            ("backgroundProcessing", json!(true)),
-            ("certificate", json!(true)),
-            ("companionProxy", json!(true)),
-            ("countryCode", json!("deu")),
-            ("diagnostics", json!("logs,streaminglogs")),
-            ("eventStream", json!(true)),
-            ("friendlyName", json!(self.friendly)),
-            ("livetv", json!(7)),
-            ("machineIdentifier", json!(self.machine)),
-            ("musicAnalysis", json!(2)),
-            ("myPlex", json!(true)),
-            ("myPlexMappingState", json!("mapped")),
-            (
-                "myPlexSigninState",
-                json!(if claimed { "ok" } else { "none" }),
-            ),
-            ("myPlexSubscription", json!(claimed)),
-            (
-                "myPlexUsername",
-                if claimed {
-                    json!(self.owner_email)
-                } else {
-                    Value::Null
-                },
-            ),
-            ("ownerFeatures", json!(OWNER_FEATURES)),
-            ("platform", json!("Linux")),
-            ("platformVersion", json!("6.1")),
-            ("pluginHost", json!(true)),
-            ("pushNotifications", json!(false)),
-            ("readOnlyLibraries", json!(false)),
-            ("streamingBrainABRVersion", json!(3)),
-            ("streamingBrainVersion", json!(2)),
-            ("sync", json!(true)),
-            ("transcoderActiveVideoSessions", json!(0)),
-            ("transcoderAudio", json!(false)),
-            ("transcoderLyrics", json!(false)),
-            ("transcoderSubtitles", json!(false)),
-            ("transcoderVideo", json!(false)),
-            (
-                "transcoderVideoBitrates",
-                json!("64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000"),
-            ),
-            (
-                "transcoderVideoQualities",
-                json!("0,1,2,3,4,5,6,7,8,9,10,11,12"),
-            ),
-            (
-                "transcoderVideoResolutions",
-                json!("128,128,160,240,320,480,768,720,720,1080,1080,1080,1080"),
-            ),
-            ("updatedAt", json!(1789127123)),
-            ("updater", json!(true)),
-            ("version", json!(VERSION)),
-            ("voiceSearch", json!(true)),
-        ] {
+        body.insert("size".to_string(), json!(1));
+        for (name, value) in self.server_info() {
             if !value.is_null() {
                 body.insert(name.to_string(), value);
             }
@@ -6026,52 +6035,20 @@ impl Runtime {
                 }
             }
             ("POST", "/myplex/claim") => {
-                // The claim token is a request parameter, independent of the
-                // server's already-claimed state.  Python's do_claim rejects
-                // an absent token before attempting any exchange, and the
-                // native route must retain that observable error contract.
-                if query.get("token").is_none_or(String::is_empty) {
-                    Response::error(400, "plexsim: missing claim token")
-                } else {
-                    // Test instances use --assert-claimed as an injectable
-                    // local account state; no native runtime path performs a
-                    // plex.tv write.  A supplied token therefore marks the
-                    // local state claimed and returns the same empty success
-                    // shape used by the phase-3 smoke contract.
-                    self.assert_claimed = true;
-                    Response::empty(200)
+                // `do_claim`: an absent token is refused before any exchange. A present
+                // one is redeemed with plex.tv by `handle_connection` once the lock is
+                // released (`finish_claim`), which answers the claimed /myplex/account.
+                match query.get("token").filter(|token| !token.is_empty()) {
+                    None => Response::error(400, "plexsim: missing claim token"),
+                    Some(token) => {
+                        self.pending_claim = Some(token.clone());
+                        Response::empty(200)
+                    }
                 }
             }
             ("PATCH", "/myplex/claim") => Response::plain(500, b"500".to_vec()),
             ("PUT", "/myplex/refreshReachability") => Response::empty(200),
-            ("GET" | "HEAD", "/myplex/account") => {
-                // `server.py` `myplex_account`: the owner's EMAIL as `username`, the
-                // address pair moving together, and (cycle 45) `subscriptionFeatures`
-                // the SAME string as `/`'s `ownerFeatures`.
-                let claimed = self.assert_claimed || self.token.is_some();
-                let features = self
-                    .server_root()
-                    .pointer("/MediaContainer/ownerFeatures")
-                    .cloned()
-                    .unwrap_or(Value::Null);
-                let private = !self.private_address.is_empty();
-                Response::json(
-                    200,
-                    json!({"MyPlex":{
-                        "username": if claimed { json!(self.owner_email) } else { Value::Null },
-                        "mappingState":"mapped",
-                        "mappingError":"",
-                        "signInState": if claimed { "ok" } else { "none" },
-                        "publicAddress": "",
-                        "publicPort":0,
-                        "privateAddress": self.private_address,
-                        "privatePort": if private { self.private_port } else { 0 },
-                        "subscriptionFeatures": features,
-                        "subscriptionActive": claimed,
-                        "subscriptionState": if claimed { "Active" } else { "Unknown" },
-                    }}),
-                )
-            }
+            ("GET" | "HEAD", "/myplex/account") => self.myplex_account(),
             ("GET" | "HEAD", "/security/token") => self.route_security_token(&request, &query),
             ("GET", "/log") => {
                 let valid_level = query
@@ -20776,9 +20753,18 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     let host = options.host.clone();
     let port = options.port;
     let gdm_mode = options.gdm.clone();
-    let announce = options.announce_url.is_some();
+    let announce = options.announce_url.clone();
+    let device_id = options.device_id.clone();
+    let heartbeat_interval = options.heartbeat_interval;
     let gated = options.token.is_some();
     let tls_cert = options.tls_cert.clone();
+    // `main()`: registration WRITES to a plex.tv account, with the account token.
+    let plex_token = std::env::var("PLEX_TOKEN")
+        .ok()
+        .filter(|token| !token.is_empty());
+    if announce.is_some() && plex_token.is_none() {
+        return Err("--announce-url needs PLEX_TOKEN in the environment".to_string());
+    }
     if std::env::var("TMDB_KEY").map_or(true, |key| key.is_empty()) {
         info!("no TMDB_KEY: Fix Match will report no candidates");
     }
@@ -20801,18 +20787,31 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     }
     let listener = TcpListener::bind((host.as_str(), port))
         .map_err(|e| format!("cannot bind {host}:{port}: {e}"))?;
-    let (machine, items, part_mode) = {
+    let (plextv, machine, friendly, items, part_mode) = {
         let guard = runtime
             .lock()
             .map_err(|_| "runtime lock poisoned".to_string())?;
         (
+            Arc::clone(&guard.plextv),
             guard.machine.clone(),
+            guard.friendly.clone(),
             guard.catalog.items.len(),
             guard.part_mode.clone(),
         )
     };
-    // No plex.tv claim is performed by this runtime yet.
-    info!("claim state: unclaimed");
+    let claim = plextv
+        .claim
+        .lock()
+        .map(|claim| claim.clone())
+        .map_err(|_| "claim lock poisoned".to_string())?;
+    info!(
+        "claim state: {}",
+        if claim.claimed() {
+            format!("CLAIMED by {}", claim.owner.as_deref().unwrap_or("None"))
+        } else {
+            "unclaimed".to_string()
+        }
+    );
     // Said out loud either way: without a token every peer that can reach the port
     // reads the library, preferences, sessions and media bytes alike.
     info!(
@@ -20827,7 +20826,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         "plexsim on http://{}:{port}  machine={machine}  items={items}  parts={part_mode}",
         hostname()
     );
-    if announce && part_mode == "proxy" {
+    if announce.is_some() && part_mode == "proxy" {
         // Measured behind a Cloudflare tunnel: a prefix Range reaches the origin as a
         // full fetch, so every play start drains the whole title from the provider.
         warning!(
@@ -20835,6 +20834,25 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         );
     }
     start_gdm(Arc::clone(&runtime), &gdm_mode, port);
+    if let (Some(url), Some(token)) = (announce, plex_token) {
+        // Cycle 44: announced on the server's own machineIdentifier.
+        plextv::start_heartbeat(
+            token,
+            device_id.unwrap_or_else(|| machine.clone()),
+            url,
+            friendly,
+            heartbeat_interval,
+        );
+    }
+    if claim.claimed() {
+        plextv.start_account(&runtime);
+        if plextv.sync.is_none() {
+            warning!(
+                "claimed-account watch/rating sync is OFF: {} is not configured",
+                plextv::DECRYPT_SECRET_ENV
+            );
+        }
+    }
     start_state_saver(Arc::clone(&runtime));
     for stream in listener.incoming() {
         match stream {
@@ -21204,10 +21222,12 @@ fn handle_connection<S: Read + Write>(
                 .map_err(|_| "runtime lock poisoned".to_string())?;
             guard.pending_part = None;
             guard.pending_image = None;
+            guard.pending_claim = None;
             guard.refused_for_token = false;
             let response = guard.route(&request);
             part_plan = guard.pending_part.take();
             let image = guard.pending_image.take();
+            let claim = guard.pending_claim.take();
             if guard.refused_for_token {
                 take_error_note();
             } else {
@@ -21220,8 +21240,9 @@ fn handle_connection<S: Read + Write>(
             }
             guard.absorb_logs();
             drop(guard);
-            match image {
-                Some(url) if response.status == 200 && response.body.is_empty() => {
+            match (image, claim) {
+                (_, Some(token)) => plextv::finish_claim(&runtime, &token, &request.target),
+                (Some(url), _) if response.status == 200 && response.body.is_empty() => {
                     serve_remote_image(response, &url)
                 }
                 _ => response,
