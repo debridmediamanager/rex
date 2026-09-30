@@ -1727,4 +1727,3 @@ fn begins_word(text: &str, wanted: &str) -> bool {
         (at == 0 || lowered[at - 1].is_whitespace()) && lowered[at..].starts_with(&needle)
     })
 }
-

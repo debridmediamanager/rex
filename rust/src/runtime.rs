@@ -3377,7 +3377,7 @@ impl Runtime {
             4 => "episode",
             _ => "",
         };
-        let mut rows = self
+        let rows = self
             .catalog
             .items
             .iter()
@@ -3417,16 +3417,15 @@ impl Runtime {
                         })
                         .unwrap_or(true)
             })
-            .map(|row| self.listing_row(row))
+            .cloned()
             .collect::<Vec<_>>();
-        rows.sort_by_key(|row| {
-            string_value(
-                row.get("titleSort")
-                    .or_else(|| row.get("title"))
-                    .unwrap_or(&Value::Null),
-            )
-            .to_lowercase()
-        });
+        // `self._sorted(rows, "titleSort")` on the stored rows, then each one as a light
+        // grid row WITHOUT its library fields (`_grid_row(..., keep_section=False)`).
+        let sorted = self.sort_rows(rows, Some("titleSort")).unwrap_or_default();
+        let mut rows = sorted
+            .iter()
+            .map(|row| self.grid_row(row, false, false, false))
+            .collect::<Vec<_>>();
         if query.contains_key("title") && matches!(wanted, "movie" | "show") {
             rows = rows
                 .into_iter()
