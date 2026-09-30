@@ -302,6 +302,19 @@ def run(port):
           got == {"": (200, 6), "abc": (200, 6), "-1": (200, 6), "1,2": (200, 6),
                   "0": (200, 6), "1": (200, 0)}, got)
 
+    # 11. An include* option turns on for the integer ONE only.
+    got = {}
+    for value in ("-1", "2", "01", "%2B1", "0"):
+        _status, mc = request(port, "/hubs/sections/2?count=12&includeExtras=%s"
+                              "&includeRelated=%s&includeChildren=%s&includeOnDeck=%s"
+                              % ((value,) * 4))
+        rows = (hub(mc, "tv.recentlyadded.") or {}).get("Metadata") or [{}]
+        got[value] = sorted(k for k in ("Extras", "Related", "Children", "OnDeck")
+                            if k in rows[0])
+    on = ["Children", "Extras", "OnDeck", "Related"]
+    check("include* blocks: 01 and +1 turn them on, -1, 2 and 0 do not",
+          got == {"-1": [], "2": [], "01": on, "%2B1": on, "0": []}, got)
+
 
 def main():
     process, port = start()

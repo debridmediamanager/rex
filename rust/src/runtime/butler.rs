@@ -1015,10 +1015,14 @@ impl Runtime {
         hubs: &mut [Value],
         query: &HashMap<String, String>,
     ) {
+        // The oracle's `_include_int`: an optional `+`, digits, and the value ONE --
+        // kids draws no block for `-1` or `2` (cycle 83), only for `1`, `01`, `+1`.
         let include_int = |name: &str| {
             query.get(name).is_some_and(|value| {
-                int_param(value, Some(32))
-                    && value.trim_start_matches('+').parse::<i64>().unwrap_or(0) != 0
+                let digits = value.strip_prefix('+').unwrap_or(value);
+                !digits.is_empty()
+                    && digits.bytes().all(|byte| byte.is_ascii_digit())
+                    && digits.trim_start_matches('0') == "1"
             })
         };
         let children = include_int("includeChildren");

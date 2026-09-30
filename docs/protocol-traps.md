@@ -3023,3 +3023,6 @@ are changing; replay the client's exact request before altering behavior.
 - **`unwatchedLeaves` takes the Meta's BOOLEAN grammar** (cycle 83, kids): on a movie grid it is
   every row for an empty value, `abc`, `-1`, `1,2` and `0`, and none for `1`. Typed as an integer
   it refused the empty and word values with a 500.
+- **An `include*` block turns on for the integer ONE only** (cycle 83, kids' hub page): `01` and
+  `%2B1` draw the blocks, `-1`, `2` and `0` do not -- the `_include_int` rule cycles 22 and 29
+  recorded, which the native full-row passes read as "any non-zero integer".
