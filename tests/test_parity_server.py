@@ -170,6 +170,113 @@ def run(s):
           rows and rows[-1] == {"key": "/channels/all", "title": "Channels"}, rows[-1:])
 
 
+def raw_exchange(port, data):
+    """Send raw bytes and return the response head (status line and headers)."""
+    sock = socket.create_connection(("127.0.0.1", port), timeout=10)
+    try:
+        sock.sendall(data)
+        chunks = b""
+        while b"\r\n\r\n" not in chunks:
+            piece = sock.recv(4096)
+            if not piece:
+                break
+            chunks += piece
+    finally:
+        sock.close()
+    return chunks.split(b"\r\n\r\n", 1)[0].decode("latin-1")
+
+
+def run_dispatcher(s):
+    # -- the legacy plug-in dispatcher answers a single segment on EVERY verb --------
+    plugins = {"MediaContainer": {"size": 0, "content": "plugins"}}
+    for method in ("POST", "PUT", "DELETE", "OPTIONS"):
+        for path in ("/foo", "/settings", "/login", "/sync", "/updater", "/zzznotapath",
+                     "/identity", "/hubs", "/player", "/web", "/myplex"):
+            status, _, doc = s.json(method, path)
+            check("%s %s is the dispatcher's empty listing" % (method, path),
+                  status == 200 and doc == plugins, (status, doc))
+    status, _, doc = s.json("PUT", "/server")
+    check("PUT /server is the dispatcher's one-row listing",
+          doc == {"MediaContainer": {"size": 1, "content": "plugins", "Directory": [
+              {"key": "servers", "title": "servers"}]}}, doc)
+    status, _, doc = s.json("DELETE", "/l")
+    names = [row.get("key") for row in container(doc).get("Directory") or []]
+    check("DELETE /l is the dispatcher's seven rows in the measured order",
+          names == ["epg", "augmentation", "dvrs", "shared", "log", "sessions", "library"],
+          names)
+    status, _, doc = s.json("GET", "/lib")
+    library = (container(doc).get("Directory") or [{}])[-1]
+    check("the dispatcher's library row carries share as the NUMBER 0",
+          library.get("key") == "library" and library.get("share") == 0, library)
+    status, _, doc = s.json("POST", "/security")
+    check("POST /security is the bare {size: 0}", doc == {"MediaContainer": {"size": 0}}, doc)
+    for method in ("PUT", "DELETE", "OPTIONS"):
+        status, _, _ = s.json(method, "/search")
+        check("%s /search is its own 400" % method, status == 400, status)
+    status, _, doc = s.json("PUT", "/playlists")
+    check("PUT /playlists falls to the dispatcher", doc == plugins, doc)
+    status, _, doc = s.json("DELETE", "/playQueues")
+    check("DELETE /playQueues falls to the dispatcher", doc == plugins, doc)
+
+    # -- /log validates on every verb ------------------------------------------------
+    for method in ("POST", "PUT", "DELETE", "OPTIONS", "HEAD", "GET"):
+        status, _, _ = s.raw(method, "/log")
+        check("%s /log without level and message is a 400" % method, status == 400, status)
+        status, heads, body = s.raw(method, "/log?level=2&message=parity")
+        check("%s /log with both is an empty 200" % method,
+              status == 200 and body == b"", (status, body[:80]))
+    status, _, _ = s.raw("POST", "/log?level=abc&message=parity")
+    check("a non-numeric level is a 400", status == 400, status)
+
+    # -- the download queue ------------------------------------------------------------
+    status, _, doc = s.json("POST", "/downloadQueue")
+    queue = {"id": 1, "owner": 1, "clientIdentifier": "parity-server", "itemCount": 0,
+             "status": "done"}
+    check("POST /downloadQueue answers the caller's queue with owner and itemCount",
+          doc == {"MediaContainer": {"size": 1, "DownloadQueue": [queue]}}, doc)
+    status, _, doc = s.json("POST", "/downloadQueue",
+                            {"X-Plex-Client-Identifier": "parity-other"})
+    check("a second client's queue is id 2",
+          ((container(doc).get("DownloadQueue") or [{}])[0]).get("id") == 2, doc)
+    status, _, doc = s.json("GET", "/downloadQueue/2")
+    check("/downloadQueue/{id} reads any client's queue by id",
+          status == 200 and container(doc).get("size") == 1
+          and container(doc)["DownloadQueue"][0].get("clientIdentifier") == "parity-other",
+          (status, doc))
+    status, _, doc = s.json("GET", "/downloadQueue/1/items")
+    check("/downloadQueue/{id}/items is {size: 0}",
+          doc == {"MediaContainer": {"size": 0}}, doc)
+    for method in ("PUT", "DELETE"):
+        status, _, doc = s.json(method, "/downloadQueue")
+        check("%s /downloadQueue is the dispatcher's listing" % method, doc == plugins, doc)
+
+    # -- an unknown method honours Connection: close ----------------------------------
+    for method in ("PATCH", "FROB"):
+        head = raw_exchange(s.port, ("%s /identity HTTP/1.1\r\nHost: x\r\n"
+                                     "Connection: close\r\n\r\n" % method).encode())
+        check("%s with Connection: close is a 500 answered Connection: close" % method,
+              head.startswith("HTTP/1.1 500") and "\r\nConnection: close" in head
+              and "Keep-Alive: timeout" not in head, head)
+
+    # -- the doubled trailing slash answers the parent ---------------------------------
+    for doubled, parent in (("/media/providers//", "/media/providers"),
+                            ("/media/providers/metadata//", "/media/providers/metadata"),
+                            ("/servers//", "/servers"), ("/channels//", "/channels"),
+                            ("/accounts//", "/accounts"), ("/clients//", "/clients"),
+                            ("/resources//", "/resources"), ("/security//", "/security"),
+                            ("/:/prefs//", "/:/prefs"), ("/library/metadata/1007//",
+                                                         "/library/metadata/1007")):
+        _, _, left = s.json("GET", doubled)
+        _, _, right = s.json("GET", parent)
+        mask = lambda doc: json.loads(re.sub(r'"(updatedAt|checkedAt)":\d+', '"\\1":0',
+                                             json.dumps(doc)))
+        check("%s answers %s's own document" % (doubled, parent),
+              left is not None and mask(left) == mask(right),
+              (str(left)[:160], str(right)[:160]))
+    status, _, _ = s.json("GET", "/library/metadata/1007/children//")
+    check("a doubled slash below an item leaf is a 404", status == 404, status)
+
+
 def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
     env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
@@ -188,7 +295,9 @@ def main():
                 break
             except OSError:
                 time.sleep(0.1)
-        run(Server(port))
+        server = Server(port)
+        run(server)
+        run_dispatcher(server)
     finally:
         proc.send_signal(signal.SIGTERM)
         try:

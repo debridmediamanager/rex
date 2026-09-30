@@ -5970,7 +5970,11 @@ impl Runtime {
             );
             return response;
         }
-        if path == "/player" || path.starts_with("/player/") {
+        // A bare `/player` falls to the plug-in dispatcher for every verb but GET and
+        // HEAD, as server.py's single-segment fallthrough runs before its player rule.
+        if (path == "/player" && matches!(request.method.as_str(), "GET" | "HEAD"))
+            || path.starts_with("/player/")
+        {
             // Player commands go to a PLAYER, not to a server: a real PMS answers 400
             // for every one of them.
             if !request
@@ -6009,43 +6013,64 @@ impl Runtime {
                 .collect::<Vec<_>>();
             return self.route_butler(&request.method, &segments);
         }
-        // Single-component framework prefixes are dispatched by PMS before
-        // their verb-specific handlers.  A wrong verb therefore receives the
-        // plug-in container (with `/security`'s measured bare container),
-        // rather than accidentally reading a GET document or falling through
-        // to a 404.  Keep the actual writers such as `/playlists` out of this
-        // set so their validation remains visible.
-        let framework_prefix = matches!(
-            path.as_str(),
-            "/identity"
-                | "/hubs"
-                | "/library"
-                | "/accounts"
-                | "/devices"
-                | "/servers"
-                | "/butler"
-                | "/clients"
-                | "/activities"
-                | "/connections"
-                | "/dlna"
-                | "/statistics"
-                | "/media"
-                | "/status"
-                | "/services"
-                | "/security"
-        );
-        // SINGLE_SEGMENT_WRITERS: the single-segment paths that really
-        // implement a verb other than GET/HEAD; everything else falls through
-        // to the dispatcher.
-        let real_writer = path == "/butler" && matches!(request.method.as_str(), "POST" | "DELETE");
-        if framework_prefix && !real_writer && !matches!(request.method.as_str(), "GET" | "HEAD") {
-            return if path == "/security" {
-                Response::json(200, json!({"MediaContainer": {"size": 0}}))
-            } else if let Some(response) = self.route_plugin_prefix(&path) {
-                response
-            } else {
-                Response::json(200, plugin_container(Vec::new()))
-            };
+        // server.py, cycles 15 and 18, measured on plexscratch with every verb: an
+        // unknown SINGLE-segment path falls into the legacy plug-in dispatcher, and so
+        // does a KNOWN one for every verb it does not implement -- `PUT /identity`,
+        // `PUT /hubs`, `DELETE /foo` and `POST /settings` all answer the dispatcher's
+        // container (`/security`'s measured bare one). Only SINGLE_SEGMENT_WRITERS keep
+        // their own handler, and `/search` refuses its writers with its own 400 first.
+        if !matches!(request.method.as_str(), "GET" | "HEAD")
+            && path.len() > 1
+            && !path[1..].trim_end_matches('/').contains('/')
+            && !path[1..].trim_end_matches('/').is_empty()
+        {
+            let route = path.trim_end_matches('/');
+            if route == "/search" {
+                return Response::error(400, "plexsim: bad request");
+            }
+            let real_writer = matches!(
+                (request.method.as_str(), route),
+                ("POST", "/playlists")
+                    | ("POST", "/playQueues")
+                    | ("POST" | "DELETE", "/butler")
+                    | ("POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS", "/log")
+                    | ("POST" | "PUT" | "DELETE", "/downloadQueue")
+            );
+            if !real_writer {
+                return if route == "/security" {
+                    Response::json(200, json!({"MediaContainer": {"size": 0}}))
+                } else if let Some(response) = self.route_plugin_prefix(route) {
+                    response
+                } else {
+                    Response::json(200, plugin_container(Vec::new()))
+                };
+            }
+        }
+        if path == "/log" {
+            // server.py: `level` must be an integer AND `message` must be present, on
+            // EVERY verb (HEAD and a bare OPTIONS included) -- either alone, or a
+            // non-numeric level, is a 400.
+            let level = query.get("level").map(String::as_str).unwrap_or("");
+            let digits = level.trim_start_matches('-');
+            if digits.is_empty()
+                || !digits.bytes().all(|b| b.is_ascii_digit())
+                || !query.contains_key("message")
+            {
+                return Response::error(400, "plexsim: bad request");
+            }
+            // The web client posts its OWN errors here; they land in the log, where
+            // Download Logs and a `filters=log` channel hand them back.
+            let message = query.get("message").cloned().unwrap_or_default();
+            info!(
+                "CLIENT LOG [{}] {}: {}",
+                level,
+                query
+                    .get("source")
+                    .filter(|source| !source.is_empty())
+                    .map_or("client", String::as_str),
+                message.chars().take(400).collect::<String>()
+            );
+            return Response::empty(200);
         }
         if request.method == "OPTIONS" {
             {
@@ -6186,29 +6211,6 @@ impl Runtime {
             ("PUT", "/myplex/refreshReachability") => Response::empty(200),
             ("GET" | "HEAD", "/myplex/account") => self.myplex_account(),
             ("GET" | "HEAD", "/security/token") => self.route_security_token(&request, &query),
-            // Measured: `level` must be an integer AND `message` present, on EVERY verb.
-            (_, "/log") => {
-                let valid_level = query
-                    .get("level")
-                    .is_some_and(|value| !value.is_empty() && value.parse::<i64>().is_ok());
-                if !valid_level || !query.contains_key("message") {
-                    Response::error(400, "plexsim: bad request")
-                } else {
-                    // The web client posts its OWN errors here; they land in the log,
-                    // where Download Logs and a `filters=log` channel hand them back.
-                    let message = query.get("message").cloned().unwrap_or_default();
-                    info!(
-                        "CLIENT LOG [{}] {}: {}",
-                        query.get("level").cloned().unwrap_or_default(),
-                        query
-                            .get("source")
-                            .filter(|source| !source.is_empty())
-                            .map_or("client", String::as_str),
-                        message.chars().take(400).collect::<String>()
-                    );
-                    Response::empty(200)
-                }
-            }
             ("GET" | "HEAD", "/log/networked") => Response::empty(200),
             ("GET" | "HEAD", "/diagnostics/logs") => {
                 let mut response = Response::bytes(200, "application/zip");
