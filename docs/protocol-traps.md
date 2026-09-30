@@ -3042,3 +3042,7 @@ are changing; replay the client's exact request before altering behavior.
 - **A projected row takes only the `include*` blocks, never a detail read's fills** (cycle 83,
   kids): the show Common row with `includeExtras=1` gains `Extras` and no `duration`, where the
   native pass borrowed the detail read's, which fills a show's absent duration.
+- **A response post-pass that changes nothing must keep the route's BYTES** (cycle 83):
+  `/system/agents` carries repeated `Language` keys in its JSON on purpose, and a native
+  `excludeFields=`/`includeAlternates=` pass that re-serialised the parsed body collapsed them to
+  the last one (6,658 bytes to 679), where the oracle leaves the body alone.

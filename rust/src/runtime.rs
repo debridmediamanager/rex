@@ -5866,6 +5866,7 @@ impl Runtime {
         let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
             return;
         };
+        let original = document.clone();
         let Some(object) = document.as_object_mut() else {
             return;
         };
@@ -5937,6 +5938,12 @@ impl Runtime {
             }
         }
         walk(self, body);
+        // A pass that changed nothing keeps the route's own BYTES: re-serialising a
+        // parsed body collapses the repeated keys some bodies carry on purpose
+        // (`/system/agents`' `Language` list, cycle 83), which the oracle never does.
+        if document == original {
+            return;
+        }
         if let Ok(bytes) = serde_json::to_vec(&document) {
             response.body = bytes;
         }
@@ -24881,6 +24888,7 @@ fn exclude_fields_response(request: &Request, response: &mut Response) {
     let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
         return;
     };
+    let original = document.clone();
     let Some(body) = document
         .get_mut("MediaContainer")
         .and_then(Value::as_object_mut)
@@ -24903,6 +24911,10 @@ fn exclude_fields_response(request: &Request, response: &mut Response) {
                 }
             }
         }
+    }
+    // Unchanged: keep the route's bytes (see `alternates_response`).
+    if document == original {
+        return;
     }
     if let Ok(bytes) = serde_json::to_vec(&document) {
         response.body = bytes;

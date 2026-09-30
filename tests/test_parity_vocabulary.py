@@ -75,6 +75,15 @@ def request(port, path, headers=None):
     return response.status, (body or {}).get("MediaContainer") if isinstance(body, dict) else None
 
 
+def raw(port, path):
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
+    try:
+        connection.request("GET", path, headers=dict(HEADERS, Connection="close"))
+        return connection.getresponse().read()
+    finally:
+        connection.close()
+
+
 def start():
     port = free_port()
     process = subprocess.Popen(
@@ -363,6 +372,13 @@ def run(port):
     row = ((mc or {}).get("Metadata") or [{}])[0]
     check("the show Common row with includeExtras gains Extras and no duration",
           "Extras" in row and "duration" not in row, sorted(row))
+
+    # 17. A post-pass that changes nothing keeps the route's own bytes.
+    plain = raw(port, "/system/agents?mediaType=1")
+    got = {option: raw(port, "/system/agents?mediaType=1&%s=1" % option) == plain
+           for option in ("excludeFields", "includeAlternates")}
+    check("/system/agents keeps its repeated Language keys under excludeFields/includeAlternates",
+          plain.count(b'"Language"') > 5 and all(got.values()), (plain.count(b'"Language"'), got))
 
 
 def main():
