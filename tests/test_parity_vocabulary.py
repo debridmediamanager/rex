@@ -343,6 +343,14 @@ def run(port):
     check("an empty sort= is a 200 on search, children and grandchildren; zzz still 500s",
           list(got.values()) == [200, 200, 200, 500], got)
 
+    # 14. location= is the Meta's tag, compared as a section Location id.
+    got = {value: (lambda r: (r[0], len(keys(r[1]))))(
+        request(port, "/library/sections/1/all?location=" + value))
+        for value in ("", "-1", "1,2", "1", "abc")}
+    check("location=: empty and abc 500, -1 none, 1 and 1,2 every row",
+          got == {"": (500, 0), "-1": (200, 0), "1,2": (200, 6), "1": (200, 6),
+                  "abc": (500, 0)}, got)
+
 
 def main():
     process, port = start()

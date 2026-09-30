@@ -4285,7 +4285,9 @@ impl Runtime {
             ("unmatched".to_string(), "boolean".to_string()),
             ("unwatched".to_string(), "boolean".to_string()),
             ("inProgress".to_string(), "boolean".to_string()),
-            ("location".to_string(), "integer".to_string()),
+            // `location` is the Meta's `tag` (below), compared as an integer
+            // (filters.rs): kids answers `location=-1` and `location=1,2` as 200s and
+            // refuses an EMPTY value -- the integer TYPE refused the first two.
             // These columns are read by the listing query engine even though
             // the ordinary Meta descriptor does not advertise them.  The
             // reference still parses and evaluates them; leaving them out
@@ -15728,20 +15730,10 @@ impl Runtime {
             .section(section_key)
             .and_then(|section| section.get("type").and_then(Value::as_str))
             .unwrap_or("movie");
-        let mut rows = if let Some(location) = query.get("location") {
-            if location.chars().all(|character| character.is_ascii_digit()) {
-                rows.into_iter()
-                    .filter(|row| {
-                        string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                            == *location
-                    })
-                    .collect::<Vec<_>>()
-            } else {
-                return Response::error(500, "plexsim: bad request");
-            }
-        } else {
-            rows
-        };
+        // Cycle 83: `location=` is the grammar's own field (the Meta's tag, compared as
+        // the section Location id), so no private pass reads it here -- kids answers
+        // `-1` with no row and `1,2` with every row, and refuses an EMPTY value.
+        let mut rows = rows;
         // Projection, paging and client identity options are container
         // controls.  They must reach the serializer below, never the filter
         // parser: treating `excludeFields=summary` as an unknown row field
@@ -15751,8 +15743,7 @@ impl Runtime {
             .filter(|(name, _)| {
                 !matches!(
                     name.as_str(),
-                    "location"
-                        | "excludeFields"
+                    "excludeFields"
                         | "excludeElements"
                         | "includeGuids"
                         | "includePreferences"

@@ -3034,3 +3034,6 @@ are changing; replay the client's exact request before altering behavior.
   rows (zen's show year axis: 46 at `=1`, 2 at `=0`). A value that does not parse still refuses.
 - **An EMPTY `sort=` is ignored on `/search`, `/children` and `/grandchildren`** as on every
   listing (cycle 83, kids: 200s in the default order); only an unknown key refuses.
+- **`location=` is the Meta's tag compared as the section Location id, on the grid too**
+  (cycle 83, kids): `-1` is no row, `1` and `1,2` every row, an empty value and `abc` 500s. The
+  native grid ran a private digits-only pass that refused `-1` and `1,2`.
