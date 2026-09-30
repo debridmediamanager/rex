@@ -1347,6 +1347,236 @@ const LEGACY_SEARCH_PROVIDERS: &[(&str, &str, &str)] = &[
 impl Runtime {
     /// `/search?query=` (`legacy_search`): the title matcher's hits in hub order, then
     /// the providers. Cycle 41: `limit` is ignored completely.
+    /// `/library/sections/{id}/autocomplete` -- `autocomplete` in `server.py`, the Edit
+    /// dialog's suggestions. `type` is required and exactly ONE `<field>.query` may be
+    /// asked (a repeat keeps its last value); `limit` 0 is one row and a negative one
+    /// every row. A TAG field answers `Directory` rows (id, filter, tag, tagType, and a
+    /// person's tagKey and thumb) alphabetical by the folded tag; a text or number field
+    /// answers the matching rows as light grid rows WITHOUT their library fields, led by
+    /// `<field>.queryRange` (the span of the FIRST case-insensitive occurrence), in
+    /// sort-title order. The query must begin a whitespace-separated word.
+    pub(super) fn section_autocomplete(
+        &self,
+        section_key: &str,
+        section: &Value,
+        query: &HashMap<String, String>,
+        pairs: &[(String, String)],
+    ) -> Response {
+        const TAGS: &[(&str, &str, i64)] = &[
+            ("genre", "Genre", 1),
+            ("collection", "Collection", 2),
+            ("director", "Director", 4),
+            ("writer", "Writer", 5),
+            ("actor", "Role", 6),
+            ("producer", "Producer", 7),
+            ("country", "Country", 8),
+            ("label", "Label", 11),
+            ("network", "Network", 319),
+        ];
+        const TEXT: &[&str] = &[
+            "title",
+            "titleSort",
+            "originalTitle",
+            "summary",
+            "tagline",
+            "studio",
+            "contentRating",
+            "editionTitle",
+            "year",
+            "index",
+        ];
+        const EMPTY: &[&str] = &[
+            "userRating",
+            "duration",
+            "addedAt",
+            "originallyAvailableAt",
+            "guid",
+            "similar",
+            "mood",
+            "style",
+        ];
+        const REFUSED: &[&str] = &[
+            "decade",
+            "resolution",
+            "unwatched",
+            "inProgress",
+            "audioLanguage",
+            "location",
+            "viewCount",
+            "lastViewedAt",
+            "unwatchedLeaves",
+        ];
+        let Some(type_raw) = query.get("type").filter(|value| !value.is_empty()) else {
+            return Response::error(400, "plexsim: bad request");
+        };
+        let asked = pairs
+            .iter()
+            .filter_map(|(name, value)| {
+                name.strip_suffix(".query")
+                    .map(|field| (field.to_string(), value.clone()))
+            })
+            .collect::<Vec<_>>();
+        let distinct = asked
+            .iter()
+            .map(|(field, _)| field.as_str())
+            .collect::<HashSet<_>>();
+        if distinct.len() != 1 {
+            return Response::error(400, "plexsim: bad request");
+        }
+        let (field, wanted) = asked.last().cloned().unwrap_or_default();
+        if wanted.is_empty() {
+            return Response::error(400, "plexsim: bad request");
+        }
+        let mut limit: Option<usize> = None;
+        if let Some(raw) = query.get("limit") {
+            let Ok(value) = raw.trim().trim_start_matches('+').parse::<i64>() else {
+                return Response::error(400, "plexsim: bad request");
+            };
+            limit = if value < 0 { None } else { Some(value.max(1) as usize) };
+        }
+        let field = field.as_str();
+        if REFUSED.contains(&field) {
+            return Response::error(500, "plexsim: internal error");
+        }
+        let tag = TAGS.iter().find(|(name, _, _)| *name == field);
+        if tag.is_none() && !TEXT.contains(&field) && !EMPTY.contains(&field) {
+            return Response::error(400, "plexsim: bad request");
+        }
+        let type_number = match type_raw.as_str() {
+            "1" => Some(1),
+            "2" => Some(2),
+            "4" => Some(4),
+            _ => None,
+        };
+        let rows = match type_number {
+            Some(number) => self.choose_rows(Some(section_key), Some(number)),
+            None => Vec::new(),
+        };
+        // Cycle 54: the suggestions come from the rows the listing's filters leave --
+        // `year=1` suggests nothing, `year=abc` is a 500.
+        let filter_pairs = pairs
+            .iter()
+            .filter(|(name, _)| {
+                !name.starts_with("X-Plex-") && !name.ends_with(".query") && name != "limit"
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let source_type = section
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or("movie")
+            .to_string();
+        let rows = match self.filter_rows(rows, &filter_pairs, &source_type) {
+            Ok(rows) => rows,
+            Err(status) => return Response::error(status, "plexsim: bad request"),
+        };
+        let wanted = wanted.to_lowercase();
+        let take = |count: usize| limit.map_or(count, |limit| limit.min(count));
+        let mut fields = Map::new();
+        if let Some((_, element, tag_type)) = tag {
+            let mut seen: Vec<(String, Value)> = Vec::new();
+            for row in &rows {
+                for tag in row.get(*element).and_then(Value::as_array).into_iter().flatten() {
+                    let Some(text) = tag.get("tag").and_then(Value::as_str).filter(|t| !t.is_empty())
+                    else {
+                        continue;
+                    };
+                    if !begins_word(text, &wanted) {
+                        continue;
+                    }
+                    let folded = text.to_lowercase();
+                    if !seen.iter().any(|(known, _)| *known == folded) {
+                        seen.push((folded, tag.clone()));
+                    }
+                }
+            }
+            seen.sort_by(|left, right| left.0.cmp(&right.0));
+            let entries = seen
+                .iter()
+                .map(|(_, tag)| {
+                    let id = tag.get("id").cloned().unwrap_or(Value::Null);
+                    let shown_id = if id.is_null() { "None".to_string() } else { string_value(&id) };
+                    let mut entry = Map::new();
+                    entry.insert("id".to_string(), id);
+                    entry.insert("filter".to_string(), json!(format!("{field}={shown_id}")));
+                    entry.insert("tag".to_string(), tag.get("tag").cloned().unwrap_or(Value::Null));
+                    entry.insert("tagType".to_string(), json!(tag_type));
+                    for extra in ["tagKey", "thumb"] {
+                        if let Some(value) = tag.get(extra).filter(|value| truthy(value)) {
+                            entry.insert(extra.to_string(), value.clone());
+                        }
+                    }
+                    Value::Object(entry)
+                })
+                .collect::<Vec<_>>();
+            let count = take(entries.len());
+            fields.insert(
+                "Directory".to_string(),
+                Value::Array(entries.into_iter().take(count).collect()),
+            );
+        } else {
+            let mut found = Vec::new();
+            if TEXT.contains(&field) {
+                // `found.sort(key=_sort_key("titleSort"))` is stable over the listing
+                // order, so sorting the source rows first and filtering is the same.
+                let ordered = self.sort_rows(rows, Some("titleSort")).unwrap_or_default();
+                for row in &ordered {
+                    let value = match field {
+                        "titleSort" => row
+                            .get("titleSort")
+                            .filter(|value| truthy(value))
+                            .or_else(|| row.get("title"))
+                            .cloned(),
+                        "index" => row.get("index").filter(|value| truthy(value)).cloned().or_else(
+                            || (row.get("type").and_then(Value::as_str) == Some("movie")).then(|| json!(1)),
+                        ),
+                        _ => row.get(field).cloned(),
+                    };
+                    let Some(value) = value.filter(|value| !value.is_null()) else {
+                        continue;
+                    };
+                    let text = match &value {
+                        Value::String(text) => text.clone(),
+                        Value::Bool(flag) => if *flag { "True" } else { "False" }.to_string(),
+                        other => string_value(other),
+                    };
+                    if text.is_empty() || !begins_word(&text, &wanted) {
+                        continue;
+                    }
+                    let shown = self.grid_row(row, false, false, false);
+                    let shown = if field == "index" {
+                        shown
+                    } else {
+                        let lowered = text.to_lowercase().chars().collect::<Vec<_>>();
+                        let needle = wanted.chars().collect::<Vec<_>>();
+                        let at = (0..lowered.len())
+                            .find(|&at| lowered[at..].starts_with(&needle))
+                            .unwrap_or(0);
+                        let mut led = Map::new();
+                        led.insert(
+                            format!("{field}.queryRange"),
+                            json!(format!("{},{}", at, at + needle.len() - 1)),
+                        );
+                        if let Value::Object(object) = shown {
+                            for (key, value) in object {
+                                led.insert(key, value);
+                            }
+                        }
+                        Value::Object(led)
+                    };
+                    found.push(shown);
+                }
+            }
+            let count = take(found.len());
+            fields.insert(
+                "Metadata".to_string(),
+                Value::Array(found.into_iter().take(count).collect()),
+            );
+        }
+        let body = self.secondary_body(section, None, fields);
+        Response::json(200, json!({"MediaContainer": body}))
+    }
+
     /// `/hubs/search/voice` -- `voice_search` in `server.py`: the same matches as
     /// `/hubs/search`, one hub per TYPE in the search hub order, titled with the bare
     /// type and identified `results.search.<type number>`; `type=N` keeps that type's
@@ -1486,3 +1716,13 @@ impl Runtime {
         )
     }
 }
+
+/// `_begins_word`: `wanted` (lowercase) starts a whitespace-separated word of `text`.
+fn begins_word(text: &str, wanted: &str) -> bool {
+    let lowered = text.to_lowercase().chars().collect::<Vec<_>>();
+    let needle = wanted.chars().collect::<Vec<_>>();
+    (0..lowered.len()).any(|at| {
+        (at == 0 || lowered[at - 1].is_whitespace()) && lowered[at..].starts_with(&needle)
+    })
+}
+
