@@ -328,13 +328,17 @@ def write_checks(srv):
           show.get("episodeSort") == "1" and movie.get("useOriginalTitle") == "1",
           (show.get("episodeSort"), movie.get("useOriginalTitle")))
 
-    # -- a flattened show's episodes do not roll up on Recently Added TV --------------
+    # -- a flattened show's episodes roll up on Recently Added TV like any other's ----
+    # This check asserted eight episode rows, which was the oracle's own defect carried
+    # into the port: it took `parentRatingKey` off the stored episodes, so the roll-up
+    # found no season to group them under. Re-measured on plexscratch (1.43.4,
+    # 2026-09-30, `tests/fixtures/flatten_seasons_reference.jsonl`): with Firefly
+    # flattened the shelf is still the ONE show row, now saying `skipChildren`.
     srv.raw("/library/metadata/20001/prefs?flattenSeasons=1", "PUT")
     rows = srv.container("/hubs/home/recentlyAdded?type=2").get("Metadata") or []
-    check("Recently Added TV lists a flattened show's episodes, not the show",
-          [r.get("type") for r in rows] == ["episode"] * 8
-          and keys(rows)[:3] == ["1011", "1010", "1006"], [(r.get("ratingKey"), r.get("type"))
-                                                             for r in rows])
+    check("Recently Added TV still rolls a flattened show's episodes up to the show",
+          [(r.get("ratingKey"), r.get("type"), r.get("skipChildren")) for r in rows]
+          == [("20001", "show", True)], [(r.get("ratingKey"), r.get("type")) for r in rows])
     srv.raw("/library/metadata/20001/prefs?flattenSeasons=-1", "PUT")
     rows = srv.container("/hubs/home/recentlyAdded?type=2").get("Metadata") or []
     check("...and rolls them up into the show again once it is not flattened",

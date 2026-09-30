@@ -2833,3 +2833,22 @@ are changing; replay the client's exact request before altering behavior.
   title on the season card (it sorts season 0 last) and computes its own "N Seasons" header from
   truthy indexes; python-plexapi's `Show.seasonCount` reads the attribute and falls back to
   `childCount`. A pristine show with specials puts its first REGULAR season's first episode on deck.
+- **`flattenSeasons=1` is a PROJECTION of the episode row and moves no reader.** Re-measured on
+  plexscratch (1.43.4, 2026-09-30; `tests/fixtures/flatten_seasons_reference.jsonl`) over 35 paths
+  with Firefly unflattened, flattened, and flattened with S1E1 watched. Every episode ROW -- detail,
+  `/children`, `/allLeaves`, the section listings and subsets, the three searches, On Deck, the hub
+  pages, a play queue -- says `skipParent` and drops `parentRatingKey`/`parentKey`, and the show row
+  says `skipChildren`; but no row SET changes. A season's `/children` still lists its episodes,
+  `/library/recentlyAdded` still rolls them up to their seasons (`leafCount: 3`),
+  `recentlyAddedGrandparents` and the Recently Added shelves (`home.television.recent`,
+  `tv.recentlyadded.N`, `/hubs/home/recentlyAdded?type=2`) still answer the one SHOW, a scrobble still
+  gives the season `viewCount`, `lastViewedAt` and `viewedLeafCount: 1`, and the season's
+  `includeOnDeck=1` is the next episode. A HISTORY row is its own projection: it keeps `parentKey` and
+  says no `skipParent`. The oracle took the keys off the stored row, so each reader that finds a
+  season's episodes by `parentRatingKey` lost them, and the native server grouped such a show's
+  episodes under no season on the Recently Added shelves to match. Two things to know when measuring
+  it: a hub page answered BEFORE the prefs write comes back from PMS's hub cache with the old rows
+  (ask with a `count=` no earlier request used), and unscrobbling the episode does not clear the
+  `viewCount`/`lastViewedAt` the scrobble stamped on its season and show. The unmatch cascade was NOT
+  re-measured flattened (an unmatch cannot be undone on a copy with no metadata provider); both
+  servers apply the ordinary cascade to the flattened show's episodes.

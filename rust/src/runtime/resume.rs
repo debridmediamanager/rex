@@ -515,25 +515,17 @@ impl Runtime {
                     == section.to_string()
             });
         }
-        // `apply_show_prefs` takes `parentRatingKey` off the STORED episodes of a show
-        // whose effective `flattenSeasons` skips the season level, and this roll-up reads
-        // the stored rows: such a show's episodes share no season, so none of them rolls
-        // up into a season or the show and each stays an episode.
-        let mut flattened: HashMap<String, bool> = HashMap::new();
-        let mut season_of = |leaf: &Value| -> String {
-            let show = string_value(leaf.get("grandparentRatingKey").unwrap_or(&Value::Null));
-            let skip = *flattened.entry(show.clone()).or_insert_with(|| {
-                self.catalog
-                    .get(&show)
-                    .is_some_and(|show| self.show_flattened(show))
-            });
-            if skip {
-                String::new()
-            } else {
-                string_value(leaf.get("parentRatingKey").unwrap_or(&Value::Null))
-            }
+        // Measured on plexscratch (1.43.4): a show whose effective `flattenSeasons` skips
+        // the season level rolls up exactly as any other -- Firefly's six episodes across
+        // two seasons stay ONE show row on `home.television.recent`, `tv.recentlyadded`
+        // and `/hubs/home/recentlyAdded?type=2`. The setting only changes what an episode
+        // ROW says (`apply_flatten_projection`); the stored row keeps its season, and this
+        // roll-up reads the stored rows. The oracle once took the key off the stored row,
+        // and this grouped a flattened show's episodes under no season to match it.
+        let season_of = |leaf: &Value| -> String {
+            string_value(leaf.get("parentRatingKey").unwrap_or(&Value::Null))
         };
-        let seasons_of = leaves.iter().map(&mut season_of).collect::<Vec<_>>();
+        let seasons_of = leaves.iter().map(season_of).collect::<Vec<_>>();
         let mut season_order: Vec<String> = Vec::new();
         let mut by_season: HashMap<String, Vec<Value>> = HashMap::new();
         let mut show_order: Vec<String> = Vec::new();

@@ -1744,6 +1744,19 @@ class Catalog:
 
         The value is the EFFECTIVE one -- see `show_pref`. Cycle 14 measured this on
         the ITEM path only and cycle 15 found the section path produced half of it.
+
+        Re-measured on plexscratch (1.43.4, 2026-09-30) reader by reader: the episode's
+        loss is a PROJECTION and nothing else moves. With Firefly flattened a season's
+        `/children` still lists its episodes, `/library/recentlyAdded` still rolls them
+        up to `Season 2`/`Season 1` with `leafCount: 3`, `recentlyAddedGrandparents`
+        still answers the show, and a scrobble of S1E1 still gives season 7
+        `viewCount: 1`, `lastViewedAt` and `viewedLeafCount: 1` -- while every episode
+        ROW, on the detail, the listings, the subsets, search, the hubs, On Deck and a
+        play queue, says `skipParent` and names no season. plexsim took the two keys
+        off the STORED row, so each reader that finds a season's episodes by
+        `parentRatingKey` lost them: those four, and the unmatch cascade. The stored
+        row now keeps its season and carries the private `_skipParent`, which
+        `_public_row` turns into the measured row.
         """
         value = self.show_pref(show, "flattenSeasons")
         seasons = self.children(show["ratingKey"])
@@ -1754,18 +1767,9 @@ class Catalog:
             show.pop("skipChildren", None)
         for leaf in self.leaves(show["ratingKey"]):
             if skip:
-                # The season key is kept privately so `=0` can put it back: the
-                # child index still knows the parent, but the ROW must not say it.
-                leaf.setdefault("_parentRatingKey", leaf.get("parentRatingKey"))
-                leaf["skipParent"] = True
-                leaf.pop("parentRatingKey", None)
-                leaf.pop("parentKey", None)
+                leaf["_skipParent"] = True
             else:
-                leaf.pop("skipParent", None)
-                season = leaf.pop("_parentRatingKey", None)
-                if season is not None:
-                    leaf["parentRatingKey"] = season
-                    leaf["parentKey"] = "/library/metadata/%s" % season
+                leaf.pop("_skipParent", None)
 
     def _strip_show_fields(self):
         for row in self.items.values():
@@ -2396,6 +2400,12 @@ def _public_row(row):
     choose artwork.
     """
     out = {k: v for k, v in row.items() if not k.startswith("_")}
+    if row.get("_skipParent"):
+        # A flattened show's episode (`apply_show_prefs`): the ROW names no season and
+        # says so, on every path that was measured; the stored row keeps both keys.
+        out.pop("parentRatingKey", None)
+        out.pop("parentKey", None)
+        out["skipParent"] = True
     if row.get("_collectionLight"):
         # Cycle 62: carried through for the LIGHT projection alone; `_drop_private` takes
         # it off every response.
@@ -4782,13 +4792,11 @@ class PlexSim:
                         (leaf.get("parentIndex") or 0) == 0,
                         leaf.get("parentIndex") or 0, leaf.get("index") or 0))
             # The OWNING season is a fact of the hierarchy, not of the row: under
-            # `flattenSeasons=1` an episode row loses `parentRatingKey` (the season is kept
-            # privately as `_parentRatingKey`), and reading the public field alone left the
-            # owning season of a flattened show with no OnDeck block at all. Cycle 57's
-            # full suite reached exactly that state. How a real PMS answers a flattened
-            # show's season here is not measured; ownership itself does not change.
-            owner = pick.get("parentRatingKey") or pick.get("_parentRatingKey") \
-                if pick is not None else None
+            # `flattenSeasons=1` only the episode's PROJECTION loses `parentRatingKey`
+            # (`apply_show_prefs`). Measured on plexscratch with Firefly flattened and
+            # S1E1 watched: season 7's `includeOnDeck=1` still answers S1E2, with
+            # `skipParent` and no season key on it.
+            owner = pick.get("parentRatingKey") if pick is not None else None
             if (pick is not None and row.get("type") == "season"
                     and str(owner) != str(row.get("ratingKey"))):
                 pick = None
@@ -7421,11 +7429,10 @@ class PlexSim:
                     # the Dashboard's Top Played TV column asks for `type=2`. plexsim
                     # matched the history row's own type, so no show ever had a play and
                     # the TV column was empty on every server.
-                    # Under `flattenSeasons=1` an episode keeps its season privately as
-                    # `_parentRatingKey`; the play still belongs to that season.
+                    # Under `flattenSeasons=1` the stored episode keeps its season
+                    # (`apply_show_prefs`); the play still belongs to that season.
                     parent = {"show": row.get("grandparentRatingKey"),
-                              "season": row.get("parentRatingKey")
-                              or row.get("_parentRatingKey")}.get(wanted)
+                              "season": row.get("parentRatingKey")}.get(wanted)
                     if row.get("type") != "episode" or not str(parent or "").isdigit() \
                             or int(parent) not in catalog.items:
                         continue
@@ -7809,8 +7816,7 @@ class PlexSim:
             for entry in self.library.history():
                 key = str(entry.get("ratingKey") or "")
                 leaf = catalog.items.get(int(key)) if key.isdigit() else None
-                parent = str((leaf or {}).get("parentRatingKey")
-                             or (leaf or {}).get("_parentRatingKey") or "")
+                parent = str((leaf or {}).get("parentRatingKey") or "")
                 if leaf is not None and leaf.get("type") == "episode" and parent.isdigit():
                     plays[int(parent)] = plays.get(int(parent), 0) + 1
             seasons = sorted(

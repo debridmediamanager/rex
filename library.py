@@ -526,11 +526,11 @@ class Library:
         return row
 
     def _parents(self, row):
-        # A flattened show's episodes keep their season only privately (see
-        # `apply_flatten`): the ROW must not name it, but the season is still the parent
-        # a write stamps -- the suite reads it at the end, after a flatten.
-        keys = [row.get("parentRatingKey") or row.get("_parentRatingKey"),
-                row.get("grandparentRatingKey")]
+        # A flattened show's episode ROW names no season (`apply_show_prefs`), but the
+        # stored row does, and the season is still the parent a write stamps: measured on
+        # plexscratch, a scrobble under `flattenSeasons=1` gives the season its
+        # `viewCount` and `lastViewedAt`.
+        keys = [row.get("parentRatingKey"), row.get("grandparentRatingKey")]
         return [self.catalog.items.get(int(key)) for key in keys if str(key or "").isdigit()]
 
     def rate(self, rating_key, rating):
