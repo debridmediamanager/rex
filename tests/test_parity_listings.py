@@ -393,6 +393,12 @@ def run(port):
               status == 200 and head.get("content-type") == "text/html"
               and head.get("content-length") == "0", (status, head))
 
+    # -- a section scan's force flag ----------------------------------------------------
+    forced = {value: request(port, "GET", "/library/sections/1/refresh?force=%s" % value)[0]
+              for value in ("-1", "2", "abc", "", "1.5", "+1")}
+    check("a scan's force flag is digits after leading minus signs",
+          forced == {"-1": 200, "2": 200, "abc": 400, "": 400, "1.5": 400, "+1": 400}, forced)
+
     # -- an unrecognised method honours the request's connection state -------------
     for method in ("PATCH", "FROB"):
         status, head, _ = request(port, method, "/library/sections")
