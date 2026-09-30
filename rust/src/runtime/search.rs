@@ -1347,6 +1347,76 @@ const LEGACY_SEARCH_PROVIDERS: &[(&str, &str, &str)] = &[
 impl Runtime {
     /// `/search?query=` (`legacy_search`): the title matcher's hits in hub order, then
     /// the providers. Cycle 41: `limit` is ignored completely.
+    /// `/hubs/search/voice` -- `voice_search` in `server.py`: the same matches as
+    /// `/hubs/search`, one hub per TYPE in the search hub order, titled with the bare
+    /// type and identified `results.search.<type number>`; `type=N` keeps that type's
+    /// hub alone. Each hub is a Home shelf (`home_hub`, so six light GRID rows by
+    /// default and `count=` honoured) with no `key`, the shared `hub.results.search`
+    /// context, and a `distance` on the hub and on every row. The container is bare
+    /// and always says its `size`, zero included.
+    pub(super) fn voice_search(&self, query: &HashMap<String, String>) -> Response {
+        let Some(text) = query.get("query").filter(|text| !text.is_empty()) else {
+            return Response::error(400, "plexsim: bad request");
+        };
+        let limit = match query.get("limit").filter(|raw| !raw.is_empty()) {
+            None => 30,
+            Some(raw) => match raw.trim().trim_start_matches('+').parse::<i64>() {
+                Ok(value) => value.max(0) as usize,
+                Err(_) => return Response::error(500, "plexsim: internal error"),
+            },
+        };
+        let (typed, _tags) = self.search_matches(text, Some(limit), false);
+        let wanted_type = query.get("type");
+        let distance = text.trim().chars().count();
+        let mut hubs = Vec::new();
+        for (kind, _title) in SEARCH_HUBS {
+            let Some(rows) = typed.get(*kind).filter(|rows| !rows.is_empty()) else {
+                continue;
+            };
+            let number = match *kind {
+                "movie" => "1",
+                "show" => "2",
+                "season" => "3",
+                "episode" => "4",
+                "artist" => "8",
+                "album" => "9",
+                "track" => "10",
+                "clip" => "12",
+                "photo" => "13",
+                "collection" => "18",
+                _ => "None",
+            };
+            if wanted_type.is_some_and(|wanted| wanted != number) {
+                continue;
+            }
+            let mut hub = self.home_hub(
+                &format!("results.search.{number}"),
+                kind,
+                "",
+                rows,
+                query,
+                kind,
+                "shelf",
+                false,
+            );
+            if let Some(object) = hub.as_object_mut() {
+                object.shift_remove("key");
+                object.insert("context".to_string(), json!("hub.results.search"));
+                object.insert("distance".to_string(), json!(distance));
+                if let Some(entries) = object.get_mut("Metadata").and_then(Value::as_array_mut) {
+                    for entry in entries.iter_mut().filter_map(Value::as_object_mut) {
+                        entry.insert("distance".to_string(), json!(distance));
+                    }
+                }
+            }
+            hubs.push(hub);
+        }
+        Response::json(
+            200,
+            json!({"MediaContainer": {"size": hubs.len(), "Hub": hubs}}),
+        )
+    }
+
     pub(super) fn legacy_search_rows(&self, text: &str) -> Response {
         let (typed, _tags) = self.search_matches(text, None, false);
         let mut rows = Vec::new();

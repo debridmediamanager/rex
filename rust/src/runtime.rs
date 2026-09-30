@@ -12432,20 +12432,56 @@ impl Runtime {
             && segments.get(1) == Some(&"metadata")
             && segments.len() == 3
         {
-            let key = segments[2];
-            if self.catalog.get(key).is_none() {
+            // `item_music_hubs`: the four ARTIST shelves, every one empty, keyed to this
+            // item in its own library as if it were an artist -- the listing each shelf
+            // names is the library's own, typed as the shelf's rows would be. The id is
+            // read as digits (`01` is item 1); anything else is a 404.
+            let raw = segments[2];
+            let row = if !raw.is_empty() && raw.bytes().all(|b| b.is_ascii_digit()) {
+                raw.parse::<u64>()
+                    .ok()
+                    .and_then(|id| self.catalog.get(&id.to_string()).cloned())
+            } else {
+                None
+            };
+            let Some(row) = row else {
                 return Response::error(404, "plexsim: not found");
-            }
+            };
+            let section = row
+                .get("librarySectionID")
+                .map(string_value)
+                .unwrap_or_else(|| "None".to_string());
+            let key = row.get("ratingKey").map(string_value).unwrap_or_default();
             let shelves = [
-                ("Most Played", "artist", "artist.mostplayedtracks"),
-                ("Most Popular Tracks", "artist", "artist.mostpopulartracks"),
-                ("Albums", "artist", "artist.albums"),
-                ("Music Videos", "video", "music.videos.popular.new"),
+                (
+                    format!("/library/sections/{section}/all?artist.id={key}&type=10&sort=viewCount:desc&viewCount>=10"),
+                    "Most Played",
+                    "track",
+                    "artist.mostplayedtracks",
+                ),
+                (
+                    format!("/library/sections/{section}/all?artist.id={key}&type=10&sort=ratingCount:desc&group=title"),
+                    "Most Popular Tracks",
+                    "track",
+                    "artist.mostpopulartracks",
+                ),
+                (
+                    format!("/library/sections/{section}/all?artist.id={key}&type=9&sort=year:desc"),
+                    "Albums",
+                    "album",
+                    "artist.albums",
+                ),
+                (
+                    format!("/library/sections/{section}/extras/all?extraType=4&type=8&artist.id={key}"),
+                    "Music Videos",
+                    "clip",
+                    "music.videos.popular.new",
+                ),
             ]
             .into_iter()
-            .map(|(title, kind, identifier)| {
+            .map(|(link, title, kind, identifier)| {
                 json!({
-                    "key": format!("/hubs/metadata/{key}/{identifier}?artist.id={key}"),
+                    "key": link,
                     "title": title,
                     "type": kind,
                     "hubIdentifier": identifier,
