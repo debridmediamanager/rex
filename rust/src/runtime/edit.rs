@@ -1112,8 +1112,7 @@ impl Runtime {
     fn after_edit(&mut self, key: &str, outcome: &EditOutcome) {
         for (table_key, lowered, tag) in &outcome.minted {
             self.tag_table
-                .entry((table_key.clone(), lowered.clone()))
-                .or_insert_with(|| tag.clone());
+                .or_insert_with((table_key.clone(), lowered.clone()), || tag.clone());
         }
         let Some(row) = self.catalog.get(key).cloned() else {
             return;

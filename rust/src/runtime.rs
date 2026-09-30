@@ -443,7 +443,7 @@ pub struct Runtime {
     events: Vec<(String, Value)>,
     /// The tag TABLE: a tag outlives its removal from every row, so a re-add keeps
     /// its canonical spelling and id (keyed by row key and lowercased tag).
-    tag_table: HashMap<(String, String), Value>,
+    tag_table: TagTable,
     /// Per library, the last finished (5) or removed (9) frame of each item, in
     /// insertion order -- what `/library/sections/{id}/timeline` lists.
     section_timeline: HashMap<String, Vec<(String, Value)>>,
@@ -604,7 +604,7 @@ impl Runtime {
             playlists: HashMap::new(),
             collections: HashMap::new(),
             uploads: HashMap::new(),
-            tag_table: HashMap::new(),
+            tag_table: TagTable::default(),
             metadata_provider_groups: HashMap::new(),
             next_metadata_provider_group: 5,
             queues: HashMap::new(),
@@ -20414,6 +20414,48 @@ fn local_host_name() -> String {
         .position(|byte| *byte == 0)
         .unwrap_or(buffer.len());
     String::from_utf8_lossy(&buffer[..end]).into_owned()
+}
+
+/// library.py's `_tags`: the tag TABLE, keyed by (element, lowered name) and kept in
+/// INSERTION order the way a Python dict is. The order is load-bearing: `/library/tags`
+/// lists the first entry it meets for an id, and a renamed collection leaves its old
+/// name in the table ahead of the new one.
+#[derive(Debug, Default, Clone)]
+struct TagTable {
+    entries: Vec<((String, String), Value)>,
+    index: HashMap<(String, String), usize>,
+}
+
+impl TagTable {
+    fn get(&self, key: &(String, String)) -> Option<&Value> {
+        self.index.get(key).map(|&slot| &self.entries[slot].1)
+    }
+    fn insert(&mut self, key: (String, String), value: Value) {
+        match self.index.get(&key) {
+            Some(&slot) => self.entries[slot].1 = value,
+            None => {
+                self.index.insert(key.clone(), self.entries.len());
+                self.entries.push((key, value));
+            }
+        }
+    }
+    fn or_insert_with(&mut self, key: (String, String), make: impl FnOnce() -> Value) -> &mut Value {
+        let slot = match self.index.get(&key) {
+            Some(&slot) => slot,
+            None => {
+                self.index.insert(key.clone(), self.entries.len());
+                self.entries.push((key, make()));
+                self.entries.len() - 1
+            }
+        };
+        &mut self.entries[slot].1
+    }
+    fn iter(&self) -> impl Iterator<Item = (&(String, String), &Value)> {
+        self.entries.iter().map(|(key, value)| (key, value))
+    }
+    fn keys(&self) -> impl Iterator<Item = &(String, String)> {
+        self.entries.iter().map(|(key, _)| key)
+    }
 }
 
 /// The oracle's `_artwork_row`: one `Photo` of a row's backdrop, six empty strings

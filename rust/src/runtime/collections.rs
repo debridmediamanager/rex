@@ -365,8 +365,7 @@ impl Runtime {
             json!({"id": id, "tag": name, "filter": format!("collection={id}")})
         });
         self.tag_table
-            .entry(("Collection".to_string(), lowered))
-            .or_insert_with(|| minted.clone());
+            .or_insert_with(("Collection".to_string(), lowered), || minted.clone());
         let Some(row) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
             return;
         };
@@ -622,8 +621,7 @@ impl Runtime {
                         json!({"id": id, "tag": spelled, "filter": format!("label={id}")})
                     });
                 self.tag_table
-                    .entry(("Label".to_string(), lowered))
-                    .or_insert_with(|| tag.clone());
+                    .or_insert_with(("Label".to_string(), lowered), || tag.clone());
                 minted.push(tag);
             }
             Some(minted)
@@ -751,8 +749,7 @@ impl Runtime {
             }
         }
         self.tag_table
-            .entry(("Collection".to_string(), title.to_lowercase()))
-            .or_insert_with(|| {
+            .or_insert_with(("Collection".to_string(), title.to_lowercase()), || {
                 json!({"id": tag_id_value, "tag": title, "filter": format!("collection={tag_id_value}")})
             });
         if let Some(stored) = self.collections.get_mut(id) {
