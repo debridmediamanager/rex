@@ -107,9 +107,19 @@ def free_port():
         for _ in range(len(_ports)):
             port = _ports.popleft()
             _ports.append(port)
-            probe = socket.socket()
+            # A listener -- this run's own load server among them -- makes it busy;
+            # old connections in TIME_WAIT do not, since the servers bind with
+            # SO_REUSEADDR. A loopback bind with SO_REUSEADDR would succeed beside a
+            # wildcard listener, so ask by connecting, then bind the wildcard.
             try:
-                probe.bind(("127.0.0.1", port))
+                socket.create_connection(("127.0.0.1", port), timeout=0.5).close()
+                continue
+            except OSError:
+                pass
+            probe = socket.socket()
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                probe.bind(("", port))
                 return port
             except OSError:
                 continue
@@ -142,6 +152,9 @@ class Server:
                 time.sleep(0.1)
         else:
             self.proc.kill()
+        # A server that lost the bind exits at once; a listener answering in its place
+        # would be someone else's.
+        time.sleep(0.3)
         if self.proc.poll() is not None:
             raise SystemExit("plexsim did not start:\n" + self.output()[-2000:])
         self.machine = call(self.port, "GET", "/identity")[1]["MediaContainer"][
@@ -795,6 +808,7 @@ def prop_load(catalog, seconds, threads, reaper_seconds=None, during=None):
                 status = call(port, "GET", "/:/timeline?ratingKey=%s&key=%%2Flibrary%%2Fmetadata%%2F%s"
                               "&state=playing&time=60000&duration=600000" % (item, item), client=player)[0]
                 abandoned[player] = (time.time(), status)
+            abandoned = watch_reaper(port, abandoned)
         if during:
             during(server)
         time.sleep(max(0, seconds - (time.time() - started)))
@@ -826,22 +840,39 @@ def prop_load(catalog, seconds, threads, reaper_seconds=None, during=None):
         raise
 
 
-def prop_reaper(server, abandoned, deadline_margin=212):
-    """Poll Now Playing until every abandoned player is gone or overdue."""
-    port = server.port
+def watch_reaper(port, abandoned, deadline_margin=212):
+    """Poll Now Playing, from now on and alongside the load, until every abandoned
+    player is gone or overdue; the thread's `gone` maps each to its age when missed."""
     gone = {}
-    last = max(at for at, _ in abandoned.values())
+
+    def poll():
+        last = max(at for at, _ in abandoned.values())
+        while time.time() - last < deadline_margin + 2 and len(gone) < len(abandoned):
+            try:
+                listed = {(entry.get("Player") or {}).get("machineIdentifier")
+                          for entry in rows(call(port, "GET", "/status/sessions")[1])}
+            except Exception:  # noqa: BLE001 -- a missed poll only widens the window
+                time.sleep(1.0)
+                continue
+            now = time.time()
+            for player, (at, _) in abandoned.items():
+                if player not in listed and player not in gone:
+                    gone[player] = now - at
+            oldest = min(at for at, _ in abandoned.values())
+            time.sleep(1.0 if now - oldest > 170 else 5.0)
+
+    thread = threading.Thread(target=poll, daemon=True)
+    thread.gone, thread.abandoned, thread.margin = gone, abandoned, deadline_margin
+    thread.start()
+    return thread
+
+
+def prop_reaper(watch):
+    """The watcher's verdict: listed 180 s, gone by the tick after, under the load."""
+    abandoned, gone, deadline_margin = watch.abandoned, watch.gone, watch.margin
     check("reaper: the silent players' beats were answered",
           all(status == 200 for _, status in abandoned.values()), abandoned)
-    while time.time() - last < deadline_margin + 2 and len(gone) < len(abandoned):
-        listed = {(entry.get("Player") or {}).get("machineIdentifier")
-                  for entry in rows(call(port, "GET", "/status/sessions")[1])}
-        now = time.time()
-        for player, (at, _) in abandoned.items():
-            if player not in listed and player not in gone:
-                gone[player] = now - at
-        oldest = min(at for at, _ in abandoned.values())
-        time.sleep(1.0 if now - oldest > 170 else 5.0)
+    watch.join()
     early = {player: round(age, 1) for player, age in gone.items() if age < 180}
     late = {player: (round(gone[player], 1) if player in gone else "never")
             for player in abandoned if player not in gone or gone[player] > deadline_margin}
@@ -1148,7 +1179,7 @@ def main():
                     prop_state(catalog, state_seconds, args.threads, signal.SIGKILL, "sigkill")
                     prop_state(catalog, state_seconds, args.threads, signal.SIGTERM, "sigterm")
                 if reaper and abandoned:
-                    prop_reaper(server, abandoned)
+                    prop_reaper(abandoned)
             finally:
                 if server:
                     server.stop()
