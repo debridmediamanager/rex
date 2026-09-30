@@ -14,10 +14,15 @@ export RD_TOKEN=...
 #
 # --state keeps watch state, edits, playlists, collections, history, preferences,
 # uploads and the device/statistics tables across restarts (gitignored). Leave it
-# out and a restart reloads catalog.json as it is on disk.
-exec /usr/bin/python3 server.py \
+# out and a restart reloads catalog.json as it is on disk. The native server writes
+# JSON and refuses the Python server's pickle files, so a state file does not carry
+# over from one to the other.
+#
+# Build the server first: cargo build --release --manifest-path rust/Cargo.toml
+# The Python server (the measured oracle) still runs with: python3 server.py <flags>
+exec rust/target/release/plexsim \
   --port 32400 \
-  --state state.pickle \
+  --state state.json \
   --part-mode proxy \
   --assert-claimed \
   --verbose

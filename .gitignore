@@ -26,3 +26,5 @@ rust/target/
 *.state.stale
 *.state.corrupt
 state.pickle.*
+state.json
+state.json.*
