@@ -552,6 +552,9 @@ impl Runtime {
         if let Some(metadata_state) = metadata_state {
             entry.insert("metadataState".to_string(), json!(metadata_state));
         }
+        let key = row.get("ratingKey").map(string_value).unwrap_or_default();
+        let at = entry.get("updatedAt").and_then(Value::as_i64).unwrap_or(0);
+        self.record_section_timeline(row, &key, state, at);
         self.push_event("timeline", json!({"TimelineEntry": Value::Object(entry)}));
     }
 
@@ -889,7 +892,7 @@ impl Runtime {
             }
         }
         let gone = json!({"ratingKey": id, "type": "collection", "title": "",
-            "librarySectionID": collection.section});
+            "subtype": collection.subtype, "librarySectionID": collection.section});
         self.push_timeline_collection(&gone, 9, Some("deleted"));
         self.dirty = true;
         self.save_if_dirty();

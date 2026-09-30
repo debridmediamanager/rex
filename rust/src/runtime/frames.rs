@@ -83,53 +83,63 @@ impl Runtime {
         if let Some(media_state) = media_state.filter(|value| !value.is_empty()) {
             entry.insert("mediaState".to_string(), json!(media_state));
         }
+        self.record_section_timeline(row, &key, state, at);
+        self.push_event("timeline", json!({"TimelineEntry": Value::Object(entry)}));
+    }
+
+    /// `server.py` `notify_timeline`'s bookkeeping: what a library's /timeline lists --
+    /// the last finished (5) or removed (9) state of each item, keyed by ratingKey, for
+    /// every frame whose row names a numeric library, collections included.  A key
+    /// seen before keeps its first position (a Python dict update), so equal stamps
+    /// list in first-seen order.
+    pub(super) fn record_section_timeline(&mut self, row: &Value, key: &str, state: i64, at: i64) {
         let section_key = row
             .get("librarySectionID")
             .map(string_value)
             .unwrap_or_default();
-        if (state == 5 || state == 9)
-            && !section_key.is_empty()
-            && section_key.bytes().all(|b| b.is_ascii_digit())
+        if !(state == 5 || state == 9)
+            || section_key.is_empty()
+            || !section_key.bytes().all(|b| b.is_ascii_digit())
         {
-            // What a library's /timeline lists: the last finished or removed state
-            // of each item, keyed by ratingKey.
-            let mut record = Map::new();
-            record.insert("state".to_string(), json!(state));
-            record.insert("at".to_string(), json!(at));
-            if state == 9 {
-                let mut stub = Map::new();
-                stub.insert("ratingKey".to_string(), json!(key));
-                stub.insert("key".to_string(), json!(format!("/library/metadata/{key}")));
-                stub.insert("guid".to_string(), json!(""));
-                stub.insert(
-                    "type".to_string(),
-                    row.get("subtype")
-                        .or_else(|| row.get("type"))
-                        .cloned()
-                        .unwrap_or(Value::Null),
-                );
-                stub.insert("title".to_string(), json!(""));
-                stub.insert("summary".to_string(), json!(""));
-                stub.insert("state".to_string(), json!(state));
-                stub.insert("metadataState".to_string(), json!("deleted"));
-                if row.get("type").and_then(Value::as_str) == Some("show") {
-                    for count in ["childCount", "index", "leafCount", "viewedLeafCount"] {
-                        let value = row
-                            .get(count)
-                            .filter(|value| !value.is_null())
-                            .cloned()
-                            .unwrap_or(json!(0));
-                        stub.insert(count.to_string(), value);
-                    }
-                }
-                record.insert("stub".to_string(), Value::Object(stub));
-            }
-            let records = self.section_timeline.entry(section_key).or_default();
-            // Re-inserting moves the key to the end, which is insertion order.
-            records.retain(|(existing, _)| *existing != key);
-            records.push((key.clone(), Value::Object(record)));
+            return;
         }
-        self.push_event("timeline", json!({"TimelineEntry": Value::Object(entry)}));
+        let mut record = Map::new();
+        record.insert("state".to_string(), json!(state));
+        record.insert("at".to_string(), json!(at));
+        if state == 9 {
+            let mut stub = Map::new();
+            stub.insert("ratingKey".to_string(), json!(key));
+            stub.insert("key".to_string(), json!(format!("/library/metadata/{key}")));
+            stub.insert("guid".to_string(), json!(""));
+            stub.insert(
+                "type".to_string(),
+                row.get("subtype")
+                    .filter(|value| truthy(value))
+                    .or_else(|| row.get("type"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+            );
+            stub.insert("title".to_string(), json!(""));
+            stub.insert("summary".to_string(), json!(""));
+            stub.insert("state".to_string(), json!(state));
+            stub.insert("metadataState".to_string(), json!("deleted"));
+            if row.get("type").and_then(Value::as_str) == Some("show") {
+                for count in ["childCount", "index", "leafCount", "viewedLeafCount"] {
+                    let value = row
+                        .get(count)
+                        .filter(|value| truthy(value))
+                        .cloned()
+                        .unwrap_or(json!(0));
+                    stub.insert(count.to_string(), value);
+                }
+            }
+            record.insert("stub".to_string(), Value::Object(stub));
+        }
+        let records = self.section_timeline.entry(section_key).or_default();
+        match records.iter_mut().find(|(existing, _)| existing == key) {
+            Some(slot) => slot.1 = Value::Object(record),
+            None => records.push((key.to_string(), Value::Object(record))),
+        }
     }
 
     /// `/library/sections/{id}/timeline` -- what changed in a library lately.
