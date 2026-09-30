@@ -3723,21 +3723,26 @@ impl Runtime {
             return;
         }
         let guid = format!("tv.plex.agents.none://{key}");
+        // `unmatch` walks every Media and breaks only out of its Part loop, so the title
+        // is the first named Part file of the LAST Media that has one: on a merged row
+        // that is the absorbed row's file, not the survivor's.
         let file_title = row
             .get("Media")
             .and_then(Value::as_array)
             .into_iter()
             .flatten()
-            .flat_map(|media| {
+            .filter_map(|media| {
                 media
                     .get("Part")
                     .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|part| part.get("file").and_then(Value::as_str))
+                    .filter_map(|file| file.rsplit('/').next())
+                    .find(|name| !name.is_empty())
+                    .map(str::to_string)
             })
-            .filter_map(|part| part.get("file").and_then(Value::as_str).map(str::to_string))
-            .filter_map(|file| file.rsplit('/').next().map(str::to_string))
-            .find(|name| !name.is_empty())
+            .last()
             .map(|name| {
                 name.rsplit_once('.')
                     .map(|(stem, _)| stem.to_string())
