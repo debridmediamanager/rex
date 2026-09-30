@@ -1,0 +1,1980 @@
+{
+ "_provenance": "Recorded 2026-10-01 (cycle 83) with the client's request shapes. plexscratch: the disposable 1.43.4 copy of plexlab, isolated from plex.tv; plexscratch42: a fresh 1.42.2 install. Tokens are never part of a recorded path; container fields (section UUID) dropped. The writes were undone with `scratch.sh reset`.",
+ "split": {
+  "server": "plexscratch 1.43.4",
+  "writes": [
+   {
+    "method": "PUT",
+    "path": "/library/metadata/17/merge?ids=3",
+    "status": 200
+   },
+   {
+    "method": "PUT",
+    "path": "/library/metadata/17/split",
+    "status": 200
+   }
+  ],
+  "new_rating_key": "58",
+  "before": {
+   "17": {
+    "method": "GET",
+    "path": "/library/metadata/17?includeGuids=1",
+    "status": 200,
+    "row": {
+     "ratingKey": "17",
+     "key": "/library/metadata/17",
+     "guid": "plex://movie/5d776833103a2d001f5674a1",
+     "slug": "elephants-dream",
+     "studio": "Blender Foundation",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "librarySectionTitle": "Movies",
+     "librarySectionID": 1,
+     "librarySectionKey": "/library/sections/1",
+     "contentRating": "Not Rated",
+     "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+     "audienceRating": 5.4,
+     "year": 2006,
+     "thumb": "/library/metadata/17/thumb/1789203303",
+     "art": "/library/metadata/17/art/1789203303",
+     "duration": 1800690,
+     "originallyAvailableAt": "2006-05-04",
+     "addedAt": 1789187071,
+     "updatedAt": 1789203303,
+     "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+     "hasPremiumPrimaryExtra": "1",
+     "Media": [
+      {
+       "id": 2,
+       "duration": 1800690,
+       "bitrate": 488,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 1,
+       "audioCodec": "aac",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "audioProfile": "lc",
+       "videoProfile": "high",
+       "Part": [
+        {
+         "id": 2,
+         "key": "/library/parts/2/1789295931/file.mkv",
+         "duration": 1800690,
+         "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+         "size": 109875079,
+         "audioProfile": "lc",
+         "container": "mkv",
+         "videoProfile": "high",
+         "Stream": [
+          {
+           "id": 3,
+           "streamType": 1,
+           "default": true,
+           "codec": "h264",
+           "index": 0,
+           "bitrate": 488,
+           "language": "English",
+           "languageTag": "en",
+           "languageCode": "eng",
+           "bitDepth": 8,
+           "chromaLocation": "left",
+           "chromaSubsampling": "4:2:0",
+           "codedHeight": 1088,
+           "codedWidth": 1920,
+           "frameRate": 24.0,
+           "hasScalingMatrix": false,
+           "height": 1080,
+           "level": 40,
+           "profile": "high",
+           "refFrames": 4,
+           "scanType": "progressive",
+           "width": 1920,
+           "displayTitle": "1080p",
+           "extendedDisplayTitle": "1080p (H.264)"
+          },
+          {
+           "id": 4,
+           "streamType": 2,
+           "selected": true,
+           "default": true,
+           "codec": "aac",
+           "index": 1,
+           "channels": 1,
+           "language": "English",
+           "languageTag": "en",
+           "languageCode": "eng",
+           "audioChannelLayout": "mono",
+           "profile": "lc",
+           "samplingRate": 44100,
+           "displayTitle": "English (AAC Mono)",
+           "extendedDisplayTitle": "English (AAC Mono)"
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Elephants Dream",
+       "type": "coverPoster",
+       "url": "/library/metadata/17/thumb/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "background",
+       "url": "/library/metadata/17/art/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "clearLogo",
+       "url": "/library/metadata/17/clearLogo/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "backgroundSquare",
+       "url": "/library/metadata/17/squareArt/1789203303"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "122e44",
+      "topRight": "844f1e",
+      "bottomRight": "964106",
+      "bottomLeft": "1a4154"
+     },
+     "Genre": [
+      {
+       "id": 6,
+       "filter": "genre=6",
+       "tag": "Animation"
+      },
+      {
+       "id": 27,
+       "filter": "genre=27",
+       "tag": "Science Fiction"
+      },
+      {
+       "id": 9,
+       "filter": "genre=9",
+       "tag": "Short"
+      }
+     ],
+     "Country": [
+      {
+       "id": 13,
+       "filter": "country=13",
+       "tag": "Netherlands"
+      }
+     ],
+     "Guid": [
+      {
+       "id": "imdb://tt0807840"
+      },
+      {
+       "id": "tmdb://9761"
+      },
+      {
+       "id": "tvdb://16180"
+      }
+     ],
+     "Rating": [
+      {
+       "image": "imdb://image.rating",
+       "value": 5.6,
+       "type": "audience"
+      },
+      {
+       "image": "rottentomatoes://image.rating.spilled",
+       "value": 5.4,
+       "type": "audience"
+      },
+      {
+       "image": "themoviedb://image.rating",
+       "value": 5.8,
+       "type": "audience"
+      }
+     ],
+     "Director": [
+      {
+       "id": 203,
+       "filter": "director=203",
+       "tag": "Bassam Kurdali",
+       "tagKey": "5d776834103a2d001f567901"
+      }
+     ],
+     "Writer": [
+      {
+       "id": 204,
+       "filter": "writer=204",
+       "tag": "Andreas Goralczyk",
+       "tagKey": "5ddba98af3f0e1001f8bec9b"
+      },
+      {
+       "id": 205,
+       "filter": "writer=205",
+       "tag": "Pepijn Zwanenberg",
+       "tagKey": "5d776834103a2d001f567903"
+      },
+      {
+       "id": 206,
+       "filter": "writer=206",
+       "tag": "Bassam Kurdali",
+       "tagKey": "5d776834103a2d001f567901"
+      }
+     ],
+     "Role": [
+      {
+       "id": 207,
+       "filter": "actor=207",
+       "tag": "Tygo Gernandt",
+       "tagKey": "5d7768288718ba001e3121b4",
+       "role": "Proog (voice)",
+       "thumb": "https://metadata-static.plex.tv/0/people/00ae4da33f6a7ea7b7cc27f164b77557.jpg"
+      },
+      {
+       "id": 208,
+       "filter": "actor=208",
+       "tag": "Cas Jansen",
+       "tagKey": "5d77682f7228e5001f1dddef",
+       "role": "Emo (voice)",
+       "thumb": "https://metadata-static.plex.tv/4/people/4ff32dc6f9aedaa347dccf943fb196a6.jpg"
+      }
+     ],
+     "Producer": [
+      {
+       "id": 12,
+       "filter": "producer=12",
+       "tag": "Ton Roosendaal",
+       "tagKey": "5d776834103a2d001f567902",
+       "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+      }
+     ],
+     "Field": [
+      {
+       "locked": true,
+       "name": "collection"
+      }
+     ]
+    }
+   },
+   "3": {
+    "method": "GET",
+    "path": "/library/metadata/3?includeGuids=1",
+    "status": 200,
+    "row": {
+     "ratingKey": "3",
+     "key": "/library/metadata/3",
+     "guid": "plex://movie/5d77688123d5a3001f4ed3df",
+     "slug": "sintel",
+     "studio": "Blender Foundation",
+     "type": "movie",
+     "title": "Sintel",
+     "librarySectionTitle": "Movies",
+     "librarySectionID": 1,
+     "librarySectionKey": "/library/sections/1",
+     "contentRating": "PG",
+     "summary": "A wandering warrior finds an unlikely friend in the form of a young dragon. The two develop a close bond, until one day the dragon is snatched away. She then sets out on a relentless quest to reclaim her friend, finding in the end that her quest exacts a far greater price than she had ever imagined.",
+     "audienceRating": 7.4,
+     "year": 2010,
+     "thumb": "/library/metadata/3/thumb/1789187249",
+     "art": "/library/metadata/3/art/1789187249",
+     "duration": 1800690,
+     "originallyAvailableAt": "2010-09-30",
+     "addedAt": 1789187069,
+     "updatedAt": 1789187249,
+     "audienceRatingImage": "rottentomatoes://image.rating.upright",
+     "Media": [
+      {
+       "id": 3,
+       "duration": 1800690,
+       "bitrate": 488,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 1,
+       "audioCodec": "aac",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "audioProfile": "lc",
+       "videoProfile": "high",
+       "Part": [
+        {
+         "id": 3,
+         "key": "/library/parts/3/1789295943/file.mkv",
+         "duration": 1800690,
+         "file": "/data/movies/Sintel (2010)/Sintel (2010) - 1080p.mkv",
+         "size": 109871539,
+         "audioProfile": "lc",
+         "container": "mkv",
+         "videoProfile": "high",
+         "Stream": [
+          {
+           "id": 5,
+           "streamType": 1,
+           "default": true,
+           "codec": "h264",
+           "index": 0,
+           "bitrate": 488,
+           "language": "English",
+           "languageTag": "en",
+           "languageCode": "eng",
+           "bitDepth": 8,
+           "chromaLocation": "left",
+           "chromaSubsampling": "4:2:0",
+           "codedHeight": 1088,
+           "codedWidth": 1920,
+           "frameRate": 24.0,
+           "hasScalingMatrix": false,
+           "height": 1080,
+           "level": 40,
+           "profile": "high",
+           "refFrames": 4,
+           "scanType": "progressive",
+           "width": 1920,
+           "displayTitle": "1080p",
+           "extendedDisplayTitle": "1080p (H.264)"
+          },
+          {
+           "id": 6,
+           "streamType": 2,
+           "selected": true,
+           "default": true,
+           "codec": "aac",
+           "index": 1,
+           "channels": 1,
+           "language": "English",
+           "languageTag": "en",
+           "languageCode": "eng",
+           "audioChannelLayout": "mono",
+           "profile": "lc",
+           "samplingRate": 44100,
+           "displayTitle": "English (AAC Mono)",
+           "extendedDisplayTitle": "English (AAC Mono)"
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Sintel",
+       "type": "coverPoster",
+       "url": "/library/metadata/3/thumb/1789187249"
+      },
+      {
+       "alt": "Sintel",
+       "type": "background",
+       "url": "/library/metadata/3/art/1789187249"
+      },
+      {
+       "alt": "Sintel",
+       "type": "clearLogo",
+       "url": "/library/metadata/3/clearLogo/1789187249"
+      },
+      {
+       "alt": "Sintel",
+       "type": "backgroundSquare",
+       "url": "/library/metadata/3/squareArt/1789187249"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "081c2a",
+      "topRight": "020b14",
+      "bottomRight": "030f1b",
+      "bottomLeft": "0f2b3c"
+     },
+     "Genre": [
+      {
+       "id": 6,
+       "filter": "genre=6",
+       "tag": "Animation"
+      },
+      {
+       "id": 23,
+       "filter": "genre=23",
+       "tag": "Fantasy"
+      },
+      {
+       "id": 9,
+       "filter": "genre=9",
+       "tag": "Short"
+      },
+      {
+       "id": 24,
+       "filter": "genre=24",
+       "tag": "Action"
+      },
+      {
+       "id": 25,
+       "filter": "genre=25",
+       "tag": "Adventure"
+      },
+      {
+       "id": 26,
+       "filter": "genre=26",
+       "tag": "Drama"
+      },
+      {
+       "id": 27,
+       "filter": "genre=27",
+       "tag": "Science Fiction"
+      }
+     ],
+     "Country": [
+      {
+       "id": 13,
+       "filter": "country=13",
+       "tag": "Netherlands"
+      }
+     ],
+     "Guid": [
+      {
+       "id": "imdb://tt1727587"
+      },
+      {
+       "id": "tmdb://45745"
+      },
+      {
+       "id": "tvdb://9413"
+      }
+     ],
+     "Rating": [
+      {
+       "image": "imdb://image.rating",
+       "value": 7.4,
+       "type": "audience"
+      },
+      {
+       "image": "rottentomatoes://image.rating.upright",
+       "value": 7.4,
+       "type": "audience"
+      },
+      {
+       "image": "themoviedb://image.rating",
+       "value": 7.3,
+       "type": "audience"
+      }
+     ],
+     "Director": [
+      {
+       "id": 28,
+       "filter": "director=28",
+       "tag": "Colin Levy",
+       "tagKey": "5d77688123d5a3001f4ed40a",
+       "thumb": "https://metadata-static.plex.tv/d/people/d8e05ba0778c6373127f8d8b07c17326.jpg"
+      }
+     ],
+     "Writer": [
+      {
+       "id": 29,
+       "filter": "writer=29",
+       "tag": "Esther Wouda",
+       "tagKey": "5d9c0904d4f2a9001f804e98"
+      }
+     ],
+     "Role": [
+      {
+       "id": 30,
+       "filter": "actor=30",
+       "tag": "Halina Reijn",
+       "tagKey": "5d77682bf54112001f5bc663",
+       "role": "Sintel (voice)",
+       "thumb": "https://metadata-static.plex.tv/9/people/95a33cf9743f24d12c2ac803a26941bc.jpg"
+      },
+      {
+       "id": 31,
+       "filter": "actor=31",
+       "tag": "Thom Hoffman",
+       "tagKey": "5d7768275af944001f1f6b57",
+       "role": "Shaman (voice)",
+       "thumb": "https://metadata-static.plex.tv/2/people/2f5a97329557ec9b911e8f82c0b0fcf8.jpg"
+      }
+     ],
+     "Producer": [
+      {
+       "id": 12,
+       "filter": "producer=12",
+       "tag": "Ton Roosendaal",
+       "tagKey": "5d776834103a2d001f567902",
+       "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+      }
+     ]
+    }
+   }
+  },
+  "merged_17": {
+   "method": "GET",
+   "path": "/library/metadata/17?includeGuids=1",
+   "status": 200,
+   "row": {
+    "ratingKey": "17",
+    "key": "/library/metadata/17",
+    "guid": "plex://movie/5d776833103a2d001f5674a1",
+    "slug": "elephants-dream",
+    "studio": "Blender Foundation",
+    "type": "movie",
+    "title": "Elephants Dream",
+    "librarySectionTitle": "Movies",
+    "librarySectionID": 1,
+    "librarySectionKey": "/library/sections/1",
+    "contentRating": "Not Rated",
+    "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+    "audienceRating": 5.4,
+    "year": 2006,
+    "thumb": "/library/metadata/17/thumb/1789203303",
+    "art": "/library/metadata/17/art/1789203303",
+    "duration": 1800690,
+    "originallyAvailableAt": "2006-05-04",
+    "addedAt": 1789187071,
+    "updatedAt": 1789203303,
+    "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+    "hasPremiumPrimaryExtra": "1",
+    "Media": [
+     {
+      "id": 2,
+      "duration": 1800690,
+      "bitrate": 488,
+      "width": 1920,
+      "height": 1080,
+      "aspectRatio": 1.78,
+      "audioChannels": 1,
+      "audioCodec": "aac",
+      "videoCodec": "h264",
+      "videoResolution": "1080",
+      "container": "mkv",
+      "videoFrameRate": "24p",
+      "audioProfile": "lc",
+      "videoProfile": "high",
+      "Part": [
+       {
+        "id": 2,
+        "key": "/library/parts/2/1789295931/file.mkv",
+        "duration": 1800690,
+        "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+        "size": 109875079,
+        "audioProfile": "lc",
+        "container": "mkv",
+        "videoProfile": "high",
+        "Stream": [
+         {
+          "id": 3,
+          "streamType": 1,
+          "default": true,
+          "codec": "h264",
+          "index": 0,
+          "bitrate": 488,
+          "language": "English",
+          "languageTag": "en",
+          "languageCode": "eng",
+          "bitDepth": 8,
+          "chromaLocation": "left",
+          "chromaSubsampling": "4:2:0",
+          "codedHeight": 1088,
+          "codedWidth": 1920,
+          "frameRate": 24.0,
+          "hasScalingMatrix": false,
+          "height": 1080,
+          "level": 40,
+          "profile": "high",
+          "refFrames": 4,
+          "scanType": "progressive",
+          "width": 1920,
+          "displayTitle": "1080p",
+          "extendedDisplayTitle": "1080p (H.264)"
+         },
+         {
+          "id": 4,
+          "streamType": 2,
+          "selected": true,
+          "default": true,
+          "codec": "aac",
+          "index": 1,
+          "channels": 1,
+          "language": "English",
+          "languageTag": "en",
+          "languageCode": "eng",
+          "audioChannelLayout": "mono",
+          "profile": "lc",
+          "samplingRate": 44100,
+          "displayTitle": "English (AAC Mono)",
+          "extendedDisplayTitle": "English (AAC Mono)"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": 3,
+      "duration": 1800690,
+      "bitrate": 488,
+      "width": 1920,
+      "height": 1080,
+      "aspectRatio": 1.78,
+      "audioChannels": 1,
+      "audioCodec": "aac",
+      "videoCodec": "h264",
+      "videoResolution": "1080",
+      "container": "mkv",
+      "videoFrameRate": "24p",
+      "audioProfile": "lc",
+      "videoProfile": "high",
+      "Part": [
+       {
+        "id": 3,
+        "key": "/library/parts/3/1789295943/file.mkv",
+        "duration": 1800690,
+        "file": "/data/movies/Sintel (2010)/Sintel (2010) - 1080p.mkv",
+        "size": 109871539,
+        "audioProfile": "lc",
+        "container": "mkv",
+        "videoProfile": "high",
+        "Stream": [
+         {
+          "id": 5,
+          "streamType": 1,
+          "default": true,
+          "codec": "h264",
+          "index": 0,
+          "bitrate": 488,
+          "language": "English",
+          "languageTag": "en",
+          "languageCode": "eng",
+          "bitDepth": 8,
+          "chromaLocation": "left",
+          "chromaSubsampling": "4:2:0",
+          "codedHeight": 1088,
+          "codedWidth": 1920,
+          "frameRate": 24.0,
+          "hasScalingMatrix": false,
+          "height": 1080,
+          "level": 40,
+          "profile": "high",
+          "refFrames": 4,
+          "scanType": "progressive",
+          "width": 1920,
+          "displayTitle": "1080p",
+          "extendedDisplayTitle": "1080p (H.264)"
+         },
+         {
+          "id": 6,
+          "streamType": 2,
+          "selected": true,
+          "default": true,
+          "codec": "aac",
+          "index": 1,
+          "channels": 1,
+          "language": "English",
+          "languageTag": "en",
+          "languageCode": "eng",
+          "audioChannelLayout": "mono",
+          "profile": "lc",
+          "samplingRate": 44100,
+          "displayTitle": "English (AAC Mono)",
+          "extendedDisplayTitle": "English (AAC Mono)"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "Image": [
+     {
+      "alt": "Elephants Dream",
+      "type": "coverPoster",
+      "url": "/library/metadata/17/thumb/1789203303"
+     },
+     {
+      "alt": "Elephants Dream",
+      "type": "background",
+      "url": "/library/metadata/17/art/1789203303"
+     },
+     {
+      "alt": "Elephants Dream",
+      "type": "clearLogo",
+      "url": "/library/metadata/17/clearLogo/1789203303"
+     },
+     {
+      "alt": "Elephants Dream",
+      "type": "backgroundSquare",
+      "url": "/library/metadata/17/squareArt/1789203303"
+     }
+    ],
+    "UltraBlurColors": {
+     "topLeft": "122e44",
+     "topRight": "844f1e",
+     "bottomRight": "964106",
+     "bottomLeft": "1a4154"
+    },
+    "Genre": [
+     {
+      "id": 6,
+      "filter": "genre=6",
+      "tag": "Animation"
+     },
+     {
+      "id": 27,
+      "filter": "genre=27",
+      "tag": "Science Fiction"
+     },
+     {
+      "id": 9,
+      "filter": "genre=9",
+      "tag": "Short"
+     }
+    ],
+    "Country": [
+     {
+      "id": 13,
+      "filter": "country=13",
+      "tag": "Netherlands"
+     }
+    ],
+    "Guid": [
+     {
+      "id": "imdb://tt0807840"
+     },
+     {
+      "id": "tmdb://9761"
+     },
+     {
+      "id": "tvdb://16180"
+     }
+    ],
+    "Rating": [
+     {
+      "image": "imdb://image.rating",
+      "value": 5.6,
+      "type": "audience"
+     },
+     {
+      "image": "rottentomatoes://image.rating.spilled",
+      "value": 5.4,
+      "type": "audience"
+     },
+     {
+      "image": "themoviedb://image.rating",
+      "value": 5.8,
+      "type": "audience"
+     }
+    ],
+    "Director": [
+     {
+      "id": 203,
+      "filter": "director=203",
+      "tag": "Bassam Kurdali",
+      "tagKey": "5d776834103a2d001f567901"
+     }
+    ],
+    "Writer": [
+     {
+      "id": 204,
+      "filter": "writer=204",
+      "tag": "Andreas Goralczyk",
+      "tagKey": "5ddba98af3f0e1001f8bec9b"
+     },
+     {
+      "id": 205,
+      "filter": "writer=205",
+      "tag": "Pepijn Zwanenberg",
+      "tagKey": "5d776834103a2d001f567903"
+     },
+     {
+      "id": 206,
+      "filter": "writer=206",
+      "tag": "Bassam Kurdali",
+      "tagKey": "5d776834103a2d001f567901"
+     }
+    ],
+    "Role": [
+     {
+      "id": 207,
+      "filter": "actor=207",
+      "tag": "Tygo Gernandt",
+      "tagKey": "5d7768288718ba001e3121b4",
+      "role": "Proog (voice)",
+      "thumb": "https://metadata-static.plex.tv/0/people/00ae4da33f6a7ea7b7cc27f164b77557.jpg"
+     },
+     {
+      "id": 208,
+      "filter": "actor=208",
+      "tag": "Cas Jansen",
+      "tagKey": "5d77682f7228e5001f1dddef",
+      "role": "Emo (voice)",
+      "thumb": "https://metadata-static.plex.tv/4/people/4ff32dc6f9aedaa347dccf943fb196a6.jpg"
+     }
+    ],
+    "Producer": [
+     {
+      "id": 12,
+      "filter": "producer=12",
+      "tag": "Ton Roosendaal",
+      "tagKey": "5d776834103a2d001f567902",
+      "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+     }
+    ],
+    "Field": [
+     {
+      "locked": true,
+      "name": "collection"
+     }
+    ]
+   }
+  },
+  "after": {
+   "17": {
+    "method": "GET",
+    "path": "/library/metadata/17?includeGuids=1",
+    "status": 200,
+    "row": {
+     "ratingKey": "17",
+     "key": "/library/metadata/17",
+     "guid": "plex://movie/5d776833103a2d001f5674a1",
+     "slug": "elephants-dream",
+     "studio": "Blender Foundation",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "librarySectionTitle": "Movies",
+     "librarySectionID": 1,
+     "librarySectionKey": "/library/sections/1",
+     "contentRating": "Not Rated",
+     "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+     "audienceRating": 5.4,
+     "year": 2006,
+     "thumb": "/library/metadata/17/thumb/1789203303",
+     "art": "/library/metadata/17/art/1789203303",
+     "duration": 1800690,
+     "originallyAvailableAt": "2006-05-04",
+     "addedAt": 1789187071,
+     "updatedAt": 1789203303,
+     "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+     "hasPremiumPrimaryExtra": "1",
+     "Media": [
+      {
+       "id": 2,
+       "duration": 1800690,
+       "bitrate": 488,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 1,
+       "audioCodec": "aac",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "audioProfile": "lc",
+       "videoProfile": "high",
+       "Part": [
+        {
+         "id": 2,
+         "key": "/library/parts/2/1789295931/file.mkv",
+         "duration": 1800690,
+         "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+         "size": 109875079,
+         "audioProfile": "lc",
+         "container": "mkv",
+         "videoProfile": "high",
+         "Stream": [
+          {
+           "id": 3,
+           "streamType": 1,
+           "default": true,
+           "codec": "h264",
+           "index": 0,
+           "bitrate": 488,
+           "language": "English",
+           "languageTag": "en",
+           "languageCode": "eng",
+           "bitDepth": 8,
+           "chromaLocation": "left",
+           "chromaSubsampling": "4:2:0",
+           "codedHeight": 1088,
+           "codedWidth": 1920,
+           "frameRate": 24.0,
+           "hasScalingMatrix": false,
+           "height": 1080,
+           "level": 40,
+           "profile": "high",
+           "refFrames": 4,
+           "scanType": "progressive",
+           "width": 1920,
+           "displayTitle": "1080p",
+           "extendedDisplayTitle": "1080p (H.264)"
+          },
+          {
+           "id": 4,
+           "streamType": 2,
+           "selected": true,
+           "default": true,
+           "codec": "aac",
+           "index": 1,
+           "channels": 1,
+           "language": "English",
+           "languageTag": "en",
+           "languageCode": "eng",
+           "audioChannelLayout": "mono",
+           "profile": "lc",
+           "samplingRate": 44100,
+           "displayTitle": "English (AAC Mono)",
+           "extendedDisplayTitle": "English (AAC Mono)"
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Elephants Dream",
+       "type": "coverPoster",
+       "url": "/library/metadata/17/thumb/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "background",
+       "url": "/library/metadata/17/art/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "clearLogo",
+       "url": "/library/metadata/17/clearLogo/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "backgroundSquare",
+       "url": "/library/metadata/17/squareArt/1789203303"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "122e44",
+      "topRight": "844f1e",
+      "bottomRight": "964106",
+      "bottomLeft": "1a4154"
+     },
+     "Genre": [
+      {
+       "id": 6,
+       "filter": "genre=6",
+       "tag": "Animation"
+      },
+      {
+       "id": 27,
+       "filter": "genre=27",
+       "tag": "Science Fiction"
+      },
+      {
+       "id": 9,
+       "filter": "genre=9",
+       "tag": "Short"
+      }
+     ],
+     "Country": [
+      {
+       "id": 13,
+       "filter": "country=13",
+       "tag": "Netherlands"
+      }
+     ],
+     "Guid": [
+      {
+       "id": "imdb://tt0807840"
+      },
+      {
+       "id": "tmdb://9761"
+      },
+      {
+       "id": "tvdb://16180"
+      }
+     ],
+     "Rating": [
+      {
+       "image": "imdb://image.rating",
+       "value": 5.6,
+       "type": "audience"
+      },
+      {
+       "image": "rottentomatoes://image.rating.spilled",
+       "value": 5.4,
+       "type": "audience"
+      },
+      {
+       "image": "themoviedb://image.rating",
+       "value": 5.8,
+       "type": "audience"
+      }
+     ],
+     "Director": [
+      {
+       "id": 203,
+       "filter": "director=203",
+       "tag": "Bassam Kurdali",
+       "tagKey": "5d776834103a2d001f567901"
+      }
+     ],
+     "Writer": [
+      {
+       "id": 204,
+       "filter": "writer=204",
+       "tag": "Andreas Goralczyk",
+       "tagKey": "5ddba98af3f0e1001f8bec9b"
+      },
+      {
+       "id": 205,
+       "filter": "writer=205",
+       "tag": "Pepijn Zwanenberg",
+       "tagKey": "5d776834103a2d001f567903"
+      },
+      {
+       "id": 206,
+       "filter": "writer=206",
+       "tag": "Bassam Kurdali",
+       "tagKey": "5d776834103a2d001f567901"
+      }
+     ],
+     "Role": [
+      {
+       "id": 207,
+       "filter": "actor=207",
+       "tag": "Tygo Gernandt",
+       "tagKey": "5d7768288718ba001e3121b4",
+       "role": "Proog (voice)",
+       "thumb": "https://metadata-static.plex.tv/0/people/00ae4da33f6a7ea7b7cc27f164b77557.jpg"
+      },
+      {
+       "id": 208,
+       "filter": "actor=208",
+       "tag": "Cas Jansen",
+       "tagKey": "5d77682f7228e5001f1dddef",
+       "role": "Emo (voice)",
+       "thumb": "https://metadata-static.plex.tv/4/people/4ff32dc6f9aedaa347dccf943fb196a6.jpg"
+      }
+     ],
+     "Producer": [
+      {
+       "id": 12,
+       "filter": "producer=12",
+       "tag": "Ton Roosendaal",
+       "tagKey": "5d776834103a2d001f567902",
+       "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+      }
+     ],
+     "Field": [
+      {
+       "locked": true,
+       "name": "collection"
+      }
+     ]
+    }
+   },
+   "58": {
+    "method": "GET",
+    "path": "/library/metadata/58?includeGuids=1",
+    "status": 200,
+    "row": {
+     "ratingKey": "58",
+     "key": "/library/metadata/58",
+     "guid": "plex://movie/5d776833103a2d001f5674a1",
+     "slug": "elephants-dream",
+     "studio": "Blender Foundation",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "librarySectionTitle": "Movies",
+     "librarySectionID": 1,
+     "librarySectionKey": "/library/sections/1",
+     "contentRating": "Not Rated",
+     "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+     "audienceRating": 5.4,
+     "year": 2006,
+     "thumb": "/library/metadata/58/thumb/1789203303",
+     "art": "/library/metadata/58/art/1789203303",
+     "duration": 1800690,
+     "originallyAvailableAt": "2006-05-04",
+     "addedAt": 1789187071,
+     "updatedAt": 1789203303,
+     "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+     "hasPremiumPrimaryExtra": "1",
+     "Media": [
+      {
+       "id": 3,
+       "duration": 1800690,
+       "bitrate": 488,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 1,
+       "audioCodec": "aac",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "audioProfile": "lc",
+       "videoProfile": "high",
+       "Part": [
+        {
+         "id": 3,
+         "key": "/library/parts/3/1789295943/file.mkv",
+         "duration": 1800690,
+         "file": "/data/movies/Sintel (2010)/Sintel (2010) - 1080p.mkv",
+         "size": 109871539,
+         "audioProfile": "lc",
+         "container": "mkv",
+         "videoProfile": "high",
+         "Stream": [
+          {
+           "id": 5,
+           "streamType": 1,
+           "default": true,
+           "codec": "h264",
+           "index": 0,
+           "bitrate": 488,
+           "language": "English",
+           "languageTag": "en",
+           "languageCode": "eng",
+           "bitDepth": 8,
+           "chromaLocation": "left",
+           "chromaSubsampling": "4:2:0",
+           "codedHeight": 1088,
+           "codedWidth": 1920,
+           "frameRate": 24.0,
+           "hasScalingMatrix": false,
+           "height": 1080,
+           "level": 40,
+           "profile": "high",
+           "refFrames": 4,
+           "scanType": "progressive",
+           "width": 1920,
+           "displayTitle": "1080p",
+           "extendedDisplayTitle": "1080p (H.264)"
+          },
+          {
+           "id": 6,
+           "streamType": 2,
+           "selected": true,
+           "default": true,
+           "codec": "aac",
+           "index": 1,
+           "channels": 1,
+           "language": "English",
+           "languageTag": "en",
+           "languageCode": "eng",
+           "audioChannelLayout": "mono",
+           "profile": "lc",
+           "samplingRate": 44100,
+           "displayTitle": "English (AAC Mono)",
+           "extendedDisplayTitle": "English (AAC Mono)"
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Elephants Dream",
+       "type": "coverPoster",
+       "url": "/library/metadata/58/thumb/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "background",
+       "url": "/library/metadata/58/art/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "clearLogo",
+       "url": "/library/metadata/58/clearLogo/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "backgroundSquare",
+       "url": "/library/metadata/58/squareArt/1789203303"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "122e44",
+      "topRight": "844f1e",
+      "bottomRight": "964106",
+      "bottomLeft": "1a4154"
+     },
+     "Genre": [
+      {
+       "id": 6,
+       "filter": "genre=6",
+       "tag": "Animation"
+      },
+      {
+       "id": 27,
+       "filter": "genre=27",
+       "tag": "Science Fiction"
+      },
+      {
+       "id": 9,
+       "filter": "genre=9",
+       "tag": "Short"
+      }
+     ],
+     "Country": [
+      {
+       "id": 13,
+       "filter": "country=13",
+       "tag": "Netherlands"
+      }
+     ],
+     "Guid": [
+      {
+       "id": "imdb://tt0807840"
+      },
+      {
+       "id": "tmdb://9761"
+      },
+      {
+       "id": "tvdb://16180"
+      }
+     ],
+     "Rating": [
+      {
+       "image": "imdb://image.rating",
+       "value": 5.6,
+       "type": "audience"
+      },
+      {
+       "image": "rottentomatoes://image.rating.spilled",
+       "value": 5.4,
+       "type": "audience"
+      },
+      {
+       "image": "themoviedb://image.rating",
+       "value": 5.8,
+       "type": "audience"
+      }
+     ],
+     "Director": [
+      {
+       "id": 203,
+       "filter": "director=203",
+       "tag": "Bassam Kurdali",
+       "tagKey": "5d776834103a2d001f567901"
+      }
+     ],
+     "Writer": [
+      {
+       "id": 204,
+       "filter": "writer=204",
+       "tag": "Andreas Goralczyk",
+       "tagKey": "5ddba98af3f0e1001f8bec9b"
+      },
+      {
+       "id": 205,
+       "filter": "writer=205",
+       "tag": "Pepijn Zwanenberg",
+       "tagKey": "5d776834103a2d001f567903"
+      },
+      {
+       "id": 206,
+       "filter": "writer=206",
+       "tag": "Bassam Kurdali",
+       "tagKey": "5d776834103a2d001f567901"
+      }
+     ],
+     "Role": [
+      {
+       "id": 207,
+       "filter": "actor=207",
+       "tag": "Tygo Gernandt",
+       "tagKey": "5d7768288718ba001e3121b4",
+       "role": "Proog (voice)",
+       "thumb": "https://metadata-static.plex.tv/0/people/00ae4da33f6a7ea7b7cc27f164b77557.jpg"
+      },
+      {
+       "id": 208,
+       "filter": "actor=208",
+       "tag": "Cas Jansen",
+       "tagKey": "5d77682f7228e5001f1dddef",
+       "role": "Emo (voice)",
+       "thumb": "https://metadata-static.plex.tv/4/people/4ff32dc6f9aedaa347dccf943fb196a6.jpg"
+      }
+     ],
+     "Producer": [
+      {
+       "id": 12,
+       "filter": "producer=12",
+       "tag": "Ton Roosendaal",
+       "tagKey": "5d776834103a2d001f567902",
+       "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+      }
+     ],
+     "Field": [
+      {
+       "locked": true,
+       "name": "collection"
+      }
+     ]
+    }
+   },
+   "3": {
+    "method": "GET",
+    "path": "/library/metadata/3?includeGuids=1",
+    "status": 404
+   }
+  },
+  "listings_after": [
+   {
+    "method": "GET",
+    "path": "/library/sections/1/all?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "17",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     },
+     {
+      "ratingKey": "58",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/1/all?type=1&includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "17",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     },
+     {
+      "ratingKey": "58",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/1/unwatched?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "17",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     },
+     {
+      "ratingKey": "58",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/1/recentlyAdded?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "17",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     },
+     {
+      "ratingKey": "58",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/hubs/sections/1?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "17",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     },
+     {
+      "ratingKey": "58",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/hubs/home/recentlyAdded?type=1&includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "17",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     },
+     {
+      "ratingKey": "58",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/hubs?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "17",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     },
+     {
+      "ratingKey": "58",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "guid": "plex://movie/5d776833103a2d001f5674a1",
+      "Guid": [
+       "imdb://tt0807840",
+       "tmdb://9761",
+       "tvdb://16180"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "unmatched": {
+  "server": "plexscratch 1.43.4",
+  "writes": [
+   {
+    "method": "PUT",
+    "path": "/library/metadata/1/unmatch",
+    "status": 200
+   },
+   {
+    "method": "PUT",
+    "path": "/library/metadata/9/unmatch",
+    "status": 200
+   }
+  ],
+  "movie_detail": [
+   {
+    "method": "GET",
+    "path": "/library/metadata/1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1",
+      "Guid": [
+       "imdb://tt1254207",
+       "tmdb://10378",
+       "tvdb://12352"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/metadata/1?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1",
+      "Guid": [
+       "imdb://tt1254207",
+       "tmdb://10378",
+       "tvdb://12352"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/metadata/1?checkFiles=0&includeAllConcerts=0&includeBandwidths=1&includeChapters=1&includeChildren=0&includeConcerts=0&includeExternalMedia=0&includeExtras=0&includeFields=thumbBlurHash%2CartBlurHash&includeGeolocation=1&includeLoudnessRamps=1&includeMarkers=1&includeOnDeck=0&includePopularLeaves=0&includePreferences=0&includeRelated=0&includeRelatedCount=0&includeReviews=0&includeStations=0",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1",
+      "Guid": [
+       "imdb://tt1254207",
+       "tmdb://10378",
+       "tvdb://12352"
+      ]
+     }
+    ]
+   }
+  ],
+  "movie_listings": [
+   {
+    "method": "GET",
+    "path": "/library/sections/1/all?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/1/all?type=1&includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/1/unwatched?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/1/recentlyAdded?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/hubs/sections/1?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/hubs/home/recentlyAdded?type=1&includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/hubs?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "1",
+      "type": "movie",
+      "title": "Big Buck Bunny (2008) - 1080p",
+      "guid": "tv.plex.agents.none://1"
+     }
+    ]
+   }
+  ],
+  "episode_detail": [
+   {
+    "method": "GET",
+    "path": "/library/metadata/9?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "9",
+      "type": "episode",
+      "title": "Episode 2",
+      "guid": "local://9",
+      "Guid": [
+       "imdb://tt0579528",
+       "tmdb://1048595",
+       "tvdb://297990"
+      ]
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/metadata/12?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "12",
+      "type": "episode",
+      "title": "Episode 1",
+      "guid": "local://12"
+     }
+    ]
+   }
+  ],
+  "episode_listings": [
+   {
+    "method": "GET",
+    "path": "/hubs/sections/2?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "9",
+      "type": "episode",
+      "title": "Episode 2",
+      "guid": "local://9"
+     },
+     {
+      "ratingKey": "12",
+      "type": "episode",
+      "title": "Episode 1",
+      "guid": "local://12"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/2/recentlyAdded?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "12",
+      "type": "episode",
+      "title": "Episode 1",
+      "guid": "local://12"
+     },
+     {
+      "ratingKey": "9",
+      "type": "episode",
+      "title": "Episode 2",
+      "guid": "local://9"
+     }
+    ]
+   }
+  ]
+ },
+ "agents_none_1_42": {
+  "server": "plexscratch42 1.42.2 (row 5 on the none agent; 353 a prior split of 297)",
+  "detail": [
+   {
+    "method": "GET",
+    "path": "/library/metadata/5",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "5",
+      "type": "movie",
+      "title": "Tears of Steel (2012) - 1080p",
+      "guid": "tv.plex.agents.none://5"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/metadata/5?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "5",
+      "type": "movie",
+      "title": "Tears of Steel (2012) - 1080p",
+      "guid": "tv.plex.agents.none://5"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/metadata/5?checkFiles=0&includeAllConcerts=0&includeBandwidths=1&includeChapters=1&includeChildren=0&includeConcerts=0&includeExternalMedia=0&includeExtras=0&includeFields=thumbBlurHash%2CartBlurHash&includeGeolocation=1&includeLoudnessRamps=1&includeMarkers=1&includeOnDeck=0&includePopularLeaves=0&includePreferences=0&includeRelated=0&includeRelatedCount=0&includeReviews=0&includeStations=0",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "5",
+      "type": "movie",
+      "title": "Tears of Steel (2012) - 1080p",
+      "guid": "tv.plex.agents.none://5"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/metadata/297?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "297",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/metadata/353?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "353",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     }
+    ]
+   }
+  ],
+  "listings": [
+   {
+    "method": "GET",
+    "path": "/library/sections/1/all?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "297",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     },
+     {
+      "ratingKey": "353",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     },
+     {
+      "ratingKey": "5",
+      "type": "movie",
+      "title": "Tears of Steel (2012) - 1080p",
+      "guid": "tv.plex.agents.none://5"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/1/all?type=1&includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "297",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     },
+     {
+      "ratingKey": "353",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     },
+     {
+      "ratingKey": "5",
+      "type": "movie",
+      "title": "Tears of Steel (2012) - 1080p",
+      "guid": "tv.plex.agents.none://5"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/1/unwatched?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "5",
+      "type": "movie",
+      "title": "Tears of Steel (2012) - 1080p",
+      "guid": "tv.plex.agents.none://5"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/library/sections/1/recentlyAdded?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "297",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     },
+     {
+      "ratingKey": "353",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     },
+     {
+      "ratingKey": "5",
+      "type": "movie",
+      "title": "Tears of Steel (2012) - 1080p",
+      "guid": "tv.plex.agents.none://5"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/hubs/sections/1?includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "5",
+      "type": "movie",
+      "title": "Tears of Steel (2012) - 1080p",
+      "guid": "tv.plex.agents.none://5"
+     },
+     {
+      "ratingKey": "297",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     },
+     {
+      "ratingKey": "353",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     }
+    ]
+   },
+   {
+    "method": "GET",
+    "path": "/hubs/home/recentlyAdded?type=1&includeGuids=1",
+    "status": 200,
+    "rows": [
+     {
+      "ratingKey": "297",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     },
+     {
+      "ratingKey": "353",
+      "type": "movie",
+      "title": "Container Probe C54",
+      "guid": "local://297"
+     },
+     {
+      "ratingKey": "5",
+      "type": "movie",
+      "title": "Tears of Steel (2012) - 1080p",
+      "guid": "tv.plex.agents.none://5"
+     }
+    ]
+   }
+  ]
+ }
+}

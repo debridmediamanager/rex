@@ -1902,16 +1902,24 @@ class Library:
             clone = copy.deepcopy({name: value for name, value in row.items()
                                    if name != "Media"})
             clone["Media"] = [source]
-            clone.pop("Field", None)
             # A real PMS sends ratingKey as a STRING at every level; an int
             # here would be the one row in the library that differs.
             new_key = str(self.catalog.next_key(row.get("type")))
             clone["ratingKey"] = new_key
             clone["key"] = "/library/metadata/%s" % new_key
-            clone["guid"] = "local://%s" % new_key
+            # Cycle 83, measured on plexscratch (merge 3 into 17, split 17): the new row
+            # 58 is 17 in every field but `ratingKey`, `key` and the artwork URLs built
+            # from them -- the FIRST item's title, its `plex://movie/...` guid and its
+            # whole imdb/tmdb/tvdb `Guid` list, `addedAt`, `updatedAt` and even its `Field`
+            # locks (17's `collection` lock came along; plexsim dropped them) -- holding the
+            # absorbed item's Media unchanged. plexsim minted `local://<new key>`, so the
+            # row lost its identity in every `includeGuids` listing. 1.42.2 agrees: a
+            # split on plexscratch42 left row 353 on the first row's `local://297`.
             self.catalog.add(clone)
             created.append(clone)
-        row["updatedAt"] = _now()
+        # Neither the merge nor the split moved 17's `updatedAt` (or its artwork
+        # version) on the reference; stamping it made the source and the split-off row
+        # disagree about the one metadata they share.
         return created
 
     def merge(self, row, other_keys):

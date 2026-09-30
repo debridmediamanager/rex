@@ -46,7 +46,7 @@ impl Runtime {
     }
 
     /// `PUT /library/metadata/{id}/split`: one row per Media again, each new row on a
-    /// fresh key, `local://` guid, no locks.
+    /// fresh key carrying the source's metadata, its guid and locks included.
     pub(super) fn route_split(&mut self, key: &str) -> Response {
         let Some(original) = self.catalog.get(key).cloned() else {
             return Response::error(404, "plexsim: not found");
@@ -64,21 +64,26 @@ impl Runtime {
                 .unwrap_or("movie")
                 .to_string();
             if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+                // Neither the merge nor the split moved the source's `updatedAt` (or its
+                // artwork version) on the reference.
                 object.insert("Media".to_string(), json!([media[0].clone()]));
-                object.insert("updatedAt".to_string(), json!(now()));
             }
             for source in &media[1..] {
                 let new_key = self.next_row_key(&kind).to_string();
                 let mut clone = original.clone();
                 if let Some(object) = clone.as_object_mut() {
                     object.insert("Media".to_string(), json!([source.clone()]));
-                    object.shift_remove("Field");
                     object.insert("ratingKey".to_string(), json!(new_key));
                     object.insert(
                         "key".to_string(),
                         json!(format!("/library/metadata/{new_key}")),
                     );
-                    object.insert("guid".to_string(), json!(format!("local://{new_key}")));
+                    // Cycle 83, measured on plexscratch (merge 3 into 17, split 17): the
+                    // new row is 17 in every field but `ratingKey`, `key` and the artwork
+                    // URLs built from them -- the first item's title, `plex://` guid,
+                    // whole `Guid` list and `Field` locks included -- holding the absorbed
+                    // Media. A minted `local://<new key>` lost its identity in every
+                    // `includeGuids` listing.
                 }
                 self.catalog.add(clone.clone());
                 self.deleted.remove(&new_key);

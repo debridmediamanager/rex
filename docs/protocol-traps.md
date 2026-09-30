@@ -278,7 +278,8 @@ are changing; replay the client's exact request before altering behavior.
   underneath; `Metadata: []` is a shape no real PMS returns.
 - **`PUT .../merge?ids=` on a real library is not reversible.** The `split` that
   undoes it hands the second item back on a NEW ratingKey carrying the first
-  one's metadata, so measuring it costs a re-match. It cost one here. (Cycle 14: a merge
+  one's metadata -- guid, `Guid` list and locks included (cycle 83, below) -- so measuring
+  it costs a re-match. It cost one here. (Cycle 14: a merge
   whose TARGET has no `Media` -- a season, a show -- absorbs nothing at all. See below.)
 - **`viewMode`: a season list is 65593, an episode list 65592.** Inverted, the
   client is handed the episode layout for a season list and draws no seasons.
@@ -3185,3 +3186,11 @@ are changing; replay the client's exact request before altering behavior.
   and kept history; `persist.py` matches (type, guid), then (type, first part file), and leaves
   history, edits, lists and section settings in `<file>.stale`, keeping only the server-level
   settings, provider groups and the device/statistics tables.
+- **A split-off row is the FIRST item on a new key** (cycle 83, plexscratch 1.43.4,
+  `tests/fixtures/split_guid.json`): after `PUT /library/metadata/17/merge?ids=3` and
+  `PUT .../17/split` (both empty 200s), the new row 58 equals 17 in every field but `ratingKey`,
+  `key` and the artwork URLs built from them -- 17's title, its `plex://movie/...` guid, its whole
+  imdb/tmdb/tvdb `Guid` list, its `Field` locks, `addedAt` and `updatedAt` -- and holds 3's Media
+  unchanged, while 17 keeps its own Media and its `updatedAt` (neither call moved it); 3 stays a
+  404. 1.42.2 agrees on the guid: plexscratch42's row 353 carries the first row's `local://297`.
+  Both servers minted `local://<new key>`, dropped the locks and stamped the source.
