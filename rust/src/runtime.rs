@@ -13852,13 +13852,12 @@ impl Runtime {
                     )
                 {
                     if segments[3] == "refresh" {
+                        // Cycle 17 (`server.py`): the flag is PARSED -- a value that is
+                        // not digits after its leading minus signs (`abc`, `1.5`, empty)
+                        // is a 400; `-1` and `2` scan like any other number.
                         if let Some(force) = query.get("force") {
-                            if force
-                                .parse::<i64>()
-                                .ok()
-                                .filter(|value| *value == 0 || *value == 1)
-                                .is_none()
-                            {
+                            let digits = force.trim_start_matches('-');
+                            if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
                                 return Response::error(400, "plexsim: bad request");
                             }
                         }
