@@ -398,6 +398,23 @@ def run(port):
           tags and tags[0].get("guid") == "collection://plexsim-%s" % made.get("ratingKey"),
           (status, common.get("Collection")))
 
+    # -- type=18 ------------------------------------------------------------------------
+    grid = mc(port, "/library/sections/1/all?type=18")
+    ok, bad = has(grid, allowSync=True, art=MOVIE_ART, librarySectionID=1,
+                  title2="All Debrid Movies", viewGroup="movie", viewMode=65592)
+    rows = grid.get("Metadata") or []
+    check("a section's type=18 listing is the listing container over light rows",
+          ok and rows and not any("librarySectionID" in r or "librarySectionKey" in r
+                                  for r in rows), bad or rows[:1])
+    everywhere = mc(port, "/library/all?type=18").get("Metadata") or []
+    check("/library/all?type=18 rows carry the collection's coverPoster Image",
+          everywhere and all((r.get("Image") or [{}])[0].get("type") == "coverPoster"
+                             for r in everywhere), everywhere[:1])
+    untyped = [r for r in mc(port, "/library/all").get("Metadata") or []
+               if r.get("type") == "collection"]
+    check("the untyped /library/all lists collections with their Image too",
+          untyped and all(r.get("Image") for r in untyped), untyped[:1])
+
     # -- empty write answers ---------------------------------------------------------
     for method, path in (("PUT", "/library/sections/1/analyze"),
                          ("PUT", "/library/sections/1/emptyTrash"),
