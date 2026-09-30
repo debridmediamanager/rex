@@ -6316,6 +6316,9 @@ impl Runtime {
             path.as_str(),
             "/prefs" | "/setting" | "/users" | "/devices.xml"
         ) {
+            if matches!(request.method.as_str(), "GET" | "HEAD") {
+                info!("PLUGIN PATH {} {path} -- legacy dispatcher", request.method);
+            }
             return Response::json(200, plugin_container(Vec::new()));
         }
         match (request.method.as_str(), path.as_str()) {
@@ -11926,6 +11929,8 @@ impl Runtime {
         }
         if path == "/sync" || path == "/sync/" {
             return if matches!(request.method.as_str(), "GET" | "HEAD") {
+                // The single-segment fallthrough, as every other one-name path is.
+                info!("PLUGIN PATH {} /sync -- legacy dispatcher", request.method);
                 Response::json(200, plugin_container(Vec::new()))
             } else {
                 Response::error(404, "plexsim: not found")
@@ -12586,6 +12591,8 @@ impl Runtime {
             return Response::empty(200);
         }
         if segments.len() == 1 && (request.method == "GET" || request.method == "HEAD") {
+            // The oracle's single-segment fallthrough says so as it answers.
+            info!("PLUGIN PATH {} {path} -- legacy dispatcher", request.method);
             if let Some(response) = self.route_plugin_prefix(path) {
                 return response;
             }

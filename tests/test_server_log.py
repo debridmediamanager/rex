@@ -229,6 +229,12 @@ def main():
             [("INFO", E("400 POST /log -- plexsim: bad request"))], status=400)
         run("a database optimize", "PUT", "/library/optimize",
             [("INFO", E("OPTIMIZE database -- rebuilt the search vocabulary"))], status=200)
+        run("an unknown single-segment path", "GET", "/foo",
+            [("INFO", E("PLUGIN PATH GET /foo -- legacy dispatcher"))], status=200)
+        run("a named single-segment plug-in path", "GET", "/prefs",
+            [("INFO", E("PLUGIN PATH GET /prefs -- legacy dispatcher"))], status=200)
+        run("the bare sync path", "GET", "/sync",
+            [("INFO", E("PLUGIN PATH GET /sync -- legacy dispatcher"))], status=200)
         run("an unknown path", "GET", "/nothing/here",
             [("WARNING", E("UNKNOWN GET /nothing/here")),
              ("INFO", E("404 GET /nothing/here -- plexsim: not found"))], status=404)
