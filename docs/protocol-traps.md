@@ -3020,3 +3020,6 @@ are changing; replay the client's exact request before altering behavior.
   each find Sintel, and an empty `episode.addedAt=` is the date column's 500. So does an unknown
   scope prefix (`movie.genre!=1` keeps every row). The native resolver answered no rows, matching
   nothing and never parsing the value.
+- **`unwatchedLeaves` takes the Meta's BOOLEAN grammar** (cycle 83, kids): on a movie grid it is
+  every row for an empty value, `abc`, `-1`, `1,2` and `0`, and none for `1`. Typed as an integer
+  it refused the empty and word values with a 500.

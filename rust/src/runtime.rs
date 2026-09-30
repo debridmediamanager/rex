@@ -4319,7 +4319,8 @@ impl Runtime {
             ("mediaVideoCodec".to_string(), "media_string".to_string()),
             ("mediaAudioCodec".to_string(), "media_string".to_string()),
             ("mediaContainer".to_string(), "media_string".to_string()),
-            ("unwatchedLeaves".to_string(), "integer".to_string()),
+            // `unwatchedLeaves` is the Meta's BOOLEAN (below): true for the literal `1`
+            // only, so kids' movie grid answers every row to `=abc`, `=-1` and `=1,2`.
         ]);
         for field in [
             "genre",

@@ -294,6 +294,14 @@ def run(port):
           and sorted(got["movie.genre%21=1"]) == sorted(whole) and len(whole) == 6
           and status == 500, (got, status))
 
+    # 10. unwatchedLeaves is the Meta's boolean: true for the literal 1 only.
+    got = {value: (lambda r: (r[0], len(keys(r[1]))))(
+        request(port, "/library/sections/1/all?unwatchedLeaves=" + value))
+        for value in ("", "abc", "-1", "1,2", "0", "1")}
+    check("unwatchedLeaves on a movie grid: every row unless the value is 1",
+          got == {"": (200, 6), "abc": (200, 6), "-1": (200, 6), "1,2": (200, 6),
+                  "0": (200, 6), "1": (200, 0)}, got)
+
 
 def main():
     process, port = start()
