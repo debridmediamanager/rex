@@ -22242,7 +22242,23 @@ fn read_request<S: Read>(
             break None;
         }
         let mut chunk = [0u8; 4096];
-        let n = stream.read(&mut chunk).map_err(|e| e.to_string())?;
+        let n = match stream.read(&mut chunk) {
+            Ok(n) => n,
+            // The 20-second read timeout: a kept-alive connection idling out, or a request
+            // that stopped arriving, is dropped with NOTHING written -- measured on kids
+            // 2026-09-30 after a completed `GET /identity`, and cycle 49's incomplete
+            // request. The error text used to reach the connection loop as an ordinary
+            // parse failure, which wrote a 400 nobody had asked for onto every idle socket.
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                ) =>
+            {
+                return Err("request deadline".to_string());
+            }
+            Err(error) => return Err(error.to_string()),
+        };
         if n == 0 {
             if pending.is_empty() {
                 return Ok(None);

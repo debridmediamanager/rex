@@ -12,7 +12,8 @@ not copy", each re-measured on a real PMS before either server changed:
   verb, and is the ordinary 404 on every GET-only read route;
 - `GET /services/codecs` is a claimed server's 403 (never ported to the native server);
 - a lower-case first request line draws nothing and loses the socket at once, before
-  every other rule of the line.
+  every other rule of the line;
+- an idle keep-alive connection is dropped at 20 s with nothing written.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -27,6 +28,7 @@ import socket
 import struct
 import subprocess
 import sys
+import threading
 import time
 import urllib.parse
 import zlib
@@ -363,13 +365,30 @@ def lower_case(port):
           statuses == [b"200", b"500"], statuses)
 
 
+# --- the idle keep-alive drop ------------------------------------------------------------
+
+def idle_drop(port, out):
+    # kids, 2026-09-30: `GET /identity` on a kept-alive socket, then silence -- the 200,
+    # then EOF at 20.0 s with nothing more written.
+    received, ended, took = raw_exchange(
+        port, b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\n", wait=30)
+    out.append((received.count(b"HTTP/1.1 "), ended, round(took)))
+
+
 def run(port):
+    idle = []
+    idler = threading.Thread(target=idle_drop, args=(port, idle))
+    idler.start()
     empty_body(port)
     transcoder_cache(port)
     collection_section_id(port)
     options(port)
     services_codecs(port)
     lower_case(port)
+    idler.join()
+    check("an idle keep-alive socket is dropped at 20 s with nothing written",
+          idle and idle[0][0] == 1 and idle[0][1] in ("EOF", "RST") and 19 <= idle[0][2] <= 23,
+          idle)
 
 
 def main():

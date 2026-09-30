@@ -2902,3 +2902,6 @@ are changing; replay the client's exact request before altering behavior.
   27's "held to the 20-second idle close". An unterminated `get ` is held until the line completes.
   The oracle answered the five malformed ones 400; the native server held every one to its read
   timeout and then wrote a 400.
+- **An idle keep-alive connection is dropped at 20 s with NOTHING written** (kids, after a completed
+  `GET /identity`). The native server turned its read timeout into a parse error and wrote an
+  unsolicited 400 onto every idle socket before closing it.
