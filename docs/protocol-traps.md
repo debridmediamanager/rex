@@ -3092,3 +3092,11 @@ are changing; replay the client's exact request before altering behavior.
   a bare OPTIONS is the same 400 as every verb. The native server routed the section leaves by name
   alone and answered the GET body to any verb; the oracle had listed read-only PATHS and answered the
   rest. Both follow the families now. A key list's DELETE is held out -- no reference may be sent one.
+- **Paging is ONE merge of two transports, per parameter** (cycle 83, kids, GETs over the grid,
+  `/folder`, `/recentlyViewedShows`, `/library/sections`, `/children`, `/identity`, `/:/prefs`, a hub
+  page and `/hubs/search`; `tests/fixtures/paging_grammar.json`). The effective Start is the header's
+  if sent, else the query's, and the same for Size; the container pages when both effective values
+  exist. So a lone header or a lone query parameter never pages, a header Size beside a query Start
+  pages, and a header half overrides only its own half of a query pair. Cycle 16's "header wins" and
+  the handover's "a lone header does nothing" are the same rule; both servers already followed it at
+  `27d76b2` (the handover's "native pages on a lone header" did not reproduce on any family).
