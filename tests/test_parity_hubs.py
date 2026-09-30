@@ -299,11 +299,23 @@ def write_checks(srv):
             srv.raw("/playlists/%s" % row.get("ratingKey"), "DELETE")
     check("Recent Playlists made in one second keep the title order",
           order == ["alpha list", "mid list", "zeta list"], order)
+    # A library's Recent Playlists shelf carries LIGHT rows: no Field after a poster
+    # write locks the playlist's thumb.
+    alpha = next((row for row in made if row.get("title") == "alpha list"), {})
+    srv.raw("/library/metadata/%s/poster?url=%s" % (
+        alpha.get("ratingKey"), urllib.parse.quote("http://example.com/c.jpg", safe="")), "PUT")
+    hubs = srv.container("/hubs/sections/1?count=20&includeLibraryPlaylists=1").get("Hub") or []
+    rows = [row for hub in hubs if hub.get("hubIdentifier") == "recent.library.playlists.1"
+            for row in hub.get("Metadata") or []]
+    check("the Recent Playlists shelf's rows carry no Field",
+          rows and not any("Field" in row for row in rows),
+          [(row.get("ratingKey"), row.get("Field")) for row in rows])
     hubs = srv.container("/hubs/search?query=alpha").get("Hub") or []
     rows = [row for hub in hubs if hub.get("hubIdentifier") == "playlist"
             for row in hub.get("Metadata") or []]
     check("a playlist search hit keeps score LAST (no attribute table to lead it)",
-          rows and list(rows[0])[0] == "ratingKey" and list(rows[0])[-1] == "score",
+          rows and list(rows[0])[0] == "ratingKey"
+          and [k for k, v in rows[0].items() if not isinstance(v, (list, dict))][-1] == "score",
           [list(row) for row in rows[:1]])
     # -- the in-library search box lists episodes in (show, season, index) order -------
     srv.raw("/library/metadata/30001?index.value=41", "PUT")
