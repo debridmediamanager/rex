@@ -13853,7 +13853,12 @@ impl Runtime {
                             pairs,
                         );
                     }
-                    if segments.len() == 5 && segments[4] != "top" && !segments[4].is_empty() {
+                    // `server.py`: `resolution` is the media-axis exception -- it answers
+                    // the whole library to any second segment, `top` included.
+                    if segments.len() == 5
+                        && (segments[4] != "top" || segments[3] == "resolution")
+                        && !segments[4].is_empty()
+                    {
                         if let Some(response) = self.axis_bucket(
                             section_key,
                             section,
@@ -16225,20 +16230,19 @@ impl Runtime {
         if request.method != "GET" && request.method != "HEAD" {
             return Response::error(404, "plexsim: not found");
         }
-        if matches!(
-            leaf,
-            "label"
-                | "collection"
-                | "mood"
-                | "firstCharacter"
-                | "year"
-                | "contentRating"
-                | "banner"
-                | "guid"
-                | "file"
-                | "viewCount"
-                | "resolution"
-        ) {
+        let tag_number = match leaf {
+            "genre" | "title" => Some(1),
+            "director" | "studio" => Some(4),
+            "writer" | "rating" => Some(5),
+            "actor" | "tagline" => Some(6),
+            "country" => Some(8),
+            "producer" | "summary" => Some(7),
+            _ => None,
+        };
+        if !SECTION_TOP_KNOWN.contains(&leaf) {
+            return Response::error(404, "plexsim: not found");
+        }
+        if tag_number.is_none() {
             let section = self.section(section_key);
             let kind = section
                 .and_then(|value| value.get("type"))
@@ -16294,40 +16298,11 @@ impl Runtime {
                 fields.insert("nocache".to_string(), json!(true));
             }
             fields.insert("size".to_string(), json!(0));
-            return Response::json(200, self.container(fields, false));
+            // `server.py` answers `self.container(...)`: the LIBRARY container, with
+            // its identifier and media-tag triple.
+            return Response::json(200, self.container(fields, true));
         }
-        if matches!(
-            leaf,
-            "platform"
-                | "poster"
-                | "thumb"
-                | "art"
-                | "theme"
-                | "all"
-                | "sorts"
-                | "filters"
-                | "search"
-                | "onDeck"
-                | "folder"
-                | "role"
-                | "album"
-                | "videoCodec"
-                | "hdr10plus"
-                | "clearLogo"
-                | "zzz"
-                | "nearest"
-        ) {
-            return Response::error(404, "plexsim: not found");
-        }
-        let tag_type = match leaf {
-            "genre" | "title" => Some(1),
-            "director" | "studio" => Some(4),
-            "writer" | "rating" => Some(5),
-            "actor" | "tagline" => Some(6),
-            "country" => Some(8),
-            "producer" | "summary" => Some(7),
-            _ => return Response::error(404, "plexsim: not found"),
-        };
+        let tag_type = tag_number;
         let field = match tag_type.unwrap_or_default() {
             1 => "Genre",
             4 => "Director",
@@ -16342,36 +16317,28 @@ impl Runtime {
             .and_then(|value| value.get("type"))
             .and_then(Value::as_str)
             .unwrap_or("movie");
-        let source_rows = if kind == "show" {
-            self.catalog
-                .items
-                .iter()
-                .filter(|row| {
-                    row.get("type").and_then(Value::as_str) == Some("episode")
-                        && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                            == section_key
-                })
-                .cloned()
-                .collect::<Vec<_>>()
-        } else {
-            self.section_rows(section_key)
-        };
-        let mut found = HashMap::<String, Value>::new();
-        for row in source_rows {
+        // `server.py` `section_top`: the tags of the library's own top-level rows
+        // (`section_items`), first occurrence of each id kept, ascending by id with
+        // ties in first-seen order.  A tag needs an id and a non-empty name.
+        let mut found: Vec<(Value, Value)> = Vec::new();
+        for row in self.section_rows(section_key) {
             for tag in row
                 .get(field)
                 .and_then(Value::as_array)
                 .into_iter()
                 .flatten()
             {
-                if tag.get("tag").and_then(Value::as_str).is_none() {
+                if !tag.is_object()
+                    || tag.get("tag").and_then(Value::as_str).is_none_or(str::is_empty)
+                {
                     continue;
                 }
-                let Some(id) = tag.get("id") else {
+                let Some(id) = tag.get("id").filter(|id| !id.is_null()) else {
                     continue;
                 };
-                let id = string_value(id);
-                found.entry(id).or_insert_with(|| tag.clone());
+                if !found.iter().any(|(seen, _)| seen == id) {
+                    found.push((id.clone(), tag.clone()));
+                }
             }
         }
         let own_filter = match tag_type.unwrap_or_default() {
@@ -16383,30 +16350,37 @@ impl Runtime {
             8 => "country",
             _ => leaf,
         };
-        let mut tags = found.into_iter().collect::<Vec<_>>();
-        tags.sort_by(|left, right| {
-            let l = left.0.parse::<i64>().unwrap_or(0);
-            let r = right.0.parse::<i64>().unwrap_or(0);
-            l.cmp(&r).then_with(|| left.0.cmp(&right.0))
-        });
-        let rows = tags
+        let numeric = |id: &Value| {
+            let text = string_value(id);
+            if !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()) {
+                text.parse::<i64>().unwrap_or(0)
+            } else {
+                0
+            }
+        };
+        found.sort_by_key(|(id, _)| numeric(id));
+        let rows = found
             .into_iter()
             .map(|(id, tag)| {
+                let id_text = string_value(&id);
+                let filter = tag
+                    .get("filter")
+                    .and_then(Value::as_str)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_string)
+                    .unwrap_or_else(|| format!("{own_filter}={id_text}"));
                 let mut row = json!({
-                    "key": format!("/library/sections/{section_key}/all?{leaf}={id}"),
+                    "key": format!("/library/sections/{section_key}/all?{leaf}={id_text}"),
                     "id": id,
-                    "filter": format!("{own_filter}={id}"),
+                    "filter": filter,
                     "tag": tag.get("tag").cloned().unwrap_or(Value::Null),
                     "tagType": tag_type,
                 });
                 if let Some(object) = row.as_object_mut() {
                     for name in ["tagKey", "thumb"] {
-                        if let Some(value) = tag.get(name) {
+                        if let Some(value) = tag.get(name).filter(|value| truthy(value)) {
                             object.insert(name.to_string(), value.clone());
                         }
-                    }
-                    if let Some(value) = tag.get("tag") {
-                        object.insert("title".to_string(), value.clone());
                     }
                 }
                 row
@@ -16446,7 +16420,30 @@ impl Runtime {
         if kind == "show" {
             fields.insert("nocache".to_string(), json!(true));
         }
-        Response::json(200, self.container(fields, false))
+        fields.insert(
+            "art".to_string(),
+            json!(if kind == "show" {
+                "/:/resources/show-fanart.jpg"
+            } else {
+                "/:/resources/movie-fanart.jpg"
+            }),
+        );
+        fields.insert(
+            "thumb".to_string(),
+            json!(if kind == "show" {
+                "/:/resources/show.png"
+            } else {
+                "/:/resources/movie.png"
+            }),
+        );
+        if fields
+            .get("Directory")
+            .and_then(Value::as_array)
+            .is_some_and(Vec::is_empty)
+        {
+            fields.shift_remove("Directory");
+        }
+        Response::json(200, self.container(fields, true))
     }
 
     fn route_metadata(
@@ -22154,6 +22151,30 @@ fn parse_chunk_size(line: &str) -> Option<&str> {
 /// Cycle 31, on plexscratch42 (1.42.2, the build plexsim reports): PATCH is not in
 /// the method table at all -- a 500 on every path, `/identity` included, exactly as
 /// `FROB` is. Cycle 15's routed PATCH was 1.43.4's.
+/// `server.py` `section_top`'s vocabulary: every name the server knows as a filter
+/// field (`FILTER_FIELD_TYPES`, `PARSE_ONLY_FIELD_TYPES`), a cross-type axis or an axis
+/// bucket, plus `firstCharacter`, less `SECTION_TOP_REFUSED` (thumb, art, theme,
+/// platform).  A known name with no tag type answers an EMPTY library container.
+const SECTION_TOP_KNOWN: &[&str] = &[
+        "absoluteIndex", "actor", "addedAt", "agent", "aperture", "audienceRating",
+        "audioLanguage", "autotag", "banner", "beginsAt", "channel", "cluster",
+        "clusterStartsAt", "clusterZoomLevel", "clustering", "collection", "contentRating",
+        "contentRatingAge", "country", "createdAt", "decade", "device", "director", "dovi",
+        "duplicate", "duration", "editionTitle", "endsAt", "exposure", "extraType", "file",
+        "firstCharacter", "format", "genre", "guid", "hdr", "id", "inProgress", "index",
+        "isAdult", "iso", "label", "lastRatedAt", "lastSkippedAt", "lastViewedAt", "lens",
+        "location", "make", "mediaAnalysisVersion", "mediaAudioChannels", "mediaAudioCodec",
+        "mediaBitrate", "mediaContainer", "mediaCount", "mediaHeight", "mediaProcessingTarget",
+        "mediaSize", "mediaVideoCodec", "mediaWidth", "model", "mood", "narrator", "network",
+        "originalTitle", "originallyAvailableAt", "parent", "parentIndex", "place", "producer",
+        "publisher", "rating", "ratingCount", "remote", "resolution", "resourcesChangedAt",
+        "sharedWith", "similar", "skipCount", "slug", "source", "sport", "studio", "style",
+        "subformat", "subtitleLanguage", "summary", "tag", "tagId", "tagline", "team", "title",
+        "titleSort", "trash", "type", "unmatched", "unviewedLeafCount", "unwatched",
+        "unwatchedLeaves", "updatedAt", "userFields", "userRating", "viewCount", "viewOffset",
+        "viewUpdatedAt", "viewedLeafCount", "viewedOrInProgressLeafCount", "writer", "year",
+];
+
 fn known_method(method: &str) -> bool {
     matches!(
         method,
