@@ -1119,7 +1119,9 @@ impl Runtime {
         } else {
             self.axis_typed_rows(section_id, query, pairs)
                 .into_iter()
-                .filter(|row| !row.get("viewCount").is_some_and(truthy))
+                // Cycle 83, measured on zen: a SHOW is on this list by its LEAVES (507
+                // of 509, exactly `unwatchedLeaves=1`), not by its own `viewCount`.
+                .filter(|row| self.has_unwatched(row))
                 .collect()
         };
         let rows = match self.axis_filters(rows, pairs, section) {

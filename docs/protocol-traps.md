@@ -2905,3 +2905,14 @@ are changing; replay the client's exact request before altering behavior.
 - **An idle keep-alive connection is dropped at 20 s with NOTHING written** (kids, after a completed
   `GET /identity`). The native server turned its read timeout into a parse error and wrote an
   unsolicited 400 onto every idle socket before closing it.
+- **"Unplayed" is by LEAVES on two lists and by the row's own counter everywhere else.** On zen
+  (cycle 83, `tests/fixtures/unwatched_zen.json`; 509 shows, six partly watched, two fully, none
+  carrying a `viewCount` of its own) a show library's `/unwatched` is the 507 shows with an
+  unwatched leaf -- the `unwatchedLeaves=1` set -- and a show's `/children?unwatched=1` keeps each
+  season that still has one (cycle 71 saw both copies keep seasons whose own `viewCount` was 7). On
+  `/children` only the literal `unwatched=1` is that flag: `unwatched!=0` keeps every season and
+  `=0`, `!=1`, `==1`, `=2` none. The filter COLUMN stays the row's own counter:
+  `all?type=2&unwatched=1` answers all 509, the fully watched shows included, and `=0` none -- so
+  "partly watched shows vanish from the TV Unwatched filter" is not the rule to copy, and Plex Web's
+  TV filter sends `unwatchedLeaves=1` (the Filter the show Meta advertises) anyway. plexsim read the
+  own counter on both lists, and an episode scrobble stamps one on its season and show.

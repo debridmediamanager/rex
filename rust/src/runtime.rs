@@ -1170,6 +1170,19 @@ impl Runtime {
         out
     }
 
+    /// Whether a row is "unplayed" on the lists that read it by LEAVES -- a show
+    /// library's `/unwatched` and a show's `/children?unwatched=1`: a show or season
+    /// while any of its leaves has no play, anything else by its own counter.  Cycle
+    /// 83, measured on zen (`tests/fixtures/unwatched_zen.json`) and cycle 71 on both
+    /// copies.  Not the `unwatched` filter column, which is the row's own counter.
+    fn has_unwatched(&self, row: &Value) -> bool {
+        if matches!(row.get("type").and_then(Value::as_str), Some("show" | "season")) {
+            return key_of(row)
+                .is_some_and(|key| self.leaves(&key).iter().any(|leaf| !watched_leaf(leaf)));
+        }
+        !row.get("viewCount").is_some_and(truthy)
+    }
+
     /// A written item setting echoed as a string attribute on the row, the way
     /// `episodeSort` shows on a real show -- on the item's own detail read only.
     fn echo_item_prefs(original: &Value, object: &mut Map<String, Value>) {
@@ -14045,11 +14058,7 @@ impl Runtime {
                     } else {
                         self.choose_rows(Some(section_key), Some(own))
                             .into_iter()
-                            .filter(|row| {
-                                row.get("viewCount").is_none_or(|value| {
-                                    value.is_null() || value.as_i64() == Some(0)
-                                })
-                            })
+                            .filter(|row| self.has_unwatched(row))
                             .collect::<Vec<_>>()
                     };
                     let filter_pairs = pairs
@@ -17335,6 +17344,22 @@ impl Runtime {
                     })
                     .map(|(name, value)| (name.clone(), value.clone()))
                     .collect::<Vec<_>>();
+                let unwatched_flag = ("unwatched".to_string(), "1".to_string());
+                let show_row = row.get("type").and_then(Value::as_str) == Some("show");
+                let filter_pairs = if show_row && filter_pairs.contains(&unwatched_flag) {
+                    // Cycle 83, measured on zen and cycle 71 on both copies: on a SHOW's
+                    // season list the literal `unwatched=1` is not the boolean column --
+                    // it keeps each season that still has an unwatched LEAF, whatever
+                    // the season's own `viewCount`; `unwatched!=0` and the other forms
+                    // stay the column (the row's own counter).
+                    children.retain(|child| self.has_unwatched(child));
+                    filter_pairs
+                        .into_iter()
+                        .filter(|pair| *pair != unwatched_flag)
+                        .collect::<Vec<_>>()
+                } else {
+                    filter_pairs
+                };
                 if !filter_pairs.is_empty() {
                     children = match self.filter_rows(children, &filter_pairs, section_type) {
                         Ok(rows) => rows,

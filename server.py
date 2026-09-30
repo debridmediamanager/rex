@@ -9670,8 +9670,13 @@ class PlexSim:
             self._parsed_type(query)
             own = TYPE_NUMBERS.get(section.get("type") or "movie", 1)
             asked = str(query.get("type") or own)
+            # Cycle 83, measured on zen (tests/fixtures/unwatched_zen.json): a SHOW is on
+            # this list by its LEAVES -- 507 of 509, the six partly watched shows in and
+            # the two fully watched ones out, exactly `unwatchedLeaves=1` -- and cycle 71
+            # saw both copies keep a show whose own `viewCount` is above 0. plexsim read
+            # the row's own counter, so one scrobbled episode took the show off the list.
             rows = [] if asked != str(own) else [
-                r for r in self.typed_rows(section_id, query) if not r.get("viewCount")]
+                r for r in self.typed_rows(section_id, query) if self._has_unwatched(r)]
             # Cycle 54, measured on kids and zen: this list runs the listing's filters
             # (`genre=zzzq` answers nothing, a word on a number is a 500).
             rows, _ = self.apply_filters(rows, query, section)
@@ -11451,6 +11456,16 @@ class PlexSim:
         if kind in ("show", "season") and scope == "episode":
             return list(self.catalog.leaves(row["ratingKey"]))
         return [row]
+
+    def _has_unwatched(self, row):
+        """Whether a row is "unplayed" on the lists that read it by LEAVES -- a show
+        library's `/unwatched` and a show's `/children?unwatched=1`: a show or season
+        while any of its leaves has no play, anything else by its own counter. Not the
+        `unwatched` filter column, which is the row's own counter on every type."""
+        if row.get("type") in ("show", "season"):
+            return any(not _watched_leaf(leaf)
+                       for leaf in self.catalog.leaves(row.get("ratingKey")))
+        return not row.get("viewCount")
 
     def filter_value(self, field, row):
         """One row's value for an advertised filter field.
@@ -13389,6 +13404,20 @@ class PlexSim:
                 # a 500, and `sort=` orders it (`index:desc` answers the seasons last
                 # first) with an unknown key a 500. `/allLeaves` ignores both.
                 section = self.catalog.section(row.get("librarySectionID")) or {}
+                pairs = query.get("_pairs") or []
+                if row.get("type") == "show" and ("unwatched", "1") in pairs:
+                    # Cycle 83, measured on zen (tests/fixtures/unwatched_zen.json) and
+                    # cycle 71 on both copies: on a SHOW's season list the literal
+                    # `unwatched=1` is not the boolean column -- it keeps each season
+                    # that still has an unwatched LEAF (zen's 5195 drops its one watched
+                    # season, a 3-of-22 season stays; the copies kept seasons whose own
+                    # `viewCount` was 7), where `unwatched!=0`, the column's other true
+                    # form, keeps every season and `=0`/`!=1`/`==1`/`=2` keep none on a
+                    # show whose seasons carry no counter of their own. The listing
+                    # column (`all?type=3&unwatched=1`) stays the row's own counter.
+                    query = dict(query, _pairs=[pair for pair in pairs
+                                                if pair != ("unwatched", "1")])
+                    rows = [r for r in rows if self._has_unwatched(r)]
                 rows, _ = self.apply_filters(rows, query, section)
                 if query.get("sort"):
                     rows, unsupported = self._sorted(rows, query["sort"])
