@@ -11363,6 +11363,91 @@ impl Runtime {
         Response::error(404, "plexsim: not found")
     }
 
+    /// server.py's `browse`: the Add Folder picker walking plexsim's `/plexsim` tree.
+    /// The bare path lists `/` and the mount point; a sub-path is its (strict) base64
+    /// and answers its directories only with `includeFiles` PRESENT -- `=1` adds the
+    /// files -- and a path that does not exist is an empty 200.
+    fn route_browse(&self, path: &str, query: &HashMap<String, String>) -> Response {
+        let entry = |name: &str| {
+            let title = if name == "/" {
+                "/".to_string()
+            } else {
+                name.trim_end_matches('/')
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or("")
+                    .to_string()
+            };
+            json!({"key": format!("/services/browse/{}", base64_encode(name.as_bytes())),
+                   "title": title, "path": name})
+        };
+        if path == "/services/browse" {
+            let rows = vec![entry("/"), entry("/plexsim")];
+            return Response::json(200, json!({"MediaContainer": {"size": 2, "Path": rows}}));
+        }
+        let encoded = &path["/services/browse/".len()..];
+        let Some(decoded) = plextv::b64decode(encoded, false)
+            .and_then(|bytes| String::from_utf8(bytes).ok())
+        else {
+            return Response::error(400, "plexsim: bad request");
+        };
+        if !query.contains_key("includeFiles") || !decoded.starts_with('/') {
+            return Response::error(400, "plexsim: bad request");
+        }
+        let trimmed = decoded.trim_end_matches('/');
+        let wanted = if trimmed.is_empty() { "/" } else { trimmed };
+        let basename = |name: &str| name.rsplit('/').next().unwrap_or("").to_lowercase();
+        let mut children = Vec::new();
+        if wanted == "/" && !self.catalog.sections.is_empty() {
+            children.push("/plexsim".to_string());
+        } else if wanted == "/plexsim" {
+            let mut seen = HashSet::new();
+            for section in &self.catalog.sections {
+                let child = format!(
+                    "/plexsim/{}",
+                    string_value(section.get("key").unwrap_or(&Value::Null))
+                );
+                if seen.insert(child.clone()) {
+                    children.push(child);
+                }
+            }
+        }
+        children.sort_by_key(|child| basename(child));
+        let mut rows = children.iter().map(|child| entry(child)).collect::<Vec<_>>();
+        let mut files = Vec::new();
+        if query.get("includeFiles").map(String::as_str) == Some("1") {
+            let mut unique = BTreeSet::new();
+            for row in &self.catalog.items {
+                for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
+                    for part in media.get("Part").and_then(Value::as_array).into_iter().flatten()
+                    {
+                        let file = part.get("file").map(string_value).unwrap_or_default();
+                        if !file.is_empty()
+                            && file.rsplit_once('/').map(|(dir, _)| dir) == Some(wanted)
+                        {
+                            unique.insert(file);
+                        }
+                    }
+                }
+            }
+            files = unique.into_iter().collect::<Vec<_>>();
+            files.sort_by_key(|name| basename(name));
+        }
+        let size = rows.len() + files.len();
+        let mut fields = Map::new();
+        fields.insert("size".to_string(), json!(size));
+        if !rows.is_empty() {
+            fields.insert("Path".to_string(), Value::Array(std::mem::take(&mut rows)));
+        }
+        if !files.is_empty() {
+            fields.insert(
+                "File".to_string(),
+                Value::Array(files.iter().map(|name| entry(name)).collect()),
+            );
+        }
+        Response::json(200, json!({"MediaContainer": fields}))
+    }
+
     fn route_dynamic(
         &mut self,
         request: &Request,
@@ -11617,66 +11702,8 @@ impl Runtime {
                 Response::error(404, "plexsim: not found")
             };
         }
-        if path == "/services/browse" {
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([("Path".to_string(), json!([{"path":"/"}]))]),
-                    false,
-                ),
-            );
-        }
-        if segments.len() >= 3 && segments[0] == "services" && segments[1] == "browse" {
-            let Some(include_files) = query.get("includeFiles") else {
-                return Response::error(400, "plexsim: bad request");
-            };
-            if include_files != "0" && include_files != "1" {
-                return Response::error(400, "plexsim: bad request");
-            }
-            let decoded = base64_decode(segments[2]).unwrap_or_default();
-            if decoded.is_empty() {
-                return Response::error(400, "plexsim: bad request");
-            }
-            if include_files == "0" {
-                return Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([("Path".to_string(), json!([{"path": decoded}]))]),
-                        false,
-                    ),
-                );
-            }
-            let files = self
-                .catalog
-                .items
-                .iter()
-                .flat_map(|row| {
-                    row.get("Media")
-                        .and_then(Value::as_array)
-                        .into_iter()
-                        .flatten()
-                        .flat_map(|media| {
-                            media
-                                .get("Part")
-                                .and_then(Value::as_array)
-                                .into_iter()
-                                .flatten()
-                                .filter_map(|part| part.get("file").and_then(Value::as_str))
-                        })
-                })
-                .filter(|file| file.starts_with(&decoded))
-                .map(|file| json!({"path":file}))
-                .collect::<Vec<_>>();
-            return Response::json(
-                200,
-                self.container(
-                    Map::from_iter([
-                        ("Path".to_string(), json!([{"path":decoded}])),
-                        ("File".to_string(), Value::Array(files)),
-                    ]),
-                    false,
-                ),
-            );
+        if path == "/services/browse" || path.starts_with("/services/browse/") {
+            return self.route_browse(path, query);
         }
         if path == "/library/shared" || path.starts_with("/library/shared/") {
             return self.library_shared(&segments, query);

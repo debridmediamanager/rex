@@ -998,7 +998,7 @@ fn md5(input: &[u8]) -> [u8; 16] {
 
 /// `base64.b64decode(..., validate=True)` (or the urlsafe alphabet, unvalidated
 /// beyond the alphabet): `None` where Python raises.
-fn b64decode(text: &str, urlsafe: bool) -> Option<Vec<u8>> {
+pub(super) fn b64decode(text: &str, urlsafe: bool) -> Option<Vec<u8>> {
     let bytes = text.as_bytes();
     if bytes.len() % 4 != 0 {
         return None;

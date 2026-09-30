@@ -277,6 +277,37 @@ def run_dispatcher(s):
     check("a doubled slash below an item leaf is a 404", status == 404, status)
 
 
+def run_browse(s):
+    # -- /services/browse walks the /plexsim tree with keys and titles ----------------
+    status, _, doc = s.json("GET", "/services/browse")
+    check("/services/browse lists / and /plexsim with keys and titles",
+          doc == {"MediaContainer": {"size": 2, "Path": [
+              {"key": "/services/browse/Lw==", "title": "/", "path": "/"},
+              {"key": "/services/browse/L3BsZXhzaW0=", "title": "plexsim",
+               "path": "/plexsim"}]}}, doc)
+    status, _, doc = s.json("GET", "/services/browse/L3BsZXhzaW0=?includeFiles=1")
+    check("/plexsim lists one directory per section and no files",
+          doc == {"MediaContainer": {"size": 2, "Path": [
+              {"key": "/services/browse/L3BsZXhzaW0vMQ==", "title": "1", "path": "/plexsim/1"},
+              {"key": "/services/browse/L3BsZXhzaW0vMg==", "title": "2",
+               "path": "/plexsim/2"}]}}, doc)
+    status, _, doc = s.json("GET", "/services/browse/L3BsZXhzaW0vMQ==?includeFiles=0")
+    check("includeFiles=0 on a leaf directory is {size: 0}",
+          doc == {"MediaContainer": {"size": 0}}, doc)
+    status, _, doc = s.json("GET", "/services/browse/L3BsZXhzaW0vMQ==?includeFiles=1")
+    files = container(doc).get("File") or []
+    check("includeFiles=1 lists each distinct file of that directory once, keyed",
+          container(doc).get("size") == len(files) == 5
+          and len({row.get("path") for row in files}) == 5
+          and all(row.get("path", "").startswith("/plexsim/1/") and row.get("key")
+                  and row.get("title") == row["path"].rsplit("/", 1)[-1] for row in files)
+          and "Path" not in container(doc), doc)
+    titles = [row.get("title", "").lower() for row in files]
+    check("and sorts them by lower-cased name", titles == sorted(titles), titles)
+    status, _, _ = s.json("GET", "/services/browse/L3BsZXhzaW0?includeFiles=1")
+    check("unpadded base64 is a 400", status == 400, status)
+
+
 def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
     env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
@@ -298,6 +329,7 @@ def main():
         server = Server(port)
         run(server)
         run_dispatcher(server)
+        run_browse(server)
     finally:
         proc.send_signal(signal.SIGTERM)
         try:
