@@ -2750,6 +2750,10 @@ impl Runtime {
                             .is_some_and(|rows| rows.iter().any(|row| row.as_str() == Some(identifier)))
                     })
                     .filter_map(|(number, _)| number.parse::<i64>().ok())
+                    .collect::<Vec<_>>();
+                numbers.sort_unstable();
+                let types = numbers
+                    .into_iter()
                     .map(|number| json!({"type":number}))
                     .collect::<Vec<_>>();
                 json!({
