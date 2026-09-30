@@ -18348,17 +18348,17 @@ impl Runtime {
             ("season".to_string(), row.get("parentIndex").cloned().unwrap_or(Value::Null)),
             ("episode".to_string(), row.get("index").cloned().unwrap_or(Value::Null)),
         ]);
-        let Some(details) = tmdb.details(kind, id) else {
-            return;
-        };
+        // `enrich` treats a failed details lookup as a miss and changes nothing.
+        let details = tmdb.details(kind, id).unwrap_or(Value::Null);
         let season = parsed.get("season").filter(|v| truthy(v)).cloned();
         let episode_number = parsed.get("episode").filter(|v| truthy(v)).cloned();
+        let found = details.as_object().is_some_and(|object| !object.is_empty());
         let episode = match (kind.as_str(), &season, &episode_number) {
-            ("tv", Some(season), Some(episode)) => tmdb.episode(id, season, episode),
+            ("tv", Some(season), Some(episode)) if found => tmdb.episode(id, season, episode),
             _ => None,
         };
         let season_details = match (kind.as_str(), parsed.get("season")) {
-            ("tv", Some(season)) if !season.is_null() => tmdb.season(id, season),
+            ("tv", Some(season)) if found && !season.is_null() => tmdb.season(id, season),
             _ => None,
         };
         let tmdb_id = id.as_i64().unwrap_or_default();
@@ -18374,6 +18374,18 @@ impl Runtime {
                 &kind,
                 tmdb_id,
             );
+        }
+        // `enrich` writes the TMDB vote into `rating` as well as `audienceRating`; load
+        // drops it, because `rating` is the CRITIC score (zen: 743 of 1,538 matched
+        // movies carry one, each beside a critic `ratingImage`). A Fix Match skipped
+        // that rule and put a TMDB vote back as a critic rating.
+        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            if matches!(
+                object.get("type").and_then(Value::as_str),
+                Some("movie" | "show" | "episode")
+            ) {
+                object.shift_remove("rating");
+            }
         }
         // The agent supplies tag names and no ids; without them the row keeps its detail
         // page and disappears from every secondary filter.
