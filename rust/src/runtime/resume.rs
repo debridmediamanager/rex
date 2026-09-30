@@ -910,7 +910,7 @@ impl Runtime {
                         .unwrap_or_default()
                 );
             }
-            hubs.push(self.home_hub(
+            let mut shelf = self.home_hub(
                 &identifier,
                 &shelf_title,
                 &key,
@@ -919,7 +919,23 @@ impl Runtime {
                 if is_show { "mixed" } else { "movie" },
                 "shelf",
                 true,
-            ));
+            );
+            // Cycle 83, measured on kids (Firefly) and recorded on zen (cycle 55): the
+            // TV shelf's FULL show rows take the `include*` blocks here as on a library
+            // hub page; a light row never does.
+            if is_show {
+                for row in shelf
+                    .get_mut("Metadata")
+                    .and_then(Value::as_array_mut)
+                    .into_iter()
+                    .flatten()
+                {
+                    if row.get("type").and_then(Value::as_str) == Some("show") {
+                        self.expand_full_rows(std::slice::from_mut(row), query);
+                    }
+                }
+            }
+            hubs.push(shelf);
         }
         if wanted
             .as_ref()

@@ -3052,3 +3052,6 @@ are changing; replay the client's exact request before altering behavior.
   `/hubs/home/recentlyAdded?type=2` answers `art=`, `slug=`, `thumb=` and `userFields=` with a 500 --
   that list parses empty values, where a hub page drops them (`/hubs?art=` is a 200). The native list
   found no field in the pair and answered every row.
+- **The TV Recently Added list and a show-scoped `/hubs/promoted` pass the `include*` blocks
+  to their FULL show rows** (cycle 83, kids' Firefly takes all five on both; cycle 55 recorded the
+  list on zen) -- the native list and shelf applied none.

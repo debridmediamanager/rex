@@ -393,6 +393,19 @@ def run(port):
           got == {"art=": 500, "userFields=": 500, "art=1": 500, "zzzz=": 200,
                   "/hubs art=": 200}, got)
 
+    # 20. The TV Recently Added list and a show-scoped /hubs/promoted: full rows take blocks.
+    options = "&".join("%s=1" % option for option in blocks)
+    _status, mc = request(port, "/hubs/home/recentlyAdded?type=2&" + options)
+    listed = [sorted(k for k in blocks.values() if k in row)
+              for row in (mc or {}).get("Metadata") or [] if row.get("type") == "show"]
+    _status, mc = request(port, "/hubs/promoted?contentDirectoryID=2&count=12&" + options)
+    shelf = [sorted(k for k in blocks.values() if k in row)
+             for row in (hub(mc, "tv.recentlyadded.") or {}).get("Metadata") or []
+             if row.get("type") == "show"]
+    every = sorted(blocks.values())
+    check("the TV list's and promoted TV shelf's show rows take all five include blocks",
+          listed == [every] and shelf == [every], (listed, shelf))
+
 
 def main():
     process, port = start()

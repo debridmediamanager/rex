@@ -12690,7 +12690,13 @@ impl Runtime {
                 .iter()
                 .map(|row| {
                     if row.get("type").and_then(Value::as_str) == Some("show") {
-                        self.detail_row(row)
+                        // Cycle 83 (kids), cycle 55 (zen): on the TV list the full show
+                        // row takes the `include*` blocks.
+                        let mut full = self.detail_row(row);
+                        if type_id == "2" {
+                            self.expand_full_rows(std::slice::from_mut(&mut full), query);
+                        }
+                        full
                     } else {
                         guid_gate(self.grid_row(row, true, true, false), query)
                     }
