@@ -6915,11 +6915,15 @@ impl Runtime {
             .unwrap_or(0)
             + 1;
         let kind = query.get("type").map(String::as_str).unwrap_or("movie");
+        let section_type = if kind == "2" || kind == "show" { "show" } else { "movie" };
+        let title = query.get("name").cloned().unwrap_or_else(|| "Library".to_string());
+        // server.py: the new section's uuid is `"%032x" % crc32("{title}-{type}")`.
+        let uuid = format!("{:032x}", crc32(format!("{title}-{section_type}").as_bytes()));
         let section = json!({
             "key": key.to_string(),
-            "type": if kind == "2" || kind == "show" { "show" } else { "movie" },
-            "title": query.get("name").cloned().unwrap_or_else(|| "Library".to_string()),
-            "uuid": format!("native-section-{key}"),
+            "type": section_type,
+            "title": title,
+            "uuid": uuid,
             "language": query.get("language").cloned().unwrap_or_else(|| "en-US".to_string()),
         });
         info!(

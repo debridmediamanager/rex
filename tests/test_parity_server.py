@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import zlib
 
 from server_command import server_command
 
@@ -378,6 +379,20 @@ def run_resources(s):
               (status, heads))
 
 
+def run_writes(s):
+    # -- a created section's uuid is the oracle's crc32 of "{title}-{type}" -----------
+    status, _, _ = s.raw("POST", "/library/sections?name=Parity%20Create&type=movie"
+                         "&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US"
+                         "&location=%2Fdata%2Fmovies")
+    wanted = "%032x" % (zlib.crc32(b"Parity Create-movie") & 0xFFFFFFFF)
+    _, _, doc = s.json("GET", "/media/providers?includeSummary=1")
+    uuids = [row.get("uuid") for provider in container(doc).get("MediaProvider") or []
+             for feature in provider.get("Feature") or []
+             for row in feature.get("Directory") or [] if row.get("title") == "Parity Create"]
+    check("a created section's uuid is %032x of crc32(title-type)",
+          status in (200, 201) and uuids and set(uuids) == {wanted}, (status, uuids, wanted))
+
+
 def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
     env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
@@ -402,6 +417,7 @@ def main():
         run_browse(server)
         run_system(server)
         run_resources(server)
+        run_writes(server)
     finally:
         proc.send_signal(signal.SIGTERM)
         try:
