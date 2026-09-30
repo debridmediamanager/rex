@@ -24917,7 +24917,19 @@ def main():
         )
 
     discovery = None
-    if args.gdm == "on" or (args.gdm == "auto" and args.port == 32400):
+    # `PLEXSIM_GDM_PORTS` moves the responder off the host's real udp/32410 and udp/32414,
+    # so it cannot claim the host's one GDM identity -- the reason for the `auto` gate --
+    # and a test instance on any port may then answer GDM. The native server reads the
+    # same variable; `tests/test_native_gdm.py` drives both through it.
+    gdm_ports = []
+    for text in os.environ.get("PLEXSIM_GDM_PORTS", "").split(","):
+        try:
+            number = int(text.strip())
+        except ValueError:
+            continue
+        if 0 <= number <= 65535:
+            gdm_ports.append(number)
+    if args.gdm == "on" or (args.gdm == "auto" and (args.port == 32400 or gdm_ports)):
         host = args.plex_direct_host
         if host is None and args.public_url:
             candidate = urllib.parse.urlsplit(args.public_url).hostname or ""
@@ -24927,7 +24939,7 @@ def main():
                 host = candidate
         discovery = gdm_module.Discovery(
             name=catalog.friendly, port=args.port, machine=catalog.machine,
-            version=SERVER_VERSION, host=host)
+            version=SERVER_VERSION, host=host, ports=tuple(gdm_ports) or gdm_module.PORTS)
         discovery.start()
         sim.discovery = discovery
 
