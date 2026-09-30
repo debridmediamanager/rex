@@ -12110,62 +12110,53 @@ impl Runtime {
         response
     }
 
+    /// `server.py` `download_queue`: `POST /downloadQueue` answers the calling client's
+    /// queue (the SAME one on a second POST), numbered by creation; `/downloadQueue/{id}`
+    /// reads any client's queue back by that number, `/items` is an empty container, and
+    /// every other verb on an existing queue is a 404.
     fn route_download_queue(&mut self, segments: &[&str], request: &Request) -> Response {
-        let client = request
-            .headers
-            .get("x-plex-client-identifier")
-            .cloned()
-            .unwrap_or_default();
+        let bare = |fields: Value| Response::json(200, json!({"MediaContainer": fields}));
         if segments.is_empty() {
             if request.method == "POST" {
+                let (_, raw_query) = split_target(&request.target);
+                let client = parse_query(&raw_query)
+                    .into_iter()
+                    .find(|(name, value)| name == "X-Plex-Client-Identifier" && !value.is_empty())
+                    .map(|(_, value)| value)
+                    .or_else(|| request.headers.get("x-plex-client-identifier").cloned())
+                    .unwrap_or_default();
+                let next_id = self.download_queues.len() + 1;
                 let queue = self
                     .download_queues
                     .entry(client.clone())
                     .or_insert_with(|| {
                         json!({
-                            "id": 1,
+                            "id": next_id,
+                            "owner": 1,
                             "clientIdentifier": client,
+                            "itemCount": 0,
                             "status": "done"
                         })
                     })
                     .clone();
-                return Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([("DownloadQueue".to_string(), json!([queue]))]),
-                        false,
-                    ),
-                );
+                return bare(json!({"size": 1, "DownloadQueue": [queue]}));
             }
-            if request.method == "GET" || request.method == "HEAD" {
-                return Response::json(200, plugin_container(Vec::new()));
-            }
-            return Response::error(404, "plexsim: not found");
+            return bare(json!({"size": 0, "content": "plugins"}));
         }
-        if segments.len() == 2 && segments[1] == "items" && request.method == "GET" {
-            if segments[0].parse::<i64>().is_err() {
-                return Response::error(404, "plexsim: not found");
-            }
-            return Response::json(
-                200,
-                self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
-            );
-        }
-        if segments.len() != 1 || segments[0].parse::<i64>().is_err() {
-            return Response::error(404, "plexsim: not found");
-        }
-        let Some(queue) = self.download_queues.get(&client).cloned() else {
+        let Some(queue) = self
+            .download_queues
+            .values()
+            .find(|queue| queue.get("id").map(string_value).as_deref() == Some(segments[0]))
+            .cloned()
+        else {
             return Response::error(404, "plexsim: not found");
         };
-        match request.method.as_str() {
-            "GET" | "HEAD" => Response::json(
-                200,
-                self.container(
-                    Map::from_iter([("DownloadQueue".to_string(), json!([queue]))]),
-                    false,
-                ),
-            ),
-            "DELETE" => Response::error(404, "plexsim: not found"),
+        if !matches!(request.method.as_str(), "GET" | "HEAD") {
+            return Response::error(404, "plexsim: not found");
+        }
+        match segments {
+            [_] => bare(json!({"size": 1, "DownloadQueue": [queue]})),
+            [_, "items"] => bare(json!({"size": 0})),
             _ => Response::error(404, "plexsim: not found"),
         }
     }
