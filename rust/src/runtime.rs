@@ -584,7 +584,9 @@ impl Runtime {
             // Key spaces stay disjoint (library.py): collections are 50000+.
             next_collection: 50001,
             next_queue: 2,
-            next_queue_item: 1,
+            // `server.py` `_queue_items` steps the counter BEFORE minting, so the first
+            // queue item any process hands out is 2, not 1.
+            next_queue_item: 2,
             next_dynamic_key: 40000,
             sessions: HashMap::new(),
             session_seen: HashMap::new(),
@@ -11704,7 +11706,13 @@ impl Runtime {
         if let Some(last_added) = queue.last_added {
             fields.insert("playQueueLastAddedItemID".to_string(), json!(last_added));
         }
-        Response::json(200, self.container(fields, false))
+        // `play_queue_container` builds the LIBRARY container (`mediaTagVersion`
+        // included) and then drops its `allowSync`, which a play queue never carries.
+        let mut body = self.container(fields, true);
+        if let Some(container) = body.get_mut("MediaContainer").and_then(Value::as_object_mut) {
+            container.shift_remove("allowSync");
+        }
+        Response::json(200, body)
     }
 
     fn route_play_queue(
@@ -11939,68 +11947,53 @@ impl Runtime {
                 }
                 _ => Response::error(404, "plexsim: not found"),
             }
-        } else if segments.len() == 2 && segments[1] == "shuffle" {
+        } else if segments.len() == 2 && (segments[1] == "shuffle" || segments[1] == "unshuffle") {
             if request.method != "PUT" || queue.last_added.is_some() {
                 Response::error(404, "plexsim: not found")
             } else {
-                queue.shuffled = true;
-                let selected_id = queue.selected;
-                let selected_key = selected_id.and_then(|id| {
-                    queue
-                        .items
-                        .iter()
-                        .find(|item| item.id == id)
-                        .map(|item| item.rating_key.clone())
-                });
-                let mut shuffled = Vec::new();
-                if let Some(selected_key) = selected_key {
-                    if let Some(item) = queue
-                        .items
-                        .iter()
-                        .find(|item| item.rating_key == selected_key)
-                    {
-                        shuffled.push(item.clone());
-                    }
-                    let mut rest = queue
-                        .items
-                        .iter()
-                        .filter(|item| item.rating_key != selected_key)
-                        .cloned()
-                        .collect::<Vec<_>>();
-                    rest.reverse();
-                    shuffled.extend(rest);
+                // `server.py`: the order is rebuilt from the queue's NATURAL order (the
+                // one an unshuffle restores), the selected row first on a shuffle, and
+                // every slot steps the item counter -- the kept selected row's slot
+                // included, so its own id is kept and one id is skipped.
+                let shuffle = segments[1] == "shuffle";
+                let current = queue
+                    .selected
+                    .and_then(|id| queue.items.iter().find(|item| item.id == id).cloned());
+                let mut order = if queue.natural.is_empty() {
+                    queue.items.iter().map(|item| item.rating_key.clone()).collect()
                 } else {
-                    shuffled = queue.items.clone();
-                    shuffled.reverse();
-                }
-                for item in shuffled.iter_mut().skip(1) {
-                    item.id = self.next_queue_item;
-                    self.next_queue_item += 1;
-                }
-                queue.items = shuffled;
-                queue.version += 1;
-                self.queue_container(&queue, query)
-            }
-        } else if segments.len() == 2 && segments[1] == "unshuffle" {
-            if request.method != "PUT" || queue.last_added.is_some() {
-                Response::error(404, "plexsim: not found")
-            } else {
-                queue.shuffled = false;
-                let selected = queue.selected;
-                let mut items = Vec::new();
-                for key in &queue.natural {
-                    if let Some(item) = queue.items.iter().find(|item| &item.rating_key == key) {
-                        items.push(item.clone());
+                    queue.natural.clone()
+                };
+                if shuffle {
+                    if let Some(current) = &current {
+                        if let Some(at) = order.iter().position(|key| *key == current.rating_key) {
+                            order.remove(at);
+                        }
+                    }
+                    shuffle_in_place(&mut order);
+                    if let Some(current) = &current {
+                        order.insert(0, current.rating_key.clone());
                     }
                 }
-                for item in items.iter_mut() {
-                    if Some(item.id) != selected {
-                        item.id = self.next_queue_item;
-                        self.next_queue_item += 1;
+                let mut items = Vec::new();
+                let mut kept = false;
+                for rating_key in order {
+                    let id = self.next_queue_item;
+                    self.next_queue_item += 1;
+                    match &current {
+                        Some(current) if !kept && rating_key == current.rating_key => {
+                            items.push(current.clone());
+                            kept = true;
+                        }
+                        _ => items.push(QueueItem {
+                            id,
+                            rating_key,
+                            added: false,
+                        }),
                     }
                 }
                 queue.items = items;
-                queue.selected = selected;
+                queue.shuffled = shuffle;
                 queue.version += 1;
                 self.queue_container(&queue, query)
             }
@@ -23276,6 +23269,29 @@ fn py_round(value: f64) -> i64 {
         }
     } else {
         value.round() as i64
+    }
+}
+
+/// `random.shuffle`: a Fisher-Yates pass seeded from the clock and a process counter,
+/// so two shuffles in the same nanosecond still differ.
+fn shuffle_in_place<T>(items: &mut [T]) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static CALLS: AtomicU64 = AtomicU64::new(0);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos() as u64)
+        .unwrap_or_default();
+    let mut state = nanos ^ CALLS.fetch_add(1, Ordering::Relaxed).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    let mut next = || {
+        state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    };
+    for index in (1..items.len()).rev() {
+        let other = (next() % (index as u64 + 1)) as usize;
+        items.swap(index, other);
     }
 }
 
