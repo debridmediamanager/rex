@@ -1445,6 +1445,22 @@ impl Runtime {
     /// It starts from the measured detail projection so mutable hierarchy
     /// fields remain current, then applies the same field/tag/stream trimming
     /// as the Python grid builder.
+    /// A row as a LIST reads it: the oracle projects a written item setting
+    /// (`episodeSort`, `useOriginalTitle`, ...) onto the DETAIL row alone -- measured
+    /// there, as a real show does for `episodeSort` -- so a playlist's items, a
+    /// collection's children and a comma-joined read carry the row without them.
+    fn without_written_prefs(original: &Value, mut row: Value) -> Value {
+        if let (Some(stored), Some(object)) = (
+            original.get("_prefs").and_then(Value::as_object),
+            row.as_object_mut(),
+        ) {
+            for name in stored.keys() {
+                object.shift_remove(name);
+            }
+        }
+        row
+    }
+
     fn grid_row(
         &self,
         original: &Value,
@@ -15341,7 +15357,9 @@ impl Runtime {
                         Value::Array(
                             members
                                 .iter()
-                                .map(|member| self.detail_row(member))
+                                .map(|member| {
+                                    Self::without_written_prefs(member, self.detail_row(member))
+                                })
                                 .collect(),
                         ),
                     ),
@@ -19558,7 +19576,8 @@ impl Runtime {
                 .map(|row| {
                     // The light grid row, as measured on the copy; a playlist item
                     // keeps its librarySection fields.
-                    let mut value = self.grid_row(&row, true, false, false);
+                    let mut value =
+                        Self::without_written_prefs(&row, self.grid_row(&row, true, false, false));
                     // Cycle 16: a SMART list's items carry NO `playlistItemID` -- its
                     // members are its query -- and a parent a `type=` reaches up to is
                     // not a member either.

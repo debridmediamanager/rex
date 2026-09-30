@@ -1009,7 +1009,9 @@ impl Runtime {
             let rows = self
                 .collection_members(&collection)
                 .iter()
-                .map(|row| self.grid_row(row, true, false, false))
+                .map(|row| {
+                    Self::without_written_prefs(row, self.grid_row(row, true, false, false))
+                })
                 .collect::<Vec<_>>();
             return Response::json(
                 200,
@@ -1264,7 +1266,9 @@ impl Runtime {
             let rows = self
                 .collection_members(collection)
                 .iter()
-                .map(|row| self.grid_row(row, false, false, false))
+                .map(|row| {
+                    Self::without_written_prefs(row, self.grid_row(row, false, false, false))
+                })
                 .collect::<Vec<_>>();
             let view_group = if collection.subtype.is_empty() {
                 section.get("type").cloned().unwrap_or(Value::Null)
