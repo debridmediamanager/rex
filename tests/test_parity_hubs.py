@@ -310,6 +310,14 @@ def write_checks(srv):
           show.get("episodeSort") == "1" and movie.get("useOriginalTitle") == "1",
           (show.get("episodeSort"), movie.get("useOriginalTitle")))
 
+    # -- an episode whose show has no poster lists its own still as the coverPoster ----
+    srv.raw("/library/metadata/20001/unmatch", "PUT")
+    episode = (srv.container("/library/metadata/1003").get("Metadata") or [{}])[0]
+    check("after its show is unmatched an episode's still is its coverPoster",
+          "grandparentThumb" not in episode
+          and [image.get("type") for image in episode.get("Image") or []][:1] == ["coverPoster"],
+          (episode.get("grandparentThumb"), episode.get("Image")))
+
 
 def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
