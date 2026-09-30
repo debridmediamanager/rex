@@ -237,6 +237,15 @@ def run(port):
           counts and all(count == 1 for count in counts)
           and not any("Part" in m for r in rows for m in r.get("Media") or []), counts)
 
+    # -- season leaf counts ---------------------------------------------------------------
+    bucket = mc(port, "/library/sections/2/firstCharacter/%23?type=3").get("Metadata") or []
+    check("a season in a firstCharacter bucket keeps its leaf counts",
+          bucket and all("leafCount" in r and "viewedLeafCount" in r for r in bucket),
+          [(r.get("ratingKey"), r.get("leafCount")) for r in bucket])
+    grid = mc(port, "/library/sections/2/all?type=3").get("Metadata") or []
+    check("a season in the type=3 grid carries no leaf counts",
+          grid and not any("leafCount" in r for r in grid), grid[:1])
+
     # -- the tag tables ------------------------------------------------------------
     genre = mc(port, "/library/sections/1/genre/top")
     rows = genre.get("Directory") or []
