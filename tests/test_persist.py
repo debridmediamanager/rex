@@ -270,9 +270,16 @@ def main():
 
         # -- a rebuilt catalog keeps view state and settings, not structure ------
         document = json.load(open(catalog))
-        document["items"] = [row for row in document["items"] if row["ratingKey"] != 1011]
+        # The fixture's ratingKeys are strings: comparing them with the integer 1011 removed
+        # nothing, so the digest changed only because the file was re-serialised.
+        before_rebuild = len(document["items"])
+        document["items"] = [row for row in document["items"] if str(row["ratingKey"]) != "1011"]
         json.dump(document, open(catalog, "w"))
         rebuilt = Instance(catalog, state)
+        check("the rebuilt catalog really lost a row",
+              len(document["items"]) == before_rebuild - 1
+              and rebuilt.request("GET", "/library/metadata/1011")[0] == 404,
+              "rows %d -> %d" % (before_rebuild, len(document["items"])))
         movie = first(rebuilt.request("GET", "/library/metadata/1007")[1])
         rated = first(rebuilt.request("GET", "/library/metadata/1008")[1])
         episode = first(rebuilt.request("GET", "/library/metadata/1001")[1])
