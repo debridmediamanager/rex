@@ -1259,6 +1259,10 @@ impl Runtime {
                 body.insert("parentTitle".to_string(), json!(collection.title));
                 body.insert("allowSync".to_string(), json!(true));
                 body.extend(self.collection_section_fields(collection));
+                // This one container names the library by the collection's STORED
+                // section id -- the create's `sectionId`, a string -- where every other
+                // collection container reads it as a number.
+                body.insert("librarySectionID".to_string(), json!(collection.section));
             }
             return Response::json(200, container);
         }
