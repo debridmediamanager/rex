@@ -1349,6 +1349,29 @@ const LEGACY_SEARCH_PROVIDERS: &[(&str, &str, &str)] = &[
 impl Runtime {
     /// `/search?query=` (`legacy_search`): the title matcher's hits in hub order, then
     /// the providers. Cycle 41: `limit` is ignored completely.
+    /// `typed_rows` in `server.py` for one asked type: the section's rows of that type,
+    /// and a season or episode list ordered by (show title, season index, index) --
+    /// the listing order a search box and an autocomplete then filter and re-sort.
+    pub(super) fn typed_section_rows(&self, section_key: &str, type_number: i64) -> Vec<Value> {
+        let mut rows = self.choose_rows(Some(section_key), Some(type_number));
+        if matches!(type_number, 3 | 4) {
+            rows.sort_by(|left, right| {
+                let key = |row: &Value| {
+                    let title = row
+                        .get("grandparentTitle")
+                        .filter(|value| truthy(value))
+                        .or_else(|| row.get("parentTitle").filter(|value| truthy(value)))
+                        .map(string_value)
+                        .unwrap_or_default();
+                    let number = |name: &str| row.get(name).and_then(value_as_i64).unwrap_or(0);
+                    (title, number("parentIndex"), number("index"))
+                };
+                key(left).cmp(&key(right))
+            });
+        }
+        rows
+    }
+
     /// `/library/sections/{id}/autocomplete` -- `autocomplete` in `server.py`, the Edit
     /// dialog's suggestions. `type` is required and exactly ONE `<field>.query` may be
     /// asked (a repeat keeps its last value); `limit` 0 is one row and a negative one
@@ -1451,7 +1474,7 @@ impl Runtime {
             _ => None,
         };
         let rows = match type_number {
-            Some(number) => self.choose_rows(Some(section_key), Some(number)),
+            Some(number) => self.typed_section_rows(section_key, number),
             None => Vec::new(),
         };
         // Cycle 54: the suggestions come from the rows the listing's filters leave --

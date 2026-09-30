@@ -15740,8 +15740,17 @@ impl Runtime {
             4 => Some("episode"),
             _ => None,
         };
-        let mut rows = if typed.is_some() {
-            self.choose_rows(Some(section_key), Some(type_number))
+        // `typed_rows`: repeated `type` values AND (a row has one type), and a season or
+        // episode list is in (show, season, index) order before the title filter.
+        let repeated = pairs
+            .iter()
+            .filter(|(name, _)| name == "type")
+            .map(|(_, value)| value.as_str())
+            .collect::<HashSet<_>>()
+            .len()
+            > 1;
+        let mut rows = if typed.is_some() && !repeated {
+            self.typed_section_rows(section_key, type_number)
         } else {
             Vec::new()
         };
