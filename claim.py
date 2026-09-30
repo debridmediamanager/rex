@@ -33,6 +33,22 @@ CONNECTIVITY_URL = "https://plex.tv/api/servers/%s/connectivity"
 FEATURES_URL = "https://servers.plex.tv/api/v2/features"
 ACCOUNT_URL = "https://servers.plex.tv/api/v2/user"
 
+# Where the plex.tv family of hosts is reached. Unset -- the default -- is the real
+# service. Set, every plex.tv, servers.plex.tv and scrobbles.plex.tv URL is sent to
+# `<base>/<host><path>` instead, which is how tests/test_plextv.py drives a claim, an
+# announce and an account import against a local stub: exercising these flows against
+# the real account signs real servers out (HANDOVER: the 2026-09-11 token reset), and a
+# second server announcing an identity rewrites that identity's registration. The host
+# stays in the path so the stub still sees which service was addressed.
+PLEXTV_URL_ENV = "PLEXSIM_PLEXTV_URL"
+
+
+def plextv_url(url):
+    base = os.environ.get(PLEXTV_URL_ENV)
+    if not base:
+        return url
+    return base.rstrip("/") + "/" + url.split("://", 1)[1]
+
 
 class Claim:
     """Holds plexsim's claimed identity and performs the exchange."""
@@ -115,7 +131,7 @@ class Claim:
     def exchange(self, claim_token):
         """Redeem a `claim-…` token for this server's own plex.tv token."""
         url = EXCHANGE_URL + "?" + urllib.parse.urlencode({"token": claim_token})
-        request = urllib.request.Request(url, method="POST", headers=self._headers(), data=b"")
+        request = urllib.request.Request(plextv_url(url), method="POST", headers=self._headers(), data=b"")
         with urllib.request.urlopen(request, timeout=30) as response:
             body = response.read()
 
@@ -147,7 +163,7 @@ class Claim:
             return []
         query = urllib.parse.urlencode({"X-Plex-Token": token})
         request = urllib.request.Request(
-            FEATURES_URL + "?" + query,
+            plextv_url(FEATURES_URL + "?" + query),
             headers=dict(self._headers(), Accept="application/xml"),
         )
         with opener(request, timeout=30) as response:
@@ -171,7 +187,7 @@ class Claim:
             ("includeProviders", 1),
         ])
         request = urllib.request.Request(
-            ACCOUNT_URL + "?" + query,
+            plextv_url(ACCOUNT_URL + "?" + query),
             headers=dict(self._headers(), **{"X-Plex-Token": token}),
         )
         with opener(request, timeout=30) as response:
@@ -209,7 +225,7 @@ class Claim:
             {"X-Plex-Token": self.token, "asyncIdentifier": str(uuid.uuid4())}
         )
         url = (CONNECTIVITY_URL % self.machine) + "?" + query
-        request = urllib.request.Request(url, method="PUT", headers=self._headers(), data=b"")
+        request = urllib.request.Request(plextv_url(url), method="PUT", headers=self._headers(), data=b"")
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 return response.status, response.read()[:200]

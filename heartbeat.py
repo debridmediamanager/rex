@@ -37,6 +37,8 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
+from claim import plextv_url
+
 logger = logging.getLogger("plexsim.heartbeat")
 
 # MEASURED 2026-09-11: a registration expires ~40 minutes after its last PUT.
@@ -73,7 +75,7 @@ def resolve_device_id(token, *, name=None, client_identifier=None):
         raise ValueError("need a name or a clientIdentifier to resolve")
 
     request = urllib.request.Request(
-        "https://plex.tv/devices.xml",
+        plextv_url("https://plex.tv/devices.xml"),
         headers={"X-Plex-Token": token, "Accept": "application/xml"},
     )
     with urllib.request.urlopen(request, timeout=25) as response:
@@ -130,7 +132,7 @@ def announce(token, machine_identifier, url, *, name="plexsim",
         ("X-Plex-Token", token),
     ])
     request = urllib.request.Request(
-        "%s/devices/%s?%s" % (ANNOUNCE_BASE, machine_identifier, query),
+        plextv_url("%s/devices/%s?%s" % (ANNOUNCE_BASE, machine_identifier, query)),
         method="PUT",
         data=b"",
         headers=collections.OrderedDict([
@@ -160,7 +162,7 @@ def is_visible(token, name):
     invisible to every client, which is exactly the failure this guards against.
     """
     request = urllib.request.Request(
-        "https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&includeIPv6=1",
+        plextv_url("https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&includeIPv6=1"),
         headers={
             "X-Plex-Token": token,
             "X-Plex-Client-Identifier": "plexsim-heartbeat",
