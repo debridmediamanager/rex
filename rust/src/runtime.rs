@@ -11734,38 +11734,31 @@ impl Runtime {
             return self.route_library_arts(None, query);
         }
         if path == "/library/randomArtwork" && matches!(request.method.as_str(), "GET" | "HEAD") {
-            let Some(sections) = query.get("sections") else {
-                return Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([("Metadata".to_string(), Value::Array(Vec::new()))]),
-                        false,
-                    ),
-                );
-            };
-            let wanted = sections
+            // One Photo row per movie or show with a backdrop in EVERY named library,
+            // in a fresh random order, at most 100, in a container carrying only
+            // `size`; no `sections` is `size 0`.
+            let seed = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|duration| duration.as_nanos())
+                .unwrap_or_default();
+            let mut rows = query
+                .get("sections")
+                .map(String::as_str)
+                .unwrap_or_default()
                 .split(',')
-                .filter(|value| self.section(value).is_some())
+                .filter(|wanted| !wanted.is_empty())
+                .flat_map(|wanted| self.section_rows(wanted))
+                .filter(|row| row.get("art").is_some_and(truthy))
                 .collect::<Vec<_>>();
-            if wanted.is_empty() {
-                return Response::json(
-                    200,
-                    self.container(
-                        Map::from_iter([("Metadata".to_string(), Value::Array(Vec::new()))]),
-                        false,
-                    ),
-                );
-            }
-            // Reuse the stable Photo projection from the arts route while
-            // retaining the randomArtwork container's ordinary JSON shape.
-            let arts = self.route_library_arts(Some(wanted[0]), &HashMap::new());
-            let value = serde_json::from_slice::<Value>(&arts.body).unwrap_or_else(|_| {
-                self.container(
-                    Map::from_iter([("Metadata".to_string(), Value::Array(Vec::new()))]),
-                    false,
-                )
+            rows.sort_by_key(|row| {
+                bytes_digest(format!("{seed}/{}", key_of(row).unwrap_or_default()).as_bytes())
             });
-            return Response::json(200, value);
+            rows.truncate(100);
+            let rows = rows.iter().map(artwork_photo_row).collect::<Vec<_>>();
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": rows.len(), "Metadata": rows}}),
+            );
         }
         if path == "/library/matches" && matches!(request.method.as_str(), "GET" | "HEAD") {
             return self.route_library_matches(query);
@@ -20240,6 +20233,24 @@ fn local_host_name() -> String {
         .position(|byte| *byte == 0)
         .unwrap_or(buffer.len());
     String::from_utf8_lossy(&buffer[..end]).into_owned()
+}
+
+/// The oracle's `_artwork_row`: one `Photo` of a row's backdrop, six empty strings
+/// and four `-1`s rather than omitted attributes.
+fn artwork_photo_row(row: &Value) -> Value {
+    json!({
+        "title": row.get("title").cloned().unwrap_or(Value::Null),
+        "type": "image",
+        "key": row.get("art").cloned().unwrap_or(Value::Null),
+        "thumb": "",
+        "label": "",
+        "mediaType": "",
+        "summary": "",
+        "rating": -1,
+        "addDate": -1,
+        "modDate": -1,
+        "metaModDate": -1,
+    })
 }
 
 fn drop_empty_value(value: &Value) -> Value {
