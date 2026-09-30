@@ -452,6 +452,10 @@ pub struct Runtime {
     events_dropped: usize,
     /// The history key counter: monotonic, never reused.
     history_counter: std::cell::Cell<i64>,
+    /// library.py's `_views`: how many completed views of each row the server has
+    /// EVER recorded -- `/users/top` reads it, and deleting a history row does not
+    /// take a view back.
+    view_counts: std::cell::RefCell<HashMap<String, i64>>,
     /// Per-user view state written to a COLLECTION or a PLAYLIST through the
     /// `/:/` state writes (cycle 21): both take every write in the family.
     pub list_state: HashMap<String, Map<String, Value>>,
@@ -643,6 +647,7 @@ impl Runtime {
             section_timeline: HashMap::new(),
             events_dropped: 0,
             history_counter: std::cell::Cell::new(0),
+            view_counts: std::cell::RefCell::new(HashMap::new()),
             list_state: HashMap::new(),
             activity_serial: 0,
         };
@@ -761,6 +766,20 @@ impl Runtime {
         if let Some(history) = state.get("history").and_then(Value::as_array) {
             self.history = history.clone();
         }
+        // The view counter outlives deleted history rows; a state file from before it
+        // was kept starts it from the surviving rows.
+        let mut counts = HashMap::new();
+        if let Some(saved) = state.get("viewCounts").and_then(Value::as_object) {
+            for (key, value) in saved {
+                counts.insert(key.clone(), value.as_i64().unwrap_or(0));
+            }
+        } else {
+            for entry in &self.history {
+                let key = string_value(entry.get("ratingKey").unwrap_or(&Value::Null));
+                *counts.entry(key).or_insert(0) += 1;
+            }
+        }
+        *self.view_counts.borrow_mut() = counts;
         if !rebuilt {
             if let Some(sections) = state.get("addedSections").and_then(Value::as_array) {
                 self.added_sections = sections.clone();
@@ -1074,6 +1093,7 @@ impl Runtime {
             "deleted": self.deleted.iter().map(|value| Value::String(value.clone())).collect::<Vec<_>>(),
             "viewState": view,
             "history": self.history,
+            "viewCounts": self.view_counts.borrow().clone(),
             "devices": self.devices.iter().map(|(key, value)| (key.clone(), json!({"name":value.name,"product":value.product,"platform":value.platform,"lastSeenAt":value.last_seen}))).collect::<Map<String, Value>>(),
             "playlists": self.playlists.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri})).collect::<Vec<_>>(),
             "collections": self.collections.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items,"smart":value.smart,"section":value.section,"subtype":value.subtype,"prefs":value.prefs,"uri":value.uri,"tag":value.tag,"extra":value.extra})).collect::<Vec<_>>(),
@@ -3999,6 +4019,7 @@ impl Runtime {
         let key = key_of(row).unwrap_or_default();
         let number = self.history_counter.get() + 1;
         self.history_counter.set(number);
+        *self.view_counts.borrow_mut().entry(key.clone()).or_insert(0) += 1;
         let mut entry = Map::new();
         entry.insert(
             "historyKey".to_string(),
@@ -16887,17 +16908,26 @@ impl Runtime {
                     Ok(tests) => tests,
                     Err(status) => return Response::error(status, "plexsim: internal error"),
                 };
-                let views = self
-                    .history
-                    .iter()
-                    .filter(|entry| {
-                        string_value(entry.get("ratingKey").unwrap_or(&Value::Null)) == key
-                            && Self::history_passes(
-                                &tests,
-                                entry.get("viewedAt").and_then(Value::as_i64).unwrap_or(0),
-                            )
-                    })
-                    .count();
+                // Unfiltered, the count is every completed view ever recorded (the
+                // oracle's `global_views`), which a deleted history row does not lower;
+                // only a `viewedAt` key counts the surviving history rows.
+                let dated = query
+                    .keys()
+                    .any(|name| matches!(name.as_str(), "viewedAt>" | "viewedAt<" | "viewedAt"));
+                let views = if dated {
+                    self.history
+                        .iter()
+                        .filter(|entry| {
+                            string_value(entry.get("ratingKey").unwrap_or(&Value::Null)) == key
+                                && Self::history_passes(
+                                    &tests,
+                                    entry.get("viewedAt").and_then(Value::as_i64).unwrap_or(0),
+                                )
+                        })
+                        .count()
+                } else {
+                    self.view_counts.borrow().get(key).copied().unwrap_or(0).max(0) as usize
+                };
                 let accounts = if views > 0 {
                     json!([{"globalViewCount": views, "id": 1}])
                 } else {
