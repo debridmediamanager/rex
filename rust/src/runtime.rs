@@ -10387,93 +10387,77 @@ impl Runtime {
         out
     }
 
+    /// `/hubs/items?identifier=` -- `hub_items` in `server.py`: the shelf a library's
+    /// Recommended page (`movie.*.{id}`, `tv.*.{id}`) or the Home page (`home.*`) names
+    /// by `hubIdentifier`, built exactly as that page builds it with `count`
+    /// (default 100000) as the shelf cap, so the rows are the shelf's own light rows.
+    /// A missing or unknown identifier is a 404, and so are `tv.inprogress.{id}` and
+    /// `home.playlists`. The answer is a hub container of `size`, `allowSync` and
+    /// `identifier`; `excludeElements` is the post-handler pass's.
     fn route_hub_items(&self, query: &HashMap<String, String>) -> Response {
-        let Some(identifier) = query.get("identifier").filter(|value| !value.is_empty()) else {
+        let identifier = query.get("identifier").cloned().unwrap_or_default();
+        let count = query
+            .get("count")
+            .filter(|value| !value.is_empty())
+            .cloned()
+            .unwrap_or_else(|| "100000".to_string());
+        if identifier.is_empty()
+            || identifier.starts_with("tv.inprogress.")
+            || identifier == "home.playlists"
+        {
+            return Response::error(404, "plexsim: not found");
+        }
+        let tail = identifier.rsplit_once('.').map(|(_, tail)| tail).unwrap_or("");
+        let built = if (identifier.starts_with("movie.") || identifier.starts_with("tv."))
+            && !tail.is_empty()
+            && tail.bytes().all(|b| b.is_ascii_digit())
+            && self.section(tail).is_some()
+        {
+            let scoped = HashMap::from([("count".to_string(), count)]);
+            let answer = self.route_section_hubs(tail, &scoped);
+            if answer.status == 200 {
+                serde_json::from_slice::<Value>(&answer.body).ok()
+            } else {
+                None
+            }
+        } else if identifier.starts_with("home.") {
+            // Cycle 54: `contentDirectoryID` scopes the shelf here as it does on `/hubs`.
+            let mut scoped = HashMap::from([
+                ("identifier".to_string(), identifier.clone()),
+                ("count".to_string(), count),
+            ]);
+            if let Some(raw) = query.get("contentDirectoryID").filter(|raw| !raw.is_empty()) {
+                scoped.insert("contentDirectoryID".to_string(), raw.clone());
+            }
+            Some(self.global_hubs(&scoped))
+        } else {
+            None
+        };
+        let hub = built
+            .as_ref()
+            .and_then(|value| value.get("MediaContainer"))
+            .and_then(|body| body.get("Hub"))
+            .and_then(Value::as_array)
+            .and_then(|hubs| {
+                hubs.iter().find(|hub| {
+                    hub.get("hubIdentifier").and_then(Value::as_str) == Some(identifier.as_str())
+                })
+            });
+        let Some(hub) = hub else {
             return Response::error(404, "plexsim: not found");
         };
-        if identifier.starts_with("tv.inprogress.") || identifier == "home.playlists" {
-            return Response::error(404, "plexsim: not found");
-        }
-        let limit = match query.get("count") {
-            None => None,
-            Some(value) => match value.parse::<usize>() {
-                Ok(number) => Some(number),
-                Err(_) => return Response::error(500, "plexsim: bad hub count"),
-            },
-        };
-        let mut rows = Vec::new();
-        if let Some((prefix, section_key)) = identifier.rsplit_once('.') {
-            if section_key.parse::<i64>().is_ok()
-                && (prefix.starts_with("movie.") || prefix.starts_with("tv."))
-            {
-                let Some(section) = self.section(section_key) else {
-                    return Response::error(404, "plexsim: not found");
-                };
-                let is_show = section.get("type").and_then(Value::as_str) == Some("show");
-                if identifier.contains("recentlyadded") {
-                    let mut source = self.section_rows(section_key);
-                    source.sort_by(|left, right| {
-                        right
-                            .get("addedAt")
-                            .and_then(Value::as_i64)
-                            .unwrap_or(0)
-                            .cmp(&left.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
-                    });
-                    rows = source
-                        .iter()
-                        .map(|row| {
-                            if is_show {
-                                self.detail_row(row)
-                            } else {
-                                self.listing_row(row)
-                            }
-                        })
-                        .collect();
-                } else if identifier.contains("inprogress") {
-                    rows = self
-                        .on_deck_rows()
-                        .into_iter()
-                        .filter(|row| {
-                            string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                                == section_key
-                        })
-                        .collect();
-                } else {
-                    return Response::error(404, "plexsim: not found");
-                }
-            }
-        }
-        if rows.is_empty() && identifier.starts_with("home.") {
-            let mut scoped = query.clone();
-            scoped.insert("identifier".to_string(), identifier.clone());
-            let source = self.route_hubs(&scoped);
-            if let Ok(value) = serde_json::from_slice::<Value>(&source.body) {
-                rows = value
-                    .get("MediaContainer")
-                    .and_then(|container| container.get("Hub"))
-                    .and_then(Value::as_array)
-                    .and_then(|hubs| hubs.first())
-                    .and_then(|hub| hub.get("Metadata"))
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default();
-            }
-        }
-        if rows.is_empty() && !identifier.contains("recentlyadded") {
-            return Response::error(404, "plexsim: not found");
-        }
-        if let Some(limit) = limit {
-            rows.truncate(limit);
-        }
+        let rows = hub
+            .get("Metadata")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
         Response::json(
             200,
-            self.container(
-                Map::from_iter([
-                    ("allowSync".to_string(), json!(true)),
-                    ("Metadata".to_string(), Value::Array(rows.clone())),
-                ]),
-                true,
-            ),
+            self.hub_container(Map::from_iter([
+                ("size".to_string(), json!(rows.len())),
+                ("allowSync".to_string(), json!(true)),
+                ("Metadata".to_string(), Value::Array(rows)),
+            ])),
         )
     }
 
