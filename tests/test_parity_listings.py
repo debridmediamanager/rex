@@ -216,6 +216,83 @@ def run(port):
     check("/resolution/top is the resolution bucket, the whole library",
           len(resolution.get("Metadata") or []) == 6, resolution.get("size"))
 
+    # -- /library/shared -------------------------------------------------------------
+    shared = mc(port, "/library/shared/all")
+    first = (shared.get("Metadata") or [{}])[0]
+    check("a shared library row keeps the section row's attribute order",
+          list(first)[:3] == ["art", "key", "thumb"]
+          and list(first).index("contentChangedAt") > list(first).index("directory"),
+          list(first))
+    status, head, xml = request(port, "GET", "/library/shared/all",
+                                {"Accept": "application/xml"})
+    check("a shared library row renders as <Directory>",
+          b"<Directory art=" in xml and b"<Video " not in xml, xml[:300])
+    shared = mc(port, "/library/shared/all?includePreferences=1")
+    show_row = next(r for r in shared.get("Metadata") or [] if r.get("type") == "show")
+    sort = next(s for s in show_row["Preferences"]["Setting"] if s.get("id") == "episodeSort")
+    check("a shared show library's episodeSort is the per-show variant",
+          sort.get("summary") == "How to sort the episodes for this show."
+          and sort.get("enumValues") == "-1:Library default|0:Oldest first|1:Newest first",
+          sort)
+
+    # -- Add Library -----------------------------------------------------------------
+    form = ("name=parity+probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex+Movie"
+            "&language=en-US&location=%2Fdata%2Fprobe")
+    status, head, body = request(port, "POST", "/library/sections?" + form)
+    row = ((body or {}).get("MediaContainer") or {}).get("Directory", [{}])[0] \
+        if isinstance(body, dict) else {}
+    check("Add Library answers 201 naming the library in Location",
+          status == 201 and head.get("location") == "/library/sections/3", (status, head))
+    check("the created row's uuid is the CRC-32 of name-type, its Location the form's",
+          row.get("uuid") == "000000000000000000000000%08x" % __import__("zlib").crc32(
+              b"parity probe-movie")
+          and row.get("Location") == [{"id": 1, "path": "/data/probe"}], row)
+    check("the created row is the bare create projection",
+          [k for k in row if k != "Location"] == [
+              "refreshing", "key", "type", "title", "agent", "scanner", "language", "uuid",
+              "content", "directory", "contentChangedAt", "hidden"]
+          and "identifier" not in (body or {}).get("MediaContainer", {}), row)
+    status, head, xml = request(port, "POST", "/library/sections?" + form.replace(
+        "parity+probe", "parity+xml"), {"Accept": "application/xml"})
+    check("Add Library answers XML to an XML client",
+          status == 201 and head.get("content-type") == "text/xml;charset=utf-8"
+          and xml.startswith(b"<?xml"), (status, head))
+    for label, bad in (("an unknown numeric type", "type=9"),
+                       ("an unknown language", "language=zz-ZZ"),
+                       ("a missing location", "location=")):
+        name, value = bad.split("=")
+        pairs = [p for p in form.split("&") if not p.startswith(name + "=")]
+        if value:
+            pairs.append(bad)
+        got = request(port, "POST", "/library/sections?" + "&".join(pairs))[0]
+        check("Add Library refuses %s with a 400" % label, got == 400, got)
+    got = request(port, "POST", "/library/sections?" + form.replace(
+        "type=movie", "type=1").replace("tv.plex.agents.movie", "tv.plex.agents.none")
+        .replace("parity+probe", "parity+numeric"))
+    check("a numeric type and the none agent are accepted",
+          got[0] == 201 and got[2]["MediaContainer"]["Directory"][0]["type"] == "movie", got[:2])
+    got = request(port, "POST", "/library/sections?name=W15d&type=show"
+                  "&agent=tv.plex.agents.series&scanner=Plex+TV+Series&language=en-US"
+                  "&location=%2Fdata%2Fw15d&prefs%5BflattenSeasons%5D=1")
+    created = got[2]["MediaContainer"]["Directory"][0] if got[0] == 201 else {}
+    check("a create's prefs are a prefs write, which stamps updatedAt",
+          isinstance(created.get("updatedAt"), int) and created["updatedAt"] > 0, created)
+
+    # -- a library's prefs ------------------------------------------------------------
+    for query in ("originalTitles=true", "respectTags=01", "hidden=%207",
+                  "autoCollectionThreshold=1_0"):
+        request(port, "PUT", "/library/sections/1/prefs?" + query)
+    values = {s["id"]: s.get("value") for s in
+              mc(port, "/library/sections/1/prefs").get("Setting") or []}
+    check("a prefs write stores bool true for `true`, false for `01`, and int() values",
+          (values.get("originalTitles"), values.get("respectTags"), values.get("hidden"),
+           values.get("autoCollectionThreshold")) == ("true", "false", "7", "10"), values)
+    reshaped = {s["id"]: s.get("value") for s in
+                mc(port, "/library/sections/1/prefs?agent=tv.plex.agents.none")
+                .get("Setting") or []}
+    check("an agent-reshaped form keeps the library's written values",
+          reshaped.get("hidden") == "7", reshaped)
+
     # -- empty write answers ---------------------------------------------------------
     for method, path in (("PUT", "/library/sections/1/analyze"),
                          ("PUT", "/library/sections/1/emptyTrash"),
