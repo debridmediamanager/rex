@@ -356,6 +356,22 @@ def run(port):
                              for row in posterless),
           [(r.get("ratingKey"), r.get("Image")) for r in posterless[:2]])
 
+    # -- a library's timeline ---------------------------------------------------------
+    uri = ("server%3A%2F%2Ff1x7u4e0000000000000000000000000000000f1%2Fcom.plexapp.plugins"
+           ".library%2Flibrary%2Fmetadata%2F1007")
+    status, _, body = request(port, "POST", "/library/collections?type=1&title=Timeline+Probe"
+                              "&smart=0&sectionId=1&uri=" + uri)
+    made = ((body or {}).get("MediaContainer") or {}).get("Metadata", [{}])[0] \
+        if isinstance(body, dict) else {}
+    request(port, "DELETE", "/library/collections/%s" % made.get("ratingKey"))
+    rows = mc(port, "/library/sections/1/timeline").get("Metadata") or []
+    stub = next((r for r in rows if r.get("ratingKey") == made.get("ratingKey")), None)
+    check("a deleted collection is a state-9 stub on its library's timeline",
+          stub == {"ratingKey": made.get("ratingKey"),
+                   "key": "/library/metadata/%s" % made.get("ratingKey"), "guid": "",
+                   "type": "movie", "title": "", "summary": "", "state": 9,
+                   "metadataState": "deleted"}, (status, stub, [r.get("ratingKey") for r in rows]))
+
     # -- empty write answers ---------------------------------------------------------
     for method, path in (("PUT", "/library/sections/1/analyze"),
                          ("PUT", "/library/sections/1/emptyTrash"),
