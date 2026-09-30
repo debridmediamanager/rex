@@ -17084,25 +17084,13 @@ impl Runtime {
             }
             "allLeaves" => {
                 let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
+                // Measured on both servers: `/allLeaves` of anything but a SHOW is
+                // empty -- a movie's (it has no leaves beneath it), a season's (its
+                // episode-list container, size 0) and an episode's alike.
                 let (view_group, mut rows) = if kind == "movie" {
-                    ("movie", vec![self.child_list_row(row, query)])
-                } else if kind == "season" {
-                    // A season's own allLeaves is an intentionally empty
-                    // episode container; the descendants are exposed by its
-                    // /children route and by the owning show/episode views.
+                    ("movie", Vec::new())
+                } else if matches!(kind, "season" | "episode") {
                     ("episode", Vec::new())
-                } else if kind == "episode" {
-                    let parent = row
-                        .get("parentRatingKey")
-                        .map(string_value)
-                        .unwrap_or_default();
-                    (
-                        "episode",
-                        self.children(&parent)
-                            .into_iter()
-                            .map(|leaf| self.child_list_row(&leaf, query))
-                            .collect::<Vec<_>>(),
-                    )
                 } else {
                     // Cycle 54: `unwatched=` is a 0/1 option on `/allLeaves` too --
                     // anything else a 400 -- and at 1 it drops the watched episodes.
