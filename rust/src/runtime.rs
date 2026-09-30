@@ -1164,6 +1164,21 @@ impl Runtime {
         out
     }
 
+    /// A written item setting echoed as a string attribute on the row, the way
+    /// `episodeSort` shows on a real show -- on the item's own detail read only.
+    fn echo_item_prefs(original: &Value, object: &mut Map<String, Value>) {
+        if let Some(stored) = original.get("_prefs").and_then(Value::as_object).cloned() {
+            for (name, value) in stored {
+                let text = string_value(&value);
+                if text.is_empty() {
+                    object.shift_remove(&name);
+                } else {
+                    object.insert(name, json!(text));
+                }
+            }
+        }
+    }
+
     fn detail_row(&self, original: &Value) -> Value {
         let mut row = strip_private_value(original);
         let Some(object) = row.as_object_mut() else {
@@ -1386,16 +1401,9 @@ impl Runtime {
         // before this projection is built.  Read the private preference map
         // from the owning catalog value so item settings still echo as row
         // attributes after a PUT.
-        if let Some(stored) = original.get("_prefs").and_then(Value::as_object).cloned() {
-            for (name, value) in stored {
-                let text = string_value(&value);
-                if text.is_empty() {
-                    object.shift_remove(&name);
-                } else {
-                    object.insert(name, json!(text));
-                }
-            }
-        }
+        // The oracle echoes them on the item's own DETAIL read only (`show_detail` and
+        // the detail route); a listing, a hub, a child list or a search row is the
+        // public row and carries none -- see `echo_item_prefs`.
         if kind == "movie" {
             let unmatched = object
                 .get("guid")
@@ -16619,6 +16627,9 @@ impl Runtime {
                 prepared
             };
             let mut detail = self.detail_row(&prepared);
+            if let Some(object) = detail.as_object_mut() {
+                Self::echo_item_prefs(&prepared, object);
+            }
             self.apply_detail_blocks(row, &mut detail, query);
             let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
             if let Some(excluded) = query.get("excludeFields") {
