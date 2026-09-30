@@ -219,6 +219,7 @@ pub struct RuntimeOptions {
     pub verbose: bool,
     pub heartbeat_interval: u64,
     pub account_state_interval: u64,
+    pub plex_direct_host: Option<String>,
 }
 
 impl Default for RuntimeOptions {
@@ -243,6 +244,7 @@ impl Default for RuntimeOptions {
             verbose: false,
             heartbeat_interval: plextv::HEARTBEAT_INTERVAL,
             account_state_interval: plextv::ACCOUNT_STATE_INTERVAL,
+            plex_direct_host: None,
         }
     }
 }
@@ -364,6 +366,8 @@ pub struct Runtime {
     unknown: Vec<String>,
     /// The request was refused for its token, so it is not a `requests.log` row.
     refused_for_token: bool,
+    /// `--plex-direct-host`: the `Host:` line GDM answers with.
+    plex_direct_host: Option<String>,
     /// What restoring `--state` did, for `main()`'s `state file %s: %s` line.
     pub state_summary: String,
     decision_profiles: decision::Profiles,
@@ -547,6 +551,7 @@ impl Runtime {
             requests: Vec::new(),
             unknown: Vec::new(),
             refused_for_token: false,
+            plex_direct_host: options.plex_direct_host,
             state_summary: "no saved state".to_string(),
             decision_profiles,
             part_mode: options.part_mode,
@@ -2174,7 +2179,13 @@ impl Runtime {
         Response::json(200, body)
     }
 
+    /// `main()`: `--plex-direct-host`, else the `--public-url` hostname only when it is a
+    /// real `*.plex.direct` name -- a tunnel hostname is not what the field carries on
+    /// either reference -- else no `Host:` line at all.
     fn gdm_host(&self) -> Option<String> {
+        if let Some(host) = &self.plex_direct_host {
+            return Some(host.clone());
+        }
         self.public_url.as_deref().and_then(|url| {
             let host = url
                 .split_once("://")
@@ -2186,7 +2197,9 @@ impl Runtime {
                 .split(':')
                 .next()
                 .unwrap_or("");
-            (!host.is_empty()).then(|| host.to_string())
+            // `urlsplit(...).hostname` is lower-cased.
+            let host = host.to_ascii_lowercase();
+            (!host.is_empty() && host.ends_with(".plex.direct")).then_some(host)
         })
     }
 

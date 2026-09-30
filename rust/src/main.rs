@@ -67,9 +67,7 @@ fn parse_server_args(args: &[String]) -> Result<runtime::RuntimeOptions, String>
                     .parse()
                     .map_err(|_| "bad --account-state-interval".to_string())?
             }
-            "--plex-direct-host" => {
-                let _ = value(&mut index, option)?;
-            }
+            "--plex-direct-host" => options.plex_direct_host = Some(value(&mut index, option)?),
             _ if option.starts_with('-') => return Err(format!("unknown option {option}")),
             _ => return Err(format!("unexpected argument {option}")),
         }
