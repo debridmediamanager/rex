@@ -9999,10 +9999,13 @@ impl Runtime {
                 })
                 .collect::<Vec<_>>();
             if random && rows.len() > 1 {
-                // The reference holds a process-stable sample.  A stable
-                // ordering is equivalent for this catalog and keeps responses
-                // deterministic across clients while preserving membership.
-                rows.sort_by_key(|row| key_of(row).unwrap_or_default());
+                // Cycles 28 and 30, measured on zen: a `random="1"` shelf is a random
+                // SAMPLE of its whole key set in random order -- `movie.topunwatched.1`'s
+                // 30 rows sat at positions 26 to 579 of 583, not monotonic -- and the
+                // sample is STABLE per (shelf, `count=`) across reads and clients. The
+                // oracle mints one seed per pair for the life of the process. Sorting by
+                // ratingKey was neither: the same lowest keys on every run, in key order.
+                shelf_sample(&identifier, count, &mut rows);
             }
             // Cycle 28: a negative count is `len(rows) + count` clamped at zero, and it
             // always reports the shelf as exhausted.
@@ -23407,6 +23410,40 @@ fn py_round(value: f64) -> i64 {
         }
     } else {
         value.round() as i64
+    }
+}
+
+/// A `random="1"` hub shelf's sample: the rows shuffled by a seed minted once per
+/// (shelf, count) and held for the life of the process (the oracle's `shelf_seeds`).
+fn shelf_sample<T>(identifier: &str, count: Option<i64>, items: &mut [T]) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static SEEDS: std::sync::OnceLock<Mutex<HashMap<(String, Option<i64>), u64>>> =
+        std::sync::OnceLock::new();
+    static MINTED: AtomicU64 = AtomicU64::new(0);
+    let seeds = SEEDS.get_or_init(|| Mutex::new(HashMap::new()));
+    let seed = {
+        let mut map = seeds.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        *map.entry((identifier.to_string(), count)).or_insert_with(|| {
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|duration| duration.as_nanos() as u64)
+                .unwrap_or_default();
+            nanos
+                ^ (std::process::id() as u64).rotate_left(32)
+                ^ MINTED.fetch_add(1, Ordering::Relaxed).wrapping_mul(0x9E37_79B9_7F4A_7C15)
+        })
+    };
+    let mut state = seed;
+    let mut next = || {
+        state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    };
+    for index in (1..items.len()).rev() {
+        let other = (next() % (index as u64 + 1)) as usize;
+        items.swap(index, other);
     }
 }
 

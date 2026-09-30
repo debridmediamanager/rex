@@ -3071,3 +3071,10 @@ are changing; replay the client's exact request before altering behavior.
   Whether a real PMS STORES such an upload at all is unmeasured (a scratch write); the lockstep
   replay reached it only because the recorded request stream kept binary bodies as the text
   `<binary N bytes>`.
+- **A `random="1"` shelf is sampled natively too.** The native server sorted `movie.topunwatched`,
+  `tv.startwatching`, `tv.rediscover` and `tv.toprated` by ratingKey and took the head, so on a real
+  catalog the same lowest keys showed forever, in key order, across restarts -- neither half of
+  cycles 28/30 (a random sample of the whole set in random order, stable per shelf and `count=` for
+  the life of the process). It was the whole `/hubs/sections/{id}` residue of the lockstep replay:
+  the rows are the same SET on both servers, and every field difference under them was one row
+  compared against another.

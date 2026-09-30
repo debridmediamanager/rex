@@ -10,7 +10,9 @@ Each check asserts the MEASURED answer, not the other server's:
 - an embedded stream's 501 carries the reason phrase `Not Implemented` (kids), and an
   uploaded sidecar's 200 orders its length before its type (plexscratch42, cycle 74);
 - the photo transcoder (and ultrablur through it) 500s an uploaded poster whose bytes are
-  not an image, the 200-that-does-not-decode rule of cycle 52.
+  not an image, the 200-that-does-not-decode rule of cycle 52;
+- a `random="1"` hub shelf is a random sample of its whole set in random order, held per
+  (shelf, count) for the life of the process (zen, cycles 28 and 30).
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -202,12 +204,51 @@ def chunk(kind, data):
             + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF))
 
 
+def shelf(port, count):
+    hubs = json.loads(raw(port, "GET", "/hubs/sections/1?count=%d" % count)[4])
+    for hub in hubs["MediaContainer"].get("Hub", []):
+        if hub["hubIdentifier"] == "movie.topunwatched.1":
+            return [row["ratingKey"] for row in hub.get("Metadata", [])], hub.get("random")
+    return [], None
+
+
+def run_random_shelves(starts=6):
+    """Cycles 28 and 30 (zen): a `random="1"` shelf is a random SAMPLE of its whole set in
+    random order, stable per (shelf, `count=`) for the life of the process. Over six fresh
+    processes a real sampler repeats one six-row order every time with p = 720**-5 and one
+    two-row sample with p = 15**-5; a sorted head does both every time."""
+    orders, pairs, stable, flagged = set(), set(), True, True
+    for _ in range(starts):
+        process, port = start()
+        try:
+            # The fixture's movies rate below the shelf's 7.0 floor; lift all six over it.
+            for key in (1007, 1008, 1009, 1012, 1013, 1014):
+                raw(port, "PUT", "/library/metadata/%d?audienceRating.value=8.0" % key)
+            first, flag = shelf(port, 40)
+            again, _ = shelf(port, 40)
+            head, _ = shelf(port, 2)
+            head_again, _ = shelf(port, 2)
+        finally:
+            stop(process)
+        stable = stable and first == again and head == head_again and len(first) > 2
+        flagged = flagged and flag is True
+        orders.add(tuple(first))
+        pairs.add(frozenset(head))
+    check("Top Unwatched is stable per (shelf, count) within a process, and flagged random",
+          stable and flagged, (orders, pairs))
+    check("... and its order differs between processes (a random sample, not a sorted head)",
+          len(orders) > 1, orders)
+    check("... and a count=2 shelf samples the whole set, not its first two rows",
+          len(set().union(*pairs)) > 2, pairs)
+
+
 def main():
     process, port = start()
     try:
         run(port)
     finally:
         stop(process)
+    run_random_shelves()
     passed = sum(results)
     print("PASS %d/%d residue checks" % (passed, len(results)))
     return 0 if passed == len(results) else 1
