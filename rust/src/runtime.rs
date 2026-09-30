@@ -1279,17 +1279,17 @@ impl Runtime {
             );
             if let Some(parent_key) = object.get("parentRatingKey").map(string_value) {
                 if let Some(parent) = self.catalog.get(&parent_key) {
+                    // `parentThumb` and `parentYear` are STORED on the season, as the
+                    // oracle keeps them: derived at load, moved by an artwork cascade or
+                    // a season year edit, dropped by a show unmatch -- and NOT re-derived
+                    // from the show on every read, so a show's later year edit or an
+                    // unmatch that took the borrowed poster away reads the way the
+                    // oracle's row does.
                     for (source, destination) in [
                         ("title", "parentTitle"),
                         ("studio", "parentStudio"),
-                        ("thumb", "parentThumb"),
-                        ("year", "parentYear"),
                         ("index", "parentIndex"),
                     ] {
-                        if destination == "parentYear" && object.get("year").is_some() {
-                            object.shift_remove(destination);
-                            continue;
-                        }
                         if let Some(value) = parent.get(source).filter(|value| {
                             !matches!(destination, "parentTitle" | "parentStudio")
                                 || !string_value(value).is_empty()
@@ -3807,6 +3807,13 @@ impl Runtime {
                     .and_then(|parent| self.catalog.get(&parent).cloned());
                 if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
                     object.shift_remove("year");
+                    if let Some(year) = show
+                        .as_ref()
+                        .and_then(|show| show.get("year"))
+                        .filter(|year| !year.is_null())
+                    {
+                        object.insert("parentYear".to_string(), year.clone());
+                    }
                     if let Some(thumb) = show
                         .as_ref()
                         .and_then(|show| show.get("thumb"))
