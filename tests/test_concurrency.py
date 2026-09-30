@@ -182,6 +182,13 @@ class Server:
             self.machine, LIBRARY, key), safe="")
 
 
+def failure_excerpt(output):
+    """The server log around its first failed handler, which is what a report needs."""
+    marks = [output.find(mark) for mark in ("handler failed", "Traceback")]
+    marks = [mark for mark in marks if mark >= 0]
+    return output[max(0, min(marks) - 200):min(marks) + 2500] if marks else output[-1500:]
+
+
 def headers_for(client):
     return {"Accept": "application/json", "X-Plex-Client-Identifier": client,
             "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
@@ -416,8 +423,46 @@ def prop_races(catalog, pairs):
             call(port, "DELETE", "/library/collections/%s" % collection)
         check("races: concurrent collection adds and removes answer two lists and keep both writes",
               not bad, "%d of %d pairs, e.g. %s" % (len(bad), pairs, bad[:4]))
+        # A listing read while other clients create and delete lists. The oracle built
+        # both listings by iterating the live dict, so a create or delete landing inside
+        # the iteration was a 500 (`dictionary changed size during iteration`): 2 of
+        # 330,000 load requests in a five-minute soak, 4 in 1,366 reads here.
+        for kind, create, listing, delete in (
+                ("collection", "/library/collections?type=1&title=Churn%%20%d&smart=0&sectionId=1&uri=%s",
+                 "/library/sections/1/collections", "/library/collections/%s"),
+                ("playlist", "/playlists?type=video&title=Churn%%20%d&smart=0&uri=%s",
+                 "/playlists", "/playlists/%s")):
+            seeder = Client(port, "cc-churn-seed")
+            seeded = [rows(seeder.request("POST", create % (index, server.uri(MOVIES[0])))[1])[0]["ratingKey"]
+                      for index in range(300)]
+            stop_at = time.time() + 5
+            statuses = collections.Counter()
+
+            def churn(index):
+                client = Client(port, "cc-churn-w%d" % index)
+                while time.time() < stop_at:
+                    status, body = client.request("POST", create % (index, server.uri(MOVIES[1])))[:2]
+                    if status == 200:
+                        client.request("DELETE", delete % rows(body)[0]["ratingKey"])
+                client.close()
+
+            def read(index):
+                client = Client(port, "cc-churn-r%d" % index)
+                while time.time() < stop_at:
+                    statuses[client.request("GET", listing)[0]] += 1
+                client.close()
+
+            workers = [threading.Thread(target=churn, args=(index,)) for index in range(4)]
+            workers += [threading.Thread(target=read, args=(index,)) for index in range(4)]
+            [worker.start() for worker in workers]
+            [worker.join() for worker in workers]
+            for key in seeded:
+                seeder.request("DELETE", delete % key)
+            seeder.close()
+            check("races: the %s listing answers 200 while other clients create and delete" % kind,
+                  set(statuses) == {200}, dict(statuses))
         check("races: the server logged no failed handler", "handler failed" not in server.output()
-              and "Traceback" not in server.output(), server.output()[-1500:])
+              and "Traceback" not in server.output(), failure_excerpt(server.output()))
     finally:
         server.stop()
 
@@ -833,7 +878,7 @@ def prop_load(catalog, seconds, threads, reaper_seconds=None, during=None):
         check("load: no id was handed out twice", len(ids) == len(set(ids)),
               [key for key, n in collections.Counter(ids).items() if n > 1][:5])
         check("load: the server logged no failed handler", "handler failed" not in server.output()
-              and "Traceback" not in server.output(), server.output()[-1500:])
+              and "Traceback" not in server.output(), failure_excerpt(server.output()))
         return server, abandoned
     except BaseException:
         server.stop()
@@ -952,6 +997,7 @@ def state_parses(path):
 
 def prop_state(catalog, seconds, threads, sig, label):
     work = tempfile.mkdtemp(prefix="plexsim-cc-state-")
+    server = None
     try:
         state = os.path.join(work, "state")
         server = Server(catalog, state)
@@ -1039,6 +1085,8 @@ def prop_state(catalog, seconds, threads, sig, label):
               "%d doubled, e.g. %s" % (len(doubled), doubled[:5]))
         server.stop()
     finally:
+        if server is not None and server.proc.poll() is None:
+            server.stop()
         shutil.rmtree(work, ignore_errors=True)
 
 
@@ -1138,7 +1186,7 @@ def prop_slow(catalog):
         for sock in stalled:
             sock.close()
         check("slow: the server logged no failed handler", "handler failed" not in server.output()
-              and "Traceback" not in server.output(), server.output()[-1500:])
+              and "Traceback" not in server.output(), failure_excerpt(server.output()))
     finally:
         server.stop()
 

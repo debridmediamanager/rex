@@ -14431,7 +14431,7 @@ class PlexSim:
         tag) contributes no shelf, and postplay is left as it was.
         """
         key = int(row["ratingKey"])
-        for collection in sorted(self.library._collections.values(),
+        for collection in sorted(list(self.library._collections.values()),
                                  key=lambda c: int(c["ratingKey"])):
             if collection.get("smart"):
                 continue

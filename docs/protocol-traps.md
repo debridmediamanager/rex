@@ -3157,3 +3157,8 @@ are changing; replay the client's exact request before altering behavior.
   outside `sim.lock` -- as did the create's id and the server-wide `playlistItemID` step. Playlist
   create/add/remove/move/clear and collection create/add/remove now hold it. Not re-measured on a
   reference for lists (this task allowed no reference writes): fire barrier pairs at plexscratch.
+- **A list listing is a 200 while other clients create and delete lists.** The oracle walked its live
+  playlist and collection tables, so a create or delete landing inside the walk answered the listing
+  with a 500 (`dictionary changed size during iteration`): 81 of 292 collection listings and 10 of
+  319 playlist listings read beside four churning clients over 300 lists, and 2 in a five-minute
+  32-client soak (2026-09-30). A real PMS reads its lists from SQLite; every walk now snapshots.

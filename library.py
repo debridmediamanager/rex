@@ -2018,10 +2018,10 @@ class Library:
             removed_rows.extend(source_rows)
             for gone in removed:
                 self._forget_item(gone)
-            for playlist in self._playlists.values():
+            for playlist in list(self._playlists.values()):
                 playlist["items"] = [item for item in playlist["items"]
                                      if int(item["ratingKey"]) not in removed]
-            for collection in self._collections.values():
+            for collection in list(self._collections.values()):
                 collection["items"] = [item_key for item_key in collection["items"]
                                        if int(item_key) not in removed]
 
@@ -2049,10 +2049,10 @@ class Library:
             if season is not None and not self.catalog.children(parent_key):
                 self.catalog.remove(int(parent_key))
                 parent_key = season.get("parentRatingKey") or parent_key
-        for playlist in self._playlists.values():
+        for playlist in list(self._playlists.values()):
             playlist["items"] = [i for i in playlist["items"]
                                  if int(i["ratingKey"]) not in removed]
-        for collection in self._collections.values():
+        for collection in list(self._collections.values()):
             collection["items"] = [k for k in collection["items"] if int(k) not in removed]
         if parent_key:
             parent = self.catalog.items.get(int(parent_key))
@@ -2074,7 +2074,11 @@ class Library:
 
     def playlists(self, playlist_type=None):
         rows = []
-        for playlist in self._playlists.values():
+        # Every walk of `_playlists` and `_collections` takes a snapshot first: requests
+        # run on their own threads, and a create or delete landing inside the walk was a
+        # 500 (`dictionary changed size during iteration`) -- 81 of 292 collection
+        # listings read beside four creating clients (`tests/test_concurrency.py`).
+        for playlist in list(self._playlists.values()):
             rows.append(self._playlist_row(playlist))
         if playlist_type:
             rows = [r for r in rows if r.get("playlistType") == playlist_type]
@@ -2381,7 +2385,7 @@ class Library:
     # -- collections -----------------------------------------------------
 
     def collections(self, section_id=None):
-        rows = [self._collection_row(c) for c in self._collections.values()
+        rows = [self._collection_row(c) for c in list(self._collections.values())
                 if section_id is None or str(c["librarySectionID"]) == str(section_id)]
         return sorted(rows, key=lambda r: str(r.get("titleSort") or r.get("title") or ""))
 
@@ -2442,7 +2446,7 @@ class Library:
         return self._collections.get(int(key)) if str(key).isdigit() else None
 
     def find_collection(self, title, section_id=None):
-        for collection in self._collections.values():
+        for collection in list(self._collections.values()):
             if str(collection.get("tag", collection["title"])).lower() == str(title).lower() and (
                     section_id is None
                     or str(collection["librarySectionID"]) == str(section_id)):
