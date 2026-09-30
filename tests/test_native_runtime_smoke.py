@@ -114,6 +114,26 @@ def main():
         native = shlex.split(os.environ["PLEXSIM_SERVER"])[0]
         malformed = subprocess.run([native, "--unknown-native-option"], cwd=ROOT, capture_output=True)
         check(results, "native CLI rejects an unconsumed option", malformed.returncode != 0)
+        # `main()`'s argparse refuses these before serving anything; a CLI that
+        # accepted them would start a server here, which the timeout catches.
+        for label, extra, wanted in (
+            ("an unknown --part-mode", ["--part-mode", "bogus"], b"invalid choice"),
+            ("an unknown --gdm", ["--gdm", "sometimes"], b"invalid choice"),
+            ("--tls-key without --tls-cert", ["--tls-key", "key.pem"], b"--tls-key needs --tls-cert"),
+        ):
+            probe = socket.socket()
+            probe.bind(("127.0.0.1", 0))
+            spare = probe.getsockname()[1]
+            probe.close()
+            try:
+                refused = subprocess.run(
+                    [native, "--port", str(spare), "--catalog", "tests/catalog_ui.json",
+                     "--gdm", "off"] + extra,
+                    cwd=ROOT, capture_output=True, timeout=5)
+                ok = refused.returncode == 2 and wanted in refused.stderr
+            except subprocess.TimeoutExpired:
+                ok = False
+            check(results, "native CLI refuses " + label, ok)
     finally:
         process.terminate()
         try:

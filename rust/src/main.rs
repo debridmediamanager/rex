@@ -72,6 +72,26 @@ fn parse_server_args(args: &[String]) -> Result<runtime::RuntimeOptions, String>
             _ => return Err(format!("unexpected argument {option}")),
         }
     }
+    // `main()`'s argparse: two options take a fixed set of values, and a key file
+    // means nothing without the certificate it belongs to.
+    for (name, value, choices) in [
+        ("--part-mode", &options.part_mode, &["proxy", "redirect"][..]),
+        ("--gdm", &options.gdm, &["auto", "on", "off"][..]),
+    ] {
+        if !choices.contains(&value.as_str()) {
+            return Err(format!(
+                "argument {name}: invalid choice: '{value}' (choose from {})",
+                choices
+                    .iter()
+                    .map(|choice| format!("'{choice}'"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+    }
+    if options.tls_key.is_some() && options.tls_cert.is_none() {
+        return Err("--tls-key needs --tls-cert".to_string());
+    }
     Ok(options)
 }
 
