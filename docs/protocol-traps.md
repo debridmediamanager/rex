@@ -3276,3 +3276,8 @@ are changing; replay the client's exact request before altering behavior.
 - **Adding a show to a play queue adds its episodes.** python-plexapi's `addItem(show)` grows a
   queue by the show's three episodes on plexscratch42 (1.42.2), as a create expands one; the
   native server added the show row itself, which has no Media to play.
+- **A decision's streams are NOT localised.** zen (1.42.2) answers Plex Web's MDE decision for a
+  movie with a French track selected as `Français (DTS-HD MA 5.1)` under `X-Plex-Language=en` and
+  its English subtitle as `English` under `fr`, while the same item's read says `French` and
+  `Anglais` (`tests/fixtures/decision_stream_language_zen.json`). The native server kept the stored
+  names; the oracle ran the item read's stream localiser over the decision too.

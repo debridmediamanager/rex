@@ -21,6 +21,9 @@
   ignored the uri's `type`, capped the one show and expanded it.
 - A playlist's `deleted` frame names the playlist; the native server's was empty.
 - `addItem(show)` grows a queue by the show's episodes; the native server added the show.
+- A decision's streams keep their stored language names under any `X-Plex-Language`
+  (`tests/fixtures/decision_stream_language_zen.json`) while the item read localises them;
+  the oracle localised the decision too.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -303,6 +306,31 @@ def write_chain_checks(port):
           added == ["episode"] * leaves, added)
 
 
+def decision_language_checks(port):
+    measured = json.load(open(os.path.join(HERE, "fixtures", "decision_stream_language_zen.json")))
+    tags = {language: {(row["streamType"], row["languageTag"]): row["language"]
+                       for row in measured["decision"][language]} for language in ("en", "fr")}
+    items = {language: {(row["streamType"], row["languageTag"]): row["language"]
+                        for row in measured["item"][language]} for language in ("en", "fr")}
+    check("fixture: zen's decision names the French track Français under en and fr",
+          tags["en"][(2, "fr")] == tags["fr"][(2, "fr")] == "Français", tags)
+    check("fixture: ... and the English subtitle English under fr, where the item read says Anglais",
+          tags["fr"][(3, "en")] == "English" and items["fr"][(3, "en")] == "Anglais", (tags, items))
+    for language, english, french in (("en", "English", "Français"), ("fr", "English", "Français")):
+        path = ("/video/:/transcode/universal/decision?path=%2Flibrary%2Fmetadata%2F1011"
+                "&mediaIndex=0&partIndex=0&protocol=hls&directPlay=1&directStream=1&location=lan"
+                "&subtitles=none&hasMDE=1&session=xb83-lang-" + language + "&X-Plex-Language=" + language
+                + "&X-Plex-Client-Identifier=xb83-lang&X-Plex-Product=Plex%20Web"
+                "&X-Plex-Platform=Chrome&X-Plex-Version=4.147.1")
+        status, raw = request(port, "GET", path, query_only=True)
+        streams = [(row.get("streamType"), row.get("languageTag"), row.get("language"))
+                   for row in ET.fromstring(raw).iter("Stream")] if status == 200 else status
+        want = {("2", "en"): english, ("3", "en"): english, ("3", "fr"): french}
+        got = {(kind, tag): name for kind, tag, name in streams if (kind, tag) in want} \
+            if isinstance(streams, list) else streams
+        check("a decision under X-Plex-Language=%s keeps the stored names" % language, got == want, streams)
+
+
 def main():
     process, port = start()
     try:
@@ -310,6 +338,7 @@ def main():
         queue_checks(port)
         continuous_checks(port)
         write_chain_checks(port)
+        decision_language_checks(port)
     finally:
         process.terminate()
         try:

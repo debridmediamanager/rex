@@ -1,0 +1,150 @@
+{
+ "_provenance": "zen (PMS 1.42.2.10156), 2026-10-01, cycle 83 B; read-only. Movie 1098 (a French DTS-HD MA track selected, an English subtitle selected). The decision is Plex Web's MDE shape with subtitles=none, every X-Plex-* in the query (token in a header, redacted); the item read is a plain GET. Audio and subtitle streams only.",
+ "decision_path": "/video/:/transcode/universal/decision?path=%2Flibrary%2Fmetadata%2F1098&mediaIndex=0&partIndex=0&protocol=hls&directPlay=1&directStream=1&location=lan&subtitles=none&hasMDE=1&session=<s>&X-Plex-Language=<L>&X-Plex-Client-Identifier=<c>&X-Plex-Product=Plex%20Web&X-Plex-Platform=Chrome&X-Plex-Version=4.147.1",
+ "decision": {
+  "en": [
+   {
+    "streamType": 2,
+    "selected": true,
+    "languageTag": "fr",
+    "language": "Français",
+    "displayTitle": "Français (DTS-HD MA 5.1)",
+    "extendedDisplayTitle": "Français (DTS-HD MA 5.1)"
+   },
+   {
+    "streamType": 3,
+    "selected": true,
+    "languageTag": "en",
+    "language": "English",
+    "displayTitle": "English",
+    "extendedDisplayTitle": "English (PGS)"
+   }
+  ],
+  "fr": [
+   {
+    "streamType": 2,
+    "selected": true,
+    "languageTag": "fr",
+    "language": "Français",
+    "displayTitle": "Français (DTS-HD MA 5.1)",
+    "extendedDisplayTitle": "Français (DTS-HD MA 5.1)"
+   },
+   {
+    "streamType": 3,
+    "selected": true,
+    "languageTag": "en",
+    "language": "English",
+    "displayTitle": "English",
+    "extendedDisplayTitle": "English (PGS)"
+   }
+  ]
+ },
+ "item": {
+  "en": [
+   {
+    "streamType": 2,
+    "selected": true,
+    "languageTag": "fr",
+    "language": "French",
+    "displayTitle": "French (DTS-HD MA 5.1)",
+    "extendedDisplayTitle": "French (DTS-HD MA 5.1)"
+   },
+   {
+    "streamType": 2,
+    "languageTag": "es",
+    "language": "Spanish",
+    "displayTitle": "Spanish (DTS-HD MA 5.1)",
+    "extendedDisplayTitle": "Spanish (DTS-HD MA 5.1)"
+   },
+   {
+    "streamType": 3,
+    "selected": true,
+    "languageTag": "en",
+    "language": "English",
+    "displayTitle": "English",
+    "extendedDisplayTitle": "English (PGS)"
+   },
+   {
+    "streamType": 3,
+    "languageTag": "ar",
+    "language": "Arabic",
+    "displayTitle": "Arabic",
+    "extendedDisplayTitle": "Arabic (PGS)"
+   },
+   {
+    "streamType": 3,
+    "languageTag": "fr",
+    "language": "French",
+    "displayTitle": "French",
+    "extendedDisplayTitle": "French (PGS)"
+   },
+   {
+    "streamType": 3,
+    "languageTag": "pt",
+    "language": "Portuguese",
+    "displayTitle": "Portuguese",
+    "extendedDisplayTitle": "Portuguese (PGS)"
+   },
+   {
+    "streamType": 3,
+    "languageTag": "es",
+    "language": "Spanish",
+    "displayTitle": "Spanish",
+    "extendedDisplayTitle": "Spanish (PGS)"
+   }
+  ],
+  "fr": [
+   {
+    "streamType": 2,
+    "selected": true,
+    "languageTag": "fr",
+    "language": "Français",
+    "displayTitle": "Français (DTS-HD MA 5.1)",
+    "extendedDisplayTitle": "Français (DTS-HD MA 5.1)"
+   },
+   {
+    "streamType": 2,
+    "languageTag": "es",
+    "language": "Espagnol",
+    "displayTitle": "Espagnol (DTS-HD MA 5.1)",
+    "extendedDisplayTitle": "Espagnol (DTS-HD MA 5.1)"
+   },
+   {
+    "streamType": 3,
+    "selected": true,
+    "languageTag": "en",
+    "language": "Anglais",
+    "displayTitle": "Anglais",
+    "extendedDisplayTitle": "Anglais (PGS)"
+   },
+   {
+    "streamType": 3,
+    "languageTag": "ar",
+    "language": "Arabe",
+    "displayTitle": "Arabe",
+    "extendedDisplayTitle": "Arabe (PGS)"
+   },
+   {
+    "streamType": 3,
+    "languageTag": "fr",
+    "language": "Français",
+    "displayTitle": "Français",
+    "extendedDisplayTitle": "Français (PGS)"
+   },
+   {
+    "streamType": 3,
+    "languageTag": "pt",
+    "language": "Portugais",
+    "displayTitle": "Portugais",
+    "extendedDisplayTitle": "Portugais (PGS)"
+   },
+   {
+    "streamType": 3,
+    "languageTag": "es",
+    "language": "Espagnol",
+    "displayTitle": "Espagnol",
+    "extendedDisplayTitle": "Espagnol (PGS)"
+   }
+  ]
+ }
+}

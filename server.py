@@ -6011,6 +6011,12 @@ class PlexSim:
             if isinstance(result, dict) and query.get("excludeFields"):
                 result = _exclude_fields(result, query["excludeFields"])
             language = request_language(query, headers)
+            if segments[1:5] == [":", "transcode", "universal", "decision"]:
+                # Cycle 83, measured on zen (1.42.2) over movie 1098: a DECISION's streams
+                # keep their stored names -- `Français (DTS-HD MA 5.1)` under `en` and
+                # `English` under `fr` -- where the same item's read answers `French` and
+                # `Anglais`. The native server never localised them; this did.
+                language = None
             if isinstance(result, dict) and language:
                 # Before the client titles, not after: a real PMS composes the
                 # codec suffix onto the already-localised title.
