@@ -11,6 +11,9 @@
   its next create and moves ownership on an `own=1` read by that form
   (`tests/fixtures/playqueue_query_client_s42.json`). The native server read the header
   alone, so every Plex Web queue stayed alive and an `own=1` read took nothing.
+- `continuous=1` on ONE episode queues it and the episodes after it in its own season
+  (`tests/fixtures/playqueue_continuous_s42.json`); the native server queued the episode
+  alone. python-plexapi's `PlayQueue.create(item, continuous=True)` sends it.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -165,11 +168,39 @@ def queue_checks(port):
           request(port, "GET", "/playQueues/%s" % other, query_only=True)[0] == 404)
 
 
+def continuous_checks(port):
+    measured = json.load(open(os.path.join(HERE, "fixtures", "playqueue_continuous_s42.json")))
+    rule_holds = True
+    for exchange in measured["exchanges"]:
+        key = re.search(r"metadata%2F(\d+)&", exchange["path"]).group(1)
+        season = next(keys for keys in measured["seasons"] if key in keys)
+        rule_holds &= exchange["ratingKeys"] == season[season.index(key):]
+    check("fixture: each continuous queue is the episode and the rest of its season", rule_holds)
+    status, raw = request(port, "GET", "/identity")
+    machine = ET.fromstring(raw).get("machineIdentifier")
+    status, raw = request(port, "GET", "/library/metadata/20001/children")
+    seasons = [row.get("ratingKey") for row in ET.fromstring(raw) if row.get("type") == "season"]
+    cells = 0
+    for season in seasons:
+        status, raw = request(port, "GET", "/library/metadata/%s/children" % season)
+        episodes = [row.get("ratingKey") for row in ET.fromstring(raw)]
+        for position, key in enumerate(episodes):
+            for flag, want in (("1", episodes[position:]), ("0", [key])):
+                status, raw = request(port, "POST", "/playQueues?type=video&uri=server%%3A%%2F%%2F%s"
+                                      "%%2Fcom.plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F%s"
+                                      "&continuous=%s&repeat=0" % (machine, key, flag))
+                got = [row.get("ratingKey") for row in ET.fromstring(raw)] if status == 200 else status
+                check("continuous=%s on episode %s queues %s" % (flag, key, want), got == want, got)
+                cells += 1
+    check("the fixture show has a season with more than one episode to compare", cells > 2 * len(seasons))
+
+
 def main():
     process, port = start()
     try:
         run(port)
         queue_checks(port)
+        continuous_checks(port)
     finally:
         process.terminate()
         try:

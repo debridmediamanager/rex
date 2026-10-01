@@ -3252,3 +3252,10 @@ are changing; replay the client's exact request before altering behavior.
   every Plex Web queue stayed alive and an `own=1` read from Plex Web took nothing; the oracle
   reads the query first. Found by cycle 83's B restart leg listing 19 live queues after `ident60`
   where the oracle lists 16 (the three Plex Web identities' first queues).
+- **`continuous=1` on one episode queues the rest of its SEASON** (plexscratch42, 1.42.2: the
+  first of three episodes queues three, the second two, the last one;
+  `tests/fixtures/playqueue_continuous_s42.json`). The native server ignored the flag and queued
+  the episode alone, so the next episode never played; the oracle had it. Invisible to the
+  cycles' XML flow diff, which compares a reference episode with a different plexsim episode and
+  so always differs in item count; cycle 83 found it by running the oracle and the native server
+  through the same flow.

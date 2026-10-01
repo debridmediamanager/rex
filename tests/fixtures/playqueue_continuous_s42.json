@@ -1,0 +1,71 @@
+{
+ "_provenance": "plexscratch42 (PMS 1.42.2.10156), 2026-10-01, cycle 83 B; token and machine identifier redacted. Show 15 has three seasons of three episodes each, in this order: season 1 = 396, 387, 388; season 2 = 21, 22, 23; season 3 = 25, 26, 27. A queue created with continuous=1 on ONE episode lists that episode and the ones after it in its own season.",
+ "seasons": [
+  [
+   "396",
+   "387",
+   "388"
+  ],
+  [
+   "21",
+   "22",
+   "23"
+  ],
+  [
+   "25",
+   "26",
+   "27"
+  ]
+ ],
+ "exchanges": [
+  {
+   "method": "POST",
+   "path": "/playQueues?type=video&uri=server%3A%2F%2F<machine>%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F396&continuous=1&repeat=0&X-Plex-Client-Identifier=<client>",
+   "status": 200,
+   "playQueueTotalCount": 3,
+   "ratingKeys": [
+    "396",
+    "387",
+    "388"
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/playQueues?type=video&uri=server%3A%2F%2F<machine>%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F387&continuous=1&repeat=0&X-Plex-Client-Identifier=<client>",
+   "status": 200,
+   "playQueueTotalCount": 2,
+   "ratingKeys": [
+    "387",
+    "388"
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/playQueues?type=video&uri=server%3A%2F%2F<machine>%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F388&continuous=1&repeat=0&X-Plex-Client-Identifier=<client>",
+   "status": 200,
+   "playQueueTotalCount": 1,
+   "ratingKeys": [
+    "388"
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/playQueues?type=video&uri=server%3A%2F%2F<machine>%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F22&continuous=1&repeat=0&X-Plex-Client-Identifier=<client>",
+   "status": 200,
+   "playQueueTotalCount": 2,
+   "ratingKeys": [
+    "22",
+    "23"
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/playQueues?type=video&uri=server%3A%2F%2F<machine>%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F27&continuous=1&repeat=0&X-Plex-Client-Identifier=<client>",
+   "status": 200,
+   "playQueueTotalCount": 1,
+   "ratingKeys": [
+    "27"
+   ]
+  }
+ ]
+}
