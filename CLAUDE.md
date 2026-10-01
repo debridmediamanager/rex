@@ -358,6 +358,16 @@ python3 tests/test_parity_playback.py       # play queues, sessions, timeline, s
 python3 tests/test_parity_server.py         # server-level routes, the plug-in dispatcher, resources, Live TV: the oracle's values
 python3 tests/test_parity_lists.py          # playlists, collections, list artwork, empty answers: the oracle's values
 python3 tests/test_parity_residue.py        # what a lockstep replay of the whole UI suite still found: the oracle's values
+python3 tests/test_parity_vocabulary.py     # cycle 83's differential vocabulary sweep: the filter grammar, include*, paging
+python3 tests/test_parity_sweep_vb.py       # the path-segment and request-header sweeps (unknown leaves, /web, idle close)
+python3 tests/test_parity_verbs.py          # the measured verb table per route family
+python3 tests/test_parity_leftovers.py      # the paging grammar, repeated keys, empty collections, clips, uploads
+python3 tests/test_parity_residue_ra.py     # the UI suite's residue on both servers' own request streams
+python3 tests/test_parity_persist.py        # every kind of state --state keeps, across a restart and a rebuild
+python3 tests/test_parity_split_guid.py     # a split-off row; no Guid on an unmatched row
+python3 tests/test_parity_inner_token.py    # a query-string token reaches the transcoder's own reads (Plex for Android)
+python3 tests/test_parity_cycle83_*.py      # cycle 83's territory findings (xa, xb, xn, cp)
+python3 tests/test_followups_f{a,b,c,d}.py  # HANDOVER §2a's follow-ups, each against its measurement
 ```
 
 The native-only and parity suites, all black-box unless noted:
@@ -423,6 +433,15 @@ New fixtures come from the harness, never from hand. `tests/fixtures/` holds
 corpora recorded from a real PMS *through a real client*, so they carry the
 client's own paging params; a payload transcribed by hand cannot, and that is
 precisely how the Seasons bug survived a fix attempt.
+
+## Differential instruments
+
+`handover/tools/pair.py REQS.jsonl --tree DIR --bin NATIVE` replays a request list (a harness capture
+or `{method,path,headers,body}` lines) against a fresh oracle and a fresh native in lockstep and
+prints every normalised difference, header order included. `handover/tools/vsweep.py` sweeps a
+vocabulary (query names, request headers, a path segment, methods; JSON or XML) over request
+families the same way. Use them before trusting that the two servers agree on anything a suite
+does not send.
 
 ## Protocol reference
 
