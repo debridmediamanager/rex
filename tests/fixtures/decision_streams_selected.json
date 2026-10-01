@@ -1,0 +1,733 @@
+{
+ "_provenance": "Measured 2026-10-01 (cycle 84, c84np). The decision request is Plex Web's exact MDE shape, recorded through plexlab (kids capture c45-play-mp4.jsonl, Plex Web 4.160.0): every X-Plex-* in the query, the token in a header (not kept), fresh session ids per request (not kept). `subtitles` is varied; `path` names the row. zen (PMS 1.42.2, GET only) holds rows whose subtitle is SELECTED (the account auto-selects one on every row sampled); plexscratch42 (1.42.2) row 272 holds two embedded srt streams with NONE selected. Only the streams that play are listed: the first video stream, the selected audio, the selected subtitle -- never an unselected one. A selected subtitle is `decision: ignore` with no `location` under subtitles=none, `location: sidecar-subs` under subtitles=sidecar; burn, auto, an empty or absent value is a 400 on zen with a selected subtitle (both Plex Web's and Plex for Android's shapes).",
+ "request_query": [
+  [
+   "hasMDE",
+   "1"
+  ],
+  [
+   "path",
+   "/library/metadata/RK"
+  ],
+  [
+   "mediaIndex",
+   "0"
+  ],
+  [
+   "partIndex",
+   "0"
+  ],
+  [
+   "protocol",
+   "hls"
+  ],
+  [
+   "fastSeek",
+   "1"
+  ],
+  [
+   "directPlay",
+   "1"
+  ],
+  [
+   "directStream",
+   "1"
+  ],
+  [
+   "subtitleSize",
+   "100"
+  ],
+  [
+   "audioBoost",
+   "100"
+  ],
+  [
+   "location",
+   "lan"
+  ],
+  [
+   "addDebugOverlay",
+   "0"
+  ],
+  [
+   "autoAdjustQuality",
+   "0"
+  ],
+  [
+   "directStreamAudio",
+   "1"
+  ],
+  [
+   "autoAdjustSubtitle",
+   "1"
+  ],
+  [
+   "mediaBufferSize",
+   "102400"
+  ],
+  [
+   "subtitles",
+   "burn"
+  ],
+  [
+   "Accept-Language",
+   "en"
+  ],
+  [
+   "X-Plex-Client-Profile-Extra",
+   "append-transcode-target-codec(type=videoProfile&context=streaming&videoCodec=h264&audioCodec=aac&protocol=hls)"
+  ],
+  [
+   "X-Plex-Incomplete-Segments",
+   "1"
+  ],
+  [
+   "X-Plex-Product",
+   "Plex Web"
+  ],
+  [
+   "X-Plex-Version",
+   "4.160.0"
+  ],
+  [
+   "X-Plex-Client-Identifier",
+   "c84np-mde-probe"
+  ],
+  [
+   "X-Plex-Platform",
+   "Chrome"
+  ],
+  [
+   "X-Plex-Platform-Version",
+   "151.0"
+  ],
+  [
+   "X-Plex-Features",
+   "external-media,indirect-media,hub-style-list"
+  ],
+  [
+   "X-Plex-Model",
+   "standalone"
+  ],
+  [
+   "X-Plex-Device",
+   "Linux"
+  ],
+  [
+   "X-Plex-Device-Name",
+   "Chrome"
+  ],
+  [
+   "X-Plex-Device-Screen-Resolution",
+   "1280x596,1280x720"
+  ],
+  [
+   "X-Plex-Language",
+   "en"
+  ]
+ ],
+ "zen": {
+  "2925": {
+   "item": [
+    {
+     "id": 19457,
+     "streamType": 1,
+     "codec": "h264"
+    },
+    {
+     "id": 19458,
+     "streamType": 2,
+     "codec": "eac3",
+     "languageTag": "pt"
+    },
+    {
+     "id": 19459,
+     "streamType": 2,
+     "codec": "eac3",
+     "languageTag": "en",
+     "selected": true
+    },
+    {
+     "id": 19460,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "pt"
+    },
+    {
+     "id": 19461,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "pt"
+    },
+    {
+     "id": 19462,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "ar"
+    },
+    {
+     "id": 19463,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "cs"
+    },
+    {
+     "id": 19464,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "da"
+    },
+    {
+     "id": 19465,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "de"
+    },
+    {
+     "id": 19466,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "el"
+    },
+    {
+     "id": 19467,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "en",
+     "selected": true
+    },
+    {
+     "id": 19468,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "es"
+    },
+    {
+     "id": 19469,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "es"
+    },
+    {
+     "id": 19470,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "fi"
+    },
+    {
+     "id": 19471,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "fr"
+    },
+    {
+     "id": 19472,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "he"
+    },
+    {
+     "id": 19473,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "hi"
+    },
+    {
+     "id": 19474,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "hu"
+    },
+    {
+     "id": 19475,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "id"
+    },
+    {
+     "id": 19476,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "it"
+    },
+    {
+     "id": 19477,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "ja"
+    },
+    {
+     "id": 19478,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "ko"
+    },
+    {
+     "id": 19479,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "nb"
+    },
+    {
+     "id": 19480,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "nl"
+    },
+    {
+     "id": 19481,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "pl"
+    },
+    {
+     "id": 19482,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "ro"
+    },
+    {
+     "id": 19483,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "ru"
+    },
+    {
+     "id": 19484,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "sv"
+    },
+    {
+     "id": 19485,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "th"
+    },
+    {
+     "id": 19486,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "tr"
+    },
+    {
+     "id": 19487,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "uk"
+    },
+    {
+     "id": 19488,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "vi"
+    },
+    {
+     "id": 19489,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "zh"
+    },
+    {
+     "id": 19490,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "zh"
+    }
+   ],
+   "decision": {
+    "none": {
+     "status": 200,
+     "mdeDecisionCode": 1000,
+     "Stream": [
+      {
+       "id": "19457",
+       "streamType": 1,
+       "codec": "h264",
+       "location": "direct"
+      },
+      {
+       "id": "19459",
+       "streamType": 2,
+       "codec": "eac3",
+       "languageTag": "en",
+       "selected": true,
+       "location": "direct"
+      },
+      {
+       "id": "19467",
+       "streamType": 3,
+       "codec": "srt",
+       "languageTag": "en",
+       "selected": true,
+       "decision": "ignore"
+      }
+     ]
+    },
+    "sidecar": {
+     "status": 200,
+     "mdeDecisionCode": 1000,
+     "Stream": [
+      {
+       "id": "19457",
+       "streamType": 1,
+       "codec": "h264",
+       "location": "direct"
+      },
+      {
+       "id": "19459",
+       "streamType": 2,
+       "codec": "eac3",
+       "languageTag": "en",
+       "selected": true,
+       "location": "direct"
+      },
+      {
+       "id": "19467",
+       "streamType": 3,
+       "codec": "srt",
+       "languageTag": "en",
+       "selected": true,
+       "location": "sidecar-subs"
+      }
+     ]
+    },
+    "burn": {
+     "status": 400
+    },
+    "auto": {
+     "status": 400
+    },
+    "absent": {
+     "status": 400
+    }
+   }
+  },
+  "3069": {
+   "item": [
+    {
+     "id": 20929,
+     "streamType": 1,
+     "codec": "h264"
+    },
+    {
+     "id": 20931,
+     "streamType": 2,
+     "codec": "eac3",
+     "languageTag": "en",
+     "selected": true
+    },
+    {
+     "id": 20928,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "en",
+     "selected": true
+    },
+    {
+     "id": 20930,
+     "streamType": 3,
+     "codec": "eia_608"
+    }
+   ],
+   "decision": {
+    "none": {
+     "status": 200,
+     "mdeDecisionCode": 1000,
+     "Stream": [
+      {
+       "id": "20929",
+       "streamType": 1,
+       "codec": "h264",
+       "location": "direct"
+      },
+      {
+       "id": "20931",
+       "streamType": 2,
+       "codec": "eac3",
+       "languageTag": "en",
+       "selected": true,
+       "location": "direct"
+      },
+      {
+       "id": "20928",
+       "streamType": 3,
+       "codec": "srt",
+       "languageTag": "en",
+       "selected": true,
+       "decision": "ignore"
+      }
+     ]
+    },
+    "sidecar": {
+     "status": 200,
+     "mdeDecisionCode": 1000,
+     "Stream": [
+      {
+       "id": "20929",
+       "streamType": 1,
+       "codec": "h264",
+       "location": "direct"
+      },
+      {
+       "id": "20931",
+       "streamType": 2,
+       "codec": "eac3",
+       "languageTag": "en",
+       "selected": true,
+       "location": "direct"
+      },
+      {
+       "id": "20928",
+       "streamType": 3,
+       "codec": "srt",
+       "languageTag": "en",
+       "selected": true,
+       "location": "sidecar-subs"
+      }
+     ]
+    },
+    "burn": {
+     "status": 400
+    },
+    "auto": {
+     "status": 400
+    }
+   }
+  },
+  "1098": {
+   "item": [
+    {
+     "id": 6688,
+     "streamType": 1,
+     "codec": "hevc"
+    },
+    {
+     "id": 6689,
+     "streamType": 1,
+     "codec": "hevc"
+    },
+    {
+     "id": 6690,
+     "streamType": 2,
+     "codec": "dca",
+     "languageTag": "fr",
+     "selected": true
+    },
+    {
+     "id": 6691,
+     "streamType": 2,
+     "codec": "dca",
+     "languageTag": "es"
+    },
+    {
+     "id": 6692,
+     "streamType": 3,
+     "codec": "pgs",
+     "languageTag": "en",
+     "selected": true
+    },
+    {
+     "id": 6693,
+     "streamType": 3,
+     "codec": "pgs",
+     "languageTag": "ar"
+    },
+    {
+     "id": 6694,
+     "streamType": 3,
+     "codec": "pgs",
+     "languageTag": "fr"
+    },
+    {
+     "id": 6695,
+     "streamType": 3,
+     "codec": "pgs",
+     "languageTag": "pt"
+    },
+    {
+     "id": 6696,
+     "streamType": 3,
+     "codec": "pgs",
+     "languageTag": "es"
+    }
+   ],
+   "decision": {
+    "none": {
+     "status": 200,
+     "mdeDecisionCode": 1000,
+     "Stream": [
+      {
+       "id": "6688",
+       "streamType": 1,
+       "codec": "hevc",
+       "location": "direct"
+      },
+      {
+       "id": "6690",
+       "streamType": 2,
+       "codec": "dca",
+       "languageTag": "fr",
+       "selected": true,
+       "location": "direct"
+      },
+      {
+       "id": "6692",
+       "streamType": 3,
+       "codec": "pgs",
+       "languageTag": "en",
+       "selected": true,
+       "decision": "ignore"
+      }
+     ]
+    },
+    "sidecar": {
+     "status": 200,
+     "mdeDecisionCode": 1000,
+     "Stream": [
+      {
+       "id": "6688",
+       "streamType": 1,
+       "codec": "hevc",
+       "location": "direct"
+      },
+      {
+       "id": "6690",
+       "streamType": 2,
+       "codec": "dca",
+       "languageTag": "fr",
+       "selected": true,
+       "location": "direct"
+      },
+      {
+       "id": "6692",
+       "streamType": 3,
+       "codec": "pgs",
+       "languageTag": "en",
+       "selected": true,
+       "location": "sidecar-subs"
+      }
+     ]
+    },
+    "burn": {
+     "status": 400
+    },
+    "auto": {
+     "status": 400
+    }
+   }
+  }
+ },
+ "plexscratch42": {
+  "272": {
+   "item": [
+    {
+     "id": 145,
+     "streamType": 1,
+     "codec": "h264"
+    },
+    {
+     "id": 146,
+     "streamType": 2,
+     "codec": "aac",
+     "languageTag": "en",
+     "selected": true
+    },
+    {
+     "id": 147,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "en"
+    },
+    {
+     "id": 148,
+     "streamType": 3,
+     "codec": "srt",
+     "languageTag": "es"
+    }
+   ],
+   "decision": {
+    "none": {
+     "status": 200,
+     "mdeDecisionCode": 1000,
+     "Stream": [
+      {
+       "id": "145",
+       "streamType": 1,
+       "codec": "h264",
+       "location": "direct"
+      },
+      {
+       "id": "146",
+       "streamType": 2,
+       "codec": "aac",
+       "languageTag": "en",
+       "selected": true,
+       "location": "direct"
+      }
+     ]
+    },
+    "sidecar": {
+     "status": 200,
+     "mdeDecisionCode": 1000,
+     "Stream": [
+      {
+       "id": "145",
+       "streamType": 1,
+       "codec": "h264",
+       "location": "direct"
+      },
+      {
+       "id": "146",
+       "streamType": 2,
+       "codec": "aac",
+       "languageTag": "en",
+       "selected": true,
+       "location": "direct"
+      }
+     ]
+    },
+    "burn": {
+     "status": 200,
+     "mdeDecisionCode": 1000,
+     "Stream": [
+      {
+       "id": "145",
+       "streamType": 1,
+       "codec": "h264",
+       "location": "direct"
+      },
+      {
+       "id": "146",
+       "streamType": 2,
+       "codec": "aac",
+       "languageTag": "en",
+       "selected": true,
+       "location": "direct"
+      }
+     ]
+    },
+    "auto": {
+     "status": 200,
+     "mdeDecisionCode": 1000,
+     "Stream": [
+      {
+       "id": "145",
+       "streamType": 1,
+       "codec": "h264",
+       "location": "direct"
+      },
+      {
+       "id": "146",
+       "streamType": 2,
+       "codec": "aac",
+       "languageTag": "en",
+       "selected": true,
+       "location": "direct"
+      }
+     ]
+    }
+   }
+  }
+ }
+}

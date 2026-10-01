@@ -9919,6 +9919,7 @@ impl Runtime {
             fields.insert("generalDecisionCode".to_string(), json!(1000));
             fields.insert("generalDecisionText".to_string(), json!("Direct play OK."));
         }
+        let subtitles_mode = query.get("subtitles").cloned();
         let mut output = self.detail_row(&row);
         if let Some(object) = output.as_object_mut() {
             object.shift_remove("Guid");
@@ -9971,24 +9972,47 @@ impl Runtime {
                     .into_iter()
                     .map(|mut part| {
                         if let Some(part_object) = part.as_object_mut() {
-                            let streams = part_object
-                                .shift_remove("Stream")
-                                .and_then(|value| value.as_array().cloned())
-                                .unwrap_or_default()
-                                .into_iter()
-                                .map(|mut stream| {
-                                    if let Some(stream_object) = stream.as_object_mut() {
-                                        if let Some(id) = stream_object.get("id").cloned() {
-                                            stream_object
-                                                .insert("id".to_string(), json!(string_value(&id)));
-                                        }
+                            let streams = decision_streams(
+                                part_object
+                                    .shift_remove("Stream")
+                                    .and_then(|value| value.as_array().cloned())
+                                    .unwrap_or_default(),
+                            )
+                            .into_iter()
+                            .map(|mut stream| {
+                                if let Some(stream_object) = stream.as_object_mut() {
+                                    if let Some(id) = stream_object.get("id").cloned() {
                                         stream_object
-                                            .insert("location".to_string(), json!("direct"));
-                                        stream_object.insert("_session".to_string(), json!(true));
+                                            .insert("id".to_string(), json!(string_value(&id)));
                                     }
-                                    stream
-                                })
-                                .collect::<Vec<_>>();
+                                    // The selected subtitle's own fate (zen, Plex Web's and
+                                    // Plex for Android's shapes): `subtitles=none` is
+                                    // `decision: ignore` with no location, `sidecar` is
+                                    // `location: sidecar-subs`. burn/auto/absent are 400s
+                                    // there with a subtitle selected; plexsim answers them.
+                                    let subtitle = stream_object.get("streamType").and_then(Value::as_i64)
+                                        == Some(3);
+                                    match subtitles_mode.as_deref() {
+                                        Some("none") if subtitle => {
+                                            stream_object
+                                                .insert("decision".to_string(), json!("ignore"));
+                                        }
+                                        Some("sidecar") if subtitle => {
+                                            stream_object.insert(
+                                                "location".to_string(),
+                                                json!("sidecar-subs"),
+                                            );
+                                        }
+                                        _ => {
+                                            stream_object
+                                                .insert("location".to_string(), json!("direct"));
+                                        }
+                                    }
+                                    stream_object.insert("_session".to_string(), json!(true));
+                                }
+                                stream
+                            })
+                            .collect::<Vec<_>>();
                             part_object.shift_remove("exists");
                             part_object.shift_remove("accessible");
                             if let Some(id) = part_object.get("id").cloned() {
@@ -23287,6 +23311,32 @@ fn known_method(method: &str) -> bool {
 
 fn write_response<S: Write>(stream: &mut S, response: &Response, keep: bool) -> Result<(), String> {
     wire::write_enveloped(stream, response, &wire::Wire::bare(), keep).map(|_| ())
+}
+
+/// The streams a decision's Part lists: the ones that PLAY, not the file's.
+///
+/// Cycle 84, Plex Web's exact MDE request (`tests/fixtures/decision_streams_selected.json`):
+/// zen (1.42.2) answers movie 1098 -- two video streams, a selected and an unselected audio,
+/// a selected and four other subtitles -- with the FIRST video, the selected audio and the
+/// selected subtitle; plexscratch42 (1.42.2) answers a row whose two subtitles are both
+/// unselected with video and audio only, under every `subtitles` value. plexsim listed every
+/// stream of the file. An audio list with no selected track was not measured: left whole.
+fn decision_streams(streams: Vec<Value>) -> Vec<Value> {
+    let kind = |stream: &Value| stream.get("streamType").and_then(Value::as_i64);
+    let selected = |stream: &Value| stream.get("selected").is_some_and(truthy);
+    let audio_selected = streams
+        .iter()
+        .any(|stream| kind(stream) == Some(2) && selected(stream));
+    let mut seen_video = false;
+    streams
+        .into_iter()
+        .filter(|stream| match kind(stream) {
+            Some(1) => !std::mem::replace(&mut seen_video, true),
+            Some(2) => !audio_selected || selected(stream),
+            Some(3) => selected(stream),
+            _ => true,
+        })
+        .collect()
 }
 
 fn split_target(target: &str) -> (String, String) {

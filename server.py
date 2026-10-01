@@ -2821,6 +2821,34 @@ SUBTITLE_LANGUAGES = frozenset(
     if len(code) == 2 and code.isalpha())
 
 
+def _decision_streams(streams):
+    """The streams a decision's Part lists: the ones that PLAY, not the file's.
+
+    Measured with Plex Web's exact MDE request (cycle 84,
+    `tests/fixtures/decision_streams_selected.json`): zen (1.42.2) answers movie 1098 --
+    two video streams, a selected French and an unselected Spanish track, a selected
+    English and four other PGS subtitles -- with three Streams: the FIRST video, the
+    selected audio and the selected subtitle. plexscratch42 (1.42.2) answers a row whose
+    two srt subtitles are both unselected with video and audio only, under every
+    `subtitles` value. plexsim listed every stream of the file, so a client reading the
+    decision saw subtitles the server never chose as part of the play. An audio list with
+    no selected track was not measured, so it is left whole.
+    """
+    first_video = next((s for s in streams if s.get("streamType") == 1), None)
+    audio_selected = any(s.get("selected") for s in streams if s.get("streamType") == 2)
+    kept = []
+    for stream in streams:
+        kind = stream.get("streamType")
+        if kind == 1 and stream is not first_video:
+            continue
+        if kind == 2 and audio_selected and not stream.get("selected"):
+            continue
+        if kind == 3 and not stream.get("selected"):
+            continue
+        kept.append(stream)
+    return kept
+
+
 def _with_client_titles(node, product, external="External"):
     """A response with every Stream's displayTitle as `product` is sent it.
 
@@ -16969,7 +16997,8 @@ class PlexSim:
 
         It is the detail row without `Guid` and `Image` (and a movie's `summary`),
         with `selected` on the chosen Media, `decision`/`selected` on its Parts and
-        `location: "direct"` on every Stream -- and in JSON the Media, Part and
+        `location: "direct"` on every Stream it lists (only the ones that play, see
+        `_decision_streams`) -- and in JSON the Media, Part and
         Stream ids, `aspectRatio` and `hasVoiceActivity` are STRINGS here, where the
         detail endpoint sends numbers and a boolean.
         """
@@ -17021,7 +17050,21 @@ class PlexSim:
                 entry["decision"] = "directplay"
                 entry["selected"] = True
                 streams = [dict(stream, id=str(stream.get("id")), location="direct")
-                           for stream in part.get("Stream") or []]
+                           for stream in _decision_streams(part.get("Stream") or [])]
+                # The selected subtitle's own fate, measured on zen with Plex Web's and
+                # Plex for Android's exact shapes: `subtitles=none` marks it
+                # `decision: ignore` with NO location, `subtitles=sidecar` sends it as
+                # `location: sidecar-subs`. (burn, auto, empty or absent are 400s there
+                # with a subtitle selected; plexsim keeps answering those -- a bound.)
+                mode = query.get("subtitles")
+                for stream in streams:
+                    if stream.get("streamType") != 3:
+                        continue
+                    if mode == "none":
+                        stream.pop("location", None)
+                        stream["decision"] = "ignore"
+                    elif mode == "sidecar":
+                        stream["location"] = "sidecar-subs"
                 if streams:
                     entry["Stream"] = streams
                 parts.append(entry)

@@ -316,19 +316,26 @@ def decision_language_checks(port):
           tags["en"][(2, "fr")] == tags["fr"][(2, "fr")] == "Français", tags)
     check("fixture: ... and the English subtitle English under fr, where the item read says Anglais",
           tags["fr"][(3, "en")] == "English" and items["fr"][(3, "en")] == "Anglais", (tags, items))
-    for language, english, french in (("en", "English", "Français"), ("fr", "English", "Français")):
-        path = ("/video/:/transcode/universal/decision?path=%2Flibrary%2Fmetadata%2F1011"
-                "&mediaIndex=0&partIndex=0&protocol=hls&directPlay=1&directStream=1&location=lan"
-                "&subtitles=none&hasMDE=1&session=xb83-lang-" + language + "&X-Plex-Language=" + language
-                + "&X-Plex-Client-Identifier=xb83-lang&X-Plex-Product=Plex%20Web"
-                "&X-Plex-Platform=Chrome&X-Plex-Version=4.147.1")
-        status, raw = request(port, "GET", path, query_only=True)
-        streams = [(row.get("streamType"), row.get("languageTag"), row.get("language"))
-                   for row in ET.fromstring(raw).iter("Stream")] if status == 200 else status
-        want = {("2", "en"): english, ("3", "en"): english, ("3", "fr"): french}
-        got = {(kind, tag): name for kind, tag, name in streams if (kind, tag) in want} \
-            if isinstance(streams, list) else streams
-        check("a decision under X-Plex-Language=%s keeps the stored names" % language, got == want, streams)
+    # Cycle 84: a decision lists only the SELECTED subtitle (zen, plexscratch42;
+    # `tests/fixtures/decision_streams_selected.json`), so each subtitle is selected in turn on
+    # part 10110 -- 1002003 English, 1002004 French -- and unselected again afterwards.
+    for subtitle, sub_tag, sub_name in (("1002003", "en", "English"), ("1002004", "fr", "Français")):
+        request(port, "PUT", "/library/parts/10110?subtitleStreamID=%s&allParts=1" % subtitle)
+        for language in ("en", "fr"):
+            path = ("/video/:/transcode/universal/decision?path=%2Flibrary%2Fmetadata%2F1011"
+                    "&mediaIndex=0&partIndex=0&protocol=hls&directPlay=1&directStream=1&location=lan"
+                    "&subtitles=none&hasMDE=1&session=xb83-lang-" + language + "&X-Plex-Language=" + language
+                    + "&X-Plex-Client-Identifier=xb83-lang&X-Plex-Product=Plex%20Web"
+                    "&X-Plex-Platform=Chrome&X-Plex-Version=4.147.1")
+            status, raw = request(port, "GET", path, query_only=True)
+            streams = [(row.get("streamType"), row.get("languageTag"), row.get("language"))
+                       for row in ET.fromstring(raw).iter("Stream")] if status == 200 else status
+            want = {("2", "en"): "English", ("3", sub_tag): sub_name}
+            got = {(kind, tag): name for kind, tag, name in streams if kind in ("2", "3")} \
+                if isinstance(streams, list) else streams
+            check("a decision under X-Plex-Language=%s keeps the stored names (subtitle %s selected)"
+                  % (language, sub_tag), got == want, streams)
+    request(port, "PUT", "/library/parts/10110?subtitleStreamID=0&allParts=1")
 
 
 def main():

@@ -3315,3 +3315,17 @@ are changing; replay the client's exact request before altering behavior.
   it; the native server kept title, summary and sort title and dropped `year` and `studio`.
   (The `/playlists` LISTING row carries no `Field` on the reference and does on both servers:
   the recorded section-8 bound, unchanged.)
+- **A decision lists the streams that PLAY, not the file's** (cycle 84, the item cycle 83 left
+  measured-not-fixed). Plex Web's exact MDE request (`tests/fixtures/decision_streams_selected.json`)
+  on zen (1.42.2): movie 1098 -- two video streams, a selected French and an unselected Spanish
+  DTS track, a selected English and four other PGS subtitles -- answers three Streams, the FIRST
+  video, the selected audio and the selected subtitle; srt rows 2925 (31 subtitles) and 3069 the
+  same. On plexscratch42 (1.42.2) row 272, whose two srt subtitles are both unselected, the
+  decision lists video and audio only under `subtitles=none|sidecar|burn|auto`. The selected
+  subtitle carries `decision: ignore` and no `location` under `subtitles=none`, and
+  `location: sidecar-subs` under `sidecar`. Both servers listed every stream of the file with
+  `location: direct`. Measured and NOT acted on: with a subtitle selected, `burn`, `auto`, an
+  empty or an absent `subtitles` is a 400 on zen for Plex Web's and Plex for Android's shapes
+  alike -- so the "transcoder-less copy" reason recorded for the plexscratch42 400 was not the
+  reason; plexsim, which cannot burn, still answers them. Plex Web reads only the decision's
+  code pairs (it keeps the body as `decisionXML`, unread), so the stream list is invisible to it.
