@@ -1963,8 +1963,12 @@ class Library:
             row.setdefault("Media", []).extend(other.get("Media") or [])
             self.catalog.remove(int(key))
             merged.append(other)
-        if merged:
-            row["updatedAt"] = _now()
+        # Cycle 84, measured on plexscratch42 (1.42.2, `tests/fixtures/merge_updated_at_s42.json`)
+        # and before it on plexscratch (1.43.4): a merge leaves the survivor's `updatedAt`
+        # and its artwork version where they were, read at once and 100 s later. plexsim
+        # stamped the merge time, so the survivor and the row a split later makes from it
+        # carried a time no reference writes. (A networked PMS may restamp during the
+        # agent refresh that follows; plexsim runs no agent.)
         return merged
 
     def merge_shows(self, row, other_keys):

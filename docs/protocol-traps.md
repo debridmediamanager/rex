@@ -3329,3 +3329,11 @@ are changing; replay the client's exact request before altering behavior.
   alike -- so the "transcoder-less copy" reason recorded for the plexscratch42 400 was not the
   reason; plexsim, which cannot burn, still answers them. Plex Web reads only the decision's
   code pairs (it keeps the body as `decisionXML`, unread), so the stream list is invisible to it.
+- **A merge leaves the survivor's `updatedAt` alone** (cycle 84, `tests/fixtures/merge_updated_at_s42.json`).
+  plexscratch42 (1.42.2), two rows of a throwaway section: after `PUT /library/metadata/768/merge?ids=769`
+  row 768 keeps `updatedAt` and its `thumb` version, read at once and 100 s later, and the split
+  that follows puts the new row 770 on the same time; plexscratch (1.43.4) agreed in cycle 83. Both
+  servers stamped the merge time on the survivor (and so on the split-off row). Both scratches
+  are isolated; a networked PMS runs an agent refresh after a merge that may restamp it --
+  plexsim runs no agent. The first merge attempt was a 500 ("Waited over 10 seconds for a busy
+  database") that moved nothing: a scratch 500 under another agent's load is not a rule.

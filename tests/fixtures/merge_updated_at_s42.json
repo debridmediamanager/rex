@@ -1,0 +1,14 @@
+{
+ "_provenance": "plexscratch42 (PMS 1.42.2, isolated, unclaimed), 2026-10-01, cycle 84 c84np. A throwaway movie library (agent tv.plex.agents.none) on two folders made rows 768 (Sintel) and 769 (Elephants Dream); once the agent pass had settled them, PUT /library/metadata/768/merge?ids=769 (the first try was a 500 'Waited over 10 seconds for a busy database', nothing moved; the retry a 200), the reads below, PUT /library/metadata/768/split, then DELETE /library/sections/6. Every read is GET /library/metadata/{id} with Accept: application/json.",
+ "merge": {"target": "768", "ids": "769", "at": 1790838100, "status": 200},
+ "reads": [
+  {"when": "before", "768": {"updatedAt": 1790837928, "thumb": "/library/metadata/768/thumb/1790837928", "Media": [169]}, "769": {"updatedAt": 1790837935, "Media": [170]}},
+  {"when": "after+0s", "768": {"updatedAt": 1790837928, "thumb": "/library/metadata/768/thumb/1790837928", "Media": [169, 170]}, "769": 404},
+  {"when": "after+3s", "768": {"updatedAt": 1790837928, "Media": [169, 170]}, "769": 404},
+  {"when": "after+13s", "768": {"updatedAt": 1790837928, "Media": [169, 170]}, "769": 404},
+  {"when": "after+43s", "768": {"updatedAt": 1790837928, "Media": [169, 170]}, "769": 404},
+  {"when": "after+103s", "768": {"updatedAt": 1790837928, "thumb": "/library/metadata/768/thumb/1790837928", "Media": [169, 170]}, "769": 404}
+ ],
+ "section_all_after_merge": [{"ratingKey": "768", "updatedAt": 1790837928, "Media": 2}],
+ "split": {"status": 200, "section_all_after": [{"ratingKey": "768", "updatedAt": 1790837928, "Media": 1}, {"ratingKey": "770", "updatedAt": 1790837928, "Media": 1}]}
+}

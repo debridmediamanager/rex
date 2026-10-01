@@ -18538,9 +18538,12 @@ impl Runtime {
                     info!("MERGE {key} <- {ids_repr} (0 row(s) absorbed)");
                     return Response::empty(200);
                 }
+                // Cycle 84, plexscratch42 (1.42.2) and plexscratch (1.43.4): a merge leaves
+                // the survivor's `updatedAt` and artwork version unchanged, read at once and
+                // 100 s later (`tests/fixtures/merge_updated_at_s42.json`); stamping it gave
+                // the survivor and its later split-off row a time no reference writes.
                 if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
                     object.insert("Media".to_string(), Value::Array(media));
-                    object.insert("updatedAt".to_string(), json!(now()));
                 }
                 // Measured: the absorbed row is deleted (state 9, untitled) and the
                 // survivor refreshed under type -1, state 3 then 5.

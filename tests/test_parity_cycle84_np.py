@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cycle 84 (territories N and P): the measured-not-fixed items cycle 83 left.
+"""Cycle 84 (territories N and P): the two measured-not-fixed items cycle 83 left.
 
 1. A decision lists only the streams that PLAY. Plex Web's exact MDE request
    (`tests/fixtures/decision_streams_selected.json`, `request_query`) on zen (1.42.2) lists the
@@ -8,6 +8,8 @@
    on plexscratch42 (1.42.2) a row whose subtitles are all unselected lists none of them, under
    every `subtitles` value. Both servers listed every stream of the file with
    `location: direct`.
+2. A merge leaves the survivor's `updatedAt` alone (`tests/fixtures/merge_updated_at_s42.json`,
+   plexscratch42; plexscratch 1.43.4 agrees). Both servers stamped the merge time.
 
 Starts its own server (native by default, `PLEXSIM_SERVER=python` the oracle) on
 `tests/catalog_ui.json`: movie 1012 holds 32 unselected srt subtitles beside a selected eac3,
@@ -99,6 +101,9 @@ def main():
     many_video = fixture["zen"]["1098"]
     assert [s["streamType"] for s in many_video["item"]].count(1) == 2
     assert [s["streamType"] for s in many_video["decision"]["none"]["Stream"]] == [1, 2, 3]
+    merge = json.load(open(os.path.join(HERE, "fixtures", "merge_updated_at_s42.json")))
+    before = merge["reads"][0]["768"]["updatedAt"]
+    assert all(read["768"]["updatedAt"] == before for read in merge["reads"]), merge["reads"]
 
     port = free_port()
     env = dict(os.environ, RD_TOKEN="dummy", PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
@@ -144,6 +149,29 @@ def main():
               "status=%s streams=%d last=%s" % (st, len(streams), streams[-1][-120:] if streams else None))
         send(port, "PUT", "/library/parts/10110?subtitleStreamID=0&allParts=1")
 
+        # 2. A merge leaves the survivor's updatedAt alone.
+        st, body = send(port, "GET", "/library/metadata/1008")
+        survivor_before = container(body)["Metadata"][0].get("updatedAt")
+        time.sleep(1.2)
+        st, _ = send(port, "PUT", "/library/metadata/1008/merge?ids=1009")
+        st_read, body = send(port, "GET", "/library/metadata/1008")
+        row = container(body)["Metadata"][0]
+        check("merge 1009 into 1008 answers 200 and moves the Media", st == 200 and len(row.get("Media", [])) == 2,
+              "status=%s media=%d" % (st, len(row.get("Media", []))))
+        check("the survivor keeps its updatedAt across the merge (plexscratch42: %s before and after)" % before,
+              row.get("updatedAt") == survivor_before,
+              "before=%s after=%s" % (survivor_before, row.get("updatedAt")))
+        st, body = send(port, "GET", "/library/sections/1/all")
+        listed = {m["ratingKey"]: m.get("updatedAt") for m in container(body).get("Metadata", [])}
+        check("the section listing agrees", listed.get("1008") == survivor_before,
+              "listed=%s" % listed.get("1008"))
+        st, _ = send(port, "PUT", "/library/metadata/1008/split")
+        st, body = send(port, "GET", "/library/sections/1/all")
+        after_split = {m["ratingKey"]: m.get("updatedAt") for m in container(body).get("Metadata", [])
+                       if m.get("title", "").startswith("Tears of Steel (fixture copy 2)")}
+        check("the split leaves both rows on the survivor's updatedAt (plexscratch42: 768 and 770 alike)",
+              len(after_split) == 2 and set(after_split.values()) == {survivor_before},
+              "rows=%s" % after_split)
     finally:
         proc.terminate()
         try:
