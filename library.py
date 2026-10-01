@@ -327,8 +327,14 @@ TYPE_NUMBERS = {"movie": 1, "show": 2, "season": 3, "episode": 4}
 class Library:
     """Watch state, edits, playlists, collections and play history."""
 
-    def __init__(self, catalog, notify=None, resolve=None):
+    def __init__(self, catalog, notify=None, resolve=None, resolve_collection=None):
         self.catalog = catalog
+        # A SMART COLLECTION re-evaluates its query at its own level (the server's
+        # `_collection_uri_rows`), not the way a playlist or a play queue reads a uri:
+        # plexscratch42 (1.42.2) answers a smart show collection over
+        # `all?type=2&episode.unwatched=1&limit=3` with its SHOWS, where reading it
+        # through `_resolve` expanded every show into its episodes.
+        self._resolve_collection = resolve_collection
         # Called with a stored `server://` URI to re-evaluate a SMART playlist or
         # collection. It has to be a callback rather than a method here because
         # the filter engine lives on the server, and a smart list is evaluated
@@ -2572,6 +2578,8 @@ class Library:
 
     def collection_children(self, collection):
         if collection.get("smart"):
+            if self._resolve_collection is not None:
+                return self._resolve_collection(collection)
             return self.smart_rows(collection.get("uri"))
         rows = [self.catalog.items.get(int(k)) for k in collection["items"]]
         return self._collection_order(collection, [r for r in rows if r])

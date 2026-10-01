@@ -3259,3 +3259,9 @@ are changing; replay the client's exact request before altering behavior.
   cycles' XML flow diff, which compares a reference episode with a different plexsim episode and
   so always differs in item count; cycle 83 found it by running the oracle and the native server
   through the same flow.
+- **A smart collection is read at its OWN level on every read**, not the way a playlist or a play
+  queue reads a uri: plexscratch42 (1.42.2) answers python-plexapi's smart show collection over
+  `all?type=2&episode.unwatched=1&limit=3` with its two SHOWS (`tests/fixtures/plexapi_writes_s42.json`).
+  The oracle resolved it through the play-queue resolver and listed every episode; the cycle's
+  write-chain diff keyed collections by ratingKey and so printed it as a REF-ONLY/SIM-ONLY pair
+  for cycles without anyone reading the counts.

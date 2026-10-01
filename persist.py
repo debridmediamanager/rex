@@ -65,7 +65,7 @@ FORMAT = 1
 CATALOG_SKIP = {"spelling"}
 # Wiring (the catalog object itself and two callbacks into the server) and the
 # activity list, whose entries describe work in flight in THIS process.
-LIBRARY_SKIP = {"catalog", "_resolve", "_notify", "_activities"}
+LIBRARY_SKIP = {"catalog", "_resolve", "_resolve_collection", "_notify", "_activities"}
 # PlexSim attributes that are state a client wrote. Everything else on it is a
 # connection, a socket, a lock, a cache or a per-process counter.
 SIM_FIELDS = ("pref_overrides", "section_pref_overrides", "agent_orders",

@@ -66,7 +66,17 @@ impl Runtime {
     /// went through the release-date sort that put an undated row first.
     pub(super) fn collection_members(&self, collection: &Collection) -> Vec<Value> {
         if collection.smart {
-            return self.rows_for_uri(&collection.uri);
+            // Read at the COLLECTION's level, as a create reads its uri: plexscratch42
+            // (1.42.2) answers a smart show collection over
+            // `all?type=2&episode.unwatched=1&limit=3` with its SHOWS, and the uri's
+            // own `type=` is the collection's business, not the player's.
+            return self.collection_uri_rows(
+                &collection.uri,
+                &collection.section,
+                member_type_number(&collection.subtype),
+                &collection.subtype,
+                false,
+            );
         }
         let rows: Vec<Value> = collection
             .items

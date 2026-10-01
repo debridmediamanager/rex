@@ -1,0 +1,41 @@
+{
+ "_provenance": "plexscratch42 (PMS 1.42.2.10156), 2026-10-01 01:xx UTC, cycle 83 B's python-plexapi 4.18.3 write chain (drive60s.py, /private/tmp/plexsim-cycle83/B/run60s_s42.json), each step's requests as python-plexapi sent them, machine identifier and section uuid redacted. Section 3 is a show library: show 391 has 3 episodes, show 15 has 9.",
+ "smart_show_collection": {
+  "request": "/library/collections?sectionId=3&smart=1&title=C63B%20Smart&type=2&uri=server%3A%2F%2F<machine>%2Fcom.plexapp.plugins.library%2Flibrary%2Fsections%2F3%2Fall%3FincludeGuids%3D1%26limit%3D3%26sort%3Dshow.titleSort%26type%3D2%26episode.unwatched%3D1",
+  "childCount": 2,
+  "member_types": [
+   "Show",
+   "Show"
+  ]
+ },
+ "smart_episode_playlist": {
+  "request": "/playlists?smart=1&title=C63B%20SmartPl&type=video&uri=server%3A%2F%2F<machine>%2Fcom.plexapp.plugins.library%2Flibrary%2Fsections%2F3%2Fall%3FincludeGuids%3D1%26limit%3D3%26sort%3Depisode.titleSort%26type%3D4%26episode.unwatched%3D1",
+  "leafCount": 3,
+  "member_types": [
+   "Episode",
+   "Episode",
+   "Episode"
+  ]
+ },
+ "playlist_delete_frame": {
+  "requests": [
+   "GET /library/metadata/{PL}",
+   "DELETE /playlists/753"
+  ],
+  "frames": [
+   "timeline itemID=753 type=15 state=9 deleted title='C63B Playlist'"
+  ],
+  "playlist_title": "C63B Playlist"
+ },
+ "queue_add_show": {
+  "requests": [
+   "GET /playQueues/2251?includeAfter=1&includeBefore=1&own=0&window=50",
+   "GET /library/metadata/{SH}",
+   "GET /playQueues/2251",
+   "PUT /playQueues/2251?uri=library%3A%2F%2F<section-uuid>%2Fitem%2Flibrary%2Fmetadata%2F391"
+  ],
+  "show_leafCount": 3,
+  "size_before": 3,
+  "size_after": 6
+ }
+}

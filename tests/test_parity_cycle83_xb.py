@@ -14,6 +14,9 @@
 - `continuous=1` on ONE episode queues it and the episodes after it in its own season
   (`tests/fixtures/playqueue_continuous_s42.json`); the native server queued the episode
   alone. python-plexapi's `PlayQueue.create(item, continuous=True)` sends it.
+- A smart show collection over `all?type=2&episode.unwatched=1&limit=3` holds SHOWS
+  (`tests/fixtures/plexapi_writes_s42.json`, python-plexapi's write chain); the oracle
+  expanded them into episodes.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -195,12 +198,40 @@ def continuous_checks(port):
     check("the fixture show has a season with more than one episode to compare", cells > 2 * len(seasons))
 
 
+def write_chain_checks(port):
+    measured = json.load(open(os.path.join(HERE, "fixtures", "plexapi_writes_s42.json")))
+    status, raw = request(port, "GET", "/identity")
+    machine = ET.fromstring(raw).get("machineIdentifier")
+
+    def section_uri(query):
+        return ("server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins.library%%2Flibrary%%2Fsections%%2F2%%2Fall%%3F%s"
+                % (machine, query))
+
+    # A smart show collection reads its query at its own level.
+    want = measured["smart_show_collection"]
+    check("fixture: the smart show collection holds shows", set(want["member_types"]) == {"Show"}, want)
+    query = re.search(r"all%3F(.*)$", want["request"]).group(1)
+    status, raw = request(port, "POST", "/library/collections?sectionId=2&smart=1&title=Xb%%20Smart&type=2&uri=%s"
+                          % section_uri(query))
+    collection = ET.fromstring(raw)[0].get("ratingKey") if status == 200 else None
+    status, raw = request(port, "GET", "/library/collections/%s/children" % collection)
+    members = [(row.tag, row.get("type")) for row in ET.fromstring(raw)] if status == 200 else status
+    check("a smart show collection over an episode filter lists shows", members and
+          all(member == ("Directory", "show") for member in members), members)
+    status, raw = request(port, "GET", "/library/collections/%s" % collection)
+    row = ET.fromstring(raw)[0] if status == 200 else None
+    check("... and its childCount counts them", row is not None and members
+          and row.get("childCount") == str(len(members)), row is not None and row.attrib)
+    request(port, "DELETE", "/library/collections/%s" % collection)
+
+
 def main():
     process, port = start()
     try:
         run(port)
         queue_checks(port)
         continuous_checks(port)
+        write_chain_checks(port)
     finally:
         process.terminate()
         try:

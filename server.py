@@ -3957,7 +3957,8 @@ class PlexSim:
         # the process ends.
         self.library = library_module.Library(catalog,
                                              notify=self.notify_activity_event,
-                                             resolve=self._items_for_uri)
+                                             resolve=self._items_for_uri,
+                                             resolve_collection=self._smart_collection_rows)
         # Preferences the client has written back through PUT /:/prefs. A real
         # PMS persists these; plexsim keeps them for the life of the process, and
         # across restarts with `--state`.
@@ -16370,6 +16371,14 @@ class PlexSim:
             kind = (self.catalog.section(section_id) or {}).get("type") or "movie"
             return TYPE_NUMBERS.get(kind, 1), kind
         return number, self.COLLECTION_SUBTYPES.get(number, "unknown")
+
+    def _smart_collection_rows(self, collection):
+        """A smart collection's members right now: its stored query read at the
+        collection's own level (`_collection_uri_rows` with `create=False`)."""
+        subtype = collection.get("subtype") or "movie"
+        return self._collection_uri_rows(collection.get("uri"),
+                                         collection.get("librarySectionID"),
+                                         TYPE_NUMBERS.get(subtype, 1), subtype, create=False)
 
     def _collection_uri_rows(self, uri, section_id, number, subtype, create=True):
         """The rows a collection of `subtype` members in `section_id` takes from a uri.
