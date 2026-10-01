@@ -32138,10 +32138,14 @@ def main():
     beat_c45s(movie, "playing", 110000, 1000000, "c58t-c")
     beat_c45s(movie, "stopped", 30000, 1000000, "c58t-c")
     dropped_c58t = offset_c58t()
+    # Cycle 87 e3b re-measured this exact sequence on plexscratch42 (1.42.2): session c's
+    # STOPPED beat at 30 000 answers `progress` and KEEPS its 110 000 -- a stopped beat never
+    # deletes the resume point; a playing, paused or buffering one does
+    # (`tests/fixtures/timeline_play_latch_s42.json`, `ui_surface_replay`).
     check("a new session's sub-minute beats keep the stored resume point",
           stored_c58t == 300000 and answer_c58t.get("playbackState") == "ignore"
           and answer_c58t.get("viewOffset") == 300000 and kept_c58t == 300000
-          and dropped_c58t is None,
+          and dropped_c58t == 110000,
           "stored %s, new session answered %s/%s and left %s, a progressed session left %s"
           % (stored_c58t, answer_c58t.get("playbackState"), answer_c58t.get("viewOffset"),
              kept_c58t, dropped_c58t))
