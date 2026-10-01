@@ -3629,3 +3629,15 @@ are changing; replay the client's exact request before altering behavior.
   `PlayQueue.create` and `Playable.updateTimeline` send the same client identifier and the latter
   never sends `playQueueItemID`, so `updateTimeline` on the queue's second item moves
   `PlayQueue.refresh()`'s `selectedItem` on the reference.
+- **A SEASON cascade's `queued` frame comes before `activity started`, and its activity ends ahead
+  of the last episode's 5** (cycle 87 E4, plexscratch 1.43.4, three `PUT .../refresh` on Firefly's
+  two three-episode seasons, frame-identical; `tests/fixtures/season_cascade_order_s43.json`). The
+  order is season queued, `started -1`, season processing and loading, each episode's four with the
+  LAST episode's bare 5 held back, `ended 100`, that 5, the season's 5 -- the show cascade's end one
+  level down. Cycle 15 wrote queued first; both servers started the activity first and ended it after
+  every episode. The copy's seasons and episodes are `local://` and every refresh of one opened with a
+  `state 2 matching` / `state 5` pair, where the same refresh of its `plex://` show (39 frames, beside
+  them) did not, and an EPISODE refresh there cascaded through the whole show: the unmatched row's
+  match attempt, not the season cascade's, so a catalog season (matched) keeps the 18. A season
+  UNMATCH runs the same cascade and was not re-measured for the order. MALFORMED-ONLY: transient
+  activity frames.

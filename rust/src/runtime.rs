@@ -4208,23 +4208,38 @@ impl Runtime {
     /// the activity started with the season's frame title, season processing
     /// and loading; each episode's four; then the activity ENDED with nothing
     /// between (cycle 25) and the season's own 5.
+    ///
+    /// Cycle 87, the ORDER, measured on plexscratch (1.43.4) over three refreshes
+    /// of Firefly's two seasons, frame-identical
+    /// (`tests/fixtures/season_cascade_order_s43.json`): queued comes BEFORE
+    /// `activity started`, as cycle 15 recorded, and the activity ENDS between
+    /// the last episode's second `loading` and that episode's bare 5 -- the show
+    /// cascade's end one level down. We started first and ended after every
+    /// episode. The copy's `local://` seasons open with a `matching`/5 pair its
+    /// matched show's refresh lacks; a catalog season is matched, so it stays out.
     fn notify_season_cascade(&mut self, key: &str) {
         let Some(season) = self.catalog.get(key).cloned() else {
             return;
         };
+        self.notify_timeline(&season, 3, Some("queued"), None, None);
         let subtitle = self.frame_title(&season);
         let mut activity = self.start_metadata_activity(&subtitle);
-        self.notify_timeline(&season, 3, Some("queued"), None, None);
         self.notify_timeline(&season, 3, Some("processing"), None, None);
         self.notify_timeline(&season, 4, Some("loading"), None, None);
-        for episode in self.children(key) {
-            self.notify_timeline(&episode, 5, Some("processing"), None, None);
-            self.notify_timeline(&episode, 4, Some("loading"), None, None);
-            self.notify_timeline(&episode, 4, Some("loading"), None, None);
-            self.notify_timeline(&episode, 5, None, None, None);
+        let episodes = self.children(key);
+        for (at, episode) in episodes.iter().enumerate() {
+            self.notify_timeline(episode, 5, Some("processing"), None, None);
+            self.notify_timeline(episode, 4, Some("loading"), None, None);
+            self.notify_timeline(episode, 4, Some("loading"), None, None);
+            if at + 1 < episodes.len() {
+                self.notify_timeline(episode, 5, None, None, None);
+            }
         }
         activity.insert("progress".to_string(), json!(100));
         self.notify_activity(&activity, "ended");
+        if let Some(last) = episodes.last() {
+            self.notify_timeline(last, 5, None, None, None);
+        }
         self.notify_timeline(&season, 5, None, None, None);
     }
 

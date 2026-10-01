@@ -4644,16 +4644,27 @@ class PlexSim:
         `processing`, state 4 `loading` twice, state 5 with no `metadataState` --
         and finally the activity ended and the season's own state 5. There is no
         `activity updated` here, unlike the episode form, which has one.
+
+        Cycle 87, the ORDER, measured on plexscratch (1.43.4) over three refreshes of
+        Firefly's two seasons, frame-identical (`tests/fixtures/season_cascade_order_s43.json`):
+        the season's `queued` frame comes BEFORE `activity started`, as cycle 15 wrote it
+        down, and the activity ENDS between the last episode's second `loading` and that
+        episode's bare 5 -- the show cascade's end, one level down. plexsim started the
+        activity first and ended it after every episode. (The copy's seasons are
+        `local://`, and their refreshes open with a `matching`/5 pair that a refresh of
+        its matched show does not; a catalog season is matched, so that pair stays out.)
         """
-        activity = self.library.add_activity(self.frame_title(season), progress=-1)
         self.notify_timeline(season, self.TIMELINE_QUEUED, "queued")
+        activity = self.library.add_activity(self.frame_title(season), progress=-1)
         self.notify_timeline(season, self.TIMELINE_QUEUED, "processing")
         self.notify_timeline(season, self.TIMELINE_LOADING, "loading")
-        for episode in self.catalog.children(season["ratingKey"]):
+        episodes = self.catalog.children(season["ratingKey"])
+        for episode in episodes:
             self.notify_timeline(episode, self.TIMELINE_DONE, "processing")
             self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
             self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
-            self.notify_timeline(episode, self.TIMELINE_DONE, None)
+            if episode is not episodes[-1]:
+                self.notify_timeline(episode, self.TIMELINE_DONE, None)
         # Cycle 25: the docstring above has said since cycle 15 that there is no
         # `activity updated` here, and the code called `finish_activity`, which inserts
         # one -- nineteen frames where the reference pushes eighteen. Re-measured on
@@ -4662,6 +4673,8 @@ class PlexSim:
         # right and implemented as the nearest helper to hand.
         activity["progress"] = 100
         self.library.end_activity_quietly(activity)
+        if episodes:
+            self.notify_timeline(episodes[-1], self.TIMELINE_DONE, None)
         self.notify_timeline(season, self.TIMELINE_DONE, None)
 
     def notify_edited(self, row, metadata_state="loading"):

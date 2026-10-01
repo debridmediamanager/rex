@@ -1,0 +1,936 @@
+{
+ "source": "plexscratch (PMS 1.43.4.10903, isolated copy of the lab), 2026-10-01, cycle 87 E4",
+ "note": "Every timeline/activity frame /:/eventsource/notifications pushed around `PUT /library/metadata/{season}/refresh`, in arrival order. Firefly's seasons 7 and 11 hold three episodes each (8-10, 12-14); three refreshes, frame-identical. The copy's seasons and episodes are `local://` while the show is `plex://show/...`: every season refresh opened with a `state 2 matching` / `state 5` pair, and a refresh of the show itself (captured beside these, 39 frames) did not -- that opener is the unmatched row's, not the cascade's. The tree read the same before and after. No token or machine identifier is recorded.",
+ "cascades": [
+  {
+   "request": {
+    "method": "PUT",
+    "path": "/library/metadata/7/refresh"
+   },
+   "status": 200,
+   "frames": [
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 2,
+       "metadataState": "matching",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 5,
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 3,
+       "metadataState": "queued",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "started",
+       "uuid": "832aaaac-9adf-48dc-9d20-e02bc0075ac8",
+       "Activity": {
+        "uuid": "832aaaac-9adf-48dc-9d20-e02bc0075ac8",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S01",
+        "progress": -1
+       }
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 3,
+       "metadataState": "processing",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "8",
+       "type": 4,
+       "title": "Firefly S01 E01",
+       "state": 5,
+       "metadataState": "processing",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "8",
+       "type": 4,
+       "title": "Firefly S01 E01",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "8",
+       "type": 4,
+       "title": "Firefly S01 E01",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "8",
+       "type": 4,
+       "title": "Firefly S01 E01",
+       "state": 5,
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "9",
+       "type": 4,
+       "title": "Firefly S01 E02",
+       "state": 5,
+       "metadataState": "processing",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "9",
+       "type": 4,
+       "title": "Firefly S01 E02",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "9",
+       "type": 4,
+       "title": "Firefly S01 E02",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "9",
+       "type": 4,
+       "title": "Firefly S01 E02",
+       "state": 5,
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "10",
+       "type": 4,
+       "title": "Firefly S01 E03",
+       "state": 5,
+       "metadataState": "processing",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "10",
+       "type": 4,
+       "title": "Firefly S01 E03",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "10",
+       "type": 4,
+       "title": "Firefly S01 E03",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "ended",
+       "uuid": "832aaaac-9adf-48dc-9d20-e02bc0075ac8",
+       "Activity": {
+        "uuid": "832aaaac-9adf-48dc-9d20-e02bc0075ac8",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S01",
+        "progress": 100
+       }
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "10",
+       "type": 4,
+       "title": "Firefly S01 E03",
+       "state": 5,
+       "updatedAt": 1790874342
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 5,
+       "updatedAt": 1790874342
+      }
+     }
+    }
+   ]
+  },
+  {
+   "request": {
+    "method": "PUT",
+    "path": "/library/metadata/11/refresh"
+   },
+   "status": 200,
+   "frames": [
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "11",
+       "type": 3,
+       "title": "Firefly S02",
+       "state": 2,
+       "metadataState": "matching",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "11",
+       "type": 3,
+       "title": "Firefly S02",
+       "state": 5,
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "11",
+       "type": 3,
+       "title": "Firefly S02",
+       "state": 3,
+       "metadataState": "queued",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "started",
+       "uuid": "0d868cc4-42a1-4c87-9b20-c04c9897d941",
+       "Activity": {
+        "uuid": "0d868cc4-42a1-4c87-9b20-c04c9897d941",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S02",
+        "progress": -1
+       }
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "11",
+       "type": 3,
+       "title": "Firefly S02",
+       "state": 3,
+       "metadataState": "processing",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "11",
+       "type": 3,
+       "title": "Firefly S02",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "12",
+       "type": 4,
+       "title": "Firefly S02 E01",
+       "state": 5,
+       "metadataState": "processing",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "12",
+       "type": 4,
+       "title": "Firefly S02 E01",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "12",
+       "type": 4,
+       "title": "Firefly S02 E01",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "12",
+       "type": 4,
+       "title": "Firefly S02 E01",
+       "state": 5,
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "13",
+       "type": 4,
+       "title": "Firefly S02 E02",
+       "state": 5,
+       "metadataState": "processing",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "13",
+       "type": 4,
+       "title": "Firefly S02 E02",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "13",
+       "type": 4,
+       "title": "Firefly S02 E02",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "13",
+       "type": 4,
+       "title": "Firefly S02 E02",
+       "state": 5,
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "14",
+       "type": 4,
+       "title": "Firefly S02 E03",
+       "state": 5,
+       "metadataState": "processing",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "14",
+       "type": 4,
+       "title": "Firefly S02 E03",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "14",
+       "type": 4,
+       "title": "Firefly S02 E03",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "ended",
+       "uuid": "0d868cc4-42a1-4c87-9b20-c04c9897d941",
+       "Activity": {
+        "uuid": "0d868cc4-42a1-4c87-9b20-c04c9897d941",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S02",
+        "progress": 100
+       }
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "14",
+       "type": 4,
+       "title": "Firefly S02 E03",
+       "state": 5,
+       "updatedAt": 1790874387
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "11",
+       "type": 3,
+       "title": "Firefly S02",
+       "state": 5,
+       "updatedAt": 1790874387
+      }
+     }
+    }
+   ]
+  },
+  {
+   "request": {
+    "method": "PUT",
+    "path": "/library/metadata/7/refresh"
+   },
+   "status": 200,
+   "frames": [
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 2,
+       "metadataState": "matching",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 5,
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 3,
+       "metadataState": "queued",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "started",
+       "uuid": "ad3c06b1-240f-4bd2-bad9-82252f2ce6c9",
+       "Activity": {
+        "uuid": "ad3c06b1-240f-4bd2-bad9-82252f2ce6c9",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S01",
+        "progress": -1
+       }
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 3,
+       "metadataState": "processing",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "8",
+       "type": 4,
+       "title": "Firefly S01 E01",
+       "state": 5,
+       "metadataState": "processing",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "8",
+       "type": 4,
+       "title": "Firefly S01 E01",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "8",
+       "type": 4,
+       "title": "Firefly S01 E01",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "8",
+       "type": 4,
+       "title": "Firefly S01 E01",
+       "state": 5,
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "9",
+       "type": 4,
+       "title": "Firefly S01 E02",
+       "state": 5,
+       "metadataState": "processing",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "9",
+       "type": 4,
+       "title": "Firefly S01 E02",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "9",
+       "type": 4,
+       "title": "Firefly S01 E02",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "9",
+       "type": 4,
+       "title": "Firefly S01 E02",
+       "state": 5,
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "10",
+       "type": 4,
+       "title": "Firefly S01 E03",
+       "state": 5,
+       "metadataState": "processing",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "10",
+       "type": 4,
+       "title": "Firefly S01 E03",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "10",
+       "type": 4,
+       "title": "Firefly S01 E03",
+       "state": 4,
+       "metadataState": "loading",
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "ended",
+       "uuid": "ad3c06b1-240f-4bd2-bad9-82252f2ce6c9",
+       "Activity": {
+        "uuid": "ad3c06b1-240f-4bd2-bad9-82252f2ce6c9",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S01",
+        "progress": 100
+       }
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "10",
+       "type": 4,
+       "title": "Firefly S01 E03",
+       "state": 5,
+       "updatedAt": 1790874407
+      }
+     }
+    },
+    {
+     "event": "timeline",
+     "data": {
+      "TimelineEntry": {
+       "identifier": "com.plexapp.plugins.library",
+       "sectionID": "2",
+       "itemID": "7",
+       "type": 3,
+       "title": "Firefly S01",
+       "state": 5,
+       "updatedAt": 1790874407
+      }
+     }
+    }
+   ]
+  }
+ ]
+}
