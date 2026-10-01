@@ -2,22 +2,22 @@
  "bare": [
   {
    "attrs": {
-    "hasPrefs": "1",
+    "hasPrefs": true,
     "identifier": "com.plexapp.agents.fanarttv",
-    "primary": "0"
+    "primary": false
    },
    "MediaType": []
   },
   {
    "attrs": {
-    "hasPrefs": "0",
+    "hasPrefs": false,
     "identifier": "com.plexapp.agents.none",
-    "primary": "1"
+    "primary": true
    },
    "MediaType": [
     {
      "name": "Personal Media",
-     "mediaType": "1",
+     "mediaType": 1,
      "Language": [
       {
        "code": "xn"
@@ -26,7 +26,7 @@
     },
     {
      "name": "Personal Media Shows",
-     "mediaType": "2",
+     "mediaType": 2,
      "Language": [
       {
        "code": "xn"
@@ -35,7 +35,7 @@
     },
     {
      "name": "Personal Media Artists",
-     "mediaType": "8",
+     "mediaType": 8,
      "Language": [
       {
        "code": "xn"
@@ -44,7 +44,7 @@
     },
     {
      "name": "Personal Media Albums",
-     "mediaType": "9",
+     "mediaType": 9,
      "Language": [
       {
        "code": "xn"
@@ -53,7 +53,7 @@
     },
     {
      "name": "Photos",
-     "mediaType": "13",
+     "mediaType": 13,
      "Language": [
       {
        "code": "ar"
@@ -193,22 +193,22 @@
   },
   {
    "attrs": {
-    "hasPrefs": "0",
+    "hasPrefs": false,
     "identifier": "com.plexapp.agents.htbackdrops",
-    "primary": "0"
+    "primary": false
    },
    "MediaType": []
   },
   {
    "attrs": {
-    "hasPrefs": "1",
+    "hasPrefs": true,
     "identifier": "com.plexapp.agents.imdb",
-    "primary": "1"
+    "primary": true
    },
    "MediaType": [
     {
      "name": "Plex Movie (Legacy)",
-     "mediaType": "1",
+     "mediaType": 1,
      "Language": [
       {
        "code": "ar"
@@ -315,22 +315,22 @@
   },
   {
    "attrs": {
-    "hasPrefs": "0",
+    "hasPrefs": false,
     "identifier": "com.plexapp.agents.lyricfind",
-    "primary": "0"
+    "primary": false
    },
    "MediaType": []
   },
   {
    "attrs": {
-    "hasPrefs": "1",
+    "hasPrefs": true,
     "identifier": "com.plexapp.agents.thetvdb",
-    "primary": "1"
+    "primary": true
    },
    "MediaType": [
     {
      "name": "TheTVDB",
-     "mediaType": "2",
+     "mediaType": 2,
      "Language": [
       {
        "code": "cs"
@@ -407,22 +407,22 @@
   },
   {
    "attrs": {
-    "hasPrefs": "0",
+    "hasPrefs": false,
     "identifier": "com.plexapp.agents.plexthememusic",
-    "primary": "0"
+    "primary": false
    },
    "MediaType": []
   },
   {
    "attrs": {
-    "hasPrefs": "1",
+    "hasPrefs": true,
     "identifier": "com.plexapp.agents.themoviedb",
-    "primary": "1"
+    "primary": true
    },
    "MediaType": [
     {
      "name": "The Movie Database",
-     "mediaType": "1",
+     "mediaType": 1,
      "Language": [
       {
        "code": "cs"
@@ -506,7 +506,7 @@
     },
     {
      "name": "The Movie Database",
-     "mediaType": "2",
+     "mediaType": 2,
      "Language": [
       {
        "code": "cs"
@@ -592,30 +592,30 @@
   },
   {
    "attrs": {
-    "hasPrefs": "0",
+    "hasPrefs": false,
     "identifier": "com.plexapp.agents.movieposterdb",
-    "primary": "0"
+    "primary": false
    },
    "MediaType": []
   },
   {
    "attrs": {
-    "hasPrefs": "1",
+    "hasPrefs": true,
     "identifier": "com.plexapp.agents.localmedia",
-    "primary": "0"
+    "primary": false
    },
    "MediaType": []
   },
   {
    "attrs": {
-    "hasPrefs": "1",
+    "hasPrefs": true,
     "identifier": "com.plexapp.agents.lastfm",
-    "primary": "1"
+    "primary": true
    },
    "MediaType": [
     {
      "name": "Last.fm",
-     "mediaType": "8",
+     "mediaType": 8,
      "Language": [
       {
        "code": "de"
@@ -657,7 +657,7 @@
     },
     {
      "name": "Last.fm",
-     "mediaType": "9",
+     "mediaType": 9,
      "Language": [
       {
        "code": "de"
@@ -704,9 +704,9 @@
   "1": [
    {
     "attrs": {
-     "hasPrefs": "0",
+     "hasPrefs": false,
      "identifier": "com.plexapp.agents.none",
-     "primary": "1",
+     "primary": true,
      "name": "Personal Media"
     },
     "Language": [
@@ -717,9 +717,9 @@
    },
    {
     "attrs": {
-     "hasPrefs": "1",
+     "hasPrefs": true,
      "identifier": "com.plexapp.agents.imdb",
-     "primary": "1",
+     "primary": true,
      "name": "Plex Movie (Legacy)"
     },
     "Language": [
@@ -826,9 +826,9 @@
    },
    {
     "attrs": {
-     "hasPrefs": "1",
+     "hasPrefs": true,
      "identifier": "com.plexapp.agents.themoviedb",
-     "primary": "1",
+     "primary": true,
      "name": "The Movie Database"
     },
     "Language": [
@@ -916,9 +916,9 @@
   "2": [
    {
     "attrs": {
-     "hasPrefs": "0",
+     "hasPrefs": false,
      "identifier": "com.plexapp.agents.none",
-     "primary": "1",
+     "primary": true,
      "name": "Personal Media Shows"
     },
     "Language": [
@@ -929,9 +929,9 @@
    },
    {
     "attrs": {
-     "hasPrefs": "1",
+     "hasPrefs": true,
      "identifier": "com.plexapp.agents.thetvdb",
-     "primary": "1",
+     "primary": true,
      "name": "TheTVDB"
     },
     "Language": [
@@ -1008,9 +1008,9 @@
    },
    {
     "attrs": {
-     "hasPrefs": "1",
+     "hasPrefs": true,
      "identifier": "com.plexapp.agents.themoviedb",
-     "primary": "1",
+     "primary": true,
      "name": "The Movie Database"
     },
     "Language": [
@@ -1100,9 +1100,9 @@
   "8": [
    {
     "attrs": {
-     "hasPrefs": "0",
+     "hasPrefs": false,
      "identifier": "com.plexapp.agents.none",
-     "primary": "1",
+     "primary": true,
      "name": "Personal Media Artists"
     },
     "Language": [
@@ -1113,9 +1113,9 @@
    },
    {
     "attrs": {
-     "hasPrefs": "1",
+     "hasPrefs": true,
      "identifier": "com.plexapp.agents.lastfm",
-     "primary": "1",
+     "primary": true,
      "name": "Last.fm"
     },
     "Language": [
@@ -1161,9 +1161,9 @@
   "9": [
    {
     "attrs": {
-     "hasPrefs": "0",
+     "hasPrefs": false,
      "identifier": "com.plexapp.agents.none",
-     "primary": "1",
+     "primary": true,
      "name": "Personal Media Albums"
     },
     "Language": [
@@ -1174,9 +1174,9 @@
    },
    {
     "attrs": {
-     "hasPrefs": "1",
+     "hasPrefs": true,
      "identifier": "com.plexapp.agents.lastfm",
-     "primary": "1",
+     "primary": true,
      "name": "Last.fm"
     },
     "Language": [

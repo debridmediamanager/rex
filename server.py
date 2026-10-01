@@ -1335,6 +1335,11 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 #
 # What plexsim still does not claim is the WORK: identifying with a legacy agent, its
 # contributor chain, and its per-agent preference pane beyond the document cycle 52 ships.
+#
+# Cycle 87: the capture was read out of the XML, so `hasPrefs`, `primary` and a bare-form
+# `MediaType`'s `mediaType` were held as the STRINGS "0"/"1"/"8" and went out that way in
+# JSON. kids and zen write them as JSON booleans and a number, on the bare path and every
+# `mediaType=`; the file now holds the JSON types, which the XML writer still renders 1/0.
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "legacy_agents.json"), encoding="utf-8") as _handle:
     LEGACY_AGENTS = json.load(_handle)

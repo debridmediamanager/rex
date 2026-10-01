@@ -3455,3 +3455,10 @@ are changing; replay the client's exact request before altering behavior.
   non-built-in providers); it GETs the two listings, the provider one with `metadataTypes=`.
   PUT/DELETE/POST on a built-in id still differ between the servers (the oracle answers the row)
   and are unmeasured writes.
+- **A legacy agent row's `hasPrefs` and `primary` are JSON BOOLEANS, and a bare-form `MediaType`'s
+  `mediaType` a NUMBER** (cycle 87 W2, kids 1.43.4 and zen 1.42.2, the bare path and every
+  `mediaType=` from 1 to 22 under Plex Web 4.162.1's headers; `tests/fixtures/c87_w2_system_agents_zen.json`).
+  `legacy_agents.json` was read out of the XML, so both servers sent `"hasPrefs":"1"`,
+  `"primary":"0"`, `"mediaType":"8"`. The XML is unchanged (`1`/`0`). MALFORMED-ONLY: Plex Web's
+  `AgentModel` reads `hasPrefs` through `parseBoolean` (`1===Number(e)||"true"===e`), which maps
+  `"1"` and `true` alike, and does not read `primary` at all; python-plexapi reads the XML.
