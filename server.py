@@ -13046,6 +13046,19 @@ class PlexSim:
                     self.library._set_tags(collection, "label", [value for _, value in labels if value])
             else:
                 self.library.edit_playlist(playlist, title=title, summary=summary)
+                # Cycle 83, plexscratch42 (1.42.2): this path STORES what `PUT /playlists/{id}`
+                # stores -- `summary.locked=1` puts `Field [summary]` on `/playlists/{id}` and
+                # on this detail, and `titleSort`, `year` and `studio` keep their values and
+                # locks. The grammar above runs on a copy, so all of it was dropped.
+                stored = ("title", "summary", "titleSort", "year", "studio",
+                          "originallyAvailableAt")
+                keep = lambda k: (k.rsplit(".", 1)[0] if k.endswith((".value", ".locked"))
+                                  else k) in stored
+                fields = {k: v for k, v in query.items()
+                          if not k.startswith("X-Plex-") and k != "_pairs" and keep(k)}
+                if fields:
+                    self.library.edit(playlist, fields,
+                                      [(k, v) for k, v in query.get("_pairs") or [] if keep(k)])
             if any(name in query for name in ("title", "title.value", "titleSort.value",
                                               "titleSort.locked")):
                 # Measured: a list's Sort Title follows an item's rule.

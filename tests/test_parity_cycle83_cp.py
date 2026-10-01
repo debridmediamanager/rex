@@ -232,6 +232,36 @@ def playlist_frames(srv):
     check("playlist frames: the leading field order", orders and all(o == lead for o in orders), orders)
 
 
+def playlist_lock(srv):
+    """plexscratch42, 1.42.2: a playlist edited through the ITEM path, `PUT /library/metadata/{id}`,
+    stores what `PUT /playlists/{id}` stores. `summary.locked=1` puts `Field [summary]` on
+    `/playlists/{id}` and `/library/metadata/{id}`; `titleSort`, `year` and `studio` keep their
+    values and locks. The oracle applied the grammar to a copy and kept none of it; the native
+    server kept the title, summary and sort title and dropped `year` and `studio`. (The `/playlists` LISTING row
+    carries the lock on both servers and not on the reference: the recorded section-8 bound.)"""
+    fx = FIXTURE["playlist"]["field_names"]
+    uri = SHOW_URI.replace("20001", "1007")
+    status, doc = srv.json("POST", "/playlists?type=video&title=C83X%%20Lock&smart=0&uri=%s" % uri)
+    pl = doc["MediaContainer"]["Metadata"][0]["ratingKey"]
+    status, _, _ = srv.req("PUT", "/library/metadata/%s?summary=C83X%%20summary&summary.locked=1" % pl)
+    for template in ("/playlists/{pl}", "/library/metadata/{pl}"):
+        status, doc = srv.json("GET", template.replace("{pl}", str(pl)))
+        rows = [r for r in (doc or {}).get("MediaContainer", {}).get("Metadata", [])
+                if str(r.get("ratingKey")) == str(pl)]
+        names = [f.get("name") for f in rows[0].get("Field", [])] if rows else None
+        check("playlist locked through the item path: %s Field" % template, names == fx[template], names)
+    srv.req("DELETE", "/playlists/%s" % pl)
+    status, doc = srv.json("POST", "/playlists?type=video&title=C83X%%20Item&smart=0&uri=%s" % uri)
+    pl = doc["MediaContainer"]["Metadata"][0]["ratingKey"]
+    for edit, values, fields in FIXTURE["playlist"]["item_path_edits"]:
+        status, _, _ = srv.req("PUT", "/library/metadata/%s?%s" % (pl, edit))
+        row = srv.json("GET", "/library/metadata/%s" % pl)[1]["MediaContainer"]["Metadata"][0]
+        got = ({k: row.get(k) for k in values}, [f.get("name") for f in row.get("Field", [])])
+        check("playlist through the item path, %s: stored and locked" % edit.split("=")[0],
+              status == 200 and got == (values, fields), (status, got))
+    srv.req("DELETE", "/playlists/%s" % pl)
+
+
 def main():
     srv = Server()
     try:
@@ -239,6 +269,7 @@ def main():
         queue_take(srv)
         queue_add(srv)
         playlist_frames(srv)
+        playlist_lock(srv)
     finally:
         srv.stop()
     print("PASS %d/%d" % (sum(results), len(results)))

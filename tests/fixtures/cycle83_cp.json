@@ -122,7 +122,46 @@
      "updatedAt": 0
     }
    }
-  ]
+  ],
+  "item_path_edits": [
+   [
+    "titleSort=zz&titleSort.locked=1",
+    {
+     "titleSort": "zz",
+     "year": null,
+     "studio": null
+    },
+    [
+     "titleSort"
+    ]
+   ],
+   [
+    "year=2001&year.locked=1",
+    {
+     "titleSort": "zz",
+     "year": 2001,
+     "studio": null
+    },
+    [
+     "titleSort",
+     "year"
+    ]
+   ],
+   [
+    "studio=St&studio.locked=1",
+    {
+     "titleSort": "zz",
+     "year": 2001,
+     "studio": "St"
+    },
+    [
+     "titleSort",
+     "studio",
+     "year"
+    ]
+   ]
+  ],
+  "_item_path_note": "PUT /library/metadata/{pl}?<edit>, then GET /library/metadata/{pl}; PUT /playlists/{pl} with the same edits answered the same three states"
  },
  "play_queue": {
   "steps": "a creator client builds a queue of a show (POST /playQueues ... own=1); another client reads it with own=1; the creator moves its last item after its first (PUT .../items/{last}/move?after={first}&own=1)",

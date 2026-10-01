@@ -293,8 +293,10 @@ impl Runtime {
 
     /// `PUT /library/metadata/{playlist}`: cycle 20, measured on plexscratch over 57
     /// columns -- the ITEM path's whole validation (an unknown name a 400, an
-    /// unparseable number a 500), applied to a COPY, then only the list's own title,
-    /// summary and sort title are written.
+    /// unparseable number a 500), applied to a COPY. Cycle 83, plexscratch42 (1.42.2):
+    /// what it then STORES is what `PUT /playlists/{id}` stores -- `year` and `studio`
+    /// keep their values and locks like the title, summary and sort title. Only the
+    /// artwork minting stays the list path's own.
     pub(super) fn edit_playlist_alias(
         &mut self,
         id: &str,
@@ -370,7 +372,7 @@ impl Runtime {
             .filter(|(name, _)| {
                 let field = field_of(name);
                 if alias {
-                    matches!(field.as_str(), "title" | "summary" | "titleSort")
+                    STORED.contains(&field.as_str()) && !matches!(field.as_str(), "thumb" | "art")
                 } else {
                     STORED.contains(&field.as_str())
                 }

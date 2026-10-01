@@ -3307,3 +3307,11 @@ are changing; replay the client's exact request before altering behavior.
   title empty and wrote both frames' fields alphabetically (a `json!` literal keeps its written
   order); every other frame leads identifier, sectionID, itemID, type, title, state. The
   trailing `metadataState`/`updatedAt` pair stays the recorded section-8 order bound.
+- **A playlist edited through the ITEM path stores what the list path stores** (cycle 83,
+  axis 3, C's `pq.py`). plexscratch42 (1.42.2): `PUT /library/metadata/{playlist}?summary=...
+  &summary.locked=1` puts `Field [summary]` on `/playlists/{id}` and on `/library/metadata/{id}`,
+  and `titleSort`, `year` and `studio` sent this way keep their values and locks exactly as
+  through `PUT /playlists/{id}`. The oracle ran this path's grammar on a copy and kept none of
+  it; the native server kept title, summary and sort title and dropped `year` and `studio`.
+  (The `/playlists` LISTING row carries no `Field` on the reference and does on both servers:
+  the recorded section-8 bound, unchanged.)
