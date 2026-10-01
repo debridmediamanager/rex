@@ -3641,3 +3641,16 @@ are changing; replay the client's exact request before altering behavior.
   match attempt, not the season cascade's, so a catalog season (matched) keeps the 18. A season
   UNMATCH runs the same cascade and was not re-measured for the order. MALFORMED-ONLY: transient
   activity frames.
+- **`/all?type=18&title=` was already right** (cycle 87 E4, re-measuring E2's "plexscratch42 answers
+  `title=multi` with 0 rows where ours find substrings"; `tests/fixtures/collection_title_filter.json`).
+  plexscratch (three probe collections, made and deleted) and plexscratch42 (its standing three, read
+  only) answer the listing's own grammar on collections, empty ones included: `title=` is the word
+  prefix with the fold (`multi` finds `E4 Alpha multi-Beta` and not `C52Amulti`; `multi-Beta`,
+  `the.dot`, `(Saga` and `E4E` begin a word, `Beta`, `dot`, `Saga`, `lpha` and `emile` do not; `zoe`
+  finds `Zoë`; a trailing or doubled space finds nothing; `title=a,b` is an OR), `!=` an unfolded
+  substring (`!=multi` drops `C52Amulti`, `!=ZOE` keeps `Zoë`), `<=`/`>=` begin/end, `==` finds nothing
+  (on the movie grid too: `title==Sintel` is 0 rows) and `<>`, `>>`, `<<` are ignored. Both servers
+  answered all 57 exchanges as the references did, before any change; nothing was fixed. The check
+  stays as the record. CLIENT-VISIBLE path (python-plexapi `LibrarySection.collections(title=)`,
+  `library.py:1271-1275`/`1666-1670`; `collection(title)` adds a client-side `title__iexact`), no
+  defect.

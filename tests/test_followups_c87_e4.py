@@ -10,6 +10,14 @@
    unmatched row's and is dropped before the comparison. The fixture is reduced to roles
    and checked against a model of the rule, and the model is applied to plexsim's
    one- and four-episode seasons.
+2. `GET /library/sections/{id}/all?type=18&title=` -- python-plexapi's
+   `LibrarySection.collections(title=...)` and `collection(title)`. Measured on
+   plexscratch (three probe collections) and plexscratch42 (its standing three, read
+   only; `tests/fixtures/collection_title_filter.json`): `title=` is the listing's word
+   prefix with the fold, `!=` an unfolded substring, `<=`/`>=` begins/ends, `==` finds
+   nothing, empty collections included. Both servers already answered every one of the
+   57 exchanges as the references do, so E2's "0 rows where ours find substrings" is not
+   reproduced; the check is kept as the record.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -226,10 +234,59 @@ def season_checks(port):
               "status %s\n got %s\nwant %s" % (status, tokens, model(count)))
 
 
+# -- 2. a section's collections by title ----------------------------------------------
+
+def make_collection(port, title, members):
+    query = urllib.parse.urlencode([("type", "1"), ("title", title), ("smart", "0"),
+                                    ("sectionId", "1"), ("uri", item_uri(port, members))])
+    status, body = request(port, "POST", "/library/collections?" + query)
+    key = (json.loads(body)["MediaContainer"]["Metadata"][0]["ratingKey"]
+           if status == 200 else None)
+    return key
+
+
+def run_queries(port, exchanges):
+    wrong = []
+    for exchange in exchanges:
+        path = exchange["request"].split(" ", 1)[1]
+        status, mc = container(port, path)
+        got = [(row.get("title"), row.get("childCount")) for row in mc.get("Metadata") or []]
+        want = [(row["title"], row["childCount"]) for row in exchange["rows"]]
+        if status != exchange["status"] or got != want:
+            wrong.append((path.split("type=18", 1)[1], status, got, want))
+    return wrong
+
+
+def title_checks(port):
+    fixture = json.load(open(TITLE_FIXTURE))
+    member = "1007"
+    made = [make_collection(port, title, [member]) for title in fixture["s43_collections"]]
+    check("the plexscratch probe collections are created", all(made), made)
+    wrong = run_queries(port, fixture["s43"])
+    check("`all?type=18&title=` answers plexscratch's %d exchanges (word prefix, folded; "
+          "`!=` substring)" % len(fixture["s43"]), not wrong, wrong[:4])
+    for key in made:
+        if key:
+            request(port, "DELETE", "/library/collections/%s" % key)
+    made = []
+    for title, count in fixture["s42_collections"].items():
+        key = make_collection(port, title, [member])
+        if key and not count:
+            request(port, "DELETE", "/library/collections/%s/children/%s" % (key, member))
+        made.append(key)
+    wrong = run_queries(port, fixture["s42"])
+    check("`all?type=18&title=` answers plexscratch42's %d exchanges, empty collections "
+          "included" % len(fixture["s42"]), not wrong, wrong[:4])
+    for key in made:
+        if key:
+            request(port, "DELETE", "/library/collections/%s" % key)
+
+
 def main():
     process, port = start()
     try:
         season_checks(port)
+        title_checks(port)
     finally:
         stop(process)
     passed = sum(results)

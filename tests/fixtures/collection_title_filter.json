@@ -1,0 +1,667 @@
+{
+ "source": "cycle 87 E4, 2026-10-01. plexscratch (PMS 1.43.4): three one-member movie collections created in section 1 for the probe (`E4 Alpha multi-Beta`, `E4Émile Zoë`, `E4 the.Dot (Saga)`), the grid's `type=18` listing filtered, then all three DELETEd. plexscratch42 (PMS 1.42.2), read only: its standing collections C49Empty (one member), C52Amulti and C52Averify (both empty). Rows reduced to title and childCount, in answer order; no token or machine identifier recorded.",
+ "client": "python-plexapi 4.18 LibrarySection.collections(title=...) -> search(libtype='collection') -> _buildSearchKey: GET /library/sections/{id}/all?type=18&title=<title> (library.py:1271-1275, 1555, 1652-1670)",
+ "s43_collections": [
+  "E4 Alpha multi-Beta",
+  "E4Émile Zoë",
+  "E4 the.Dot (Saga)"
+ ],
+ "s42_collections": {
+  "C49Empty": 1,
+  "C52Amulti": 0,
+  "C52Averify": 0
+ },
+ "s43": [
+  {
+   "request": "GET /library/sections/1/all?type=18&title=multi",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=Beta",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=multi-Beta",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=Alpha%20multi",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=alpha",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=lpha",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=e4",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    },
+    {
+     "title": "E4 the.Dot (Saga)",
+     "childCount": 1
+    },
+    {
+     "title": "E4Émile Zoë",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=E4%20alpha",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=emile",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=%C3%89mile",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=E4%C3%89",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4Émile Zoë",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=E4E",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4Émile Zoë",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=zoe",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4Émile Zoë",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=Zo%C3%AB",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4Émile Zoë",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=ZO%C3%8B",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4Émile Zoë",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=dot",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=the.dot",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 the.Dot (Saga)",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=Saga",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=%28Saga",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 the.Dot (Saga)",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=the",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 the.Dot (Saga)",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=Alpha%20multi-Beta",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=E4%20Alpha%20multi-Beta",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=E4%20Alpha%20multi-Beta%20",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=E4%20%20Alpha",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title!=multi",
+   "status": 200,
+   "size": 2,
+   "rows": [
+    {
+     "title": "E4 the.Dot (Saga)",
+     "childCount": 1
+    },
+    {
+     "title": "E4Émile Zoë",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title!=e4",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title!=ZOE",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    },
+    {
+     "title": "E4 the.Dot (Saga)",
+     "childCount": 1
+    },
+    {
+     "title": "E4Émile Zoë",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title%3C=e4%20a",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title%3E=beta",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title==E4",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title!==E4",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    },
+    {
+     "title": "E4 the.Dot (Saga)",
+     "childCount": 1
+    },
+    {
+     "title": "E4Émile Zoë",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=E4,Alpha",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "E4 Alpha multi-Beta",
+     "childCount": 1
+    },
+    {
+     "title": "E4 the.Dot (Saga)",
+     "childCount": 1
+    },
+    {
+     "title": "E4Émile Zoë",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=zz,E4%20t",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "E4 the.Dot (Saga)",
+     "childCount": 1
+    }
+   ]
+  }
+ ],
+ "s42": [
+  {
+   "request": "GET /library/sections/1/all?type=18",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    },
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=multi",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=C52",
+   "status": 200,
+   "size": 2,
+   "rows": [
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=c52a",
+   "status": 200,
+   "size": 2,
+   "rows": [
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=Amulti",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=C49",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=Empty",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=52",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title==C52Amulti",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title==c52amulti",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title!=C52",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title!=multi",
+   "status": 200,
+   "size": 2,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title%3C=C52",
+   "status": 200,
+   "size": 2,
+   "rows": [
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title%3E=C52",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title%3E=multi",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title%3E=Empty",
+   "status": 200,
+   "size": 1,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title%3C%3E=C52",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    },
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title%3E%3E=C52",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    },
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title%3C%3C=C52",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    },
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    },
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=C",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    },
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title=%20C52",
+   "status": 200,
+   "size": 0,
+   "rows": []
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title!=MPTY",
+   "status": 200,
+   "size": 2,
+   "rows": [
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18&title!==C49Empty",
+   "status": 200,
+   "size": 3,
+   "rows": [
+    {
+     "title": "C49Empty",
+     "childCount": 1
+    },
+    {
+     "title": "C52Amulti",
+     "childCount": null
+    },
+    {
+     "title": "C52Averify",
+     "childCount": null
+    }
+   ]
+  }
+ ]
+}
