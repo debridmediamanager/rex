@@ -6834,6 +6834,15 @@ class PlexSim:
             # versions return the framework's XML traceback even when JSON was
             # requested.  The body differs only in the build-specific bundle hash
             # and runtime line; use the 1.42.2 form that plexsim advertises.
+            #
+            # Cycle 87: that traceback is the BARE request only. With a `url` argument --
+            # empty, `x`, a relative path, an http URL, a YouTube link -- the function runs,
+            # no URL service claims it, and plexscratch42, kids and zen all answer a 404
+            # with an EMPTY body and no `Content-Type` (cookie kept), under every Accept,
+            # gzip offer, paging and HEAD. A query without `url` (`foo=1`, `URL=x`) is
+            # still the traceback. plexsim answered the traceback to all of them.
+            if "url" in query:
+                return ("bare", 404)
             return ("plugin-xml", 500, URL_LOOKUP_ERROR)
 
         if segments[:3] == ["library", "metadata", "augmentations"]:

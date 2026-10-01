@@ -1,0 +1,5543 @@
+{
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed, no route out); kids 1.43.4 and zen 1.42.2 (GET only) as witnesses",
+ "date": "2026-10-01",
+ "note": "GET/HEAD /system/services/url/lookup with and without a `url` argument, raw socket, keep-alive. The bare request (and one without `url`) is the 464-byte framework traceback; any `url` value -- empty, relative, a non-URL, an http URL, and on the isolated plexscratch42 a YouTube watch URL -- is a 404 with an EMPTY body and no Content-Type, the framework cookie kept, never gzipped. Date dropped; the Set-Cookie value is the framework's constant empty-session blob, not a credential. Request token and client id omitted.",
+ "exchanges": [
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup",
+   "request_headers": [],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup",
+   "request_headers": [
+    [
+     "Accept",
+     "application/json"
+    ]
+   ],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "464"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "313"
+    ],
+    [
+     "Content-Length",
+     "313"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup",
+   "request_headers": [],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=",
+   "request_headers": [
+    [
+     "Accept",
+     "application/json"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup?url=",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x",
+   "request_headers": [
+    [
+     "Accept",
+     "application/json"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup?url=x",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=notaurl",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=notaurl",
+   "request_headers": [
+    [
+     "Accept",
+     "application/json"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=notaurl",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=notaurl",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup?url=notaurl",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+   "request_headers": [
+    [
+     "Accept",
+     "application/json"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+   "request_headers": [
+    [
+     "Accept",
+     "application/json"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x&foo=1",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x&foo=1",
+   "request_headers": [
+    [
+     "Accept",
+     "application/json"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x&foo=1",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x&foo=1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup?url=x&foo=1",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?foo=1",
+   "request_headers": [],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?foo=1",
+   "request_headers": [
+    [
+     "Accept",
+     "application/json"
+    ]
+   ],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?foo=1",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "464"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "313"
+    ],
+    [
+     "Content-Length",
+     "313"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?foo=1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup?foo=1",
+   "request_headers": [],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?URL=x",
+   "request_headers": [],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?URL=x",
+   "request_headers": [
+    [
+     "Accept",
+     "application/json"
+    ]
+   ],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?URL=x",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "464"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "313"
+    ],
+    [
+     "Content-Length",
+     "313"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?URL=x",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"TypeError: url_lookup() takes at least 2 arguments (1 given)\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\nTypeError: url_lookup() takes at least 2 arguments (1 given)\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup?URL=x",
+   "request_headers": [],
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "464"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ",
+   "request_headers": [
+    [
+     "Accept",
+     "application/json"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ",
+   "request_headers": [],
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  }
+ ],
+ "witnesses": {
+  "kids": [
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Content-Encoding",
+      "gzip"
+     ],
+     [
+      "X-Plex-Content-Original-Length",
+      "464"
+     ],
+     [
+      "X-Plex-Content-Compressed-Length",
+      "312"
+     ],
+     [
+      "Content-Length",
+      "312"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=x",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=notaurl",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=notaurl",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=notaurl",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=notaurl",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=notaurl",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x&foo=1",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x&foo=1",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x&foo=1",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x&foo=1",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=x&foo=1",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?foo=1",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?foo=1",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?foo=1",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Content-Encoding",
+      "gzip"
+     ],
+     [
+      "X-Plex-Content-Original-Length",
+      "464"
+     ],
+     [
+      "X-Plex-Content-Compressed-Length",
+      "312"
+     ],
+     [
+      "Content-Length",
+      "312"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?foo=1",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?foo=1",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?URL=x",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?URL=x",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?URL=x",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Content-Encoding",
+      "gzip"
+     ],
+     [
+      "X-Plex-Content-Original-Length",
+      "464"
+     ],
+     [
+      "X-Plex-Content-Compressed-Length",
+      "312"
+     ],
+     [
+      "Content-Length",
+      "312"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?URL=x",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?URL=x",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   }
+  ],
+  "zen": [
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Content-Encoding",
+      "gzip"
+     ],
+     [
+      "X-Plex-Content-Original-Length",
+      "464"
+     ],
+     [
+      "X-Plex-Content-Compressed-Length",
+      "313"
+     ],
+     [
+      "Content-Length",
+      "313"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=x",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=notaurl",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=notaurl",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=notaurl",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=notaurl",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=notaurl",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=%2Flibrary%2Fsections",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=http%3A%2F%2Fexample.invalid%2Fa",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x&foo=1",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x&foo=1",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x&foo=1",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?url=x&foo=1",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?url=x&foo=1",
+    "request_headers": [],
+    "status": 404,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "0"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?foo=1",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?foo=1",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?foo=1",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Content-Encoding",
+      "gzip"
+     ],
+     [
+      "X-Plex-Content-Original-Length",
+      "464"
+     ],
+     [
+      "X-Plex-Content-Compressed-Length",
+      "313"
+     ],
+     [
+      "Content-Length",
+      "313"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?foo=1",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?foo=1",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?URL=x",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?URL=x",
+    "request_headers": [
+     [
+      "Accept",
+      "application/json"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?URL=x",
+    "request_headers": [
+     [
+      "Accept-Encoding",
+      "gzip, deflate, br, zstd"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Content-Encoding",
+      "gzip"
+     ],
+     [
+      "X-Plex-Content-Original-Length",
+      "464"
+     ],
+     [
+      "X-Plex-Content-Compressed-Length",
+      "313"
+     ],
+     [
+      "Content-Length",
+      "313"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/services/url/lookup?URL=x",
+    "request_headers": [
+     [
+      "X-Plex-Container-Start",
+      "0"
+     ],
+     [
+      "X-Plex-Container-Size",
+      "50"
+     ]
+    ],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/services/url/lookup?URL=x",
+    "request_headers": [],
+    "status": 500,
+    "headers": [
+     [
+      "X-Plex-Protocol",
+      "1.0"
+     ],
+     [
+      "Content-Length",
+      "464"
+     ],
+     [
+      "Content-Type",
+      "application/xml"
+     ],
+     [
+      "Set-Cookie",
+      "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+     ],
+     [
+      "Connection",
+      "Keep-Alive"
+     ],
+     [
+      "Keep-Alive",
+      "timeout=20"
+     ],
+     [
+      "Cache-Control",
+      "no-cache"
+     ]
+    ],
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   }
+  ]
+ }
+}

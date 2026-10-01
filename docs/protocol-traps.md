@@ -3812,3 +3812,13 @@ are changing; replay the client's exact request before altering behavior.
   four and 217 bytes for music. MALFORMED-ONLY: Plex Web 4.147.1 and 4.162.1 read the list
   through `ScannerCollection`, whose responseType is the base `xml` (`Accept: application/xml`),
   and parse the body as XML; only a third-party JSON client saw the difference.
+- **`/system/services/url/lookup` with a `url` is a 404, not the traceback.** Measured on
+  plexscratch42 (1.42.2), kids (1.43.4) and zen (1.42.2), raw keep-alive sockets, 2026-10-01
+  (`tests/fixtures/c87_w7_url_lookup.json`): the 464-byte traceback is the bare request and any
+  query WITHOUT `url` (`foo=1`, `URL=x`); any `url` value -- empty, `x`, a relative path, an http
+  URL and, on the isolated plexscratch42 only, a YouTube watch URL -- is a 404 with an EMPTY body,
+  no `Content-Type` and the framework cookie, under JSON Accept, a gzip offer, paging and HEAD.
+  (`?url` with no `=` is PMS's own 89-byte 400 before the framework sees it.) Both servers
+  answered the traceback to all of them. MALFORMED-ONLY: Plex Web 4.147.1 reads such a key only
+  for a channel item (`responseType` special-cases `/system/services/url/lookup`), and with no
+  channel installed no row carries one.

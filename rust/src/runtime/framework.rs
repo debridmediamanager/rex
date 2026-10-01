@@ -942,6 +942,12 @@ impl Runtime {
             return Response::error(404, "plexsim: not found");
         }
         if route == "/system/services/url/lookup" {
+            // Cycle 87 (`server.py`): the traceback is the BARE request only. Any `url`
+            // argument, empty included, is a 404 with an empty, untyped body on
+            // plexscratch42, kids and zen: the function runs and no service claims it.
+            if query.contains_key("url") {
+                return Response::bare(404);
+            }
             return Response::plugin_xml(500, framework_error("url_lookup", 2, 1));
         }
         if route == "/system" {
