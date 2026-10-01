@@ -8,7 +8,8 @@
 - a play queue that LOSES its selection (the selected last row removed with
   `DELETE /playQueues/{id}/items/{itemID}`), and the DELETE's own answer, read the way
   python-plexapi's `PlayQueue.get` reads it, with and without `center=`
-  (`tests/fixtures/queue_lost_selection_s42.json`).
+  (`tests/fixtures/queue_lost_selection_s42.json`);
+- the reads that list no rows at all: `window=0`, and a `center=` naming no row of the queue.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -262,6 +263,7 @@ def run(port):
     machine = request(port, "GET", "/identity")[1].get("machineIdentifier")
     timeline_sequences(port, machine)
     queue_reads(port, machine, empty_rule=False)
+    queue_reads(port, machine, empty_rule=True)
 
 
 def main():

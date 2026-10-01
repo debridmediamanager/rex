@@ -16772,9 +16772,18 @@ class PlexSim:
         # whole thing. plexsim ignored both and sent every row every time.
         window = query.get("window")
         centre = query.get("center")
+        # Cycle 87, plexscratch42 (1.42.2): a `center=` that names no row of the queue -- an
+        # id that was removed, or one it never held -- lists NO rows, the selection and the
+        # counts reported as ever; so does `window=0`, around a centre or the selection alike.
+        # plexsim fell back to the selection for the first and listed the centre alone for
+        # the second.
+        listed_nothing = str(window).isdigit() and int(window) == 0
         if str(centre).isdigit():
-            offset = next((i for i, entry in enumerate(items)
-                           if entry["id"] == int(centre)), offset)
+            found = next((i for i, entry in enumerate(items) if entry["id"] == int(centre)), None)
+            if found is None:
+                listed_nothing = True
+            else:
+                offset = found
         if deselected and not (str(centre).isdigit() and any(
                 entry["id"] == int(centre) and rows[i] is not None
                 for i, entry in enumerate(items))):
@@ -16804,6 +16813,8 @@ class PlexSim:
                     + (rows[offset:offset + 1] if before and after else [])
                     + (rows[offset + 1:offset + span + 1] if after else []))
             offset = offset - low
+        if listed_nothing:
+            rows = []
         metadata = [item for item in rows if item is not None]
         fields = {
             "Metadata": metadata,

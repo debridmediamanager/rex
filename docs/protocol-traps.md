@@ -3532,3 +3532,10 @@ are changing; replay the client's exact request before altering behavior.
   `includeAfter` as usual -- offset still 0, no selected ids. Both servers reported the centre's
   index in the slice. CLIENT-VISIBLE: python-plexapi's `PlayQueue.removeItem` on the playing last
   item, then `PlayQueue.get`/`refresh`, read a selection the reference does not have.
+- **`window=0` lists no rows, and neither does a `center=` that names no row of the queue** (cycle
+  87 e1, plexscratch42 1.42.2, `tests/fixtures/queue_lost_selection_s42.json`). Around the
+  selection or a centre alike, `window=0` answers `size 0` with the selection and counts as ever
+  -- not the centre row alone, which both servers listed. A `center=` of a removed row or an id the
+  queue never held answers `size 0` too; both servers fell back to the selection and listed its
+  window. MALFORMED-ONLY: python-plexapi always sends `window=50` and a centre it took from the
+  queue it holds.

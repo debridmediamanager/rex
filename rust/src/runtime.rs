@@ -11940,6 +11940,12 @@ impl Runtime {
         // window; python-plexapi's `PlayQueue.get` reads with `window=50`.
         let selection_index = selected_index;
         let mut centred = false;
+        // Cycle 87, plexscratch42 (1.42.2): a `center=` that names no row of the queue lists
+        // NO rows, and so does `window=0`, around a centre or the selection alike.
+        let mut listed_nothing = query
+            .get("window")
+            .and_then(|value| value.parse::<usize>().ok())
+            == Some(0);
         if let Some(center) = query
             .get("center")
             .and_then(|value| value.parse::<i64>().ok())
@@ -11947,6 +11953,8 @@ impl Runtime {
             if let Some(index) = queue.items.iter().position(|item| item.id == center) {
                 selected_index = index;
                 centred = rows[index].is_some();
+            } else {
+                listed_nothing = true;
             }
         }
         if queue.deselected && !centred {
@@ -11987,6 +11995,9 @@ impl Runtime {
             let high = (selected_index + window + 1).min(rows.len());
             rows = rows[low..high.max(low)].to_vec();
             selected_index = selected_index.saturating_sub(low);
+        }
+        if listed_nothing {
+            rows.clear();
         }
         let metadata = rows.into_iter().flatten().collect::<Vec<_>>();
         let mut fields = Map::from_iter([
