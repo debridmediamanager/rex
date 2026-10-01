@@ -9,7 +9,9 @@ python-plexapi's `Playable.updateTimeline` shape:
   the same latch and never happens on a `stopped` beat;
 - a playlist's own beats (`Playlist.updateTimeline`) keep their crossing position and
   latch on a track of their own, and their completion writes no history row; a queue BUILT
-  from a playlist follows the item rules unchanged.
+  from a playlist follows the item rules unchanged;
+- a beat with NO `playQueueItemID` moves its client's own queue to the first row of its
+  `ratingKey`; an EMPTY one (or `0`, `abc`, an unknown id) moves nothing.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -233,9 +235,71 @@ def sequences(port, machine):
             request(port, "DELETE", "/playlists/%s" % playlist)
 
 
+def queue_selection(port, machine):
+    """The omitted-id queue moves (`queue_selection` in the fixture)."""
+    measured = FIXTURE["queue_selection"]
+    duration = int(first(port, "/library/metadata/%s" % ROWS["A"])["duration"])
+    x_length = int(first(port, "/library/metadata/%s" % ROWS["X"])["duration"])
+
+    def go(session, label, state_="playing", position=3000, length=duration):
+        return beat(port, "web", session, state_, position, length, None, ROWS[label])[1].get(
+            "playbackState")
+
+    got = {}
+    q1, i1 = make_queue(port, machine, "ABC")
+    q2, i2 = make_queue(port, machine, "ABC")
+    session = "c87e3-q-" + uuid.uuid4().hex[:6]
+    got["two_queues"] = [go(session, "B"), {"q1": selected(port, q1, i1), "q2": selected(port, q2, i2)}]
+    go(session, "B", "stopped", 4000)
+
+    queue, ids = make_queue(port, machine, "ABCB")
+    session = "c87e3-q-" + uuid.uuid4().hex[:6]
+    row = [sorted(ids)]
+    for label in "BCB":
+        row += [go(session, label), selected(port, queue, ids)]
+    got["dupes"] = row
+    go(session, "B", "stopped", 4000)
+
+    queue, ids = make_queue(port, machine, "ABC")
+    session = "c87e3-q-" + uuid.uuid4().hex[:6]
+    row = [go(session, "B"), selected(port, queue, ids)]
+    row += [go(session, "X", position=1000, length=x_length), selected(port, queue, ids)]
+    go(session, "X", "stopped", 1000, x_length)
+    got["not_in_queue"] = row + [selected(port, queue, ids)]
+
+    row = []
+    for state_ in ("paused", "stopped", "buffering"):
+        queue, ids = make_queue(port, machine, "ABC")
+        session = "c87e3-q-" + uuid.uuid4().hex[:6]
+        row.append([state_, go(session, "B", state_), selected(port, queue, ids)])
+        go(session, "B", "stopped", 4000)
+    got["states"] = row
+
+    queue, ids = make_queue(port, machine, "ABC")
+    session = "c87e3-q-" + uuid.uuid4().hex[:6]
+    bare = [("ratingKey", ROWS["B"]), ("key", "/library/metadata/" + ROWS["B"])]
+    status, body = request(port, "GET", "/:/timeline", bare + [("state", "playing")] + WEB
+                           + [("X-Plex-Session-Identifier", session)])
+    got["notime"] = [status, body.get("playbackState"), selected(port, queue, ids)]
+    request(port, "GET", "/:/timeline", bare + [("state", "stopped")] + WEB
+            + [("X-Plex-Session-Identifier", session)])
+
+    playlist = make_playlist(port, machine)
+    queue, ids = make_queue(port, machine, "", playlist)
+    session = "c87e3-q-" + uuid.uuid4().hex[:6]
+    got["playlist_queue"] = [sorted(ids), go(session, "B"), selected(port, queue, ids)]
+    go(session, "B", "stopped", 4000)
+    request(port, "DELETE", "/playlists/%s" % playlist)
+
+    for case, value in sorted(got.items()):
+        check("queue selection %s" % case, value == measured[case],
+              {"got": value, "measured": measured[case]})
+
+
 def run(port):
     machine = request(port, "GET", "/identity")[1].get("machineIdentifier")
     sequences(port, machine)
+    queue_selection(port, machine)
 
 
 def main():

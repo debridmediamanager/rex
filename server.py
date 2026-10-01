@@ -17402,6 +17402,26 @@ class PlexSim:
                             row, listed = named, None
                             rating_key = str(entry["ratingKey"])
                         break
+        elif "playQueueItemID" not in query and row is not None:
+            # Cycle 87, plexscratch42 (1.42.2): a beat with NO `playQueueItemID` at all moves
+            # the selection of the queue its CLIENT owns to that queue's first row of the
+            # beat's `ratingKey` -- in any state, with or without `time` -- and leaves it
+            # alone when no row holds the item. Another client's beat moves nothing, and an
+            # EMPTY `playQueueItemID=` (or `0`, `abc`, an id no queue holds) moves nothing
+            # either: that is where empty and absent part. plexsim moved a selection only
+            # by id, so python-plexapi's `PlayQueue.create` and `updateTimeline` on its
+            # second item left `selectedItem` on the first.
+            client = (query.get("X-Plex-Client-Identifier")
+                      or (headers.get("X-Plex-Client-Identifier") if headers else None))
+            with self.lock:
+                for queue in self.play_queues.values():
+                    if client and queue.get("client") == client:
+                        entry = next((e for e in queue["items"]
+                                      if str(e["ratingKey"]) == rating_key), None)
+                        if entry is not None:
+                            queue["selected"] = entry["id"]
+                            queue.pop("deselected", None)
+                        break
 
         playback_state = "ignore"
         view_count = 0

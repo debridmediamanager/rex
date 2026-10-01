@@ -3618,3 +3618,14 @@ are changing; replay the client's exact request before altering behavior.
   share python-plexapi's client identifier, which is the session, so `video.updateTimeline(3000,
   'playing')` then `playlist.updateTimeline(<92%>)` stepped the list's `viewCount` on ours and not
   on the reference, and the reverse order marked the video played on ours only.
+- **A beat with NO `playQueueItemID` moves its CLIENT's queue; an EMPTY one does not** (cycle 87
+  e3, same fixture, `queue_selection`). From the client that owns the queue (one queue per client,
+  cycle 76), a beat without the parameter selects the queue's FIRST row of the beat's `ratingKey`
+  -- in every state, with or without `time`, over a playlist-built queue too -- and leaves the
+  selection alone when no row holds the item; `playQueueVersion` does not step. Another client's
+  beat moves nothing, and `playQueueItemID=` empty, `0`, `abc` or an id no queue holds moves
+  nothing from anyone (all 200). For the play latch and the item a beat names, empty and absent
+  stay alike. Both servers moved a selection only by id. CLIENT-VISIBLE: python-plexapi's
+  `PlayQueue.create` and `Playable.updateTimeline` send the same client identifier and the latter
+  never sends `playQueueItemID`, so `updateTimeline` on the queue's second item moves
+  `PlayQueue.refresh()`'s `selectedItem` on the reference.

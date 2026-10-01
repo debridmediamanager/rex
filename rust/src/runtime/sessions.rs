@@ -792,6 +792,22 @@ impl Runtime {
                     listed = false;
                 }
             }
+        } else if !query.contains_key("playQueueItemID") && (in_catalog || listed) {
+            // Cycle 87, plexscratch42 (1.42.2): a beat with NO `playQueueItemID` at all
+            // moves the selection of the queue its CLIENT owns to that queue's first row
+            // of the beat's `ratingKey` -- any state, with or without `time` -- and leaves
+            // it alone when no row holds the item. Another client's beat moves nothing,
+            // and an EMPTY `playQueueItemID=` (or `0`, `abc`, an id no queue holds) moves
+            // nothing either: that is where empty and absent part.
+            let client = plex_value(query, headers, "X-Plex-Client-Identifier").unwrap_or_default();
+            if !client.is_empty() {
+                if let Some(queue) = self.queues.values_mut().find(|queue| queue.client == client) {
+                    if let Some(item) = queue.items.iter().find(|item| item.rating_key == rating_key) {
+                        queue.selected = Some(item.id);
+                        queue.deselected = false;
+                    }
+                }
+            }
         }
         let mut playback_state = "ignore";
         let mut fields = Map::new();
