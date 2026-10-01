@@ -30103,7 +30103,8 @@ def main():
           len(rows_c53k) == 15 and len(legacy_c53k) == 11
           and identifiers_c53k[0] == "com.plexapp.agents.fanarttv"
           and identifiers_c53k[-1] == "tv.plex.agents.none"
-          and imdb_c53k and imdb_c53k[0].get("primary") == "1"
+          # kids and zen send a JSON boolean here (cycle 87, c87_w2_system_agents_zen.json)
+          and imdb_c53k and imdb_c53k[0].get("primary") is True
           and (_rows_c53k(imdb_c53k[0].get("MediaType")) or [{}])[0].get("name")
           == "Plex Movie (Legacy)"
           and "Language" not in imdb_c53k[0]
