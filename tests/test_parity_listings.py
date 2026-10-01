@@ -313,9 +313,12 @@ def run(port):
           row.get("uuid") == "000000000000000000000000%08x" % __import__("zlib").crc32(
               b"parity probe-movie")
           and row.get("Location") == [{"id": 1, "path": "/data/probe"}], row)
+    # The measured echo (plexscratch42, W4's `ok-movie` and W5's music create): no
+    # `refreshing`, and the group and the two create stamps before `content`.
     check("the created row is the bare create projection",
           [k for k in row if k != "Location"] == [
-              "refreshing", "key", "type", "title", "agent", "scanner", "language", "uuid",
+              "key", "type", "title", "agent", "scanner", "language",
+              "metadataAgentProviderGroupId", "uuid", "updatedAt", "createdAt",
               "content", "directory", "contentChangedAt", "hidden"]
           and "identifier" not in (body or {}).get("MediaContainer", {}), row)
     status, head, xml = request(port, "POST", "/library/sections?" + form.replace(
