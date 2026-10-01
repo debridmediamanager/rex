@@ -13,6 +13,13 @@ against the reference's own exchange before it is applied to plexsim:
 - A selection that leaves moves to the FOLLOWING surviving row -- not the queue's head --
   and with no row after it the queue has NO selection: `size 0`, no rows, no selected item
   id, `playQueueSelectedItemOffset` 0 and `playQueueTotalCount` still counting the rows.
+- A Fix Match that merges is a removal like any other (the native server left it queued).
+
+And a request header's value is what follows the colon less ONE optional space, for every
+header (cycle 50's rule): `X-Plex-Platform:  Roku` is not Roku and `X-Plex-Version:  9.7.1`
+does not parse, measured over raw sockets on kids and plexscratch42
+(`tests/fixtures/header_ows_roku.json`) through `/media/providers`' Roku pivot strip. The
+oracle's parser stripped every leading space.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -34,6 +41,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "queue_removal_s42.jsonl")
+OWS_FIXTURE = os.path.join(HERE, "fixtures", "header_ows_roku.json")
 ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
@@ -284,10 +292,68 @@ def merges():
         stop(process)
 
 
+def raw_providers(port, lines):
+    """`GET /media/providers` over a raw socket: http.client would normalise the very
+    whitespace being measured."""
+    head = [b"GET /media/providers HTTP/1.1", b"Host: 127.0.0.1:%d" % port,
+            b"Accept: application/json", b"X-Plex-Client-Identifier: c84f-ows",
+            b"X-Plex-Product: Plex for Roku", b"Connection: close"]
+    head += [line.encode("latin-1") for line in lines]
+    sock = socket.create_connection(("127.0.0.1", port), timeout=30)
+    try:
+        sock.sendall(b"\r\n".join(head) + b"\r\n\r\n")
+        data = b""
+        while True:
+            chunk = sock.recv(65536)
+            if not chunk:
+                break
+            data += chunk
+    finally:
+        sock.close()
+    header, _, body = data.partition(b"\r\n\r\n")
+    status = int(header.split(b" ", 2)[1])
+    if b"transfer-encoding: chunked" in header.lower():
+        out, rest = b"", body
+        while rest:
+            size, _, rest = rest.partition(b"\r\n")
+            count = int(size, 16)
+            if count == 0:
+                break
+            out, rest = out + rest[:count], rest[count + 2:]
+        body = out
+    container = json.loads(body)["MediaContainer"] if status == 200 else {}
+    pivots = sum(len(row.get("Pivot") or [])
+                 for provider in container.get("MediaProvider") or []
+                 for feature in provider.get("Feature") or []
+                 for row in feature.get("Directory") or []
+                 if str(row.get("key") or "").startswith("/library/sections/"))
+    return status, pivots
+
+
+def header_whitespace():
+    cells = json.load(open(OWS_FIXTURE))["cells"]
+    process, port = start()
+    try:
+        for cell in cells:
+            answers = list(cell["answers"].values())
+            stripped = {answer["libraryPivots"] == 0 for answer in answers}
+            check("reference: both servers agree on %s" % cell["name"], len(stripped) == 1,
+                  cell["answers"])
+            want = stripped.pop()
+            status, pivots = raw_providers(port, cell["lines"])
+            check("%r: library pivots %s, as both references answer"
+                  % (cell["lines"], "withheld" if want else "kept"),
+                  status == 200 and (pivots == 0) == want and (want or pivots > 0),
+                  (status, pivots))
+    finally:
+        stop(process)
+
+
 def main():
     fields = reference_checks(reference())
     deletes(fields)
     merges()
+    header_whitespace()
     passed = sum(results)
     print("PASS %d/%d cycle-84 F parity checks" % (passed, len(results)))
     return 0 if passed == len(results) else 1

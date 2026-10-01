@@ -22316,6 +22316,31 @@ class Handler(BaseHTTPRequestHandler):
         if getattr(self.headers, "defects", None):
             self.send_error(400)
             return False
+        # Cycle 84 F, raw sockets on kids (1.43.4) and plexscratch42 (1.42.2), identical
+        # (`tests/fixtures/header_ows_roku.json`): EVERY header's value is what follows the
+        # colon less ONE optional space -- cycle 50's rule, which `_header_value` applied
+        # only to the readers it was written for. Python's parser strips every leading
+        # space and tab, so `X-Plex-Platform:  Roku` read as `Roku` and took the Roku
+        # pivot strip a real PMS withholds from ` Roku`, and `X-Plex-Version:  9.7.1`
+        # parsed where a real PMS sees a leading space and strips. Rewrite the parsed
+        # values off the raw lines once, so every reader sees what a real PMS reads.
+        raw = [line for line in self.rfile.lines if line not in (b"\r\n", b"\n", b"")]
+        parsed_headers = getattr(self.headers, "_headers", None)
+        if parsed_headers is not None and len(raw) == len(parsed_headers):
+            measured = []
+            for (name, value), line in zip(parsed_headers, raw):
+                head, _, text = line.partition(b":")
+                if head.decode("latin-1") != name:
+                    break
+                if text.endswith(b"\r\n"):
+                    text = text[:-2]
+                elif text.endswith(b"\n"):
+                    text = text[:-1]
+                if text[:1] == b" ":
+                    text = text[1:]
+                measured.append((name, text.decode("latin-1")))
+            else:
+                self.headers._headers = measured
         return True
 
     def handle_expect_100(self):

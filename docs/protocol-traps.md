@@ -3390,3 +3390,13 @@ are changing; replay the client's exact request before altering behavior.
   server retired it and left it queued -- version unmoved, selection naming a 404 -- and the
   oracle dropped the matched key even when the merge absorbed nothing (a survivor with no Media
   of its own), taking a row that still exists out of the queue.
+- **Every request header loses ONE optional leading space, not all of them** (cycle 84 F, raw
+  sockets on kids 1.43.4 and plexscratch42 1.42.2, identical; `tests/fixtures/header_ows_roku.json`).
+  Cycle 50 measured the rule for `Content-Length` and `X-Plex-Token`; it holds for the identity
+  headers too: `X-Plex-Platform:  Roku` (two or three spaces) is ` Roku`, not Roku, and keeps the
+  library pivots on `/media/providers` that `X-Plex-Platform: Roku` and `X-Plex-Platform:Roku`
+  lose; `X-Plex-Version:  9.7.1` carries a leading space, does not parse, and strips them; a
+  trailing space is kept (`Roku ` is not Roku either). The oracle applied the rule only through
+  `_header_value` and left every other reader on Python's parser, which strips all leading
+  whitespace; it now rewrites the parsed values off the raw lines. MALFORMED-ONLY: no client
+  sends a doubled separator.
