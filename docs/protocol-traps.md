@@ -3213,3 +3213,10 @@ are changing; replay the client's exact request before altering behavior.
   poster tile answered 404 -- the app drew titles where the posters go. `/service(s)/ultrablur/colors`
   goes through the transcoder and the Categories shelf reads its genre axis the same way. The
   oracle answered 200 throughout. No suite caught it: every check sent the token as a header.
+- **An item's `languageOverride` picker is the translation table's list for the EXACT language**
+  (cycle 83, zen 1.42.2, `GET /library/metadata/{id}?includePreferences=1`). Under `zh-TW` zen
+  leads the list with `tr-TR:土耳其文|zh-CN:中文|zh-TW:中文（台灣）` and names Arabic
+  `阿拉伯文（沙烏地阿拉伯）`; under `es-419` it names `en-GB` `Inglés (R. U.)`. The native server
+  cut the language to its base and drew the agent list for `zh` (simplified, `zh`'s order) and
+  `es` (`Inglés (RU)`), where the oracle took the table's own entry first. Only a language the
+  table lacks falls back to the agent rows.

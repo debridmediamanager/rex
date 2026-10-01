@@ -6423,7 +6423,21 @@ impl Runtime {
         if let Some(rebuilt) = self.localized_item_language_enum(source, language, strings) {
             return Some(rebuilt);
         }
-        let language_list =
+        // Cycle 83 (A's item-settings sweep on zen): the table's OWN entry for the exact
+        // language wins, as in `server.py`'s localiser, and only a language it lacks
+        // takes the agent rows. Cut to its base, `zh-TW` read `zh`'s simplified list and
+        // `es-419` `es`'s, in `es`'s ORDER, where zen 1.42.2 answers the item's
+        // `languageOverride` picker in `zh-TW`'s own names (`ar-SA:阿拉伯文（沙烏地阿拉伯）`,
+        // led by `tr-TR`) and `es-419`'s (`en-GB:Inglés (R. U.)`).
+        if strings
+            .get("enumValues")
+            .and_then(|table| table.get(source))
+            .and_then(|entry| entry.get(language))
+            .is_some_and(Value::is_string)
+        {
+            return None;
+        }
+let language_list =
             source.contains("ca-ES:") || source.contains("en-US:") || source.contains("ar-SA:");
         if !language_list {
             return None;

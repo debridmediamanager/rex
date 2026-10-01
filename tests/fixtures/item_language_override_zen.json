@@ -1,0 +1,78 @@
+{
+ "_provenance": "Cycle 83, measured on zen (PMS 1.42.2.10156): GET /library/metadata/{movie}?includePreferences=1 and the same on a show, with X-Plex-Language as keyed; the languageOverride Setting row as answered. Movie and show rows were identical in every language.",
+ "request": "/library/metadata/{ratingKey}?includePreferences=1",
+ "Setting": {
+  "en": {
+   "id": "languageOverride",
+   "label": "Metadata language",
+   "summary": "Language to use for item metadata such as synopsis and title.",
+   "type": "text",
+   "default": "",
+   "value": "",
+   "hidden": false,
+   "advanced": false,
+   "group": "",
+   "enumValues": ":Library default|ar-SA:Arabic (Saudi Arabia)|bg-BG:Bulgarian|ca-ES:Catalan|zh-CN:Chinese|zh-HK:Chinese (Hong Kong)|zh-TW:Chinese (Taiwan)|hr-HR:Croatian|cs-CZ:Czech|da-DK:Danish|nl-NL:Dutch|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|et-EE:Estonian|fi-FI:Finnish|fr-FR:French|fr-CA:French (Canada)|de-DE:German|el-GR:Greek|he-IL:Hebrew|hi-IN:Hindi|hu-HU:Hungarian|is-IS:Icelandic|id-ID:Indonesian|it-IT:Italian|ja-JP:Japanese|ko-KR:Korean|lv-LV:Latvian|lt-LT:Lithuanian|nb-NO:Norwegian Bokmål|fa-IR:Persian|pl-PL:Polish|pt-BR:Portuguese|pt-PT:Portuguese (Portugal)|ro-RO:Romanian|ru-RU:Russian|sk-SK:Slovak|es-ES:Spanish|es-MX:Spanish (Mexico)|sv-SE:Swedish|th-TH:Thai|tr-TR:Turkish|uk-UA:Ukrainian|vi-VN:Vietnamese"
+  },
+  "es-419": {
+   "id": "languageOverride",
+   "label": "Idioma de los Metadatos",
+   "summary": "Idioma que se usará para los metadatos del elemento, como la sinopsis y el título.",
+   "type": "text",
+   "default": "",
+   "value": "",
+   "hidden": false,
+   "advanced": false,
+   "group": "",
+   "enumValues": ":Por defecto de la biblioteca|de-DE:Alemán|ar-SA:Árabe (Arabia Saudí)|bg-BG:Búlgaro|ca-ES:Catalán|cs-CZ:Checo|zh-CN:Chino|zh-HK:Chino (Hong Kong)|zh-TW:Chino (Taiwán)|ko-KR:Coreano|hr-HR:Croata|da-DK:Danés|sk-SK:Eslovaco|es-ES:Español|es-MX:Español (México)|et-EE:Estonio|fi-FI:Finés|fr-FR:Francés|fr-CA:Francés (Canadá)|el-GR:Griego|he-IL:Hebreo|hi-IN:Hindi|hu-HU:Húngaro|id-ID:Indonesio|en-US:Inglés|en-AU:Inglés (Australia)|en-CA:Inglés (Canadá)|en-GB:Inglés (R. U.)|is-IS:Islandés|it-IT:Italiano|ja-JP:Japonés|lv-LV:Letón|lt-LT:Lituano|nl-NL:Neerlandés|nb-NO:Noruego bokmal|fa-IR:Persa|pl-PL:Polaco|pt-BR:Portugués|pt-PT:Portugués (Portugal)|ro-RO:Rumano|ru-RU:Ruso|sv-SE:Sueco|th-TH:Tailandés|tr-TR:Turco|uk-UA:Ucraniano|vi-VN:Vietnamita"
+  },
+  "zh-TW": {
+   "id": "languageOverride",
+   "label": "Metadata language",
+   "summary": "Language to use for item metadata such as synopsis and title.",
+   "type": "text",
+   "default": "",
+   "value": "",
+   "hidden": false,
+   "advanced": false,
+   "group": "",
+   "enumValues": ":Library default|tr-TR:土耳其文|zh-CN:中文|zh-TW:中文（台灣）|zh-HK:中文（香港）|da-DK:丹麥文|nb-NO:巴克摩挪威文|ja-JP:日文|ca-ES:加泰蘭文|lt-LT:立陶宛文|is-IS:冰島文|hu-HU:匈牙利文|id-ID:印尼文|hi-IN:印地文|es-ES:西班牙文|es-MX:西班牙文（墨西哥）|hr-HR:克羅埃西亞文|he-IL:希伯來文|el-GR:希臘文|lv-LV:拉脫維亞文|fr-FR:法文|fr-CA:法文（加拿大）|fa-IR:波斯文|pl-PL:波蘭文|fi-FI:芬蘭文|ar-SA:阿拉伯文（沙烏地阿拉伯）|ru-RU:俄文|bg-BG:保加利亞文|en-US:英文|en-CA:英文（加拿大）|en-GB:英文（英國）|en-AU:英文（澳洲）|th-TH:泰文|uk-UA:烏克蘭文|cs-CZ:捷克文|nl-NL:荷蘭文|sk-SK:斯洛伐克文|vi-VN:越南文|et-EE:愛沙尼亞文|sv-SE:瑞典文|it-IT:義大利文|pt-BR:葡萄牙文|pt-PT:葡萄牙文（葡萄牙）|de-DE:德文|ko-KR:韓文|ro-RO:羅馬尼亞文"
+  },
+  "pt-BR": {
+   "id": "languageOverride",
+   "label": "Idioma dos metadados",
+   "summary": "Idioma a ser usado para os metadados do item, como sinopse e título.",
+   "type": "text",
+   "default": "",
+   "value": "",
+   "hidden": false,
+   "advanced": false,
+   "group": "",
+   "enumValues": ":Padrão da biblioteca|de-DE:Alemão|ar-SA:Árabe (Arábia Saudita)|nb-NO:Bokmål norueguês|bg-BG:Búlgaro|ca-ES:Catalão|zh-CN:Chinês|zh-HK:Chinês (Hong Kong)|zh-TW:Chinês (Taiwan)|ko-KR:Coreano|hr-HR:Croata|da-DK:Dinamarquês|sk-SK:Eslovaco|es-ES:Espanhol|es-MX:Espanhol (México)|et-EE:Estoniano|fi-FI:Finlandês|fr-FR:Francês|fr-CA:Francês (Canadá)|el-GR:Grego|he-IL:Hebraico|hi-IN:Híndi|nl-NL:Holandês|hu-HU:Húngaro|id-ID:Indonésio|en-US:Inglês|en-AU:Inglês (Austrália)|en-CA:Inglês (Canadá)|en-GB:Inglês (Reino Unido)|is-IS:Islandês|it-IT:Italiano|ja-JP:Japonês|lv-LV:Letão|lt-LT:Lituano|fa-IR:Persa|pl-PL:Polonês|pt-BR:Português|pt-PT:Português (Portugal)|ro-RO:Romeno|ru-RU:Russo|sv-SE:Sueco|th-TH:Tailandês|cs-CZ:Tcheco|tr-TR:Turco|uk-UA:Ucraniano|vi-VN:Vietnamita"
+  },
+  "fr-CA": {
+   "id": "languageOverride",
+   "label": "Langue des métadonnées",
+   "summary": "Langue à utiliser pour les métadonnées de l'élément telles que le synopsis et le titre",
+   "type": "text",
+   "default": "",
+   "value": "",
+   "hidden": false,
+   "advanced": false,
+   "group": "",
+   "enumValues": ":Bibliothèque par défaut|de-DE:Allemand|en-US:Anglais|en-AU:Anglais (Australie)|en-CA:Anglais (Canada)|en-GB:Anglais (R.-U.)|ar-SA:Arabe (Arabie saoudite)|bg-BG:Bulgare|ca-ES:Catalan|zh-CN:Chinois|zh-HK:Chinois (Hong Kong)|zh-TW:Chinois (Taïwan)|ko-KR:Coréen|hr-HR:Croate|da-DK:Danois|es-ES:Espagnol|es-MX:Espagnol (Mexique)|et-EE:Estonien|fi-FI:Finnois|fr-FR:Français|fr-CA:Français (Canada)|el-GR:Grec|he-IL:Hébreu|hi-IN:Hindi|hu-HU:Hongrois|id-ID:Indonésien|is-IS:Islandais|it-IT:Italien|ja-JP:Japonais|lv-LV:Letton|lt-LT:Lituanien|nl-NL:Néerlandais|nb-NO:Norvégien bokmål|fa-IR:Persan|pl-PL:Polonais|pt-BR:Portugais|pt-PT:Portugais (Portugal)|ro-RO:Roumain|ru-RU:Russe|sk-SK:Slovaque|sv-SE:Suédois|cs-CZ:Tchèque|th-TH:Thaï|tr-TR:Turc|uk-UA:Ukrainien|vi-VN:Vietnamien"
+  },
+  "en-GB": {
+   "id": "languageOverride",
+   "label": "Metadata language",
+   "summary": "Language to use for item metadata such as synopsis and title.",
+   "type": "text",
+   "default": "",
+   "value": "",
+   "hidden": false,
+   "advanced": false,
+   "group": "",
+   "enumValues": ":Library default|ar-SA:Arabic (Saudi Arabia)|bg-BG:Bulgarian|ca-ES:Catalan|zh-CN:Chinese|zh-HK:Chinese (Hong Kong)|zh-TW:Chinese (Taiwan)|hr-HR:Croatian|cs-CZ:Czech|da-DK:Danish|nl-NL:Dutch|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|et-EE:Estonian|fi-FI:Finnish|fr-FR:French|fr-CA:French (Canada)|de-DE:German|el-GR:Greek|he-IL:Hebrew|hi-IN:Hindi|hu-HU:Hungarian|is-IS:Icelandic|id-ID:Indonesian|it-IT:Italian|ja-JP:Japanese|ko-KR:Korean|lv-LV:Latvian|lt-LT:Lithuanian|nb-NO:Norwegian Bokmål|fa-IR:Persian|pl-PL:Polish|pt-BR:Portuguese|pt-PT:Portuguese (Portugal)|ro-RO:Romanian|ru-RU:Russian|sk-SK:Slovak|es-ES:Spanish|es-MX:Spanish (Mexico)|sv-SE:Swedish|th-TH:Thai|tr-TR:Turkish|uk-UA:Ukrainian|vi-VN:Vietnamese"
+  }
+ }
+}
