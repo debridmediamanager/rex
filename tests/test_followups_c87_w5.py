@@ -321,6 +321,24 @@ def run(port, fixture):
           body["MediaContainer"].get("Directory") == want["MediaContainer"]["Directory"],
           [d.get("key") for d in body["MediaContainer"].get("Directory") or []])
 
+    # -- Delete Library, last: the library goes, and so do its shelves --------------
+    gone = fixture["after_delete"]
+    status, _body = client.get("DELETE", "/library/sections/%s" % ours)
+    check("Delete Library answers the measured %d" % gone["delete"]["status"],
+          status == gone["delete"]["status"], status)
+    for read in gone["reads"]:
+        status, _body = ask(read["path"])
+        check("after the delete %s is a %d" % (read["path"], read["status"]),
+              status == read["status"], status)
+    _status, body = ask("/hubs/promoted?contentDirectoryID={S}&includeMeta=1&count=12")
+    check("after the delete Home's promoted call has no music shelf",
+          [h.get("hubIdentifier") for h in body["MediaContainer"].get("Hub") or []]
+          == gone["promoted_hubs"], body)
+    _status, body = ask("/library/sections")
+    check("after the delete the library is gone from the list",
+          ours not in [str(d.get("key")) for d in body["MediaContainer"].get("Directory") or []],
+          body)
+
 
 def main():
     fixture = json.load(open(FIXTURE))

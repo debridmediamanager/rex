@@ -3784,3 +3784,10 @@ are changing; replay the client's exact request before altering behavior.
   Decade, Year, Collection, Recently Added, By Folder, and three searches typed 8, 9, 10).
   plexsim answered the movie library's containers and its twenty movie pivots. MALFORMED-ONLY:
   Plex Web draws an empty library's page from the Meta and the hubs, not from these.
+- **Deleting a music library takes its shelves with it, and both servers already agreed.**
+  Measured on plexscratch42 and plexscratch: `DELETE /library/sections/{id}` on an empty music
+  library is a 200 with an empty `text/html` body and `Connection: close`; afterwards
+  `/hubs/sections/{id}` (with or without `includeStations`), the library, its `/all` and its
+  `/prefs` are 404s, `/hubs/promoted?contentDirectoryID={id}` keeps only Continue Watching and On
+  Deck, and `/hubs` keeps `home.music.recent` -- which zen and the copies list with no music
+  library at all. plexsim answered all of it the same way; the check guards it.

@@ -8666,19 +8666,11 @@
    }
   },
   "random_music_hubs": {
-   "note": "`music.vault` and `music.touring` are random shelves: sampled every 20 s on plexscratch42 and plexscratch, plus the reads above. The vault's period (with its title) and the touring cutoff's distance before the read.",
+   "note": "`music.vault` and `music.touring` are random shelves. Read on plexscratch42 and plexscratch through the session and then every 20 s for 14 minutes (41 reads each, every one identical within a server): the vault's period with its title, and how far before the read the touring cutoff lay.",
    "vault_periods": [
     [
      "-2mon",
      "Haven't played in 2 months"
-    ],
-    [
-     "-2y",
-     "Haven't played in 2 years"
-    ],
-    [
-     "-3y",
-     "Haven't played in 3 years"
     ],
     [
      "-4mon",
@@ -8687,12 +8679,75 @@
     [
      "-8mon",
      "Haven't played in 8 months"
+    ],
+    [
+     "-2y",
+     "Haven't played in 2 years"
+    ],
+    [
+     "-3y",
+     "Haven't played in 3 years"
     ]
    ],
    "touring_cutoff_age_seconds": [
-    36011,
-    75801
+    7202,
+    76402
    ]
   }
+ },
+ "after_delete": {
+  "note": "DELETE /library/sections/{S} on plexscratch42, then the reads Plex Web and python-plexapi would make for the gone library.",
+  "delete": {
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": ""
+  },
+  "reads": [
+   {
+    "path": "/hubs/sections/{S}",
+    "status": 404
+   },
+   {
+    "path": "/hubs/sections/{S}?includeStations=1",
+    "status": 404
+   },
+   {
+    "path": "/library/sections/{S}",
+    "status": 404
+   },
+   {
+    "path": "/library/sections/{S}/all?type=8",
+    "status": 404
+   },
+   {
+    "path": "/library/sections/{S}/prefs",
+    "status": 404
+   }
+  ],
+  "promoted_hubs": [
+   "home.continue",
+   "home.ondeck"
+  ]
  }
 }
