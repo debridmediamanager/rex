@@ -18,6 +18,13 @@
    nothing, empty collections included. Both servers already answered every one of the
    57 exchanges as the references do, so E2's "0 rows where ours find substrings" is not
    reproduced; the check is kept as the record.
+3. A plain MERGE takes the absorbed row out of every playlist. Measured on plexscratch
+   (`tests/fixtures/merge_playlist_s43.json`): after `PUT /library/metadata/A/merge?ids=B`
+   the playlist answers without B, and B's playlistItemID is GONE -- a `move?after=` it
+   sends the item to the front (an unknown `after`), a DELETE of it or a move of it is a
+   404, and the split that follows does not bring it back. Both servers kept B's entry
+   in the stored list and hid it at render, so the stale id still addressed a slot:
+   the move landed after it and the DELETE answered 200.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -282,11 +289,71 @@ def title_checks(port):
             request(port, "DELETE", "/library/collections/%s" % key)
 
 
+# -- 3. a merge and the playlists -----------------------------------------------------
+
+def playlist_items(port, key):
+    status, mc = container(port, "/playlists/%s/items" % key)
+    return [(row.get("ratingKey"), row.get("playlistItemID"))
+            for row in mc.get("Metadata") or []], mc.get("leafCount")
+
+
+def merge_checks(port):
+    fixture = json.load(open(MERGE_FIXTURE))
+    # The reference's roles: the list was [C, B, A], B merged into A.
+    before = fixture["playlist_before"]["GET /playlists/63/items"]["body"]["MediaContainer"]
+    ref_c, ref_b, ref_a = [row["ratingKey"] for row in before["Metadata"]]
+
+    def roles(rows, mapping):
+        return [mapping.get(key, key) for key, _ in rows]
+
+    ref_names = {ref_c: "C", ref_b: "B", ref_a: "A"}
+    after = fixture["playlist_after_merge"]["GET /playlists/63/items"]["body"]["MediaContainer"]
+    want_merged = [ref_names[row["ratingKey"]] for row in after["Metadata"]]
+    split = fixture["playlist_after_split"]["GET /playlists/63/items"]["body"]["MediaContainer"]
+    want_split = [ref_names[row["ratingKey"]] for row in split["Metadata"]]
+    moved = fixture["stale_item"][0]["then"]["body"]["MediaContainer"]
+    want_moved = [ref_names[row["ratingKey"]] for row in moved["Metadata"]]
+    stale_delete, stale_move = (fixture["stale_item"][1]["status"],
+                                fixture["stale_item"][2]["status"])
+
+    c, b, a = "1013", "1008", "1009"
+    names = {c: "C", b: "B", a: "A"}
+    query = urllib.parse.urlencode([("type", "video"), ("title", "E4 merge"), ("smart", "0"),
+                                    ("uri", item_uri(port, [c, b, a]))])
+    status, body = request(port, "POST", "/playlists?" + query)
+    playlist = json.loads(body)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    rows, _ = playlist_items(port, playlist)
+    ids = dict(rows)
+    status, _ = request(port, "PUT", "/library/metadata/%s/merge?ids=%s" % (a, b))
+    rows, count = playlist_items(port, playlist)
+    check("a merged-away row leaves the playlist (%s, leafCount %d)"
+          % (want_merged, len(want_merged)),
+          status == 200 and roles(rows, names) == want_merged and count == len(want_merged),
+          (status, roles(rows, names), count))
+    request(port, "PUT", "/library/metadata/%s/split" % a)
+    rows, _ = playlist_items(port, playlist)
+    check("the split that follows does not bring it back (%s)" % want_split,
+          roles(rows, names) == want_split, roles(rows, names))
+    status, _ = request(port, "PUT", "/playlists/%s/items/%s/move?after=%s"
+                        % (playlist, ids[a], ids[b]))
+    rows, _ = playlist_items(port, playlist)
+    check("a move AFTER the absorbed row's playlistItemID goes to the front (%s)" % want_moved,
+          status == 200 and roles(rows, names) == want_moved, (status, roles(rows, names)))
+    status, _ = request(port, "PUT", "/playlists/%s/items/%s/move" % (playlist, ids[b]))
+    check("a move OF the absorbed row's playlistItemID is a %d" % stale_move,
+          status == stale_move, status)
+    status, _ = request(port, "DELETE", "/playlists/%s/items/%s" % (playlist, ids[b]))
+    check("a DELETE of the absorbed row's playlistItemID is a %d" % stale_delete,
+          status == stale_delete, status)
+    request(port, "DELETE", "/playlists/%s" % playlist)
+
+
 def main():
     process, port = start()
     try:
         season_checks(port)
         title_checks(port)
+        merge_checks(port)
     finally:
         stop(process)
     passed = sum(results)

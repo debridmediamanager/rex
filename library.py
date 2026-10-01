@@ -1977,7 +1977,19 @@ class Library:
             if other is None or int(key) == int(row["ratingKey"]):
                 continue
             row.setdefault("Media", []).extend(other.get("Media") or [])
-            self.catalog.remove(int(key))
+            removed = self.catalog.remove(int(key)) or {int(key)}
+            # Cycle 87, measured on plexscratch (1.43.4, `tests/fixtures/merge_playlist_s43.json`):
+            # the absorbed row's playlist ENTRY goes with it -- its playlistItemID is a 404
+            # to a DELETE and to a move, a `move?after=` it sends the item to the front as
+            # any unknown `after` does, and the split that follows does not bring it back.
+            # plexsim kept the entry and only hid it at render, so a client holding the
+            # list from before the merge still addressed a slot nobody could see.
+            for playlist in list(self._playlists.values()):
+                playlist["items"] = [item for item in playlist["items"]
+                                     if int(item["ratingKey"]) not in removed]
+            for collection in list(self._collections.values()):
+                collection["items"] = [item_key for item_key in collection["items"]
+                                       if int(item_key) not in removed]
             merged.append(other)
         # Cycle 84, measured on plexscratch42 (1.42.2, `tests/fixtures/merge_updated_at_s42.json`)
         # and before it on plexscratch (1.43.4): a merge leaves the survivor's `updatedAt`

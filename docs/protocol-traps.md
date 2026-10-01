@@ -3654,3 +3654,16 @@ are changing; replay the client's exact request before altering behavior.
   stays as the record. CLIENT-VISIBLE path (python-plexapi `LibrarySection.collections(title=)`,
   `library.py:1271-1275`/`1666-1670`; `collection(title)` adds a client-side `title__iexact`), no
   defect.
+- **A merge takes the absorbed row's playlist ENTRY with it** (cycle 87 E4, plexscratch 1.43.4;
+  `tests/fixtures/merge_playlist_s43.json`). A list of movies 18, 3, 17 (playlistItemIDs 23, 24,
+  25), then `PUT /library/metadata/17/merge?ids=3` (plexapi's `merge()`, `mixins/split_merge.py:19`):
+  the list answers 18, 17 with `leafCount` 2, and id 24 is gone -- `PUT .../items/25/move?after=24`
+  moves 25 to the FRONT (an unknown `after`), `DELETE .../items/24` and `PUT .../items/24/move` are
+  404s, and the `split` that follows leaves the list at two. No playlist frame is pushed. Both
+  servers kept the absorbed entry in the stored list and hid it only at render, so the stale id
+  still held a slot: the move landed after it and the DELETE answered 200. Beside it, a collection
+  holding the absorbed row lists one child after the merge while its `childCount` on
+  `/all?type=18` and `/library/collections/{id}` stayed 2 through two reads and the split -- recorded,
+  not emulated (one witness). CLIENT-VISIBLE for a client holding the list from before the merge:
+  python-plexapi's `Playlist.moveItem(item, after=)` and `removeItems()` send the playlistItemIDs of
+  the `items()` it cached (`playlist.py:131-136`, `289-317`).
