@@ -2375,11 +2375,46 @@ impl Runtime {
     }
 
     fn section_pref_rows(&self, section_key: &str, kind: &str) -> Vec<Value> {
-        let rows = load_json_sidecar(&self.catalog_path, "section_prefs.json")
+        let rows = self.section_base_settings(section_key, kind);
+        self.section_settings(section_key, rows)
+    }
+
+    /// `server.py` `section_base_settings`: a library's setting list before any write.
+    /// A MUSIC library's is the Add Library form's list for type 8 and its own agent --
+    /// measured on plexscratch42, an empty music library's `/prefs` equals that form row
+    /// for row and value for value; plexsim answered an empty list.
+    fn section_base_settings(&self, section_key: &str, kind: &str) -> Vec<Value> {
+        if kind == "artist" {
+            let section = self.section(section_key).cloned().unwrap_or(Value::Null);
+            let (agent, _scanner, _group) = Self::section_agent(&section);
+            return self.form_pref_rows("8", &agent);
+        }
+        load_json_sidecar(&self.catalog_path, "section_prefs.json")
             .and_then(|value| value.get(kind).cloned())
             .and_then(|value| value.as_array().cloned())
-            .unwrap_or_default();
-        self.section_settings(section_key, rows)
+            .unwrap_or_default()
+    }
+
+    /// `server.py` `section_pref_rows`: the Add Library form's setting list for a
+    /// library type and agent (`section_prefs_new.json`).
+    fn form_pref_rows(&self, type_id: &str, agent: &str) -> Vec<Value> {
+        let document =
+            load_json_sidecar(&self.catalog_path, "section_prefs_new.json").unwrap_or(Value::Null);
+        let lists = document.get("lists");
+        let ids = lists
+            .and_then(|lists| {
+                lists
+                    .get(format!("{type_id}|{agent}"))
+                    .filter(|ids| truthy(ids))
+                    .or_else(|| lists.get(type_id).filter(|ids| truthy(ids)))
+            })
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_else(|| vec![json!("hidden")]);
+        ids.iter()
+            .filter_map(Value::as_str)
+            .filter_map(|name| document.get("settings").and_then(|known| known.get(name)).cloned())
+            .collect()
     }
 
     /// `server.py` `section_settings`: a library's setting rows with the values
@@ -15894,16 +15929,17 @@ impl Runtime {
                         .and_then(Value::as_str)
                         .unwrap_or("movie")
                         .to_string();
-                    let base = load_json_sidecar(&self.catalog_path, "section_prefs.json")
-                        .and_then(|value| value.get(&kind).cloned())
-                        .and_then(|value| value.as_array().cloned())
-                        .unwrap_or_default();
+                    let base = self.section_base_settings(section_key, &kind);
                     // `server.py`: `?agent=` (any agent) RESHAPES an existing library's
                     // list exactly as it shapes a new one's, keeping the library's own
                     // rows for the settings it has; the written values apply after.
                     let rows = match query.get("agent").filter(|agent| !agent.is_empty()) {
                         Some(agent) => {
-                            let type_id = if kind == "show" { "2" } else { "1" };
+                            let type_id = match kind.as_str() {
+                                "show" => "2",
+                                "artist" => "8",
+                                _ => "1",
+                            };
                             let document =
                                 load_json_sidecar(&self.catalog_path, "section_prefs_new.json")
                                     .unwrap_or(Value::Null);

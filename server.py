@@ -9438,7 +9438,7 @@ class PlexSim:
             section["updatedAt"] = int(time.time())
             return ("empty", 200)
         if leaf == "prefs":
-            settings = SECTION_PREFS.get(section.get("type") or "movie") or []
+            settings = self.section_base_settings(section)
             if method == "PUT":
                 # Section settings have their own id space (`flattenSeasons` and
                 # friends), so they cannot go through the server-prefs writer --
@@ -9493,7 +9493,7 @@ class PlexSim:
                 # library 12 settings, a legacy agent 7 -- keeping the library's own
                 # values for the settings it has. The Edit Library dialog re-reads
                 # the form with it whenever the agent dropdown changes.
-                type_id = "2" if section.get("type") == "show" else "1"
+                type_id = str(TYPE_NUMBERS.get(self.section_kind(section), 1))
                 current = {s.get("id"): s for s in settings}
                 settings = self.section_pref_rows(type_id, query["agent"], current)
             # A real PMS answers with a bare container and the full setting
@@ -12620,12 +12620,28 @@ class PlexSim:
     def section_settings(self, section_id, section, settings=None):
         """A library's setting list with the values written to it."""
         if settings is None:
-            settings = SECTION_PREFS.get(section.get("type") or "movie") or []
+            settings = self.section_base_settings(section)
         return [
             dict(s, value=self.section_pref_overrides[(str(section_id), s.get("id"))])
             if (str(section_id), s.get("id")) in self.section_pref_overrides else s
             for s in settings
         ]
+
+    def section_base_settings(self, section):
+        """A library's setting list before any write: its type's captured list.
+
+        A MUSIC library's is the Add Library form's list for type 8 and its own agent:
+        measured on plexscratch42, an empty music library's `/prefs` equals
+        `/library/sections/prefs?type=8&agent=tv.plex.agents.music` row for row and
+        value for value (nine rows there; the claimed references' form has thirteen,
+        the four more being the claim-gated Sonic Analysis, shared-content, lyrics and
+        concerts rows). plexsim answered an empty list, so the Edit Library dialog's
+        Advanced tab had nothing to show and python-plexapi's `settings()` was [].
+        """
+        if self.section_kind(section) == "artist":
+            agent, _scanner, _group = self.section_agent(section)
+            return self.section_pref_rows("8", agent)
+        return SECTION_PREFS.get(section.get("type") or "movie") or []
 
     def secondary_container(self, section_id, section, title2, **fields):
         """A secondary list (By Genre, By Year, sorts, filters).

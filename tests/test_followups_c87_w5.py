@@ -215,6 +215,33 @@ def run(port, fixture):
           == want["MediaContainer"]["Type"],
           [t.get("type") for t in (body.get("MediaContainer") or {}).get("Type") or []])
 
+    # -- the library's own settings ---------------------------------------------
+    _row, want = measured("/library/sections/{S}/prefs")
+    _row, form = measured("/library/sections/prefs?type=8&agent=tv.plex.agents.music")
+    check("(reference) an empty music library's prefs ARE the music form's",
+          want == form, "fixture")
+    claimed = fixture["witnesses"]["zen_music_form"]["body"]["MediaContainer"]["Setting"]
+    _status, body = ask("/library/sections/{S}/prefs")
+    got = body["MediaContainer"].get("Setting") if isinstance(body, dict) else None
+    check("the music library's prefs are the claimed form's %d rows" % len(claimed),
+          got == claimed, [r.get("id") for r in got or []])
+    unclaimed = {r["id"]: r for r in want["MediaContainer"]["Setting"]}
+    check("every row the unclaimed copy answers is there, attribute for attribute",
+          all(unclaimed[r["id"]] == r for r in got or [] if r.get("id") in unclaimed)
+          and set(unclaimed) <= {r.get("id") for r in got or []}, got)
+    _status, body = ask("/library/sections?includePreferences=1")
+    row = next((d for d in body["MediaContainer"]["Directory"] if str(d["key"]) == ours), {})
+    check("the includePreferences block carries the same rows",
+          (row.get("Preferences") or {}).get("Setting") == claimed,
+          [r.get("id") for r in (row.get("Preferences") or {}).get("Setting") or []])
+    write = fixture["witnesses"]["prefs_write"]
+    status, _body = client.get("PUT", write["path"].replace("{S}", ours))
+    _s, body = ask("/library/sections/{S}/prefs")
+    values = {r.get("id"): r.get("value") for r in body["MediaContainer"].get("Setting") or []}
+    check("a music setting write is a %d and reads back as measured" % write["status"],
+          status == write["status"]
+          and all(values.get(k) == v for k, v in write["read_back"].items()), (status, values))
+
 
 def main():
     fixture = json.load(open(FIXTURE))

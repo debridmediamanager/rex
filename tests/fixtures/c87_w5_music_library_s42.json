@@ -7937,5 +7937,175 @@
    "content_type": "application/xml",
    "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"KeyError: tv.plex.agents.music\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 912, in get_agent_configuration\n    primary_metadata_cls = getattr(primary_access_point, self.agent_model_name(identifier, media_type))\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 1168, in agent_model_name\n    return 'ModernArtist' if self.agent_get_version(library_agent or identifier, media_type) &gt;= 2 else 'LegacyArtist'\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 1230, in agent_get_version\n    for agent in self.agent_info[identifier]:\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/code/sandbox.py\", line 108, in &lt;lambda&gt;\n    _getitem_           = lambda x, y: x.__getitem__(y),\nKeyError: u'tv.plex.agents.music'\n</Traceback>\n</Response>\n"
   }
- ]
+ ],
+ "witnesses": {
+  "zen_music_form": {
+   "reference": "zen PMS 1.42.2.10156, claimed (GET only)",
+   "path": "/library/sections/prefs?type=8&agent=tv.plex.agents.music",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 13,
+     "Setting": [
+      {
+       "id": "hidden",
+       "label": "Visibility",
+       "summary": "Restrict where content from this library should appear.",
+       "type": "int",
+       "default": "0",
+       "value": "0",
+       "hidden": false,
+       "advanced": false,
+       "group": "",
+       "enumValues": "0:Include in home screen and global search|1:Exclude from home screen|2:Exclude from home screen and global search"
+      },
+      {
+       "id": "albumSort",
+       "label": "Album sorting",
+       "summary": "How to sort the albums for artists.",
+       "type": "text",
+       "default": "-1",
+       "value": "-1",
+       "hidden": false,
+       "advanced": false,
+       "group": "",
+       "enumValues": "0:Newest first|1:Oldest first|2:By name"
+      },
+      {
+       "id": "musicAnalysis",
+       "label": "Sonic Analysis",
+       "summary": "Analyze tracks for sonic features.",
+       "type": "bool",
+       "default": "false",
+       "value": "false",
+       "hidden": false,
+       "advanced": false,
+       "group": ""
+      },
+      {
+       "id": "respectTags",
+       "label": "Prefer local metadata",
+       "summary": "When scanning this library, prefer embedded tags and local files if present.",
+       "type": "bool",
+       "default": "false",
+       "value": "false",
+       "hidden": false,
+       "advanced": false,
+       "group": ""
+      },
+      {
+       "id": "enableTrackOffsets",
+       "label": "Store track progress",
+       "summary": "Remember and resume from your previous listening position. Useful for libraries with long-form audio content.",
+       "type": "bool",
+       "default": "false",
+       "value": "false",
+       "hidden": false,
+       "advanced": false,
+       "group": ""
+      },
+      {
+       "id": "augmentWithSharedContent",
+       "label": "Include related content from shared libraries",
+       "summary": "Show suggestions and additional albums from libraries shared with you, and include shared tracks in Artist Radio.",
+       "type": "bool",
+       "default": "true",
+       "value": "true",
+       "hidden": false,
+       "advanced": false,
+       "group": ""
+      },
+      {
+       "id": "artistBios",
+       "label": "Artist Bios",
+       "summary": "Load artist biography data from the cloud.",
+       "type": "bool",
+       "default": "true",
+       "value": "true",
+       "hidden": false,
+       "advanced": false,
+       "group": ""
+      },
+      {
+       "id": "albumReviews",
+       "label": "Album Reviews and Critic Ratings",
+       "summary": "Load album reviews and critic ratings from the cloud. Might make you reconsider your taste in music.",
+       "type": "bool",
+       "default": "true",
+       "value": "true",
+       "hidden": false,
+       "advanced": false,
+       "group": ""
+      },
+      {
+       "id": "popularTracks",
+       "label": "Popular Tracks",
+       "summary": "Load popular track data, which powers radio stations and the popular tracks area.",
+       "type": "bool",
+       "default": "true",
+       "value": "true",
+       "hidden": false,
+       "advanced": false,
+       "group": ""
+      },
+      {
+       "id": "useExternalLyrics",
+       "label": "Find Lyrics",
+       "summary": "Find lyrics for tracks in this library automatically.",
+       "type": "bool",
+       "default": "true",
+       "value": "true",
+       "hidden": false,
+       "advanced": false,
+       "group": ""
+      },
+      {
+       "id": "concerts",
+       "label": "Concerts",
+       "summary": "Load concert data for artists, in case you leave the house.",
+       "type": "bool",
+       "default": "true",
+       "value": "true",
+       "hidden": false,
+       "advanced": false,
+       "group": ""
+      },
+      {
+       "id": "genres",
+       "label": "Genres",
+       "summary": "Where to automatically obtain genres for artists and albums.",
+       "type": "int",
+       "default": "1",
+       "value": "1",
+       "hidden": false,
+       "advanced": false,
+       "group": "",
+       "enumValues": "0:None|1:Plex Music|2:Embedded Tags"
+      },
+      {
+       "id": "albumPosters",
+       "label": "Album Art",
+       "summary": "Where to automatically obtain album cover art.",
+       "type": "int",
+       "default": "1",
+       "value": "1",
+       "hidden": false,
+       "advanced": false,
+       "group": "",
+       "enumValues": "2:Plex Music Only|3:Local Files Only|1:Both Plex Music and Local Files"
+      }
+     ]
+    }
+   }
+  },
+  "prefs_write": {
+   "note": "PUT on plexscratch42's music library, read back, then undone with albumSort=-1&artistBios=1",
+   "path": "/library/sections/{S}/prefs?albumSort=2&artistBios=0",
+   "status": 200,
+   "read_back": {
+    "albumSort": "2",
+    "artistBios": "false"
+   }
+  }
+ }
 }

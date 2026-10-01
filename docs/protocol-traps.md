@@ -3748,3 +3748,12 @@ are changing; replay the client's exact request before altering behavior.
   lists carry zen's row. plexsim served the MOVIE Meta, so Plex Web's Library tab read "Movies"
   with a movie sort and filter bar, and python-plexapi's `listFilters`/`listSorts`/`searchAlbums`/
   `recentlyAddedTracks` raised "Unknown libtype". CLIENT-VISIBLE.
+- **A music library's settings ARE the Add Library form's list for type 8 and its agent.**
+  Measured on plexscratch42: an empty music library's `/library/sections/{id}/prefs` equals
+  `/library/sections/prefs?type=8&agent=tv.plex.agents.music` row for row and value for value, and
+  a write (`albumSort=2&artistBios=0`) is a 200 that reads back `2` and `false`. The copy is
+  unclaimed and answers nine rows; zen's form (claimed, plexsim's `section_prefs_new.json`) has
+  thirteen -- `musicAnalysis`, `augmentWithSharedContent`, `useExternalLyrics` and `concerts` are
+  claim-gated, and the copy refuses a write to one as unknown -- so plexsim serves the thirteen.
+  plexsim answered an EMPTY list (and refused every write as unknown), so the Edit Library
+  dialog's Advanced tab was blank and python-plexapi's `settings()` was []. CLIENT-VISIBLE.
