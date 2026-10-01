@@ -3288,6 +3288,48 @@ impl Runtime {
             }
             return Response::error(404, "plexsim: not found");
         }
+        // Cycle 44 (oracle), re-measured on kids and zen 2026-10-01: the per-id GETs are
+        // real. `/media/providers/metadata/{id}` and `/media/providers/metadata/group/{id}`
+        // answer the listing's own row as a one-row container (paged like the listing);
+        // an id the server does not hold is a 404 and a non-numeric one a 400. The port
+        // 404'd every one of them.
+        if matches!(request.method.as_str(), "GET" | "HEAD")
+            && (segments.len() == 4 || (segments.len() == 5 && segments[3] == "group"))
+        {
+            let wanted = segments[segments.len() - 1];
+            if wanted.is_empty() || !wanted.bytes().all(|byte| byte.is_ascii_digit()) {
+                return Response::error(400, "plexsim: bad request");
+            }
+            let group = segments.len() == 5;
+            let rows = if group {
+                self.metadata_provider_groups()
+            } else {
+                self.metadata_provider_rows()
+            };
+            let picked = rows
+                .into_iter()
+                .filter(|row| {
+                    row.get("id").map(|id| match id {
+                        Value::String(text) => text.as_str() == wanted,
+                        other => other.to_string() == wanted,
+                    }) == Some(true)
+                })
+                .collect::<Vec<_>>();
+            if picked.is_empty() {
+                return Response::error(404, "plexsim: not found");
+            }
+            let key = if group { "MetadataAgentProviderGroup" } else { "MetadataAgentProvider" };
+            return Response::json(
+                200,
+                self.container(
+                    Map::from_iter([
+                        ("size".to_string(), json!(1)),
+                        (key.to_string(), Value::Array(picked)),
+                    ]),
+                    false,
+                ),
+            );
+        }
         let Some(group_id) = segments.get(4).copied() else {
             return Response::error(404, "plexsim: not found");
         };

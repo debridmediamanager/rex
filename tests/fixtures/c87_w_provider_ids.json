@@ -1,0 +1,198 @@
+[
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/1",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 1,
+    "totalSize": 1,
+    "offset": 0,
+    "MetadataAgentProvider": [
+     {
+      "id": 1,
+      "identifier": "tv.plex.agents.movie",
+      "title": "Plex Movie",
+      "uri": "provider://tv.plex.provider.metadata",
+      "agentType": "primary",
+      "online": true,
+      "MetadataType": [
+       {
+        "type": 1
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/group/1",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 1,
+    "totalSize": 1,
+    "offset": 0,
+    "MetadataAgentProviderGroup": [
+     {
+      "id": 1,
+      "title": "Plex Movie",
+      "primaryIdentifier": "tv.plex.agents.movie",
+      "builtIn": "1",
+      "MetadataAgentProviderGroupItem": [
+       {
+        "id": 1,
+        "metadataAgentProviderGroupId": 1,
+        "metadataAgentProviderId": 1,
+        "order": 1000.0
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/2",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 1,
+    "totalSize": 1,
+    "offset": 0,
+    "MetadataAgentProvider": [
+     {
+      "id": 2,
+      "identifier": "tv.plex.agents.series",
+      "title": "Plex Series",
+      "uri": "provider://tv.plex.provider.metadata",
+      "agentType": "primary",
+      "online": true,
+      "MetadataType": [
+       {
+        "type": 2
+       },
+       {
+        "type": 3
+       },
+       {
+        "type": 4
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/group/3",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 1,
+    "totalSize": 1,
+    "offset": 0,
+    "MetadataAgentProviderGroup": [
+     {
+      "id": 3,
+      "title": "Plex Music",
+      "primaryIdentifier": "tv.plex.agents.music",
+      "builtIn": "1",
+      "MetadataAgentProviderGroupItem": [
+       {
+        "id": 3,
+        "metadataAgentProviderGroupId": 3,
+        "metadataAgentProviderId": 3,
+        "order": 1000.0
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/abc",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 400,
+  "body": null
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/99",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 404,
+  "body": null
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/group/abc",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 400,
+  "body": null
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/group/99",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 404,
+  "body": null
+ }
+]

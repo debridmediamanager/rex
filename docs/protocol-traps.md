@@ -3447,3 +3447,11 @@ are changing; replay the client's exact request before altering behavior.
   right; the native server's `f64::round` said 45. MALFORMED-ONLY: one transient activity frame.
   The cascade's frame ORDER on 1.43.4 (per-season `updated` at the season's end, no trailing 49)
   stays recorded-not-implemented (findings, "The show cascade's frame ORDER on 1.43.4").
+- **The native port 404'd the per-id provider GETs the oracle has carried since cycle 44.**
+  Re-measured on zen and kids for Plex Web 4.162.1 (2026-10-01): `GET /media/providers/metadata/{id}`
+  and `/media/providers/metadata/group/{id}` are the listing's row as a one-row container, paged
+  like the listing (`totalSize=1 offset=0` under paging headers), 400 for a non-numeric id, 404
+  for an unknown one. MALFORMED-ONLY: 4.162.1 only PUTs and DELETEs those paths (and only for
+  non-built-in providers); it GETs the two listings, the provider one with `metadataTypes=`.
+  PUT/DELETE/POST on a built-in id still differ between the servers (the oracle answers the row)
+  and are unmeasured writes.
