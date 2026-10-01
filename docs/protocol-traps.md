@@ -3230,3 +3230,12 @@ are changing; replay the client's exact request before altering behavior.
   media, `trash`, `location` or `network` fields; it now reads the same two Meta templates the
   oracle's FIELD_TITLES does. Plex Web's filter editor titles a rule from its own `allTypeFields`,
   not from this attribute.
+- **`continuous=1` on an EPISODE queues the rest of its season, and a PUT add expands like a
+  create** (cycle 83, axis 11's write transcript). Plex for Android's Play on an episode sends
+  `POST /playQueues?includeChapters=1&continuous=1&uri=...` (`tests/fixtures/playqueue_continuous.json`).
+  Measured on plexscratch42 (1.42.2): the queue holds the episode and the episodes that FOLLOW it
+  in its own season, and stops at the season's end (S1E2 -> S1E2, S1E3; S1E3 alone); a PUT add
+  honours `continuous=1` the same way (with `next=1` the run goes after the selected item), and a
+  season or show uri added to a queue adds its episodes. The native server queued the one episode
+  -- the app had nothing to play next -- and its PUT add put the bare season or show row, which has
+  no Media, in the queue. The oracle matched the reference; the native port had dropped the flag.

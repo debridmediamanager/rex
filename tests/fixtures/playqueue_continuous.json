@@ -1,0 +1,629 @@
+{
+ "_provenance": "Plex for Android 2026.9.0 in the cycle-77 emulator (harness/android), captured by the pinning proxy: the app's Play on an EPISODE (`app_request`; machine, client id and token redacted, the uri's ratingKey templated). The reference's answers were measured on plexscratch42 (Plex 1.42.2) on 2026-10-01 in cycle 83 (xn) over section 3 Threefold (show 15; seasons 386 = S1 [396, 387, 388], 20 = S2 [21, 22, 23], 24 = S3 [25, 26, 27]): `continuous=1` on an episode queues it and the episodes that FOLLOW it in its own season and stops at the season's end (`create`); a PUT add honours `continuous=1` the same way, `next=1` inserts after the selected item, and a season or show uri adds its episodes, never the parent row (`add`). The native server queued the one episode on create and added the bare episode, season or show row on PUT; the oracle matched the reference.",
+ "app_request": {
+  "method": "POST",
+  "path": "/playQueues",
+  "query": [
+   [
+    "includeChapters",
+    "1"
+   ],
+   [
+    "continuous",
+    "1"
+   ],
+   [
+    "uri",
+    "server://MACHINE/com.plexapp.plugins.library/library/metadata/{ratingKey}"
+   ],
+   [
+    "type",
+    "video"
+   ],
+   [
+    "own",
+    "1"
+   ],
+   [
+    "repeat",
+    "0"
+   ],
+   [
+    "shuffle",
+    "0"
+   ],
+   [
+    "includeMarkers",
+    "1"
+   ],
+   [
+    "includeGeolocation",
+    "1"
+   ],
+   [
+    "includeExternalMedia",
+    "1"
+   ],
+   [
+    "extrasPrefixCount",
+    "-1"
+   ],
+   [
+    "X-Plex-DRM",
+    "widevine:video"
+   ],
+   [
+    "X-Plex-Client-Identifier",
+    "CLIENT"
+   ]
+  ],
+  "req_headers": [
+   [
+    "Content-Type",
+    "application/json"
+   ],
+   [
+    "X-Plex-Product",
+    "Plex for Android (Mobile)"
+   ],
+   [
+    "X-Plex-Platform",
+    "Android"
+   ],
+   [
+    "X-Plex-Platform-Version",
+    "13"
+   ],
+   [
+    "X-Plex-Model",
+    "sdk_gphone64_arm64"
+   ],
+   [
+    "X-Plex-Device",
+    "Android"
+   ],
+   [
+    "X-Plex-Device-Name",
+    "sdk_gphone64_arm64"
+   ],
+   [
+    "X-Plex-Device-Vendor",
+    "Google"
+   ],
+   [
+    "X-Plex-Device-Screen-Resolution",
+    "1080x2400"
+   ],
+   [
+    "X-Plex-Device-Screen-Density",
+    "2.625"
+   ],
+   [
+    "X-Plex-Version",
+    "2026.9.0"
+   ],
+   [
+    "X-Plex-Language",
+    "en"
+   ],
+   [
+    "X-Plex-Features",
+    "external-media,indirect-media"
+   ],
+   [
+    "X-Plex-Provider-Version",
+    "6.5.0"
+   ],
+   [
+    "X-Plex-DRM",
+    "widevine:video"
+   ],
+   [
+    "X-Plex-Client-Identifier",
+    "CLIENT"
+   ],
+   [
+    "Accept",
+    "application/json"
+   ],
+   [
+    "User-Agent",
+    "Mozilla/5.0 (Linux; Android 13; sdk_gphone64_arm64 Build/TE1A.240213.009; wv)PlexMobile/2026.9.0 (971050173)"
+   ],
+   [
+    "Accept-Encoding",
+    "gzip, deflate"
+   ]
+  ]
+ },
+ "create": [
+  {
+   "method": "POST",
+   "path": "/playQueues?includeChapters=1&continuous=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F387&type=video&own=1&repeat=0&shuffle=0&includeMarkers=1&includeGeolocation=1&includeExternalMedia=1&extrasPrefixCount=-1",
+   "status": 200,
+   "playQueueID": 2291,
+   "rows": [
+    {
+     "ratingKey": "387",
+     "parentRatingKey": null,
+     "parentIndex": 1,
+     "index": 2
+    },
+    {
+     "ratingKey": "388",
+     "parentRatingKey": null,
+     "parentIndex": 1,
+     "index": 3
+    }
+   ],
+   "MediaContainer": {
+    "size": 2,
+    "identifier": "com.plexapp.plugins.library",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": 1758205129,
+    "playQueueID": 2291,
+    "playQueueSelectedItemID": 7608,
+    "playQueueSelectedItemOffset": 0,
+    "playQueueSelectedMetadataItemID": "387",
+    "playQueueShuffled": false,
+    "playQueueSourceURI": "library://x/item/%2Flibrary%2Fmetadata%2F387",
+    "playQueueTotalCount": 2,
+    "playQueueVersion": 1
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/playQueues?includeChapters=1&continuous=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F388&type=video&own=1&repeat=0&shuffle=0&includeMarkers=1&includeGeolocation=1&includeExternalMedia=1&extrasPrefixCount=-1",
+   "status": 200,
+   "playQueueID": 2292,
+   "rows": [
+    {
+     "ratingKey": "388",
+     "parentRatingKey": null,
+     "parentIndex": 1,
+     "index": 3
+    }
+   ],
+   "MediaContainer": {
+    "size": 1,
+    "identifier": "com.plexapp.plugins.library",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": 1758205129,
+    "playQueueID": 2292,
+    "playQueueSelectedItemID": 7610,
+    "playQueueSelectedItemOffset": 0,
+    "playQueueSelectedMetadataItemID": "388",
+    "playQueueShuffled": false,
+    "playQueueSourceURI": "library://x/item/%2Flibrary%2Fmetadata%2F388",
+    "playQueueTotalCount": 1,
+    "playQueueVersion": 1
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/playQueues?includeChapters=1&continuous=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F23&type=video&own=1&repeat=0&shuffle=0&includeMarkers=1&includeGeolocation=1&includeExternalMedia=1&extrasPrefixCount=-1",
+   "status": 200,
+   "playQueueID": 2293,
+   "rows": [
+    {
+     "ratingKey": "23",
+     "parentRatingKey": null,
+     "parentIndex": 2,
+     "index": 3
+    }
+   ],
+   "MediaContainer": {
+    "size": 1,
+    "identifier": "com.plexapp.plugins.library",
+    "mediaTagPrefix": "/system/bundle/media/flags/",
+    "mediaTagVersion": 1758205129,
+    "playQueueID": 2293,
+    "playQueueSelectedItemID": 7611,
+    "playQueueSelectedItemOffset": 0,
+    "playQueueSelectedMetadataItemID": "23",
+    "playQueueShuffled": false,
+    "playQueueSourceURI": "library://x/item/%2Flibrary%2Fmetadata%2F23",
+    "playQueueTotalCount": 1,
+    "playQueueVersion": 1
+   }
+  }
+ ],
+ "add": [
+  {
+   "method": "POST",
+   "path": "/playQueues?continuous=0&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F21&type=video&own=1&repeat=0&shuffle=0",
+   "status": 200,
+   "playQueueID": 2294,
+   "playQueueVersion": 1,
+   "playQueueTotalCount": 1,
+   "playQueueSelectedMetadataItemID": "21",
+   "rows": [
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    }
+   ]
+  },
+  {
+   "method": "PUT",
+   "path": "/playQueues/2294?uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F387&continuous=1",
+   "status": 200,
+   "playQueueID": 2294,
+   "playQueueVersion": 2,
+   "playQueueTotalCount": 3,
+   "playQueueSelectedMetadataItemID": "21",
+   "rows": [
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "387",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "388",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    }
+   ]
+  },
+  {
+   "method": "PUT",
+   "path": "/playQueues/2294?uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F25&continuous=1&next=1",
+   "status": 200,
+   "playQueueID": 2294,
+   "playQueueVersion": 3,
+   "playQueueTotalCount": 6,
+   "playQueueSelectedMetadataItemID": "21",
+   "rows": [
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "25",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "26",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "27",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "387",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "388",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    }
+   ]
+  },
+  {
+   "method": "PUT",
+   "path": "/playQueues/2294?uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F20",
+   "status": 200,
+   "playQueueID": 2294,
+   "playQueueVersion": 4,
+   "playQueueTotalCount": 9,
+   "playQueueSelectedMetadataItemID": "21",
+   "rows": [
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "25",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "26",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "27",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "387",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "388",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "22",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "23",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    }
+   ]
+  },
+  {
+   "method": "PUT",
+   "path": "/playQueues/2294?uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F15",
+   "status": 200,
+   "playQueueID": 2294,
+   "playQueueVersion": 5,
+   "playQueueTotalCount": 18,
+   "playQueueSelectedMetadataItemID": "21",
+   "rows": [
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "25",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "26",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "27",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "387",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "388",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "22",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "23",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "396",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "387",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "388",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "22",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "23",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "25",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "26",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "27",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/playQueues/2294?",
+   "status": 200,
+   "playQueueID": 2294,
+   "playQueueVersion": 5,
+   "playQueueTotalCount": 18,
+   "playQueueSelectedMetadataItemID": "21",
+   "rows": [
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "25",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "26",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "27",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "387",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "388",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "22",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "23",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "396",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "387",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "388",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "21",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "22",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "23",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    },
+    {
+     "ratingKey": "25",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 1
+    },
+    {
+     "ratingKey": "26",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 2
+    },
+    {
+     "ratingKey": "27",
+     "type": "episode",
+     "parentRatingKey": null,
+     "index": 3
+    }
+   ]
+  }
+ ]
+}

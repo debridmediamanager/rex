@@ -11703,9 +11703,36 @@ impl Runtime {
                 })
                 .unwrap_or_default();
         }
-        let mut rows = self.rows_for_uri(query.get("uri").map(String::as_str).unwrap_or(""));
+        self.queue_rows_for_uri(
+            query.get("uri").map(String::as_str).unwrap_or(""),
+            query.get("continuous").map(String::as_str) == Some("1"),
+        )
+    }
+
+    /// The oracle's `_items_for_uri`: what a queue create or a PUT add enqueues.
+    fn queue_rows_for_uri(&self, uri: &str, continuous: bool) -> Vec<Value> {
+        let rows = self.rows_for_uri(uri);
+        if continuous
+            && rows.len() == 1
+            && rows[0].get("type").and_then(Value::as_str) == Some("episode")
+        {
+            // Cycle 83, measured on plexscratch42 (`tests/fixtures/playqueue_continuous.json`):
+            // `continuous=1` on an episode -- Plex for Android's Play sends it -- queues
+            // the episode and the episodes that FOLLOW it in its own season, and stops at
+            // the season's end; a PUT add honours it the same way. The native server
+            // queued the one episode, so the app had nothing to play next.
+            let episode = key_of(&rows[0]).unwrap_or_default();
+            let parent = rows[0].get("parentRatingKey").map(string_value).unwrap_or_default();
+            let siblings = self.children(&parent);
+            if let Some(index) = siblings
+                .iter()
+                .position(|row| key_of(row).as_deref() == Some(episode.as_str()))
+            {
+                return siblings[index..].to_vec();
+            }
+        }
         let mut expanded = Vec::new();
-        for row in rows.drain(..) {
+        for row in rows {
             match row.get("type").and_then(Value::as_str) {
                 Some("show" | "season") => {
                     if let Some(key) = key_of(&row) {
@@ -12008,7 +12035,13 @@ impl Runtime {
                     } else if self.foreign_uri(&uri) {
                         Vec::new()
                     } else {
-                        self.rows_for_uri(&uri)
+                        // Measured on plexscratch42 (`playqueue_continuous.json`, `add`): a
+                        // season or show uri adds its EPISODES, and `continuous=1` on an
+                        // episode adds the rest of its season. The bare row has no Media.
+                        self.queue_rows_for_uri(
+                            &uri,
+                            query.get("continuous").map(String::as_str) == Some("1"),
+                        )
                     };
                     if rows.is_empty() {
                         // Measured on the copy: an add that adds nothing answers the
