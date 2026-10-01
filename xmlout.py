@@ -275,6 +275,15 @@ _ATTR_ORDER = {
         # < primary`), which the rows plexsim actually emits do not carry.
         "identifier", "name", "hasPrefs", "id", "primary"
     ),
+    "Agent[legacy]": (
+        # Cycle 87, measured on zen (1.42.2) in JSON and XML over the bare path and every
+        # `mediaType=`: a LEGACY plug-in row (the one that carries `primary`) is
+        # `hasPrefs, identifier, primary, name` -- the order cycle 19 parked -- and not
+        # the modern row's `identifier, name, hasPrefs`. Kids (1.43.4) agrees after the
+        # `id` it alone leads with. One bucket for both put `identifier` first on all
+        # eleven legacy rows.
+        "id", "hasPrefs", "identifier", "primary", "name"
+    ),
     "Video[history1]": (
         # Cycle 27, measured on kids (1.43.4) and zen (1.42.2): a SINGLE history read
         # answers its nine (an episode's twelve) attributes in this order, which is
@@ -463,6 +472,9 @@ def _attr_bucket(name, row):
         # `Video`, so the builder marks it, as `_light` already does; `_drop_private`
         # takes the marker off both writers.
         return "Video[history]"
+    if name == "Agent" and row.get("primary") is not None:
+        # Cycle 87: a legacy plug-in agent row; the modern rows carry no `primary`.
+        return "Agent[legacy]"
     if name in ("Video", "Directory", "Track", "Playlist"):
         if row.get("agent") is not None or row.get("scanner") is not None:
             # Cycle 19: the library `Directory` of `/media/providers` is a DIFFERENT
@@ -704,7 +716,11 @@ _ALWAYS_PAIRED = ("Feature", "MediaContainer", "Stream", "Extras", "Media",
                   "Activity", "Type", "Related", "Playlist",
                   # Cycle 54: a `Common` is paired on both references even when it
                   # carries no child element -- a mixed set, an empty one.
-                  "Common")
+                  "Common",
+                  # Cycle 87: the six legacy `/system/agents` rows with no `MediaType`
+                  # (fanarttv, htbackdrops, ...) are `<Agent ...>\n</Agent>` on kids
+                  # and zen alike; plexsim self-closed them.
+                  "Agent")
 _PAIRED_WITH_EMPTY_CHILDREN = ("Hub",)
 
 # Cycle 27: and the `/media/providers` provider rows are paired even when they carry no

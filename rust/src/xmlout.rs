@@ -61,6 +61,8 @@ const ALWAYS_PAIRED: &[&str] = &[
     "Related",
     "Playlist",
     "Common",
+    // Cycle 87: an empty legacy `/system/agents` row is paired on kids and zen.
+    "Agent",
 ];
 const PAIRED_EMPTY: &[&str] = &["Hub"];
 
@@ -216,6 +218,11 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
         "Video[history1]".to_string()
     } else if name == "Video" && row.get("_history").is_some() {
         "Video[history]".to_string()
+    } else if name == "Agent" && row.get("primary").is_some() {
+        // Cycle 87, measured on zen in JSON and XML: a legacy plug-in row (the one
+        // carrying `primary`) is `hasPrefs, identifier, primary, name`, not the modern
+        // row's `identifier, name, hasPrefs`.
+        "Agent[legacy]".to_string()
     } else if matches!(name, "Video" | "Directory" | "Track" | "Playlist")
         && (row.get("agent").is_some() || row.get("scanner").is_some())
     {
@@ -412,6 +419,7 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
         ],
         "Field" => &["locked", "name"],
         "Agent" => &["identifier", "name", "hasPrefs", "id", "primary"],
+        "Agent[legacy]" => &["id", "hasPrefs", "identifier", "primary", "name"],
         "Video[history1]" => &[
             "historyKey",
             "librarySectionID",

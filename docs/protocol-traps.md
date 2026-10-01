@@ -3480,3 +3480,11 @@ are changing; replay the client's exact request before altering behavior.
   (`chunk-4030`, `populateAgents`) asks for types 1, 2, 8, 9 and 13 and drops only the movie,
   series and music modern agents, so its Albums tab lists Plex Personal Media on a real server and
   did not on plexsim. Personal Media's provider id is 5 on zen, not 4: not settled here.
+- **A LEGACY `/system/agents` row is `hasPrefs, identifier, primary` (then `name`), not the
+  modern row's `identifier, name, hasPrefs, id`.** Measured on zen (1.42.2, 2026-10-01) in JSON
+  and XML over the bare path and `mediaType=1,2,8,9`; kids (1.43.4) agrees after the `id` it
+  alone leads legacy rows with. The bucket is told apart by `primary`, which no modern row
+  carries. An empty legacy row (fanarttv, htbackdrops, ...) is a PAIRED `<Agent ...>\n</Agent>`
+  on both references. plexsim used the modern order for all eleven and self-closed the six
+  empty ones. After the fix every typed body is byte-identical to zen's
+  (`tests/test_followups_c87_w3.py`). MALFORMED-ONLY: Plex Web reads the rows by key.
