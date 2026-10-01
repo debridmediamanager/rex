@@ -16821,7 +16821,11 @@ class PlexSim:
         elif source:
             fields["playQueueSourceURI"] = source
         if deselected and total:
-            fields["playQueueSelectedItemOffset"] = offset if metadata else 0
+            # Cycle 87, plexscratch42 (1.42.2): a queue with NO selection reports offset 0 to
+            # every read, a `center=` naming a live row included -- the window lists the rows
+            # around that row and the offset does not follow it. plexsim reported the
+            # centre's place in the slice.
+            fields["playQueueSelectedItemOffset"] = 0
             fields["playQueueTotalCount"] = total
         elif items:
             # Cycle 85, plexscratch42 (1.42.2) and plexscratch (1.43.4) agree: `window` and
@@ -19857,8 +19861,14 @@ class PlexSim:
                 items.pop(index)
                 queue["version"] += 1
                 if was_selected:
-                    following = items[index] if index < len(items) else (items[-1] if items else None)
+                    # Cycle 87, plexscratch42 (1.42.2): the selection moves to the row that
+                    # FOLLOWED the removed one, and with none after it the queue has NO
+                    # selection -- the same rule cycle 84 measured for a library removal
+                    # (`remove_from_play_queues`). plexsim selected the row before it.
+                    following = items[index] if index < len(items) else None
                     queue["selected"] = following["id"] if following else None
+                    if following is None and items:
+                        queue["deselected"] = True
                 # Cycle 57: a delete re-anchors the marker to the block's new tail -- and
                 # answers the old one, as it answers the old version.
                 was_marker = queue.get("last_added")
@@ -19884,6 +19894,11 @@ class PlexSim:
                     # it.
                     if was_id is not None:
                         body["playQueueSelectedItemID"] = was_id
+                    # Cycle 87, plexscratch42: and that answer reports offset 0 and no
+                    # `playQueueSelectedMetadataItemID`, whether the selection moved on or
+                    # was lost. plexsim reported the new selection's offset and item.
+                    body["playQueueSelectedItemOffset"] = 0
+                    body.pop("playQueueSelectedMetadataItemID", None)
             return answer
 
         if len(segments) == 2 and method == "PUT":

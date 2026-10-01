@@ -3519,3 +3519,16 @@ are changing; replay the client's exact request before altering behavior.
   the session-wide crossing is CLIENT-VISIBLE: python-plexapi's `Video.updateTimeline` sends no
   session identifier, so one script setting a resume point on one item and then a position past
   90% on another marks the second watched on the reference and did not on ours.
+- **Removing a queue's selected LAST row leaves it with no selection, and a selection-less queue
+  reports offset 0 to every read** (cycle 87 e1, plexscratch42 1.42.2,
+  `tests/fixtures/queue_lost_selection_s42.json`). `DELETE /playQueues/{id}/items/{itemID}` on
+  the selected row moves the selection to the row AFTER it, or with none after it to no selection
+  at all -- cycle 84's library-removal rule, which the queue-item DELETE did not follow: both
+  servers selected the row before it. The DELETE's own answer for a selected row reports
+  `playQueueSelectedItemOffset` 0 and no `playQueueSelectedMetadataItemID` whether the selection
+  moved on or was lost (both servers reported the new selection's). On a queue with no selection,
+  python-plexapi's `PlayQueue.get` (`window=50&includeBefore=1&includeAfter=1`) lists nothing, and
+  with `center=` naming a live row lists the rows around it with `window`/`includeBefore`/
+  `includeAfter` as usual -- offset still 0, no selected ids. Both servers reported the centre's
+  index in the slice. CLIENT-VISIBLE: python-plexapi's `PlayQueue.removeItem` on the playing last
+  item, then `PlayQueue.get`/`refresh`, read a selection the reference does not have.

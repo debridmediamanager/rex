@@ -1,0 +1,1673 @@
+{
+ "_provenance": {
+  "server": "plexscratch42 (PMS 1.42.2.10156), measured 2026-10-01 by cycle 87 agent e1",
+  "setup": "python-plexapi 4.18's PlayQueue.create shape -- POST /playQueues?type=video&uri=server://MACHINE/com.plexapp.plugins.library/library/metadata/A,B,C,D&shuffle=0&repeat=0&continuous=0&key=/library/metadata/<selected> -- over four movies, then DELETE /playQueues/{id}/items/{itemID} for each removed row, then the reads. Rows and ids are given as the labels A-D.",
+  "reads": "plexapi_* = PlayQueue.get's query own=0&window=50&includeBefore=1&includeAfter=1 (+center=<row>); w1_/w0_ change window; before0_/after0_ set includeBefore=0/includeAfter=0; plain_own1 = own=1 alone; center_only_B = center alone; *_bogus = center=999999; *_nocenter = no center.",
+  "fields": "versionDelta = playQueueVersion minus the create answer's; keys = the playQueue* fields present"
+ },
+ "cases": {
+  "lostlast": {
+   "order": "ABCD",
+   "selected": "D",
+   "removed": [
+    "D"
+   ],
+   "steps": {
+    "create": {
+     "status": 200,
+     "size": 4,
+     "rows": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "D",
+     "selectedOffset": 3,
+     "selectedMetadataItemID": "D",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "delete_D": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "D",
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plain_own1": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_default": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_A": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "B",
+      "C"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_B": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "B",
+      "C"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_C": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "B",
+      "C"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_D": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_bogus": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_center_A": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "A",
+      "B"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_A": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "before0_center_A": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "B",
+      "C"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "after0_center_A": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_center_B": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "B",
+      "C"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "before0_center_B": {
+     "status": 200,
+     "size": 1,
+     "rows": [
+      "C"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "after0_center_B": {
+     "status": 200,
+     "size": 1,
+     "rows": [
+      "A"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_center_C": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "B",
+      "C"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_C": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "before0_center_C": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "after0_center_C": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "A",
+      "B"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_nocenter": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "center_only_B": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "B",
+      "C"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plain_after": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    }
+   }
+  },
+  "lostlast2": {
+   "order": "ABCD",
+   "selected": "D",
+   "removed": [
+    "C",
+    "D"
+   ],
+   "steps": {
+    "create": {
+     "status": 200,
+     "size": 4,
+     "rows": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "D",
+     "selectedOffset": 3,
+     "selectedMetadataItemID": "D",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "delete_C": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "B",
+      "D"
+     ],
+     "selectedItemID": "D",
+     "selectedOffset": 2,
+     "selectedMetadataItemID": "D",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "delete_D": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "D",
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plain_own1": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_default": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_A": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "A",
+      "B"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_B": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "A",
+      "B"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_C": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_D": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_bogus": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_center_A": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "A",
+      "B"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_A": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "before0_center_A": {
+     "status": 200,
+     "size": 1,
+     "rows": [
+      "B"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "after0_center_A": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_center_B": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "A",
+      "B"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "before0_center_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "after0_center_B": {
+     "status": 200,
+     "size": 1,
+     "rows": [
+      "A"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_center_C": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_C": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "before0_center_C": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "after0_center_C": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_nocenter": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "center_only_B": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "A",
+      "B"
+     ],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plain_after": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": null,
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 2,
+     "versionDelta": 2,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    }
+   }
+  },
+  "moved": {
+   "order": "ABCD",
+   "selected": "B",
+   "removed": [
+    "B"
+   ],
+   "steps": {
+    "create": {
+     "status": 200,
+     "size": 4,
+     "rows": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "B",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "B",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "delete_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "B",
+     "selectedOffset": 0,
+     "selectedMetadataItemID": null,
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plain_own1": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_default": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_A": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_C": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_D": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plexapi_center_bogus": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_center_A": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "A",
+      "C"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_A": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "before0_center_A": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "C",
+      "D"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "after0_center_A": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_center_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "before0_center_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "after0_center_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_center_C": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_C": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "before0_center_C": {
+     "status": 200,
+     "size": 1,
+     "rows": [
+      "D"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "after0_center_C": {
+     "status": 200,
+     "size": 1,
+     "rows": [
+      "A"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_nocenter": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "center_only_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "plain_after": {
+     "status": 200,
+     "size": 3,
+     "rows": [
+      "A",
+      "C",
+      "D"
+     ],
+     "selectedItemID": "C",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "C",
+     "totalCount": 3,
+     "versionDelta": 1,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    }
+   }
+  },
+  "fresh": {
+   "order": "ABCD",
+   "selected": "B",
+   "removed": [],
+   "steps": {
+    "w0_nocenter": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "B",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "B",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_B": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "B",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "B",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_center_C": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "B",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "B",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w0_only": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "B",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "B",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "center_bogus": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "B",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "B",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "center_bogus_only": {
+     "status": 200,
+     "size": 0,
+     "rows": [],
+     "selectedItemID": "B",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "B",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    },
+    "w1_center_D": {
+     "status": 200,
+     "size": 2,
+     "rows": [
+      "C",
+      "D"
+     ],
+     "selectedItemID": "B",
+     "selectedOffset": 1,
+     "selectedMetadataItemID": "B",
+     "totalCount": 4,
+     "versionDelta": 0,
+     "keys": [
+      "playQueueID",
+      "playQueueSelectedItemID",
+      "playQueueSelectedItemOffset",
+      "playQueueSelectedMetadataItemID",
+      "playQueueShuffled",
+      "playQueueSourceURI",
+      "playQueueTotalCount",
+      "playQueueVersion"
+     ]
+    }
+   }
+  }
+ }
+}

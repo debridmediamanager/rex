@@ -4,7 +4,11 @@
 - which item a `/:/timeline` beat is for, where a session's crossing position comes from,
   and how long a completion keeps answering `complete`, driven by the 30 beat sequences
   recorded in `tests/fixtures/timeline_queue_item_s42.json` (Plex Web's beat shape and
-  python-plexapi's `updateTimeline`).
+  python-plexapi's `updateTimeline`);
+- a play queue that LOSES its selection (the selected last row removed with
+  `DELETE /playQueues/{id}/items/{itemID}`), and the DELETE's own answer, read the way
+  python-plexapi's `PlayQueue.get` reads it, with and without `center=`
+  (`tests/fixtures/queue_lost_selection_s42.json`).
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -158,9 +162,106 @@ def timeline_sequences(port, machine):
                     [("key", ROWS[label]), ("identifier", "com.plexapp.plugins.library")])
 
 
+# Four movies of the fixture catalog for plexscratch42's A-D.
+QUEUE_ROWS = {"A": "1007", "B": "1008", "C": "1009", "D": "1012"}
+
+
+def queue_summary(status, body, labels, version):
+    """The fields the fixture records, ids given as their row labels."""
+    keys = {value: label for label, value in QUEUE_ROWS.items()}
+    return {
+        "status": status, "size": body.get("size"),
+        "rows": [labels.get(r.get("playQueueItemID"), r.get("playQueueItemID"))
+                 for r in body.get("Metadata", [])],
+        "selectedItemID": labels.get(body.get("playQueueSelectedItemID"),
+                                     body.get("playQueueSelectedItemID")),
+        "selectedOffset": body.get("playQueueSelectedItemOffset"),
+        "selectedMetadataItemID": keys.get(str(body.get("playQueueSelectedMetadataItemID")),
+                                           body.get("playQueueSelectedMetadataItemID")),
+        "totalCount": body.get("playQueueTotalCount"),
+        "versionDelta": (body.get("playQueueVersion") or 0) - version,
+        "keys": sorted(k for k in body if k.startswith("playQueue")),
+    }
+
+
+def read_query(step, ids):
+    """The query of one recorded read, by its step name (see the fixture's provenance)."""
+    def centre(label):
+        return 999999 if label == "bogus" else ids[label]
+    plexapi = {"own": 0, "window": 50, "includeBefore": 1, "includeAfter": 1}
+    name = step.split("_")
+    if step in ("plain_own1", "plain_after"):
+        return [("own", 1)]
+    if step == "plexapi_default":
+        return list(plexapi.items())
+    if step == "w0_only":
+        return [("window", 0)]
+    if step in ("center_only_B", "center_bogus_only"):
+        return [("center", centre("B" if step == "center_only_B" else "bogus"))]
+    if step == "center_bogus":
+        return list(plexapi.items()) + [("center", 999999)]
+    query = dict(plexapi)
+    if name[0] in ("w0", "w1"):
+        query["window"] = int(name[0][1])
+    elif name[0] == "before0":
+        query["includeBefore"] = 0
+    elif name[0] == "after0":
+        query["includeAfter"] = 0
+    if name[-1] != "nocenter":
+        query["center"] = centre(name[-1])
+    return list(query.items())
+
+
+def lists_nothing_by_rule(query, ids, removed):
+    """`window=0`, or a `center=` naming no row the queue still holds."""
+    query = dict(query)
+    live = {ids[label] for label in ids if label not in removed}
+    return query.get("window") == 0 or ("center" in query and query["center"] not in live)
+
+
+def queue_reads(port, machine, empty_rule):
+    """Replay every recorded case; `empty_rule` picks the reads the window=0 / unknown
+    centre rule decides (True) or every other step (False)."""
+    fixture = json.load(open(os.path.join(HERE, "fixtures", "queue_lost_selection_s42.json")))
+    headers = dict(PLEXAPI, **{"X-Plex-Client-Identifier": "c87e1-plexapi-q"})
+    for case, recorded in fixture["cases"].items():
+        order, removed = recorded["order"], recorded["removed"]
+        uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s" % (
+            machine, ",".join(QUEUE_ROWS[label] for label in order))
+        status, body = request(port, "POST", "/playQueues",
+                               [("type", "video"), ("uri", uri), ("shuffle", 0), ("repeat", 0),
+                                ("continuous", 0),
+                                ("key", "/library/metadata/%s" % QUEUE_ROWS[recorded["selected"]])],
+                               headers)
+        labels = {r["playQueueItemID"]: label
+                  for r, label in zip(body.get("Metadata", []), order)}
+        ids = {label: item for item, label in labels.items()}
+        version = body.get("playQueueVersion") or 0
+        queue = body.get("playQueueID")
+        got = {"create": queue_summary(status, body, labels, version)}
+        for label in removed:
+            status, body = request(port, "DELETE", "/playQueues/%s/items/%s" % (queue, ids[label]),
+                                   (), headers)
+            got["delete_" + label] = queue_summary(status, body, labels, version)
+        for step in recorded["steps"]:
+            if step == "create" or step.startswith("delete_"):
+                continue
+            query = read_query(step, ids)
+            status, body = request(port, "GET", "/playQueues/%s" % queue, query, headers)
+            got[step] = queue_summary(status, body, labels, version)
+        for step, measured in recorded["steps"].items():
+            ruled = step not in ("create",) and not step.startswith("delete_") \
+                and lists_nothing_by_rule(read_query(step, ids), ids, removed)
+            if ruled != empty_rule:
+                continue
+            check("queue %s: %s" % (case, step), got.get(step) == measured,
+                  {"got": got.get(step), "measured": measured})
+
+
 def run(port):
     machine = request(port, "GET", "/identity")[1].get("machineIdentifier")
     timeline_sequences(port, machine)
+    queue_reads(port, machine, empty_rule=False)
 
 
 def main():

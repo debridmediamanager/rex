@@ -12016,14 +12016,9 @@ impl Runtime {
             fields.insert("playQueueSourceURI".to_string(), json!(queue.source));
         }
         if queue.deselected && total > 0 {
-            fields.insert(
-                "playQueueSelectedItemOffset".to_string(),
-                json!(if metadata.is_empty() {
-                    0
-                } else {
-                    selected_index
-                }),
-            );
+            // Cycle 87, plexscratch42 (1.42.2): a queue with NO selection reports offset 0 to
+            // every read, a `center=` naming a live row included.
+            fields.insert("playQueueSelectedItemOffset".to_string(), json!(0));
             fields.insert("playQueueTotalCount".to_string(), json!(total));
         } else if !queue.items.is_empty() {
             let selected = queue.selected.unwrap_or(queue.items[0].id);
@@ -12374,11 +12369,14 @@ impl Runtime {
                 queue.items.remove(index);
                 queue.version += 1;
                 if was_selected {
-                    queue.selected = queue
-                        .items
-                        .get(index)
-                        .or_else(|| queue.items.last())
-                        .map(|item| item.id);
+                    // Cycle 87, plexscratch42 (1.42.2): the selection moves to the row that
+                    // FOLLOWED the removed one, and with none after it the queue has NO
+                    // selection (cycle 84's library-removal rule). The server selected the
+                    // row before it.
+                    queue.selected = queue.items.get(index).map(|item| item.id);
+                    if queue.selected.is_none() && !queue.items.is_empty() {
+                        queue.deselected = true;
+                    }
                 }
                 let was_marker = queue.last_added;
                 if was_marker.is_some() {
@@ -12402,6 +12400,10 @@ impl Runtime {
                             if let Some(was_id) = was_id {
                                 object.insert("playQueueSelectedItemID".to_string(), json!(was_id));
                             }
+                            // Cycle 87: and offset 0 with no selected metadata id, whether
+                            // the selection moved on or was lost.
+                            object.insert("playQueueSelectedItemOffset".to_string(), json!(0));
+                            object.shift_remove("playQueueSelectedMetadataItemID");
                         }
                     }
                     response.body = serde_json::to_vec(&document).unwrap_or_default();
