@@ -20,6 +20,7 @@
 - A smart playlist over `all?type=4&...&limit=3` holds three episodes; the native server
   ignored the uri's `type`, capped the one show and expanded it.
 - A playlist's `deleted` frame names the playlist; the native server's was empty.
+- `addItem(show)` grows a queue by the show's episodes; the native server added the show.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -284,6 +285,22 @@ def write_chain_checks(port):
                 entries.append(entry)
     check("a playlist's deleted frame names the playlist as it is now",
           [entry.get("title") for entry in entries] == ["Xb Renamed"], frames)
+
+    # Adding a show to a queue adds its episodes.
+    want = measured["queue_add_show"]
+    check("fixture: adding a three-episode show grows the queue by three",
+          want["size_after"] - want["size_before"] == want["show_leafCount"], want)
+    status, raw = request(port, "POST", "/playQueues?type=video&uri=server%%3A%%2F%%2F%s"
+                          "%%2Fcom.plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F1007" % machine)
+    queue = ET.fromstring(raw)
+    status, raw = request(port, "GET", "/library/metadata/20001")
+    leaves = int(ET.fromstring(raw)[0].get("leafCount"))
+    status, raw = request(port, "PUT", "/playQueues/%s?uri=library%%3A%%2F%%2Fx%%2Fitem%%2Flibrary%%2Fmetadata%%2F20001"
+                          % queue.get("playQueueID"))
+    after = ET.fromstring(raw) if status == 200 else None
+    added = [row.get("type") for row in after][1:] if after is not None else status
+    check("addItem(show) grows the queue by the show's %d episodes" % leaves,
+          added == ["episode"] * leaves, added)
 
 
 def main():

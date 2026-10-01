@@ -3273,3 +3273,6 @@ are changing; replay the client's exact request before altering behavior.
 - **A playlist's `deleted` frame carries its title; its `created` frame an empty one**
   (plexscratch42, 1.42.2, python-plexapi's `createPlaylist` and `delete`). The native server sent
   an empty title on both; a client that labels the removal from the frame had nothing to show.
+- **Adding a show to a play queue adds its episodes.** python-plexapi's `addItem(show)` grows a
+  queue by the show's three episodes on plexscratch42 (1.42.2), as a create expands one; the
+  native server added the show row itself, which has no Media to play.
