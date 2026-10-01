@@ -3220,3 +3220,13 @@ are changing; replay the client's exact request before altering behavior.
   cut the language to its base and drew the agent list for `zh` (simplified, `zh`'s order) and
   `es` (`Inglés (RU)`), where the oracle took the table's own entry first. Only a language the
   table lacks falls back to the agent rows.
+- **A `/query/parse` Rule's `fieldTitle` is the advertised Meta `Field` title for (scope, field)**
+  (cycle 83, zen 1.42.2, `X-Plex-Language: en`), the scope being the rule's own prefix or the
+  one `type=` implies: `episode.addedAt` is `Date Episode Added`, `show.studio` `Studio`,
+  `show.genre` `Genre`, `show.unwatchedLeaves` `Unwatched Episodes`, `hdr` `HDR`, `dovi` `DOVI`,
+  `episode.mediaSize` `File size` against the movie's `File Size`, and `season.title` (no Meta
+  field) the empty string. The native server titled rules from a hand table that composed
+  "<Scope> <Field>" (`Episode Date Added`, `Show Studio`, `Season Title`) and knew none of the
+  media, `trash`, `location` or `network` fields; it now reads the same two Meta templates the
+  oracle's FIELD_TITLES does. Plex Web's filter editor titles a rule from its own `allTypeFields`,
+  not from this attribute.

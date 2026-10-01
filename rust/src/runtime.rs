@@ -4684,6 +4684,41 @@ impl Runtime {
         fields
     }
 
+    /// The title a `Field` of the two section Meta templates carries, keyed by (scope,
+    /// bare name), the first spelling winning -- `server.py`'s FIELD_TITLES -- and the
+    /// empty string for a pair no Meta advertises.
+    fn meta_field_title(&self, scope: &str, bare: &str) -> String {
+        static CACHE: std::sync::OnceLock<Vec<(String, String, String)>> =
+            std::sync::OnceLock::new();
+        CACHE
+            .get_or_init(|| {
+                let mut out: Vec<(String, String, String)> = Vec::new();
+                for name in ["section_meta.json", "section_meta_show.json"] {
+                    let Some(meta) = load_json_sidecar(&self.catalog_path, name) else {
+                        continue;
+                    };
+                    for entry in meta.get("Type").and_then(Value::as_array).into_iter().flatten() {
+                        for field in entry.get("Field").and_then(Value::as_array).into_iter().flatten() {
+                            let Some(key) = field.get("key").and_then(Value::as_str) else {
+                                continue;
+                            };
+                            let (scope, bare) = key.rsplit_once('.').unwrap_or(("", key));
+                            if out.iter().any(|(s, b, _)| s == scope && b == bare) {
+                                continue;
+                            }
+                            let title = field.get("title").and_then(Value::as_str).unwrap_or("");
+                            out.push((scope.to_string(), bare.to_string(), title.to_string()));
+                        }
+                    }
+                }
+                out
+            })
+            .iter()
+            .find(|(s, b, _)| s == scope && b == bare)
+            .map(|(_, _, title)| title.clone())
+            .unwrap_or_default()
+    }
+
     /// Every `Field` the two section Meta templates advertise, as (bare name, type), the
     /// first spelling winning -- `server.py`'s FILTER_FIELD_TYPES loop.
     fn meta_field_types(&self) -> Vec<(String, String)> {
@@ -6437,7 +6472,7 @@ impl Runtime {
         {
             return None;
         }
-let language_list =
+        let language_list =
             source.contains("ca-ES:") || source.contains("en-US:") || source.contains("ar-SA:");
         if !language_list {
             return None;
@@ -14226,72 +14261,22 @@ let language_list =
                         .get("limit")
                         .and_then(|value| value.parse::<i64>().ok());
                     let descriptor = crate::filters::Descriptor {
+                        // Cycle 83 (A's web corpus, oracle against native): the title is the
+                        // advertised Meta `Field` title for (scope, bare name), the scope
+                        // being the rule's own prefix or the one `type=` implies --
+                        // `server.py`'s FIELD_TITLES. The hand table this replaced spelled
+                        // `episode.addedAt` "Episode Date Added" where zen (1.42.2) answers
+                        // "Date Episode Added", and named neither `hdr` ("HDR") nor
+                        // `show.unwatchedLeaves` ("Unwatched Episodes"): both came back "".
                         title_of: &|field, scope| {
-                            let base = match field {
-                                "title" => "Title",
-                                "studio" => "Studio",
-                                "userRating" => "Rating",
-                                "contentRating" => "Content Rating",
-                                "year" => "Year",
-                                "decade" => "Decade",
-                                "originallyAvailableAt" => "Release Date",
-                                "duration" => "Duration",
-                                "unmatched" => "Unmatched",
-                                "duplicate" => "Duplicate",
-                                "genre" => "Genre",
-                                "collection" => "Collection",
-                                "director" => "Director",
-                                "writer" => "Writer",
-                                "producer" => "Producer",
-                                "actor" => "Actor",
-                                "country" => "Country",
-                                "addedAt" => "Date Added",
-                                "viewCount" => "Plays",
-                                "lastViewedAt" => "Last Watched",
-                                "unwatched" => "Unwatched",
-                                "resolution" => "Resolution",
-                                "subtitleLanguage" => "Subtitle Language",
-                                "audioLanguage" => "Audio Language",
-                                "inProgress" => "In Progress",
-                                "editionTitle" => "Edition",
-                                "contentRatingAge" => "Common Sense Media Age Rating",
-                                "label" => "Label",
+                            let implicit = match type_number {
+                                2 => "show",
+                                3 => "season",
+                                4 => "episode",
                                 _ => "",
                             };
-                            // The descriptor is type-specific.  A season
-                            // query has no bare `title` rule in the measured
-                            // 1.42.2 form, while an unprefixed field on an
-                            // episode is titled from that requested type.
-                            let type_title = match type_number {
-                                1 => "Movie",
-                                2 => "Show",
-                                3 => "Season",
-                                4 => "Episode",
-                                _ => "",
-                            };
-                            if scope.is_empty() && type_number == 3 && field == "title" {
-                                return String::new();
-                            }
-                            if base.is_empty() {
-                                return String::new();
-                            }
-                            if scope.is_empty() {
-                                if type_number == 4
-                                    && matches!(field, "unwatched" | "inProgress" | "title")
-                                {
-                                    format!("{type_title} {base}")
-                                } else {
-                                    base.to_string()
-                                }
-                            } else {
-                                let scope_title = match scope {
-                                    "show" => "Show".to_string(),
-                                    "episode" => "Episode".to_string(),
-                                    "season" => "Season".to_string(),
-                                    _ => canonical_tag(scope),
-                                };
-                                format!("{} {}", scope_title, base)
-                            }
+                            let scope = if scope.is_empty() { implicit } else { scope };
+                            self.meta_field_title(scope, field)
                         },
                         value_title_of: &|_field, value| {
                             self.catalog.items.iter().find_map(|row| {

@@ -1,0 +1,250 @@
+{
+ "_provenance": "Cycle 83, measured on zen (PMS 1.42.2.10156) with X-Plex-Language: en: /library/sections/{id}/query/parse, section 1 a movie library and section 2 a show library. Each Rule is kept as type/field/fieldTitle; valueTitle (zen's own tag names) is dropped.",
+ "exchanges": [
+  {
+   "path": "/library/sections/2/query/parse?type=4&show.title=a&episode.year=2000&episode.addedAt>>=1&show.unwatchedLeaves=1",
+   "status": 200,
+   "Rule": [
+    {
+     "type": "show",
+     "field": "title",
+     "fieldTitle": "Show Title"
+    },
+    {
+     "type": "episode",
+     "field": "year",
+     "fieldTitle": "Episode Year"
+    },
+    {
+     "type": "episode",
+     "field": "addedAt",
+     "fieldTitle": "Date Episode Added"
+    },
+    {
+     "type": "show",
+     "field": "unwatchedLeaves",
+     "fieldTitle": "Unwatched Episodes"
+    }
+   ]
+  },
+  {
+   "path": "/library/sections/1/query/parse?type=1&title=a&resolution=1080&contentRating=G&studio=x&decade=2000&actor=1&collection=1&label=1&audioLanguage=en&subtitleLanguage=en&duplicate=1&unmatched=1&hdr=1&addedAt>>=1&lastViewedAt>>=1",
+   "status": 200,
+   "Rule": [
+    {
+     "field": "title",
+     "fieldTitle": "Title"
+    },
+    {
+     "field": "resolution",
+     "fieldTitle": "Resolution"
+    },
+    {
+     "field": "contentRating",
+     "fieldTitle": "Content Rating"
+    },
+    {
+     "field": "studio",
+     "fieldTitle": "Studio"
+    },
+    {
+     "field": "decade",
+     "fieldTitle": "Decade"
+    },
+    {
+     "field": "actor",
+     "fieldTitle": "Actor"
+    },
+    {
+     "field": "collection",
+     "fieldTitle": "Collection"
+    },
+    {
+     "field": "label",
+     "fieldTitle": "Label"
+    },
+    {
+     "field": "audioLanguage",
+     "fieldTitle": "Audio Language"
+    },
+    {
+     "field": "subtitleLanguage",
+     "fieldTitle": "Subtitle Language"
+    },
+    {
+     "field": "duplicate",
+     "fieldTitle": "Duplicate"
+    },
+    {
+     "field": "unmatched",
+     "fieldTitle": "Unmatched"
+    },
+    {
+     "field": "hdr",
+     "fieldTitle": "HDR"
+    },
+    {
+     "field": "addedAt",
+     "fieldTitle": "Date Added"
+    },
+    {
+     "field": "lastViewedAt",
+     "fieldTitle": "Last Watched"
+    }
+   ]
+  },
+  {
+   "path": "/library/sections/2/query/parse?type=2&show.studio=x&show.network=x&show.country=1&show.contentRating=G&show.genre=1&show.collection=1&show.label=1&show.userRating=1&show.addedAt>>=1",
+   "status": 200,
+   "Rule": [
+    {
+     "type": "show",
+     "field": "studio",
+     "fieldTitle": "Studio"
+    },
+    {
+     "type": "show",
+     "field": "network",
+     "fieldTitle": "Network"
+    },
+    {
+     "type": "show",
+     "field": "country",
+     "fieldTitle": "Country"
+    },
+    {
+     "type": "show",
+     "field": "contentRating",
+     "fieldTitle": "Content Rating"
+    },
+    {
+     "type": "show",
+     "field": "genre",
+     "fieldTitle": "Genre"
+    },
+    {
+     "type": "show",
+     "field": "collection",
+     "fieldTitle": "Show Collection"
+    },
+    {
+     "type": "show",
+     "field": "label",
+     "fieldTitle": "Label"
+    },
+    {
+     "type": "show",
+     "field": "userRating",
+     "fieldTitle": "Show Rating"
+    },
+    {
+     "type": "show",
+     "field": "addedAt",
+     "fieldTitle": "Date Show Added"
+    }
+   ]
+  },
+  {
+   "path": "/library/sections/2/query/parse?type=4&episode.hdr=1&episode.dovi=1&episode.mediaSize>>=1&episode.unwatched=1&episode.resolution=1080&episode.location=1&title=a&unwatched=1&inProgress=1",
+   "status": 200,
+   "Rule": [
+    {
+     "type": "episode",
+     "field": "hdr",
+     "fieldTitle": "HDR"
+    },
+    {
+     "type": "episode",
+     "field": "dovi",
+     "fieldTitle": "DOVI"
+    },
+    {
+     "type": "episode",
+     "field": "mediaSize",
+     "fieldTitle": "File size"
+    },
+    {
+     "type": "episode",
+     "field": "unwatched",
+     "fieldTitle": "Episode Unwatched"
+    },
+    {
+     "type": "episode",
+     "field": "resolution",
+     "fieldTitle": "Resolution"
+    },
+    {
+     "type": "episode",
+     "field": "location",
+     "fieldTitle": "Folder Location"
+    },
+    {
+     "field": "title",
+     "fieldTitle": "Episode Title"
+    },
+    {
+     "field": "unwatched",
+     "fieldTitle": "Episode Unwatched"
+    },
+    {
+     "field": "inProgress",
+     "fieldTitle": "Episode In Progress"
+    }
+   ]
+  },
+  {
+   "path": "/library/sections/1/query/parse?type=1&dovi=1&mediaSize>>=1&mediaBitrate>>=1&location=1&trash=1&editionTitle=x&contentRatingAge=1",
+   "status": 200,
+   "Rule": [
+    {
+     "field": "dovi",
+     "fieldTitle": "DOVI"
+    },
+    {
+     "field": "mediaSize",
+     "fieldTitle": "File Size"
+    },
+    {
+     "field": "mediaBitrate",
+     "fieldTitle": "Bitrate"
+    },
+    {
+     "field": "location",
+     "fieldTitle": "Folder Location"
+    },
+    {
+     "field": "trash",
+     "fieldTitle": "Trash"
+    },
+    {
+     "field": "editionTitle",
+     "fieldTitle": "Edition"
+    },
+    {
+     "field": "contentRatingAge",
+     "fieldTitle": "Common Sense Media Age Rating"
+    }
+   ]
+  },
+  {
+   "path": "/library/sections/2/query/parse?type=3&title=a&season.title=a&show.title=a",
+   "status": 200,
+   "Rule": [
+    {
+     "field": "title",
+     "fieldTitle": ""
+    },
+    {
+     "type": "season",
+     "field": "title",
+     "fieldTitle": ""
+    },
+    {
+     "type": "show",
+     "field": "title",
+     "fieldTitle": "Show Title"
+    }
+   ]
+  }
+ ]
+}

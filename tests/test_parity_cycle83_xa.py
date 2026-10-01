@@ -5,9 +5,14 @@ A's localisation and item-settings sweeps, checked against zen's (1.42.2) own an
 - an item's `languageOverride` picker under `X-Plex-Language: zh-TW` and `es-419` is the
   translation table's list for that exact language (zen leads zh-TW with `tr-TR:土耳其文`
   and names `en-GB` `Inglés (R. U.)` in es-419); the native server cut the language to its
-  base and drew `zh`'s simplified names and `es`'s list.
+  base and drew `zh`'s simplified names and `es`'s list;
+- `/query/parse` titles each Rule by the advertised Meta Field for (scope, field):
+  `episode.addedAt` is "Date Episode Added", `hdr` "HDR", `show.unwatchedLeaves`
+  "Unwatched Episodes"; the native server's hand table spelled the first wrong and left
+  the other two empty.
 
-The expectation is zen's recorded exchange (`tests/fixtures/item_language_override_zen.json`). Drives a real server process
+Both expectations are zen's recorded exchanges (`tests/fixtures/item_language_override_zen.json`,
+`tests/fixtures/query_parse_field_titles_zen.json`). Drives a real server process
 (`tests/server_command.py`): the native binary by default, the oracle with
 `PLEXSIM_SERVER=python`.
 
@@ -126,6 +131,7 @@ def main():
     process, port = start()
     try:
         language_override(port)
+        field_titles(port)
     finally:
         process.terminate()
         try:
