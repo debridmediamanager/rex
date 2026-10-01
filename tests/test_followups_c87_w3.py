@@ -17,6 +17,13 @@
   database's history; plexsim numbered providers by agent position. Driven by zen's
   exchanges (`tests/fixtures/c87_w3_provider_ids_zen.json`).
 
+- A write on a BUILT-IN provider or group id, measured on plexscratch42 (a fresh 1.42.2,
+  2026-10-01; `tests/fixtures/c87_w3_builtin_provider_writes_s42.json`, nothing changed on
+  any of them): `PUT /media/providers/metadata/1` is a 400 with no or an empty `uri` and a
+  500 with an unreachable one, `POST` on the id a 404; `PUT /group/3?title=` (its own title)
+  answers the row, `POST /group/3` is a 404 and `PUT /group/3/items/5` a 400. The oracle
+  answered the provider row to every verb and the native server 404'd all of them.
+
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
 
@@ -39,6 +46,7 @@ CATALOG = os.path.join("tests", "catalog_ui.json")
 JSON_FIXTURE = os.path.join(HERE, "fixtures", "c87_w2_system_agents_zen.json")
 XML_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_system_agents_xml_zen.json")
 PROVIDER_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_provider_ids_zen.json")
+WRITE_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_provider_writes_s42.json")
 ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
@@ -171,11 +179,30 @@ def provider_ids(port):
               status == exchange["status"] and body == want, (status, body))
 
 
+def builtin_writes(port):
+    snapshot = ("/media/providers/metadata", "/media/providers/metadata/group",
+                "/media/providers/metadata/1", "/media/providers/metadata/group/3")
+    for exchange in json.load(open(WRITE_FIXTURE, encoding="utf-8")):
+        before = [request(port, "GET", path, exchange["headers"]) for path in snapshot]
+        status, text = request(port, exchange["method"], exchange["path"], exchange["headers"])
+        after = [request(port, "GET", path, exchange["headers"]) for path in snapshot]
+        try:
+            body = json.loads(text) if exchange["body"] is not None else None
+        except ValueError:
+            body = text
+        check("%s %s on a BUILT-IN id is a %d%s, and changes nothing (plexscratch42)"
+              % (exchange["method"], exchange["path"], exchange["status"],
+                 " with the row" if exchange["body"] is not None else ""),
+              status == exchange["status"] and body == exchange["body"] and before == after,
+              (status, text[:200], before == after))
+
+
 def main():
     process, port = start()
     try:
         legacy_order(port)
         provider_ids(port)
+        builtin_writes(port)
     finally:
         stop(process)
     passed = sum(results)

@@ -6296,6 +6296,21 @@ class PlexSim:
                 # this branch only knows about groups the client created.
                 and not (len(segments) == 5 and method in ("GET", "HEAD"))):
             group_id = int(segments[4])
+            built_in = [row for row in self.metadata_provider_rows(group=True)
+                        if row.get("builtIn") and row.get("id") == group_id]
+            if built_in and method == "PUT":
+                # Cycle 87, measured on plexscratch42 (fresh 1.42.2): a BUILT-IN group
+                # takes the rename verb -- `PUT /group/3?title=Plex%20Music`, its own
+                # title, answers the row -- and its items path refuses Personal Media as
+                # a custom group's does (`PUT /group/3/items/5?after=-1` is a 400).
+                # Plex Web hides both behind `builtIn`; plexsim 404'd them. A DIFFERENT
+                # title is unmeasured, so the row is answered as held.
+                if len(segments) == 5:
+                    if query.get("title") is None:
+                        return ("error", 400, "plexsim: bad request")
+                    return self.bare_container(size=1, MetadataAgentProviderGroup=built_in)
+                if len(segments) == 7 and segments[5] == "items" and segments[6].isdigit():
+                    return ("error", 400, "plexsim: bad request")
             with self.lock:
                 group = self.metadata_provider_groups.get(group_id)
                 if group is None:
@@ -6349,6 +6364,17 @@ class PlexSim:
             picked = [row for row in rows if str(row.get("id")) == wanted]
             if not picked:
                 return ("error", 404, "plexsim: not found")
+            if len(segments) == 4 and method == "POST":
+                # Cycle 87, plexscratch42: a provider id takes no POST.
+                return ("error", 404, "plexsim: not found")
+            if len(segments) == 4 and method == "PUT":
+                # Cycle 87, measured on plexscratch42 (fresh 1.42.2) against built-in
+                # provider 1, nothing changing: no `uri` or an empty one is a 400, and a
+                # `uri` PMS cannot reach is a 500 -- it fetches the provider to adopt it.
+                # plexsim hosts no external provider, so every `uri` is unreachable.
+                return ("error", 500 if query.get("uri") else 400,
+                        "plexsim: bad request" if not query.get("uri")
+                        else "plexsim: internal server error")
             return self.bare_container(size=1, **{key: picked})
 
         if route == "/media/providers/metadata/group" and method in ("PUT", "DELETE"):

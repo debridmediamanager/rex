@@ -3539,3 +3539,14 @@ are changing; replay the client's exact request before altering behavior.
   queue never held answers `size 0` too; both servers fell back to the selection and listed its
   window. MALFORMED-ONLY: python-plexapi always sends `window=50` and a centre it took from the
   queue it holds.
+- **A write on a BUILT-IN metadata provider or group id is not the row and not a 404.** Measured
+  on plexscratch42 (fresh 1.42.2, 2026-10-01; every listing and row re-read before and after,
+  nothing changed): `PUT /media/providers/metadata/1` is a 400 with no or an empty `uri` and a
+  500 with an unreachable one (PMS fetches the provider; plexsim hosts none, so every `uri` is a
+  500 here), and `POST` on the id is a 404. `PUT /media/providers/metadata/group/3?title=` with
+  its own title answers the group row, `POST /group/3` is a 404 and `PUT /group/3/items/5?after=-1`
+  a 400. The oracle answered the provider row to every verb; the native server 404'd them all,
+  groups included. MALFORMED-ONLY: Plex Web 4.162.1 hides Edit/Remove for a provider whose title is
+  one of its eight built-in names and for a group with `builtIn`. Unmeasured, left as they were:
+  `DELETE` on a built-in provider or group id (destructive; the oracle still answers the provider
+  row, native 404s) and a built-in group renamed to a DIFFERENT title (answered as held).

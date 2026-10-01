@@ -1,0 +1,127 @@
+[
+ {
+  "reference": "plexscratch42 PMS 1.42.2.10156 (fresh install, no route out)",
+  "date": "2026-10-01",
+  "method": "PUT",
+  "path": "/media/providers/metadata/1",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Product": "Plex Web",
+   "X-Plex-Version": "4.162.1",
+   "X-Plex-Platform": "Chrome"
+  },
+  "status": 400,
+  "body": null,
+  "stateChanged": false
+ },
+ {
+  "reference": "plexscratch42 PMS 1.42.2.10156 (fresh install, no route out)",
+  "date": "2026-10-01",
+  "method": "PUT",
+  "path": "/media/providers/metadata/1?uri=",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Product": "Plex Web",
+   "X-Plex-Version": "4.162.1",
+   "X-Plex-Platform": "Chrome"
+  },
+  "status": 400,
+  "body": null,
+  "stateChanged": false
+ },
+ {
+  "reference": "plexscratch42 PMS 1.42.2.10156 (fresh install, no route out)",
+  "date": "2026-10-01",
+  "method": "PUT",
+  "path": "/media/providers/metadata/1?uri=http%3A%2F%2F127.0.0.1%3A9%2F",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Product": "Plex Web",
+   "X-Plex-Version": "4.162.1",
+   "X-Plex-Platform": "Chrome"
+  },
+  "status": 500,
+  "body": null,
+  "stateChanged": false
+ },
+ {
+  "reference": "plexscratch42 PMS 1.42.2.10156 (fresh install, no route out)",
+  "date": "2026-10-01",
+  "method": "POST",
+  "path": "/media/providers/metadata/1",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Product": "Plex Web",
+   "X-Plex-Version": "4.162.1",
+   "X-Plex-Platform": "Chrome"
+  },
+  "status": 404,
+  "body": null,
+  "stateChanged": false
+ },
+ {
+  "reference": "plexscratch42 PMS 1.42.2.10156 (fresh install, no route out)",
+  "date": "2026-10-01",
+  "method": "PUT",
+  "path": "/media/providers/metadata/group/3?title=Plex%20Music",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Product": "Plex Web",
+   "X-Plex-Version": "4.162.1",
+   "X-Plex-Platform": "Chrome"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 1,
+    "MetadataAgentProviderGroup": [
+     {
+      "id": 3,
+      "title": "Plex Music",
+      "primaryIdentifier": "tv.plex.agents.music",
+      "builtIn": "1",
+      "MetadataAgentProviderGroupItem": [
+       {
+        "id": 3,
+        "metadataAgentProviderGroupId": 3,
+        "metadataAgentProviderId": 3,
+        "order": 1000.0
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "stateChanged": false
+ },
+ {
+  "reference": "plexscratch42 PMS 1.42.2.10156 (fresh install, no route out)",
+  "date": "2026-10-01",
+  "method": "POST",
+  "path": "/media/providers/metadata/group/3",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Product": "Plex Web",
+   "X-Plex-Version": "4.162.1",
+   "X-Plex-Platform": "Chrome"
+  },
+  "status": 404,
+  "body": null,
+  "stateChanged": false
+ },
+ {
+  "reference": "plexscratch42 PMS 1.42.2.10156 (fresh install, no route out)",
+  "date": "2026-10-01",
+  "method": "PUT",
+  "path": "/media/providers/metadata/group/3/items/5?after=-1",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Product": "Plex Web",
+   "X-Plex-Version": "4.162.1",
+   "X-Plex-Platform": "Chrome"
+  },
+  "status": 400,
+  "body": null,
+  "stateChanged": false
+ }
+]

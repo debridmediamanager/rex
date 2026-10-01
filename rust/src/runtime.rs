@@ -3357,9 +3357,57 @@ impl Runtime {
                 ),
             );
         }
+        // Cycle 87, measured on plexscratch42 (fresh 1.42.2) against built-in provider 1,
+        // nothing changing: `PUT /media/providers/metadata/{id}` is a 400 with no or an
+        // empty `uri` and a 500 with one PMS cannot reach (it fetches the provider; plexsim
+        // hosts none), and POST on the id is a 404.
+        if segments.len() == 4 && matches!(request.method.as_str(), "PUT" | "POST") {
+            let wanted = segments[3];
+            let held = wanted.bytes().all(|byte| byte.is_ascii_digit())
+                && !wanted.is_empty()
+                && (wanted == "4"
+                    || self.metadata_provider_rows().iter().any(|row| {
+                        row.get("id").map(|id| id.to_string()) == Some(wanted.to_string())
+                    }));
+            if !held || request.method == "POST" {
+                return Response::error(404, "plexsim: not found");
+            }
+            return match query.get("uri").filter(|uri| !uri.is_empty()) {
+                Some(_) => Response::error(500, "plexsim: internal server error"),
+                None => Response::error(400, "plexsim: bad request"),
+            };
+        }
         let Some(group_id) = segments.get(4).copied() else {
             return Response::error(404, "plexsim: not found");
         };
+        // Cycle 87, plexscratch42: a BUILT-IN group takes the rename verb (its own title
+        // answers the row; a different title is unmeasured, so the row is answered as
+        // held) and its items path refuses Personal Media as a custom group's does.
+        if request.method == "PUT" && !self.metadata_provider_groups.contains_key(group_id) {
+            let built_in = self
+                .metadata_provider_groups()
+                .into_iter()
+                .filter(|row| row.get("builtIn").is_some())
+                .find(|row| row.get("id").map(|id| id.to_string()) == Some(group_id.to_string()));
+            if let Some(row) = built_in {
+                if segments.len() == 5 {
+                    if query.get("title").is_none() {
+                        return Response::error(400, "plexsim: bad request");
+                    }
+                    return Response::json(
+                        200,
+                        json!({"MediaContainer": {"size": 1, "MetadataAgentProviderGroup": [row]}}),
+                    );
+                }
+                if segments.len() == 7
+                    && segments[5] == "items"
+                    && segments[6].bytes().all(|byte| byte.is_ascii_digit())
+                    && !segments[6].is_empty()
+                {
+                    return Response::error(400, "plexsim: bad request");
+                }
+            }
+        }
         // Only groups the client created have a lifecycle; any other id is a 404.
         if !(segments.len() == 5 && matches!(request.method.as_str(), "GET" | "HEAD"))
             && !self.metadata_provider_groups.contains_key(group_id)
