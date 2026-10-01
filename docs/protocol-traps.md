@@ -2764,7 +2764,14 @@ are changing; replay the client's exact request before altering behavior.
   completes carries none and is `type=0`, which is what an absent `type=` means. Plex for Android's
   Play History and python-plexapi's `history()` send no `type`.
 - **A 90% crossing needs a non-zero previous beat** in the session: Plex for Android beats `time=0`
-  until its player advances. The OFFLINE timeline (`offline=1&viewCount=`) marks watched (one view
+  until its player advances. A reference beat that 500s after ~10 017 ms is PMS logging "Waited
+  over 10 seconds for a busy database" (another writer), not a rule: the failed crossing beat
+  still CONSUMES the crossing, so the session's next `stopped` past 90% answers `ignore`,
+  `viewCount 0`, no history row. Reproduced on an idle plexscratch42 by holding `BEGIN
+  IMMEDIATE` on the library DB across the 92% beat (2/2); without the lock, `paused 0 → playing
+  3000 → stopped 93%` completes on the stop (3/3), and a 400-refused beat consumes nothing. Our
+  servers never hit a busy DB, so this is not emulated (cycle 86's `advance61` web-firefox leg).
+  The OFFLINE timeline (`offline=1&viewCount=`) marks watched (one view
   per sync) or, with 0 on a watched item, clears it.
 - **An episode's post-play carries `tv.upnext`**: the show's On Deck row when it comes from view
   state and is not the episode itself.
