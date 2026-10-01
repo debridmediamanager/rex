@@ -191,11 +191,7 @@ impl Runtime {
         body.insert("allowSync".to_string(), json!(false));
         body.insert(
             "art".to_string(),
-            json!(if show {
-                "/:/resources/show-fanart.jpg"
-            } else {
-                "/:/resources/movie-fanart.jpg"
-            }),
+            json!(resource_art(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
         );
         body.insert("content".to_string(), json!("secondary"));
         body.insert(
@@ -206,11 +202,7 @@ impl Runtime {
         body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
         body.insert(
             "thumb".to_string(),
-            json!(if show {
-                "/:/resources/show.png"
-            } else {
-                "/:/resources/movie.png"
-            }),
+            json!(resource_thumb(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
         );
         body.insert(
             "title1".to_string(),
@@ -218,7 +210,7 @@ impl Runtime {
         );
         body.insert("viewGroup".to_string(), json!("secondary"));
         body.insert("viewMode".to_string(), json!(65592));
-        if show {
+        if nocache_library(section.get("type").and_then(Value::as_str).unwrap_or("movie")) {
             body.insert("nocache".to_string(), json!(true));
         }
         body.insert("latestEntryTime".to_string(), json!(latest));

@@ -300,6 +300,27 @@ def run(port, fixture):
           == [(h["hubIdentifier"].replace(".%s" % theirs, ".%s" % ours), h["title"], h["type"],
                h["key"]) for h in want], got)
 
+    # -- every container the library answers is a MUSIC library's -----------------
+    chrome = ("art", "thumb", "nocache", "title2", "viewGroup", "viewMode", "mixedParents",
+              "content", "allowSync")
+    for row in fixture["exchanges"]:
+        path = row["path"]
+        if not path.startswith("/library/sections/{S}") or row["status"] != 200 \
+                or not isinstance(row["body"], dict):
+            continue
+        want = row["body"]["MediaContainer"]
+        _status, body = ask(path, row["paging"])
+        got = (body.get("MediaContainer") or {}) if isinstance(body, dict) else {}
+        expected = {k: want.get(k, "<absent>") for k in chrome}
+        actual = {k: got.get(k, "<absent>") for k in chrome}
+        check("%s answers the music library's container" % path[:70], actual == expected,
+              {k: (expected[k], actual[k]) for k in chrome if expected[k] != actual[k]})
+    _row, want = measured("/library/sections/{S}")
+    _status, body = ask("/library/sections/{S}")
+    check("the library's own pivot list is the measured eleven rows",
+          body["MediaContainer"].get("Directory") == want["MediaContainer"]["Directory"],
+          [d.get("key") for d in body["MediaContainer"].get("Directory") or []])
+
 
 def main():
     fixture = json.load(open(FIXTURE))

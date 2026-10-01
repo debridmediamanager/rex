@@ -3772,3 +3772,15 @@ are changing; replay the client's exact request before altering behavior.
   every library and kept as the claimed movie and show shelves carry them. plexsim answered a
   MOVIE library's shelves, so `stations()` returned None instead of []. CLIENT-VISIBLE
   (python-plexapi); Plex Web draws an empty library's page the same either way.
+- **Every container a music library answers names the ARTIST resources and carries `nocache`.**
+  Measured on plexscratch42 over 45 containers of an empty `type=artist` library -- listings,
+  subsets, axes, `/sorts`, `/filters`, `/timeline`, `/arts`, `/extras/all`, `/albums`, the
+  library's own pivot list: `art=/:/resources/artist-fanart.jpg`, `thumb=/:/resources/artist.png`
+  and `nocache=1`, as a show library carries it and a movie library never does. `/all` at every
+  type and the collections are `title2="All Artists"`, `viewGroup="artist"`; Recently Added (and
+  its Grandparents alias, without `mixedParents`) is the `album` view, On Deck, Recently Released,
+  Recently Viewed ("Recently Viewed Episodes"), Unplayed and `/arts` the `track` view with
+  `viewMode=65593`; `/library/sections/{id}` lists eleven pivots (All Artists, By Album, Genre,
+  Decade, Year, Collection, Recently Added, By Folder, and three searches typed 8, 9, 10).
+  plexsim answered the movie library's containers and its twenty movie pivots. MALFORMED-ONLY:
+  Plex Web draws an empty library's page from the Meta and the hubs, not from these.

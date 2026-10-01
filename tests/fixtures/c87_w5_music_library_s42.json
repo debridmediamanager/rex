@@ -8270,6 +8270,230 @@
      ]
     }
    }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/newest",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": true,
+     "art": "/:/resources/artist-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 22,
+     "librarySectionTitle": "W5 Music",
+     "librarySectionUUID": "REDACTED",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "mixedParents": true,
+     "nocache": true,
+     "thumb": "/:/resources/artist.png",
+     "title1": "W5 Music",
+     "title2": "Recently Released",
+     "viewGroup": "track",
+     "viewMode": 65593
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/recentlyViewed",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": true,
+     "art": "/:/resources/artist-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 22,
+     "librarySectionTitle": "W5 Music",
+     "librarySectionUUID": "REDACTED",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "mixedParents": true,
+     "nocache": true,
+     "thumb": "/:/resources/artist.png",
+     "title1": "W5 Music",
+     "title2": "Recently Viewed Episodes",
+     "viewGroup": "track",
+     "viewMode": 65593
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/recentlyAddedGrandparents",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": true,
+     "art": "/:/resources/artist-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 22,
+     "librarySectionTitle": "W5 Music",
+     "librarySectionUUID": "REDACTED",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/artist.png",
+     "title1": "W5 Music",
+     "title2": "Recently Added",
+     "viewGroup": "album",
+     "viewMode": 65592
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/folder",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": true,
+     "art": "/:/resources/artist-fanart.jpg",
+     "content": "secondary",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 22,
+     "librarySectionTitle": "W5 Music",
+     "librarySectionUUID": "REDACTED",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/artist.png",
+     "title1": "W5 Music",
+     "title2": "By Folder",
+     "viewGroup": "secondary",
+     "viewMode": 65592
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/all?type=18",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": true,
+     "art": "/:/resources/artist-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 22,
+     "librarySectionTitle": "W5 Music",
+     "librarySectionUUID": "REDACTED",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/artist.png",
+     "title1": "W5 Music",
+     "title2": "All Artists",
+     "viewGroup": "artist",
+     "viewMode": 65592
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/extras/all",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "art": "/:/resources/artist-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/artist.png",
+     "title1": "W5 Music"
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/arts",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": false,
+     "art": "/:/resources/artist-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/artist.png",
+     "title1": "W5 Music",
+     "viewGroup": "track",
+     "viewMode": 65593
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/year?type=9",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": false,
+     "art": "/:/resources/artist-fanart.jpg",
+     "content": "secondary",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/artist.png",
+     "title1": "W5 Music",
+     "title2": "By Year",
+     "viewGroup": "secondary",
+     "viewMode": 65592
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/firstCharacter/A",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": true,
+     "art": "/:/resources/artist-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 22,
+     "librarySectionTitle": "W5 Music",
+     "librarySectionUUID": "REDACTED",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/artist.png",
+     "title1": "W5 Music",
+     "title2": "Start with 'A'",
+     "viewGroup": "artist",
+     "viewMode": 65592
+    }
+   }
   }
  ],
  "witnesses": {

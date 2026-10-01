@@ -296,11 +296,7 @@ impl Runtime {
         body.insert("allowSync".to_string(), json!(false));
         body.insert(
             "art".to_string(),
-            json!(if show {
-                "/:/resources/show-fanart.jpg"
-            } else {
-                "/:/resources/movie-fanart.jpg"
-            }),
+            json!(resource_art(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
         );
         body.insert("content".to_string(), json!("secondary"));
         body.insert(
@@ -311,11 +307,7 @@ impl Runtime {
         body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
         body.insert(
             "thumb".to_string(),
-            json!(if show {
-                "/:/resources/show.png"
-            } else {
-                "/:/resources/movie.png"
-            }),
+            json!(resource_thumb(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
         );
         body.insert(
             "title1".to_string(),
@@ -323,7 +315,7 @@ impl Runtime {
         );
         body.insert("viewGroup".to_string(), json!("secondary"));
         body.insert("viewMode".to_string(), json!(65592));
-        if show {
+        if nocache_library(section.get("type").and_then(Value::as_str).unwrap_or("movie")) {
             body.insert("nocache".to_string(), json!(true));
         }
         if let Some(title2) = title2 {
@@ -434,26 +426,18 @@ impl Runtime {
         fields.insert("viewMode".to_string(), json!(65592));
         fields.insert(
             "art".to_string(),
-            json!(if show {
-                "/:/resources/show-fanart.jpg"
-            } else {
-                "/:/resources/movie-fanart.jpg"
-            }),
+            json!(resource_art(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
         );
         fields.insert(
             "thumb".to_string(),
-            json!(if show {
-                "/:/resources/show.png"
-            } else {
-                "/:/resources/movie.png"
-            }),
+            json!(resource_thumb(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
         );
         fields.insert("allowSync".to_string(), json!(true));
         if paged {
             fields.insert("offset".to_string(), json!(start));
             fields.insert("totalSize".to_string(), json!(total));
         }
-        if show && show_nocache {
+        if (show && show_nocache) || section.get("type").and_then(Value::as_str) == Some("artist") {
             fields.insert("nocache".to_string(), json!(true));
         }
         fields.insert("Metadata".to_string(), Value::Array(page));
@@ -1152,9 +1136,21 @@ impl Runtime {
             .sort_rows(rows.clone(), Some("titleSort"))
             .unwrap_or(rows);
         let show = section.get("type").and_then(Value::as_str) == Some("show");
-        let view_group = (show && asked != own).then_some("episode");
-        self.section_listing_response(
+        let artist = section.get("type").and_then(Value::as_str) == Some("artist");
+        // Measured on plexscratch42: a music library's Unplayed list is the TRACK view
+        // (viewMode 65593).
+        let view_group = if artist { Some("track") } else { (show && asked != own).then_some("episode") };
+        let mut response = self.section_listing_response(
             section_id, section, rows, query, "Unplayed", true, view_group, true,
-        )
+        );
+        if artist {
+            if let Ok(mut body) = serde_json::from_slice::<Value>(&response.body) {
+                if let Some(container) = body.get_mut("MediaContainer").and_then(Value::as_object_mut) {
+                    container.insert("viewMode".to_string(), json!(65593));
+                }
+                response = Response::json(response.status, body);
+            }
+        }
+        response
     }
 }

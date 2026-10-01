@@ -3532,7 +3532,32 @@ def _all_title(section):
     """
     if section.get("type") == "show":
         return "All Shows"
+    if section.get("type") == "artist":
+        # Measured on plexscratch42: a music library answers the constant "All
+        # Artists", on its `/all` at every type and on its collections alike.
+        return "All Artists"
     return "All " + str(section.get("title") or "")
+
+
+def _section_art(section):
+    """The bundled background a library's containers name: movie, show or artist."""
+    kind = section.get("type") if section.get("type") in ("show", "artist") else "movie"
+    return "/:/resources/%s-fanart.jpg" % kind
+
+
+def _section_thumb(section):
+    kind = section.get("type") if section.get("type") in ("show", "artist") else "movie"
+    return "/:/resources/%s.png" % kind
+
+
+def _nocache_library(section):
+    """Whether every container this library answers carries `nocache`.
+
+    Measured: a SHOW library's always do and a movie library's never (two servers, five
+    libraries), and an empty MUSIC library's always do -- 45 of its containers read on
+    plexscratch42, listings, subsets, axes, sorts and filters alike.
+    """
+    return section.get("type") in ("show", "artist")
 
 
 class _TitleValue(str):
@@ -10014,6 +10039,10 @@ class PlexSim:
             extra = {"nocache": True} if section.get("type") == "show" else {}
             if section.get("type") == "show" and asked != str(own):
                 extra["view_group"] = "episode"
+            if section.get("type") == "artist":
+                # Measured on plexscratch42: a music library's Unplayed list is the
+                # TRACK view (viewMode 65593), with no `mixedParents`.
+                extra.update(view_group="track", viewMode=65593)
             # Cycle 50: a row that has children carries the SUBSET's own filter in its
             # `key` here -- kids answers `/library/metadata/6/children?unwatched=1` and
             # zen the same on all three of its rows, where the section GRID answers the
@@ -10644,6 +10673,24 @@ class PlexSim:
         ],
     }
 
+    SECTION_PIVOTS["artist"] = [
+        # Measured on plexscratch42 over an empty music library (eleven rows).
+        {"key": "all", "title": "All Artists"},
+        {"key": "albums", "title": "By Album"},
+        {"secondary": True, "key": "genre", "title": "By Genre"},
+        {"secondary": True, "key": "decade", "title": "By Decade"},
+        {"secondary": True, "key": "year", "title": "By Year"},
+        {"secondary": True, "key": "collection", "title": "By Collection"},
+        {"key": "recentlyAdded", "title": "Recently Added"},
+        {"key": "folder", "title": "By Folder"},
+        {"prompt": "Search for Artists", "search": True, "key": "search?type=8",
+         "title": "Search Artists..."},
+        {"prompt": "Search for Albums", "search": True, "key": "search?type=9",
+         "title": "Search Albums..."},
+        {"prompt": "Search for Tracks", "search": True, "key": "search?type=10",
+         "title": "Search Tracks..."},
+    ]
+
     def section_pivots(self, section_id, section, query):
         """`GET /library/sections/{id}` -- the sidebar's pivot list, and the
         Edit dialog's source of EDITABLE TAG FIELDS.
@@ -10908,6 +10955,7 @@ class PlexSim:
         # Cycle 45: the Grandparents pair runs its twin's body. `recentlyAdded`'s show
         # form then rolls its leaves up, below.
         rolls_up = is_show and leaf == "recentlyAddedGrandparents"
+        original_leaf = leaf
         leaf = self.SUBSET_ALIASES.get(leaf, leaf)
         extra = {"title2": self.SUBSET_TITLES[leaf], "allowSync": True}
         if is_show:
@@ -10916,6 +10964,20 @@ class PlexSim:
             if leaf == "recentlyViewed":
                 extra["title2"] = "Recently Viewed Episodes"
         view_group = "episode" if is_show else "movie"
+        if section.get("type") == "artist":
+            # Measured on plexscratch42 over an empty music library: Recently Added is
+            # the ALBUM view and the other three the TRACK view (viewMode 65593), each
+            # with `mixedParents` and `nocache`; its Recently Viewed keeps the show
+            # library's "Recently Viewed Episodes" title. The Grandparents alias is the
+            # album view without `mixedParents`.
+            extra.update(mixedParents=True, nocache=True)
+            view_group = "album" if leaf == "recentlyAdded" else "track"
+            if leaf == "recentlyViewed":
+                extra["title2"] = "Recently Viewed Episodes"
+            if view_group == "track":
+                extra["viewMode"] = 65593
+            if self.SUBSET_ALIASES.get(original_leaf) == "recentlyAdded":
+                extra.pop("mixedParents")
         if leaf == "recentlyViewedShows":
             # Cycle 20, measured on kids and zen: this one is a typed QUERY. `?type=3`
             # answers the library's seasons and `?type=4` its episodes -- zen 741 and
@@ -11043,16 +11105,19 @@ class PlexSim:
                       key=lambda r: int(r["ratingKey"]))
         fields = {
             "allowSync": False,
-            "art": "/:/resources/show-fanart.jpg" if is_show else "/:/resources/movie-fanart.jpg",
+            "art": _section_art(section),
             "identifier": "com.plexapp.plugins.library",
             "mediaTagPrefix": "/system/bundle/media/flags/",
             "mediaTagVersion": 1655122614,
-            "thumb": "/:/resources/show.png" if is_show else "/:/resources/movie.png",
+            "thumb": _section_thumb(section),
             "title1": section.get("title"),
             "viewGroup": "episode" if is_show else "movie",
             "viewMode": 65592,
         }
-        if is_show:
+        if section.get("type") == "artist":
+            # Measured on plexscratch42: a music library's is the TRACK view.
+            fields.update(viewGroup="track", viewMode=65593)
+        if _nocache_library(section):
             fields["nocache"] = True
         return self.bare_container(size=len(rows), Metadata=[self._artwork_row(r) for r in rows],
                                    _xml={"Metadata": "Photo"}, **fields)
@@ -11109,14 +11174,14 @@ class PlexSim:
                     return ("error", 500, "plexsim: server error")
         is_show = section.get("type") == "show"
         fields = {
-            "art": "/:/resources/show-fanart.jpg" if is_show else "/:/resources/movie-fanart.jpg",
+            "art": _section_art(section),
             "identifier": "com.plexapp.plugins.library",
             "mediaTagPrefix": "/system/bundle/media/flags/",
             "mediaTagVersion": 1655122614,
-            "thumb": "/:/resources/show.png" if is_show else "/:/resources/movie.png",
+            "thumb": _section_thumb(section),
             "title1": section.get("title"),
         }
-        if is_show:
+        if _nocache_library(section):
             fields["nocache"] = True
         if not rest:
             return self.bare_container(size=1, Directory=[
@@ -11167,11 +11232,11 @@ class PlexSim:
         is_show = section.get("type") == "show"
         fields = {
             "allowSync": False,
-            "art": "/:/resources/show-fanart.jpg" if is_show else "/:/resources/movie-fanart.jpg",
+            "art": _section_art(section),
             "identifier": "com.plexapp.plugins.library",
             "mediaTagPrefix": "/system/bundle/media/flags/",
             "mediaTagVersion": 1655122614,
-            "thumb": "/:/resources/show.png" if is_show else "/:/resources/movie.png",
+            "thumb": _section_thumb(section),
             "title1": section.get("title"),
         }
         if leaf == "nearest":
@@ -11185,7 +11250,7 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             fields.pop("allowSync")
             return self.bare_container(size=0, **fields)
-        if is_show:
+        if _nocache_library(section):
             fields["nocache"] = True
         fields["viewMode"] = 65592
         if leaf == "allLeaves":
@@ -12564,10 +12629,8 @@ class PlexSim:
             # Matched against a real PMS movie section; the web client's
             # grid reads these alongside Meta.
             "viewMode": 65592,
-            "art": "/:/resources/show-fanart.jpg" if section.get("type") == "show"
-                   else "/:/resources/movie-fanart.jpg",
-            "thumb": "/:/resources/show.png" if section.get("type") == "show"
-                     else "/:/resources/movie.png",
+            "art": _section_art(section),
+            "thumb": _section_thumb(section),
             # Measured on kids (1.43.4) and zen (1.42.2): the section GRID says
             # `allowSync: true`, and so do the hub containers. plexsim said false here
             # while already saying true on /newest, /recentlyAdded, /onDeck, /folder,
@@ -12583,6 +12646,8 @@ class PlexSim:
         if paged:
             fields["offset"] = start
             fields["totalSize"] = total
+        if section.get("type") == "artist":
+            fields["nocache"] = True
         fields.update(extra)
         return self.container(Metadata=page, **fields)
 
@@ -12652,19 +12717,17 @@ class PlexSim:
         """
         body = {
             "allowSync": False,
-            "art": "/:/resources/show-fanart.jpg" if section.get("type") == "show"
-                   else "/:/resources/movie-fanart.jpg",
+            "art": _section_art(section),
             "content": "secondary",
             "identifier": "com.plexapp.plugins.library",
             "mediaTagPrefix": "/system/bundle/media/flags/",
             "mediaTagVersion": 1655122614,
-            "thumb": "/:/resources/show.png" if section.get("type") == "show"
-                     else "/:/resources/movie.png",
+            "thumb": _section_thumb(section),
             "title1": section.get("title"),
             "viewGroup": "secondary",
             "viewMode": 65592,
         }
-        if section.get("type") == "show":
+        if _nocache_library(section):
             # Measured across two servers and five libraries: every secondary
             # container of a SHOW library carries `nocache` (filters, sorts, genre,
             # year alike) and no movie library's does. The cause is not visible

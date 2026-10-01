@@ -3977,11 +3977,7 @@ impl Runtime {
             ("allowSync".to_string(), json!(false)),
             (
                 "art".to_string(),
-                json!(if is_show {
-                    "/:/resources/show-fanart.jpg"
-                } else {
-                    "/:/resources/movie-fanart.jpg"
-                }),
+                json!(resource_art(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
             ),
             (
                 "identifier".to_string(),
@@ -3991,11 +3987,7 @@ impl Runtime {
             ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
             (
                 "thumb".to_string(),
-                json!(if is_show {
-                    "/:/resources/show.png"
-                } else {
-                    "/:/resources/movie.png"
-                }),
+                json!(resource_thumb(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
             ),
             (
                 "title1".to_string(),
@@ -4007,7 +3999,12 @@ impl Runtime {
             ),
             ("viewMode".to_string(), json!(65592)),
         ]);
-        if is_show {
+        if section.get("type").and_then(Value::as_str) == Some("artist") {
+            // Measured on plexscratch42: a music library's is the TRACK view.
+            fields.insert("viewGroup".to_string(), json!("track"));
+            fields.insert("viewMode".to_string(), json!(65593));
+        }
+        if nocache_library(section.get("type").and_then(Value::as_str).unwrap_or("movie")) {
             fields.insert("nocache".to_string(), json!(true));
         }
         if !rows.is_empty() {
@@ -7845,6 +7842,21 @@ impl Runtime {
                 json!({"prompt":"Search for Shows","search":true,"key":"search?type=2","title":"Search Shows..."}),
                 json!({"prompt":"Search for Episodes","search":true,"key":"search?type=4","title":"Search Episodes..."}),
             ]
+        } else if kind == "artist" {
+            // Measured on plexscratch42 over an empty music library (eleven rows).
+            vec![
+                json!({"key":"all","title":"All Artists"}),
+                json!({"key":"albums","title":"By Album"}),
+                json!({"secondary":true,"key":"genre","title":"By Genre"}),
+                json!({"secondary":true,"key":"decade","title":"By Decade"}),
+                json!({"secondary":true,"key":"year","title":"By Year"}),
+                json!({"secondary":true,"key":"collection","title":"By Collection"}),
+                json!({"key":"recentlyAdded","title":"Recently Added"}),
+                json!({"key":"folder","title":"By Folder"}),
+                json!({"prompt":"Search for Artists","search":true,"key":"search?type=8","title":"Search Artists..."}),
+                json!({"prompt":"Search for Albums","search":true,"key":"search?type=9","title":"Search Albums..."}),
+                json!({"prompt":"Search for Tracks","search":true,"key":"search?type=10","title":"Search Tracks..."}),
+            ]
         } else {
             vec![
                 json!({"key":"all","title":format!("All {}", section.get("title").and_then(Value::as_str).unwrap_or("Movies"))}),
@@ -7971,11 +7983,7 @@ impl Runtime {
         body.insert("allowSync".to_string(), json!(false));
         body.insert(
             "art".to_string(),
-            json!(if show {
-                "/:/resources/show-fanart.jpg"
-            } else {
-                "/:/resources/movie-fanart.jpg"
-            }),
+            json!(resource_art(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
         );
         body.insert("content".to_string(), json!("secondary"));
         body.insert(
@@ -7986,11 +7994,7 @@ impl Runtime {
         body.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
         body.insert(
             "thumb".to_string(),
-            json!(if show {
-                "/:/resources/show.png"
-            } else {
-                "/:/resources/movie.png"
-            }),
+            json!(resource_thumb(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
         );
         body.insert(
             "title1".to_string(),
@@ -7998,7 +8002,7 @@ impl Runtime {
         );
         body.insert("viewGroup".to_string(), json!("secondary"));
         body.insert("viewMode".to_string(), json!(65592));
-        if show {
+        if show || section.get("type").and_then(Value::as_str) == Some("artist") {
             body.insert("nocache".to_string(), json!(true));
         }
         if let Some(title2) = title2 {
@@ -12234,6 +12238,8 @@ impl Runtime {
         // whatever it is called, a movie library composes it from its own title.
         let all_title = if kind == "show" {
             "All Shows".to_string()
+        } else if kind == "artist" {
+            "All Artists".to_string()
         } else {
             format!("All {title}")
         };
@@ -12272,9 +12278,10 @@ impl Runtime {
                 }),
             );
         }
-        if query.contains_key("type") {
+        if query.contains_key("type") && kind != "artist" {
             // An explicit `type=18` is the `/all` listing's container, which carries no
             // `nocache` on either library type; only the bare leaf does on a show one.
+            // A music library's carries it on both (plexscratch42).
             fields.shift_remove("nocache");
         }
         page_fields(&mut fields, query);
@@ -14357,9 +14364,10 @@ impl Runtime {
                         }
                     };
                     let is_show = kind == "episode";
+                    let artist = section.get("type").and_then(Value::as_str) == Some("artist");
                     let mut fields = self.listing_fields(
                         section_key,
-                        if is_show { "show" } else { "movie" },
+                        if is_show { "show" } else if artist { "artist" } else { "movie" },
                         kind,
                         "On Deck",
                     );
@@ -14369,6 +14377,14 @@ impl Runtime {
                         fields.insert("totalSize".to_string(), json!(total));
                     }
                     if is_show {
+                        fields.insert("mixedParents".to_string(), json!(true));
+                        fields.insert("nocache".to_string(), json!(true));
+                    }
+                    if section.get("type").and_then(Value::as_str) == Some("artist") {
+                        // Measured on plexscratch42: a music library's On Deck is the
+                        // TRACK view (viewMode 65593) with `mixedParents` and `nocache`.
+                        fields.insert("viewGroup".to_string(), json!("track"));
+                        fields.insert("viewMode".to_string(), json!(65593));
                         fields.insert("mixedParents".to_string(), json!(true));
                         fields.insert("nocache".to_string(), json!(true));
                     }
@@ -14389,11 +14405,11 @@ impl Runtime {
                         200,
                         json!({"MediaContainer": {
                             "size": 0,
-                            "art": if is_show { "/:/resources/show-fanart.jpg" } else { "/:/resources/movie-fanart.jpg" },
+                            "art": resource_art(section.get("type").and_then(Value::as_str).unwrap_or("movie")),
                             "identifier": "com.plexapp.plugins.library",
                             "mediaTagPrefix": MEDIA_TAG_PREFIX,
                             "mediaTagVersion": MEDIA_TAG_VERSION,
-                            "thumb": if is_show { "/:/resources/show.png" } else { "/:/resources/movie.png" },
+                            "thumb": resource_thumb(section.get("type").and_then(Value::as_str).unwrap_or("movie")),
                             "title1": section.get("title").cloned().unwrap_or(Value::Null),
                         }}),
                     );
@@ -14439,11 +14455,7 @@ impl Runtime {
                         ("allowSync".to_string(), json!(false)),
                         (
                             "art".to_string(),
-                            json!(if is_show {
-                                "/:/resources/show-fanart.jpg"
-                            } else {
-                                "/:/resources/movie-fanart.jpg"
-                            }),
+                            json!(resource_art(kind)),
                         ),
                         (
                             "identifier".to_string(),
@@ -14453,11 +14465,7 @@ impl Runtime {
                         ("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION)),
                         (
                             "thumb".to_string(),
-                            json!(if is_show {
-                                "/:/resources/show.png"
-                            } else {
-                                "/:/resources/movie.png"
-                            }),
+                            json!(resource_thumb(kind)),
                         ),
                         (
                             "title1".to_string(),
@@ -14465,7 +14473,7 @@ impl Runtime {
                         ),
                     ]);
                     if leaf != "computePath" {
-                        if is_show {
+                        if nocache_library(kind) {
                             fields.insert("nocache".to_string(), json!(true));
                         }
                         fields.insert("viewMode".to_string(), json!(65592));
@@ -14786,6 +14794,25 @@ impl Runtime {
                             fields.insert("mixedParents".to_string(), json!(true));
                         }
                         fields.insert("nocache".to_string(), json!(true));
+                    }
+                    if kind == "artist" {
+                        // `server.py` `section_subset`, measured on plexscratch42: Recently
+                        // Added is the ALBUM view and the other three the TRACK view
+                        // (viewMode 65593), each with `mixedParents` (not the Grandparents
+                        // alias) and `nocache`; Recently Viewed keeps "Recently Viewed
+                        // Episodes".
+                        let album = matches!(leaf, "recentlyAdded" | "recentlyAddedGrandparents");
+                        if leaf != "recentlyAddedGrandparents" {
+                            fields.insert("mixedParents".to_string(), json!(true));
+                        }
+                        fields.insert("nocache".to_string(), json!(true));
+                        fields.insert("viewGroup".to_string(), json!(if album { "album" } else { "track" }));
+                        if !album {
+                            fields.insert("viewMode".to_string(), json!(65593));
+                        }
+                        if leaf == "recentlyViewed" {
+                            fields.insert("title2".to_string(), json!("Recently Viewed Episodes"));
+                        }
                     }
                     // The rest of `listing_container`'s fields.
                     let title2 = fields.get("title2").map(string_value).unwrap_or_default();
@@ -15234,8 +15261,13 @@ impl Runtime {
                     } else {
                         kind.clone()
                     };
+                    let view_group = if kind == "artist" { "track".to_string() } else { view_group };
                     let mut fields =
                         self.listing_fields(section_key, &kind, &view_group, "Unplayed");
+                    if kind == "artist" {
+                        // Measured on plexscratch42: the TRACK view, viewMode 65593.
+                        fields.insert("viewMode".to_string(), json!(65593));
+                    }
                     fields.insert("Metadata".to_string(), Value::Array(listed));
                     page_fields(&mut fields, query);
                     return Response::json(200, self.container(fields, true));
@@ -16552,22 +16584,14 @@ impl Runtime {
         let show = section_type == "show";
         fields.insert(
             "art".to_string(),
-            json!(if show {
-                "/:/resources/show-fanart.jpg"
-            } else {
-                "/:/resources/movie-fanart.jpg"
-            }),
+            json!(resource_art(section_type)),
         );
         fields.insert(
             "thumb".to_string(),
-            json!(if show {
-                "/:/resources/show.png"
-            } else {
-                "/:/resources/movie.png"
-            }),
+            json!(resource_thumb(section_type)),
         );
         fields.insert("allowSync".to_string(), json!(true));
-        if show {
+        if nocache_library(section_type) {
             fields.insert("nocache".to_string(), json!(true));
         }
         fields.retain(|_, value| !value.is_null());
@@ -16786,6 +16810,8 @@ impl Runtime {
                 .to_string();
             let title2 = if kind == "show" {
                 "All Shows".to_string()
+            } else if kind == "artist" {
+                "All Artists".to_string()
             } else {
                 format!(
                     "All {}",
@@ -16796,7 +16822,9 @@ impl Runtime {
                 )
             };
             let mut fields = self.listing_fields(section_key, &kind, &kind, &title2);
-            fields.shift_remove("nocache");
+            if kind != "artist" {
+                fields.shift_remove("nocache");
+            }
             if paged {
                 fields.insert("offset".to_string(), json!(start));
                 fields.insert("totalSize".to_string(), json!(total));
@@ -17084,6 +17112,11 @@ impl Runtime {
         if section_type == "show" {
             fields.insert("title2".to_string(), json!("All Shows"));
             fields.insert("viewGroup".to_string(), json!("show"));
+        } else if section_type == "artist" {
+            // Measured on plexscratch42: a music library answers "All Artists" and the
+            // artist view whatever `type=` asks for.
+            fields.insert("title2".to_string(), json!("All Artists"));
+            fields.insert("viewGroup".to_string(), json!("artist"));
         } else {
             fields.insert("title2".to_string(), json!(format!("All {section_title}")));
             fields.insert("viewGroup".to_string(), json!("movie"));
@@ -17093,21 +17126,13 @@ impl Runtime {
         fields.insert("viewMode".to_string(), json!(65592));
         fields.insert(
             "art".to_string(),
-            json!(if section_type == "show" {
-                "/:/resources/show-fanart.jpg"
-            } else {
-                "/:/resources/movie-fanart.jpg"
-            }),
+            json!(resource_art(section_type)),
         );
         fields.insert(
             "thumb".to_string(),
-            json!(if section_type == "show" {
-                "/:/resources/show.png"
-            } else {
-                "/:/resources/movie.png"
-            }),
+            json!(resource_thumb(section_type)),
         );
-        if section_type == "show" {
+        if nocache_library(section_type) {
             fields.insert("nocache".to_string(), json!(true));
         }
         for name in &excluded_fields {
@@ -17452,11 +17477,7 @@ impl Runtime {
         fields.insert("allowSync".to_string(), json!(false));
         fields.insert(
             "art".to_string(),
-            json!(if show {
-                "/:/resources/show-fanart.jpg"
-            } else {
-                "/:/resources/movie-fanart.jpg"
-            }),
+            json!(resource_art(section_type)),
         );
         fields.insert(
             "identifier".to_string(),
@@ -17466,11 +17487,7 @@ impl Runtime {
         fields.insert("mediaTagVersion".to_string(), json!(MEDIA_TAG_VERSION));
         fields.insert(
             "thumb".to_string(),
-            json!(if show {
-                "/:/resources/show.png"
-            } else {
-                "/:/resources/movie.png"
-            }),
+            json!(resource_thumb(section_type)),
         );
         fields.insert(
             "title1".to_string(),
@@ -17494,7 +17511,7 @@ impl Runtime {
                 }),
             );
         }
-        if show {
+        if nocache_library(section_type) {
             fields.insert("nocache".to_string(), json!(true));
         }
         fields.insert(
@@ -17900,19 +17917,11 @@ impl Runtime {
                 ("allowSync".to_string(), json!(true)),
                 (
                     "art".to_string(),
-                    json!(if kind == "show" {
-                        "/:/resources/show-fanart.jpg"
-                    } else {
-                        "/:/resources/movie-fanart.jpg"
-                    }),
+                    json!(resource_art(kind)),
                 ),
                 (
                     "thumb".to_string(),
-                    json!(if kind == "show" {
-                        "/:/resources/show.png"
-                    } else {
-                        "/:/resources/movie.png"
-                    }),
+                    json!(resource_thumb(kind)),
                 ),
             ]);
             if kind == "show" {
@@ -18043,19 +18052,11 @@ impl Runtime {
         }
         fields.insert(
             "art".to_string(),
-            json!(if kind == "show" {
-                "/:/resources/show-fanart.jpg"
-            } else {
-                "/:/resources/movie-fanart.jpg"
-            }),
+            json!(resource_art(kind)),
         );
         fields.insert(
             "thumb".to_string(),
-            json!(if kind == "show" {
-                "/:/resources/show.png"
-            } else {
-                "/:/resources/movie.png"
-            }),
+            json!(resource_thumb(kind)),
         );
         if fields
             .get("Directory")
@@ -18452,13 +18453,7 @@ impl Runtime {
                 let mut fields = Map::from_iter([
                     (
                         "art".to_string(),
-                        json!(
-                            if section.get("type").and_then(Value::as_str) == Some("show") {
-                                "/:/resources/show-fanart.jpg"
-                            } else {
-                                "/:/resources/movie-fanart.jpg"
-                            }
-                        ),
+                        json!(resource_art(section.get("type").and_then(Value::as_str).unwrap_or("movie"))),
                     ),
                     (
                         "identifier".to_string(),
@@ -25827,6 +25822,30 @@ fn type_number_for(value: &Value) -> Option<i64> {
         "collection" => Some(18),
         _ => None,
     }
+}
+
+/// The bundled background a library's containers name -- movie, show or (measured on
+/// plexscratch42 over 45 containers of an empty music library) artist.
+fn resource_art(kind: &str) -> &'static str {
+    match kind {
+        "show" => "/:/resources/show-fanart.jpg",
+        "artist" => "/:/resources/artist-fanart.jpg",
+        _ => "/:/resources/movie-fanart.jpg",
+    }
+}
+
+fn resource_thumb(kind: &str) -> &'static str {
+    match kind {
+        "show" => "/:/resources/show.png",
+        "artist" => "/:/resources/artist.png",
+        _ => "/:/resources/movie.png",
+    }
+}
+
+/// `server.py` `_nocache_library`: every container a show or music library answers
+/// carries `nocache`; a movie library's never does.
+fn nocache_library(kind: &str) -> bool {
+    matches!(kind, "show" | "artist")
 }
 
 fn is_true_option(value: &str) -> bool {
