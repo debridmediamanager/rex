@@ -330,6 +330,16 @@ struct Queue {
     deselected: bool,
 }
 
+/// One (playback session, track)'s timeline state (cycle 87, plexscratch42): the
+/// (`playQueueItemID`, item) its last beat named, whether a completion is still answering
+/// `complete`, and whether the play has passed the minute -- the `progress` answer.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct TimelineLatch {
+    pub(crate) tag: Option<(Option<String>, String)>,
+    pub(crate) latched: bool,
+    pub(crate) progressed: bool,
+}
+
 #[derive(Debug)]
 pub struct Runtime {
     pub catalog: Catalog,
@@ -419,17 +429,16 @@ pub struct Runtime {
     /// The reaper's last tick: process-wide, anchored at start (`sessions._last_reap`).
     last_reap: f64,
     pub started_sessions: HashSet<String>,
-    /// What each playback session last reported, keyed by the SESSION alone (cycle 87):
-    /// the crossing's previous position is the session's last beat, whatever its item.
-    timeline_offsets: HashMap<String, i64>,
-    /// Per playback session: the (playQueueItemID, item) its last timeline beat named and
-    /// whether a completion is still answering `complete` (cycle 87).
-    pub(crate) timeline_latch: HashMap<String, (Option<String>, String, bool)>,
+    /// What each playback session last reported, keyed by the SESSION and its track
+    /// (`true` for a playlist's own beats, cycle 87): the crossing's previous position is
+    /// the track's last beat, whatever its item.
+    timeline_offsets: HashMap<(String, bool), i64>,
+    /// Per (playback session, track): the (playQueueItemID, item) its last timeline beat
+    /// named, whether a completion is still answering `complete`, and whether the play has
+    /// passed the minute (cycle 87).
+    pub(crate) timeline_latch: HashMap<(String, bool), TimelineLatch>,
     completed_sessions: HashSet<(String, String)>,
     completion_pending_stop: HashSet<(String, String)>,
-    /// The (session, ratingKey) pairs whose session has reported a position past
-    /// the minute: only those delete the resume point with a sub-minute beat.
-    progressed: HashSet<(String, String)>,
     pub hidden_continue: HashSet<String>,
     /// Leaves completed in a PLAYBACK SESSION (Python's `_viewedInSession`): history,
     /// not view state, so a later scrobble or unscrobble leaves it standing.
@@ -659,7 +668,6 @@ impl Runtime {
             timeline_latch: HashMap::new(),
             completed_sessions: HashSet::new(),
             completion_pending_stop: HashSet::new(),
-            progressed: HashSet::new(),
             hidden_continue: HashSet::new(),
             viewed_in_session: HashSet::new(),
             theme_rows: HashMap::new(),
@@ -9334,14 +9342,14 @@ impl Runtime {
         device_id: i64,
         session: &str,
         completes: bool,
+        progressed: bool,
     ) -> bool {
         let Some(row) = self.catalog.get(key).cloned() else {
             if self.playlists.contains_key(key) {
-                return self.list_progress(key, offset, total, session);
+                return self.list_progress(key, offset, total, session, progressed);
             }
             return false;
         };
-        let pair = (session.to_string(), key.to_string());
         let stored = row.get("viewOffset").and_then(Value::as_i64);
         let unmoved = offset.is_some() && stored.is_some() && offset == stored;
         if let Some(offset) = offset.filter(|_| !unmoved) {
@@ -9372,17 +9380,17 @@ impl Runtime {
                         self.update_view(&parent, "lastViewedAt", Some(json!(stamp)));
                     }
                 }
-            } else if total > 0 && offset <= 60000 && self.progressed.contains(&pair) {
+            } else if total > 0 && offset <= 60000 && progressed {
+                // Cycle 87: `progressed` is the PLAY's latch and false for a `stopped`
+                // beat, which never deletes (see `route_timeline`).
                 self.update_view(key, "viewOffset", None);
             }
         }
         let position = offset.or(stored).unwrap_or(0);
-        let seen = self.timeline_offsets.get(session).copied();
+        let track = (session.to_string(), false);
+        let seen = self.timeline_offsets.get(&track).copied();
         if offset.is_some() && total > 0 {
-            self.timeline_offsets.insert(session.to_string(), position);
-            if position > 60000 {
-                self.progressed.insert(pair.clone());
-            }
+            self.timeline_offsets.insert(track, position);
         }
         let crossed =
             seen.is_some_and(|seen| seen > 0 && (seen as f64) < total as f64 * 0.9) && total > 0;
@@ -9478,25 +9486,30 @@ impl Runtime {
     /// The item machine run on a PLAYLIST's own state (cycle 59): the resume
     /// point past a minute, and a crossing past 90% steps the list's view count
     /// from the 1 it is born with.
-    fn list_progress(&mut self, key: &str, offset: Option<i64>, total: i64, session: &str) -> bool {
-        let pair = (session.to_string(), key.to_string());
+    /// Cycle 87: a list's own beats keep their previous position on a track of their own.
+    fn list_progress(
+        &mut self,
+        key: &str,
+        offset: Option<i64>,
+        total: i64,
+        session: &str,
+        progressed: bool,
+    ) -> bool {
         let stored = self.view_state(key, "viewOffset").and_then(|v| v.as_i64());
         if let Some(offset) = offset.filter(|offset| Some(*offset) != stored) {
             let near_end = total > 0 && (offset as f64) >= total as f64 * 0.9;
             if total > 0 && offset > 60000 && !near_end {
                 self.set_view_state(key, "viewOffset", Some(json!(offset)));
                 self.set_view_state(key, "lastViewedAt", Some(json!(now())));
-            } else if total > 0 && offset <= 60000 && self.progressed.contains(&pair) {
+            } else if total > 0 && offset <= 60000 && progressed {
                 self.set_view_state(key, "viewOffset", None);
             }
         }
         let position = offset.or(stored).unwrap_or(0);
-        let seen = self.timeline_offsets.get(session).copied();
+        let track = (session.to_string(), true);
+        let seen = self.timeline_offsets.get(&track).copied();
         if offset.is_some() && total > 0 {
-            self.timeline_offsets.insert(session.to_string(), position);
-            if position > 60000 {
-                self.progressed.insert(pair.clone());
-            }
+            self.timeline_offsets.insert(track, position);
         }
         let crossed =
             total > 0 && seen.is_some_and(|seen| seen > 0 && (seen as f64) < total as f64 * 0.9);
@@ -9531,7 +9544,7 @@ impl Runtime {
             self.dirty = true;
             return;
         }
-        self.library_progress(key, Some(position), 0, 1, "", false);
+        self.library_progress(key, Some(position), 0, 1, "", false, false);
     }
 
     /// `/:/scrobble` and `/:/unscrobble` -- Mark as Played / Unplayed, an EMPTY

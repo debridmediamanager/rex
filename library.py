@@ -561,18 +561,15 @@ class Library:
             row["lastRatedAt"] = _now()
         return row
 
-    # What each playback session last reported, keyed by the SESSION alone -- whatever
-    # item that beat was for (cycle 87, below). A completion is a CROSSING, so the
-    # previous position is the whole state it needs.
+    # What each playback session last reported, keyed by the SESSION and its track --
+    # whatever item that beat was for (cycle 87, below). A completion is a CROSSING, so
+    # the previous position is the whole state it needs.
     _reported = {}
     # Whether the last `progress` call completed the play: the timeline's answer reads it.
     crossed = False
-    # The (session, ratingKey) pairs whose session has reported a position past the minute:
-    # only those delete the resume point with a later sub-minute beat.
-    _progressed = set()
 
     def progress(self, rating_key, offset, state=None, duration=None, device_id=1,
-                 session="", completes=True):
+                 session="", completes=True, track="item", progressed=False):
         """A timeline update. `stopped` past 90% counts as a view, as PMS does.
 
         `completes=False` is `/:/progress`, which never completes a play: measured on
@@ -581,6 +578,10 @@ class Library:
 
         `device_id` is the client that played: the history row names it, and a
         real PMS lists every such id in the Dashboard's Device block.
+
+        `track` is `list` for a playlist's own beat and `item` otherwise: the two keep
+        separate previous positions (cycle 87). `progressed` is the timeline's word on
+        whether this play has already passed the minute -- see `PlexSim.timeline`.
         """
         row = self.state_row(rating_key)
         if row is None:
@@ -591,7 +592,6 @@ class Library:
         # included. plexsim fell back to the row's duration, so a player that omits it (and
         # `/:/progress` never sends one) drove the whole watched-state machine.
         total = int(duration) if duration else 0
-        key = (session or "", int(rating_key))
         # Cycle 58: a beat at EXACTLY the stored position writes nothing -- measured on both
         # copies in every state and from a new session and the same one alike:
         # `lastViewedAt` stands still and a row removed from Continue Watching stays
@@ -638,7 +638,7 @@ class Library:
                         if str(row.get(name) or "").isdigit() else None
                     if parent is not None:
                         parent["lastViewedAt"] = row["lastViewedAt"]
-            elif total and int(offset) <= 60000 and key in self._progressed:
+            elif total and int(offset) <= 60000 and progressed and state != "stopped":
                 # Measured: a beat at or under a minute DELETES the stored resume point,
                 # rather than being ignored -- but only inside a playback SESSION that has
                 # already reported a position past the minute (cycle 58, both copies). A
@@ -646,6 +646,11 @@ class Library:
                 # `ignore` with it, which is "Play from beginning, stop within a minute":
                 # a real PMS keeps the old resume point in Continue Watching and plexsim
                 # deleted it. `lastViewedAt` is left alone either way.
+                # Cycle 87, plexscratch42 (1.42.2): "has passed the minute" is the PLAY's
+                # `progress` latch (`PlexSim.timeline`), not every item the session ever
+                # took past a minute -- 70 000 on A, 3 000 on B, then 3 000 on A keeps A's
+                # resume point -- and a `stopped` beat never deletes: 70 000 then a stop at
+                # 3 000 answers `progress` and leaves 70 000 stored.
                 row.pop("viewOffset", None)
         # A play COMPLETES past 90% on any state -- measured: a `playing` beat at 95%
         # answers `complete` and sets viewCount, and the `stopped` beat after it
@@ -664,11 +669,13 @@ class Library:
         # alike), 3 000 on B then 92% on A completes A, and 92% on B then a stop at 93% on
         # A completes nothing -- A's own last position was 3 000. Another session's beats
         # still do not count. plexsim kept the position per (session, item).
-        seen = self._reported.get(session or "")
+        # Cycle 87 again: a PLAYLIST's own beats (`Playlist.updateTimeline`) keep a previous
+        # position apart from the session's item beats -- 3 000 on A then 92% on the list
+        # answers `ignore` and completes nothing, and so does 3 000 on the list then 92% on
+        # A, while 3 000 on the list, 3 000 on A, 92% on the list completes the list.
+        seen = self._reported.get((session or "", track))
         if offset is not None and total:
-            self._reported[session or ""] = position
-            if position > 60000:
-                self._progressed.add(key)
+            self._reported[(session or "", track)] = position
         # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) with Plex for
         # Android's own beats: the previous position must be NON-ZERO. The app reports
         # `time=0` until its player has advanced (its first two beats of every play), and a
@@ -711,7 +718,11 @@ class Library:
             # rule.
             row["lastViewedAt"] = _now()
             self._stamp_view(row, *self._parents(row))
-            self.record_view(row, device_id=device_id)
+            # Cycle 87, plexscratch42 (1.42.2): a PLAYLIST's completion steps its
+            # `viewCount` and writes NO history row (4 of 4 list completions, both beat
+            # shapes); the oracle wrote one keyed by the list.
+            if track != "list":
+                self.record_view(row, device_id=device_id)
             # A completed play bumps the parents' own counters too.
             for key in ("parentRatingKey", "grandparentRatingKey"):
                 parent = self.catalog.items.get(int(row[key])) \

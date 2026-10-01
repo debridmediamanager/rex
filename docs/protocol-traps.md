@@ -3591,3 +3591,30 @@ are changing; replay the client's exact request before altering behavior.
   answered 0 of 300 before and after. No reference measurement applies: a real PMS keeps its lists
   in SQLite. MALFORMED-ONLY in practice: it needs a delete and a list write inside the same
   milliseconds.
+- **A timeline's `progress` answer belongs to the session's current PLAY and outlives a stop**
+  (cycle 87 e3, plexscratch42 1.42.2, 42 beat sequences, each in Plex Web 4.160's shape and
+  python-plexapi's `updateTimeline`; `tests/fixtures/timeline_play_latch_s42.json`). The play is
+  e1's latch tag -- (raw `playQueueItemID`, the item it names), per session. 70 000 on A, a stop at
+  75 000, then 3 000 on A answers `progress` and deletes the resume point (65 s and 200 s later
+  too); 70 000 on A then 3 000 on B answers `ignore` with no stop between, and a later 3 000 on A
+  stays `ignore` and KEEPS A's 70 000; switching the id on the same item resets it as well. A
+  stop hands the next play its own position: a stop past the minute (the 93% stop after a
+  completion included) keeps the next play at `progress`, a stop at or under it does not. A
+  `stopped` beat never deletes the resume point (70 000 then a stop at 3 000 answers `progress`
+  and leaves 70 000), where `paused` and `buffering` do. Both servers kept `progress` on the Now
+  Playing entry, dropped it at every stop and carried it across items, and deleted on every
+  sub-minute beat of an item the session had ever taken past a minute. The answer itself is
+  MALFORMED-ONLY (python-plexapi discards the body); the resume point is CLIENT-VISIBLE:
+  `video.updateTimeline(70000, 'playing')` then `video.updateTimeline(3000)` (default
+  `state='stopped'`) leaves `viewOffset` 70 000 and the item in Continue Watching on the
+  reference, and deleted it on ours; so did 70 000 on A, 3 000 on B, 3 000 on A.
+- **A playlist's own beats (`Playlist.updateTimeline`) are a separate track** (cycle 87 e3, same
+  fixture). 3 000 on A then 92% on the list answers `ignore` and completes nothing, so does 3 000
+  on the list then 92% on A; 3 000 on the list, 3 000 on A, 92% on the list completes the list,
+  and 70 000 on A, a beat and a stop on the list, then 3 000 on A is still `progress` on A. A
+  list's completion steps its `viewCount` and writes NO history row; the oracle wrote one. A
+  queue BUILT from a playlist (`playlistID=`) follows the item rules unchanged. Both servers
+  crossed between the tracks. CLIENT-VISIBLE: `Playlist.updateTimeline` and `Video.updateTimeline`
+  share python-plexapi's client identifier, which is the session, so `video.updateTimeline(3000,
+  'playing')` then `playlist.updateTimeline(<92%>)` stepped the list's `viewCount` on ours and not
+  on the reference, and the reverse order marked the video played on ours only.

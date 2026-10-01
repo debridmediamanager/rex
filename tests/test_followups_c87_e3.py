@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""Cycle 87 follow-ups (agent e3), each measured on plexscratch42 (PMS 1.42.2) and recorded
+in `tests/fixtures/timeline_play_latch_s42.json`, in Plex Web 4.160's beat shape and
+python-plexapi's `Playable.updateTimeline` shape:
+
+- the `progress` answer belongs to the session's current PLAY -- (playQueueItemID, item) --
+  and outlives a stop: a stop past the minute keeps the next play at `progress`, one at or
+  under it does not, and another item's beat resets it; the resume-point deletion follows
+  the same latch and never happens on a `stopped` beat;
+- a playlist's own beats (`Playlist.updateTimeline`) keep their crossing position and
+  latch on a track of their own, and their completion writes no history row; a queue BUILT
+  from a playlist follows the item rules unchanged.
+
+Drives a real server process (`tests/server_command.py`): the native binary by default,
+the oracle with `PLEXSIM_SERVER=python`.
+
+    python3 tests/test_followups_c87_e3.py
+"""
+import http.client
+import json
+import os
+import socket
+import subprocess
+import sys
+import time
+import urllib.parse
+import uuid
+
+from server_command import server_command
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+CATALOG = os.path.join("tests", "catalog_ui.json")
+ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
+           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+    ENV.pop(name, None)
+FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "timeline_play_latch_s42.json")))
+# Three movies of the fixture catalog standing in for plexscratch42's A, B and C, and one
+# no queue holds for X.
+ROWS = {"A": "1007", "B": "1008", "C": "1009", "X": "1012"}
+WEB_CLIENT = "c87e3-web"
+WEB = [("X-Plex-Product", "Plex Web"), ("X-Plex-Version", "4.160.0"),
+       ("X-Plex-Client-Identifier", WEB_CLIENT), ("X-Plex-Platform", "Chrome"),
+       ("X-Plex-Platform-Version", "151.0"),
+       ("X-Plex-Features", "external-media,indirect-media,hub-style-list"),
+       ("X-Plex-Model", "standalone"), ("X-Plex-Device", "Linux"),
+       ("X-Plex-Device-Name", "Chrome"), ("X-Plex-Language", "en")]
+PLEXAPI = {"X-Plex-Product": "PlexAPI", "X-Plex-Version": "4.18.2", "X-Plex-Platform": "Darwin",
+           "X-Plex-Platform-Version": "24.6.0", "X-Plex-Device": "macOS-15.6-arm64-arm-64bit",
+           "X-Plex-Device-Name": "macmini", "X-Plex-Language": "en", "X-Plex-Provides": "controller",
+           "X-Plex-Sync-Version": "2"}
+FLAGS = [("repeat", 0), ("own", 1), ("includeChapters", 1), ("includeMarkers", 1),
+         ("includeGeolocation", 1), ("includeExternalMedia", 1)]
+IIDS = {"none": "", "abc": "abc", "zero": "0", "bogus": "999999"}
+
+results = []
+
+
+def check(name, ok, detail=""):
+    results.append(bool(ok))
+    print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + str(detail)[:700]))
+
+
+def free_port():
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    return port
+
+
+def request(port, method, path, query=(), headers=None):
+    if query:
+        path += "?" + urllib.parse.urlencode(list(query))
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
+    sent = {"Accept": "application/json", "Connection": "close"}
+    sent.update(headers or {})
+    try:
+        connection.request(method, path, headers=sent)
+        response = connection.getresponse()
+        raw = response.read()
+    finally:
+        connection.close()
+    try:
+        body = json.loads(raw) if raw else None
+    except ValueError:
+        body = None
+    return response.status, (body or {}).get("MediaContainer", {}) if isinstance(body, dict) else {}
+
+
+def start():
+    port = free_port()
+    process = subprocess.Popen(
+        server_command("--port", port, "--catalog", CATALOG, "--assert-claimed",
+                       "--gdm", "off", root=ROOT),
+        cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(100):
+        if process.poll() is not None:
+            break
+        try:
+            if request(port, "GET", "/identity")[0] == 200:
+                return process, port
+        except OSError:
+            pass
+        time.sleep(0.1)
+    process.kill()
+    raise SystemExit("server did not start")
+
+
+def first(port, path):
+    return (request(port, "GET", path)[1].get("Metadata") or [{}])[0]
+
+
+def state(port, label):
+    row = first(port, "/library/metadata/%s" % ROWS[label])
+    return {"viewCount": row.get("viewCount"), "viewOffset": row.get("viewOffset")}
+
+
+def history(port):
+    body = request(port, "GET", "/status/sessions/history/all",
+                   [("sort", "viewedAt:desc"), ("X-Plex-Container-Start", 0),
+                    ("X-Plex-Container-Size", 100)])[1]
+    return {str(r.get("historyKey")): str(r.get("ratingKey")) for r in body.get("Metadata", [])}
+
+
+def web(client):
+    return [(k, client if k == "X-Plex-Client-Identifier" else v) for k, v in WEB]
+
+
+def make_queue(port, machine, labels, playlist=None, client=WEB_CLIENT):
+    """Plex Web's queue create, over items or a playlist; returns (id, {label: rowID})."""
+    if playlist:
+        query = [("type", "video"), ("playlistID", playlist)] + FLAGS
+    else:
+        uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s" % (
+            machine, ",".join(ROWS[label] for label in labels))
+        query = [("type", "video"), ("extrasPrefixCount", 0), ("uri", uri)] + FLAGS
+    body = request(port, "POST", "/playQueues", query + web(client))[1]
+    labels_by_key = {v: k for k, v in ROWS.items()}
+    ids = {}
+    for index, row in enumerate(body.get("Metadata", [])):
+        label = labels_by_key.get(str(row["ratingKey"]), str(row["ratingKey"]))
+        ids[label if label not in ids else label + str(index)] = row["playQueueItemID"]
+    return body.get("playQueueID"), ids
+
+
+def make_playlist(port, machine):
+    uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s,%s" % (
+        machine, ROWS["A"], ROWS["B"])
+    body = request(port, "POST", "/playlists", [("type", "video"), ("title", "c87e3-tmp"),
+                                                ("smart", 0), ("uri", uri)])[1]
+    return str(body["Metadata"][0]["ratingKey"])
+
+
+def selected(port, queue, ids):
+    body = request(port, "GET", "/playQueues/%s" % queue, [("own", 1)] + WEB)[1]
+    chosen = body.get("playQueueSelectedItemID")
+    return {v: k for k, v in ids.items()}.get(chosen, chosen)
+
+
+def beat(port, shape, session, state_, position, duration, iid, key, client=None, path=None):
+    """One beat in the recorded shape: Plex Web 4.160's query order as plexlab's c45 capture
+    holds it, or python-plexapi 4.18's `Playable.updateTimeline` (no session identifier)."""
+    path = path or "/library/metadata/%s" % key
+    if shape == "pa":
+        query = [("ratingKey", key), ("key", path), ("identifier", "com.plexapp.plugins.library"),
+                 ("time", position), ("state", state_), ("duration", duration)]
+        if iid is not None:
+            query.append(("playQueueItemID", iid))
+        headers = dict(PLEXAPI, **{"X-Plex-Client-Identifier": client or session})
+        return request(port, "GET", "/:/timeline", query, headers)
+    query = [("ratingKey", key), ("key", path), ("playbackTime", position)]
+    if iid is not None:
+        query.append(("playQueueItemID", iid))
+    query += [("state", state_), ("hasMDE", 1), ("time", position), ("duration", duration)]
+    query += web(client or WEB_CLIENT) + [
+        ("X-Plex-Playback-Session-Id", session + "-ps"), ("X-Plex-Playback-Id", session + "-pi"),
+        ("X-Plex-Drm", "none"), ("X-Plex-Text-Format", "plain"),
+        ("X-Plex-Provider-Version", "7.2"), ("X-Plex-Session-Identifier", session)]
+    return request(port, "GET", "/:/timeline", query)
+
+
+def sequences(port, machine):
+    duration = int(first(port, "/library/metadata/%s" % ROWS["A"])["duration"])
+    for name, sequence in sorted(FIXTURE["sequences"].items()):
+        if sequence.get("skip_in_test"):
+            continue
+        shape, scenario = name.split("/")
+        playlist = make_playlist(port, machine) if scenario.startswith("pl") else None
+        keys = dict(ROWS, P=playlist)
+        queue, ids = make_queue(port, machine, "ABC",
+                                playlist if scenario.startswith("pl_") else None)
+        before = history(port)
+        sessions = {}
+        answers, measured = [], []
+        for step in sequence["beats"]:
+            tag, state_, at, label, iid_label = step["spec"][:5]
+            extra = step["spec"][5] if len(step["spec"]) > 5 else {}
+            session = sessions.setdefault(tag, "c87e3-%s-%s-%s" % (name, tag, uuid.uuid4().hex[:6]))
+            length = duration
+            if label == "P":
+                length = int(first(port, "/playlists/%s" % playlist)["duration"])
+            if isinstance(at, str):
+                position = int(length * float(at[1:]))
+            else:
+                position = int(length * at) if isinstance(at, float) else at
+            iid = None if iid_label == "omit" else IIDS.get(iid_label, ids.get(iid_label))
+            status, body = beat(port, shape, session, state_, position, length, iid, keys[label],
+                                client=extra.get("client"),
+                                path="/playlists/%s" % playlist if label == "P" else None)
+            got = [status, body.get("playbackState"), body.get("viewCount"), body.get("viewOffset")]
+            answer = step["answer"]
+            want = [answer["status"], answer["playbackState"], answer["viewCount"], answer["viewOffset"]]
+            if "selected" in step:
+                got.append(selected(port, queue, ids))
+                want.append(step["selected"])
+            answers.append(got)
+            measured.append(want)
+        check("%s: every beat's status, playbackState, viewCount, viewOffset" % name,
+              answers == measured, {"got": answers, "measured": measured})
+        after = {label: state(port, label) for label in "ABC"}
+        check("%s: A, B and C afterwards" % name, after == sequence["after"],
+              {"got": after, "measured": sequence["after"]})
+        labels = {v: k for k, v in keys.items() if v}
+        new = sorted(labels.get(v, v) for k, v in history(port).items() if k not in before)
+        check("%s: the history rows written" % name, new == sequence["history_new"],
+              {"got": new, "measured": sequence["history_new"]})
+        for label in "ABC":
+            request(port, "GET", "/:/unscrobble",
+                    [("key", ROWS[label]), ("identifier", "com.plexapp.plugins.library")])
+        if playlist:
+            request(port, "DELETE", "/playlists/%s" % playlist)
+
+
+def run(port):
+    machine = request(port, "GET", "/identity")[1].get("machineIdentifier")
+    sequences(port, machine)
+
+
+def main():
+    process, port = start()
+    try:
+        run(port)
+    finally:
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+    passed = sum(results)
+    print("PASS %d/%d cycle 87 e3 follow-up checks" % (passed, len(results)))
+    return 0 if passed == len(results) else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

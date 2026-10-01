@@ -27,8 +27,6 @@ pub(crate) struct SessionEntry {
     pub user: Value,
     /// Listed from its first `playing` beat (`_listed`).
     pub listed: bool,
-    /// One of this session's beats passed the minute gate (`_playbackProgressed`).
-    pub progressed: bool,
 }
 
 /// `Sessions.PLAYER_FROM`: header (or query parameter) -> the `Player` field it fills.
@@ -435,7 +433,6 @@ impl Runtime {
                     session: Value::Null,
                     user: Value::Null,
                     listed: false,
-                    progressed: false,
                 },
             );
         }
@@ -478,9 +475,6 @@ impl Runtime {
         entry.user = json!({"id": "1", "thumb": "", "title": owner});
         if state == "playing" {
             entry.listed = true;
-        }
-        if offset > 60000 {
-            entry.progressed = true;
         }
         let snapshot = entry.clone();
         if state == "stopped" {
@@ -819,25 +813,49 @@ impl Runtime {
             // by the SAME `playQueueItemID` (another row's id, none, an empty one or one
             // no queue holds on either beat, or any other item's beat between, answers
             // the stop `ignore` with `viewCount` unchanged).
+            //
+            // The `progress` answer is the same latch's other half (cycle 87,
+            // plexscratch42): it belongs to the session's current PLAY -- the same tag --
+            // and outlives a stop. 70 000 on A, a stop, then 3 000 on A answers `progress`;
+            // 70 000 on A then 3 000 on B answers `ignore` with no stop between; a change of
+            // `playQueueItemID` on the same item resets it too. A stop hands the next play
+            // its own position: past the minute keeps it, at or under it clears it. A
+            // playlist's own beats keep this and the crossing position on a TRACK of their
+            // own. See `server.py` `timeline`.
             let tag = (
                 query.get("playQueueItemID").filter(|value| !value.is_empty()).cloned(),
                 key.clone(),
             );
-            let mut latched = match self.timeline_latch.get(&session_tag) {
-                Some((iid, item, latched)) if (iid, item) == (&tag.0, &tag.1) => *latched,
-                _ => false,
-            };
-            let crossed =
-                self.library_progress(&key, offset.map(|_| offset_ms), total, device, &session_tag, true);
+            let track = (session_tag.clone(), listed);
+            let mut latch = self.timeline_latch.get(&track).cloned().unwrap_or_default();
+            if latch.tag.as_ref() != Some(&tag) {
+                latch = TimelineLatch { tag: Some(tag), latched: false, progressed: false };
+            }
+            let before = latch.progressed;
+            let crossed = self.library_progress(
+                &key,
+                offset.map(|_| offset_ms),
+                total,
+                device,
+                &session_tag,
+                true,
+                // A `stopped` beat never deletes the resume point.
+                before && state != "stopped",
+            );
             if crossed {
-                latched = true;
+                latch.latched = true;
             } else if offset.is_some() && total > 0 && (offset_ms as f64) < total as f64 * 0.9 {
                 // A beat back under 90% is a new play.
-                latched = false;
+                latch.latched = false;
             }
-            let finished = latched;
-            self.timeline_latch
-                .insert(session_tag.clone(), (tag.0, tag.1, latched && state != "stopped"));
+            let finished = latch.latched;
+            let progressed = before || offset_ms > 60000;
+            latch.progressed = progressed;
+            if state == "stopped" {
+                latch.latched = false;
+                latch.progressed = offset_ms > 60000;
+            }
+            self.timeline_latch.insert(track, latch);
             let media = self
                 .catalog
                 .get(&key)
@@ -897,7 +915,7 @@ impl Runtime {
                 return Response::error(400, "plexsim: bad request");
             }
             if total > 0 {
-                playback_state = if entry.progressed { "progress" } else { "ignore" };
+                playback_state = if progressed { "progress" } else { "ignore" };
                 if offset_ms >= total.saturating_mul(9) / 10 {
                     playback_state = if finished { "complete" } else { "ignore" };
                 }

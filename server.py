@@ -3979,8 +3979,9 @@ class PlexSim:
         # on the ratingKey alone, one client's decision armed every other client's
         # timeline for that item and its own stop disarmed theirs.
         self.decided = set()
-        # Per playback session: the (playQueueItemID, item) its last timeline beat named and
-        # whether a completion is still answering `complete` -- see `timeline`.
+        # Per (playback session, track): the (playQueueItemID, item) its last timeline beat
+        # named, whether a completion is still answering `complete`, and whether the play
+        # has passed the minute -- see `timeline`.
         self._timeline_latch = {}
         # Images uploaded through `POST /library/metadata/{id}/{posters,arts}`, keyed by the
         # `upload://` id a real PMS mints from the bytes.
@@ -17421,33 +17422,47 @@ class PlexSim:
             # the stop carries none, or when any beat for another item came between -- with
             # `viewCount` unchanged each time. plexsim kept the latch on the item, per
             # session, whatever the beats in between said.
+            #
+            # The `progress` answer is the same latch's other half (cycle 87, plexscratch42,
+            # 1.42.2, both beat shapes). Cycle 50 found it sticky within a session once a
+            # beat passes the minute; it belongs to the session's current PLAY -- the same
+            # tag -- and outlives a stop. 70 000 on A, a stop, then 3 000 on A answers
+            # `progress` (65 s later too) where both servers said `ignore`; 70 000 on A then
+            # 3 000 on B answers `ignore` with no stop between, where both said `progress`;
+            # a change of `playQueueItemID` on the same item resets it as well. A stop hands
+            # the next play its own position: a stop past the minute (93% after a
+            # completion included) keeps the next play at `progress`, a stop at or under
+            # it -- 70 000 then a stop at 3 000 -- leaves the next play at `ignore`.
+            # A playlist's own beats (`Playlist.updateTimeline`) keep this and the crossing
+            # position on a TRACK of their own: 70 000 on A, 3 000 and a stop on the list,
+            # then 3 000 on A is still `progress` on A, and the list's beats said `ignore`.
             tag = (str(query.get("playQueueItemID") or "") or None, int(rating_key))
-            latch = self._timeline_latch.setdefault(playing_session or "", {})
+            track = "list" if listed is not None else "item"
+            latch = self._timeline_latch.setdefault((playing_session or "", track), {})
             if latch.get("tag") != tag:
                 latch["latched"] = False
+                latch["progressed"] = False
             latch["tag"] = tag
+            progressed = bool(latch.get("progressed"))
             self.library.progress(int(rating_key), offset_ms, state=state,
                                   duration=total_ms, device_id=device,
-                                  session=playing_session)
+                                  session=playing_session, track=track,
+                                  progressed=progressed)
             if self.library.crossed:
                 latch["latched"] = True
             elif offset is not None and total_ms and offset_ms < total_ms * 0.9:
                 # A beat back under 90% is a new play.
                 latch["latched"] = False
             finished = latch["latched"]
+            progressed = progressed or offset_ms > 60000
+            latch["progressed"] = progressed
             if state == "stopped":
                 latch["latched"] = False
+                latch["progressed"] = offset_ms > 60000
             entry = self.sessions.touch(row, query, headers, address, state,
                                         offset_ms, total_ms,
                                         client_profile(query, headers))
             entry["_list"] = listed is not None
-            # Cycle 50, separated on both writable versions: `progress` is sticky
-            # within the playback SESSION once one of that session's timeline beats
-            # passes the minute gate.  A later 9-second or stopped beat in the same
-            # X-Plex-Session-Identifier remains progress; a new session is ignore even
-            # when the row carries a 65-second offset, lastViewedAt, or viewCount.
-            if offset_ms > 60000:
-                entry["_playbackProgressed"] = True
             self.notify_playing(entry, row, state, offset_ms,
                                 dict(self.playing_queue_fields(query),
                                      **({"key": "/playlists/%s" % rating_key}
@@ -17477,8 +17492,7 @@ class PlexSim:
             # and would need 60 001; at `duration=100000` the two forms agree, which is
             # why no earlier cycle could see the difference.
             if total:
-                playback_state = ("progress" if entry.get("_playbackProgressed")
-                                  else "ignore")
+                playback_state = "progress" if progressed else "ignore"
                 if offset_ms >= (total * 9) // 10:
                     # Past 90% the answer is never `progress`: it is `complete` for the beat
                     # that completed the play and every one after it until a `stopped` closes
