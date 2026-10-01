@@ -11852,19 +11852,29 @@ impl Runtime {
     }
 
     fn queue_container(&self, queue: &Queue, query: &HashMap<String, String>) -> Response {
-        let mut metadata = queue
+        // Cycle 85, plexscratch42 (1.42.2): `DELETE /library/sections/{id}` leaves the
+        // section's rows QUEUED -- no version step, the selection where it was. A read lists
+        // only the rows whose item still exists, while `playQueueTotalCount` counts every
+        // row, `playQueueSelectedItemOffset` is the selection's index among ALL of them, and
+        // `playQueueSelectedMetadataItemID` is absent once the selected row's item is gone;
+        // a queue left with no live row still names its selection. A window slices the
+        // whole queue before the dead rows drop. The server counted and indexed only the
+        // live rows and dropped the selection from a queue with none; Plex Web sizes its
+        // queue as max(playQueueTotalCount, rows).
+        let mut rows = queue
             .items
             .iter()
-            .filter_map(|item| self.catalog.get(&item.rating_key).map(|row| (item, row)))
-            .map(|(item, row)| {
-                let mut value = self.detail_row(row);
-                if let Some(object) = value.as_object_mut() {
-                    object.insert("playQueueItemID".to_string(), json!(item.id));
-                }
-                value
+            .map(|item| {
+                self.catalog.get(&item.rating_key).map(|row| {
+                    let mut value = self.detail_row(row);
+                    if let Some(object) = value.as_object_mut() {
+                        object.insert("playQueueItemID".to_string(), json!(item.id));
+                    }
+                    value
+                })
             })
             .collect::<Vec<_>>();
-        let total = metadata.len();
+        let total = rows.len();
         let mut selected_index = queue
             .selected
             .and_then(|selected| queue.items.iter().position(|item| item.id == selected))
@@ -11882,7 +11892,7 @@ impl Runtime {
         {
             if let Some(index) = queue.items.iter().position(|item| item.id == center) {
                 selected_index = index;
-                centred = true;
+                centred = rows[index].is_some();
             }
         }
         if queue.deselected && !centred {
@@ -11891,7 +11901,7 @@ impl Runtime {
             // rows, `playQueueSelectedItemOffset` is 0, there is no selected item id, and
             // the window around the (absent) selection is empty: `size 0`, no rows. A
             // `center=` naming a row lists it again. The server selected the head.
-            metadata.clear();
+            rows.clear();
             selected_index = 0;
         }
         if query.contains_key("includeBefore") || query.contains_key("includeAfter") {
@@ -11902,32 +11912,29 @@ impl Runtime {
                 .and_then(|value| value.parse::<usize>().ok())
                 .unwrap_or(total);
             let low = selected_index.saturating_sub(span);
-            let high = (selected_index + span + 1).min(metadata.len());
+            let high = (selected_index + span + 1).min(rows.len());
             let mut sliced = Vec::new();
             if before {
-                sliced.extend(
-                    metadata[low..selected_index.min(metadata.len())]
-                        .iter()
-                        .cloned(),
-                );
+                sliced.extend(rows[low.min(rows.len())..selected_index.min(rows.len())].iter().cloned());
             }
-            if before && after && selected_index < metadata.len() {
-                sliced.push(metadata[selected_index].clone());
+            if before && after && selected_index < rows.len() {
+                sliced.push(rows[selected_index].clone());
             }
             if after && selected_index.saturating_add(1) < high {
-                sliced.extend(metadata[selected_index + 1..high].iter().cloned());
+                sliced.extend(rows[selected_index + 1..high].iter().cloned());
             }
-            metadata = sliced;
+            rows = sliced;
             selected_index = selected_index.saturating_sub(low);
         } else if let Some(window) = query
             .get("window")
             .and_then(|value| value.parse::<usize>().ok())
         {
-            let low = selected_index.saturating_sub(window);
-            let high = (selected_index + window + 1).min(metadata.len());
-            metadata = metadata[low..high].to_vec();
+            let low = selected_index.saturating_sub(window).min(rows.len());
+            let high = (selected_index + window + 1).min(rows.len());
+            rows = rows[low..high.max(low)].to_vec();
             selected_index = selected_index.saturating_sub(low);
         }
+        let metadata = rows.into_iter().flatten().collect::<Vec<_>>();
         let mut fields = Map::from_iter([
             ("Metadata".to_string(), Value::Array(metadata.clone())),
             (
@@ -11964,14 +11971,18 @@ impl Runtime {
                 }),
             );
             fields.insert("playQueueTotalCount".to_string(), json!(total));
-        } else if !metadata.is_empty() {
+        } else if !queue.items.is_empty() {
             let selected = queue.selected.unwrap_or(queue.items[0].id);
             fields.insert("playQueueSelectedItemID".to_string(), json!(selected));
             fields.insert(
                 "playQueueSelectedItemOffset".to_string(),
                 json!(selection_index),
             );
-            if let Some(item) = queue.items.iter().find(|item| item.id == selected) {
+            if let Some(item) = queue
+                .items
+                .iter()
+                .find(|item| item.id == selected && self.catalog.get(&item.rating_key).is_some())
+            {
                 fields.insert(
                     "playQueueSelectedMetadataItemID".to_string(),
                     json!(item.rating_key),

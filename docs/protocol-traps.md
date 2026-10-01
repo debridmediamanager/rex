@@ -3409,3 +3409,18 @@ are changing; replay the client's exact request before altering behavior.
   servers rebased it into the slice (1, 3, 1); the oracle also read the metadata id at the rebased
   position. CLIENT-VISIBLE: python-plexapi's `PlayQueue.get` reads with `window=50`, so a queue
   whose selection sits past row 50 reported another offset.
+- **`DELETE /library/sections/{id}` leaves the section's rows QUEUED** (cycle 85 CP, plexscratch42
+  1.42.2, two throwaway TV libraries; `tests/fixtures/queue_section_delete_s42.jsonl`). Unlike an
+  item, season or merge removal (the bullets above), a library delete does not touch the play
+  queues: the version does not step and the selection stays put, read immediately or a minute
+  later. A read lists only the rows whose item still exists, but `playQueueTotalCount` counts every
+  row, `playQueueSelectedItemOffset` is the selection's index among all of them (a selected movie
+  behind two dead episodes reads offset 2, rows `[movie, movie]`), and
+  `playQueueSelectedMetadataItemID` is ABSENT once the selected row's item is gone while
+  `playQueueSelectedItemID` still names it. A queue with no live row answers `size 0` with its
+  total, selected id and offset intact. `window=` slices the whole queue around the selection and
+  only then drops the dead rows (`window=1` around a dead head lists nothing). Both servers counted
+  and indexed only the live rows, kept the metadata id, and dropped total, selection and offset
+  from a queue with no live row. CLIENT-VISIBLE: Plex Web's queue model sizes itself as
+  `max(playQueueTotalCount, rows)` and skips its confirm-playback path when
+  `playQueueSelectedMetadataItemID` equals the item asked for.

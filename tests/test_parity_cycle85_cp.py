@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cycle 85, territories C and P: what a play queue reports about its selection.
+"""Cycle 85, territories C and P: what a play queue reports once rows stop existing.
 
 Measured on plexscratch42 (PMS 1.42.2) with two throwaway TV libraries, and the window
 half repeated on plexscratch (PMS 1.43.4); recorded in
@@ -11,6 +11,12 @@ checked against the reference's own exchange before it is applied to plexsim:
   (not its place in the slice, not the centre's) and `playQueueSelectedMetadataItemID`
   names the selected row. Both servers rebased the offset into the window; the oracle also
   read the metadata id at the rebased position.
+- `DELETE /library/sections/{id}` leaves the section's rows QUEUED: no version step, the
+  selection stays where it was. A read lists only the rows whose item still exists, while
+  `playQueueTotalCount` counts every row, the offset indexes all of them, and
+  `playQueueSelectedMetadataItemID` is absent once the selected row's item is gone. A
+  queue with no live row still names its selection. A window slices the whole queue
+  before the dead rows drop. Both servers counted and indexed only the live rows.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -158,6 +164,43 @@ def reference_checks():
     by_queue = {}
     for step, method, path, state in reads:
         by_queue.setdefault(state["id"], []).append((step, path, state))
+    deletes = [entry["path"] for entry in lines if entry["method"] == "DELETE"]
+    check("reference: two section DELETEs, each answered 200",
+          deletes == ["/library/sections/10", "/library/sections/11"]
+          and all(entry["status"] == 200 for entry in lines if entry["method"] == "DELETE"),
+          deletes)
+
+    def after(queue, prefix, query):
+        for step, path, state in by_queue[queue]:
+            if step.startswith(prefix) and path == "/playQueues/%s?own=1%s" % (queue, query):
+                return state
+        return None
+
+    measured = 0
+    for queue, deleted_section, prefix in (("2503", 10, "read-late"), ("2504", 10, "read-late"),
+                                           ("2505", 10, "read-late"), ("2506", 11, "read0"),
+                                           ("2507", 11, "read0")):
+        # the last listing before the delete is the last write's answer (add/move/create)
+        before = [state for step, path, state in by_queue[queue] if not step.startswith("read")][-1]
+        gone = {row[0] for row in before["rows"] if row[2] == deleted_section}
+        for query in WINDOW_READS + ("&center=8479",):
+            got = after(queue, prefix, query)
+            if got is None:
+                continue
+            measured += 1
+            compare("reference: queue %s%s after DELETE /library/sections/%s follows the rule"
+                    % (queue, query or " (plain)", deleted_section), got, expected(before, gone, query))
+    check("reference: the rule was applied to every recorded post-delete read", measured == 9, measured)
+    # The concrete facts the rule rests on, so a re-recorded fixture cannot drift silently.
+    a = after("2503", "read-late", "")
+    check("reference: a dead selected row keeps playQueueSelectedItemID, drops the metadata id, "
+          "and the total still counts the dead rows",
+          a["selected"] == 8464 and a["selectedKey"] is None and a["total"] == 3
+          and a["version"] == 3 and a["size"] == 1, a)
+    c = after("2505", "read-late", "")
+    check("reference: a queue with no live row still names its selection and offset",
+          c["size"] == 0 and c["selected"] == 8471 and c["offset"] == 1 and c["total"] == 3
+          and c["version"] == 1, c)
     window_reads = [(step, path, state) for step, path, state in
                     sum((by_queue[q] for q in by_queue), [])
                     if step in ("readFw", "readFc", "readFcw", "rw", "rcw")]
@@ -206,6 +249,32 @@ def plexsim_checks(port):
     for query in ("&window=1", "&center=%s" % ids[3], "&center=%s&window=1" % ids[3]):
         compare("window/center list a slice and keep the offset on the selection (%s)" % query,
                 read(port, f, "F", query), expected(whole, set(), query))
+    # A-E: the section-delete queues, mirrored on the TV library (section 2) beside movies.
+    a = make(port, 1002, "A")
+    add(port, a, 1003, "A")
+    add(port, a, 1007, "A")
+    b = make(port, 1007, "B")
+    add(port, b, 1002, "B")
+    add(port, b, 1003, "B")
+    c = make(port, 30004, "C", 1006)
+    d = make(port, 1007, "D")
+    for key in (1002, 1003, 1008):
+        add(port, d, key, "D")
+    d_ids = [row[0] for row in read(port, d, "D")["rows"]]
+    request(port, "PUT", "/playQueues/%s/items/%s/move?after=%s" % (d, d_ids[0], d_ids[2]), "D")
+    e = make(port, 1002, "E")
+    add(port, e, 1003, "E")
+    add(port, e, 1007, "E")
+    queues = [(a, "A"), (b, "B"), (c, "C"), (d, "D"), (e, "E")]
+    before = {q: read(port, q, client) for q, client in queues}
+    status = request(port, "DELETE", "/library/sections/2")[0]
+    check("DELETE /library/sections/2 answers 200", status == 200, status)
+    for q, client in queues:
+        gone = {row[0] for row in before[q]["rows"] if row[2] == 2}
+        queries = WINDOW_READS + (("&center=%s" % before[q]["rows"][-1][0],) if client == "E" else ())
+        for query in queries:
+            compare("queue %s%s after the section delete follows the rule" % (client, query or " (plain)"),
+                    read(port, q, client, query), expected(before[q], gone, query))
 
 
 def main():

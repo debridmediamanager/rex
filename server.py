@@ -16710,34 +16710,43 @@ class PlexSim:
             last_added = queue["last_added"]
             playlist = queue["playlist"]
             deselected = bool(queue.get("deselected"))
-        metadata = []
+        # Cycle 85, plexscratch42 (1.42.2): `DELETE /library/sections/{id}` leaves the
+        # section's rows QUEUED -- no version step, the selection where it was. A read lists
+        # only the rows whose item still exists, while `playQueueTotalCount` counts every
+        # row, `playQueueSelectedItemOffset` is the selection's index among ALL of them, and
+        # `playQueueSelectedMetadataItemID` is absent once the selected row's item is gone;
+        # a queue left with no live row still names its selection. A window slices the
+        # whole queue before the dead rows drop. plexsim counted and indexed only the live
+        # rows and dropped the selection from a queue with none; Plex Web sizes its queue
+        # as max(playQueueTotalCount, rows).
+        rows = []
         for entry in items:
             row = self.catalog.items.get(entry["ratingKey"])
-            if row is None:
-                continue
-            item = _full(row)
-            item["playQueueItemID"] = entry["id"]
-            metadata.append(item)
-        offset = next((i for i, m in enumerate(metadata)
-                       if m["playQueueItemID"] == selected), 0)
-        total = len(metadata)
-        listed = list(metadata)
+            item = None
+            if row is not None:
+                item = _full(row)
+                item["playQueueItemID"] = entry["id"]
+            rows.append(item)
+        total = len(rows)
+        selected_at = next((i for i, entry in enumerate(items) if entry["id"] == selected), 0)
+        offset = selected_at
         # `window`/`center`: the client asks for a slice AROUND the current item
         # rather than the whole queue, and `playQueueTotalCount` still reports the
         # whole thing. plexsim ignored both and sent every row every time.
         window = query.get("window")
         centre = query.get("center")
         if str(centre).isdigit():
-            offset = next((i for i, m in enumerate(metadata)
-                           if m["playQueueItemID"] == int(centre)), offset)
+            offset = next((i for i, entry in enumerate(items)
+                           if entry["id"] == int(centre)), offset)
         if deselected and not (str(centre).isdigit() and any(
-                m["playQueueItemID"] == int(centre) for m in metadata)):
+                entry["id"] == int(centre) and rows[i] is not None
+                for i, entry in enumerate(items))):
             # Cycle 84, plexscratch42: once the selected row is removed with no row after
             # it, the queue has NO selection -- `playQueueTotalCount` still counts the
             # rows, `playQueueSelectedItemOffset` is 0, there is no selected item id, and
             # the window around the (absent) selection is empty: `size 0`, no rows. A
             # `center=` naming a row lists it again. plexsim selected the head.
-            metadata = []
+            rows = []
         # Cycle 16, re-measured on plexscratch: the two flags window the queue with NO
         # `window=` at all -- `window` is the RADIUS and is unlimited when absent, so
         # `includeBefore=0&includeAfter=1` answers everything after the selection.
@@ -16750,14 +16759,15 @@ class PlexSim:
         if query.get("includeBefore") == "0" and query.get("includeAfter") == "0":
             return ("error", 400, "plexsim: bad request")
         if str(window).isdigit() or "includeBefore" in query or "includeAfter" in query:
-            span = int(window) if str(window).isdigit() else len(metadata)
+            span = int(window) if str(window).isdigit() else len(rows)
             low = max(0, offset - span)
             before = query.get("includeBefore") != "0"
             after = query.get("includeAfter") != "0"
-            metadata = ((metadata[low:offset] if before else [])
-                        + (metadata[offset:offset + 1] if before and after else [])
-                        + (metadata[offset + 1:offset + span + 1] if after else []))
+            rows = ((rows[low:offset] if before else [])
+                    + (rows[offset:offset + 1] if before and after else [])
+                    + (rows[offset + 1:offset + span + 1] if after else []))
             offset = offset - low
+        metadata = [item for item in rows if item is not None]
         fields = {
             "Metadata": metadata,
             "playQueueID": queue_id,
@@ -16776,7 +16786,7 @@ class PlexSim:
         if deselected and total:
             fields["playQueueSelectedItemOffset"] = offset if metadata else 0
             fields["playQueueTotalCount"] = total
-        elif metadata:
+        elif items:
             # Cycle 85, plexscratch42 (1.42.2) and plexscratch (1.43.4) agree: `window` and
             # `center` choose which rows are listed and never move the reported selection.
             # `playQueueSelectedItemOffset` stays the selection's index in the whole queue
@@ -16784,13 +16794,13 @@ class PlexSim:
             # `playQueueSelectedMetadataItemID` names the SELECTED row. plexsim rebased the
             # offset into the window and read the metadata id at that rebased position --
             # python-plexapi's `PlayQueue.get` reads with `window=50`.
-            chosen = selected if selected is not None else metadata[0]["playQueueItemID"]
+            chosen = selected if selected is not None else items[0]["id"]
             fields["playQueueSelectedItemID"] = chosen
-            fields["playQueueSelectedItemOffset"] = next(
-                (i for i, entry in enumerate(listed) if entry["playQueueItemID"] == chosen), 0)
-            fields["playQueueSelectedMetadataItemID"] = next(
-                (str(entry["ratingKey"]) for entry in items if entry["id"] == chosen),
-                str(items[0]["ratingKey"]))
+            fields["playQueueSelectedItemOffset"] = selected_at
+            for entry in items:
+                if entry["id"] == chosen and self.catalog.items.get(entry["ratingKey"]) is not None:
+                    fields["playQueueSelectedMetadataItemID"] = str(entry["ratingKey"])
+                    break
             fields["playQueueTotalCount"] = total
         if last_added is not None:
             fields["playQueueLastAddedItemID"] = last_added
