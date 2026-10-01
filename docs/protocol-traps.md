@@ -3245,3 +3245,10 @@ are changing; replay the client's exact request before altering behavior.
   server, whose uploaded candidates fell through to the default `Video`, read back an uploaded
   theme or logo as an empty list while the JSON was identical to the oracle's. Found by cycle 83's
   B regression `regress59b` F7 printing the element; caught by no JSON comparison.
+- **A play queue's owner is the QUERY's client identifier too.** Plex Web names its client only in
+  the query string, and plexscratch42 (1.42.2) retires that client's older queue on its next
+  create and moves ownership on an `own=1` read by that form
+  (`tests/fixtures/playqueue_query_client_s42.json`). The native server read the header alone, so
+  every Plex Web queue stayed alive and an `own=1` read from Plex Web took nothing; the oracle
+  reads the query first. Found by cycle 83's B restart leg listing 19 live queues after `ident60`
+  where the oracle lists 16 (the three Plex Web identities' first queues).

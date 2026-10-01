@@ -1,0 +1,54 @@
+{
+ "_provenance": "plexscratch42 (PMS 1.42.2.10156), 2026-10-01, cycle 83 B. Every request names its client ONLY in the query string, as Plex Web sends it (no X-Plex-Client-Identifier header); token and machine identifier redacted. Item 396 is an episode of the copy's section 3. The ids are the copy's; what is measured is the status of each read.",
+ "retire": [
+  {
+   "method": "POST",
+   "path": "/playQueues?type=video&uri=server%3A%2F%2F<machine>%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F396&X-Plex-Client-Identifier=<X>&X-Plex-Product=Plex%20Web",
+   "status": 200,
+   "playQueueID": 2295
+  },
+  {
+   "method": "POST",
+   "path": "/playQueues?type=video&uri=server%3A%2F%2F<machine>%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F396&X-Plex-Client-Identifier=<X>&X-Plex-Product=Plex%20Web",
+   "status": 200,
+   "playQueueID": 2296
+  },
+  {
+   "method": "GET",
+   "path": "/playQueues/2295",
+   "status": 404
+  },
+  {
+   "method": "GET",
+   "path": "/playQueues/2296",
+   "status": 200
+  }
+ ],
+ "own": [
+  {
+   "method": "POST",
+   "path": "/playQueues?type=video&uri=...%2Flibrary%2Fmetadata%2F396&X-Plex-Client-Identifier=<X>",
+   "status": 200,
+   "playQueueID": 2299,
+   "playQueueVersion": 1
+  },
+  {
+   "method": "POST",
+   "path": "/playQueues?type=video&uri=...%2Flibrary%2Fmetadata%2F396&X-Plex-Client-Identifier=<Y>",
+   "status": 200,
+   "playQueueID": 2300,
+   "playQueueVersion": 1
+  },
+  {
+   "method": "GET",
+   "path": "/playQueues/2299?own=1&X-Plex-Client-Identifier=<Y>",
+   "status": 200,
+   "playQueueVersion": 2
+  },
+  {
+   "method": "GET",
+   "path": "/playQueues/2300",
+   "status": 404
+  }
+ ]
+}

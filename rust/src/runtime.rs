@@ -11899,11 +11899,12 @@ impl Runtime {
                     bytes_digest(format!("{seed}/{}", key_of(row).unwrap_or_default()).as_bytes())
                 });
             }
-            let client = request
-                .headers
-                .get("x-plex-client-identifier")
-                .cloned()
-                .unwrap_or_default();
+            // The query's identifier first, as the oracle reads it: Plex Web sends every
+            // X-Plex-* in the query string, and a real PMS retires a client's older queue
+            // by that form too (plexscratch42, 1.42.2: two creates naming the client only
+            // in the query, then the first queue is a 404). Reading the header alone kept
+            // every Plex Web queue alive.
+            let client = queue_client(query, request);
             if !client.is_empty() {
                 self.queues.retain(|_, queue| queue.client != client);
             }
@@ -11998,11 +11999,7 @@ impl Runtime {
             return Response::error(400, "plexsim: bad request");
         }
         if query.get("own") == Some(&"1".to_string()) {
-            let client = request
-                .headers
-                .get("x-plex-client-identifier")
-                .cloned()
-                .unwrap_or_default();
+            let client = queue_client(query, request);
             if !client.is_empty() && queue.client != client {
                 self.queues.retain(|_, known| known.client != client);
                 queue.client = client;
@@ -20918,6 +20915,18 @@ thread_local! {
     /// empty collection back so the XML writer can tell the two apart.
     static PAIRED_HUBS: std::cell::RefCell<Vec<(String, String)>> =
         const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// The client a play queue belongs to: the query's `X-Plex-Client-Identifier`, else the
+/// header's (`create_play_queue`/`get_play_queue` in the oracle, an empty query value
+/// falling through as Python's `or` does).
+fn queue_client(query: &HashMap<String, String>, request: &Request) -> String {
+    query
+        .get("X-Plex-Client-Identifier")
+        .filter(|value| !value.is_empty())
+        .or_else(|| request.headers.get("x-plex-client-identifier"))
+        .cloned()
+        .unwrap_or_default()
 }
 
 fn hub_identity(hub: &Map<String, Value>) -> String {

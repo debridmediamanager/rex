@@ -6,6 +6,11 @@
   `themes()` and `logos()` keep only rows of their own tag, so the native server's default
   `Video` element turned an uploaded theme or logo into an empty list
   (`plexapi/mixins/resources.py`, `fetchItems(..., cls=media.Theme|media.Logo)`).
+- A play queue belongs to the client the QUERY names as well as the header: Plex Web sends
+  every X-Plex-* in the query string, and a real PMS retires that client's older queue on
+  its next create and moves ownership on an `own=1` read by that form
+  (`tests/fixtures/playqueue_query_client_s42.json`). The native server read the header
+  alone, so every Plex Web queue stayed alive and an `own=1` read took nothing.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -56,10 +61,12 @@ def free_port():
     return port
 
 
-def request(port, method, path, body=None):
+def request(port, method, path, body=None, query_only=False):
+    """`query_only`: no X-Plex-* header at all, Plex Web's shape (they ride in the query)."""
     connection = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
+    headers = {"Connection": "close"} if query_only else dict(HEADERS, Connection="close")
     try:
-        connection.request(method, path, body=body, headers=dict(HEADERS, Connection="close"))
+        connection.request(method, path, body=body, headers=headers)
         response = connection.getresponse()
         return response.status, response.read()
     finally:
@@ -123,10 +130,46 @@ def run(port):
     check("the JSON listing carries no private key", not re.search(rb'"_', raw), raw[:300])
 
 
+def queue_checks(port):
+    measured = json.load(open(os.path.join(HERE, "fixtures", "playqueue_query_client_s42.json")))
+    retire = [step["status"] for step in measured["retire"]]
+    own = measured["own"]
+    check("fixture: the first of two query-named queues is a 404, the second a 200",
+          retire == [200, 200, 404, 200], retire)
+    check("fixture: an own=1 read by a query-named client steps the version and retires its queue",
+          own[2]["playQueueVersion"] == own[0]["playQueueVersion"] + 1 and own[3]["status"] == 404, own)
+    status, raw = request(port, "GET", "/identity")
+    machine = ET.fromstring(raw).get("machineIdentifier")
+    uri = "server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F1002" % machine
+
+    def create(client):
+        status, raw = request(port, "POST", "/playQueues?type=video&uri=%s&X-Plex-Client-Identifier=%s"
+                              "&X-Plex-Product=Plex%%20Web" % (uri, client), query_only=True)
+        root = ET.fromstring(raw)
+        return root.get("playQueueID"), root.get("playQueueVersion")
+
+    first, _ = create("xb-query-x")
+    second, _ = create("xb-query-x")
+    statuses = [request(port, "GET", "/playQueues/%s" % first, query_only=True)[0],
+                request(port, "GET", "/playQueues/%s" % second, query_only=True)[0]]
+    check("a query-named client's second queue retires its first (404, 200)",
+          statuses == [404, 200], statuses)
+    taken, version = create("xb-query-x")
+    other, _ = create("xb-query-y")
+    status, raw = request(port, "GET", "/playQueues/%s?own=1&X-Plex-Client-Identifier=xb-query-y" % taken,
+                          query_only=True)
+    after = ET.fromstring(raw).get("playQueueVersion") if status == 200 else None
+    check("an own=1 read by a query-named client steps the version by one",
+          after is not None and int(after) == int(version) + 1, (version, after))
+    check("... and retires that client's other queue",
+          request(port, "GET", "/playQueues/%s" % other, query_only=True)[0] == 404)
+
+
 def main():
     process, port = start()
     try:
         run(port)
+        queue_checks(port)
     finally:
         process.terminate()
         try:
