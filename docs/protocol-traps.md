@@ -3270,3 +3270,6 @@ are changing; replay the client's exact request before altering behavior.
   EPISODES on plexscratch42 (1.42.2) and on the oracle (`typed_rows`). The native server read the
   section's own rows (the one show), capped that at three and expanded it, so the playlist held
   every episode of the library.
+- **A playlist's `deleted` frame carries its title; its `created` frame an empty one**
+  (plexscratch42, 1.42.2, python-plexapi's `createPlaylist` and `delete`). The native server sent
+  an empty title on both; a client that labels the removal from the frame had nothing to show.

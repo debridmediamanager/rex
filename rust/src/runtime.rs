@@ -4378,6 +4378,21 @@ impl Runtime {
     }
 
     fn push_list_timeline(&mut self, item_id: &str, kind: i64, state: i64, metadata: &str) {
+        self.push_list_timeline_titled(item_id, kind, state, metadata, "");
+    }
+
+    /// A list's frame naming the list: a real PMS's `created` frame carries an empty
+    /// title and its `deleted` frame the playlist's own (plexscratch42, 1.42.2, both
+    /// through python-plexapi's `createPlaylist` and `delete`), as the oracle's
+    /// `notify_deleted` does with the row's title.
+    fn push_list_timeline_titled(
+        &mut self,
+        item_id: &str,
+        kind: i64,
+        state: i64,
+        metadata: &str,
+        title: &str,
+    ) {
         self.push_event(
             "timeline",
             json!({"TimelineEntry": {
@@ -4386,7 +4401,7 @@ impl Runtime {
                 "metadataState": metadata,
                 "sectionID": "-1",
                 "state": state,
-                "title": "",
+                "title": title,
                 "type": kind,
                 "updatedAt": now()
             }}),
@@ -20174,9 +20189,10 @@ impl Runtime {
             return Response::error(404, "plexsim: not found");
         }
         if request.method == "DELETE" && segments.len() == 1 {
-            let existed = self.playlists.remove(id).is_some();
-            if existed {
-                self.push_list_timeline(id, 15, 9, "deleted");
+            let removed = self.playlists.remove(id);
+            let existed = removed.is_some();
+            if let Some(playlist) = removed {
+                self.push_list_timeline_titled(id, 15, 9, "deleted", &playlist.title);
             }
             self.dirty = true;
             self.save_if_dirty();

@@ -19,6 +19,7 @@
   expanded them into episodes.
 - A smart playlist over `all?type=4&...&limit=3` holds three episodes; the native server
   ignored the uri's `type`, capped the one show and expanded it.
+- A playlist's `deleted` frame names the playlist; the native server's was empty.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -200,6 +201,34 @@ def continuous_checks(port):
     check("the fixture show has a season with more than one episode to compare", cells > 2 * len(seasons))
 
 
+def eventsource(port, trigger, seconds=4):
+    """The SSE frames pushed while `trigger` runs."""
+    import threading
+    import urllib.request
+    response = urllib.request.urlopen(urllib.request.Request(
+        "http://127.0.0.1:%d/:/eventsource/notifications" % port,
+        headers={"Accept": "text/event-stream"}), timeout=seconds + 5)
+    threading.Timer(0.5, trigger).start()
+    frames, name, deadline = [], None, time.time() + seconds
+    try:
+        while time.time() < deadline:
+            try:
+                line = response.readline()
+            except Exception:
+                break
+            if not line:
+                break
+            text = line.decode("utf-8", "replace").strip()
+            if text.startswith("event:"):
+                name = text.split(":", 1)[1].strip()
+            elif text.startswith("data:") and name:
+                frames.append((name, text.split(":", 1)[1].strip()))
+                name = None
+    finally:
+        response.close()
+    return frames
+
+
 def write_chain_checks(port):
     measured = json.load(open(os.path.join(HERE, "fixtures", "plexapi_writes_s42.json")))
     status, raw = request(port, "GET", "/identity")
@@ -239,6 +268,22 @@ def write_chain_checks(port):
     status, raw = request(port, "GET", "/playlists/%s/items" % playlist.get("ratingKey"))
     items = [row.get("type") for row in ET.fromstring(raw)] if status == 200 else status
     check("... and lists three episodes", items == ["episode"] * 3, items)
+
+    # A playlist's deleted frame names it.
+    want = measured["playlist_delete_frame"]
+    check("fixture: the deleted frame carries the playlist's title",
+          "title='%s'" % want["playlist_title"] in want["frames"][0], want)
+    deleted = playlist.get("ratingKey")
+    request(port, "PUT", "/playlists/%s?title=Xb%%20Renamed" % deleted)
+    frames = eventsource(port, lambda: request(port, "DELETE", "/playlists/%s" % deleted))
+    entries = []
+    for name, data in frames:
+        entry = json.loads(data).get("TimelineEntry") if name == "timeline" else None
+        for entry in (entry if isinstance(entry, list) else [entry] if entry else []):
+            if str(entry.get("itemID")) == str(deleted) and entry.get("state") == 9:
+                entries.append(entry)
+    check("a playlist's deleted frame names the playlist as it is now",
+          [entry.get("title") for entry in entries] == ["Xb Renamed"], frames)
 
 
 def main():
