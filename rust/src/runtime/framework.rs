@@ -1571,11 +1571,28 @@ impl Runtime {
                 .map(String::as_str)
                 .unwrap_or(""),
         ) {
+            // Cycle 83, zen (1.42.2) and kids: the XML pages like the JSON -- Start 1 Size 2
+            // answers `size 2 totalSize 5 offset 1`, the second and third agents and both
+            // X-Plex-Container headers. This XML is written here rather than by the
+            // pipeline, so it went out past the pager: every agent, no `totalSize`, and
+            // python-plexapi's `agents()` read `totalSize`/`offset` as None. Page the JSON
+            // first, the way the pipeline pages every other container, then render it.
+            let mut paged = Response::bytes(200, "application/json");
+            paged.body = serde_json::to_vec(&ordered).unwrap_or_default();
+            page_container(&mut paged, query, "/system/agents");
+            if paged.status != 200 {
+                return paged;
+            }
+            let document = serde_json::from_slice::<Value>(&paged.body).unwrap_or(ordered);
             let mut response = Response::bytes(200, "text/xml;charset=utf-8");
-            response.body = xmlout::to_xml(&ordered, None);
+            response.body = xmlout::to_xml(&document, None);
             response
                 .headers
                 .push(("Cache-Control".to_string(), "no-cache".to_string()));
+            let mut headed = Response::bytes(200, "application/json");
+            headed.body = paged.body;
+            add_paging_headers(&mut headed, query);
+            response.headers.extend(headed.headers);
             return response;
         }
         let text = serde_json::to_string(&drop_empty_value(&ordered)).unwrap_or_default();

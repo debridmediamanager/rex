@@ -1,0 +1,158 @@
+{
+ "_source": "Measured 2026-10-01. agents_paged: zen (PMS 1.42.2, the version plexsim reports), a GET with the X-Plex-Container-* request headers and no Accept, so XML. playlist and play_queue: plexscratch42 (a fresh 1.42.2) through cycle 83's C/P follow-up probes; ids are placeholders, updatedAt zeroed, no machine identifier kept.",
+ "agents_paged": {
+  "request": {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1",
+   "headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "2"
+    ]
+   ]
+  },
+  "status": 200,
+  "headers": [
+   [
+    "Content-Type",
+    "text/xml;charset=utf-8"
+   ],
+   [
+    "X-Plex-Container-Start",
+    "1"
+   ],
+   [
+    "X-Plex-Container-Total-Size",
+    "5"
+   ]
+  ],
+  "container": {
+   "size": "2",
+   "totalSize": "5",
+   "offset": "1"
+  },
+  "identifiers": [
+   "com.plexapp.agents.imdb",
+   "com.plexapp.agents.themoviedb"
+  ],
+  "unpaged_identifiers": [
+   "com.plexapp.agents.none",
+   "com.plexapp.agents.imdb",
+   "com.plexapp.agents.themoviedb",
+   "tv.plex.agents.movie",
+   "tv.plex.agents.none"
+  ]
+ },
+ "playlist": {
+  "steps": [
+   [
+    "POST",
+    "/playlists?type=video&title=C83X%20PL&smart=0&uri=server%3A%2F%2F{machine}%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F{item}",
+    200
+   ],
+   [
+    "PUT",
+    "/library/metadata/{pl}?summary=C83X%20summary&summary.locked=1",
+    200
+   ],
+   [
+    "DELETE",
+    "/playlists/{pl}",
+    204
+   ]
+  ],
+  "field_names": {
+   "/playlists/{pl}": [
+    "summary"
+   ],
+   "/playlists": [],
+   "/library/metadata/{pl}": [
+    "summary"
+   ]
+  },
+  "frames": [
+   {
+    "TimelineEntry": {
+     "identifier": "com.plexapp.plugins.library",
+     "sectionID": "-1",
+     "itemID": "{pl}",
+     "type": 15,
+     "title": "",
+     "state": 0,
+     "metadataState": "created",
+     "updatedAt": 0
+    }
+   },
+   {
+    "TimelineEntry": {
+     "identifier": "com.plexapp.plugins.library",
+     "sectionID": "-1",
+     "itemID": "{pl}",
+     "type": 15,
+     "title": "C83X PL",
+     "state": 3,
+     "metadataState": "loading",
+     "updatedAt": 0
+    }
+   },
+   {
+    "TimelineEntry": {
+     "identifier": "com.plexapp.plugins.library",
+     "sectionID": "-1",
+     "itemID": "{pl}",
+     "type": 15,
+     "title": "C83X PL",
+     "state": 5,
+     "updatedAt": 0
+    }
+   },
+   {
+    "TimelineEntry": {
+     "identifier": "com.plexapp.plugins.library",
+     "sectionID": "-1",
+     "itemID": "{pl}",
+     "type": 15,
+     "title": "C83X PL",
+     "state": 9,
+     "metadataState": "deleted",
+     "updatedAt": 0
+    }
+   }
+  ]
+ },
+ "play_queue": {
+  "steps": "a creator client builds a queue of a show (POST /playQueues ... own=1); another client reads it with own=1; the creator moves its last item after its first (PUT .../items/{last}/move?after={first}&own=1)",
+  "versions": [
+   [
+    "create",
+    1
+   ],
+   [
+    "other GET own=1",
+    2
+   ],
+   [
+    "creator PUT move own=1",
+    3
+   ],
+   [
+    "other GET own=1",
+    3
+   ],
+   [
+    "other GET own=1",
+    3
+   ],
+   [
+    "creator GET own=1",
+    4
+   ]
+  ],
+  "creator_new_queue_then_other_reads_old": 200,
+  "head_own_by_other_then_version": 2
+ }
+}

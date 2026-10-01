@@ -3281,3 +3281,10 @@ are changing; replay the client's exact request before altering behavior.
   its English subtitle as `English` under `fr`, while the same item's read says `French` and
   `Anglais` (`tests/fixtures/decision_stream_language_zen.json`). The native server kept the stored
   names; the oracle ran the item read's stream localiser over the decision too.
+- **`/system/agents` pages its XML like its JSON** (cycle 83, axis 2). zen (1.42.2) answers
+  `GET /system/agents?mediaType=1` with request headers `X-Plex-Container-Start: 1` and
+  `X-Plex-Container-Size: 2` and no `Accept` -- python-plexapi's `agents()` shape -- with
+  `size="2" totalSize="5" offset="1"`, the second and third agents and both `X-Plex-Container-*`
+  response headers. The native server wrote this XML itself, past the pipeline's pager, and sent
+  all five agents with no `totalSize`, so plexapi's `agents().totalSize` and `.offset` were None.
+  The JSON and the oracle were right. Any handler that renders its own XML skips the pager.
