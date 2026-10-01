@@ -154,5 +154,85 @@
   ],
   "creator_new_queue_then_other_reads_old": 200,
   "head_own_by_other_then_version": 2
+ },
+ "queue_add": {
+  "steps": "a queue of one movie (POST /playQueues?type=video&uri=...movie&own=1...), then PUT /playQueues/{id}?uri=<a show or season>&next=0|1&own=1...",
+  "add_show_next0": {
+   "before": [
+    [
+     "{movie}",
+     "movie"
+    ]
+   ],
+   "after": [
+    [
+     "{movie}",
+     "movie"
+    ],
+    [
+     "8",
+     "episode"
+    ],
+    [
+     "9",
+     "episode"
+    ],
+    [
+     "10",
+     "episode"
+    ],
+    [
+     "12",
+     "episode"
+    ],
+    [
+     "13",
+     "episode"
+    ],
+    [
+     "14",
+     "episode"
+    ]
+   ],
+   "show_leaves": [
+    "8",
+    "9",
+    "10",
+    "12",
+    "13",
+    "14"
+   ]
+  },
+  "add_season_next1": {
+   "before": [
+    [
+     "{movie}",
+     "movie"
+    ]
+   ],
+   "after": [
+    [
+     "{movie}",
+     "movie"
+    ],
+    [
+     "8",
+     "episode"
+    ],
+    [
+     "9",
+     "episode"
+    ],
+    [
+     "10",
+     "episode"
+    ]
+   ],
+   "season_leaves": [
+    "8",
+    "9",
+    "10"
+   ]
+  }
  }
 }

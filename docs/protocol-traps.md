@@ -3295,3 +3295,9 @@ are changing; replay the client's exact request before altering behavior.
   (200). A `HEAD` with `own=1` takes like the GET (2). The native server took on every method,
   so A's move stepped 2 -> 4, B's read re-took it (5), and A's next queue retired the queue B
   was playing (404); the oracle routed HEAD to the write router and never took on it.
+- **A play-queue ADD expands a show or a season like the create** (cycle 83, found confirming
+  the take rule). plexscratch42 (1.42.2): a one-movie queue plus `PUT /playQueues/{id}?uri=<show>
+  &next=0&own=1` is seven rows, the movie and the show's six episodes; a season with `next=1`
+  adds its three. The native server resolved the add's uri without the create's leaf expansion
+  and queued the show (or season) row itself, which has no Media -- Play Next and Add to Up Next
+  on a show handed the player a row it cannot play. The oracle's `_playable` was right.

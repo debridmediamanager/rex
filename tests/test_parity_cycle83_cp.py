@@ -154,11 +154,35 @@ def queue_take(srv):
     check("queue: a HEAD with own=1 takes it too", version == fx["head_own_by_other_then_version"], version)
 
 
+def queue_add(srv):
+    """plexscratch42, 1.42.2: adding a SHOW or a SEASON to a queue adds its episodes -- a movie
+    queue plus a six-episode show is seven rows, all leaves, and a season with `next=1` adds that
+    season's three. The native server resolved the add's uri without the leaf expansion its
+    create uses, so the queue got the show row itself, which has no Media to play."""
+    fx = FIXTURE["queue_add"]
+    for uri_key, label, nxt, case in (("20001", "show", "0", "add_show_next0"),
+                                      ("30004", "season", "1", "add_season_next1")):
+        status, doc = srv.json("POST", "/playQueues?type=video&extrasPrefixCount=0&uri=%s&%s"
+                               % (SHOW_URI.replace("20001", "1007"), PQX), "c83cp-add-" + label)
+        pq = doc["MediaContainer"]["playQueueID"]
+        leaves = [row["ratingKey"] for row in
+                  srv.json("GET", "/library/metadata/%s/%s" % (uri_key, "allLeaves" if label == "show" else "children"))
+                  [1]["MediaContainer"]["Metadata"]]
+        status, doc = srv.json("PUT", "/playQueues/%s?uri=%s&next=%s&%s"
+                               % (pq, SHOW_URI.replace("20001", uri_key), nxt, PQX), "c83cp-add-" + label)
+        rows = [(row["ratingKey"], row["type"]) for row in doc["MediaContainer"]["Metadata"]]
+        want = [("1007", "movie")] + [(key, "episode") for key in leaves]
+        check("queue add of a %s: the movie then its %d episodes (reference: 1 + %d)"
+              % (label, len(leaves), len(fx[case]["after"]) - 1),
+              status == 200 and rows == want and len(leaves) > 1, rows)
+
+
 def main():
     srv = Server()
     try:
         agents_paged(srv)
         queue_take(srv)
+        queue_add(srv)
     finally:
         srv.stop()
     print("PASS %d/%d" % (sum(results), len(results)))
