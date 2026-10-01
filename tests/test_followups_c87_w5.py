@@ -242,6 +242,64 @@ def run(port, fixture):
           status == write["status"]
           and all(values.get(k) == v for k, v in write["read_back"].items()), (status, values))
 
+    # -- the Recommended tab and Home ---------------------------------------------
+    randoms = fixture["witnesses"]["random_music_hubs"]
+    periods = {period: title for period, title in randoms["vault_periods"]}
+
+    def shelf_identity(hub):
+        return {k: hub.get(k) for k in ("hubIdentifier", "title", "type", "context", "size",
+                                         "more", "key", "attribution")
+                if k in hub}
+
+    for path in ("/hubs/sections/{S}?count=12&includeLibraryPlaylists=1&includeStations=1"
+                 "&includeRecentChannels=1&includeMeta=1&includeExternalMetadata=1"
+                 "&excludeFields=summary",
+                 "/hubs/sections/{S}?includeGuids=1&includeStations=1",
+                 "/hubs/sections/{S}", "/hubs/sections/{S}?includeStations=1",
+                 "/hubs/sections/{S}?includeExternalMetadata=1",
+                 "/hubs/sections/{S}?includeLibraryPlaylists=1"):
+        row, want = measured(path)
+        _status, body = ask(path, row["paging"])
+        got = (body.get("MediaContainer") or {}).get("Hub") or [] if isinstance(body, dict) else []
+        want = want["MediaContainer"]["Hub"]
+        short = path.split("?")[1][:40] if "?" in path else "bare"
+        check("hubs (%s): the measured %d music shelves in order" % (short, len(want)),
+              [h.get("hubIdentifier") for h in got]
+              == [h["hubIdentifier"].replace(".%s" % theirs, ".%s" % ours) for h in want],
+              [h.get("hubIdentifier") for h in got])
+        fixed_ok = True
+        for mine, theirs_hub in zip(got, want):
+            if theirs_hub.get("random"):
+                continue
+            expected = shelf_identity(retarget(theirs_hub, theirs, ours))
+            expected["hubIdentifier"] = theirs_hub["hubIdentifier"].replace(
+                ".%s" % theirs, ".%s" % ours)
+            if shelf_identity(mine) != expected:
+                fixed_ok = False
+                print("   ", shelf_identity(mine), expected)
+        check("hubs (%s): every non-random shelf's key, title, type and context" % short,
+              fixed_ok and got, "see above")
+        vault = next((h for h in got if str(h.get("hubIdentifier")).startswith("music.vault.")), {})
+        period = str(vault.get("key", "")).partition("lastViewedAt<=")[2].partition("&")[0]
+        check("hubs (%s): the vault shelf draws a measured period and names it" % short,
+              periods.get(period) == vault.get("title") and vault.get("random") is True, vault)
+        tour = next((h for h in got if str(h.get("hubIdentifier")).startswith("music.touring.")), {})
+        cutoff = str(tour.get("key", "")).partition("taggingCreatedAt>=")[2]
+        check("hubs (%s): the touring cutoff lies within the last day" % short,
+              cutoff.isdigit() and 0 <= time.time() - int(cutoff) <= 86400
+              and tour.get("random") is True, tour)
+    path = "/hubs/promoted?contentDirectoryID={S}&includeMeta=1&count=12"
+    row, want = measured(path)
+    _status, body = ask(path)
+    got = [h for h in body["MediaContainer"].get("Hub") or []
+           if str(h.get("hubIdentifier", "")).endswith(".%s" % ours)]
+    want = [retarget(h, theirs, ours) for h in want["MediaContainer"]["Hub"]
+            if h["hubIdentifier"].endswith(".%s" % theirs)]
+    check("Home's promoted call gives the music library its Recently Added albums shelf",
+          [(h.get("hubIdentifier"), h.get("title"), h.get("type"), h.get("key")) for h in got]
+          == [(h["hubIdentifier"].replace(".%s" % theirs, ".%s" % ours), h["title"], h["type"],
+               h["key"]) for h in want], got)
+
 
 def main():
     fixture = json.load(open(FIXTURE))

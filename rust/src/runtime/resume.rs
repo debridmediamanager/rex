@@ -894,13 +894,33 @@ impl Runtime {
                         .unwrap_or_default()
                 );
             }
+            let mut kind = if is_show { "mixed" } else { "movie" };
+            if section_type == "artist" {
+                // `server.py`: measured on plexscratch42 for an empty music library --
+                // `music.recent.added.<id>`, typed `album`, keyed on the library's albums
+                // by date added; under `pinnedContentDirectoryID` zen's swap onto the Home
+                // shelf's own identity (`home.music.recent`, "Recently Added Music",
+                // `type=8`). plexsim holds no music rows.
+                rows = Vec::new();
+                kind = "album";
+                identifier = format!("music.recent.added.{section_key}");
+                key = format!("/library/sections/{section_key}/all?type=9&sort=addedAt:desc");
+                if pinned.is_some() {
+                    identifier = format!("home.music.recent.{section_key}");
+                    shelf_title = "Recently Added Music".to_string();
+                    key = format!(
+                        "/hubs/home/recentlyAdded?type=8&pinnedContentDirectoryID={}",
+                        query.get("pinnedContentDirectoryID").cloned().unwrap_or_default()
+                    );
+                }
+            }
             let mut shelf = self.home_hub(
                 &identifier,
                 &shelf_title,
                 &key,
                 &rows,
                 query,
-                if is_show { "mixed" } else { "movie" },
+                kind,
                 "shelf",
                 true,
             );

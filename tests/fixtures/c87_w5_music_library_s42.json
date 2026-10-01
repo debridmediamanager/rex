@@ -7936,6 +7936,340 @@
    "status": 500,
    "content_type": "application/xml",
    "body": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"KeyError: tv.plex.agents.music\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 912, in get_agent_configuration\n    primary_metadata_cls = getattr(primary_access_point, self.agent_model_name(identifier, media_type))\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 1168, in agent_model_name\n    return 'ModernArtist' if self.agent_get_version(library_agent or identifier, media_type) &gt;= 2 else 'LegacyArtist'\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 1230, in agent_get_version\n    for agent in self.agent_info[identifier]:\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/code/sandbox.py\", line 108, in &lt;lambda&gt;\n    _getitem_           = lambda x, y: x.__getitem__(y),\nKeyError: u'tv.plex.agents.music'\n</Traceback>\n</Response>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/hubs/sections/{S}",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 22,
+     "librarySectionTitle": "W5 Music",
+     "librarySectionUUID": "REDACTED",
+     "Hub": [
+      {
+       "key": "/library/sections/22/all?viewCount>=1&type=8&sort=lastViewedAt:desc",
+       "title": "Recently Played Music",
+       "type": "artist",
+       "hubIdentifier": "music.recent.played.22",
+       "context": "hub.music.recent.played",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/library/sections/22/all?type=9&sort=addedAt:desc",
+       "title": "Recently Added in W5 Music",
+       "type": "album",
+       "hubIdentifier": "music.recent.added.22",
+       "context": "hub.music.recent.added",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/library/sections/22/all?type=8&viewCount>=50&lastViewedAt!=-1&lastViewedAt<=-3y&sort=random",
+       "title": "Haven't played in 3 years",
+       "type": "artist",
+       "hubIdentifier": "music.vault.22",
+       "context": "hub.music.vault",
+       "size": 0,
+       "more": false,
+       "random": true
+      },
+      {
+       "key": "/library/sections/22/all?type=8&tagType=306&taggingCreatedAt>=1790849266",
+       "title": "Artists on Tour",
+       "type": "artist",
+       "hubIdentifier": "music.touring.22",
+       "context": "hub.music.touring",
+       "size": 0,
+       "more": false,
+       "random": true
+      },
+      {
+       "key": "/library/sections/22/extras/all?extraType=4&extra.addedAt>=-2w&type=10&sourceType=8&extra.sort=addedAt:desc",
+       "title": "Recently Added Music Videos",
+       "type": "clip",
+       "hubIdentifier": "music.videos.new.22",
+       "context": "hub.music.videos.new",
+       "size": 0,
+       "more": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/hubs/sections/{S}?includeStations=1",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 22,
+     "librarySectionTitle": "W5 Music",
+     "librarySectionUUID": "REDACTED",
+     "Hub": [
+      {
+       "key": "/library/sections/22/all?viewCount>=1&type=8&sort=lastViewedAt:desc",
+       "title": "Recently Played Music",
+       "type": "artist",
+       "hubIdentifier": "music.recent.played.22",
+       "context": "hub.music.recent.played",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/library/sections/22/all?type=9&sort=addedAt:desc",
+       "title": "Recently Added in W5 Music",
+       "type": "album",
+       "hubIdentifier": "music.recent.added.22",
+       "context": "hub.music.recent.added",
+       "size": 0,
+       "more": false
+      },
+      {
+       "title": "Stations",
+       "type": "station",
+       "hubIdentifier": "music.stations.22",
+       "context": "hub.music.stations",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/library/sections/22/all?type=8&viewCount>=50&lastViewedAt!=-1&lastViewedAt<=-11mon&sort=random",
+       "title": "Haven't played in 11 months",
+       "type": "artist",
+       "hubIdentifier": "music.vault.22",
+       "context": "hub.music.vault",
+       "size": 0,
+       "more": false,
+       "random": true
+      },
+      {
+       "key": "/library/sections/22/all?type=8&tagType=306&taggingCreatedAt>=1790849266",
+       "title": "Artists on Tour",
+       "type": "artist",
+       "hubIdentifier": "music.touring.22",
+       "context": "hub.music.touring",
+       "size": 0,
+       "more": false,
+       "random": true
+      },
+      {
+       "key": "/library/sections/22/extras/all?extraType=4&extra.addedAt>=-2w&type=10&sourceType=8&extra.sort=addedAt:desc",
+       "title": "Recently Added Music Videos",
+       "type": "clip",
+       "hubIdentifier": "music.videos.new.22",
+       "context": "hub.music.videos.new",
+       "size": 0,
+       "more": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/hubs/sections/{S}?includeExternalMetadata=1",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 22,
+     "librarySectionTitle": "W5 Music",
+     "librarySectionUUID": "REDACTED",
+     "Hub": [
+      {
+       "key": "/library/sections/22/all?viewCount>=1&type=8&sort=lastViewedAt:desc",
+       "title": "Recently Played Music",
+       "type": "artist",
+       "hubIdentifier": "music.recent.played.22",
+       "context": "hub.music.recent.played",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/library/sections/22/all?type=9&sort=addedAt:desc",
+       "title": "Recently Added in W5 Music",
+       "type": "album",
+       "hubIdentifier": "music.recent.added.22",
+       "context": "hub.music.recent.added",
+       "size": 0,
+       "more": false
+      },
+      {
+       "attribution": "com.tidal",
+       "key": "/hubs/sections/22/newReleases",
+       "title": "New Releases on TIDAL",
+       "type": "album",
+       "hubIdentifier": "music.tidal.releases.new.22",
+       "context": "hub.music.tidal.releases.new",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/library/sections/22/all?type=8&viewCount>=50&lastViewedAt!=-1&lastViewedAt<=-7mon&sort=random",
+       "title": "Haven't played in 7 months",
+       "type": "artist",
+       "hubIdentifier": "music.vault.22",
+       "context": "hub.music.vault",
+       "size": 0,
+       "more": false,
+       "random": true
+      },
+      {
+       "key": "/library/sections/22/all?type=8&tagType=306&taggingCreatedAt>=1790849266",
+       "title": "Artists on Tour",
+       "type": "artist",
+       "hubIdentifier": "music.touring.22",
+       "context": "hub.music.touring",
+       "size": 0,
+       "more": false,
+       "random": true
+      },
+      {
+       "key": "/library/sections/22/extras/all?extraType=4&extra.addedAt>=-2w&type=10&sourceType=8&extra.sort=addedAt:desc",
+       "title": "Recently Added Music Videos",
+       "type": "clip",
+       "hubIdentifier": "music.videos.new.22",
+       "context": "hub.music.videos.new",
+       "size": 0,
+       "more": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/hubs/sections/{S}?includeLibraryPlaylists=1",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 22,
+     "librarySectionTitle": "W5 Music",
+     "librarySectionUUID": "REDACTED",
+     "Hub": [
+      {
+       "key": "/library/sections/22/all?viewCount>=1&type=8&sort=lastViewedAt:desc",
+       "title": "Recently Played Music",
+       "type": "artist",
+       "hubIdentifier": "music.recent.played.22",
+       "context": "hub.music.recent.played",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/library/sections/22/all?type=9&sort=addedAt:desc",
+       "title": "Recently Added in W5 Music",
+       "type": "album",
+       "hubIdentifier": "music.recent.added.22",
+       "context": "hub.music.recent.added",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/playlists/all?type=15&playlistType=audio&sort=lastViewedAt:desc&sectionID=22",
+       "title": "Recent Playlists",
+       "type": "playlist",
+       "hubIdentifier": "recent.library.playlists.22",
+       "context": "hub.recent.library.playlists",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/library/sections/22/all?type=8&viewCount>=50&lastViewedAt!=-1&lastViewedAt<=-10mon&sort=random",
+       "title": "Haven't played in 10 months",
+       "type": "artist",
+       "hubIdentifier": "music.vault.22",
+       "context": "hub.music.vault",
+       "size": 0,
+       "more": false,
+       "random": true
+      },
+      {
+       "key": "/library/sections/22/all?type=8&tagType=306&taggingCreatedAt>=1790849266",
+       "title": "Artists on Tour",
+       "type": "artist",
+       "hubIdentifier": "music.touring.22",
+       "context": "hub.music.touring",
+       "size": 0,
+       "more": false,
+       "random": true
+      },
+      {
+       "key": "/library/sections/22/extras/all?extraType=4&extra.addedAt>=-2w&type=10&sourceType=8&extra.sort=addedAt:desc",
+       "title": "Recently Added Music Videos",
+       "type": "clip",
+       "hubIdentifier": "music.videos.new.22",
+       "context": "hub.music.videos.new",
+       "size": 0,
+       "more": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/hubs/promoted?contentDirectoryID={S}&includeMeta=1&count=12",
+   "paging": null,
+   "status": 200,
+   "content_type": "application/json",
+   "body": {
+    "MediaContainer": {
+     "size": 3,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "Hub": [
+      {
+       "key": "/hubs/home/continueWatching",
+       "title": "Continue Watching",
+       "type": "mixed",
+       "hubIdentifier": "home.continue",
+       "context": "hub.home.continue",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/hubs/home/onDeck",
+       "title": "On Deck",
+       "type": "episode",
+       "hubIdentifier": "home.ondeck",
+       "context": "hub.home.ondeck",
+       "size": 0,
+       "more": false
+      },
+      {
+       "key": "/library/sections/22/all?type=9&sort=addedAt:desc",
+       "title": "Recently Added in W5 Music",
+       "type": "album",
+       "hubIdentifier": "music.recent.added.22",
+       "context": "hub.music.recent.added",
+       "size": 0,
+       "more": false
+      }
+     ]
+    }
+   }
   }
  ],
  "witnesses": {
@@ -8106,6 +8440,35 @@
     "albumSort": "2",
     "artistBios": "false"
    }
+  },
+  "random_music_hubs": {
+   "note": "`music.vault` and `music.touring` are random shelves: sampled every 20 s on plexscratch42 and plexscratch, plus the reads above. The vault's period (with its title) and the touring cutoff's distance before the read.",
+   "vault_periods": [
+    [
+     "-2mon",
+     "Haven't played in 2 months"
+    ],
+    [
+     "-2y",
+     "Haven't played in 2 years"
+    ],
+    [
+     "-3y",
+     "Haven't played in 3 years"
+    ],
+    [
+     "-4mon",
+     "Haven't played in 4 months"
+    ],
+    [
+     "-8mon",
+     "Haven't played in 8 months"
+    ]
+   ],
+   "touring_cutoff_age_seconds": [
+    36011,
+    75801
+   ]
   }
  }
 }

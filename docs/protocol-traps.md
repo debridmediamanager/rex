@@ -3757,3 +3757,18 @@ are changing; replay the client's exact request before altering behavior.
   claim-gated, and the copy refuses a write to one as unknown -- so plexsim serves the thirteen.
   plexsim answered an EMPTY list (and refused every write as unknown), so the Edit Library
   dialog's Advanced tab was blank and python-plexapi's `settings()` was []. CLIENT-VISIBLE.
+- **A music library's Recommended tab is eight shelves, three of them behind request flags.**
+  Measured on plexscratch42 and plexscratch over an empty music library: `/hubs/sections/{id}` is
+  always `music.recent.played`, `music.recent.added` ("Recently Added in <library>", `album`),
+  `music.vault`, `music.touring` and `music.videos.new`; `includeLibraryPlaylists=1` adds the
+  audio Recent Playlists after Recently Added, `includeStations=1` then `music.stations` (no key),
+  `includeExternalMetadata=1` then `music.tidal.releases.new` (`attribution="com.tidal"`). Plex
+  Web sends all three (8 shelves), python-plexapi's `hubs()`/`stations()` `includeStations=1`
+  alone (6). The vault and touring shelves are `random`: a real PMS redraws the vault's period
+  (2 months, 4 months, 8 months, 2 years, 3 years seen) and a `taggingCreatedAt` cutoff within the
+  last day every few minutes; plexsim draws once per process. `/hubs/promoted` for the library is
+  `music.recent.added.<id>` (the copy ignores `pinnedContentDirectoryID`; under it plexsim follows
+  zen's swap to `home.music.recent`). `style`/`promoted` are absent on the unclaimed copies for
+  every library and kept as the claimed movie and show shelves carry them. plexsim answered a
+  MOVIE library's shelves, so `stations()` returned None instead of []. CLIENT-VISIBLE
+  (python-plexapi); Plex Web draws an empty library's page the same either way.

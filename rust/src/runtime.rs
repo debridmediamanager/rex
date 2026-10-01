@@ -10568,6 +10568,9 @@ impl Runtime {
                 return refusal;
             }
         }
+        if section.get("type").and_then(Value::as_str) == Some("artist") {
+            return self.music_section_hubs(section_key, section, query);
+        }
         let title = section
             .get("title")
             .and_then(Value::as_str)
@@ -11119,6 +11122,102 @@ impl Runtime {
         } else {
             json!(section_key)
         };
+        let mut fields = Map::from_iter([
+            ("librarySectionID".to_string(), section_id),
+            ("librarySectionTitle".to_string(), json!(title)),
+        ]);
+        if let Some(uuid) = section.get("uuid").filter(|uuid| !uuid.is_null()) {
+            fields.insert("librarySectionUUID".to_string(), uuid.clone());
+        }
+        fields.insert("Hub".to_string(), Value::Array(hubs));
+        Response::json(200, self.hub_container(fields))
+    }
+
+    /// `server.py` `music_section_hubs`: a MUSIC library's Recommended tab, measured on
+    /// both copies over an empty library -- five shelves always, Recent Playlists under
+    /// `includeLibraryPlaylists=1`, Stations under `includeStations=1` and New Releases
+    /// on TIDAL under `includeExternalMetadata=1`, in that order after Recently Added.
+    /// plexsim holds no music, so every shelf is the empty one. The two `random` shelves'
+    /// parameters (the vault's period, the touring cutoff within the last day) are drawn
+    /// once per process and held, as the sampled shelves are.
+    fn music_section_hubs(&self, section_key: &str, section: &Value, query: &HashMap<String, String>) -> Response {
+        const PERIODS: [(&str, &str); 5] = [
+            ("-2mon", "2 months"),
+            ("-4mon", "4 months"),
+            ("-8mon", "8 months"),
+            ("-2y", "2 years"),
+            ("-3y", "3 years"),
+        ];
+        static DRAW: std::sync::OnceLock<(usize, i64)> = std::sync::OnceLock::new();
+        let (period, cutoff) = *DRAW.get_or_init(|| {
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|duration| duration.as_nanos() as u64)
+                .unwrap_or_default();
+            let mixed = (nanos ^ (std::process::id() as u64).rotate_left(32))
+                .wrapping_mul(0x9E37_79B9_7F4A_7C15);
+            ((mixed >> 33) as usize % PERIODS.len(), now() - ((mixed >> 7) % 86_400) as i64)
+        });
+        let (period, words) = PERIODS[period];
+        let title = section.get("title").and_then(Value::as_str).unwrap_or_default();
+        let on = |name: &str| query.get(name).is_some_and(|value| is_true_option(value));
+        let base = format!("/library/sections/{section_key}/");
+        let shelf = |stem: &str, shelf_title: String, kind: &str, key: Option<String>, extra: &[(&str, Value)]| {
+            let mut hub = Map::new();
+            for (name, value) in extra {
+                if *name == "attribution" {
+                    hub.insert(name.to_string(), value.clone());
+                }
+            }
+            if let Some(key) = key {
+                hub.insert("key".to_string(), json!(key));
+            }
+            hub.insert("title".to_string(), json!(shelf_title));
+            hub.insert("type".to_string(), json!(kind));
+            hub.insert("hubIdentifier".to_string(), json!(format!("{stem}.{section_key}")));
+            hub.insert("context".to_string(), json!(format!("hub.{stem}")));
+            hub.insert("size".to_string(), json!(0));
+            hub.insert("more".to_string(), json!(false));
+            hub.insert("style".to_string(), json!("shelf"));
+            for (name, value) in extra {
+                if *name != "attribution" {
+                    hub.insert(name.to_string(), value.clone());
+                }
+            }
+            Value::Object(hub)
+        };
+        let mut hubs = vec![
+            shelf("music.recent.played", "Recently Played Music".to_string(), "artist",
+                  Some(format!("{base}all?viewCount>=1&type=8&sort=lastViewedAt:desc")), &[]),
+            shelf("music.recent.added", format!("Recently Added in {title}"), "album",
+                  Some(format!("{base}all?type=9&sort=addedAt:desc")), &[("promoted", json!(true))]),
+        ];
+        if on("includeLibraryPlaylists") {
+            hubs.push(shelf("recent.library.playlists", "Recent Playlists".to_string(), "playlist",
+                            Some(format!("/playlists/all?type=15&playlistType=audio&sort=lastViewedAt:desc&sectionID={section_key}")),
+                            &[]));
+        }
+        if on("includeStations") {
+            hubs.push(shelf("music.stations", "Stations".to_string(), "station", None, &[]));
+        }
+        if on("includeExternalMetadata") {
+            hubs.push(shelf("music.tidal.releases.new", "New Releases on TIDAL".to_string(), "album",
+                            Some(format!("/hubs/sections/{section_key}/newReleases")),
+                            &[("attribution", json!("com.tidal"))]));
+        }
+        hubs.push(shelf("music.vault", format!("Haven't played in {words}"), "artist",
+                        Some(format!("{base}all?type=8&viewCount>=50&lastViewedAt!=-1&lastViewedAt<={period}&sort=random")),
+                        &[("random", json!(true))]));
+        hubs.push(shelf("music.touring", "Artists on Tour".to_string(), "artist",
+                        Some(format!("{base}all?type=8&tagType=306&taggingCreatedAt>={cutoff}")),
+                        &[("random", json!(true))]));
+        hubs.push(shelf("music.videos.new", "Recently Added Music Videos".to_string(), "clip",
+                        Some(format!("{base}extras/all?extraType=4&extra.addedAt>=-2w&type=10&sourceType=8&extra.sort=addedAt:desc")),
+                        &[]));
+        let section_id = section_key
+            .parse::<u64>()
+            .map(|id| json!(id))
+            .unwrap_or_else(|_| json!(section_key));
         let mut fields = Map::from_iter([
             ("librarySectionID".to_string(), section_id),
             ("librarySectionTitle".to_string(), json!(title)),

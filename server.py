@@ -14555,10 +14555,27 @@ class PlexSim:
                 shelf_title = "Recently Added %s" % ("TV" if is_show else "Movies")
                 key = ("/hubs/home/recentlyAdded?type=%s&pinnedContentDirectoryID=%s"
                        % (2 if is_show else 1, query["pinnedContentDirectoryID"]))
+            kind = "mixed" if is_show else "movie"
+            if self.section_kind(section) == "artist":
+                # Measured on plexscratch42 for an empty music library: the shelf is
+                # `music.recent.added.<id>`, "Recently Added in <library>", typed
+                # `album` and keyed on the library's own albums by date added. The copy
+                # ignores `pinnedContentDirectoryID` for every library (zen does not);
+                # under it plexsim follows zen's swap onto the Home shelf's own
+                # identity, which `/hubs` measures for music as `home.music.recent`,
+                # "Recently Added Music", `type=8`. plexsim holds no music rows.
+                rows, kind = [], "album"
+                identifier = "music.recent.added.%s" % section["key"]
+                key = "/library/sections/%s/all?type=9&sort=addedAt:desc" % section["key"]
+                if pinned is not None:
+                    identifier = "home.music.recent.%s" % section["key"]
+                    shelf_title = "Recently Added Music"
+                    key = ("/hubs/home/recentlyAdded?type=8&pinnedContentDirectoryID=%s"
+                           % query["pinnedContentDirectoryID"])
             hubs.append(self.home_hub(
                 identifier, shelf_title, key,
                 [_listing_row(r) for r in rows], query,
-                kind="mixed" if is_show else "movie", promoted=True))
+                kind=kind, promoted=True))
         # Cycle 59, measured on zen, kids and plexscratch42: the shelf is ALSO answered
         # when `contentDirectoryID` names `playlists` -- Home's call for the pinned
         # Playlists source -- and on zen and kids even with no playlist at all.
@@ -15228,6 +15245,9 @@ class PlexSim:
         of its own catalog.
         """
         section = self.catalog.section(section_id) or {}
+        if self.section_kind(section) == "artist":
+            return self.music_section_hubs(section_id, section, count, library_playlists,
+                                           query or {})
         is_show = section.get("type") == "show"
         title = section.get("title") or ""
         items = self.catalog.section_items(section_id)
@@ -15435,6 +15455,84 @@ class PlexSim:
                 "playlist",
                 "/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc"
                 "&sectionID=%s" % section_id, "hub.recent.library.playlists"))
+        return self.hub_container(
+            librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
+            librarySectionTitle=title,
+            librarySectionUUID=section.get("uuid"),
+            Hub=hubs,
+        )
+
+    # The Recommended tab of a MUSIC library, measured on plexscratch42 (1.42.2) and
+    # plexscratch (1.43.4) over an empty library: five shelves always, and three more
+    # each behind its own request flag -- Recent Playlists after Recently Added under
+    # `includeLibraryPlaylists=1`, Stations after that under `includeStations=1`, New
+    # Releases on TIDAL after that under `includeExternalMetadata=1`. Plex Web's own
+    # request sends all three (8 shelves); python-plexapi's `hubs()` and `stations()`
+    # send `includeStations=1` alone (6).
+    MUSIC_VAULT_PERIODS = (("-2mon", "2 months"), ("-4mon", "4 months"),
+                           ("-8mon", "8 months"), ("-2y", "2 years"), ("-3y", "3 years"))
+
+    def music_section_hubs(self, section_id, section, count, library_playlists, query):
+        """`/hubs/sections/{id}` for a music library.
+
+        plexsim holds no music, so every shelf is the EMPTY one a real PMS answers for an
+        empty library -- `size` 0, `more` false, no `hubKey`. It answered a MOVIE
+        library's six shelves instead, so python-plexapi's `stations()` found no
+        Stations hub and returned None where a real server gives [].
+
+        Two shelves are `random`, and a real PMS redraws their parameters every few
+        minutes: "Haven't played in ..." picks its period from the five values the
+        copies were seen to use, and "Artists on Tour" a `taggingCreatedAt` cutoff
+        within the last day. What drives the draw is not measured; as with the sampled
+        shelves above, plexsim draws once per process and holds it.
+        """
+        title = section.get("title") or ""
+        seed = self.shelf_seeds.get(("music.random", "")) 
+        if seed is None:
+            seed = self.shelf_seeds[("music.random", "")] = (
+                random.random(), int(time.time() - random.random() * 86400))
+        period, words = self.MUSIC_VAULT_PERIODS[int(seed[0] * len(self.MUSIC_VAULT_PERIODS))]
+        base = "/library/sections/%s/" % section_id
+
+        def shelf(stem, shelf_title, kind, key=None, **extra):
+            built = {}
+            if extra.get("attribution"):
+                built["attribution"] = extra.pop("attribution")
+            if key:
+                built["key"] = key
+            built.update(title=shelf_title, type=kind,
+                         hubIdentifier="%s.%s" % (stem, section_id),
+                         context="hub.%s" % stem, size=0, more=False, style="shelf")
+            built.update(extra)
+            return built
+
+        hubs = [
+            shelf("music.recent.played", "Recently Played Music", "artist",
+                  base + "all?viewCount>=1&type=8&sort=lastViewedAt:desc"),
+            shelf("music.recent.added", "Recently Added in %s" % title, "album",
+                  base + "all?type=9&sort=addedAt:desc", promoted=True),
+        ]
+        if library_playlists:
+            hubs.append(shelf("recent.library.playlists", "Recent Playlists", "playlist",
+                              "/playlists/all?type=15&playlistType=audio"
+                              "&sort=lastViewedAt:desc&sectionID=%s" % section_id))
+        if _option_on(query, "includeStations"):
+            hubs.append(shelf("music.stations", "Stations", "station"))
+        if _option_on(query, "includeExternalMetadata"):
+            hubs.append(shelf("music.tidal.releases.new", "New Releases on TIDAL", "album",
+                              "/hubs/sections/%s/newReleases" % section_id,
+                              attribution="com.tidal"))
+        hubs += [
+            shelf("music.vault", "Haven't played in %s" % words, "artist",
+                  base + "all?type=8&viewCount>=50&lastViewedAt!=-1&lastViewedAt<=%s"
+                  "&sort=random" % period, random=True),
+            shelf("music.touring", "Artists on Tour", "artist",
+                  base + "all?type=8&tagType=306&taggingCreatedAt>=%d" % seed[1],
+                  random=True),
+            shelf("music.videos.new", "Recently Added Music Videos", "clip",
+                  base + "extras/all?extraType=4&extra.addedAt>=-2w&type=10&sourceType=8"
+                  "&extra.sort=addedAt:desc"),
+        ]
         return self.hub_container(
             librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
             librarySectionTitle=title,
