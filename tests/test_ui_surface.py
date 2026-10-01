@@ -29376,12 +29376,19 @@ def main():
     # acceptor pool, its ordinals and its hexadecimal request allocator are not emulated and
     # stay recorded in HANDOVER 8; these are plexsim's own live connections.)
     status_c52k, body_c52k, head_c52k = request(base, "GET", "/connections", want_json=False)
-    first_c52k = body_c52k.decode("utf-8", "replace").splitlines()[:1]
+    lines_c52k = body_c52k.decode("utf-8", "replace").splitlines()
+    first_c52k = lines_c52k[:1]
+    # Cycle 85: the previous request's connection can still be listed (its handler has sent
+    # the answer and not yet dropped its row) when this request arrives on a new one -- on
+    # either server, under load -- so the asking connection's line need not be the first.
+    import re as re_c52k
+    grammar_c52k = re_c52k.compile(r"^\d+ \S+ - (Uninitialized|Routing - \S+ \S+ #[0-9a-f]+.*)$")
     check("/connections is a plain-text connection report",
           status_c52k == 200 and head_c52k.get("Content-Type") == "text/plain"
           and b"MediaContainer" not in body_c52k
-          and first_c52k and " - Routing - GET /connections #" in first_c52k[0],
-          "%s %s %r" % (status_c52k, head_c52k.get("Content-Type"), first_c52k[:1]))
+          and lines_c52k and all(grammar_c52k.match(l) for l in lines_c52k)
+          and any(" - Routing - GET /connections #" in l for l in lines_c52k),
+          "%s %s %r" % (status_c52k, head_c52k.get("Content-Type"), lines_c52k[:3]))
     status_post_c52k, post_c52k, _ = request(base, "POST", "/connections", want_json=False)
     check("/connections answers the dispatcher to a write verb",
           status_post_c52k == 200 and b'content="plugins"' in post_c52k,
