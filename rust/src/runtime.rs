@@ -4381,7 +4381,8 @@ impl Runtime {
         self.push_list_timeline_titled(item_id, kind, state, metadata, "");
     }
 
-    /// A list's frame naming the list: a real PMS's `created` frame carries an empty
+    /// A list's frame naming the list (cycle 83, plexscratch42: the fields come in the order
+    /// every other frame here uses -- this wrote them alphabetically): a real PMS's `created` frame carries an empty
     /// title and its `deleted` frame the playlist's own (plexscratch42, 1.42.2, both
     /// through python-plexapi's `createPlaylist` and `delete`), as the oracle's
     /// `notify_deleted` does with the row's title.
@@ -4397,13 +4398,13 @@ impl Runtime {
             "timeline",
             json!({"TimelineEntry": {
                 "identifier": "com.plexapp.plugins.library",
-                "itemID": item_id,
-                "metadataState": metadata,
                 "sectionID": "-1",
-                "state": state,
-                "title": title,
+                "itemID": item_id,
                 "type": kind,
-                "updatedAt": now()
+                "title": title,
+                "state": state,
+                "updatedAt": now(),
+                "metadataState": metadata
             }}),
         );
     }
@@ -20198,10 +20199,15 @@ impl Runtime {
             return Response::error(404, "plexsim: not found");
         }
         if request.method == "DELETE" && segments.len() == 1 {
-            let removed = self.playlists.remove(id);
-            let existed = removed.is_some();
-            if let Some(playlist) = removed {
-                self.push_list_timeline_titled(id, 15, 9, "deleted", &playlist.title);
+            let title = self
+                .playlists
+                .get(id)
+                .map(|playlist| self.playlist_row(playlist, false, false))
+                .and_then(|row| row.get("title").and_then(Value::as_str).map(str::to_string))
+                .unwrap_or_default();
+            let existed = self.playlists.remove(id).is_some();
+            if existed {
+                self.push_list_timeline_titled(id, 15, 9, "deleted", &title);
             }
             self.dirty = true;
             self.save_if_dirty();

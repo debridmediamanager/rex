@@ -177,12 +177,68 @@ def queue_add(srv):
               status == 200 and rows == want and len(leaves) > 1, rows)
 
 
+class Frames:
+    """Timeline frames off `/:/eventsource/notifications`, in arrival order."""
+
+    def __init__(self, srv):
+        import threading
+        self.frames = []
+        self.conn = http.client.HTTPConnection("127.0.0.1", srv.port, timeout=30)
+        self.conn.request("GET", "/:/eventsource/notifications?filters=timeline",
+                          headers={"X-Plex-Client-Identifier": "c83cp-listener"})
+        self.resp = self.conn.getresponse()
+        threading.Thread(target=self._read, daemon=True).start()
+        time.sleep(0.5)
+
+    def _read(self):
+        try:
+            while True:
+                line = self.resp.fp.readline()
+                if not line:
+                    return
+                line = line.decode("utf-8", "replace").strip()
+                if line.startswith("data:") and "TimelineEntry" in line:
+                    self.frames.append(json.loads(line[5:].strip(), object_pairs_hook=list))
+        except Exception:
+            return
+
+
+def playlist_frames(srv):
+    """plexscratch42, 1.42.2: a playlist's create frame carries an empty title and its delete
+    frame the list's title, both with the field order every other frame has (identifier,
+    sectionID, itemID, type, title, state). The native server sent both alphabetically and the
+    delete with an empty title; the oracle was right. (The trailing `metadataState`/`updatedAt`
+    pair is the recorded section-8 order bound, the same on every frame of both servers.)"""
+    fx = FIXTURE["playlist"]
+    listener = Frames(srv)
+    uri = SHOW_URI.replace("20001", "1007")
+    status, doc = srv.json("POST", "/playlists?type=video&title=C83X%%20PL&smart=0&uri=%s" % uri)
+    pl = doc["MediaContainer"]["Metadata"][0]["ratingKey"]
+    time.sleep(0.3)
+    srv.req("PUT", "/library/metadata/%s?summary=C83X%%20summary&summary.locked=1" % pl)
+    time.sleep(0.3)
+    status, _, _ = srv.req("DELETE", "/playlists/%s" % pl)
+    time.sleep(0.6)
+    got = [dict(frame[0][1]) for frame in listener.frames
+           if frame[0][0] == "TimelineEntry" and dict(frame[0][1]).get("itemID") == str(pl)]
+    orders = [[k for k, _ in frame[0][1]][:6] for frame in listener.frames
+              if frame[0][0] == "TimelineEntry" and dict(frame[0][1]).get("itemID") == str(pl)]
+    want = [f["TimelineEntry"] for f in fx["frames"]]
+    keys = ("sectionID", "type", "title", "state", "metadataState")
+    check("playlist frames: create, edit pair, delete -- their values",
+          [{k: f.get(k) for k in keys} for f in got] == [{k: f.get(k) for k in keys} for f in want],
+          [{k: f.get(k) for k in keys} for f in got])
+    lead = list(want[0])[:6]
+    check("playlist frames: the leading field order", orders and all(o == lead for o in orders), orders)
+
+
 def main():
     srv = Server()
     try:
         agents_paged(srv)
         queue_take(srv)
         queue_add(srv)
+        playlist_frames(srv)
     finally:
         srv.stop()
     print("PASS %d/%d" % (sum(results), len(results)))

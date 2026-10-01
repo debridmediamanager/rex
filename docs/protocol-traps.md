@@ -3301,3 +3301,9 @@ are changing; replay the client's exact request before altering behavior.
   adds its three. The native server resolved the add's uri without the create's leaf expansion
   and queued the show (or season) row itself, which has no Media -- Play Next and Add to Up Next
   on a show handed the player a row it cannot play. The oracle's `_playable` was right.
+- **A playlist's delete frame carries its title** (cycle 83, axis 3, C's `pq.py`). plexscratch42
+  (1.42.2): `POST /playlists` pushes type 15, sectionID "-1", title "", state 0 `created`; the
+  `DELETE` pushes state 9 `deleted` with the list's TITLE. The native server sent the delete's
+  title empty and wrote both frames' fields alphabetically (a `json!` literal keeps its written
+  order); every other frame leads identifier, sectionID, itemID, type, title, state. The
+  trailing `metadataState`/`updatedAt` pair stays the recorded section-8 order bound.
