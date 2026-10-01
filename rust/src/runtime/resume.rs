@@ -1042,12 +1042,18 @@ pub(super) fn paging_values(query: &HashMap<String, String>) -> Result<Option<(i
     Ok(Some((parse(start)?, size)))
 }
 
-/// An UNMATCHED row's guid: `local://` (never matched, a season or episode unmatch)
-/// or `tv.plex.agents.none://` (a movie or show unmatch, or the none agent).
+/// A row the Guid gate strips: an UNMATCHED guid -- `local://` (never matched, a season or
+/// episode unmatch) or `tv.plex.agents.none://` (a movie or show unmatch, or the none agent) --
+/// or the LEGACY Personal Media agent's `com.plexapp.agents.none://`. Cycle 84, measured on
+/// plexscratch42 (1.42.2) with a movie library on that agent (`tests/fixtures/cycle84_c.json`):
+/// no `Guid` key in any `includeGuids=1` listing or the detail. Such a row is NOT unmatched --
+/// `unmatched=1` finds none of them -- so only the Guid gates read this.
 pub(super) fn unmatched_guid(row: &Value) -> bool {
-    row.get("guid")
-        .and_then(Value::as_str)
-        .is_some_and(|guid| guid.starts_with("local://") || guid.starts_with("tv.plex.agents.none://"))
+    row.get("guid").and_then(Value::as_str).is_some_and(|guid| {
+        guid.starts_with("local://")
+            || guid.starts_with("tv.plex.agents.none://")
+            || guid.starts_with("com.plexapp.agents.none://")
+    })
 }
 
 /// The `Guid` list a LISTING row carries under `includeGuids=1`, or None for no key --

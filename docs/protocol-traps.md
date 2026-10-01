@@ -3205,6 +3205,18 @@ are changing; replay the client's exact request before altering behavior.
   `local://` episode or show, a none-agent library's movie) has no key on its detail either. Both
   servers kept an unmatched movie's stored ids in every listing, and `/hubs` and the native child
   lists gave `local://` rows a one-entry list.
+- **A LEGACY Personal Media row (`com.plexapp.agents.none://`) has no `Guid` key either, and is NOT
+  unmatched** (cycle 84; plexscratch42 1.42.2, `tests/fixtures/cycle84_c.json`). A movie library
+  created with `agent=com.plexapp.agents.none&scanner=Plex Movie Scanner&language=xn` over the
+  reference media gives every row `com.plexapp.agents.none://<sha1>?lang=xn`; under
+  `includeGuids=1` the grid, `?type=1`, `/recentlyAdded`, `/unwatched`, the section search,
+  `/library/all`, the hub pages, `/hubs`, home's Recently Added and the DETAIL all answer it with no
+  `Guid` key, JSON and XML. But `unmatched=1` finds none of the 21 rows and `unmatched=0` all of them:
+  the Guid gate takes the prefix and the `unmatched` filter does not. Both servers gave the row a
+  one-entry list naming its own guid in every listing; the oracle's filter tested `"none://" in
+  guid` and so counted it as unmatched (the native already tested the prefix). No client-built
+  catalog row carries this guid (`build_catalog.py` mints `plex://` and `local://`); the
+  Background Processing playlist does, and its `/playlists` row already had no `Guid`.
 - **A route that reads its own server must carry the client's QUERY token** (cycle 83, axis 11).
   Plex for Android sends `X-Plex-Token` as the last query parameter on every image request
   (`/photo/:/transcode?url=...&width=240&height=240&minSize=1&format=jpeg&X-Plex-Token=...`, no

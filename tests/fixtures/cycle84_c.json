@@ -1,0 +1,389 @@
+{
+ "_provenance": "plexscratch42 (PMS 1.42.2.10156), 2026-10-01: a movie library created on the legacy Personal Media agent (agent=com.plexapp.agents.none, scanner=Plex Movie Scanner, language=xn) over the reference media, scanned, read, then deleted. Rows trimmed to the probe movie; tokens and server identifiers removed.",
+ "exchanges": [
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/all?includeGuids=1",
+   "accept": "application/json",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/all?includeGuids=1",
+   "accept": "application/xml",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/all?type=1&includeGuids=1",
+   "accept": "application/json",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/all?type=1&includeGuids=1",
+   "accept": "application/xml",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/recentlyAdded?includeGuids=1",
+   "accept": "application/json",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/recentlyAdded?includeGuids=1",
+   "accept": "application/xml",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/unwatched?includeGuids=1",
+   "accept": "application/json",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/unwatched?includeGuids=1",
+   "accept": "application/xml",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/search?type=1&title=Steel&includeGuids=1",
+   "accept": "application/json",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/search?type=1&title=Steel&includeGuids=1",
+   "accept": "application/xml",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/all?librarySectionID={S}&includeGuids=1",
+   "accept": "application/json",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "librarySectionTitle",
+      "librarySectionID",
+      "librarySectionKey",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/all?librarySectionID={S}&includeGuids=1",
+   "accept": "application/xml",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "librarySectionTitle",
+      "librarySectionID",
+      "librarySectionKey",
+      "subtype",
+      "summary",
+      "year",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/{M}?includeGuids=1",
+   "accept": "application/json",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "librarySectionTitle",
+      "librarySectionID",
+      "librarySectionKey",
+      "subtype",
+      "summary",
+      "year",
+      "duration",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt",
+      "createdAtAccuracy",
+      "createdAtTZOffset"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/{M}?includeGuids=1",
+   "accept": "application/xml",
+   "status": 200,
+   "rows": [
+    {
+     "guid": "com.plexapp.agents.none://34a3803d5c2026bb5779ba1418cf5c7ce86770e6?lang=xn",
+     "keys": [
+      "ratingKey",
+      "key",
+      "guid",
+      "type",
+      "title",
+      "librarySectionTitle",
+      "librarySectionID",
+      "librarySectionKey",
+      "subtype",
+      "summary",
+      "year",
+      "duration",
+      "originallyAvailableAt",
+      "addedAt",
+      "updatedAt",
+      "createdAtAccuracy",
+      "createdAtTZOffset"
+     ],
+     "Guid": "<absent>"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/all?unmatched=1",
+   "accept": "application/json",
+   "status": 200,
+   "size": 0,
+   "contains_probe": false
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/{S}/all?unmatched=0",
+   "accept": "application/json",
+   "status": 200,
+   "size": 21,
+   "contains_probe": true
+  }
+ ]
+}

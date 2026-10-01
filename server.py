@@ -3540,10 +3540,17 @@ class _TitleValue(str):
 # episode unmatch) and `tv.plex.agents.none://` (a movie or show unmatch, or a library
 # on the none agent).
 UNMATCHED_GUID_PREFIXES = ("local://", "tv.plex.agents.none://")
+# Cycle 84, measured on plexscratch42 (1.42.2) with a movie library created on the LEGACY
+# Personal Media agent (`com.plexapp.agents.none`, `tests/fixtures/cycle84_c.json`): its rows'
+# `com.plexapp.agents.none://<hash>?lang=xn` guid carries no `Guid` key in any `includeGuids=1`
+# listing or the detail either. It is not an UNMATCHED row -- `unmatched=1` finds none of them --
+# so it joins the Guid gate below and nothing else.
+GUIDLESS_PREFIXES = UNMATCHED_GUID_PREFIXES + ("com.plexapp.agents.none://",)
 
 
 def _unmatched(row):
-    return str((row or {}).get("guid") or "").startswith(UNMATCHED_GUID_PREFIXES)
+    """The Guid gate's predicate: no `Guid` key, and no one-entry list naming the guid."""
+    return str((row or {}).get("guid") or "").startswith(GUIDLESS_PREFIXES)
 
 
 def _listing_guids(row):
@@ -11707,7 +11714,11 @@ class PlexSim:
             return 1 if row.get("viewOffset") else 0
         if field == "unmatched":
             guid = str(row.get("guid") or "")
-            return 1 if (guid.startswith("local://") or "none://" in guid) else 0
+            # Cycle 84, measured on plexscratch42 (1.42.2): a LEGACY Personal Media row
+            # (`com.plexapp.agents.none://`) is not unmatched -- `unmatched=1` finds none of a
+            # library of them and `unmatched=0` all -- so `none://` is a PREFIX here, as the
+            # native server already had it, not a substring.
+            return 1 if guid.startswith(("local://", "tv.plex.agents.none://", "none://")) else 0
         if (field in LEAF_COUNT_FILTERS or field == "unwatchedLeaves") \
                 and row.get("type") in ("season", "episode"):
             # Cycle 54, fitted on zen over every leaf-count cell of 9,287 episodes and 741
