@@ -159,11 +159,15 @@ const ORDER_CONTAINER: &[&str] = &[
     "Access-Control-Allow-Origin",
     "Date",
 ];
+// Cycle 87 (`server.py` "gzip"): a paged gzipped container writes its window headers
+// straight after the type, as the plain container does (kids, plexscratch42).
 const ORDER_GZIP: &[&str] = &[
     "X-Plex-Protocol",
     "Access-Control-Expose-Headers",
     "Vary",
     "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
     "Connection",
     "Keep-Alive",
     "Content-Encoding",
@@ -210,6 +214,8 @@ const ORDER_RANGE_ERROR_CONTAINER: &[&str] = &[
     "Access-Control-Allow-Origin",
     "Date",
 ];
+// Cycle 87: a paged framework answer writes its window between the cookie and the
+// connection state, in all four framework families.
 const ORDER_SYSTEM: &[&str] = &[
     "X-Plex-Protocol",
     "Access-Control-Expose-Headers",
@@ -217,6 +223,8 @@ const ORDER_SYSTEM: &[&str] = &[
     "Content-Length",
     "Content-Type",
     "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
     "Connection",
     "Keep-Alive",
     "Cache-Control",
@@ -232,18 +240,45 @@ const ORDER_SYSTEM_NOCACHE_FIRST: &[&str] = &[
     "Content-Length",
     "Content-Type",
     "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
     "Connection",
     "Keep-Alive",
     "Access-Control-Allow-Headers",
     "Access-Control-Allow-Origin",
     "Date",
 ];
+// Cycle 87: gzipped, the five `Cache-Control`-first routes keep it second and otherwise
+// take the framework gzip order, the length last.
+const ORDER_SYSTEM_NOCACHE_FIRST_GZIP: &[&str] = &[
+    "X-Plex-Protocol",
+    "Access-Control-Expose-Headers",
+    "Vary",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Access-Control-Allow-Headers",
+    "Access-Control-Allow-Origin",
+    "Date",
+];
+// Cycle 87: not `/system/services/url/lookup`'s order alone but EVERY gzipped `/system`
+// answer's, `/system/agents` and its 400 included (kids, zen, plexscratch42).
 const ORDER_SYSTEM_GZIP: &[&str] = &[
     "X-Plex-Protocol",
     "Access-Control-Expose-Headers",
     "Vary",
     "Content-Type",
     "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
     "Connection",
     "Keep-Alive",
     "Content-Encoding",
@@ -381,14 +416,18 @@ fn header_family(
     }
     let path = path.trim_end_matches('/');
     if path == "/system" || path.starts_with("/system/") {
-        if path == "/system/services/url/lookup" && has("content-encoding") {
-            return ORDER_SYSTEM_GZIP;
-        }
         let parent = path.rsplit_once('/').map_or("", |(head, _)| head);
-        if framework::CACHE_CONTROL_FIRST.contains(&path)
+        let nocache_first = framework::CACHE_CONTROL_FIRST.contains(&path)
             || parent == "/system/channels"
-            || parent == "/system/plugins"
-        {
+            || parent == "/system/plugins";
+        if has("content-encoding") {
+            return if nocache_first {
+                ORDER_SYSTEM_NOCACHE_FIRST_GZIP
+            } else {
+                ORDER_SYSTEM_GZIP
+            };
+        }
+        if nocache_first {
             return ORDER_SYSTEM_NOCACHE_FIRST;
         }
         // `/system/agents` is the core's own handler: its container orders like one, but
@@ -403,7 +442,12 @@ fn header_family(
         };
     }
     if has("set-cookie") {
-        return ORDER_SYSTEM;
+        // A plug-in's own framework paths (`/:/plugins/{id}/prefs`) gzip like `/system`.
+        return if has("content-encoding") {
+            ORDER_SYSTEM_GZIP
+        } else {
+            ORDER_SYSTEM
+        };
     }
     if value_of(lines, "content-type").is_some_and(|value| value.starts_with("text/event-stream")) {
         return &[

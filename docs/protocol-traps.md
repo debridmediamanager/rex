@@ -3830,3 +3830,15 @@ are changing; replay the client's exact request before altering behavior.
   lone Start or Size, or `Start=abc`, is the unpaged 130-byte document. Both servers served the
   unpaged document whatever was asked. MALFORMED-ONLY: neither Plex Web 4.147.1 nor
   python-plexapi requests these paths.
+- **The paging headers and a gzip body have their own slots in every family.** Header names in
+  wire order on plexscratch42 and kids, identical (2026-10-01,
+  `tests/fixtures/c87_w7_header_order.json`, 176 exchanges): a paged answer writes
+  `X-Plex-Container-Start, X-Plex-Container-Total-Size` straight after `Content-Type` in the core
+  gzip family and straight after `Set-Cookie` in all four framework families -- never after
+  `Cache-Control`, where both servers put them for want of a slot (on every paged gzipped grid
+  read Plex Web makes, and every paged `/system` read). And EVERY gzipped `/system` answer --
+  `/system`, `/system/agents` and its 400, a scanner, `/system/scanners/zzz`'s 500, a legacy
+  agent's config, `/:/plugins/{id}/prefs` -- takes cycle 40's url-lookup gzip order (type,
+  cookie, window, connection state, encoding trio, `Content-Length`, `Cache-Control`); the five
+  `Cache-Control`-first routes keep it second when gzipped. Both servers kept the plain order
+  there and put the encoding trio before `Date`. MALFORMED-ONLY: no client reads header order.

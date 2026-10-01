@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Cycle 87 follow-up W7: the framework's url lookup and its peer directories' paging.
+"""Cycle 87 follow-up W7: the framework's url lookup, its peer directories' paging, and
+the header order of paged and gzipped answers.
 
 1. `tests/fixtures/c87_w7_url_lookup.json`: `/system/services/url/lookup` is the 464-byte
    traceback only when no `url` argument is given. With one -- empty, relative, a non-URL,
@@ -9,9 +10,13 @@
 2. `tests/fixtures/c87_w7_peer_paging.json`: the ten `/system/{channels,plugins}/{name}`
    peer directories page: a full window adds `totalSize="0"` and both
    `X-Plex-Container-*` headers. plexsim served the unpaged document whatever was asked.
+3. `tests/fixtures/c87_w7_header_order.json`: the header NAMES in wire order for every
+   `/system` family and four core containers, plain, paged, gzipped and both. The window
+   headers sit after the type (core) or the cookie (`/system`), not after
+   `Cache-Control`; every gzipped `/system` answer takes the framework gzip order.
 
 Every request is replayed on a raw keep-alive socket, because `Connection: close` changes
-the header block: it drops `Keep-Alive`.
+the header block (it drops `Keep-Alive`) and the order is what item 3 measures.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -102,6 +107,10 @@ def raw(port, method, path, headers):
     return int(rows[0].split()[1]), pairs, body.decode("utf-8", "replace")
 
 
+def names_of(pairs):
+    return [name for name, _value in pairs]
+
+
 def lookup(port, fixture):
     for row in fixture["exchanges"]:
         status, pairs, body = raw(port, row["method"], row["path"], row["request_headers"])
@@ -142,11 +151,21 @@ def peers(port, fixture):
             (status, window, length, body[:150]))
 
 
+def order(port, fixture):
+    for row in fixture["exchanges"]:
+        status, pairs, _body = raw(port, row["method"], row["path"], row["request_headers"])
+        check("%s %s [%s] writes the measured header order" % (
+            row["method"], row["path"], row["variant"]),
+            status == row["status"] and names_of(pairs) == row["header_names"],
+            (status, names_of(pairs), "want", row["header_names"]))
+
+
 def main():
     process, port = start()
     try:
         lookup(port, json.load(open(os.path.join(FIXTURES, "c87_w7_url_lookup.json"))))
         peers(port, json.load(open(os.path.join(FIXTURES, "c87_w7_peer_paging.json"))))
+        order(port, json.load(open(os.path.join(FIXTURES, "c87_w7_header_order.json"))))
     finally:
         process.terminate()
         try:

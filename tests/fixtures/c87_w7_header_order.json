@@ -1,0 +1,5545 @@
+{
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed); kids 1.43.4 (GET only) as witness",
+ "date": "2026-10-01",
+ "note": "Response header NAMES in wire order (Date included, values dropped) off a raw keep-alive socket with no Origin, for every /system path family plus four core containers, plain, paged (header and query), gzipped (`Accept-Encoding: gzip`), both, and HEAD. A paged answer writes X-Plex-Container-Start/Total-Size after the type (core) or after the framework cookie (/system), before the connection state; every gzipped /system answer orders like the cycle-40 url-lookup gzip family, and the five Cache-Control-first framework routes keep it second when gzipped.",
+ "exchanges": [
+  {
+   "method": "GET",
+   "path": "/system",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/plugins/all",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/channels/all",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/plugins",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/channels",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/library/sections",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/agents",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/agents?mediaType=1",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/agents/tv.plex.agents.movie/config/1",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/scanners/1",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/scanners/2",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/search",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/search",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/search",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/search",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/search?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/search?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/search",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/search",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Cache-Control",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 500,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 500,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 500,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 500,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 500,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 500,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 500,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 500,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/services/url/lookup?url=x",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/services/url/lookup?url=x",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/zzz",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/zzz",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/zzz",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/zzz",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/zzz?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/zzz?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/zzz",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/zzz",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/:/plugins",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins/com.plexapp.system/prefs",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins/com.plexapp.system/prefs",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins/com.plexapp.system/prefs",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins/com.plexapp.system/prefs",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins/com.plexapp.system/prefs?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins/com.plexapp.system/prefs?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/:/plugins/com.plexapp.system/prefs",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/:/plugins/com.plexapp.system/prefs",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Content-Type",
+    "Set-Cookie",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/appstore",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/appstore",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/appstore",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/appstore",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/appstore?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/appstore?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/appstore",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/appstore",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library",
+   "variant": "plain",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq",
+   "request_headers": [],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/library",
+   "variant": "head+pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/system/library",
+   "variant": "pagehdr1",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 404,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Length",
+    "Set-Cookie",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/identity",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/identity?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/identity",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/identity",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/hubs",
+   "variant": "pagehdr+gzip",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/hubs?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "variant": "pageq+gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/hubs",
+   "variant": "gzip",
+   "request_headers": [
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Connection",
+    "Keep-Alive",
+    "Content-Encoding",
+    "X-Plex-Content-Original-Length",
+    "X-Plex-Content-Compressed-Length",
+    "Content-Length",
+    "Cache-Control",
+    "Date"
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/hubs",
+   "variant": "pagehdr",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "5"
+    ]
+   ],
+   "status": 200,
+   "header_names": [
+    "X-Plex-Protocol",
+    "Content-Type",
+    "Content-Length",
+    "X-Plex-Container-Start",
+    "X-Plex-Container-Total-Size",
+    "Connection",
+    "Keep-Alive",
+    "Cache-Control",
+    "Date"
+   ]
+  }
+ ],
+ "witnesses": {
+  "kids": [
+   {
+    "path": "/system",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins/all",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins/all",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins/all",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins/all",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins/all",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins/all",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels/all",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels/all",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels/all",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels/all",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels/all",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels/all",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/plugins",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/channels",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library/sections",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library/sections",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library/sections",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library/sections",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library/sections?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library/sections?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library/sections",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library/sections",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents?mediaType=1",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents?mediaType=1",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents?mediaType=1",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents?mediaType=1",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents?mediaType=1&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents?mediaType=1&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents?mediaType=1",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents?mediaType=1",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/tv.plex.agents.movie/config/1",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/tv.plex.agents.movie/config/1",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/tv.plex.agents.movie/config/1",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/tv.plex.agents.movie/config/1",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/tv.plex.agents.movie/config/1?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/tv.plex.agents.movie/config/1?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/tv.plex.agents.movie/config/1",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/agents/tv.plex.agents.movie/config/1",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/search",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/search",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/search",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/search",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/search?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/search?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/search",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/search",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup?url=x",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup?url=x",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup?url=x",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup?url=x",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup?url=x&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup?url=x&X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup?url=x",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/services/url/lookup?url=x",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/zzz",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/zzz",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/zzz",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/zzz",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/zzz?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/zzz?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/zzz",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/zzz",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins/com.plexapp.system/prefs",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins/com.plexapp.system/prefs",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins/com.plexapp.system/prefs",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins/com.plexapp.system/prefs",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins/com.plexapp.system/prefs?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins/com.plexapp.system/prefs?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins/com.plexapp.system/prefs",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/:/plugins/com.plexapp.system/prefs",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/appstore",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/appstore",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/appstore",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/appstore",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/appstore?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/appstore?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/appstore",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/appstore",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library",
+    "variant": "plain",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library",
+    "variant": "head+pagehdr",
+    "method": "HEAD",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/system/library",
+    "variant": "pagehdr1",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/library/sections",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/library/sections?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/library/sections",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/library/sections",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/identity",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/identity?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/identity",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/identity",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/library/sections/1/all",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/library/sections/1/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/library/sections/1/all",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/library/sections/1/all",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/hubs",
+    "variant": "pagehdr+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/hubs?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq+gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/hubs",
+    "variant": "gzip",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   },
+   {
+    "path": "/hubs",
+    "variant": "pagehdr",
+    "method": "GET",
+    "status_equal_to_s42": true,
+    "header_names_equal_to_s42": true
+   }
+  ]
+ }
+}

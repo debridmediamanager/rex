@@ -23037,8 +23037,14 @@ class Handler(BaseHTTPRequestHandler):
         # A gzipped body moves `Connection` ahead of the encoding pair and the length
         # to the end: `X-Plex-Protocol, Content-Type, Connection, Keep-Alive,
         # Content-Encoding, …Original-Length, …Compressed-Length, Content-Length`.
+        # Cycle 87, kids and plexscratch42 (`/library/sections`, a section's `/all`,
+        # `/identity`, `/system/agents`, `/:/plugins`): a PAGED gzipped container writes
+        # its two `X-Plex-Container-*` headers straight after the type, as the plain
+        # container does. They were missing from this list, so they fell to the
+        # unmeasured slot after `Cache-Control` -- on Plex Web's every paged grid read.
         "gzip": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
-                 "Content-Type", "Connection", "Keep-Alive", "Content-Encoding",
+                 "Content-Type", "X-Plex-Container-Start", "X-Plex-Container-Total-Size",
+                 "Connection", "Keep-Alive", "Content-Encoding",
                  "X-Plex-Content-Original-Length", "X-Plex-Content-Compressed-Length",
                  "Content-Length", "Cache-Control", "Access-Control-Allow-Headers",
                  "Access-Control-Allow-Origin", "Date"),
@@ -23061,8 +23067,11 @@ class Handler(BaseHTTPRequestHandler):
                                   "Connection", "Keep-Alive", "Cache-Control",
                                   "Access-Control-Allow-Origin", "Date"),
         # The plug-in framework's own `/system` paths, which also carry the cookie.
+        # Cycle 87 (kids, zen, plexscratch42): a paged one writes its window headers
+        # between the cookie and the connection state, in all four framework families.
         "system": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
                    "Content-Length", "Content-Type", "Set-Cookie",
+                   "X-Plex-Container-Start", "X-Plex-Container-Total-Size",
                    "Connection", "Keep-Alive", "Cache-Control",
                    "Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Date"),
         # Cycle 53, measured on kids, zen and both copies: five framework routes put
@@ -23073,15 +23082,32 @@ class Handler(BaseHTTPRequestHandler):
         # peer-service routes plus one), so the set is measured rather than derived.
         "system-nocache-first": ("X-Plex-Protocol", "Access-Control-Expose-Headers",
                                  "Vary", "Cache-Control", "Content-Length",
-                                 "Content-Type", "Set-Cookie", "Connection",
+                                 "Content-Type", "Set-Cookie", "X-Plex-Container-Start",
+                                 "X-Plex-Container-Total-Size", "Connection",
                                  "Keep-Alive", "Access-Control-Allow-Headers",
                                  "Access-Control-Allow-Origin", "Date"),
+        # Cycle 87: gzipped, those five keep `Cache-Control` second and otherwise take
+        # the framework gzip order below, the length last.
+        "system-nocache-first-gzip": ("X-Plex-Protocol", "Access-Control-Expose-Headers",
+                                      "Vary", "Cache-Control", "Content-Type",
+                                      "Set-Cookie", "X-Plex-Container-Start",
+                                      "X-Plex-Container-Total-Size", "Connection",
+                                      "Keep-Alive", "Content-Encoding",
+                                      "X-Plex-Content-Original-Length",
+                                      "X-Plex-Content-Compressed-Length",
+                                      "Content-Length", "Access-Control-Allow-Headers",
+                                      "Access-Control-Allow-Origin", "Date"),
         # Cycle 40: `/system/services/url/lookup` is the one measured Framework
         # error with a gzip body. Unlike a plain `/system` response it moves the
         # length behind the encoding lengths; unlike a core gzip response it keeps
         # the plug-in cookie between the type and connection state.
+        # Cycle 87: it is not one path's order but EVERY gzipped `/system` answer's --
+        # `/system`, the contributor list, a scanner, an agent's config, `/system/agents`
+        # and its 400, `/system/scanners/zzz`'s 500 (kids, zen, plexscratch42). plexsim
+        # kept the plain family's order there and put the encoding trio before `Date`.
         "system-gzip": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
-                        "Content-Type", "Set-Cookie", "Connection", "Keep-Alive",
+                        "Content-Type", "Set-Cookie", "X-Plex-Container-Start",
+                        "X-Plex-Container-Total-Size", "Connection", "Keep-Alive",
                         "Content-Encoding", "X-Plex-Content-Original-Length",
                         "X-Plex-Content-Compressed-Length", "Content-Length",
                         "Cache-Control", "Access-Control-Allow-Headers",
@@ -23172,10 +23198,11 @@ class Handler(BaseHTTPRequestHandler):
             # containers write the type first. `/system/agents` is the one exception on
             # both references: it is the core's own handler and orders like a container,
             # which is also why it carries no cookie.
-            if path == "/system/services/url/lookup" and "content-encoding" in names:
-                return "system-gzip"
-            if path in CACHE_CONTROL_FIRST or (
-                    path.rsplit("/", 1)[0] in ("/system/channels", "/system/plugins")):
+            nocache_first = path in CACHE_CONTROL_FIRST or (
+                path.rsplit("/", 1)[0] in ("/system/channels", "/system/plugins"))
+            if "content-encoding" in names:
+                return "system-nocache-first-gzip" if nocache_first else "system-gzip"
+            if nocache_first:
                 return "system-nocache-first"
             if path == "/system/agents":
                 # Its CONTAINER orders like a container; its refusal does not. Measured
@@ -23186,7 +23213,9 @@ class Handler(BaseHTTPRequestHandler):
                 return "error" if status >= 400 else "container"
             return "system"
         if "set-cookie" in names:
-            return "system"
+            # A plug-in's own framework paths (`/:/plugins/{id}/prefs`) gzip the same way
+            # as `/system` (cycle 87, plexscratch42 and kids).
+            return "system-gzip" if "content-encoding" in names else "system"
         if "content-type" in names and names.get("content-type", "").startswith(
                 "text/event-stream"):
             # Measured twice on kids and zen, with and without Origin. This handler has
