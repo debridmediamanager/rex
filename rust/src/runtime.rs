@@ -4120,13 +4120,25 @@ impl Runtime {
     /// each SEASON (5 processing, 4 loading) with its EPISODES (5 processing,
     /// 4 loading twice, 5), the media pass per episode, the season's 5; the
     /// activity steps per season, and the SHOW's own 5 ends it.
+    ///
+    /// Cycle 87, the ORDER, measured on plexscratch (1.43.4) with two-season
+    /// Firefly, seven captures frame-identical
+    /// (`tests/fixtures/show_cascade_order_s43.json`): queued comes BEFORE
+    /// `activity started`; a season OPENS with an `updated` carrying its
+    /// subtitle and the PREVIOUS progress (-1 for the first) and its own step
+    /// lands at its END, between the last episode's second `loading` and that
+    /// episode's bare 5; the last season's step is followed at once by `ended`
+    /// 100, before the last episode's, the season's and the show's 5s. We
+    /// stepped each season at its start and closed with an invented `updated
+    /// 49`. The media pass is state-dependent (none ran on the warm copy) and
+    /// keeps its place after the season's episodes.
     fn notify_show_cascade(&mut self, key: &str) {
         let Some(show) = self.catalog.get(key).cloned() else {
             return;
         };
+        self.notify_timeline(&show, 3, Some("queued"), None, None);
         let subtitle = self.frame_title(&show);
         let mut activity = self.start_metadata_activity(&subtitle);
-        self.notify_timeline(&show, 3, Some("queued"), None, None);
         self.notify_timeline(&show, 3, Some("processing"), None, None);
         self.notify_timeline(&show, 4, Some("loading"), None, None);
         let seasons = self.children(key);
@@ -4136,11 +4148,24 @@ impl Runtime {
             .unwrap_or("")
             .to_string();
         for (number, season) in seasons.iter().enumerate() {
+            let last_season = number + 1 == seasons.len();
             let index = season.get("index").and_then(Value::as_i64).unwrap_or(0);
             activity.insert(
                 "subtitle".to_string(),
                 json!(format!("{show_title} S{index:02}")),
             );
+            self.notify_activity(&activity, "updated");
+            self.notify_timeline(season, 5, Some("processing"), None, None);
+            self.notify_timeline(season, 4, Some("loading"), None, None);
+            let episodes = self.children(&key_of(season).unwrap_or_default());
+            for (at, episode) in episodes.iter().enumerate() {
+                self.notify_timeline(episode, 5, Some("processing"), None, None);
+                self.notify_timeline(episode, 4, Some("loading"), None, None);
+                self.notify_timeline(episode, 4, Some("loading"), None, None);
+                if at + 1 < episodes.len() {
+                    self.notify_timeline(episode, 5, None, None, None);
+                }
+            }
             // Half goes to EVEN (cycle 86, plexscratch): two-season Firefly's first step,
             // 44.5, is reported as 44 on both the showOrdering write and its undo, while
             // the same show's scan reports its 49.5 as 50. `f64::round` said 45.
@@ -4150,14 +4175,12 @@ impl Runtime {
                     as i64),
             );
             self.notify_activity(&activity, "updated");
-            self.notify_timeline(season, 5, Some("processing"), None, None);
-            self.notify_timeline(season, 4, Some("loading"), None, None);
-            let episodes = self.children(&key_of(season).unwrap_or_default());
-            for episode in &episodes {
-                self.notify_timeline(episode, 5, Some("processing"), None, None);
-                self.notify_timeline(episode, 4, Some("loading"), None, None);
-                self.notify_timeline(episode, 4, Some("loading"), None, None);
-                self.notify_timeline(episode, 5, None, None, None);
+            if last_season {
+                activity.insert("progress".to_string(), json!(100));
+                self.notify_activity(&activity, "ended");
+            }
+            if let Some(last) = episodes.last() {
+                self.notify_timeline(last, 5, None, None, None);
             }
             for episode in &episodes {
                 self.notify_timeline(episode, 5, None, Some("analyzing"), None);
@@ -4166,13 +4189,10 @@ impl Runtime {
             }
             self.notify_timeline(season, 5, None, None, None);
         }
-        // finish_activity: an `updated` at 49 unless it already stands there.
-        if activity.get("progress").and_then(Value::as_i64) != Some(49) {
-            activity.insert("progress".to_string(), json!(49));
-            self.notify_activity(&activity, "updated");
+        if seasons.is_empty() {
+            activity.insert("progress".to_string(), json!(100));
+            self.notify_activity(&activity, "ended");
         }
-        activity.insert("progress".to_string(), json!(100));
-        self.notify_activity(&activity, "ended");
         self.notify_timeline(&show, 5, None, None, None);
     }
 

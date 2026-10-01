@@ -4512,20 +4512,27 @@ class PlexSim:
         a bare 5; the season closes at 5, the activity steps per season, and the SHOW's own
         state 5 ends the cascade. Forty frames for a two-season show, and the shape is what
         clears every `!!metadataState` gate the client latches on.
+
+        Cycle 87, the ORDER, measured on plexscratch (1.43.4) with two-season Firefly, seven
+        captures frame-identical (`tests/fixtures/show_cascade_order_s43.json`): the queued
+        frame comes BEFORE `activity started`; a season OPENS with an `updated` carrying its
+        subtitle and the PREVIOUS progress (-1 for the first), and its own step lands at its
+        END, between the last episode's second `loading` and that episode's bare 5; the last
+        season's step is followed at once by `ended` 100, before the last episode's, the
+        season's and the show's 5s. plexsim stepped each season at its start and closed with
+        an invented `updated 49`. The media pass is state-dependent work (none ran on the
+        warm copy) and keeps cycle 10's place after the season's episodes.
         """
-        activity = self.library.add_activity(self.frame_title(show), progress=-1)
         self.notify_timeline(show, self.TIMELINE_QUEUED, "queued")
+        activity = self.library.add_activity(self.frame_title(show), progress=-1)
         self.notify_timeline(show, self.TIMELINE_QUEUED, "processing")
         self.notify_timeline(show, self.TIMELINE_LOADING, "loading")
         seasons = self.catalog.children(show["ratingKey"])
         for number, season in enumerate(seasons, 1):
+            last_season = number == len(seasons)
             # The same string a season's own frames carry: `<show> S01`.
             activity["subtitle"] = "%s S%02d" % (show.get("title") or "",
                                                  int(season.get("index") or 0))
-            # Python's round is the measured one (cycle 86, plexscratch): two-season
-            # Firefly reports its 44.5 as 44 and the same show's scan its 49.5 as 50 --
-            # half to even, which neither truncation nor half-up gives for both.
-            activity["progress"] = int(round(number * 89.0 / max(len(seasons), 1)))
             self.notify_activity(activity, "updated")
             self.notify_timeline(season, self.TIMELINE_DONE, "processing")
             self.notify_timeline(season, self.TIMELINE_LOADING, "loading")
@@ -4534,7 +4541,18 @@ class PlexSim:
                 self.notify_timeline(episode, self.TIMELINE_DONE, "processing")
                 self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
                 self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
-                self.notify_timeline(episode, self.TIMELINE_DONE, None)
+                if episode is not episodes[-1]:
+                    self.notify_timeline(episode, self.TIMELINE_DONE, None)
+            # Python's round is the measured one (cycle 86, plexscratch): two-season
+            # Firefly reports its 44.5 as 44 and the same show's scan its 49.5 as 50 --
+            # half to even, which neither truncation nor half-up gives for both.
+            activity["progress"] = int(round(number * 89.0 / max(len(seasons), 1)))
+            self.notify_activity(activity, "updated")
+            if last_season:
+                activity["progress"] = 100
+                self.library.end_activity_quietly(activity)
+            if episodes:
+                self.notify_timeline(episodes[-1], self.TIMELINE_DONE, None)
             for episode in episodes:
                 # The media pass, measured after the metadata one: the same rows again,
                 # analyzing then thumbnailing, then bare.
@@ -4542,7 +4560,9 @@ class PlexSim:
                 self.notify_timeline(episode, self.TIMELINE_DONE, None, media_state="thumbnailing")
                 self.notify_timeline(episode, self.TIMELINE_DONE, None)
             self.notify_timeline(season, self.TIMELINE_DONE, None)
-        self.library.finish_activity(activity)
+        if not seasons:
+            activity["progress"] = 100
+            self.library.end_activity_quietly(activity)
         self.notify_timeline(show, self.TIMELINE_DONE, None)
 
     def notify_show_unmatch_cascade(self, show):

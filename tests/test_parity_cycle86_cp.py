@@ -169,8 +169,10 @@ def plexsim_checks(port, half):
     second = [p for subtitle, p in steps
               if subtitle and subtitle.endswith("S%02d" % int(seasons[1].get("index") or 0))]
     check("showOrdering=dvd answers 200", status == 200, status)
+    # Cycle 87: a season's own step lands at its END (its opening `updated` carries the
+    # previous season's progress), so the second season's step is its LAST update.
     check("the cascade reports two seasons of four at the reference's %d" % half["cascade"],
-          second and second[0] == half["cascade"], steps)
+          second and second[-1] == half["cascade"], steps)
     status, frames = capture(port, "GET", "/library/sections/2/refresh")
     scan = [p for _, p in updates(frames) if p is not None and 0 < p < 99]
     check("the scan reports two seasons of four at the reference's %d" % half["scan"],

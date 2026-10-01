@@ -3556,3 +3556,15 @@ are changing; replay the client's exact request before altering behavior.
   keeps "Plex Music", and `?title=Plex%20Music` restores it (the undo, made). Both servers
   answered the row as held; they now keep the title, and `--state` keeps it over a restart.
   MALFORMED-ONLY: Plex Web hides Edit on a `builtIn` group.
+  was implemented in cycle 87 (below).
+- **A show cascade's activity steps a season at its END** (cycle 87 E2, plexscratch 1.43.4,
+  two-season Firefly; `tests/fixtures/show_cascade_order_s43.json`, seven captures of a
+  `showOrdering` write or undo, all the same 40 frames). The show's `queued` frame comes BEFORE
+  `activity started`; each season OPENS with an `updated` carrying its subtitle and the PREVIOUS
+  progress (`S01 -1`, `S02 44`) and its own step lands between the season's last episode's second
+  `loading` and that episode's bare 5; the last season's `89` is followed at once by `ended 100`,
+  ahead of the last episode's, the season's and the show's 5s. Both servers stepped each season at
+  its start (`S01 44`, `S02 89`), started the activity before `queued` and closed with an invented
+  `updated 49`. No media pass ran on the warm copy (state-dependent, as cycle 15 recorded); ours keeps
+  its place after each season's episodes. The SEASON cascade's own `started`-before-`queued` was
+  not re-measured. MALFORMED-ONLY: transient activity frames.
