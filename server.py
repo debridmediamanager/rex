@@ -21614,6 +21614,97 @@ class PlexSim:
             archive.writestr("unrouted.log", "\n".join(unknown) + "\n")
         return buffer.getvalue()
 
+    # Cycle 87, swept on plexscratch42 (1.42.2) over 127 forms and re-run on plexscratch
+    # (1.43.4), which answered 126 of them byte for byte (the 127th names group 5, which
+    # 1.43.4 holds): `tests/fixtures/c87_w4_add_library_refusals_s42.json`.
+    # Library types a new-style agent is paired with, by the scanner named. A photo
+    # library is never checked for the pairing at all.
+    ADD_LIBRARY_NEW_SCANNERS = {"movie": ("Plex Movie", "Plex Video Files"),
+                                "show": ("Plex TV Series",), "artist": ("Plex Music",)}
+    ADD_LIBRARY_TYPES = {"movie": 1, "show": 2, "artist": 8, "photo": 13,
+                         "1": 1, "2": 2, "8": 8, "13": 13}
+
+    def add_library_refusal(self, query):
+        """The refusal `POST /library/sections` answers for this form, or None.
+
+        Measured: the form is refused in TWO stages. A required parameter that is ABSENT
+        (`name`, `type`, `agent`, `language`) or a `metadataAgentProviderGroupId` that is
+        not an integer is the generic 89-byte HTML 400, before anything else is looked at.
+        Past that, EVERY failing check adds a line ending in CRLF, in a fixed order, and
+        the whole list is one 400 with NO Content-Type -- `type=bogus` alone is two lines,
+        because no agent is valid for a type that does not exist. plexsim answered the
+        HTML page to all of them and stopped at the first failure.
+        """
+        for name in ("name", "type", "agent", "language"):
+            if name not in query:
+                return ("error", 400, "plexsim: Add Library without %s" % name)
+        wanted_group = query.get("metadataAgentProviderGroupId")
+        if wanted_group is not None:
+            try:
+                wanted_group = int(wanted_group)
+            except ValueError:
+                return ("error", 400, "plexsim: metadataAgentProviderGroupId is not a number")
+        lines = []
+        type_number = self.ADD_LIBRARY_TYPES.get(query["type"])
+        kind = {1: "movie", 2: "show", 8: "artist", 13: "photo"}.get(type_number)
+        agent = query["agent"]
+        scanner = query.get("scanner") or ""
+        modern = [row["identifier"] for row in SYSTEM_AGENTS]
+        legacy = {row["attrs"]["identifier"]: row for row in LEGACY_AGENTS["bare"]}
+        if not query["name"]:
+            lines.append("'name' is missing or invalid")
+        if kind is None:
+            lines.append("'type' is missing or invalid (must be one of 'movie', 'show', "
+                         "'photo' or 'artist')")
+        if not scanner:
+            lines.append("'scanner' is missing or invalid")
+        # Only a `tv.plex.agents.*` identifier is looked up in the provider groups: a
+        # legacy or unknown one ignores the parameter entirely, which is why the
+        # client's own `-1` for a legacy agent creates the library.
+        if agent.startswith("tv.plex.agents."):
+            if wanted_group is not None:
+                group = next((row for row in self.metadata_provider_rows(group=True)
+                              if str(row.get("id")) == str(wanted_group)), None)
+                if group is None:
+                    lines.append("unable to find entry for provided "
+                                 "'metadataAgentProviderGroupId'")
+                elif group.get("primaryIdentifier") != agent:
+                    lines.append("agent identifier does not match primary identifier of "
+                                 "supplied metadata agent provider group")
+            elif agent not in modern or \
+                    modern.index(agent) + 1 in self.deleted_builtin_groups:
+                lines.append("unable to find built-in agent group for provided 'agent'")
+        # A legacy agent is never checked against the type; a modern one is checked
+        # against the type's own `/system/agents?mediaType=` list.
+        valid_modern = agent in modern and kind is not None and \
+            agent in AGENT_MEDIA_TYPES.get(str(type_number), ())
+        if agent not in modern and agent not in legacy:
+            lines.append("'agent' is missing or invalid")
+        elif agent in modern and not valid_modern:
+            lines.append("'agent' is invalid for the selected library type")
+        language = query["language"].lower()
+        if agent in legacy:
+            # A legacy agent's languages are its OWN for that type: `en` passes
+            # `com.plexapp.agents.imdb` on a movie library and fails it on a photo one.
+            allowed = {entry["code"].lower()
+                       for media in legacy[agent].get("MediaType", [])
+                       if media.get("mediaType") == type_number
+                       for entry in media.get("Language", [])}
+        else:
+            allowed = KNOWN_LANGUAGES | {"xn"}
+        if language not in allowed:
+            lines.append("'language' is invalid")
+        if kind != "photo" and \
+                valid_modern != (scanner in self.ADD_LIBRARY_NEW_SCANNERS.get(kind, ())):
+            lines.append("new scanner needs to be paired with new agent")
+        if "location" not in query:
+            # Cycle 19: an EMPTY `location` is accepted (a library with no folder), and so
+            # are a folder that does not exist and one another library already uses.
+            lines.append("'location' is missing or invalid.")
+        if not lines:
+            return None
+        return ("untyped", 400, "".join(line + "\r\n" for line in lines))
+
     def create_section(self, query):
         """`POST /library/sections` -- Add Library.
 
@@ -21621,62 +21712,13 @@ class PlexSim:
         which is also what a real PMS gives you for an empty folder, rather than
         an error. 201 with the created Directory is the measured answer.
         """
-        # Measured: a real PMS validates this form and answers a PLAIN-TEXT 400
-        # naming what is wrong -- with no Content-Type header at all. plexsim
-        # accepted every malformed form with a 201 and created a library with
-        # `type="bogus"` or titled "New Library", which then sat in the sidebar.
-        # A nonexistent location and a duplicate name ARE both accepted (201).
-        # Cycle 19, measured on plexscratch, four differences at once. An EMPTY
-        # `location` is accepted (201, a library with no folder) where plexsim refused
-        # it; `location` missing altogether is still the 400. A NUMERIC `type` is
-        # accepted and creates a library of that type -- `type=1` makes a movie library
-        # -- where plexsim refused it. A missing `language` is a 400 and an unparseable
-        # one (`zz-ZZ`) is a 400 naming the field, where plexsim accepted both. So the
-        # Add Library dialog's own numeric type worked on a real PMS and not here, and
-        # two malformed forms were created rather than refused.
-        if "location" not in query:
-            return ("error", 400, "'location' is missing or invalid. ")
+        refusal = self.add_library_refusal(query)
+        if refusal is not None:
+            return refusal
         kind = query.get("type")
         if str(kind).isdigit():
-            kind = {"1": "movie", "2": "show", "8": "artist", "13": "photo"}.get(str(kind))
-            if kind:
-                query = dict(query, type=kind)
-        if kind not in ("movie", "show", "photo", "artist"):
-            return ("error", 400,
-                    "'type' is missing or invalid (must be one of 'movie', 'show', "
-                    "'photo' or 'artist') 'agent' is invalid for the selected "
-                    "library type ")
-        if not query.get("agent") or query["agent"] not in KNOWN_AGENTS:
-            return ("error", 400,
-                    "'agent' is missing or invalid new scanner needs to be paired "
-                    "with new agent ")
-        if not query.get("scanner") or query["scanner"] not in KNOWN_SCANNERS:
-            return ("error", 400, "new scanner needs to be paired with new agent ")
-        if not query.get("name"):
-            return ("error", 400, "'name' is missing or invalid ")
-        if str(query.get("language") or "").lower() not in KNOWN_LANGUAGES:
-            # Measured on plexscratch: no `language` at all is a 400 and `zz-ZZ` is a
-            # 400 whose body is exactly `'language' is invalid`. The client's own form
-            # always sends one; plexsim created the library regardless.
-            return ("error", 400, "'language' is invalid ")
-        # Cycle 87, measured on plexscratch42 after deleting built-in group 3: Plex Web
-        # 4.162.1's Add Library sends the agent's `/system/agents` id as
-        # `metadataAgentProviderGroupId`, and a group the server does not hold is a 400
-        # ("unable to find entry for provided 'metadataAgentProviderGroupId'"); without
-        # the parameter, a modern agent whose built-in group is gone is a 400 ("unable
-        # to find built-in agent group for provided 'agent'").
-        wanted_group = query.get("metadataAgentProviderGroupId")
-        held = {str(row.get("id")) for row in self.metadata_provider_rows(group=True)}
-        if wanted_group:
-            if str(wanted_group) not in held:
-                return ("error", 400,
-                        "unable to find entry for provided 'metadataAgentProviderGroupId'\r\n")
-        else:
-            modern = [agent["identifier"] for agent in SYSTEM_AGENTS]
-            if query["agent"] in modern and \
-                    modern.index(query["agent"]) + 1 in self.deleted_builtin_groups:
-                return ("error", 400,
-                        "unable to find built-in agent group for provided 'agent'\r\n")
+            kind = {"1": "movie", "2": "show", "8": "artist", "13": "photo"}[str(kind)]
+            query = dict(query, type=kind)
         title = query.get("name") or query.get("title") or "New Library"
         section_type = kind
         seed = "%s-%s" % (title, section_type)
@@ -22047,6 +22089,7 @@ class Handler(BaseHTTPRequestHandler):
             self._close_after_response = False
             self._status_sent = None
             self._sidecar_answer = False
+            self._untyped_answer = False
             # cycle 49: the method bound is enforced as the eleventh byte ARRIVES, not
             # when the line finishes. `peek` blocks for the first byte, as this read
             # would anyway, and then hands back whatever the one raw read brought.
@@ -22784,6 +22827,11 @@ class Handler(BaseHTTPRequestHandler):
         `/photo/:/transcode` and a `/web/*` or `/:/resources/*` asset send the SAME five
         names in two different orders, so those two are decided by the path.
         """
+        if getattr(self, "_untyped_answer", False):
+            # Cycle 87: Add Library's untyped refusal writes `Connection`/`Keep-Alive`
+            # before `Content-Length` with or without the encoding trio -- the gzip
+            # family's order, measured both ways on plexscratch42.
+            return "gzip"
         if getattr(self, "_sidecar_answer", False):
             # Cycle 74: an uploaded sidecar's bytes write their length before their type,
             # the error family's order (measured on plexscratch42).
@@ -23183,6 +23231,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header("Keep-Alive", "timeout=20")
         if content_range is None and content_type is not None:
             payload = self._maybe_gzip(content_type, payload, names)
+        elif content_range is None and getattr(self, "_untyped_answer", False):
+            # Cycle 87: an untyped refusal is still compressed for a gzip offer
+            # (plexscratch42: 134 bytes to 121, the encoding trio and no type).
+            payload = self._maybe_gzip("text/plain", payload, names)
         elif content_range is not None:
             # Cycle 33, measured on both references: a ranged CONTAINER answers the WHOLE
             # body's length as well as the slice's -- the full one here, before the range,
@@ -24392,6 +24444,13 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if kind == "error":
                 self._send_error(result[1], result[2])
+                return
+            if kind == "untyped":
+                # Cycle 87: Add Library's validation refusal -- CRLF-terminated lines with
+                # NO Content-Type, gzipped when offered and ordered like a gzipped body
+                # even when it is not (`Connection` before `Content-Length`).
+                self._untyped_answer = True
+                self._send(result[1], None, result[2].encode("utf-8"))
                 return
             if kind == "bare":
                 # Cycle 21: an empty body with NO Content-Type, which is what the whole

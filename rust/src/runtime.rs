@@ -8001,80 +8001,171 @@ impl Runtime {
         Ok(())
     }
 
+    /// `server.py` `add_library_refusal`: the refusal Add Library answers, or None.
+    /// Cycle 87, swept on plexscratch42 over 127 forms and re-run on plexscratch (126
+    /// byte-identical; the other names group 5, which 1.43.4 holds). An ABSENT `name`,
+    /// `type`, `agent` or `language`, or a non-integer group id, is the generic HTML 400;
+    /// past that every failing check adds a CRLF line, in a fixed order, and the list is
+    /// one 400 with no Content-Type.
+    fn add_library_refusal(&self, query: &HashMap<String, String>) -> Option<Response> {
+        for name in ["name", "type", "agent", "language"] {
+            if !query.contains_key(name) {
+                return Some(Response::error(400, "plexsim: Add Library without a field"));
+            }
+        }
+        let wanted_group = match query.get("metadataAgentProviderGroupId") {
+            None => None,
+            Some(value) => match value.parse::<i64>() {
+                Ok(number) => Some(number),
+                Err(_) => {
+                    return Some(Response::error(400, "plexsim: group id is not a number"));
+                }
+            },
+        };
+        let type_number: Option<i64> = match query["type"].as_str() {
+            "movie" | "1" => Some(1),
+            "show" | "2" => Some(2),
+            "artist" | "8" => Some(8),
+            "photo" | "13" => Some(13),
+            _ => None,
+        };
+        let agent = query["agent"].as_str();
+        let scanner = query.get("scanner").map(String::as_str).unwrap_or_default();
+        let system = load_json_sidecar(&self.catalog_path, "system_agents.json").unwrap_or(Value::Null);
+        let modern = system
+            .get("agents")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|row| row.get("identifier").and_then(Value::as_str).map(str::to_string))
+            .collect::<Vec<_>>();
+        let legacy_document =
+            load_json_sidecar(&self.catalog_path, "legacy_agents.json").unwrap_or(Value::Null);
+        let legacy = legacy_document
+            .get("bare")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .find(|row| row.pointer("/attrs/identifier").and_then(Value::as_str) == Some(agent));
+        let mut lines: Vec<&str> = Vec::new();
+        if query["name"].is_empty() {
+            lines.push("'name' is missing or invalid");
+        }
+        if type_number.is_none() {
+            lines.push(
+                "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')",
+            );
+        }
+        if scanner.is_empty() {
+            lines.push("'scanner' is missing or invalid");
+        }
+        // Only a `tv.plex.agents.*` identifier is looked up in the provider groups; a
+        // legacy or unknown one ignores the parameter (the client sends `-1` for those).
+        let position = modern.iter().position(|known| known == agent);
+        if agent.starts_with("tv.plex.agents.") {
+            if let Some(wanted) = wanted_group {
+                let group = self
+                    .metadata_provider_groups()
+                    .into_iter()
+                    .find(|row| row.get("id").map(string_value) == Some(wanted.to_string()));
+                match group {
+                    None => lines.push(
+                        "unable to find entry for provided 'metadataAgentProviderGroupId'",
+                    ),
+                    Some(row) if row.get("primaryIdentifier").and_then(Value::as_str) != Some(agent) => {
+                        lines.push(
+                            "agent identifier does not match primary identifier of supplied metadata agent provider group",
+                        );
+                    }
+                    Some(_) => {}
+                }
+            } else if position
+                .is_none_or(|index| self.deleted_builtin_groups.contains(&(index as i64 + 1)))
+            {
+                lines.push("unable to find built-in agent group for provided 'agent'");
+            }
+        }
+        // A legacy agent is never checked against the type; a modern one against the
+        // type's own `/system/agents?mediaType=` list.
+        let valid_modern = position.is_some()
+            && type_number.is_some_and(|number| {
+                system
+                    .pointer(&format!("/mediaTypes/{number}"))
+                    .and_then(Value::as_array)
+                    .is_some_and(|rows| rows.iter().any(|row| row.as_str() == Some(agent)))
+            });
+        if position.is_none() && legacy.is_none() {
+            lines.push("'agent' is missing or invalid");
+        } else if position.is_some() && !valid_modern {
+            lines.push("'agent' is invalid for the selected library type");
+        }
+        let language = query["language"].to_lowercase();
+        let allowed: HashSet<String> = match legacy {
+            // A legacy agent's languages are its OWN for that type.
+            Some(row) => row
+                .get("MediaType")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter(|media| media.get("mediaType").and_then(Value::as_i64) == type_number)
+                .flat_map(|media| {
+                    media
+                        .get("Language")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default()
+                })
+                .filter_map(|entry| entry.get("code").and_then(Value::as_str).map(str::to_lowercase))
+                .collect(),
+            None => {
+                let mut known = self.known_languages();
+                known.insert("xn".to_string());
+                known
+            }
+        };
+        if !allowed.contains(&language) {
+            lines.push("'language' is invalid");
+        }
+        // The scanners that count as new for each type; a photo library is never checked.
+        let new_scanners: &[&str] = match type_number {
+            Some(1) => &["Plex Movie", "Plex Video Files"],
+            Some(2) => &["Plex TV Series"],
+            Some(8) => &["Plex Music"],
+            _ => &[],
+        };
+        if type_number != Some(13) && valid_modern != new_scanners.contains(&scanner) {
+            lines.push("new scanner needs to be paired with new agent");
+        }
+        if !query.contains_key("location") {
+            // Cycle 19: an EMPTY location is accepted, as are a missing folder and one
+            // another library already uses.
+            lines.push("'location' is missing or invalid.");
+        }
+        if lines.is_empty() {
+            return None;
+        }
+        let body = lines.iter().map(|line| format!("{line}\r\n")).collect::<String>();
+        Some(Response::untyped(400, body.into_bytes()))
+    }
+
     /// `server.py` `create_section`: `POST /library/sections` -- Add Library.  The
-    /// form is validated in the measured order (location, type, agent, scanner, name,
-    /// language -- each a 400), a numeric type names a library type, the new library's
+    /// form is validated by `add_library_refusal`, a numeric type names a library type, the new library's
     /// uuid is the CRC-32 of `<name>-<type>`, its `prefs[...]` are applied as a prefs
     /// write, and the answer is a 201 bare container naming it in `Location`.
     fn create_section(&mut self, query: &HashMap<String, String>) -> Response {
-        let Some(location) = query.get("location") else {
-            return Response::error(400, "'location' is missing or invalid. ");
-        };
-        let raw_type = query.get("type").cloned().unwrap_or_default();
-        let kind = if !raw_type.is_empty() && raw_type.bytes().all(|b| b.is_ascii_digit()) {
-            match raw_type.as_str() {
-                "1" => "movie",
-                "2" => "show",
-                "8" => "artist",
-                "13" => "photo",
-                _ => "",
-            }
-            .to_string()
-        } else {
-            raw_type
-        };
-        if !matches!(kind.as_str(), "movie" | "show" | "photo" | "artist") {
-            return Response::error(400, "'type' is missing or invalid");
+        if let Some(refusal) = self.add_library_refusal(query) {
+            return refusal;
         }
-        if !query
-            .get("agent")
-            .is_some_and(|agent| butler::KNOWN_AGENTS.contains(&agent.as_str()))
-        {
-            return Response::error(400, "'agent' is missing or invalid");
+        let kind = match query.get("type").map(String::as_str).unwrap_or_default() {
+            "1" | "movie" => "movie",
+            "2" | "show" => "show",
+            "8" | "artist" => "artist",
+            _ => "photo",
         }
-        if !query
-            .get("scanner")
-            .is_some_and(|scanner| butler::KNOWN_SCANNERS.contains(&scanner.as_str()))
-        {
-            return Response::error(400, "new scanner needs to be paired with new agent ");
-        }
-        let Some(title) = query.get("name").filter(|name| !name.is_empty()).cloned() else {
-            return Response::error(400, "'name' is missing or invalid ");
-        };
+        .to_string();
+        let location = query.get("location").cloned().unwrap_or_default();
+        let title = query.get("name").cloned().unwrap_or_default();
         let language = query.get("language").cloned().unwrap_or_default();
-        if !self.known_languages().contains(&language.to_lowercase()) {
-            return Response::error(400, "'language' is invalid ");
-        }
-        // Cycle 87, measured on plexscratch42 after deleting built-in group 3: Plex Web
-        // 4.162.1 sends the agent's `/system/agents` id as `metadataAgentProviderGroupId`
-        // and a group the server does not hold is a 400; without it, a modern agent whose
-        // built-in group is gone is a 400.
-        let wanted_group = query
-            .get("metadataAgentProviderGroupId")
-            .filter(|value| !value.is_empty());
-        if let Some(wanted_group) = wanted_group {
-            let held = self.metadata_provider_groups().iter().any(|row| {
-                row.get("id").map(|id| string_value(id)) == Some(wanted_group.clone())
-            });
-            if !held {
-                return Response::error(
-                    400,
-                    "unable to find entry for provided 'metadataAgentProviderGroupId'\r\n",
-                );
-            }
-        } else {
-            let agent = query.get("agent").cloned().unwrap_or_default();
-            let modern = self
-                .metadata_provider_rows()
-                .iter()
-                .position(|row| row.get("identifier").and_then(Value::as_str) == Some(agent.as_str()));
-            if modern.is_some_and(|index| self.deleted_builtin_groups.contains(&(index as i64 + 1))) {
-                return Response::error(
-                    400,
-                    "unable to find built-in agent group for provided 'agent'\r\n",
-                );
-            }
-        }
         let key = self
             .catalog
             .sections
@@ -21525,6 +21616,17 @@ impl Response {
             content_type: "text/plain".to_string(),
             body,
             headers: Vec::new(),
+            close: false,
+        }
+    }
+    /// Cycle 87: Add Library's validation refusal -- no Content-Type, gzipped when
+    /// offered, and ordered like a gzipped body either way (`wire.rs`).
+    fn untyped(status: u16, body: Vec<u8>) -> Self {
+        Self {
+            status,
+            content_type: String::new(),
+            body,
+            headers: vec![(wire::UNTYPED_MARK.to_string(), "1".to_string())],
             close: false,
         }
     }

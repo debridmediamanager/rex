@@ -48,6 +48,9 @@ impl Wire {
 /// A response built outside `_send` (the preflight, a part read) is marked with this
 /// private header; the writer strips it.
 pub(super) const RAW_MARK: &str = "X-Plexsim-Raw";
+/// Cycle 87: marks Add Library's untyped refusal (`Response::untyped`), which is gzipped
+/// without a type and orders like a gzipped body.
+pub(super) const UNTYPED_MARK: &str = "X-Plexsim-Untyped";
 
 /// `Range` -> (status, Content-Range, first, last) over a body of `total` bytes, or
 /// None when the header is not a Range (cycles 16, 35, 44).
@@ -505,6 +508,7 @@ pub(super) fn envelope(
     let mut content_type = response.content_type.clone();
     let mut body = response.body.clone();
     let raw = response.headers.iter().any(|(name, _)| name == RAW_MARK);
+    let untyped = response.headers.iter().any(|(name, _)| name == UNTYPED_MARK);
     let mut extra: Vec<(String, String)> = response
         .headers
         .iter()
@@ -523,6 +527,7 @@ pub(super) fn envelope(
                         | "x-plex-protocol"
                         | "x-plexsim-raw"
                         | "x-plexsim-no-head-gzip"
+                        | "x-plexsim-untyped"
                 ) && !(wire.origin.is_some()
                     && !raw
                     && matches!(
@@ -606,7 +611,7 @@ pub(super) fn envelope(
                 .any(|piece| piece.split(';').next().map(str::trim) == Some("gzip"))
         });
     if content_range.is_none()
-        && !content_type.is_empty()
+        && (!content_type.is_empty() || untyped)
         && !part
         && !names.contains("content-encoding")
     {
@@ -616,7 +621,7 @@ pub(super) fn envelope(
         if offered
             && !asset
             && !body.is_empty()
-            && GZIP_TYPES.iter().any(|kind| content_type.starts_with(kind))
+            && (untyped || GZIP_TYPES.iter().any(|kind| content_type.starts_with(kind)))
         {
             if let Some(squeezed) = gzip(&body) {
                 lines.push(("Content-Encoding".to_string(), "gzip".to_string()));
@@ -659,7 +664,13 @@ pub(super) fn envelope(
     }
     lines.extend(extra);
     lines.push(("Date".to_string(), http_date()));
-    let order = header_family(&lines, status, &wire.path, range_container);
+    // Cycle 87: the untyped refusal writes `Connection` before `Content-Length` with or
+    // without the encoding trio -- the gzip family's order (plexscratch42, both ways).
+    let order = if untyped {
+        ORDER_GZIP
+    } else {
+        header_family(&lines, status, &wire.path, range_container)
+    };
     let lines = order_lines(lines, order);
     if wire.method == "HEAD" {
         body.clear();

@@ -1,0 +1,4754 @@
+{
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh install); every refusal re-run on plexscratch (1.43.4)",
+ "date": "2026-10-01",
+ "request_headers": {
+  "Accept": "application/json",
+  "X-Plex-Product": "Plex Web",
+  "X-Plex-Version": "4.162.1",
+  "X-Plex-Platform": "Chrome"
+ },
+ "note": "POST /library/sections (Add Library) refusals. Date dropped from headers. 134 of 135 refusals re-run on plexscratch (1.43.4) were byte-identical; the one that differs is recorded under plexscratch_1_43_4 (1.43.4 holds a group 5, tv.plex.agents.nfo.movie). Every library the accepted forms created was deleted right after. Raw header orders below were read off the socket.",
+ "raw_header_orders": {
+  "plain": [
+   "X-Plex-Protocol",
+   "Connection",
+   "Keep-Alive",
+   "Content-Length",
+   "Cache-Control",
+   "Date"
+  ],
+  "gzip_offered_with_origin": [
+   "X-Plex-Protocol",
+   "Access-Control-Expose-Headers",
+   "Vary",
+   "Connection",
+   "Keep-Alive",
+   "Content-Encoding",
+   "X-Plex-Content-Original-Length",
+   "X-Plex-Content-Compressed-Length",
+   "Content-Length",
+   "Cache-Control",
+   "Access-Control-Allow-Origin",
+   "Date"
+  ],
+  "gzip_lengths_for_type_bogus": {
+   "original": 134,
+   "compressed": 121
+  },
+  "connection_close_request": [
+   "X-Plex-Protocol",
+   "Connection",
+   "Content-Length",
+   "Cache-Control",
+   "Date"
+  ],
+  "html_refusal": [
+   "X-Plex-Protocol",
+   "Content-Length",
+   "Content-Type",
+   "Connection",
+   "Keep-Alive",
+   "Cache-Control",
+   "Date"
+  ]
+ },
+ "refusals": [
+  {
+   "label": "empty",
+   "method": "POST",
+   "path": "/library/sections?",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "no-location",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "35"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "no-type",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "type-bogus",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=bogus&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "134"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'agent' is invalid for the selected library type\r\n"
+  },
+  {
+   "label": "type-99",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=99&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "134"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'agent' is invalid for the selected library type\r\n"
+  },
+  {
+   "label": "type-4",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=4&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "134"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'agent' is invalid for the selected library type\r\n"
+  },
+  {
+   "label": "no-agent",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "agent-bogus",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "172"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-series-for-movie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.series&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=2&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "97"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is invalid for the selected library type\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-series-for-movie-nogroup",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.series&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "97"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is invalid for the selected library type\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "no-scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "80"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'scanner' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "scanner-bogus",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Bogus%20Scanner&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "47"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "new scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "scanner-series-for-movie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20TV%20Series&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "47"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "new scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "no-name",
+   "method": "POST",
+   "path": "/library/sections?type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "name-empty",
+   "method": "POST",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "30"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'name' is missing or invalid\r\n"
+  },
+  {
+   "label": "no-language",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "language-zz",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=zz-ZZ&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "language-empty",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "group-99",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=99&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "66"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "unable to find entry for provided 'metadataAgentProviderGroupId'\r\n"
+  },
+  {
+   "label": "group-abc",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=abc&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "group-0",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=0&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "66"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "unable to find entry for provided 'metadataAgentProviderGroupId'\r\n"
+  },
+  {
+   "label": "group-2-for-movie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=2&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "94"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n"
+  },
+  {
+   "label": "group-minus1-modern",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=-1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "66"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "unable to find entry for provided 'metadataAgentProviderGroupId'\r\n"
+  },
+  {
+   "label": "group-empty",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "no-location-type-bogus",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=bogus&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "169"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'agent' is invalid for the selected library type\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "type-bogus-agent-bogus",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=bogus&agent=x&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "115"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "agent-bogus-scanner-bogus",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=x&scanner=y&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "agent-bogus-language-zz",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=x&scanner=Plex%20Movie&language=zz-ZZ&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "101"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "scanner-bogus-name-missing",
+   "method": "POST",
+   "path": "/library/sections?type=movie&agent=tv.plex.agents.movie&scanner=y&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "name-missing-language-zz",
+   "method": "POST",
+   "path": "/library/sections?type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=zz-ZZ&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "language-zz-group-99",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=zz-ZZ&metadataAgentProviderGroupId=99&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "unable to find entry for provided 'metadataAgentProviderGroupId'\r\n'language' is invalid\r\n"
+  },
+  {
+   "label": "no-location-no-name",
+   "method": "POST",
+   "path": "/library/sections?type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "type-bogus-xml",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=bogus&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": null,
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "134"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'agent' is invalid for the selected library type\r\n"
+  },
+  {
+   "label": "order-all",
+   "method": "POST",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "135"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "method": "POST",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "171"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-name-location",
+   "method": "POST",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "65"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'name' is missing or invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-lang-location",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=zz-ZZ",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "58"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-scanner-location",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=en-US",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "82"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "new scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-name-lang",
+   "method": "POST",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=zz-ZZ&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "53"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\n"
+  },
+  {
+   "label": "order-name-scanner",
+   "method": "POST",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "77"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'name' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-com-bogus-group1",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=com.plexapp.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "78"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-x-group99",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=x&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=99&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "78"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-x-nogroup",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=x&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "78"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-legacy-group1",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=com.plexapp.agents.none&scanner=Plex%20Video%20Files%20Scanner&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "136"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "type-empty",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "134"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'agent' is invalid for the selected library type\r\n"
+  },
+  {
+   "label": "agent-empty",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "78"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "scanner-empty",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "80"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'scanner' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "group-1abc",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1abc&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "89"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "label": "group-plus1-type-bogus",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=bogus&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=%2B1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "134"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'agent' is invalid for the selected library type\r\n"
+  },
+  {
+   "label": "type-photo-movie-agent",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Probe&type=photo&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "50"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is invalid for the selected library type\r\n"
+  },
+  {
+   "label": "type-show-movie-agent-groupfree",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=tv.plex.agents.movie&scanner=Plex%20TV%20Series&language=en-US&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "97"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is invalid for the selected library type\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "music-movie-scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=tv.plex.agents.music&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=3&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "47"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "new scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "method": "POST",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "321"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "method": "POST",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "349"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-scanner-missing-type",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=bogus&agent=tv.plex.agents.movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "167"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n"
+  },
+  {
+   "label": "none-agent-group4-plexmovie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.none&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "70"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "none-agent-group5-plexmovie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.none&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=5&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "136"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "unable to find entry for provided 'metadataAgentProviderGroupId'\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n",
+   "plexscratch_1_43_4": {
+    "status": 400,
+    "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+   }
+  },
+  {
+   "label": "none-agent-nogroup",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.none&scanner=Bogus&language=zz-ZZ&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "70"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "type-photo-photoagent",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=tv.plex.agents.photo&scanner=Bogus&language=zz-ZZ&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "112"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\n'language' is invalid\r\n"
+  },
+  {
+   "label": "music-lastfm-group3",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=com.plexapp.agents.lastfm&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=3&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "pair-none-plexmovie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.none&scanner=Plex%20Movie&language=zz-ZZ&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "pair-none-videofiles",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.none&scanner=Plex%20Video%20Files&language=zz-ZZ&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "pair-none-videofilesscanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.none&scanner=Plex%20Video%20Files%20Scanner&language=zz-ZZ&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "70"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "pair-none-show-series",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=tv.plex.agents.none&scanner=Plex%20TV%20Series&language=zz-ZZ&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "pair-none-photo-videofiles",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=tv.plex.agents.none&scanner=Plex%20Video%20Files&language=zz-ZZ&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "pair-music-plexmusic",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=tv.plex.agents.music&scanner=Plex%20Music&language=zz-ZZ&metadataAgentProviderGroupId=3&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "pair-legacy-plexmovie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=com.plexapp.agents.imdb&scanner=Plex%20Movie&language=zz-ZZ&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "70"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "pair-legacy-videofiles",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=com.plexapp.agents.imdb&scanner=Plex%20Video%20Files&language=zz-ZZ&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "70"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "legacy-fanarttv",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=com.plexapp.agents.fanarttv&scanner=Plex%20Movie%20Scanner&language=zz-ZZ&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "lang-agentx-xn",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=y&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "lang-agentx-en",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=y&language=en&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "54"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n'language' is invalid\r\n"
+  },
+  {
+   "label": "lang-agentx-EN-US",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=y&language=EN-US&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "lang-series-for-movie-xn",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.series&scanner=y&language=xn&metadataAgentProviderGroupId=2&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "50"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is invalid for the selected library type\r\n"
+  },
+  {
+   "label": "lang-series-for-movie-en",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.series&scanner=y&language=en&metadataAgentProviderGroupId=2&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "73"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is invalid for the selected library type\r\n'language' is invalid\r\n"
+  },
+  {
+   "label": "lang-typebogus-movie-xn",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=bogus&agent=tv.plex.agents.movie&scanner=y&language=xn&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "134"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'agent' is invalid for the selected library type\r\n"
+  },
+  {
+   "label": "lang-legacy-none-xn-badscanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=com.plexapp.agents.none&scanner=Plex%20Movie&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "47"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "new scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "scan-movie-Plex_Movie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=Plex%20Movie&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "78"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "scan-movie-Plex_TV_Series",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=Plex%20TV%20Series&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-movie-Plex_Music",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=Plex%20Music&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-movie-Plex_Video_Files",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=Plex%20Video%20Files&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "78"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "scan-movie-Plex_Photo",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=Plex%20Photo&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-movie-Plex_Photo_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=Plex%20Photo%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-movie-Plex_Movie_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=Plex%20Movie%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-movie-Plex_Series_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=Plex%20Series%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-movie-Plex_Music_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=Plex%20Music%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-movie-Plex_Video_Files_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=x&scanner=Plex%20Video%20Files%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-show-Plex_Movie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=x&scanner=Plex%20Movie&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-show-Plex_TV_Series",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=x&scanner=Plex%20TV%20Series&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "78"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "scan-show-Plex_Music",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=x&scanner=Plex%20Music&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-show-Plex_Video_Files",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=x&scanner=Plex%20Video%20Files&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-show-Plex_Photo",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=x&scanner=Plex%20Photo&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-show-Plex_Photo_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=x&scanner=Plex%20Photo%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-show-Plex_Movie_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=x&scanner=Plex%20Movie%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-show-Plex_Series_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=x&scanner=Plex%20Series%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-show-Plex_Music_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=x&scanner=Plex%20Music%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-show-Plex_Video_Files_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=x&scanner=Plex%20Video%20Files%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-artist-Plex_Movie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=x&scanner=Plex%20Movie&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-artist-Plex_TV_Series",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=x&scanner=Plex%20TV%20Series&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-artist-Plex_Music",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=x&scanner=Plex%20Music&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "78"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "scan-artist-Plex_Video_Files",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=x&scanner=Plex%20Video%20Files&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-artist-Plex_Photo",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=x&scanner=Plex%20Photo&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-artist-Plex_Photo_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=x&scanner=Plex%20Photo%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-artist-Plex_Movie_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=x&scanner=Plex%20Movie%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-artist-Plex_Series_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=x&scanner=Plex%20Series%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-artist-Plex_Music_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=x&scanner=Plex%20Music%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-artist-Plex_Video_Files_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=x&scanner=Plex%20Video%20Files%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-photo-Plex_Movie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=x&scanner=Plex%20Movie&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-photo-Plex_TV_Series",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=x&scanner=Plex%20TV%20Series&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-photo-Plex_Music",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=x&scanner=Plex%20Music&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-photo-Plex_Video_Files",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=x&scanner=Plex%20Video%20Files&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-photo-Plex_Photo",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=x&scanner=Plex%20Photo&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-photo-Plex_Photo_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=x&scanner=Plex%20Photo%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-photo-Plex_Movie_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=x&scanner=Plex%20Movie%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-photo-Plex_Series_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=x&scanner=Plex%20Series%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-photo-Plex_Music_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=x&scanner=Plex%20Music%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "scan-photo-Plex_Video_Files_Scanner",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=x&scanner=Plex%20Video%20Files%20Scanner&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "31"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is missing or invalid\r\n"
+  },
+  {
+   "label": "legacy-tvdb-movie-xn",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=com.plexapp.agents.thetvdb&scanner=y&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "legacy-tvdb-show-xn",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=show&agent=com.plexapp.agents.thetvdb&scanner=y&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "legacy-fanart-photo-xn",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=com.plexapp.agents.fanarttv&scanner=y&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "legacy-fanart-movie-enUS",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=com.plexapp.agents.fanarttv&scanner=y&language=zz-ZZ&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "legacy-imdb-movie-xn",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=com.plexapp.agents.imdb&scanner=Plex%20Movie&language=xn&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "70"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "legacy-imdb-movie-en",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=com.plexapp.agents.imdb&scanner=Plex%20Movie&language=en&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "47"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "new scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "modern-movie-xn",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.movie&scanner=y&language=xn&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "47"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "new scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "modern-movie-en",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.movie&scanner=y&language=en&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "70"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "modern-none-xn",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.none&scanner=y&language=xn&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "47"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "new scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "modern-none-enUS",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.none&scanner=y&language=en-US&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "47"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "new scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "legacy-imdb-typebogus",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=bogus&agent=com.plexapp.agents.imdb&scanner=y&language=en&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "107"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'language' is invalid\r\n"
+  },
+  {
+   "label": "none-photo-bogus",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=tv.plex.agents.none&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "none-artist-plexmusic",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=tv.plex.agents.none&scanner=Plex%20Music&language=zz-ZZ&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "none-artist-bogus",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=artist&agent=tv.plex.agents.none&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=4&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "70"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "music-for-movie-group3",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=tv.plex.agents.music&scanner=Plex%20Movie&language=zz-ZZ&metadataAgentProviderGroupId=3&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "120"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'agent' is invalid for the selected library type\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "legacy-imdb-photo-en",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=photo&agent=com.plexapp.agents.imdb&scanner=y&language=en&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "group-minus1-legacy-invalid",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20P&type=movie&agent=com.plexapp.agents.imdb&scanner=y&language=zz&metadataAgentProviderGroupId=-1&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "23"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'language' is invalid\r\n"
+  },
+  {
+   "label": "dup-name-param",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20A&name=&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=zz-ZZ&location=%2Fdata%2Fw4-none",
+   "accept": "application/json",
+   "status": 400,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Length",
+     "53"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\n"
+  }
+ ],
+ "accepted": [
+  {
+   "label": "ok-movie",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Ok%20Movie&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "status": 201,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "402"
+    ],
+    [
+     "Location",
+     "/library/sections/13"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Directory": [
+      {
+       "key": "13",
+       "type": "movie",
+       "title": "W4 Ok Movie",
+       "agent": "tv.plex.agents.movie",
+       "scanner": "Plex Movie",
+       "language": "en-US",
+       "metadataAgentProviderGroupId": 1,
+       "uuid": "521fe991-932b-4aa7-a63e-2daf9a4df33e",
+       "updatedAt": 1790879889,
+       "createdAt": 1790879889,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": -1,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 14,
+         "path": "/data/w4-none"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "deleted_after": true
+  },
+  {
+   "label": "ok-music",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Music&type=artist&agent=tv.plex.agents.music&scanner=Plex%20Music&language=en-US&metadataAgentProviderGroupId=3&location=%2Fdata%2Fw4-none",
+   "status": 201,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "400"
+    ],
+    [
+     "Location",
+     "/library/sections/14"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Directory": [
+      {
+       "key": "14",
+       "type": "artist",
+       "title": "W4 Music",
+       "agent": "tv.plex.agents.music",
+       "scanner": "Plex Music",
+       "language": "en-US",
+       "metadataAgentProviderGroupId": 3,
+       "uuid": "9246a8c9-ac55-476f-8d7b-e6e415810637",
+       "updatedAt": 1790879890,
+       "createdAt": 1790879890,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": -1,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 15,
+         "path": "/data/w4-none"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "deleted_after": true
+  },
+  {
+   "label": "ok-music-8",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Music8&type=8&agent=tv.plex.agents.music&scanner=Plex%20Music&language=en-US&metadataAgentProviderGroupId=3&location=%2Fdata%2Fw4-none",
+   "status": 201,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "401"
+    ],
+    [
+     "Location",
+     "/library/sections/15"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Directory": [
+      {
+       "key": "15",
+       "type": "artist",
+       "title": "W4 Music8",
+       "agent": "tv.plex.agents.music",
+       "scanner": "Plex Music",
+       "language": "en-US",
+       "metadataAgentProviderGroupId": 3,
+       "uuid": "dea1f8b9-b484-4626-9794-87409c1bd34e",
+       "updatedAt": 1790879892,
+       "createdAt": 1790879892,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": -1,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 16,
+         "path": "/data/w4-none"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "deleted_after": true
+  },
+  {
+   "label": "legacy-none-minus1",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Legacy&type=movie&agent=com.plexapp.agents.none&scanner=Plex%20Video%20Files%20Scanner&language=xn&metadataAgentProviderGroupId=-1&location=%2Fdata%2Fw4-none",
+   "status": 201,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "381"
+    ],
+    [
+     "Location",
+     "/library/sections/16"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Directory": [
+      {
+       "key": "16",
+       "type": "movie",
+       "title": "W4 Legacy",
+       "agent": "com.plexapp.agents.none",
+       "scanner": "Plex Video Files Scanner",
+       "language": "xn",
+       "uuid": "a56fc1bf-9ce6-4324-8478-b0fd73882fee",
+       "updatedAt": 1790879893,
+       "createdAt": 1790879893,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": -1,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 17,
+         "path": "/data/w4-none"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "deleted_after": true
+  },
+  {
+   "label": "dup-a",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Dup%20A&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-dup",
+   "status": 201,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "398"
+    ],
+    [
+     "Location",
+     "/library/sections/17"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Directory": [
+      {
+       "key": "17",
+       "type": "movie",
+       "title": "W4 Dup A",
+       "agent": "tv.plex.agents.movie",
+       "scanner": "Plex Movie",
+       "language": "en-US",
+       "metadataAgentProviderGroupId": 1,
+       "uuid": "d11f9bec-9c9c-404a-9245-ca0c3252cbf4",
+       "updatedAt": 1790879905,
+       "createdAt": 1790879905,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": -1,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 18,
+         "path": "/data/w4-dup"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "deleted_after": true
+  },
+  {
+   "label": "dup-b-same-location",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Dup%20B&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-dup",
+   "status": 201,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "398"
+    ],
+    [
+     "Location",
+     "/library/sections/18"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Directory": [
+      {
+       "key": "18",
+       "type": "movie",
+       "title": "W4 Dup B",
+       "agent": "tv.plex.agents.movie",
+       "scanner": "Plex Movie",
+       "language": "en-US",
+       "metadataAgentProviderGroupId": 1,
+       "uuid": "fc54f978-2a25-41b2-8aee-f67265d505a1",
+       "updatedAt": 1790879905,
+       "createdAt": 1790879905,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": -1,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 19,
+         "path": "/data/w4-dup"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "deleted_after": true
+  },
+  {
+   "label": "dup-param-twice",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Dup%20C&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-dup2&location=%2Fdata%2Fw4-dup2",
+   "status": 201,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "399"
+    ],
+    [
+     "Location",
+     "/library/sections/19"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Directory": [
+      {
+       "key": "19",
+       "type": "movie",
+       "title": "W4 Dup C",
+       "agent": "tv.plex.agents.movie",
+       "scanner": "Plex Movie",
+       "language": "en-US",
+       "metadataAgentProviderGroupId": 1,
+       "uuid": "582e356e-bfd4-4c5c-85b7-c5a823a49de7",
+       "updatedAt": 1790879905,
+       "createdAt": 1790879905,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": -1,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 20,
+         "path": "/data/w4-dup2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "deleted_after": true
+  },
+  {
+   "label": "two-locations",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Dup%20D&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-x1&location=%2Fdata%2Fw4-x2",
+   "status": 201,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "428"
+    ],
+    [
+     "Location",
+     "/library/sections/20"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Directory": [
+      {
+       "key": "20",
+       "type": "movie",
+       "title": "W4 Dup D",
+       "agent": "tv.plex.agents.movie",
+       "scanner": "Plex Movie",
+       "language": "en-US",
+       "metadataAgentProviderGroupId": 1,
+       "uuid": "cf3a22f3-0119-42ef-b50d-31f8bd5f9451",
+       "updatedAt": 1790879905,
+       "createdAt": 1790879905,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": -1,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 21,
+         "path": "/data/w4-x1"
+        },
+        {
+         "id": 22,
+         "path": "/data/w4-x2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "deleted_after": true
+  },
+  {
+   "label": "legacy-imdb-client-form",
+   "method": "POST",
+   "path": "/library/sections?name=W4%20Imdb&type=movie&agent=com.plexapp.agents.imdb&scanner=Plex%20Movie%20Scanner&language=en&metadataAgentProviderGroupId=-1&location=%2Fdata%2Fw4-none",
+   "status": 201,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Type",
+     "application/json"
+    ],
+    [
+     "Content-Length",
+     "373"
+    ],
+    [
+     "Location",
+     "/library/sections/21"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Directory": [
+      {
+       "key": "21",
+       "type": "movie",
+       "title": "W4 Imdb",
+       "agent": "com.plexapp.agents.imdb",
+       "scanner": "Plex Movie Scanner",
+       "language": "en",
+       "uuid": "fa6cdd3f-38a1-457a-8a8d-5c449040afda",
+       "updatedAt": 1790880369,
+       "createdAt": 1790880369,
+       "content": true,
+       "directory": true,
+       "contentChangedAt": -1,
+       "hidden": 0,
+       "Location": [
+        {
+         "id": 23,
+         "path": "/data/w4-none"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "deleted_after": true,
+   "note": "the form Plex Web 4.162.1 sends for its 'Plex Movie (Legacy)' choice: the legacy agent has no /system/agents id, so the dialog sends metadataAgentProviderGroupId=-1"
+  }
+ ]
+}

@@ -3682,5 +3682,28 @@ are changing; replay the client's exact request before altering behavior.
   `agent: tv.plex.agents.music` and `metadataAgentProviderGroupId: 3`. plexsim answered both
   DELETEs with the provider row (oracle) or a 404 (native) and ignored the parameter. It still
   writes its create 400s as the generic HTML page, and refuses `type=artist` outright (no music
-  libraries) -- both older gaps. MALFORMED-ONLY: Plex Web hides Remove on a built-in provider and
+  libraries) -- both older gaps, closed by the next bullet. MALFORMED-ONLY: Plex Web hides Remove on a built-in provider and
   group.
+- **Add Library refuses in TWO stages, and the second lists EVERY failure in one untyped 400.**
+  Swept on plexscratch42 (1.42.2, 2026-10-01) over 135 malformed `POST /library/sections` forms
+  and re-run on plexscratch (1.43.4), byte-identical on 134
+  (`tests/fixtures/c87_w4_add_library_refusals_s42.json`). An ABSENT `name`, `type`, `agent` or
+  `language`, or a non-integer `metadataAgentProviderGroupId`, is the generic 89-byte HTML 400
+  before anything else is read. Past that each failing check appends one CRLF-terminated line, in
+  a fixed order -- name, type, scanner, group lookup, agent, language, scanner pairing, location
+  -- and the list is ONE 400 with NO Content-Type: `type=bogus` with the movie agent is two lines
+  (`'type' is missing or invalid (...)` and `'agent' is invalid for the selected library type`).
+  Only a `tv.plex.agents.*` agent is looked up in the groups (a legacy agent ignores the client's
+  `-1`); a group that exists but names another agent is `agent identifier does not match primary
+  identifier of supplied metadata agent provider group` -- which is why `group=5` differs between
+  the versions (1.43.4 holds `tv.plex.agents.nfo.movie` there). A legacy agent's languages are
+  its own for that type (`en` passes `com.plexapp.agents.imdb` on a movie library), `xn` passes
+  every modern agent, and the pairing check wants a new scanner (`Plex Movie`/`Plex Video Files`,
+  `Plex TV Series`, `Plex Music`) exactly when the agent is a valid modern one; a photo library
+  is never paired. The untyped body is still gzipped on offer (134 to 121 bytes for `type=bogus`)
+  and writes `Connection`/`Keep-Alive` before `Content-Length` with or without the encoding trio.
+  A valid `type=artist` (or `type=8`) form with `tv.plex.agents.music`, `Plex Music` and group 3
+  is a 201 echoing all three. plexsim answered the HTML page to every refusal, stopped at the first
+  failure, refused both legacy forms Plex Web's dialog sends, and (oracle) refused music libraries.
+  MALFORMED-ONLY for the refusal shapes (Plex Web builds the form from `/system/agents` and
+  `/library/sections/prefs`); CLIENT-VISIBLE for the legacy-agent and music creates the dialog offers.
