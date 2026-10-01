@@ -252,6 +252,34 @@ def get(base, path):
     return container(base, "GET", path)
 
 
+def xml_container(body):
+    """An XML MediaContainer as the dict `container` makes of the JSON form.
+
+    Cycle 87 (W6), measured on zen, kids and plexscratch42: every `/system` path but the
+    bare `/system/agents` answers its `application/xml` document whatever Accept says,
+    so a check on one reads the XML. Rows group by element, and an all-digit
+    attribute reads as the number the JSON form would carry.
+    """
+    def typed(attrib):
+        return {k: int(v) if v.isdigit() else v for k, v in attrib.items()}
+    try:
+        root = ET.fromstring(body)
+    except ET.ParseError:
+        return {}
+    found = typed(root.attrib)
+    for child in root:
+        found.setdefault(child.tag, []).append(typed(child.attrib))
+    return found
+
+
+def get_system(base, path):
+    """`get` for a `/system` framework path: the JSON form if sent, else the XML one."""
+    status, body, headers = request(base, "GET", path)
+    if body[:1] == b"{":
+        return container(base, "GET", path)
+    return status, xml_container(body), headers
+
+
 def is_empty_200(status, body):
     """A real PMS answers every mutating endpoint with 200 and no body."""
     return status == 200 and body == b""
@@ -2911,7 +2939,7 @@ def main():
           and [d.get("key") for d in library.get("Directory") or []]
           == ["sections", "recentlyAdded", "onDeck"],
           ",".join(d.get("key") for d in library.get("Directory") or []))
-    status, system, _ = get(base, "/system")
+    status, system, _ = get_system(base, "/system")
     check("the system provider lists its directories",
           status == 200 and len(system.get("Directory") or []) == 2
           and system.get("identifier") == "com.plexapp.system",
@@ -3441,7 +3469,7 @@ def main():
     # container's identifier is com.plexapp.system rather than the library's.
     # plexsim answered `Directory` rows with a key and a title, which the Edit
     # Library dialog's scanner dropdown does not read at all.
-    status, scanners, _ = get(base, "/system/scanners/%s" % movie_section)
+    status, scanners, _ = get_system(base, "/system/scanners/%s" % movie_section)
     names = [s.get("name") for s in scanners.get("Scanner") or []]
     check("Edit Library dialog can list scanners",
           status == 200 and names == ["Plex Movie", "Plex Movie Scanner",
@@ -3450,7 +3478,7 @@ def main():
           and scanners.get("identifier") == "com.plexapp.system",
           ", ".join(str(n) for n in names))
     if show_section:
-        _, show_scanners, _ = get(base, "/system/scanners/%s" % show_section)
+        _, show_scanners, _ = get_system(base, "/system/scanners/%s" % show_section)
         check("a show library lists its own two scanners",
               [s.get("name") for s in show_scanners.get("Scanner") or []]
               == ["Plex TV Series", "Plex Series Scanner"],
@@ -3554,7 +3582,7 @@ def main():
              lambda s, b: s == 200 and len(b.get("MediaGrabber") or []) == 4),
             ("/system/library/sections", "the system library view",
              lambda s, b: s == 200 and b.get("identifier") == "com.plexapp.system")):
-        status, body_, _ = get(base, path_)
+        status, body_, _ = get_system(base, path_)
         check("%s answers rather than 404s" % why, test(status, body_),
               "HTTP %s %s" % (status, sorted(k for k in body_
                                              if not isinstance(body_[k], list))))
@@ -5304,8 +5332,8 @@ def main():
           and b"'NoneType' object has no attribute 'split'" in refusals_c58[0][1]
           and b"takes exactly 4 arguments (3 given)" in refusals_c58[1][1],
           str([r[0] for r in refusals_c58]))
-    status, scanners, _ = get(base, "/system/scanners/13")
-    status_bad, _, _ = get(base, "/system/scanners/99")
+    status, scanners, _ = get_system(base, "/system/scanners/13")
+    status_bad, _, _ = get_system(base, "/system/scanners/99")
     check("scanners are listed per library TYPE",
           status == 200 and [s.get("name") for s in scanners.get("Scanner") or []]
           == ["Plex Photo Scanner"] and status_bad == 500,
@@ -6229,7 +6257,11 @@ def main():
             "X-Plex-Container-Start": str(start), "X-Plex-Container-Size": str(size)})
         try:
             with urllib.request.urlopen(req, timeout=30) as response:
-                return response.status, json.loads(response.read()).get("MediaContainer") or {}
+                raw = response.read()
+                if raw[:1] == b"<":
+                    # A `/system` framework document is XML under any Accept (W6).
+                    return response.status, xml_container(raw)
+                return response.status, json.loads(raw).get("MediaContainer") or {}
         except urllib.error.HTTPError as error:
             return error.code, {}
         except ValueError:
@@ -17182,16 +17214,16 @@ def main():
     # which really does ignore paging. The paged form emits NO `offset`, alone on the
     # surface, and in XML the plug-in framework's container is ordered
     # `[totalSize,] noHistory, replaceParent, size, identifier`.
-    status, listing, _ = get(base, "/system?X-Plex-Container-Start=1&X-Plex-Container-Size=1")
+    status, listing, _ = get_system(base, "/system?X-Plex-Container-Start=1&X-Plex-Container-Size=1")
     check("/system pages", status == 200 and listing.get("size") == 1
           and listing.get("totalSize") == 2 and "offset" not in listing,
           "%s %s" % (status, listing))
-    status, listing, _ = get(base, "/system?X-Plex-Container-Start=5&X-Plex-Container-Size=1")
+    status, listing, _ = get_system(base, "/system?X-Plex-Container-Start=5&X-Plex-Container-Size=1")
     check("and answers nothing past the end",
           status == 200 and listing.get("size") == 0 and listing.get("totalSize") == 2,
           "%s %s" % (status, listing))
-    status, listing, _ = get(base, "/system/scanners/1?X-Plex-Container-Start=1"
-                             "&X-Plex-Container-Size=1")
+    status, listing, _ = get_system(base, "/system/scanners/1?X-Plex-Container-Start=1"
+                                    "&X-Plex-Container-Size=1")
     check("while /system/scanners ignores paging entirely",
           status == 200 and "totalSize" not in listing and listing.get("size") == 4,
           "%s %s" % (status, listing.get("size")))
@@ -17204,15 +17236,15 @@ def main():
     # Cycle 18: `/system/search` is a 200 on kids and zen alike -- an empty
     # `com.plexapp.system` container with `mediaTagPrefix` and `prefsKey`, the one container
     # attribute either reference emits that plexsim never did -- where plexsim 404'd it.
-    status, listing, _ = get(base, "/system/search")
+    status, listing, _ = get_system(base, "/system/search")
     check("/system/search is a real container",
           status == 200 and listing.get("size") == 0
           and listing.get("identifier") == "com.plexapp.system"
           and listing.get("prefsKey") == "/:/plugins/com.plexapp.system/prefs"
           and listing.get("mediaTagPrefix") == "/system/bundle/media/flags/",
           "%s %s" % (status, listing))
-    status, listing, _ = get(base, "/system/search?X-Plex-Container-Start=0"
-                             "&X-Plex-Container-Size=1")
+    status, listing, _ = get_system(base, "/system/search?X-Plex-Container-Start=0"
+                                    "&X-Plex-Container-Size=1")
     check("and it does not page", status == 200 and "totalSize" not in listing,
           "%s %s" % (status, listing))
 
@@ -17236,7 +17268,7 @@ def main():
         status, body, _ = request(base, verb, "/system/zzz", want_json=False)
         check("%s /system/zzz is an empty 404" % verb,
               status == 404 and not body, "%s %r" % (status, body[:40]))
-    status, listing, _ = get(base, "/system")
+    status, listing, _ = get_system(base, "/system")
     check("and the GET still answers", status == 200 and listing.get("size"), "%s" % status)
 
     # Cycle 18, measured on plexscratch with all seven verbs on each path: the playlist item
@@ -19730,8 +19762,8 @@ def main():
         # The language rides in the QUERY here -- measured as equivalent to the header
         # on both references, and the suite's own client sends a fixed header set.
         joiner_c25e = "&" if "?" in path_c25e else "?"
-        body_c25e = get(base, path_c25e + joiner_c25e
-                        + "X-Plex-Language=" + lang_c25e)[1]
+        body_c25e = get_system(base, path_c25e + joiner_c25e
+                               + "X-Plex-Language=" + lang_c25e)[1]
         return {row_c25e.get("key"): row_c25e.get("title")
                 for row_c25e in body_c25e.get("Directory") or []}
 
@@ -29918,7 +29950,7 @@ def main():
     # `noHistory`/`replaceParent` pair. And an extra segment is a 404 where plexsim answered
     # the whole listing again.
     import base64 as _base64_c53g
-    status_c53g, systemlib_c53g, _ = get(base, "/system/library/sections")
+    status_c53g, systemlib_c53g, _ = get_system(base, "/system/library/sections")
     rows_c53g = systemlib_c53g.get("Directory") or []
     decoded_c53g = []
     for row_c53g in rows_c53g:
