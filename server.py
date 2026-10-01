@@ -5551,23 +5551,28 @@ class PlexSim:
         is_show = section.get("type") == "show"
         rows = self.catalog.section_items(key)
         newest = max([r.get("addedAt") or 0 for r in rows] or [0])
+        # A library made by Add Library carries its own create stamp (see
+        # create_section); a catalog library's are derived from its rows.
+        created = section.get("createdAt") or newest
+        agent, scanner, group = self.section_agent(section)
         row = {
-            "key": ("/library/sections/%s/all?type=%d" % (key, 2 if is_show else 1))
+            "key": ("/library/sections/%s/all?type=%d"
+                    % (key, TYPE_NUMBERS.get(self.section_kind(section), 1)))
                    if shared else key,
             "type": section.get("type"),
             "title": section.get("title"),
-            "agent": "tv.plex.agents.series" if is_show else "tv.plex.agents.movie",
-            "scanner": "Plex TV Series" if is_show else "Plex Movie",
+            "agent": agent,
+            "scanner": scanner,
             "language": section.get("language") or "en-US",
-            "metadataAgentProviderGroupId": 2 if is_show else 1,
+            "metadataAgentProviderGroupId": group,
             "uuid": section.get("uuid"),
             # Cycle 17: a library PREFERENCE write stamps the section, and that stamp
             # wins over the derived one -- measured on plexscratch, where writing a
             # pref moves this field and leaves every other section's alone.
-            "updatedAt": section.get("updatedAt") or newest,
-            "createdAt": newest,
-            "scannedAt": newest,
-            "contentChangedAt": len(rows),
+            "updatedAt": section.get("updatedAt") or created,
+            "createdAt": created,
+            "scannedAt": created,
+            "contentChangedAt": section.get("contentChangedAt", len(rows)),
             "filters": True,
             "refreshing": str(key) in self.refreshing,
             "allowSync": False,
@@ -5579,8 +5584,8 @@ class PlexSim:
         # The id is the section's own key, because "Folder Location" filters by
         # this id (`?location=1`) and a shared id would make every section's
         # folder filter answer for section 1.
-        row["Location"] = [{"id": int(key) if str(key).isdigit() else 1,
-                            "path": "/plexsim/%s" % key}]
+        row["Location"] = [dict(location) for location in section.get("Location") or []] \
+            or [{"id": int(key) if str(key).isdigit() else 1, "path": "/plexsim/%s" % key}]
         if shared:
             # Measured: the shared view carries empty art/thumb -- and cycle 45, reading
             # the JSON key order (which IS the XML order): they LEAD the row, `art`
@@ -5593,6 +5598,27 @@ class PlexSim:
                 row.pop(absent, None)
         # And no `composite` on either view: neither real server sends one here.
         return row
+
+    # The built-in agent, scanner and provider group each library type gets when the
+    # catalog names none -- the three the Add Library dialog pairs by default.
+    DEFAULT_SECTION_AGENTS = {
+        "movie": ("tv.plex.agents.movie", "Plex Movie", 1),
+        "show": ("tv.plex.agents.series", "Plex TV Series", 2),
+        "artist": ("tv.plex.agents.music", "Plex Music", 3),
+    }
+
+    def section_agent(self, section):
+        """(agent, scanner, metadataAgentProviderGroupId) a library reports."""
+        agent, scanner, group = self.DEFAULT_SECTION_AGENTS.get(
+            section.get("type"), self.DEFAULT_SECTION_AGENTS["movie"])
+        return (section.get("agent") or agent, section.get("scanner") or scanner,
+                section.get("metadataAgentProviderGroupId") or group)
+
+    @staticmethod
+    def section_kind(section):
+        """The library's own top-level type: movie, show or artist."""
+        kind = section.get("type")
+        return kind if kind in ("show", "artist") else "movie"
 
     def section_summary(self, section):
         """The measured section census used by both library directory views."""
@@ -8934,14 +8960,13 @@ class PlexSim:
         directories = [{"hubKey": "/hubs", "title": "Home"}]
         for section in self.catalog.sections:
             key = section["key"]
+            agent, scanner, _group = self.section_agent(section)
             directories.append(
                 {
-                    "agent": ("tv.plex.agents.series" if section["type"] == "show"
-                              else "tv.plex.agents.movie"),
+                    "agent": agent,
                     "language": section.get("language") or "en-US",
                     "refreshing": False,
-                    "scanner": ("Plex TV Series" if section["type"] == "show"
-                                else "Plex Movie"),
+                    "scanner": scanner,
                     "uuid": section["uuid"],
                     # A string on a real PMS, not a number.
                     "id": str(key),
@@ -21752,6 +21777,27 @@ class PlexSim:
         seed = "%s-%s" % (title, section_type)
         section = self.catalog.add_section(
             title, section_type, "%032x" % (zlib.crc32(seed.encode()) & 0xFFFFFFFF))
+        # Measured on plexscratch42 (1.42.2), a `type=artist` form with the music agent
+        # and group 3: the library KEEPS what the form named -- `/library/sections` and
+        # `/media/providers` read back `tv.plex.agents.music`, `Plex Music`, group 3 and
+        # the folder as sent, stamped with the create time (`createdAt`, `updatedAt` and
+        # `scannedAt` equal) and `contentChangedAt` -1. plexsim stored the title and type
+        # alone and re-derived the movie agent, `Plex Movie`, group 1 and `/plexsim/<n>`,
+        # so the Edit Library dialog and python-plexapi read a music library as a movie one.
+        agent = query.get("agent") or ""
+        modern = [row["identifier"] for row in SYSTEM_AGENTS]
+        now = int(time.time())
+        section.update(agent=agent, scanner=query.get("scanner") or "",
+                       language=query.get("language") or "en-US",
+                       createdAt=now, contentChangedAt=-1)
+        if agent in modern:
+            # Only a modern agent is looked up in the groups (add_library_refusal); with
+            # no group named it is the agent's own built-in one.
+            wanted_group = query.get("metadataAgentProviderGroupId")
+            section["metadataAgentProviderGroupId"] = (
+                int(wanted_group) if wanted_group is not None else modern.index(agent) + 1)
+        if query.get("location"):
+            section["Location"] = [{"id": int(section["key"]), "path": query["location"]}]
         logger.info("SECTION create %s (%s)", title, section_type)
         if self.discovery is not None:
             # Cycle 50: a library create is one of the three events that move the
@@ -21779,19 +21825,16 @@ class PlexSim:
         self.notify_queue_regenerated()
         # Measured: the create answers a BARE container, with none of the library
         # container's identifier, media-tag pair or allowSync.
-        return ("created", self.bare_container(size=1, Directory=[dict(
-            section,
-            agent=("tv.plex.agents.series" if section_type == "show"
-                   else "tv.plex.agents.movie"),
-            scanner=("Plex TV Series" if section_type == "show" else "Plex Movie"),
-            language=query.get("language") or "en-US",
-            refreshing=False,
-            content=True,
-            directory=True,
-            contentChangedAt=0,
-            hidden=0,
-            Location=[{"id": 1, "path": query.get("location") or "/plexsim"}],
-        )]), "/library/sections/%s" % section["key"])
+        # The echo's own attribute order, measured (W4's accepted forms): no
+        # `refreshing`, and the group and the two stamps between language and content.
+        row = self.section_directory(section)
+        echo = {name: row[name] for name in (
+            "key", "type", "title", "agent", "scanner", "language",
+            "metadataAgentProviderGroupId", "uuid", "updatedAt", "createdAt")}
+        echo.update(content=True, directory=True, contentChangedAt=-1, hidden=0,
+                    Location=[{"id": 1, "path": query.get("location") or "/plexsim"}])
+        return ("created", self.bare_container(size=1, Directory=[echo]),
+                "/library/sections/%s" % section["key"])
 
     # -- the stream ------------------------------------------------------
 

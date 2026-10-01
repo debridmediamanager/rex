@@ -2434,6 +2434,32 @@ impl Runtime {
         rows
     }
 
+    /// `server.py` `section_agent`: the (agent, scanner, provider group) a library
+    /// reports -- what Add Library stored, else its type's built-in trio.
+    fn section_agent(section: &Value) -> (String, String, i64) {
+        let (agent, scanner, group) = match section.get("type").and_then(Value::as_str) {
+            Some("show") => ("tv.plex.agents.series", "Plex TV Series", 2),
+            Some("artist") => ("tv.plex.agents.music", "Plex Music", 3),
+            _ => ("tv.plex.agents.movie", "Plex Movie", 1),
+        };
+        let own = |name: &str| {
+            section
+                .get(name)
+                .and_then(Value::as_str)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+        };
+        (
+            own("agent").unwrap_or_else(|| agent.to_string()),
+            own("scanner").unwrap_or_else(|| scanner.to_string()),
+            section
+                .get("metadataAgentProviderGroupId")
+                .and_then(Value::as_i64)
+                .filter(|group| *group != 0)
+                .unwrap_or(group),
+        )
+    }
+
     fn section_directory(&self, section: &Value) -> Value {
         let key = string_value(section.get("key").unwrap_or(&Value::Null));
         let kind = section
@@ -2446,19 +2472,34 @@ impl Runtime {
             .filter_map(|row| row.get("addedAt").and_then(Value::as_i64))
             .max()
             .unwrap_or(0);
+        // A library made by Add Library carries its own create stamp; a catalog
+        // library's are derived from its rows.
+        let created = section
+            .get("createdAt")
+            .and_then(Value::as_i64)
+            .filter(|stamp| *stamp != 0)
+            .unwrap_or(newest);
+        let (agent, scanner, group) = Self::section_agent(section);
+        let location = section
+            .get("Location")
+            .and_then(Value::as_array)
+            .filter(|locations| !locations.is_empty())
+            .cloned()
+            .map(Value::Array)
+            .unwrap_or_else(|| json!([{"id": key.parse::<i64>().unwrap_or(1), "path": format!("/plexsim/{key}")}]));
         let row = json!({
             "key": key,
             "type": kind,
             "title": section.get("title").cloned().unwrap_or(Value::Null),
-            "agent": if kind == "show" { "tv.plex.agents.series" } else { "tv.plex.agents.movie" },
-            "scanner": if kind == "show" { "Plex TV Series" } else { "Plex Movie" },
+            "agent": agent,
+            "scanner": scanner,
             "language": section.get("language").and_then(Value::as_str).unwrap_or("en-US"),
-            "metadataAgentProviderGroupId": if kind == "show" { 2 } else { 1 },
+            "metadataAgentProviderGroupId": group,
             "uuid": section.get("uuid").cloned().unwrap_or(Value::Null),
-            "updatedAt": section.get("updatedAt").cloned().unwrap_or(json!(newest)),
-            "createdAt": newest,
-            "scannedAt": newest,
-            "contentChangedAt": rows.len(),
+            "updatedAt": section.get("updatedAt").cloned().unwrap_or(json!(created)),
+            "createdAt": created,
+            "scannedAt": created,
+            "contentChangedAt": section.get("contentChangedAt").cloned().unwrap_or(json!(rows.len())),
             "filters": true,
             "refreshing": false,
             "allowSync": false,
@@ -2466,7 +2507,7 @@ impl Runtime {
             "directory": true,
             // Cycle 58: the library's Visibility setting, 0, 1 or 2.
             "hidden": self.section_visibility(&key),
-            "Location": [{"id": key.parse::<i64>().unwrap_or(1), "path": format!("/plexsim/{key}")}]
+            "Location": location
         });
         row
     }
@@ -2964,15 +3005,9 @@ impl Runtime {
             pivots.push(json!({"id": "categories", "key": format!("/library/sections/{key}/categories"),
                                "type": "list", "title": "Categories", "context": "content.categories",
                                "symbol": "stack"}));
+            let (agent, scanner, _group) = Self::section_agent(section);
             let mut row = Map::new();
-            row.insert(
-                "agent".to_string(),
-                json!(if show {
-                    "tv.plex.agents.series"
-                } else {
-                    "tv.plex.agents.movie"
-                }),
-            );
+            row.insert("agent".to_string(), json!(agent));
             row.insert(
                 "language".to_string(),
                 section
@@ -2982,10 +3017,7 @@ impl Runtime {
                     .unwrap_or_else(|| json!("en-US")),
             );
             row.insert("refreshing".to_string(), json!(false));
-            row.insert(
-                "scanner".to_string(),
-                json!(if show { "Plex TV Series" } else { "Plex Movie" }),
-            );
+            row.insert("scanner".to_string(), json!(scanner));
             row.insert(
                 "uuid".to_string(),
                 section.get("uuid").cloned().unwrap_or(Value::Null),
@@ -8179,12 +8211,50 @@ impl Runtime {
             .unwrap_or(0)
             + 1;
         let seed = format!("{title}-{kind}");
-        let section = json!({
+        let mut section = json!({
             "key": key.to_string(),
             "type": kind,
             "title": title,
             "uuid": format!("{:032x}", crc32(seed.as_bytes())),
         });
+        // Measured on plexscratch42 (1.42.2), a `type=artist` form with the music agent
+        // and group 3: the library KEEPS what the form named -- agent, scanner, group and
+        // folder read back as sent, stamped with the create time and `contentChangedAt`
+        // -1. plexsim re-derived the movie agent, `Plex Movie`, group 1 and
+        // `/plexsim/<n>`, so a music library read back as a movie one.
+        let agent = query.get("agent").cloned().unwrap_or_default();
+        let system = load_json_sidecar(&self.catalog_path, "system_agents.json").unwrap_or(Value::Null);
+        let builtin = system
+            .get("agents")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .position(|row| row.get("identifier").and_then(Value::as_str) == Some(agent.as_str()));
+        if let Some(object) = section.as_object_mut() {
+            object.insert("agent".to_string(), json!(agent));
+            object.insert(
+                "scanner".to_string(),
+                json!(query.get("scanner").cloned().unwrap_or_default()),
+            );
+            object.insert(
+                "language".to_string(),
+                json!(if language.is_empty() { "en-US" } else { language.as_str() }),
+            );
+            object.insert("createdAt".to_string(), json!(now()));
+            object.insert("contentChangedAt".to_string(), json!(-1));
+            if let Some(position) = builtin {
+                // Only a modern agent is looked up in the groups; with no group named
+                // it is the agent's own built-in one.
+                let group = query
+                    .get("metadataAgentProviderGroupId")
+                    .and_then(|value| value.parse::<i64>().ok())
+                    .unwrap_or(position as i64 + 1);
+                object.insert("metadataAgentProviderGroupId".to_string(), json!(group));
+            }
+            if !location.is_empty() {
+                object.insert("Location".to_string(), json!([{"id": key, "path": location}]));
+            }
+        }
         info!("SECTION create {title} ({kind})");
         self.touch_gdm();
         self.catalog.sections.push(section.clone());
@@ -8221,24 +8291,19 @@ impl Runtime {
         self.notify_section_scan(&key.to_string(), &section);
         self.notify_queue_regenerated();
         self.dirty = true;
-        let mut row = section.as_object().cloned().unwrap_or_default();
-        let is_show = kind == "show";
-        row.insert(
-            "agent".to_string(),
-            json!(if is_show { "tv.plex.agents.series" } else { "tv.plex.agents.movie" }),
-        );
-        row.insert(
-            "scanner".to_string(),
-            json!(if is_show { "Plex TV Series" } else { "Plex Movie" }),
-        );
-        row.insert(
-            "language".to_string(),
-            json!(if language.is_empty() { "en-US".to_string() } else { language }),
-        );
-        row.insert("refreshing".to_string(), json!(false));
+        // The echo's own attribute order, measured (W4's accepted forms): no
+        // `refreshing`, and the group and the two stamps between language and content.
+        let directory = self.section_directory(&section);
+        let mut row = Map::new();
+        for name in [
+            "key", "type", "title", "agent", "scanner", "language",
+            "metadataAgentProviderGroupId", "uuid", "updatedAt", "createdAt",
+        ] {
+            row.insert(name.to_string(), directory.get(name).cloned().unwrap_or(Value::Null));
+        }
         row.insert("content".to_string(), json!(true));
         row.insert("directory".to_string(), json!(true));
-        row.insert("contentChangedAt".to_string(), json!(0));
+        row.insert("contentChangedAt".to_string(), json!(-1));
         row.insert("hidden".to_string(), json!(0));
         row.insert(
             "Location".to_string(),

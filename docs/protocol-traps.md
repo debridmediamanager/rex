@@ -3724,3 +3724,14 @@ are changing; replay the client's exact request before altering behavior.
   95% beat's measured `progress`. MALFORMED-ONLY for the answer word (python-plexapi discards
   it); CLIENT-VISIBLE for the offline sync, which Plex for Android uses to report downloads
   watched (js:1673773) -- after a 95% play it marked nothing on ours.
+- **A library made by Add Library KEEPS the form's agent, scanner, group and folder.** Measured
+  on plexscratch42 (1.42.2) with an empty `type=artist` library made from
+  `agent=tv.plex.agents.music&scanner=Plex%20Music&metadataAgentProviderGroupId=3&location=...`
+  (`tests/fixtures/c87_w5_music_library_s42.json`): `/library/sections`, `/media/providers` and
+  the `location` axis read back the music agent, `Plex Music`, group 3 and the folder as sent;
+  `createdAt`, `updatedAt` and `scannedAt` are the one create moment and `contentChangedAt` is -1.
+  The 201 echoes `key type title agent scanner language metadataAgentProviderGroupId uuid
+  updatedAt createdAt content directory contentChangedAt hidden Location`, with no `refreshing`.
+  plexsim kept only title and type and re-derived the movie agent, `Plex Movie`, group 1 and
+  `/plexsim/<n>` on every read, so the Edit Library dialog and python-plexapi (`section.agent`,
+  `.scanner`, `.locations`) read a new music library as a movie one. CLIENT-VISIBLE.
