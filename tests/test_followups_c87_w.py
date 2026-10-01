@@ -21,6 +21,7 @@ default, the oracle with `PLEXSIM_SERVER=python`.
 import http.client
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -122,7 +123,9 @@ def action_grammar(port):
               % action, status == 200 and body == bare and len(rows) == 5, (status, len(rows)))
     _, bare = request(port, "GET", "/system/scanners/1")
     status, body = request(port, "GET", "/system/scanners/1?action=create")
-    names = [row.get("name") for row in ((body or {}).get("MediaContainer") or {}).get("Scanner") or []]
+    # The list is XML whatever Accept says (cycle 87, W6): read the rows out of it.
+    names = re.findall(r'<Scanner name="([^"]*)"/>', (body or b"").decode("utf-8")) \
+        if isinstance(body, bytes) else []
     check("/system/scanners/1?action=create ignores action on 1.42.2 (zen: 4 scanners)",
           status == 200 and body == bare and names == [
               "Plex Movie", "Plex Movie Scanner", "Plex Video Files Scanner", "Plex Video Files"],

@@ -1,0 +1,2252 @@
+{
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed); zen 1.42.2 and kids 1.43.4 (GET only) as witnesses",
+ "date": "2026-10-01",
+ "request_headers": {
+  "X-Plex-Product": "Plex Web",
+  "X-Plex-Version": "4.162.1",
+  "X-Plex-Platform": "Chrome",
+  "X-Plex-Container-Start": "0",
+  "X-Plex-Container-Size": "50"
+ },
+ "note": "Every /system path Plex Web reads, under four Accept values (`application/json`, `application/xml`, none, and axios' `application/json, text/plain, */*`). Only the bare /system/agents answers JSON; every other path answers its application/xml document whatever Accept says. Plex Web 4.147.1 and 4.162.1 read /system/scanners/{N} through `ScannerCollection`, whose responseType is the base default (`xml`, Accept: application/xml), and parse the body as XML. The framework Set-Cookie value is the constant empty-session blob, not a credential.",
+ "exchanges": [
+  {
+   "method": "GET",
+   "path": "/system/scanners/0",
+   "accept": "application/json",
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "109"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/0",
+   "accept": "application/xml",
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "109"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/0",
+   "accept": null,
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "109"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/0",
+   "accept": "application/json, text/plain, */*",
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "109"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "299"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"4\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Movie\"/>\n  <Scanner name=\"Plex Movie Scanner\"/>\n  <Scanner name=\"Plex Video Files Scanner\"/>\n  <Scanner name=\"Plex Video Files\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "299"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"4\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Movie\"/>\n  <Scanner name=\"Plex Movie Scanner\"/>\n  <Scanner name=\"Plex Video Files Scanner\"/>\n  <Scanner name=\"Plex Video Files\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "299"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"4\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Movie\"/>\n  <Scanner name=\"Plex Movie Scanner\"/>\n  <Scanner name=\"Plex Video Files Scanner\"/>\n  <Scanner name=\"Plex Video Files\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "299"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"4\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Movie\"/>\n  <Scanner name=\"Plex Movie Scanner\"/>\n  <Scanner name=\"Plex Video Files Scanner\"/>\n  <Scanner name=\"Plex Video Files\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "222"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"2\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex TV Series\"/>\n  <Scanner name=\"Plex Series Scanner\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "222"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"2\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex TV Series\"/>\n  <Scanner name=\"Plex Series Scanner\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "222"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"2\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex TV Series\"/>\n  <Scanner name=\"Plex Series Scanner\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/2",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "222"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"2\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex TV Series\"/>\n  <Scanner name=\"Plex Series Scanner\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/3",
+   "accept": "application/json",
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "109"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/3",
+   "accept": "application/xml",
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "109"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/3",
+   "accept": null,
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "109"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/3",
+   "accept": "application/json, text/plain, */*",
+   "status": 500,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "109"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Internal Server Error</title></head><body><h1>500 Internal Server Error</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/8",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/8",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/8",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/8",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/9",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/9",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/9",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/9",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/13",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "186"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"1\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Photo Scanner\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/13",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "186"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"1\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Photo Scanner\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/13",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "186"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"1\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Photo Scanner\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/13",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "186"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"1\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Photo Scanner\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1?action=add",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "299"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"4\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Movie\"/>\n  <Scanner name=\"Plex Movie Scanner\"/>\n  <Scanner name=\"Plex Video Files Scanner\"/>\n  <Scanner name=\"Plex Video Files\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1?action=add",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "299"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"4\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Movie\"/>\n  <Scanner name=\"Plex Movie Scanner\"/>\n  <Scanner name=\"Plex Video Files Scanner\"/>\n  <Scanner name=\"Plex Video Files\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1?action=add",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "299"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"4\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Movie\"/>\n  <Scanner name=\"Plex Movie Scanner\"/>\n  <Scanner name=\"Plex Video Files Scanner\"/>\n  <Scanner name=\"Plex Video Files\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/1?action=add",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "299"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"4\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Movie\"/>\n  <Scanner name=\"Plex Movie Scanner\"/>\n  <Scanner name=\"Plex Video Files Scanner\"/>\n  <Scanner name=\"Plex Video Files\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/8?action=edit",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/8?action=edit",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/8?action=edit",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/scanners/8?action=edit",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "220"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"3\" identifier=\"com.plexapp.system\">\n  <Scanner name=\"Plex Music\"/>\n  <Scanner name=\"Plex Music Scanner\"/>\n  \n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "301"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "2"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"2\" noHistory=\"0\" replaceParent=\"0\" size=\"2\" identifier=\"com.plexapp.system\">\n  <Directory key=\"library\" title=\"Library Sections\" name=\"Library Sections\"/>\n  <Directory key=\"plugins\" title=\"Plug-ins\" name=\"Plug-ins\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "301"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "2"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"2\" noHistory=\"0\" replaceParent=\"0\" size=\"2\" identifier=\"com.plexapp.system\">\n  <Directory key=\"library\" title=\"Library Sections\" name=\"Library Sections\"/>\n  <Directory key=\"plugins\" title=\"Plug-ins\" name=\"Plug-ins\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "301"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "2"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"2\" noHistory=\"0\" replaceParent=\"0\" size=\"2\" identifier=\"com.plexapp.system\">\n  <Directory key=\"library\" title=\"Library Sections\" name=\"Library Sections\"/>\n  <Directory key=\"plugins\" title=\"Plug-ins\" name=\"Plug-ins\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "301"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "2"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"2\" noHistory=\"0\" replaceParent=\"0\" size=\"2\" identifier=\"com.plexapp.system\">\n  <Directory key=\"library\" title=\"Library Sections\" name=\"Library Sections\"/>\n  <Directory key=\"plugins\" title=\"Plug-ins\" name=\"Plug-ins\"/>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents",
+   "accept": "application/json",
+   "status": 200,
+   "content_type": "application/json",
+   "body_starts": "{\"MediaContainer\":{\"size\":15,\"totalSize\""
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents",
+   "accept": "application/xml",
+   "status": 200,
+   "content_type": "text/xml;charset=utf-8",
+   "body_starts": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents",
+   "accept": null,
+   "status": 200,
+   "content_type": "text/xml;charset=utf-8",
+   "body_starts": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "content_type": "application/json",
+   "body_starts": "{\"MediaContainer\":{\"size\":15,\"totalSize\""
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1",
+   "accept": "application/json",
+   "status": 200,
+   "content_type": "application/json",
+   "body_starts": "{\"MediaContainer\":{\"size\":5,\"totalSize\":"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1",
+   "accept": "application/xml",
+   "status": 200,
+   "content_type": "text/xml;charset=utf-8",
+   "body_starts": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1",
+   "accept": null,
+   "status": 200,
+   "content_type": "text/xml;charset=utf-8",
+   "body_starts": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents?mediaType=1",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "content_type": "application/json",
+   "body_starts": "{\"MediaContainer\":{\"size\":5,\"totalSize\":"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/agents/tv.plex.agents.movie/config/1",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/search",
+   "accept": "application/json",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "190"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer size=\"0\" identifier=\"com.plexapp.system\" mediaTagPrefix=\"/system/bundle/media/flags/\" prefsKey=\"/:/plugins/com.plexapp.system/prefs\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/search",
+   "accept": "application/xml",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "190"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer size=\"0\" identifier=\"com.plexapp.system\" mediaTagPrefix=\"/system/bundle/media/flags/\" prefsKey=\"/:/plugins/com.plexapp.system/prefs\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/search",
+   "accept": null,
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "190"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer size=\"0\" identifier=\"com.plexapp.system\" mediaTagPrefix=\"/system/bundle/media/flags/\" prefsKey=\"/:/plugins/com.plexapp.system/prefs\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/search",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "190"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer size=\"0\" identifier=\"com.plexapp.system\" mediaTagPrefix=\"/system/bundle/media/flags/\" prefsKey=\"/:/plugins/com.plexapp.system/prefs\"/>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections",
+   "accept": "application/json",
+   "status": 200,
+   "content_type": "application/xml",
+   "body_starts": "<?xml version='1.0' encoding='utf-8'?>\n<"
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections",
+   "accept": "application/xml",
+   "status": 200,
+   "content_type": "application/xml",
+   "body_starts": "<?xml version='1.0' encoding='utf-8'?>\n<"
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections",
+   "accept": null,
+   "status": 200,
+   "content_type": "application/xml",
+   "body_starts": "<?xml version='1.0' encoding='utf-8'?>\n<"
+  },
+  {
+   "method": "GET",
+   "path": "/system/library/sections",
+   "accept": "application/json, text/plain, */*",
+   "status": 200,
+   "content_type": "application/xml",
+   "body_starts": "<?xml version='1.0' encoding='utf-8'?>\n<"
+  }
+ ],
+ "witnesses": {
+  "zen_scanners": [
+   {
+    "path": "/system/scanners/0",
+    "accept": "application/json",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/0",
+    "accept": "application/xml",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/1",
+    "accept": "application/json",
+    "status": 200,
+    "content_type": "application/xml",
+    "length": 299
+   },
+   {
+    "path": "/system/scanners/1",
+    "accept": "application/xml",
+    "status": 200,
+    "content_type": "application/xml",
+    "length": 299
+   },
+   {
+    "path": "/system/scanners/2",
+    "accept": "application/json",
+    "status": 200,
+    "content_type": "application/xml",
+    "length": 222
+   },
+   {
+    "path": "/system/scanners/2",
+    "accept": "application/xml",
+    "status": 200,
+    "content_type": "application/xml",
+    "length": 222
+   },
+   {
+    "path": "/system/scanners/3",
+    "accept": "application/json",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/3",
+    "accept": "application/xml",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/4",
+    "accept": "application/json",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/4",
+    "accept": "application/xml",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/8",
+    "accept": "application/json",
+    "status": 200,
+    "content_type": "application/xml",
+    "length": 220
+   },
+   {
+    "path": "/system/scanners/8",
+    "accept": "application/xml",
+    "status": 200,
+    "content_type": "application/xml",
+    "length": 220
+   },
+   {
+    "path": "/system/scanners/9",
+    "accept": "application/json",
+    "status": 200,
+    "content_type": "application/xml",
+    "length": 220
+   },
+   {
+    "path": "/system/scanners/9",
+    "accept": "application/xml",
+    "status": 200,
+    "content_type": "application/xml",
+    "length": 220
+   },
+   {
+    "path": "/system/scanners/10",
+    "accept": "application/json",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/10",
+    "accept": "application/xml",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/13",
+    "accept": "application/json",
+    "status": 200,
+    "content_type": "application/xml",
+    "length": 186
+   },
+   {
+    "path": "/system/scanners/13",
+    "accept": "application/xml",
+    "status": 200,
+    "content_type": "application/xml",
+    "length": 186
+   },
+   {
+    "path": "/system/scanners/14",
+    "accept": "application/json",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/14",
+    "accept": "application/xml",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/18",
+    "accept": "application/json",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/18",
+    "accept": "application/xml",
+    "status": 500,
+    "content_type": "text/html",
+    "length": 109
+   },
+   {
+    "path": "/system/scanners/zzz",
+    "accept": "application/json",
+    "status": 500,
+    "content_type": "application/xml",
+    "length": 641
+   },
+   {
+    "path": "/system/scanners/zzz",
+    "accept": "application/xml",
+    "status": 500,
+    "content_type": "application/xml",
+    "length": 641
+   }
+  ],
+  "kids_scanners": [
+   {
+    "path": "/system/scanners/1",
+    "accept": "application/json",
+    "status": 200,
+    "length": 299,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1",
+    "accept": "application/xml",
+    "status": 200,
+    "length": 299,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1",
+    "accept": null,
+    "status": 200,
+    "length": 299,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/1",
+    "accept": "application/json, text/plain, */*",
+    "status": 200,
+    "length": 299,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2",
+    "accept": "application/json",
+    "status": 200,
+    "length": 222,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2",
+    "accept": "application/xml",
+    "status": 200,
+    "length": 222,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2",
+    "accept": null,
+    "status": 200,
+    "length": 222,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/2",
+    "accept": "application/json, text/plain, */*",
+    "status": 200,
+    "length": 222,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/8",
+    "accept": "application/json",
+    "status": 200,
+    "length": 220,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/8",
+    "accept": "application/xml",
+    "status": 200,
+    "length": 220,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/8",
+    "accept": null,
+    "status": 200,
+    "length": 220,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/8",
+    "accept": "application/json, text/plain, */*",
+    "status": 200,
+    "length": 220,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/9",
+    "accept": "application/json",
+    "status": 200,
+    "length": 220,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/9",
+    "accept": "application/xml",
+    "status": 200,
+    "length": 220,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/9",
+    "accept": null,
+    "status": 200,
+    "length": 220,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/9",
+    "accept": "application/json, text/plain, */*",
+    "status": 200,
+    "length": 220,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/13",
+    "accept": "application/json",
+    "status": 200,
+    "length": 186,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/13",
+    "accept": "application/xml",
+    "status": 200,
+    "length": 186,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/13",
+    "accept": null,
+    "status": 200,
+    "length": 186,
+    "body_equal_to_s42": true
+   },
+   {
+    "path": "/system/scanners/13",
+    "accept": "application/json, text/plain, */*",
+    "status": 200,
+    "length": 186,
+    "body_equal_to_s42": true
+   }
+  ]
+ }
+}

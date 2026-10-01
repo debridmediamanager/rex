@@ -21115,13 +21115,20 @@ class PlexSim:
         if found is None:
             return ("error", 500, "plexsim: internal error")
         size, names = found
-        return {"MediaContainer": {
-            "size": size,
-            "identifier": "com.plexapp.system",
-            "noHistory": 0,
-            "replaceParent": 0,
-            "Scanner": [{"name": name} for name in names],
-        }}
+        # Cycle 87, measured on zen, kids and plexscratch42, byte-identical on all three
+        # and under every Accept: the answer is always this `application/xml` document
+        # (Plex Web's `ScannerCollection` asks for XML anyway). The MUSIC list is written
+        # by a different writer from the other three -- a DOUBLE-quoted declaration, and
+        # the third row its `size="3"` counts serialised as an empty indented line --
+        # 220 bytes where the framework's own form of the same two rows is 217.
+        music = size > len(names)
+        rows = "".join('  <Scanner name="%s"/>\n' % name for name in names)
+        return ("system-xml", 200, (
+            "<?xml version=%s encoding=%s?>\n"
+            '<MediaContainer noHistory="0" replaceParent="0" size="%d" '
+            'identifier="com.plexapp.system">\n%s%s</MediaContainer>\n' % (
+                '"1.0"' if music else "'1.0'", '"utf-8"' if music else "'utf-8'",
+                size, rows, "  \n" if music else "")).encode("utf-8"))
 
     def accounts(self, account_id):
         """`/accounts` -- the server's own user rows.
@@ -23903,13 +23910,20 @@ class Handler(BaseHTTPRequestHandler):
         body_dict = next(iter(container.values()))
         elements = body_dict.pop("_xml", None) if isinstance(body_dict, dict) else None
         window = self._paging_headers(body_dict)
-        if self._wants_xml():
+        route = (getattr(self, "path", "") or "").split("?")[0].rstrip("/")
+        framework = (route == "/system" or route.startswith("/system/")) \
+            and route != "/system/agents"
+        # Cycle 87, measured on zen, kids and plexscratch42 with `Accept:
+        # application/json`: the framework's serialiser has no JSON form, so `/system`,
+        # `/system/search`, `/system/library/sections` and `/system/scanners/{N}` answer
+        # the same `application/xml` document whatever Accept says. Only the bare
+        # `/system/agents`, which PMS implements itself, answers JSON. plexsim answered
+        # JSON to all four.
+        if self._wants_xml() or framework:
             # Cycle 50: every path under `/system` but `/system/agents` is written by the
             # plug-in framework's own serialiser and answers `application/xml` with no
             # charset. See `xmlout.to_system_xml`.
-            route = (getattr(self, "path", "") or "").split("?")[0].rstrip("/")
-            if (route == "/system" or route.startswith("/system/")) \
-                    and route != "/system/agents":
+            if framework:
                 # Cycle 53: only the BARE `/system/agents` is PMS's own handler. Everything
                 # UNDER it -- `/{id}/config/{N}`, `/contributors` -- is the framework's and
                 # is written by the framework's serialiser: the single-quoted declaration
@@ -24782,6 +24796,12 @@ class Handler(BaseHTTPRequestHandler):
                                [("Content-type", result[3])])
                 else:
                     self._send(result[1], result[3], result[2])
+                return
+            if kind == "system-xml":
+                # A document the framework writes as it is: no paging, and -- unlike the
+                # `plugin-xml` failure -- a HEAD offered gzip is compressed like the GET
+                # (`/system/scanners/8`, plexscratch42).
+                self._send(result[1], "application/xml", result[2])
                 return
             if kind == "plugin-xml":
                 # GET still honours a literal gzip offer, but HEAD reports the

@@ -924,13 +924,13 @@ impl Runtime {
             if segments.len() == 2 {
                 return Response::error(404, "plexsim: not found");
             }
-            return self.system_scanners(segments[2], request);
+            return self.system_scanners(segments[2]);
         }
         if segments.len() >= 3 && segments[..3] == ["system", "library", "sections"] {
             if segments.len() > 3 {
                 return Response::bare(404);
             }
-            return self.system_library_sections(request, query);
+            return self.system_library_sections(query);
         }
         if let Some(relative) = route.strip_prefix("/system/bundle/media/flags/") {
             return self.media_flag(relative, tables);
@@ -949,7 +949,7 @@ impl Runtime {
                 json!({"key": "library", "title": "Library Sections", "name": "Library Sections"}),
                 json!({"key": "plugins", "title": "Plug-ins", "name": "Plug-ins"}),
             ];
-            return self.framework_container(request, query, rows, "Directory", true);
+            return self.framework_container(query, rows, "Directory", true);
         }
         if route == "/system/search" {
             let body = json!({"MediaContainer": {
@@ -958,7 +958,7 @@ impl Runtime {
                 "mediaTagPrefix": MEDIA_TAG_PREFIX,
                 "prefsKey": "/:/plugins/com.plexapp.system/prefs",
             }});
-            return system_body(request, &body);
+            return system_body(&body);
         }
         if route.starts_with("/:/plugins") {
             return self.route_plugins(route, request, query, tables);
@@ -1069,7 +1069,6 @@ impl Runtime {
     /// first and no `offset`, and it names its window in the response headers.
     fn framework_container(
         &self,
-        request: &Request,
         query: &HashMap<String, String>,
         rows: Vec<Value>,
         element: &str,
@@ -1098,7 +1097,7 @@ impl Runtime {
         if !page.is_empty() {
             body.insert(element.to_string(), Value::Array(page));
         }
-        let mut response = system_body(request, &json!({"MediaContainer": body}));
+        let mut response = system_body(&json!({"MediaContainer": body}));
         if let Some((start, _)) = window {
             response
                 .headers
@@ -1110,11 +1109,7 @@ impl Runtime {
         response
     }
 
-    fn system_library_sections(
-        &self,
-        request: &Request,
-        query: &HashMap<String, String>,
-    ) -> Response {
+    fn system_library_sections(&self, query: &HashMap<String, String>) -> Response {
         let host = if self.private_address.is_empty() {
             "127.0.0.1".to_string()
         } else {
@@ -1163,10 +1158,10 @@ impl Runtime {
                 })
             })
             .collect::<Vec<_>>();
-        self.framework_container(request, query, rows, "Directory", true)
+        self.framework_container(query, rows, "Directory", true)
     }
 
-    fn system_scanners(&self, type_id: &str, request: &Request) -> Response {
+    fn system_scanners(&self, type_id: &str) -> Response {
         let (size, names): (usize, &[&str]) = match type_id {
             "1" => (
                 4,
@@ -1182,14 +1177,24 @@ impl Runtime {
             "13" => (1, &["Plex Photo Scanner"]),
             _ => return Response::error(500, "plexsim: internal error"),
         };
-        let body = json!({"MediaContainer": {
-            "size": size,
-            "identifier": "com.plexapp.system",
-            "noHistory": 0,
-            "replaceParent": 0,
-            "Scanner": names.iter().map(|name| json!({"name": name})).collect::<Vec<_>>(),
-        }});
-        system_body(request, &body)
+        // Cycle 87, measured on zen, kids and plexscratch42, byte-identical on all three
+        // and under every Accept. The MUSIC list is written by a different writer from
+        // the other three -- a DOUBLE-quoted declaration, and the third row its
+        // `size="3"` counts serialised as an empty indented line -- 220 bytes where the
+        // framework's own form of the same two rows is 217.
+        let music = size > names.len();
+        let quote = if music { '"' } else { '\'' };
+        let rows: String = names
+            .iter()
+            .map(|name| format!("  <Scanner name=\"{name}\"/>\n"))
+            .collect();
+        let body = format!(
+            "<?xml version={quote}1.0{quote} encoding={quote}utf-8{quote}?>\n\
+             <MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"{size}\" \
+             identifier=\"com.plexapp.system\">\n{rows}{}</MediaContainer>\n",
+            if music { "  \n" } else { "" }
+        );
+        Response::framework_document(200, body.into_bytes())
     }
 
     fn media_flag(&self, relative: &str, tables: &FrameworkTables) -> Response {
@@ -1648,21 +1653,13 @@ fn page_window(query: &HashMap<String, String>) -> Option<(usize, usize)> {
 
 /// A framework container in the client's format: the framework serialiser for XML
 /// (`application/xml`, no charset) and ordinary JSON otherwise.
-fn system_body(request: &Request, container: &Value) -> Response {
-    if accept_wants_xml(
-        request
-            .headers
-            .get("accept")
-            .map(String::as_str)
-            .unwrap_or(""),
-    ) {
-        return Response::framework_document(200, xmlout::to_system_xml(container, None));
-    }
-    // `json_body` orders the keys the way the XML writer would, on every container.
-    let ordered = xmlout::ordered(container, None);
-    let mut response = Response::bytes(200, "application/json");
-    response.body = serde_json::to_vec(&drop_empty_value(&ordered)).unwrap_or_default();
-    response
+/// Cycle 87, measured on zen, kids and plexscratch42 with `Accept: application/json`:
+/// the framework's serialiser has no JSON form, so `/system`, `/system/search`,
+/// `/system/library/sections` and `/system/scanners/{N}` answer the same
+/// `application/xml` document whatever Accept says -- only the bare `/system/agents`,
+/// which PMS implements itself, answers JSON. plexsim answered JSON to all four.
+fn system_body(container: &Value) -> Response {
+    Response::framework_document(200, xmlout::to_system_xml(container, None))
 }
 
 /// The supplied query names in the order the request line spelled them.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cycle 87 follow-up W6: an empty library's composite.
+"""Cycle 87 follow-up W6: an empty library's composite, and `/system` under a JSON Accept.
 
 1. `tests/fixtures/c87_w6_empty_composite_s42.json`: an EMPTY movie, show and music
    library on plexscratch42 (1.42.2), made with Add Library's form. Their versioned
@@ -7,6 +7,11 @@
    `cols`/`border`/`media`/`repeat` set Plex Web's composite view appends -- and the photo
    transcoder's fetch of it are the ordinary 404 under every Accept. plexsim drew a
    generated PNG for all of them.
+2. `tests/fixtures/c87_w6_system_xml_accept.json`: every `/system` path Plex Web reads,
+   under four Accept values. Only the bare `/system/agents` answers JSON; `/system`,
+   `/system/search`, `/system/library/sections` and `/system/scanners/{N}` answer their
+   `application/xml` document whatever Accept says, and the music scanner list is its own
+   220-byte form. plexsim answered JSON to a JSON Accept, and 217 bytes for music.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -27,6 +32,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 COMPOSITE = os.path.join(HERE, "fixtures", "c87_w6_empty_composite_s42.json")
+SYSTEM = os.path.join(HERE, "fixtures", "c87_w6_system_xml_accept.json")
 ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
@@ -117,10 +123,33 @@ def composite(port, fixture):
             kind, fixture["deleted"][kind]), status == fixture["deleted"][kind], status)
 
 
+def system(port, fixture):
+    base = fixture["request_headers"]
+    for row in fixture["exchanges"]:
+        headers = dict(base, **({"Accept": row["accept"]} if row["accept"] else {}))
+        status, got, raw = request(port, "GET", row["path"], headers)
+        text = raw.decode("utf-8", "replace")
+        want_type = measured_type(row)
+        label = "%s (Accept %s) is the measured %d %s" % (
+            row["path"], row["accept"], row["status"], want_type)
+        if "body" in row:
+            check(label + ", byte for byte",
+                  status == row["status"] and got.get("content-type") == want_type
+                  and text == row["body"], (status, got.get("content-type"), text[:160]))
+        else:
+            check(label, status == row["status"] and got.get("content-type") == want_type
+                  and text.startswith(row["body_starts"][:5]),
+                  (status, got.get("content-type"), text[:60]))
+        if row["path"].startswith("/system/scanners/") and row["status"] == 200:
+            check("%s (Accept %s) sends no framework cookie" % (row["path"], row["accept"]),
+                  "set-cookie" not in got, got.get("set-cookie"))
+
+
 def main():
     process, port = start()
     try:
         composite(port, json.load(open(COMPOSITE)))
+        system(port, json.load(open(SYSTEM)))
     finally:
         process.terminate()
         try:

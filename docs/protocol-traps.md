@@ -3800,3 +3800,15 @@ are changing; replay the client's exact request before altering behavior.
   4.147.1/4.162.1 call site builds a SECTION composite (its composite view reads a row's own
   `composite`, and no section row on kids, zen or plexscratch42 carries one), and
   python-plexapi's `LibrarySection.composite` reads the same absent attribute.
+- **`/system` has no JSON form but the bare `/system/agents`.** Measured on zen, kids and
+  plexscratch42 under `Accept: application/json`, `application/xml`, none, and
+  `application/json, text/plain, */*`: `/system`, `/system/search`, `/system/library/sections`,
+  `/system/scanners/{N}` (types 1, 2, 8, 9, 13, with and without 4.162.1's `action=`), the legacy
+  agents' `/contributors` and `/{id}/config/{N}` all answer the same `application/xml` document
+  whatever Accept says; `/system/agents` (and `?mediaType=`) is the only JSON under `/system`.
+  The three servers' scanner lists are byte-identical (1: four rows, 2: two, 8 and 9: two, 13:
+  one), and the MUSIC list is a different writer's -- a double-quoted declaration and an empty
+  indented third row, `size="3"`, 220 bytes. plexsim answered JSON to a JSON Accept on the first
+  four and 217 bytes for music. MALFORMED-ONLY: Plex Web 4.147.1 and 4.162.1 read the list
+  through `ScannerCollection`, whose responseType is the base `xml` (`Accept: application/xml`),
+  and parse the body as XML; only a third-party JSON client saw the difference.
