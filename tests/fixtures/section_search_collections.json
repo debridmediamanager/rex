@@ -1,0 +1,843 @@
+{
+ "_about": "Section search typed 18 (collections), 2026-10-01, cycle 87 E2. plexscratch (1.43.4): an EMPTY episode collection E2Empty87 created in section 2 over the show's key and a one-member movie collection E2One87 in section 1, read, then both DELETEd. plexscratch42 (1.42.2): its standing collections C49Empty (one member despite the name), C52Amulti and C52Averify (both empty), read only. kids (1.43.4, GET only): the type=1 box's title2 keeps the query verbatim. Section UUIDs removed; no token or machine identifier recorded.",
+ "s43": [
+  {
+   "request": "GET /library/sections/2/search?type=18&query=E2",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": false,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "TV Shows",
+     "title2": "Search for 'E2'",
+     "viewGroup": "collection",
+     "Metadata": [
+      {
+       "ratingKey": "58",
+       "key": "/library/collections/58/children",
+       "guid": "collection://a2666405-fde1-408c-b15d-37ee22f03a5a",
+       "type": "collection",
+       "title": "E2Empty87",
+       "subtype": "episode",
+       "summary": "",
+       "index": 235,
+       "ratingCount": 4,
+       "thumb": "/library/collections/58/composite/1790870488?width=400&height=600",
+       "addedAt": 1790870488,
+       "updatedAt": 1790870488
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/2/search?type=18&query=mpty8",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": false,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "TV Shows",
+     "title2": "Search for 'mpty8'",
+     "viewGroup": "collection",
+     "Metadata": [
+      {
+       "ratingKey": "58",
+       "key": "/library/collections/58/children",
+       "guid": "collection://a2666405-fde1-408c-b15d-37ee22f03a5a",
+       "type": "collection",
+       "title": "E2Empty87",
+       "subtype": "episode",
+       "summary": "",
+       "index": 235,
+       "ratingCount": 4,
+       "thumb": "/library/collections/58/composite/1790870488?width=400&height=600",
+       "addedAt": 1790870488,
+       "updatedAt": 1790870488
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/search?type=18&query=e2one",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for 'e2one'",
+     "viewGroup": "collection",
+     "Metadata": [
+      {
+       "ratingKey": "59",
+       "key": "/library/collections/59/children",
+       "guid": "collection://b0cdd867-858c-4094-bb5f-71b8d4340cdf",
+       "type": "collection",
+       "title": "E2One87",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/59/composite/1790870488?width=400&height=600",
+       "addedAt": 1790870488,
+       "updatedAt": 1790870488,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/search?type=18&query=E2",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for 'E2'",
+     "viewGroup": "collection",
+     "Metadata": [
+      {
+       "ratingKey": "59",
+       "key": "/library/collections/59/children",
+       "guid": "collection://b0cdd867-858c-4094-bb5f-71b8d4340cdf",
+       "type": "collection",
+       "title": "E2One87",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/59/composite/1790870488?width=400&height=600",
+       "addedAt": 1790870488,
+       "updatedAt": 1790870488,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/2/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 2,
+     "librarySectionTitle": "TV Shows",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "TV Shows",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "58",
+       "key": "/library/collections/58/children",
+       "guid": "collection://a2666405-fde1-408c-b15d-37ee22f03a5a",
+       "type": "collection",
+       "title": "E2Empty87",
+       "subtype": "episode",
+       "summary": "",
+       "index": 235,
+       "ratingCount": 4,
+       "thumb": "/library/collections/58/composite/1790870488?width=400&height=600",
+       "addedAt": 1790870488,
+       "updatedAt": 1790870488
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "59",
+       "key": "/library/collections/59/children",
+       "guid": "collection://b0cdd867-858c-4094-bb5f-71b8d4340cdf",
+       "type": "collection",
+       "title": "E2One87",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/59/composite/1790870488?width=400&height=600",
+       "addedAt": 1790870488,
+       "updatedAt": 1790870488,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "s42": [
+  {
+   "request": "GET /library/sections/1/search?type=18&query=c52",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for 'c52'",
+     "viewGroup": "collection",
+     "Metadata": [
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/search?type=18&query=C49",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for 'C49'",
+     "viewGroup": "collection",
+     "Metadata": [
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/search?type=18&query=EMPTY",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for 'EMPTY'",
+     "viewGroup": "collection",
+     "Metadata": [
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/search?type=18&query=a",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for 'a'",
+     "viewGroup": "collection",
+     "Metadata": [
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/search?type=18&query=",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 3,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for ''",
+     "viewGroup": "collection",
+     "Metadata": [
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/search?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 3,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for ''",
+     "viewGroup": "collection",
+     "Metadata": [
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/search?type=18&query=%20C49%20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for ' C49 '",
+     "viewGroup": "collection"
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/search?type=18&query=zzz",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for 'zzz'",
+     "viewGroup": "collection"
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/2/search?type=18&query=c",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": false,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "TV Shows",
+     "title2": "Search for 'c'",
+     "viewGroup": "collection"
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 3,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "kids": [
+  {
+   "request": "GET /library/sections/1/search?type=1&query=TeArS",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for 'TeArS'",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "guid": "plex://movie/5d77699b96b655001fdd3b87",
+       "slug": "tears-of-steel",
+       "studio": "Blender Foundation",
+       "type": "movie",
+       "title": "Tears of Steel",
+       "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+       "audienceRating": 5.5,
+       "userRating": 5.0,
+       "lastRatedAt": 1767600310,
+       "year": 2012,
+       "tagline": "He just wanted to be awesome in space!",
+       "thumb": "/library/metadata/4/thumb/1789187250",
+       "art": "/library/metadata/4/art/1789187250",
+       "duration": 10031,
+       "originallyAvailableAt": "2012-09-26",
+       "addedAt": 1789187073,
+       "updatedAt": 1789187250,
+       "audienceRatingImage": "imdb://image.rating",
+       "loudnessAnalysisVersion": "0.02",
+       "Media": [
+        {
+         "id": 4,
+         "duration": 10031,
+         "bitrate": 5004,
+         "width": 1920,
+         "height": 1080,
+         "aspectRatio": 1.78,
+         "audioChannels": 1,
+         "audioCodec": "aac",
+         "videoCodec": "h264",
+         "videoResolution": "1080",
+         "container": "mkv",
+         "videoFrameRate": "24p",
+         "videoProfile": "high",
+         "hasVoiceActivity": false,
+         "Part": [
+          {
+           "id": 4,
+           "key": "/library/parts/4/1789187073/file.mkv",
+           "duration": 10031,
+           "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+           "size": 6280630,
+           "container": "mkv",
+           "videoProfile": "high"
+          }
+         ]
+        }
+       ],
+       "Image": [
+        {
+         "alt": "Tears of Steel",
+         "type": "coverPoster",
+         "url": "/library/metadata/4/thumb/1789187250"
+        },
+        {
+         "alt": "Tears of Steel",
+         "type": "background",
+         "url": "/library/metadata/4/art/1789187250"
+        },
+        {
+         "alt": "Tears of Steel",
+         "type": "clearLogo",
+         "url": "/library/metadata/4/clearLogo/1789187250"
+        },
+        {
+         "alt": "Tears of Steel",
+         "type": "backgroundSquare",
+         "url": "/library/metadata/4/squareArt/1789187250"
+        }
+       ],
+       "UltraBlurColors": {
+        "topLeft": "243034",
+        "topRight": "725929",
+        "bottomRight": "212a27",
+        "bottomLeft": "020c0c"
+       },
+       "Genre": [
+        {
+         "tag": "Science Fiction"
+        },
+        {
+         "tag": "Short"
+        }
+       ],
+       "Country": [
+        {
+         "tag": "Netherlands"
+        }
+       ],
+       "Director": [
+        {
+         "tag": "Ian Hubert"
+        }
+       ],
+       "Writer": [
+        {
+         "tag": "Ian Hubert"
+        }
+       ],
+       "Role": [
+        {
+         "tag": "Derek de Lint"
+        },
+        {
+         "tag": "Sergio Hasselbaink"
+        },
+        {
+         "tag": "Rogier Schippers"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "request": "GET /library/sections/1/search?type=1&query=%20TEARS%20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "Search for ' TEARS '",
+     "viewGroup": "movie",
+     "viewMode": 65592
+    }
+   }
+  }
+ ]
+}

@@ -9951,8 +9951,22 @@ class PlexSim:
             # where plexsim answered a listing.
             if not str(query.get("type") or "").strip().lstrip("-").isdigit():
                 return ("error", 400, "plexsim: bad request")
-            rows = self.typed_rows(section_id, query)
-            text = (query.get("query") or "").strip().lower()
+            # Cycle 87, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2),
+            # `tests/fixtures/section_search_collections.json`: `type=18` searches the
+            # library's COLLECTIONS -- empty and populated alike, by the same title
+            # substring -- in a container whose viewGroup is `collection` and which has
+            # no viewMode. plexsim answered `type=18` from the item rows, so it found
+            # no collection at all, empty or not.
+            collections = str(query.get("type") or "").strip() == "18" and len(
+                {value for name, value in query.get("_pairs") or [] if name == "type"}) <= 1
+            rows = self.library.collections(section_id) if collections \
+                else self.typed_rows(section_id, query)
+            # Cycle 87, measured on kids and both copies: the query is used VERBATIM --
+            # `query=TeArS` is titled `Search for 'TeArS'` (and matches case-blind), and
+            # `query=%20TEARS%20` is titled with its spaces and finds nothing. plexsim
+            # stripped and lowercased it for both.
+            raw = query.get("query") or ""
+            text = raw.lower()
             if text:
                 # Measured: this is a SUBSTRING match on the title, not the word-
                 # prefix matcher /hubs/search uses, and ONE character is enough --
@@ -10000,8 +10014,17 @@ class PlexSim:
             extra = {"viewMode": 65593} if typed == "season" else {}
             if typed == "episode":
                 extra["mixedParents"] = True
+            if collections:
+                found = self.secondary_container(
+                    section_id, section, "Search for '%s'" % raw,
+                    Metadata=[_grid_row(r, keep_section=False, keep_guid=True)
+                              for r in self._guid_gate(rows, query)],
+                    viewGroup="collection")
+                found["MediaContainer"].pop("content", None)
+                found["MediaContainer"].pop("viewMode", None)
+                return found
             found = self.secondary_container(
-                section_id, section, "Search for '%s'" % text,
+                section_id, section, "Search for '%s'" % raw,
                 # Cycle 20: and a grid row carries no librarySection fields -- they
                 # are the container's. Neither reference sends one here, on either
                 # library type; plexsim kept the triple on this path alone.

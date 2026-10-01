@@ -16900,15 +16900,26 @@ impl Runtime {
             .collect::<HashSet<_>>()
             .len()
             > 1;
-        let mut rows = if typed.is_some() && !repeated {
+        // Cycle 87, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2),
+        // `tests/fixtures/section_search_collections.json`: `type=18` searches the
+        // library's COLLECTIONS, empty and populated alike, by the same title
+        // substring, in a container typed `collection` with no viewMode. We answered
+        // it from the item rows and found no collection at all.
+        let collections = type_number == 18 && !repeated;
+        let mut rows = if collections {
+            self.section_collection_rows(section_key, &[], None)
+                .unwrap_or_default()
+        } else if typed.is_some() && !repeated {
             self.typed_section_rows(section_key, type_number)
         } else {
             Vec::new()
         };
-        let text = query
-            .get("query")
-            .map(|value| value.trim().to_lowercase())
-            .unwrap_or_default();
+        // Cycle 87, measured on kids and both copies: the query is VERBATIM --
+        // `query=TeArS` is titled `Search for 'TeArS'` (matching case-blind) and
+        // `query=%20TEARS%20` keeps its spaces in the title and finds nothing. We
+        // trimmed and lowercased it for both.
+        let raw_text = query.get("query").cloned().unwrap_or_default();
+        let text = raw_text.to_lowercase();
         if !text.is_empty() {
             // Measured: a SUBSTRING match on the TITLE alone (cycle 31: not the
             // original title), and (cycle 18) a GENERATED title is not in the
@@ -16966,6 +16977,23 @@ impl Runtime {
         let rows = rows
             .iter()
             .map(|row| {
+                if collections {
+                    // The `/collections` leaf's row, without the section triple the
+                    // container carries.
+                    let mut shown = row.clone();
+                    if let Some(object) = shown.as_object_mut() {
+                        object.retain(|name, _| {
+                            !matches!(
+                                name.as_str(),
+                                "librarySectionID"
+                                    | "librarySectionTitle"
+                                    | "librarySectionKey"
+                                    | "Field"
+                            )
+                        });
+                    }
+                    return shown;
+                }
                 let mut shown = self.grid_row(row, false, include_guids, false);
                 if include_guids {
                     apply_listing_guids(&mut shown, row);
@@ -17009,20 +17037,29 @@ impl Runtime {
         );
         fields.insert(
             "viewGroup".to_string(),
-            json!(typed.unwrap_or(section_type)),
-        );
-        fields.insert(
-            "viewMode".to_string(),
-            json!(if typed == Some("season") {
-                65593
+            json!(if collections {
+                "collection"
             } else {
-                65592
+                typed.unwrap_or(section_type)
             }),
         );
+        if !collections {
+            fields.insert(
+                "viewMode".to_string(),
+                json!(if typed == Some("season") {
+                    65593
+                } else {
+                    65592
+                }),
+            );
+        }
         if show {
             fields.insert("nocache".to_string(), json!(true));
         }
-        fields.insert("title2".to_string(), json!(format!("Search for '{text}'")));
+        fields.insert(
+            "title2".to_string(),
+            json!(format!("Search for '{raw_text}'")),
+        );
         if typed == Some("episode") {
             fields.insert("mixedParents".to_string(), json!(true));
         }

@@ -3568,3 +3568,15 @@ are changing; replay the client's exact request before altering behavior.
   `updated 49`. No media pass ran on the warm copy (state-dependent, as cycle 15 recorded); ours keeps
   its place after each season's episodes. The SEASON cascade's own `started`-before-`queued` was
   not re-measured. MALFORMED-ONLY: transient activity frames.
+- **Section `search?type=18` searches the library's COLLECTIONS** (cycle 87 E2, plexscratch 1.43.4
+  and plexscratch42 1.42.2; `tests/fixtures/section_search_collections.json`). Empty and populated
+  collections alike, by the in-library box's title substring (`mpty8` finds `E2Empty87`, `c52` the
+  two `C52A...`), case-blind, scoped to the section, in the search container with `viewGroup`
+  `collection` and NO `viewMode` (a show library keeps `nocache`); each row is that collection's
+  `/all?type=18` row. Cycle 83 read it as "finds an EMPTY collection"; both servers found NO
+  collection there at all, answering from the item rows. Measured beside it on kids and both
+  copies: the box uses the query VERBATIM -- `query=TeArS` is titled `Search for 'TeArS'`, and
+  `query=%20TEARS%20` is titled with its spaces and finds nothing -- where both servers trimmed and
+  lowercased it. No official client or python-plexapi request in the corpora sends `type=18` here
+  (plexapi's `section.collection()` reads `/all?type=18&title=`; Plex Web reads `/library/search`
+  and `/hubs/search`; `/library/sections/{id}` advertises only `search?type=1|2|4`): MALFORMED-ONLY.

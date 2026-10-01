@@ -9,6 +9,13 @@
    the model is then applied to plexsim's four-season show, whose seasons hold 1, 2, 1
    and 4 episodes, and compared with what the server pushes. The media pass is left out
    of the comparison: it is state-dependent work on real files, none ran on the warm copy.
+2. Section `search?type=18&query=` (cycle 83: "finds an empty collection on plexscratch42;
+   both servers do not"). Measured on plexscratch and plexscratch42
+   (`tests/fixtures/section_search_collections.json`): `type=18` searches the library's
+   COLLECTIONS -- empty or not -- by title substring, case-blind, in a container whose
+   viewGroup is `collection` with no viewMode, each row the `/all?type=18` row. Neither
+   server searched collections at all. Beside it, kids: the title2 keeps the query
+   verbatim (`'TeArS'`, `' TEARS '`) and a padded query is not trimmed.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -23,6 +30,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.parse
 
 from server_command import server_command
 
@@ -30,6 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 ORDER_FIXTURE = os.path.join(HERE, "fixtures", "show_cascade_order_s43.json")
+SEARCH_FIXTURE = os.path.join(HERE, "fixtures", "section_search_collections.json")
 ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
@@ -256,10 +265,94 @@ def order_checks(port):
                  want[first:first + 4]))
 
 
+# -- 2. the section search over collections --------------------------------------------
+
+def container_of(body):
+    return json.loads(body)["MediaContainer"]
+
+
+def shape(mc):
+    """What the fixture pins about a search container, minus per-server values."""
+    return {"viewGroup": mc.get("viewGroup"), "viewMode": mc.get("viewMode"),
+            "nocache": mc.get("nocache"), "title2": mc.get("title2"),
+            "content": mc.get("content"),
+            "titles": [row.get("title") for row in mc.get("Metadata") or []]}
+
+
+def search_checks(port):
+    fixture = json.load(open(SEARCH_FIXTURE))
+    reference = {entry["request"][4:]: entry for entry in fixture["s43"] + fixture["s42"]}
+    # The reference's own rule: every search row IS that collection's /all?type=18 row,
+    # empty collections included.
+    for server in ("s43", "s42"):
+        listed = {row["ratingKey"]: row for entry in fixture[server] if "/all?type=18" in entry["request"]
+                  for row in entry["body"]["MediaContainer"].get("Metadata") or []}
+        rows = [(entry["request"], row) for entry in fixture[server] if "/search?" in entry["request"]
+                for row in entry["body"]["MediaContainer"].get("Metadata") or []]
+        check("reference %s: every type=18 search row is the collection's /all?type=18 row" % server,
+              rows and all(listed.get(row["ratingKey"]) == row for _, row in rows),
+              [path for path, row in rows if listed.get(row["ratingKey"]) != row])
+    reference = {entry["request"][4:]: entry for entry in fixture["s43"] + fixture["s42"]
+                 if "/search?" in entry["request"]}
+    empty = reference["/library/sections/2/search?type=18&query=E2"]["body"]["MediaContainer"]
+    check("reference: an EMPTY collection is found, in a `collection` container with no viewMode",
+          [r.get("title") for r in empty.get("Metadata") or []] == ["E2Empty87"]
+          and "childCount" not in empty["Metadata"][0]
+          and empty.get("viewGroup") == "collection" and "viewMode" not in empty, empty)
+
+    machine = container_of(request(port, "GET", "/identity")[1])["machineIdentifier"]
+    base = "server://%s/com.plexapp.plugins.library/library/metadata/" % machine
+    quote = urllib.parse.quote
+    # The fixture's two collections, made the same way: an episode collection over the
+    # SHOW's key holds nothing; a movie collection over one movie holds one.
+    made = []
+    for kind, title, section, key in ((4, "E2Empty87", 2, SHOW), (1, "E2One87", 1, "1007")):
+        status, body = request(port, "POST", "/library/collections?type=%d&title=%s&smart=0"
+                               "&sectionId=%d&uri=%s" % (kind, title, section, quote(base + key, safe="")))
+        made.append(container_of(body)["Metadata"][0]["ratingKey"] if status == 200 else None)
+    check("the two collections are created (one empty, one with a member)", all(made), made)
+    ours_listed = {}
+    for section in (1, 2):
+        for row in container_of(request(port, "GET", "/library/sections/%d/all?type=18"
+                                        % section)[1]).get("Metadata") or []:
+            ours_listed[row["ratingKey"]] = row
+    for path, entry in sorted(reference.items()):
+        if "/search?" not in path or "/sections/" not in path:
+            continue
+        if not any(name in path for name in ("E2", "e2", "mpty8")):
+            continue
+        status, body = request(port, "GET", path)
+        mc = container_of(body)
+        want = shape(entry["body"]["MediaContainer"])
+        check("%s answers the reference's container and rows" % path,
+              status == entry["status"] and shape(mc) == want
+              and all(ours_listed.get(row.get("ratingKey")) == row for row in mc.get("Metadata") or []),
+              "status %s, got %s, want %s" % (status, shape(mc), want))
+    # A query the fixture's rows rule out finds nothing, and the box keeps its spaces.
+    for path, entry in ((p, e) for p, e in reference.items() if p.endswith("query=%20C49%20")
+                        or p.endswith("query=zzz")):
+        mc = container_of(request(port, "GET", path.replace("C49", "E2One"))[1])
+        check("%s finds nothing and is titled verbatim" % path.replace("C49", "E2One"),
+              not mc.get("Metadata") and mc.get("title2") == entry["body"]["MediaContainer"]["title2"]
+              .replace("C49", "E2One"), shape(mc))
+    for entry in fixture["kids"]:
+        path = entry["request"][4:]
+        want = entry["body"]["MediaContainer"]
+        mc = container_of(request(port, "GET", path)[1])
+        check("%s is titled %r and finds %s" % (path, want["title2"],
+                                               "a row" if want.get("Metadata") else "nothing"),
+              mc.get("title2") == want["title2"]
+              and bool(mc.get("Metadata")) == bool(want.get("Metadata")), shape(mc))
+    for key in made:
+        if key:
+            request(port, "DELETE", "/library/collections/%s" % key)
+
+
 def main():
     process, port = start()
     try:
         order_checks(port)
+        search_checks(port)
     finally:
         stop(process)
     passed = sum(results)
