@@ -153,6 +153,68 @@ def run(port, fixture):
           [d.get("title") for d in body["MediaContainer"].get("Directory", [])]
           == [d["title"] for d in want["MediaContainer"]["Directory"]], body)
 
+    # -- the library browses as artists, albums and tracks ----------------------
+    def meta_of(body):
+        return (body.get("MediaContainer") or {}).get("Meta") or {} if isinstance(body, dict) else {}
+
+    def without_source(meta):
+        # The one claim-gated row: zen (claimed) lists `source` for albums and tracks
+        # and the unclaimed copy does not (see section_meta_artist.json's provenance).
+        meta = json.loads(json.dumps(meta))
+        for entry in meta.get("Type") or []:
+            if "Filter" in entry:
+                entry["Filter"] = [f for f in entry["Filter"] if f.get("filter") != "source"]
+        return meta
+
+    for path, label in (
+            ("/library/sections/{S}/all?includeMeta=1&X-Plex-Container-Start=0&X-Plex-Container-Size=0",
+             "the library's Meta"),
+            ("/library/sections/{S}/all?includeMeta=1&includeAdvanced=1&X-Plex-Container-Start=0"
+             "&X-Plex-Container-Size=0", "the library's advanced Meta"),
+            ("/library/sections/{S}/all?type=9&includeCollections=1&includeExternalMedia=1"
+             "&includeAdvanced=1&includeMeta=1", "the Albums grid's Meta")):
+        row, want = measured(path)
+        _status, body = ask(path, row["paging"])
+        got = meta_of(body)
+        want = want["MediaContainer"]["Meta"]
+        check("%s lists the measured Types, titles and active mark" % label,
+              [(t.get("type"), t.get("title"), t.get("active"), t.get("key")) for t in got.get("Type") or []]
+              == [(t["type"], t["title"], t["active"], t["key"]) for t in want["Type"]],
+              [(t.get("type"), t.get("title"), t.get("active")) for t in got.get("Type") or []])
+        for name in ("Sort", "Field"):
+            check("%s: every Type's %s list is the measured one" % (label, name),
+                  [t.get(name) for t in got.get("Type") or []] == [t.get(name) for t in want["Type"]],
+                  [[x.get("key") for x in t.get(name) or []] for t in got.get("Type") or []])
+        check("%s: every Type's Filter list is the measured one" % label,
+              [t.get("Filter") for t in without_source(got).get("Type") or []]
+              == [t.get("Filter") for t in want["Type"]],
+              [[x.get("filter") for x in t.get("Filter") or []] for t in got.get("Type") or []])
+        check("%s: the eight FieldType rows" % label,
+              got.get("FieldType") == want["FieldType"], got.get("FieldType"))
+    _row, want = measured("/media/providers")
+    want = [p["key"] for p in want["MediaContainer"]["Directory"][0]["Pivot"] if p["id"] == "library"]
+    _status, body = ask("/media/providers")
+    got = [p.get("key") for provider in body["MediaContainer"].get("MediaProvider", [])
+           for feature in provider.get("Feature", []) if feature.get("type") == "content"
+           for d in feature.get("Directory", []) if d.get("id") == ours
+           for p in d.get("Pivot", []) if p.get("id") == "library"]
+    check("the Library pivot opens the artists (%s)" % want, got == want, got)
+    for path in ("/library/sections/{S}/sorts", "/library/sections/{S}/sorts?type=8",
+                 "/library/sections/{S}/sorts?type=9", "/library/sections/{S}/sorts?type=10",
+                 "/library/sections/{S}/sorts?type=8&includeAdvanced=1",
+                 "/library/sections/{S}/filters", "/library/sections/{S}/filters?type=8"):
+        _row, want = measured(path)
+        _status, body = ask(path)
+        got = body["MediaContainer"].get("Directory") if isinstance(body, dict) else body
+        check("%s is the measured list" % path,
+              got == want["MediaContainer"]["Directory"], [x.get("key") for x in got or []])
+    _row, want = measured("/library/sections/{S}?includeDetails=1")
+    _status, body = ask("/library/sections/{S}?includeDetails=1")
+    check("the section detail's Type rows are the music ones",
+          without_source(body.get("MediaContainer") or {}).get("Type")
+          == want["MediaContainer"]["Type"],
+          [t.get("type") for t in (body.get("MediaContainer") or {}).get("Type") or []])
+
 
 def main():
     fixture = json.load(open(FIXTURE))

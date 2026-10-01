@@ -399,6 +399,17 @@ for _kind, _name in (("movie", "section_meta.json"), ("show", "section_meta_show
     except (OSError, ValueError):
         pass
 
+# A MUSIC library's Meta, plain and with `includeAdvanced=1`, measured whole on an empty
+# `type=artist` library (see the file's provenance). Kept apart from SECTION_META on
+# purpose: that table also types the filter engine's fields for every library, and a
+# music field's type was never measured against a movie or show listing.
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "section_meta_artist.json")) as _handle:
+        SECTION_META_ARTIST = json.load(_handle)
+except (OSError, ValueError):
+    SECTION_META_ARTIST = {}
+
 # What `includeAdvanced=1` ADDS to a section's Meta, captured type by type off the
 # reference by diffing the plain and advanced documents. The client sends the flag on
 # the grid listing and on its FilterCollection, and reads the Sort list straight into
@@ -5637,7 +5648,8 @@ class PlexSim:
                 "Type": types}
 
     # The `Meta/Type` row each metadata type number describes, for the `active` flag.
-    META_TYPE_NAMES = {1: "movie", 2: "show", 3: "season", 4: "episode"}
+    META_TYPE_NAMES = {1: "movie", 2: "show", 3: "season", 4: "episode",
+                       8: "artist", 9: "album", 10: "track"}
 
     @staticmethod
     def _meta_active(meta, active, spec=None):
@@ -5693,7 +5705,17 @@ class PlexSim:
         reads that Sort list straight into its sort menu, so ignoring the flag cost
         the menu most of its options.
         """
-        kind = "show" if section_type == "show" else "movie"
+        kind = self.section_kind({"type": section_type})
+        if kind == "artist":
+            # Measured whole, plain and advanced, so no ADVANCED_META splice: a music
+            # library's advanced sorts (album Year; track Artist, Album, Duration) are
+            # already in place in the measured document.
+            template = SECTION_META_ARTIST.get("advanced" if advanced else "plain")
+            if not template:
+                return None
+            return json.loads(re.sub(r"/library/sections/\d+/",
+                                     "/library/sections/%s/" % section_id,
+                                     json.dumps(template)))
         template = SECTION_META.get(kind)
         if not template:
             return None
@@ -8988,7 +9010,7 @@ class PlexSim:
                         {
                             "id": "library",
                             "key": "/library/sections/%s/all?type=%d"
-                                   % (key, 2 if section["type"] == "show" else 1),
+                                   % (key, TYPE_NUMBERS.get(self.section_kind(section), 1)),
                             "type": "list",
                             "title": "Library",
                             "context": "content.library",
@@ -9719,7 +9741,7 @@ class PlexSim:
             # plexsim read it as "no type" and answered the library's own list.
             raw = query.get("type")
             if raw is None:
-                wanted = "2" if section.get("type") == "show" else "1"
+                wanted = str(TYPE_NUMBERS.get(self.section_kind(section), 1))
             elif _int_param(raw):
                 # Cycle 55: a signed 32-bit integer (`2147483648` is a 400, `+1` the
                 # movie list), measured on zen and kids.
@@ -9729,6 +9751,18 @@ class PlexSim:
             variant = "advanced" if _option_on(query, "includeAdvanced") else "plain"
             sorts = json.loads(json.dumps(SECTION_SORTS[variant].get(wanted) or [])
                                .replace("{section}", str(section_id)))
+            if self.section_kind(section) == "artist" and wanted in ("8", "9", "10"):
+                # Measured on plexscratch42: in a MUSIC library a music type's list is
+                # its Meta Type's Sort list without the active marks, row for row -- and
+                # that is not the type's list elsewhere: the album sorts gain `rating`
+                # (Critic Rating) after Release Date, which a movie or show library's
+                # `?type=9` does not carry.
+                meta = self.section_meta(section_id, "artist",
+                                         advanced=_option_on(query, "includeAdvanced"))
+                named = self.META_TYPE_NAMES[int(wanted)]
+                sorts = [{k: v for k, v in row.items() if k not in ("active", "activeDirection")}
+                         for entry in (meta or {}).get("Type") or []
+                         if entry.get("type") == named for row in entry.get("Sort") or []]
             return self.secondary_container(section_id, section, None,
                                             Directory=sorts)
         if leaf == "filters":
@@ -9736,7 +9770,7 @@ class PlexSim:
             # plexsim read it as "no type" and answered the library's own list.
             raw = query.get("type")
             if raw is None:
-                wanted = "2" if section.get("type") == "show" else "1"
+                wanted = str(TYPE_NUMBERS.get(self.section_kind(section), 1))
             elif _int_param(raw):
                 # Cycle 55: a signed 32-bit integer (`2147483648` is a 400, `+1` the
                 # movie list), measured on zen and kids.

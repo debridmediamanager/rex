@@ -2110,6 +2110,19 @@ impl Runtime {
     /// season and eight to an episode view, plus the `Duplicates` filter, with
     /// the sorts INTERLEAVED in the measured order.
     fn section_meta(&self, section_id: &str, section_type: &str, advanced: bool) -> Option<Value> {
+        if section_type == "artist" {
+            // `server.py` `SECTION_META_ARTIST`: a music library's Meta, measured whole
+            // plain and with `includeAdvanced=1`, so no advanced splice.
+            let template = load_json_sidecar(&self.catalog_path, "section_meta_artist.json")?
+                .get(if advanced { "advanced" } else { "plain" })?
+                .clone();
+            let blob = serde_json::to_string(&template).ok()?;
+            let pattern = regex::Regex::new(r"/library/sections/\d+/").ok()?;
+            let blob = pattern
+                .replace_all(&blob, format!("/library/sections/{section_id}/").as_str())
+                .to_string();
+            return serde_json::from_str(&blob).ok();
+        }
         let kind = if section_type == "show" {
             "show"
         } else {
@@ -2988,7 +3001,8 @@ impl Runtime {
             let mut pivots = vec![
                 json!({"id": "recommended", "key": format!("/hubs/sections/{key}"), "type": "hub",
                        "title": "Recommended", "context": "content.discover", "symbol": "star"}),
-                json!({"id": "library", "key": format!("/library/sections/{key}/all?type={}", if show { 2 } else { 1 }),
+                json!({"id": "library", "key": format!("/library/sections/{key}/all?type={}",
+                                                       match kind { "show" => 2, "artist" => 8, _ => 1 }),
                        "type": "list", "title": "Library", "context": "content.library", "symbol": "library"}),
             ];
             // Cycle 59, measured on fun and both copies: a library that HOLDS a
@@ -15385,10 +15399,12 @@ impl Runtime {
                             return Response::error(400, "plexsim: bad request");
                         }
                         value.trim_start_matches('+').parse::<i64>().unwrap_or(0)
-                    } else if section.get("type").and_then(Value::as_str) == Some("show") {
-                        2
                     } else {
-                        1
+                        match section.get("type").and_then(Value::as_str) {
+                            Some("show") => 2,
+                            Some("artist") => 8,
+                            _ => 1,
+                        }
                     };
                     let name = if segments[3] == "sorts" {
                         "section_sorts.json"
@@ -15434,6 +15450,41 @@ impl Runtime {
                     };
                     let mut values = values;
                     replace_section_placeholder(&mut values, section_key);
+                    if segments[3] == "sorts"
+                        && section.get("type").and_then(Value::as_str) == Some("artist")
+                        && matches!(number, 8 | 9 | 10)
+                    {
+                        // Measured on plexscratch42: in a MUSIC library a music type's
+                        // list is its Meta Type's Sort list without the active marks --
+                        // and the album sorts gain `rating` (Critic Rating), which the
+                        // type's list on a movie or show library does not carry.
+                        let named = match number {
+                            8 => "artist",
+                            9 => "album",
+                            _ => "track",
+                        };
+                        let meta = self
+                            .section_meta(section_key, "artist", mode == "advanced")
+                            .unwrap_or(Value::Null);
+                        values = Value::Array(
+                            meta.get("Type")
+                                .and_then(Value::as_array)
+                                .into_iter()
+                                .flatten()
+                                .filter(|entry| entry.get("type").and_then(Value::as_str) == Some(named))
+                                .flat_map(|entry| {
+                                    entry.get("Sort").and_then(Value::as_array).cloned().unwrap_or_default()
+                                })
+                                .map(|mut row| {
+                                    if let Some(object) = row.as_object_mut() {
+                                        object.shift_remove("active");
+                                        object.shift_remove("activeDirection");
+                                    }
+                                    row
+                                })
+                                .collect(),
+                        );
+                    }
                     // `server.py`: both lists answer in the SECONDARY container
                     // (`secondary_container`), sorts included -- `content=secondary`, the
                     // resource art/thumb, title1 and a show library's `nocache`.
@@ -16939,6 +16990,9 @@ impl Runtime {
                         2 => Some("show"),
                         3 => Some("season"),
                         4 => Some("episode"),
+                        8 => Some("artist"),
+                        9 => Some("album"),
+                        10 => Some("track"),
                         _ => None,
                     }
                 } else {

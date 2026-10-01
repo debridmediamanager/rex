@@ -3735,3 +3735,16 @@ are changing; replay the client's exact request before altering behavior.
   plexsim kept only title and type and re-derived the movie agent, `Plex Movie`, group 1 and
   `/plexsim/<n>` on every read, so the Edit Library dialog and python-plexapi (`section.agent`,
   `.scanner`, `.locations`) read a new music library as a movie one. CLIENT-VISIBLE.
+- **A music library has its OWN `Meta`, and its album sorts are not the type's list.** Measured on
+  an empty `type=artist` library on plexscratch42 (1.42.2; plexscratch 1.43.4 adds only the track
+  `audioCodec` axis): four Types -- `artist` (active, "Artists", `/all?type=8`), `album`, `track`,
+  `folder` -- each with its own Sort, Field and Filter lists, captured whole into
+  `section_meta_artist.json` (plain and `includeAdvanced=1`, which adds album Year and the track
+  Artist, Album and Duration sorts in place). A bare `/filters` or `/sorts` is the type-8 list, the
+  Library pivot opens `/all?type=8`, and `/sorts?type=9` in a music library carries `rating`
+  ("Critic Rating") after Release Date, which the same type's list on a movie or show library does
+  not. Claim moves one row: zen (claimed) lists `source` for types 9 and 10 and both copies do not,
+  while on the copy each Type's Filter list equals its `/filters?type=N`, so the album and track
+  lists carry zen's row. plexsim served the MOVIE Meta, so Plex Web's Library tab read "Movies"
+  with a movie sort and filter bar, and python-plexapi's `listFilters`/`listSorts`/`searchAlbums`/
+  `recentlyAddedTracks` raised "Unknown libtype". CLIENT-VISIBLE.

@@ -61,7 +61,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 Sidecar fixtures are captured from a real PMS -- the later ones read straight out of its
 image -- and loaded relative to `server.py`. Keep the layout flat — the code resolves them
 with `dirname(__file__)`. The descriptors (`server_prefs.json`, `regional_server_prefs.json`,
-`section_prefs.json`, `section_meta.json`, `section_meta_show.json`, `item_prefs.json`,
+`section_prefs.json`, `section_meta.json`, `section_meta_show.json`, `section_meta_artist.json`, `item_prefs.json`,
 `section_prefs_new.json`, `section_filters.json`, `section_sorts.json`, `system_agents.json`,
 `legacy_agents.json`, `agent_languages.json`, `languages.json`, `translations.json`,
 `client_profiles.json`, `spellfix_static_tags.json`, `legacy_agent_config.json`); the image's own tables

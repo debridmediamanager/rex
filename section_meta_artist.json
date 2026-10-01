@@ -1,0 +1,1461 @@
+{
+ "_provenance": "GET /library/sections/{id}/all?includeMeta=1[&includeAdvanced=1] (X-Plex-Container-Size 0) on an EMPTY music library (type=artist, tv.plex.agents.music, Plex Music, group 3) made on plexscratch42 -- PMS 1.42.2.10156, the build plexsim reports -- 2026-10-01, re-read on plexscratch (1.43.4), which adds only the track `audioCodec` field and filter (1.43.4's media-codec axes, as on a movie library). Four Types (artist, album, track, folder), artist active, a Sort list per type and the eight FieldType rows. Both copies are UNCLAIMED, and claim moves exactly one thing here: zen (1.42.2, claimed) answers /filters?type=9 and ?type=10 with a `source` row that both copies lack, while on the copy every Type's Filter list equals /filters?type=N row for row -- so the album and track Filter lists carry zen's `source` row at zen's position (section_filters.json). On a movie library the copy's Meta differs from the claimed one by the claim-gated editionTitle/contentRatingAge alone; a claim-gated MUSIC field, if any, could not be measured (no claimed server holds a music library). `/library/sections/22/` is rewritten to the library's own id. A music library's album sorts add `rating` (Critic Rating) after Release Date, which the type's own /sorts?type=9 on a movie or show library does not carry.",
+ "plain": {
+  "Type": [
+   {
+    "key": "/library/sections/22/all?type=8",
+    "type": "artist",
+    "title": "Artists",
+    "active": true,
+    "Filter": [
+     {
+      "filter": "genre",
+      "filterType": "string",
+      "key": "/library/sections/22/genre?type=8",
+      "title": "Genre",
+      "type": "filter"
+     },
+     {
+      "filter": "mood",
+      "filterType": "string",
+      "key": "/library/sections/22/mood?type=8",
+      "title": "Mood",
+      "type": "filter"
+     },
+     {
+      "filter": "style",
+      "filterType": "string",
+      "key": "/library/sections/22/style?type=8",
+      "title": "Style",
+      "type": "filter"
+     },
+     {
+      "filter": "country",
+      "filterType": "string",
+      "key": "/library/sections/22/country?type=8",
+      "title": "Country",
+      "type": "filter"
+     },
+     {
+      "filter": "collection",
+      "filterType": "string",
+      "key": "/library/sections/22/collection?type=8",
+      "title": "Collection",
+      "type": "filter"
+     },
+     {
+      "filter": "unmatched",
+      "filterType": "boolean",
+      "key": "/library/sections/22/unmatched",
+      "title": "Unmatched",
+      "type": "filter"
+     }
+    ],
+    "Sort": [
+     {
+      "active": true,
+      "activeDirection": "asc",
+      "default": "asc",
+      "defaultDirection": "asc",
+      "descKey": "titleSort:desc",
+      "firstCharacterKey": "/library/sections/22/firstCharacter",
+      "key": "titleSort",
+      "title": "Title"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "userRating:desc",
+      "key": "userRating",
+      "title": "Rating"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "addedAt:desc",
+      "key": "addedAt",
+      "title": "Date Added"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "lastViewedAt:desc",
+      "key": "lastViewedAt",
+      "title": "Date Played"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "viewCount:desc",
+      "key": "viewCount",
+      "title": "Plays"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "random:desc",
+      "key": "random",
+      "title": "Randomly"
+     }
+    ],
+    "Field": [
+     {
+      "key": "artist.title",
+      "title": "Artist Title",
+      "type": "string"
+     },
+     {
+      "key": "artist.userRating",
+      "subType": "rating",
+      "title": "Artist Rating",
+      "type": "integer"
+     },
+     {
+      "key": "artist.genre",
+      "title": "Artist Genre",
+      "type": "tag"
+     },
+     {
+      "key": "artist.collection",
+      "title": "Artist Collection",
+      "type": "tag"
+     },
+     {
+      "key": "artist.country",
+      "title": "Artist Country",
+      "type": "tag"
+     },
+     {
+      "key": "artist.mood",
+      "title": "Artist Mood",
+      "type": "tag"
+     },
+     {
+      "key": "artist.style",
+      "title": "Artist Style",
+      "type": "tag"
+     },
+     {
+      "key": "artist.addedAt",
+      "title": "Date Artist Added",
+      "type": "date"
+     },
+     {
+      "key": "artist.lastViewedAt",
+      "title": "Artist Last Played",
+      "type": "date"
+     },
+     {
+      "key": "artist.unmatched",
+      "title": "Unmatched",
+      "type": "boolean"
+     }
+    ]
+   },
+   {
+    "key": "/library/sections/22/all?type=9",
+    "type": "album",
+    "title": "Albums",
+    "active": false,
+    "Filter": [
+     {
+      "filter": "genre",
+      "filterType": "string",
+      "key": "/library/sections/22/genre?type=9",
+      "title": "Genre",
+      "type": "filter"
+     },
+     {
+      "filter": "mood",
+      "filterType": "string",
+      "key": "/library/sections/22/mood?type=9",
+      "title": "Mood",
+      "type": "filter"
+     },
+     {
+      "filter": "style",
+      "filterType": "string",
+      "key": "/library/sections/22/style?type=9",
+      "title": "Style",
+      "type": "filter"
+     },
+     {
+      "filter": "year",
+      "filterType": "integer",
+      "key": "/library/sections/22/year?type=9",
+      "title": "Year",
+      "type": "filter"
+     },
+     {
+      "filter": "decade",
+      "filterType": "integer",
+      "key": "/library/sections/22/decade?type=9",
+      "title": "Decade",
+      "type": "filter"
+     },
+     {
+      "filter": "studio",
+      "filterType": "string",
+      "key": "/library/sections/22/studio?type=9",
+      "title": "Record Label",
+      "type": "filter"
+     },
+     {
+      "filter": "format",
+      "filterType": "string",
+      "key": "/library/sections/22/format?type=9",
+      "title": "Format",
+      "type": "filter"
+     },
+     {
+      "filter": "subformat",
+      "filterType": "string",
+      "key": "/library/sections/22/subformat?type=9",
+      "title": "Type",
+      "type": "filter"
+     },
+     {
+      "filter": "collection",
+      "filterType": "string",
+      "key": "/library/sections/22/collection?type=9",
+      "title": "Collection",
+      "type": "filter"
+     },
+     {
+      "filter": "label",
+      "filterType": "string",
+      "key": "/library/sections/22/label?type=9",
+      "title": "Labels",
+      "type": "filter"
+     },
+     {
+      "filter": "source",
+      "filterType": "string",
+      "key": "/library/sections/22/source?type=9",
+      "title": "Source",
+      "type": "filter"
+     },
+     {
+      "filter": "unmatched",
+      "filterType": "boolean",
+      "key": "/library/sections/22/unmatched",
+      "title": "Unmatched",
+      "type": "filter"
+     }
+    ],
+    "Sort": [
+     {
+      "defaultDirection": "asc",
+      "descKey": "titleSort:desc",
+      "firstCharacterKey": "/library/sections/22/firstCharacter?type=9",
+      "key": "titleSort",
+      "title": "Title"
+     },
+     {
+      "default": "asc",
+      "defaultDirection": "asc",
+      "descKey": "artist.titleSort:desc,album.titleSort,album.index,album.id,album.originallyAvailableAt",
+      "firstCharacterKey": "/library/sections/22/firstCharacter?type=9",
+      "key": "artist.titleSort,album.titleSort,album.index,album.id,album.originallyAvailableAt",
+      "title": "Album Artist"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "originallyAvailableAt:desc",
+      "key": "originallyAvailableAt",
+      "title": "Release Date"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "rating:desc",
+      "key": "rating",
+      "title": "Critic Rating"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "userRating:desc",
+      "key": "userRating",
+      "title": "Rating"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "addedAt:desc",
+      "key": "addedAt",
+      "title": "Date Added"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "lastViewedAt:desc",
+      "key": "lastViewedAt",
+      "title": "Date Played"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "viewCount:desc",
+      "key": "viewCount",
+      "title": "Plays"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "random:desc",
+      "key": "random",
+      "title": "Randomly"
+     }
+    ],
+    "Field": [
+     {
+      "key": "album.title",
+      "title": "Album Title",
+      "type": "string"
+     },
+     {
+      "key": "album.year",
+      "subType": "year",
+      "title": "Year",
+      "type": "integer"
+     },
+     {
+      "key": "album.decade",
+      "subType": "decade",
+      "title": "Album Decade",
+      "type": "integer"
+     },
+     {
+      "key": "album.genre",
+      "title": "Album Genre",
+      "type": "tag"
+     },
+     {
+      "key": "album.viewCount",
+      "title": "Album Plays",
+      "type": "integer"
+     },
+     {
+      "key": "album.lastViewedAt",
+      "title": "Album Last Played",
+      "type": "date"
+     },
+     {
+      "key": "album.userRating",
+      "subType": "rating",
+      "title": "Album Rating",
+      "type": "integer"
+     },
+     {
+      "key": "album.rating",
+      "subType": "rating",
+      "title": "Album Critic Rating",
+      "type": "integer"
+     },
+     {
+      "key": "album.decade",
+      "subType": "decade",
+      "title": "Album Decade",
+      "type": "integer"
+     },
+     {
+      "key": "album.studio",
+      "title": "Record Label",
+      "type": "string"
+     },
+     {
+      "key": "album.mood",
+      "title": "Album Mood",
+      "type": "tag"
+     },
+     {
+      "key": "album.style",
+      "title": "Album Style",
+      "type": "tag"
+     },
+     {
+      "key": "album.format",
+      "title": "Album Format",
+      "type": "tag"
+     },
+     {
+      "key": "album.subformat",
+      "title": "Album Type",
+      "type": "tag"
+     },
+     {
+      "key": "album.collection",
+      "title": "Album Collection",
+      "type": "tag"
+     },
+     {
+      "key": "album.addedAt",
+      "title": "Date Album Added",
+      "type": "date"
+     },
+     {
+      "key": "album.originallyAvailableAt",
+      "title": "Date Album Released",
+      "type": "date"
+     },
+     {
+      "key": "album.unmatched",
+      "title": "Unmatched",
+      "type": "boolean"
+     },
+     {
+      "key": "album.label",
+      "title": "Label",
+      "type": "tag"
+     }
+    ]
+   },
+   {
+    "key": "/library/sections/22/all?type=10",
+    "type": "track",
+    "title": "Tracks",
+    "active": false,
+    "Filter": [
+     {
+      "filter": "mood",
+      "filterType": "string",
+      "key": "/library/sections/22/mood?type=10",
+      "title": "Mood",
+      "type": "filter"
+     },
+     {
+      "filter": "genre",
+      "filterType": "string",
+      "key": "/library/sections/22/genre?type=10",
+      "title": "Genre",
+      "type": "filter"
+     },
+     {
+      "filter": "userRating",
+      "filterType": "string",
+      "key": "/library/sections/22/userRating?type=10",
+      "title": "Rating",
+      "type": "filter"
+     },
+     {
+      "filter": "location",
+      "filterType": "string",
+      "key": "/library/sections/22/location",
+      "title": "Folder Location",
+      "type": "filter"
+     },
+     {
+      "filter": "source",
+      "filterType": "string",
+      "key": "/library/sections/22/source?type=10",
+      "title": "Source",
+      "type": "filter"
+     }
+    ],
+    "Sort": [
+     {
+      "defaultDirection": "asc",
+      "descKey": "titleSort:desc",
+      "firstCharacterKey": "/library/sections/22/firstCharacter?type=10",
+      "key": "titleSort",
+      "title": "Title"
+     },
+     {
+      "default": "asc",
+      "defaultDirection": "asc",
+      "descKey": "artist.titleSort:desc,album.titleSort,album.year,track.absoluteIndex,track.index,track.titleSort,track.id",
+      "firstCharacterKey": "/library/sections/22/firstCharacter?type=10",
+      "key": "artist.titleSort,album.titleSort,album.year,track.absoluteIndex,track.index,track.titleSort,track.id",
+      "title": "Album Artist"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "userRating:desc",
+      "key": "userRating",
+      "title": "Rating"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "viewCount:desc",
+      "key": "viewCount",
+      "title": "Plays"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "addedAt:desc",
+      "key": "addedAt",
+      "title": "Date Added"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "lastViewedAt:desc",
+      "key": "lastViewedAt",
+      "title": "Date Played"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "lastRatedAt:desc",
+      "key": "lastRatedAt",
+      "title": "Date Rated"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "random:desc",
+      "key": "random",
+      "title": "Randomly"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "ratingCount:desc",
+      "key": "ratingCount",
+      "title": "Popularity"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "mediaBitrate:desc",
+      "key": "mediaBitrate",
+      "title": "Bitrate"
+     }
+    ],
+    "Field": [
+     {
+      "key": "track.mood",
+      "title": "Track Mood",
+      "type": "tag"
+     },
+     {
+      "key": "track.genre",
+      "title": "Track Genre",
+      "type": "tag"
+     },
+     {
+      "key": "track.title",
+      "title": "Track Title",
+      "type": "string"
+     },
+     {
+      "key": "track.viewCount",
+      "title": "Track Plays",
+      "type": "integer"
+     },
+     {
+      "key": "track.lastViewedAt",
+      "title": "Track Last Played",
+      "type": "date"
+     },
+     {
+      "key": "track.skipCount",
+      "title": "Track Skips",
+      "type": "integer"
+     },
+     {
+      "key": "track.lastSkippedAt",
+      "title": "Track Last Skipped",
+      "type": "date"
+     },
+     {
+      "key": "track.userRating",
+      "subType": "rating",
+      "title": "Track Rating",
+      "type": "integer"
+     },
+     {
+      "key": "track.lastRatedAt",
+      "title": "Track Last Rated",
+      "type": "date"
+     },
+     {
+      "key": "track.addedAt",
+      "title": "Track Added At",
+      "type": "date"
+     },
+     {
+      "key": "track.mediaSize",
+      "subType": "fileSize",
+      "title": "File Size",
+      "type": "integer"
+     },
+     {
+      "key": "track.mediaBitrate",
+      "subType": "bitrate",
+      "title": "Bitrate",
+      "type": "integer"
+     },
+     {
+      "key": "track.trash",
+      "title": "Trash",
+      "type": "boolean"
+     },
+     {
+      "key": "track.location",
+      "title": "Folder Location",
+      "type": "tag"
+     }
+    ]
+   },
+   {
+    "key": "/library/sections/22/folder",
+    "type": "folder",
+    "title": "Folders",
+    "active": false
+   }
+  ],
+  "FieldType": [
+   {
+    "type": "tag",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is"
+     },
+     {
+      "key": "!=",
+      "title": "is not"
+     }
+    ]
+   },
+   {
+    "type": "integer",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is"
+     },
+     {
+      "key": "!=",
+      "title": "is not"
+     },
+     {
+      "key": ">>=",
+      "title": "is greater than"
+     },
+     {
+      "key": "<<=",
+      "title": "is less than"
+     }
+    ]
+   },
+   {
+    "type": "string",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "contains"
+     },
+     {
+      "key": "!=",
+      "title": "does not contain"
+     },
+     {
+      "key": "==",
+      "title": "is"
+     },
+     {
+      "key": "!==",
+      "title": "is not"
+     },
+     {
+      "key": "<=",
+      "title": "begins with"
+     },
+     {
+      "key": ">=",
+      "title": "ends with"
+     }
+    ]
+   },
+   {
+    "type": "boolean",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is true"
+     },
+     {
+      "key": "!=",
+      "title": "is false"
+     }
+    ]
+   },
+   {
+    "type": "date",
+    "Operator": [
+     {
+      "key": "<<=",
+      "title": "is before"
+     },
+     {
+      "key": ">>=",
+      "title": "is after"
+     }
+    ]
+   },
+   {
+    "type": "subtitleLanguage",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is"
+     },
+     {
+      "key": "!=",
+      "title": "is not"
+     }
+    ]
+   },
+   {
+    "type": "audioLanguage",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is"
+     },
+     {
+      "key": "!=",
+      "title": "is not"
+     }
+    ]
+   },
+   {
+    "type": "resolution",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is"
+     }
+    ]
+   }
+  ]
+ },
+ "advanced": {
+  "Type": [
+   {
+    "key": "/library/sections/22/all?type=8",
+    "type": "artist",
+    "title": "Artists",
+    "active": true,
+    "Filter": [
+     {
+      "filter": "genre",
+      "filterType": "string",
+      "key": "/library/sections/22/genre?type=8",
+      "title": "Genre",
+      "type": "filter"
+     },
+     {
+      "filter": "mood",
+      "filterType": "string",
+      "key": "/library/sections/22/mood?type=8",
+      "title": "Mood",
+      "type": "filter"
+     },
+     {
+      "filter": "style",
+      "filterType": "string",
+      "key": "/library/sections/22/style?type=8",
+      "title": "Style",
+      "type": "filter"
+     },
+     {
+      "filter": "country",
+      "filterType": "string",
+      "key": "/library/sections/22/country?type=8",
+      "title": "Country",
+      "type": "filter"
+     },
+     {
+      "filter": "collection",
+      "filterType": "string",
+      "key": "/library/sections/22/collection?type=8",
+      "title": "Collection",
+      "type": "filter"
+     },
+     {
+      "filter": "unmatched",
+      "filterType": "boolean",
+      "key": "/library/sections/22/unmatched",
+      "title": "Unmatched",
+      "type": "filter"
+     }
+    ],
+    "Sort": [
+     {
+      "active": true,
+      "activeDirection": "asc",
+      "default": "asc",
+      "defaultDirection": "asc",
+      "descKey": "titleSort:desc",
+      "firstCharacterKey": "/library/sections/22/firstCharacter",
+      "key": "titleSort",
+      "title": "Title"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "userRating:desc",
+      "key": "userRating",
+      "title": "Rating"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "addedAt:desc",
+      "key": "addedAt",
+      "title": "Date Added"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "lastViewedAt:desc",
+      "key": "lastViewedAt",
+      "title": "Date Played"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "viewCount:desc",
+      "key": "viewCount",
+      "title": "Plays"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "random:desc",
+      "key": "random",
+      "title": "Randomly"
+     }
+    ],
+    "Field": [
+     {
+      "key": "artist.title",
+      "title": "Artist Title",
+      "type": "string"
+     },
+     {
+      "key": "artist.userRating",
+      "subType": "rating",
+      "title": "Artist Rating",
+      "type": "integer"
+     },
+     {
+      "key": "artist.genre",
+      "title": "Artist Genre",
+      "type": "tag"
+     },
+     {
+      "key": "artist.collection",
+      "title": "Artist Collection",
+      "type": "tag"
+     },
+     {
+      "key": "artist.country",
+      "title": "Artist Country",
+      "type": "tag"
+     },
+     {
+      "key": "artist.mood",
+      "title": "Artist Mood",
+      "type": "tag"
+     },
+     {
+      "key": "artist.style",
+      "title": "Artist Style",
+      "type": "tag"
+     },
+     {
+      "key": "artist.addedAt",
+      "title": "Date Artist Added",
+      "type": "date"
+     },
+     {
+      "key": "artist.lastViewedAt",
+      "title": "Artist Last Played",
+      "type": "date"
+     },
+     {
+      "key": "artist.unmatched",
+      "title": "Unmatched",
+      "type": "boolean"
+     }
+    ]
+   },
+   {
+    "key": "/library/sections/22/all?type=9",
+    "type": "album",
+    "title": "Albums",
+    "active": false,
+    "Filter": [
+     {
+      "filter": "genre",
+      "filterType": "string",
+      "key": "/library/sections/22/genre?type=9",
+      "title": "Genre",
+      "type": "filter"
+     },
+     {
+      "filter": "mood",
+      "filterType": "string",
+      "key": "/library/sections/22/mood?type=9",
+      "title": "Mood",
+      "type": "filter"
+     },
+     {
+      "filter": "style",
+      "filterType": "string",
+      "key": "/library/sections/22/style?type=9",
+      "title": "Style",
+      "type": "filter"
+     },
+     {
+      "filter": "year",
+      "filterType": "integer",
+      "key": "/library/sections/22/year?type=9",
+      "title": "Year",
+      "type": "filter"
+     },
+     {
+      "filter": "decade",
+      "filterType": "integer",
+      "key": "/library/sections/22/decade?type=9",
+      "title": "Decade",
+      "type": "filter"
+     },
+     {
+      "filter": "studio",
+      "filterType": "string",
+      "key": "/library/sections/22/studio?type=9",
+      "title": "Record Label",
+      "type": "filter"
+     },
+     {
+      "filter": "format",
+      "filterType": "string",
+      "key": "/library/sections/22/format?type=9",
+      "title": "Format",
+      "type": "filter"
+     },
+     {
+      "filter": "subformat",
+      "filterType": "string",
+      "key": "/library/sections/22/subformat?type=9",
+      "title": "Type",
+      "type": "filter"
+     },
+     {
+      "filter": "collection",
+      "filterType": "string",
+      "key": "/library/sections/22/collection?type=9",
+      "title": "Collection",
+      "type": "filter"
+     },
+     {
+      "filter": "label",
+      "filterType": "string",
+      "key": "/library/sections/22/label?type=9",
+      "title": "Labels",
+      "type": "filter"
+     },
+     {
+      "filter": "source",
+      "filterType": "string",
+      "key": "/library/sections/22/source?type=9",
+      "title": "Source",
+      "type": "filter"
+     },
+     {
+      "filter": "unmatched",
+      "filterType": "boolean",
+      "key": "/library/sections/22/unmatched",
+      "title": "Unmatched",
+      "type": "filter"
+     }
+    ],
+    "Sort": [
+     {
+      "defaultDirection": "asc",
+      "descKey": "titleSort:desc",
+      "firstCharacterKey": "/library/sections/22/firstCharacter?type=9",
+      "key": "titleSort",
+      "title": "Title"
+     },
+     {
+      "default": "asc",
+      "defaultDirection": "asc",
+      "descKey": "artist.titleSort:desc,album.titleSort,album.index,album.id,album.originallyAvailableAt",
+      "firstCharacterKey": "/library/sections/22/firstCharacter?type=9",
+      "key": "artist.titleSort,album.titleSort,album.index,album.id,album.originallyAvailableAt",
+      "title": "Album Artist"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "year:desc",
+      "key": "year",
+      "title": "Year"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "originallyAvailableAt:desc",
+      "key": "originallyAvailableAt",
+      "title": "Release Date"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "rating:desc",
+      "key": "rating",
+      "title": "Critic Rating"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "userRating:desc",
+      "key": "userRating",
+      "title": "Rating"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "addedAt:desc",
+      "key": "addedAt",
+      "title": "Date Added"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "lastViewedAt:desc",
+      "key": "lastViewedAt",
+      "title": "Date Played"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "viewCount:desc",
+      "key": "viewCount",
+      "title": "Plays"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "random:desc",
+      "key": "random",
+      "title": "Randomly"
+     }
+    ],
+    "Field": [
+     {
+      "key": "album.title",
+      "title": "Album Title",
+      "type": "string"
+     },
+     {
+      "key": "album.year",
+      "subType": "year",
+      "title": "Year",
+      "type": "integer"
+     },
+     {
+      "key": "album.decade",
+      "subType": "decade",
+      "title": "Album Decade",
+      "type": "integer"
+     },
+     {
+      "key": "album.genre",
+      "title": "Album Genre",
+      "type": "tag"
+     },
+     {
+      "key": "album.viewCount",
+      "title": "Album Plays",
+      "type": "integer"
+     },
+     {
+      "key": "album.lastViewedAt",
+      "title": "Album Last Played",
+      "type": "date"
+     },
+     {
+      "key": "album.userRating",
+      "subType": "rating",
+      "title": "Album Rating",
+      "type": "integer"
+     },
+     {
+      "key": "album.rating",
+      "subType": "rating",
+      "title": "Album Critic Rating",
+      "type": "integer"
+     },
+     {
+      "key": "album.decade",
+      "subType": "decade",
+      "title": "Album Decade",
+      "type": "integer"
+     },
+     {
+      "key": "album.studio",
+      "title": "Record Label",
+      "type": "string"
+     },
+     {
+      "key": "album.mood",
+      "title": "Album Mood",
+      "type": "tag"
+     },
+     {
+      "key": "album.style",
+      "title": "Album Style",
+      "type": "tag"
+     },
+     {
+      "key": "album.format",
+      "title": "Album Format",
+      "type": "tag"
+     },
+     {
+      "key": "album.subformat",
+      "title": "Album Type",
+      "type": "tag"
+     },
+     {
+      "key": "album.collection",
+      "title": "Album Collection",
+      "type": "tag"
+     },
+     {
+      "key": "album.addedAt",
+      "title": "Date Album Added",
+      "type": "date"
+     },
+     {
+      "key": "album.originallyAvailableAt",
+      "title": "Date Album Released",
+      "type": "date"
+     },
+     {
+      "key": "album.unmatched",
+      "title": "Unmatched",
+      "type": "boolean"
+     },
+     {
+      "key": "album.label",
+      "title": "Label",
+      "type": "tag"
+     }
+    ]
+   },
+   {
+    "key": "/library/sections/22/all?type=10",
+    "type": "track",
+    "title": "Tracks",
+    "active": false,
+    "Filter": [
+     {
+      "filter": "mood",
+      "filterType": "string",
+      "key": "/library/sections/22/mood?type=10",
+      "title": "Mood",
+      "type": "filter"
+     },
+     {
+      "filter": "genre",
+      "filterType": "string",
+      "key": "/library/sections/22/genre?type=10",
+      "title": "Genre",
+      "type": "filter"
+     },
+     {
+      "filter": "userRating",
+      "filterType": "string",
+      "key": "/library/sections/22/userRating?type=10",
+      "title": "Rating",
+      "type": "filter"
+     },
+     {
+      "filter": "location",
+      "filterType": "string",
+      "key": "/library/sections/22/location",
+      "title": "Folder Location",
+      "type": "filter"
+     },
+     {
+      "filter": "source",
+      "filterType": "string",
+      "key": "/library/sections/22/source?type=10",
+      "title": "Source",
+      "type": "filter"
+     }
+    ],
+    "Sort": [
+     {
+      "defaultDirection": "asc",
+      "descKey": "titleSort:desc",
+      "firstCharacterKey": "/library/sections/22/firstCharacter?type=10",
+      "key": "titleSort",
+      "title": "Title"
+     },
+     {
+      "default": "asc",
+      "defaultDirection": "asc",
+      "descKey": "artist.titleSort:desc,album.titleSort,album.year,track.absoluteIndex,track.index,track.titleSort,track.id",
+      "firstCharacterKey": "/library/sections/22/firstCharacter?type=10",
+      "key": "artist.titleSort,album.titleSort,album.year,track.absoluteIndex,track.index,track.titleSort,track.id",
+      "title": "Album Artist"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "originalTitle:desc",
+      "key": "originalTitle",
+      "title": "Artist"
+     },
+     {
+      "defaultDirection": "asc",
+      "descKey": "album.titleSort:desc",
+      "key": "album.titleSort",
+      "title": "Album"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "userRating:desc",
+      "key": "userRating",
+      "title": "Rating"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "duration:desc",
+      "key": "duration",
+      "title": "Duration"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "viewCount:desc",
+      "key": "viewCount",
+      "title": "Plays"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "addedAt:desc",
+      "key": "addedAt",
+      "title": "Date Added"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "lastViewedAt:desc",
+      "key": "lastViewedAt",
+      "title": "Date Played"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "lastRatedAt:desc",
+      "key": "lastRatedAt",
+      "title": "Date Rated"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "random:desc",
+      "key": "random",
+      "title": "Randomly"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "ratingCount:desc",
+      "key": "ratingCount",
+      "title": "Popularity"
+     },
+     {
+      "defaultDirection": "desc",
+      "descKey": "mediaBitrate:desc",
+      "key": "mediaBitrate",
+      "title": "Bitrate"
+     }
+    ],
+    "Field": [
+     {
+      "key": "track.mood",
+      "title": "Track Mood",
+      "type": "tag"
+     },
+     {
+      "key": "track.genre",
+      "title": "Track Genre",
+      "type": "tag"
+     },
+     {
+      "key": "track.title",
+      "title": "Track Title",
+      "type": "string"
+     },
+     {
+      "key": "track.viewCount",
+      "title": "Track Plays",
+      "type": "integer"
+     },
+     {
+      "key": "track.lastViewedAt",
+      "title": "Track Last Played",
+      "type": "date"
+     },
+     {
+      "key": "track.skipCount",
+      "title": "Track Skips",
+      "type": "integer"
+     },
+     {
+      "key": "track.lastSkippedAt",
+      "title": "Track Last Skipped",
+      "type": "date"
+     },
+     {
+      "key": "track.userRating",
+      "subType": "rating",
+      "title": "Track Rating",
+      "type": "integer"
+     },
+     {
+      "key": "track.lastRatedAt",
+      "title": "Track Last Rated",
+      "type": "date"
+     },
+     {
+      "key": "track.addedAt",
+      "title": "Track Added At",
+      "type": "date"
+     },
+     {
+      "key": "track.mediaSize",
+      "subType": "fileSize",
+      "title": "File Size",
+      "type": "integer"
+     },
+     {
+      "key": "track.mediaBitrate",
+      "subType": "bitrate",
+      "title": "Bitrate",
+      "type": "integer"
+     },
+     {
+      "key": "track.trash",
+      "title": "Trash",
+      "type": "boolean"
+     },
+     {
+      "key": "track.location",
+      "title": "Folder Location",
+      "type": "tag"
+     }
+    ]
+   },
+   {
+    "key": "/library/sections/22/folder",
+    "type": "folder",
+    "title": "Folders",
+    "active": false
+   }
+  ],
+  "FieldType": [
+   {
+    "type": "tag",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is"
+     },
+     {
+      "key": "!=",
+      "title": "is not"
+     }
+    ]
+   },
+   {
+    "type": "integer",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is"
+     },
+     {
+      "key": "!=",
+      "title": "is not"
+     },
+     {
+      "key": ">>=",
+      "title": "is greater than"
+     },
+     {
+      "key": "<<=",
+      "title": "is less than"
+     }
+    ]
+   },
+   {
+    "type": "string",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "contains"
+     },
+     {
+      "key": "!=",
+      "title": "does not contain"
+     },
+     {
+      "key": "==",
+      "title": "is"
+     },
+     {
+      "key": "!==",
+      "title": "is not"
+     },
+     {
+      "key": "<=",
+      "title": "begins with"
+     },
+     {
+      "key": ">=",
+      "title": "ends with"
+     }
+    ]
+   },
+   {
+    "type": "boolean",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is true"
+     },
+     {
+      "key": "!=",
+      "title": "is false"
+     }
+    ]
+   },
+   {
+    "type": "date",
+    "Operator": [
+     {
+      "key": "<<=",
+      "title": "is before"
+     },
+     {
+      "key": ">>=",
+      "title": "is after"
+     }
+    ]
+   },
+   {
+    "type": "subtitleLanguage",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is"
+     },
+     {
+      "key": "!=",
+      "title": "is not"
+     }
+    ]
+   },
+   {
+    "type": "audioLanguage",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is"
+     },
+     {
+      "key": "!=",
+      "title": "is not"
+     }
+    ]
+   },
+   {
+    "type": "resolution",
+    "Operator": [
+     {
+      "key": "=",
+      "title": "is"
+     }
+    ]
+   }
+  ]
+ }
+}
