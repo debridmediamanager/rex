@@ -4165,9 +4165,6 @@ impl Runtime {
         self.push_timeline(key, 5, None);
     }
 
-    fn push_delete_event(&mut self, key: &str) {
-        self.push_timeline(key, 9, None);
-    }
 
     /// Strip the agent's identity, the way `PUT .../unmatch` does -- measured on
     /// the reference by diffing the row's keys across the call.
@@ -17401,7 +17398,14 @@ impl Runtime {
                         self.deleted.insert(gone.clone());
                     }
                 }
-                self.push_delete_event(key);
+                // The frame is built from the row as it was: looked up after the removal
+                // it was a bare `{ratingKey}` -- type 1, an empty sectionID and no
+                // `metadataState` for every kind of row -- so Plex Web never repopulated
+                // the library (its handler needs a positive sectionID) and the section's
+                // `/timeline` never listed the removal. Every measured state-9 frame carries
+                // `deleted` and the row's own type; the oracle sends the row's title too
+                // (a media-item DELETE is a 400 on both copies, so that part is unmeasured).
+                self.push_timeline_entry(&row, 9, Some("deleted"), None, None, None);
                 self.dirty = true;
                 info!(
                     "DELETE {key} ({})",

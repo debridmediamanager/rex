@@ -3355,3 +3355,12 @@ are changing; replay the client's exact request before altering behavior.
   are isolated; a networked PMS runs an agent refresh after a merge that may restamp it --
   plexsim runs no agent. The first merge attempt was a 500 ("Waited over 10 seconds for a busy
   database") that moved nothing: a scratch 500 under another agent's load is not a rule.
+- **A media item's DELETE frames the row as it WAS** (cycle 84, B's drive59 `movie.delete()` and
+  `episode.delete()`, `tests/test_parity_cycle84_b.py`). The one `state 9` TimelineEntry carries
+  the row's own type number, its `sectionID` and `metadataState: "deleted"`, as every measured
+  state-9 frame does (playlist, collection, merged row, library delete), and the section's
+  `/timeline` lists the removal as a state-9 stub. The native server looked the row up after
+  removing it and sent `type 1`, `sectionID ""` and no `metadataState` for every kind of row;
+  Plex Web's timeline handler repopulates `/library/sections/{sectionID}` on a state-9 frame
+  only for a positive id. The frame's title for a media row is unmeasured: a media-item DELETE
+  is a 400 on both copies (read-only media); both servers send the row's frame title.
