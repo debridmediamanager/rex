@@ -13,6 +13,9 @@ bodies are kept as RAW TEXT, because the point of two of these checks is the rep
   `"0"`/`"1"` its XML capture held.
 - Under paging the native server re-serialised the route's body and wrote each repeated
   `Language` key once (the last one); the oracle and both references repeat it.
+- `mediaType` 9, 10, 14, 20, 21 and 22 list the modern agents zen lists (Plex Music and
+  Plex Personal Media for album/track, Personal Media for the photo and 20-22 types);
+  plexsim listed none of them, and the provider table's `MetadataType` lists followed.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -211,6 +214,9 @@ def main():
             if exchange["path"].startswith("/system/agents"):
                 legacy_types(port, exchange)
                 repeated_keys(port, exchange)
+                agent_lists(port, exchange)
+            elif exchange["path"] == "/media/providers/metadata":
+                provider_types(port, exchange)
     finally:
         stop(process)
     passed = sum(results)

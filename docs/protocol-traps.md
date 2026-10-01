@@ -3470,3 +3470,13 @@ are changing; replay the client's exact request before altering behavior.
   `mediaType=1` against 6,394). It now pages the array form first, as its XML branch already did.
   The oracle was right. MALFORMED-ONLY: `JSON.parse` keeps the last duplicate at the first one's
   position, so Plex Web's parsed object was the same either way; only the wire bytes and length differed.
+- **`/system/agents?mediaType=9` and `=10` list Plex Music and Plex Personal Media; `14`, `20`, `21`
+  and `22` list Personal Media alone** (cycle 87 W2, kids 1.43.4 and zen 1.42.2 swept over
+  `mediaType=1..129`; every other type outside 1-4, 8, 13 is `size 0`; `tests/fixtures/c87_w2_system_agents_zen.json`).
+  `system_agents.json`'s `mediaTypes` held only 1, 2, 3, 4, 8 and 13, so both servers answered
+  `mediaType=9` with the two legacy rows alone and 10 with nothing, and the provider table's
+  `MetadataType` lists (music `8,9,10`, Personal Media `1,2,3,4,8,9,10,13,14,20,21,22` on zen) came
+  out short with them. CLIENT-VISIBLE: Plex Web 4.162.1's Agents settings page
+  (`chunk-4030`, `populateAgents`) asks for types 1, 2, 8, 9 and 13 and drops only the movie,
+  series and music modern agents, so its Albums tab lists Plex Personal Media on a real server and
+  did not on plexsim. Personal Media's provider id is 5 on zen, not 4: not settled here.
