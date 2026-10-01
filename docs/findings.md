@@ -11281,6 +11281,27 @@ where the unmatch model keeps it (read off a different row); and a plexsim row u
 `/unmatch` keeps its `Rating` array and `audienceRatingImage`, which zen's never-matched `local://`
 rows do not carry. Neither is measured on the same row both ways.
 
+#### The eighty-third to eighty-sixth passes — the native server measured against the references
+
+`main` became the native Rust server on 2026-09-30, so the loop reopened with the binary as the
+target. Before the first native cycle every HANDOVER §2a entry was worked (the follow-ups, a
+lockstep replay of the 15 real-client corpora, differential sweeps of the oracle's own vocabulary
+through query names, path segments, request headers, XML and methods, the UI suite's residue on
+both servers' streams, concurrency and the state file): 78 fixes, each in whichever server the
+reference said was wrong. Then four twelve-axis cycles ran against native: 83 found 10
+client-visible rules (among them every Plex for Android poster a 404 because a query-string token
+never reached the transcoder's inner read, `continuous=1` queues, the language picker under
+zh-TW/es-419/pt-PT, theme/logo candidate types, play-queue ownership and client), 84 found 2
+(a deleted item's timeline frame and its play-queue removal), 85 found 2 (a queue's selection offset
+under `window`/`center`; a deleted section's queued rows), and **86 found none**. The rules are trap
+bullets in `docs/protocol-traps.md`; the ledgers are `handover/cycle8{3,4,5,6}-report.md`.
+
+Measured and not acted on: a 92% beat with a different `playQueueItemID` from its stop (the
+reference ignores the stop; no client sends it); the reference's per-season activity frame order;
+an unmatched show on the isolated plexscratch losing its own artwork fields (needs a networked
+server, where an unmatch is forbidden); deleting the last library section (unmeasurable); the trial
+deployment with a claimed test identity (the user's).
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
