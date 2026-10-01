@@ -5579,7 +5579,18 @@ impl Runtime {
                 if parts.next() == Some("all") {
                     // `level` (a collection's own member type) REPLACES the uri's
                     // `type=`: see `collection_uri_rows`.
-                    let rows = match level {
+                    // With no level of its own the uri's `type=` picks the rows, as the
+                    // oracle's `_section_uri_rows` reads it through `typed_rows`: a smart
+                    // playlist over a show library's `all?type=4&limit=3` holds three
+                    // EPISODES (plexscratch42, 1.42.2). Reading the section's own rows
+                    // filtered and capped the one show and then expanded it, so the
+                    // playlist held every episode.
+                    let uri_type = parse_query(query_tail)
+                        .into_iter()
+                        .rev()
+                        .find(|(name, _)| name == "type")
+                        .and_then(|(_, value)| value.parse::<i64>().ok());
+                    let rows = match level.or(uri_type) {
                         Some(number) => self.typed_section_rows(section, number),
                         None => self.section_rows(section),
                     };
@@ -5608,7 +5619,7 @@ impl Runtime {
                             .filter(|(name, _)| {
                                 name != "sort"
                                     && name != "limit"
-                                    && !(level.is_some() && name == "type")
+                                    && !((level.is_some() || uri_type.is_some()) && name == "type")
                             })
                             .cloned()
                             .collect::<Vec<_>>();

@@ -3265,3 +3265,8 @@ are changing; replay the client's exact request before altering behavior.
   The oracle resolved it through the play-queue resolver and listed every episode; the cycle's
   write-chain diff keyed collections by ratingKey and so printed it as a REF-ONLY/SIM-ONLY pair
   for cycles without anyone reading the counts.
+- **A section uri's own `type=` picks the rows a smart playlist holds.** python-plexapi's smart
+  episode playlist over a show library's `all?type=4&episode.unwatched=1&limit=3` holds three
+  EPISODES on plexscratch42 (1.42.2) and on the oracle (`typed_rows`). The native server read the
+  section's own rows (the one show), capped that at three and expanded it, so the playlist held
+  every episode of the library.

@@ -17,6 +17,8 @@
 - A smart show collection over `all?type=2&episode.unwatched=1&limit=3` holds SHOWS
   (`tests/fixtures/plexapi_writes_s42.json`, python-plexapi's write chain); the oracle
   expanded them into episodes.
+- A smart playlist over `all?type=4&...&limit=3` holds three episodes; the native server
+  ignored the uri's `type`, capped the one show and expanded it.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -223,6 +225,20 @@ def write_chain_checks(port):
     check("... and its childCount counts them", row is not None and members
           and row.get("childCount") == str(len(members)), row is not None and row.attrib)
     request(port, "DELETE", "/library/collections/%s" % collection)
+
+    # A smart episode playlist takes its uri's type and limit.
+    want = measured["smart_episode_playlist"]
+    check("fixture: the capped smart episode playlist holds three episodes",
+          want["leafCount"] == 3 and want["member_types"] == ["Episode"] * 3, want)
+    query = re.search(r"all%3F(.*)$", want["request"]).group(1)
+    status, raw = request(port, "POST", "/playlists?smart=1&title=Xb%%20SmartPl&type=video&uri=%s"
+                          % section_uri(query))
+    playlist = ET.fromstring(raw)[0] if status == 200 else None
+    check("a smart playlist over all?type=4&limit=3 counts three", playlist is not None
+          and playlist.get("leafCount") == "3", playlist is not None and playlist.attrib)
+    status, raw = request(port, "GET", "/playlists/%s/items" % playlist.get("ratingKey"))
+    items = [row.get("type") for row in ET.fromstring(raw)] if status == 200 else status
+    check("... and lists three episodes", items == ["episode"] * 3, items)
 
 
 def main():
