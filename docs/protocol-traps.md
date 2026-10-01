@@ -2850,9 +2850,15 @@ are changing; replay the client's exact request before altering behavior.
   episodes under no season on the Recently Added shelves to match. Two things to know when measuring
   it: a hub page answered BEFORE the prefs write comes back from PMS's hub cache with the old rows
   (ask with a `count=` no earlier request used), and unscrobbling the episode does not clear the
-  `viewCount`/`lastViewedAt` the scrobble stamped on its season and show. The unmatch cascade was NOT
-  re-measured flattened (an unmatch cannot be undone on a copy with no metadata provider); both
-  servers apply the ordinary cascade to the flattened show's episodes.
+  `viewCount`/`lastViewedAt` the scrobble stamped on its season and show. The UNMATCH cascade is the
+  ordinary one too (cycle 84, plexscratch 1.43.4, an A/B on a freshly reset copy each time: Firefly
+  flattened then unmatched, against Firefly unmatched unflattened). The 58 cascade frames are
+  identical in order, state, `metadataState`, title (`Firefly S01 E01` -- the frame title keeps the
+  season either way) and activity progress; only the copy's asynchronous `Processing
+  subscriptions` triple moved. The rows after it differ by exactly the projection: the show keeps
+  `skipChildren`, every episode `skipParent` without `parentRatingKey`/`parentKey`, and the
+  seasons are listed and become `local://` as unflattened. Both servers already did this (each
+  server's flattened and unflattened unmatch differ by the same projection alone).
 - **A collection over a SECTION uri holds that library's rows at the COLLECTION's level.** Measured
   on plexscratch42 (1.42.2, `tests/fixtures/collection_section_uri.json`): `type=2&sectionId=3` over
   `/library/sections/3/all` holds the library's two shows (`subtype: show`, `childCount: 2`), `type=3`
