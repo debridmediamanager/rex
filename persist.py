@@ -70,13 +70,13 @@ LIBRARY_SKIP = {"catalog", "_resolve", "_resolve_collection", "_notify", "_activ
 # connection, a socket, a lock, a cache or a per-process counter.
 SIM_FIELDS = ("pref_overrides", "section_pref_overrides", "agent_orders",
               "metadata_provider_groups", "next_metadata_provider_group",
-              "uploads", "uploaded_subtitles", "theme_rows", "_theme_next",
+              "builtin_group_titles", "uploads", "uploaded_subtitles", "theme_rows", "_theme_next",
               "play_queues", "next_play_queue", "next_play_queue_item",
               "download_queues")
 # The part of the server state that is not about the catalog's rows, and so still
 # means the same thing over a rebuilt catalog.
 SIM_PORTABLE = ("pref_overrides", "agent_orders", "metadata_provider_groups",
-                "next_metadata_provider_group")
+                "next_metadata_provider_group", "builtin_group_titles")
 SESSION_FIELDS = ("_devices", "_device_seen", "_device_names", "_device_platforms",
                   "_next_device", "_bytes", "_plays")
 # The per-user view state of one row, which is what a rebuilt catalog keeps.

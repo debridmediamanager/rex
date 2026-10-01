@@ -3964,6 +3964,8 @@ class PlexSim:
         # The primary item id follows the new group id in both measured creates.
         self.metadata_provider_groups = {}
         self.next_metadata_provider_group = len(SYSTEM_AGENTS) + 1
+        # Cycle 87: a BUILT-IN group's renamed title, by group id (plexscratch42).
+        self.builtin_group_titles = {}
         # Sidecar subtitles the Upload modal has sent, by stream id: the bytes are kept
         # so a DELETE of one can tell an uploaded stream from an embedded track.
         self.uploaded_subtitles = {}
@@ -6129,7 +6131,7 @@ class PlexSim:
         # references.
         groups = [{
             "id": number,
-            "title": row["title"],
+            "title": self.builtin_group_titles.get(number, row["title"]),
             "primaryIdentifier": row["identifier"],
             "builtIn": "1",
             "MetadataAgentProviderGroupItem": [{
@@ -6304,10 +6306,15 @@ class PlexSim:
                 # title, answers the row -- and its items path refuses Personal Media as
                 # a custom group's does (`PUT /group/3/items/5?after=-1` is a 400).
                 # Plex Web hides both behind `builtIn`; plexsim 404'd them. A DIFFERENT
-                # title is unmeasured, so the row is answered as held.
+                # title is a real rename: `?title=Plex%20Music%20W3` answers the row with
+                # it and the group listing and `/group/3` keep it until the next rename
+                # (the provider row's own title does not change).
                 if len(segments) == 5:
                     if query.get("title") is None:
                         return ("error", 400, "plexsim: bad request")
+                    with self.lock:
+                        self.builtin_group_titles[group_id] = query["title"]
+                    built_in = [dict(built_in[0], title=query["title"])]
                     return self.bare_container(size=1, MetadataAgentProviderGroup=built_in)
                 if len(segments) == 7 and segments[5] == "items" and segments[6].isdigit():
                     return ("error", 400, "plexsim: bad request")

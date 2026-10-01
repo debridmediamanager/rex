@@ -3549,4 +3549,10 @@ are changing; replay the client's exact request before altering behavior.
   groups included. MALFORMED-ONLY: Plex Web 4.162.1 hides Edit/Remove for a provider whose title is
   one of its eight built-in names and for a group with `builtIn`. Unmeasured, left as they were:
   `DELETE` on a built-in provider or group id (destructive; the oracle still answers the provider
-  row, native 404s) and a built-in group renamed to a DIFFERENT title (answered as held).
+  row, native 404s). A built-in group renamed to a DIFFERENT title was measured next (below).
+- **A built-in metadata provider GROUP's rename is real.** plexscratch42 (1.42.2, 2026-10-01):
+  `PUT /media/providers/metadata/group/3?title=Plex%20Music%20W3` answers group 3 with the new
+  title, the group listing and `GET /group/3` keep it, the provider row (`/media/providers/metadata/3`)
+  keeps "Plex Music", and `?title=Plex%20Music` restores it (the undo, made). Both servers
+  answered the row as held; they now keep the title, and `--state` keeps it over a restart.
+  MALFORMED-ONLY: Plex Web hides Edit on a `builtIn` group.

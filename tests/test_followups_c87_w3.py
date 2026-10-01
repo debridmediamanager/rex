@@ -23,6 +23,10 @@
   500 with an unreachable one, `POST` on the id a 404; `PUT /group/3?title=` (its own title)
   answers the row, `POST /group/3` is a 404 and `PUT /group/3/items/5` a 400. The oracle
   answered the provider row to every verb and the native server 404'd all of them.
+- A built-in group's rename is REAL (plexscratch42): `PUT /group/3?title=Plex%20Music%20W3`
+  answers the row with the new title, the group listing and `/group/3` keep it, the
+  provider row's title does not change, and renaming back restores it. Both servers
+  answered the row as held (`tests/fixtures/c87_w3_builtin_group_rename_s42.json`).
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -47,6 +51,7 @@ JSON_FIXTURE = os.path.join(HERE, "fixtures", "c87_w2_system_agents_zen.json")
 XML_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_system_agents_xml_zen.json")
 PROVIDER_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_provider_ids_zen.json")
 WRITE_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_provider_writes_s42.json")
+RENAME_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_group_rename_s42.json")
 ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
@@ -197,12 +202,38 @@ def builtin_writes(port):
               (status, text[:200], before == after))
 
 
+def builtin_rename(port):
+    """Rename built-in group 3 and rename it back, reading what plexscratch42 read."""
+    provider_before = request(port, "GET", "/media/providers/metadata/3")
+    for exchange in json.load(open(RENAME_FIXTURE, encoding="utf-8")):
+        status, text = request(port, exchange["method"], exchange["path"], exchange["headers"])
+        try:
+            body = json.loads(text)
+        except ValueError:
+            body = text
+        title = exchange["body"]["MediaContainer"]["MetadataAgentProviderGroup"][0]["title"]
+        check("%s %s answers group 3 titled %r (plexscratch42)"
+              % (exchange["method"], exchange["path"], title),
+              status == exchange["status"] and body == exchange["body"], (status, text[:300]))
+        for path, want in exchange["readsAfter"].items():
+            status, text = request(port, "GET", path, exchange["headers"])
+            try:
+                got = json.loads(text)
+            except ValueError:
+                got = text
+            check("  ...and %s then reads %r" % (path, title), status == 200 and got == want,
+                  (status, text[:300]))
+    check("the rename leaves the PROVIDER row's title alone (plexscratch42)",
+          request(port, "GET", "/media/providers/metadata/3") == provider_before)
+
+
 def main():
     process, port = start()
     try:
         legacy_order(port)
         provider_ids(port)
         builtin_writes(port)
+        builtin_rename(port)
     finally:
         stop(process)
     passed = sum(results)

@@ -393,6 +393,8 @@ pub struct Runtime {
     collections: HashMap<String, Collection>,
     metadata_provider_groups: HashMap<String, MetadataProviderGroup>,
     next_metadata_provider_group: i64,
+    /// Cycle 87: a BUILT-IN group's renamed title, by group id (plexscratch42).
+    builtin_group_titles: HashMap<i64, String>,
     queues: HashMap<String, Queue>,
     download_queues: HashMap<String, Value>,
     pub next_playlist: i64,
@@ -632,6 +634,7 @@ impl Runtime {
             tag_table: TagTable::default(),
             metadata_provider_groups: HashMap::new(),
             next_metadata_provider_group: 5,
+            builtin_group_titles: HashMap::new(),
             queues: HashMap::new(),
             download_queues: HashMap::new(),
             next_playlist: playlists::PLAYLIST_BASE + 1,
@@ -1172,6 +1175,13 @@ impl Runtime {
                 },
             );
         }
+        if let Some(titles) = state.get("builtinGroupTitles").and_then(Value::as_object) {
+            for (id, title) in titles {
+                if let (Ok(id), Some(title)) = (id.parse::<i64>(), title.as_str()) {
+                    self.builtin_group_titles.insert(id, title.to_string());
+                }
+            }
+        }
         if let Some(next) = state.get("nextMetadataProviderGroup").and_then(Value::as_i64) {
             self.next_metadata_provider_group = self.next_metadata_provider_group.max(next);
         }
@@ -1397,6 +1407,7 @@ impl Runtime {
             ("sectionPrefs", json!(self.section_prefs.iter().map(|((section, name), value)| json!([section, name, value])).collect::<Vec<_>>())),
             ("metadataProviderGroups", json!(self.metadata_provider_groups.values().map(|group| json!({"id":group.id,"title":group.title,"primaryIdentifier":group.primary_identifier,"items":group.items})).collect::<Vec<_>>())),
             ("nextMetadataProviderGroup", json!(self.next_metadata_provider_group)),
+            ("builtinGroupTitles", json!(self.builtin_group_titles.iter().map(|(id, title)| (id.to_string(), json!(title))).collect::<Map<String, Value>>())),
             ("uploads", json!(self.uploads.iter().map(|(key, (bytes, kind))| (key.clone(), json!([base64_encode(bytes), kind]))).collect::<Map<String, Value>>())),
             ("themeRows", json!(self.theme_rows)),
             ("themeNext", json!(self.theme_next)),
@@ -3176,6 +3187,11 @@ impl Runtime {
             .enumerate()
             .map(|(index, provider)| {
                 let id = json!(index + 1);
+                let title = self
+                    .builtin_group_titles
+                    .get(&(index as i64 + 1))
+                    .map(|title| json!(title))
+                    .unwrap_or_else(|| provider.get("title").cloned().unwrap_or(Value::Null));
                 let identifier = provider
                     .get("identifier")
                     .and_then(Value::as_str)
@@ -3183,7 +3199,7 @@ impl Runtime {
                     .to_string();
                 json!({
                     "id": id,
-                    "title": provider.get("title").cloned().unwrap_or(Value::Null),
+                    "title": title,
                     "primaryIdentifier": identifier,
                     "builtIn": "1",
                     "MetadataAgentProviderGroupItem": [{
@@ -3391,9 +3407,16 @@ impl Runtime {
                 .find(|row| row.get("id").map(|id| id.to_string()) == Some(group_id.to_string()));
             if let Some(row) = built_in {
                 if segments.len() == 5 {
-                    if query.get("title").is_none() {
+                    let Some(title) = query.get("title").cloned() else {
                         return Response::error(400, "plexsim: bad request");
+                    };
+                    // Measured: a different title is a real rename that the listing and
+                    // `/group/{id}` keep; the provider row's own title does not change.
+                    if let Ok(number) = group_id.parse::<i64>() {
+                        self.builtin_group_titles.insert(number, title.clone());
                     }
+                    let mut row = row;
+                    row["title"] = json!(title);
                     return Response::json(
                         200,
                         json!({"MediaContainer": {"size": 1, "MetadataAgentProviderGroup": [row]}}),
