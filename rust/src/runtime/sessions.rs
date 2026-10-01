@@ -781,6 +781,7 @@ impl Runtime {
             for queue in self.queues.values_mut() {
                 if queue.items.iter().any(|item| item.id == wanted) {
                     queue.selected = Some(wanted);
+                    queue.deselected = false;
                     break;
                 }
             }

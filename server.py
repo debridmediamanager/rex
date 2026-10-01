@@ -13423,8 +13423,9 @@ class PlexSim:
                     # Delete Version. plexsim has no optimized versions, and a
                     # real PMS answers 400 when there are none to delete.
                     return ("error", 400, "plexsim: no optimized versions")
+                doomed = self.subtree_keys(rating_key)
                 self.library.delete(rating_key)
-                self.drop_from_queues(rating_key)
+                self.drop_from_queues(doomed)
                 self.notify_deleted(row)
                 logger.info("DELETE %s (%s)", rating_key, row.get("title"))
                 return ("empty", 200)
@@ -16708,6 +16709,7 @@ class PlexSim:
             selected = queue["selected"]
             last_added = queue["last_added"]
             playlist = queue["playlist"]
+            deselected = bool(queue.get("deselected"))
         metadata = []
         for entry in items:
             row = self.catalog.items.get(entry["ratingKey"])
@@ -16727,6 +16729,14 @@ class PlexSim:
         if str(centre).isdigit():
             offset = next((i for i, m in enumerate(metadata)
                            if m["playQueueItemID"] == int(centre)), offset)
+        if deselected and not (str(centre).isdigit() and any(
+                m["playQueueItemID"] == int(centre) for m in metadata)):
+            # Cycle 84, plexscratch42: once the selected row is removed with no row after
+            # it, the queue has NO selection -- `playQueueTotalCount` still counts the
+            # rows, `playQueueSelectedItemOffset` is 0, there is no selected item id, and
+            # the window around the (absent) selection is empty: `size 0`, no rows. A
+            # `center=` naming a row lists it again. plexsim selected the head.
+            metadata = []
         # Cycle 16, re-measured on plexscratch: the two flags window the queue with NO
         # `window=` at all -- `window` is the RADIUS and is unlimited when absent, so
         # `includeBefore=0&includeAfter=1` answers everything after the selection.
@@ -16762,7 +16772,10 @@ class PlexSim:
             fields["playQueuePlaylistTitle"] = playlist[1]
         elif source:
             fields["playQueueSourceURI"] = source
-        if metadata:
+        if deselected and total:
+            fields["playQueueSelectedItemOffset"] = offset if metadata else 0
+            fields["playQueueTotalCount"] = total
+        elif metadata:
             fields["playQueueSelectedItemID"] = selected if selected is not None \
                 else metadata[0]["playQueueItemID"]
             fields["playQueueSelectedItemOffset"] = offset
@@ -17221,6 +17234,7 @@ class PlexSim:
                 for queue in self.play_queues.values():
                     if any(e["id"] == wanted for e in queue["items"]):
                         queue["selected"] = wanted
+                        queue.pop("deselected", None)
                         break
 
         playback_state = "ignore"
@@ -18207,7 +18221,7 @@ class PlexSim:
             self.notify_timeline(row, self.TIMELINE_QUEUED, None)
             if existing is not None:
                 merged = self.library.merge(existing, [row["ratingKey"]])
-                self.drop_from_queues(int(row["ratingKey"]))
+                self.drop_from_queues([int(row["ratingKey"])])
                 for other in merged:
                     self.notify_timeline(dict(other, title="", year=None),
                                          self.TIMELINE_DELETED, "deleted")
@@ -18254,6 +18268,10 @@ class PlexSim:
                 merged, changed = self.library.merge_shows(row, ids)
             else:
                 merged = self.library.merge(row, ids)
+            # Cycle 84, plexscratch42: every row a merge absorbs leaves the play queues --
+            # an episode merge's absorbed episode, a show merge's absorbed episodes -- with
+            # the version stepped per row (`drop_from_queues`). plexsim left them queued.
+            self.drop_from_queues([int(other["ratingKey"]) for other in merged])
             # Measured on a writable copy of the reference: the absorbed row is deleted
             # (state 9, untitled) and the survivor refreshed under type -1, state 3 then
             # 5. plexsim pushed nothing.
@@ -19892,8 +19910,8 @@ class PlexSim:
             at += 1
         return items[at]["id"]
 
-    def drop_from_queues(self, rating_key):
-        """Take a removed row out of every play queue, moving the selection with it.
+    def drop_from_queues(self, rating_keys):
+        """Take removed rows out of every play queue, moving the selection with them.
 
         Measured on the reference: the queue shrinks, `playQueueTotalCount` drops and
         the VERSION steps -- and the selection moves to a row that still exists.
@@ -19901,17 +19919,42 @@ class PlexSim:
         moved the version, which per its own findings is the response the client
         throws away: the player would have been holding a selection that no longer
         existed on a queue it could not refresh.
+
+        Cycle 84, measured on plexscratch42 (1.42.2) with a throwaway TV library
+        (`tests/fixtures/queue_removal_s42.jsonl`): EVERY row the write removes leaves,
+        not only the key it named -- a season's DELETE takes its episodes out, and so do
+        an episode `/merge` and a show `/merge` for the rows they absorb. The version
+        steps once PER ROW that leaves (three episodes: 1 -> 4), and a selection that
+        left moves to the FOLLOWING surviving row -- not the first -- or, with nothing
+        after it, to no selection at all. plexsim dropped only the named key, so a
+        deleted season's episodes stayed queued, and moved the selection to the head.
         """
+        gone = {int(key) for key in rating_keys}
         with self.lock:
             for queue in self.play_queues.values():
-                keeping = [e for e in queue["items"]
-                           if int(e["ratingKey"]) != int(rating_key)]
-                if len(keeping) == len(queue["items"]):
+                items = queue["items"]
+                keeping = [e for e in items if int(e["ratingKey"]) not in gone]
+                if len(keeping) == len(items):
                     continue
+                queue["version"] += len(items) - len(keeping)
+                at = next((i for i, e in enumerate(items) if e["id"] == queue["selected"]), None)
+                if at is not None and int(items[at]["ratingKey"]) in gone:
+                    following = next((e for e in items[at + 1:]
+                                      if int(e["ratingKey"]) not in gone), None)
+                    queue["selected"] = following["id"] if following else None
+                    if following is None and keeping:
+                        # Rows remain and none is selected: see `play_queue_container`.
+                        queue["deselected"] = True
                 queue["items"] = keeping
-                queue["version"] += 1
-                if not any(e["id"] == queue["selected"] for e in keeping):
-                    queue["selected"] = keeping[0]["id"] if keeping else None
+
+    def subtree_keys(self, rating_key):
+        """A row's key and every key beneath it, read before a removal cascades."""
+        keys, pending = [], [int(rating_key)]
+        while pending:
+            key = pending.pop()
+            keys.append(key)
+            pending.extend(int(child["ratingKey"]) for child in self.catalog.children(key))
+        return keys
 
     def move_play_queue_item(self, queue_id, item_id, after, query):
         """`PUT /playQueues/{id}/items/{itemID}/move?after=` -- drag in Up Next.

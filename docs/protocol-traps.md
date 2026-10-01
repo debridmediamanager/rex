@@ -3369,6 +3369,18 @@ are changing; replay the client's exact request before altering behavior.
   rule (docs/findings.md, "A removed row leaves the play queues") is that the queue shrinks, its
   version steps and the selection moves to a row that still exists. The native server dropped the
   row only while rendering the queue, so the version never stepped -- the response the client
-  discards -- and a deleted selected item stayed `playQueueSelectedItemID`. (The oracle drops
-  only the deleted key itself, not a season's cascaded episodes, and not on `/merge`; the native
-  server now drops every removed key of the DELETE.)
+  discards -- and a deleted selected item stayed `playQueueSelectedItemID`. (Cascades, merges, the
+  per-row version and where the selection goes were measured next; see the bullet below.)
+- **Every row a write removes leaves the play queues, the version steps PER ROW, and a removed
+  selection goes to the FOLLOWING row or nowhere** (cycle 84 F, plexscratch42 1.42.2, a throwaway
+  TV library; `tests/fixtures/queue_removal_s42.jsonl`). A season's `DELETE` takes its episodes
+  out of every queue, and an episode or show `PUT .../merge` takes out the rows it absorbs (the
+  survivor's own queue is untouched). The version steps once per row that leaves -- a season of
+  three moves a queue 1 -> 4 -- not once per write. A selected row that leaves hands the
+  selection to the next SURVIVING row after it, not to the queue's head; with no row after it
+  the queue has no selection at all: `size 0`, no rows, no `playQueueSelectedItemID` or
+  `...MetadataItemID`, `playQueueSelectedItemOffset` 0 and `playQueueTotalCount` still counting
+  the rows (a `center=` naming a row lists it again). The oracle dropped only the DELETE's own
+  key and nothing on `/merge`; both servers stepped once per write and selected the head.
+  CLIENT-VISIBLE: Plex Web refetches its queue on the version and discards an answer whose
+  selected id it does not hold.

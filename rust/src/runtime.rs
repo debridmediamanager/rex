@@ -325,6 +325,9 @@ struct Queue {
     client: String,
     playlist_id: Option<String>,
     playlist_title: Option<String>,
+    /// Rows remain and NONE is selected: the selected row was removed with no row
+    /// after it (cycle 84, plexscratch42). See `queue_container`.
+    deselected: bool,
 }
 
 #[derive(Debug)]
@@ -1056,6 +1059,10 @@ impl Runtime {
                         client: text("client").unwrap_or_default(),
                         playlist_id: text("playlistId"),
                         playlist_title: text("playlistTitle"),
+                        deselected: value
+                            .get("deselected")
+                            .and_then(Value::as_bool)
+                            .unwrap_or(false),
                     },
                 );
             }
@@ -1347,7 +1354,7 @@ impl Runtime {
             // counter re-derived from the surviving rows hands a deleted list's id out
             // again, and one not kept at all restarts `playlistItemID` at 1 beside the
             // restored items that already hold it.
-            "queues": self.queues.values().map(|queue| json!({"id":queue.id,"version":queue.version,"selected":queue.selected,"items":queue.items.iter().map(|item| json!({"id":item.id,"ratingKey":item.rating_key,"added":item.added})).collect::<Vec<_>>(),"source":queue.source,"natural":queue.natural,"shuffled":queue.shuffled,"lastAdded":queue.last_added,"client":queue.client,"playlistId":queue.playlist_id,"playlistTitle":queue.playlist_title})).collect::<Vec<_>>(),
+            "queues": self.queues.values().map(|queue| json!({"id":queue.id,"version":queue.version,"selected":queue.selected,"items":queue.items.iter().map(|item| json!({"id":item.id,"ratingKey":item.rating_key,"added":item.added})).collect::<Vec<_>>(),"source":queue.source,"natural":queue.natural,"shuffled":queue.shuffled,"lastAdded":queue.last_added,"client":queue.client,"playlistId":queue.playlist_id,"playlistTitle":queue.playlist_title,"deselected":queue.deselected})).collect::<Vec<_>>(),
             "nextQueue": self.next_queue,
             "nextQueueItem": self.next_queue_item,
             "nextPlaylist": self.next_playlist,
@@ -11793,6 +11800,57 @@ impl Runtime {
         expanded
     }
 
+    /// Take removed rows out of every play queue (`server.py` `drop_from_queues`).
+    ///
+    /// Cycle 84, measured on plexscratch42 (1.42.2) with a throwaway TV library
+    /// (`tests/fixtures/queue_removal_s42.jsonl`): EVERY row the write removes leaves --
+    /// a season's DELETE takes its episodes, an episode or show `/merge` and a Fix
+    /// Match merge the rows they absorb. The version steps once PER ROW that leaves
+    /// (three episodes: 1 -> 4), and a selection that left moves to the FOLLOWING
+    /// surviving row -- not the first -- or, with nothing after it, to no selection.
+    pub(super) fn drop_from_queues(&mut self, gone: &[String]) {
+        for queue in self.queues.values_mut() {
+            let removed = queue
+                .items
+                .iter()
+                .filter(|item| gone.contains(&item.rating_key))
+                .count();
+            if removed == 0 {
+                continue;
+            }
+            queue.version += removed as i64;
+            if let Some(at) = queue
+                .items
+                .iter()
+                .position(|item| Some(item.id) == queue.selected)
+            {
+                if gone.contains(&queue.items[at].rating_key) {
+                    let following = queue.items[at + 1..]
+                        .iter()
+                        .find(|item| !gone.contains(&item.rating_key))
+                        .map(|item| item.id);
+                    queue.selected = following;
+                    if following.is_none() {
+                        queue.deselected = queue.items.len() > removed;
+                    }
+                }
+            }
+            queue.items.retain(|item| !gone.contains(&item.rating_key));
+        }
+    }
+
+    /// A row's key and every key beneath it, read before a removal cascades.
+    pub(super) fn subtree_keys(&self, key: &str) -> Vec<String> {
+        let mut keys = vec![key.to_string()];
+        let mut index = 0;
+        while index < keys.len() {
+            let parent = keys[index].clone();
+            keys.extend(self.children(&parent).iter().filter_map(key_of));
+            index += 1;
+        }
+        keys
+    }
+
     fn queue_container(&self, queue: &Queue, query: &HashMap<String, String>) -> Response {
         let mut metadata = queue
             .items
@@ -11811,13 +11869,24 @@ impl Runtime {
             .selected
             .and_then(|selected| queue.items.iter().position(|item| item.id == selected))
             .unwrap_or(0);
+        let mut centred = false;
         if let Some(center) = query
             .get("center")
             .and_then(|value| value.parse::<i64>().ok())
         {
             if let Some(index) = queue.items.iter().position(|item| item.id == center) {
                 selected_index = index;
+                centred = true;
             }
+        }
+        if queue.deselected && !centred {
+            // Cycle 84, plexscratch42: once the selected row is removed with no row after
+            // it, the queue has NO selection -- `playQueueTotalCount` still counts the
+            // rows, `playQueueSelectedItemOffset` is 0, there is no selected item id, and
+            // the window around the (absent) selection is empty: `size 0`, no rows. A
+            // `center=` naming a row lists it again. The server selected the head.
+            metadata.clear();
+            selected_index = 0;
         }
         if query.contains_key("includeBefore") || query.contains_key("includeAfter") {
             let before = query.get("includeBefore").map(String::as_str) != Some("0");
@@ -11879,7 +11948,17 @@ impl Runtime {
         } else if !queue.source.is_empty() {
             fields.insert("playQueueSourceURI".to_string(), json!(queue.source));
         }
-        if !metadata.is_empty() {
+        if queue.deselected && total > 0 {
+            fields.insert(
+                "playQueueSelectedItemOffset".to_string(),
+                json!(if metadata.is_empty() {
+                    0
+                } else {
+                    selected_index
+                }),
+            );
+            fields.insert("playQueueTotalCount".to_string(), json!(total));
+        } else if !metadata.is_empty() {
             let selected = queue.selected.unwrap_or(queue.items[0].id);
             fields.insert("playQueueSelectedItemID".to_string(), json!(selected));
             fields.insert(
@@ -12010,6 +12089,7 @@ impl Runtime {
                 client,
                 playlist_id,
                 playlist_title,
+                deselected: false,
             };
             let response = self.queue_container(&queue, query);
             let source = query
@@ -17403,23 +17483,7 @@ impl Runtime {
                 // still exists. Filtering the row out only when the queue was read left
                 // the version where it was -- the response the client discards -- and the
                 // selection pointing at an item no longer listed.
-                for queue in self.queues.values_mut() {
-                    let before = queue.items.len();
-                    queue
-                        .items
-                        .retain(|item| !doomed.contains(&item.rating_key));
-                    if queue.items.len() == before {
-                        continue;
-                    }
-                    queue.version += 1;
-                    if !queue
-                        .items
-                        .iter()
-                        .any(|item| Some(item.id) == queue.selected)
-                    {
-                        queue.selected = queue.items.first().map(|item| item.id);
-                    }
-                }
+                self.drop_from_queues(&doomed);
                 // The frame is built from the row as it was: looked up after the removal
                 // it was a bare `{ratingKey}` -- type 1, an empty sectionID and no
                 // `metadataState` for every kind of row -- so Plex Web never repopulated
@@ -18557,7 +18621,10 @@ impl Runtime {
                             .unwrap_or_default(),
                     );
                     // A merged-away key is retired: a later split never reuses it.
+                    let absorbed = self.subtree_keys(&other);
                     self.retire_row(&other);
+                    // Cycle 84, plexscratch42: an absorbed row leaves the play queues.
+                    self.drop_from_queues(&absorbed);
                     merged.push(value);
                 }
                 if merged.is_empty() {
@@ -19260,6 +19327,10 @@ impl Runtime {
             }
             removed_rows.extend(source_rows);
         }
+        // Cycle 84, plexscratch42: a show merge's absorbed episodes leave the play
+        // queues, the version stepped once per row.
+        let removed_keys = removed_rows.iter().filter_map(key_of).collect::<Vec<_>>();
+        self.drop_from_queues(&removed_keys);
         for gone in &removed_rows {
             self.push_timeline_entry(gone, 9, Some("deleted"), None, None, Some(""));
         }
