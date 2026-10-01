@@ -338,6 +338,9 @@ pub(crate) struct TimelineLatch {
     pub(crate) tag: Option<(Option<String>, String)>,
     pub(crate) latched: bool,
     pub(crate) progressed: bool,
+    /// A completion its stop has closed: near-end beats answer `ignore` until a beat under
+    /// 90% (cycle 87 e3b).
+    pub(crate) closed: bool,
 }
 
 #[derive(Debug)]

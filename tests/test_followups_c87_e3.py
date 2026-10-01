@@ -296,10 +296,112 @@ def queue_selection(port, machine):
               {"got": value, "measured": measured[case]})
 
 
+UA = "Plex Web/4.147.1 (plexsim-test)"
+LIBRARY = "identifier=com.plexapp.plugins.library"
+
+
+def ui_surface_replay(port):
+    """test_ui_surface's c58t and c70 sequences as the suite sends them (`ui_surface_replay`)."""
+    measured = FIXTURE["ui_surface_replay"]
+    movie, spare = ROWS["A"], ROWS["B"]
+
+    def ui_beat(key, state_, at, duration, session):
+        path = ("/:/timeline?ratingKey=%s&key=%s&%s&state=%s&time=%d&duration=%d"
+                % (key, urllib.parse.quote("/library/metadata/%s" % key), LIBRARY, state_, at, duration))
+        return request(port, "GET", path, headers={
+            "User-Agent": UA, "X-Plex-Session-Identifier": session,
+            "X-Plex-Client-Identifier": "plexsim-ui-test", "X-Plex-Product": "Plex Web",
+            "X-Plex-Platform": "Chrome"})[1]
+
+    def app_beat(key, duration, position, state_, session, extra=()):
+        query = urllib.parse.urlencode([
+            ("key", "/library/metadata/%s" % key), ("ratingKey", key), ("playQueueItemID", "1"),
+            ("duration", duration), ("time", position), ("playbackTime", position),
+            ("hasMDE", "1"), ("context", "null:null"), ("state", state_),
+            ("X-Plex-Playback-Session-Id", session), ("X-Plex-Playback-Id", "p70")] + list(extra))
+        return request(port, "GET", "/:/timeline?" + query, headers={
+            "User-Agent": UA, "X-Plex-Product": "Plex for Android (Mobile)",
+            "X-Plex-Platform": "Android", "X-Plex-Client-Identifier": "c70-app",
+            "X-Plex-Session-Id": session})[1]
+
+    def offset(key):
+        return first(port, "/library/metadata/%s" % key).get("viewOffset")
+
+    request(port, "GET", "/:/unscrobble?key=%s&%s" % (movie, LIBRARY))
+    answers = [ui_beat(movie, "playing", 200000, 1000000, "c58t-a"),
+               ui_beat(movie, "stopped", 300000, 1000000, "c58t-a")]
+    stored = offset(movie)
+    answers += [ui_beat(movie, "playing", 30000, 1000000, "c58t-b"),
+                ui_beat(movie, "stopped", 30000, 1000000, "c58t-b")]
+    kept = offset(movie)
+    answers.append(ui_beat(movie, "playing", 110000, 1000000, "c58t-c"))
+    middle = offset(movie)
+    answers.append(ui_beat(movie, "stopped", 30000, 1000000, "c58t-c"))
+    got = {"answers": [[a.get("playbackState"), a.get("viewOffset")] for a in answers],
+           "stored": stored, "kept": kept, "after_c_playing": middle, "dropped": offset(movie)}
+    want = dict(measured["c58t"], answers=[list(a) for a in measured["c58t"]["answers"]])
+    check("ui replay c58t: a STOPPED sub-minute beat keeps the resume point", got == want,
+          {"got": got, "measured": want})
+    request(port, "GET", "/:/unscrobble?key=%s&%s" % (movie, LIBRARY))
+
+    duration = int(first(port, "/library/metadata/%s" % spare)["duration"])
+    request(port, "PUT", "/:/unscrobble?%s&key=%s" % (LIBRARY, spare))
+    near = duration * 95 // 100
+    hist = [app_beat(spare, duration, 60000, "playing", "c70-hist"),
+            app_beat(spare, duration, near, "playing", "c70-hist"),
+            app_beat(spare, duration, near, "stopped", "c70-hist")]
+    request(port, "PUT", "/:/scrobble?%s&key=%s" % (LIBRARY, spare))
+    request(port, "PUT", "/:/unscrobble?%s&key=%s" % (LIBRARY, spare))
+    cross = [app_beat(spare, duration, 0, "playing", "c70-zero"),
+             app_beat(spare, duration, near, "playing", "c70-zero"),
+             app_beat(spare, duration, near, "stopped", "c70-zero"),
+             app_beat(spare, duration, 1, "playing", "c70-one"),
+             app_beat(spare, duration, near, "playing", "c70-one"),
+             app_beat(spare, duration, near, "stopped", "c70-one")]
+    request(port, "PUT", "/:/unscrobble?%s&key=%s" % (LIBRARY, spare))
+    offline = []
+    for count in (1, 1, 0, None, "abc"):
+        extra = [("offline", "1"), ("updated", str(int(time.time()) - 600))]
+        if count is not None:
+            extra.append(("viewCount", str(count)))
+        answer = app_beat(spare, duration, 0, "stopped", "c70-off", extra)
+        offline.append([answer.get("playbackState"), answer.get("viewCount"),
+                        first(port, "/library/metadata/%s" % spare).get("viewCount")])
+    for name, rows in (("history", hist), ("crossing", cross)):
+        got = [[a.get("playbackState"), a.get("viewCount")] for a in rows]
+        want = [list(a) for a in measured["c70"]["hist" if name == "history" else "cross"]]
+        check("ui replay c70 %s block in suite order" % name, got == want,
+              {"got": got, "measured": want})
+    want = [list(a) for a in measured["c70"]["offline"]]
+    check("ui replay c70 offline sync after a play stopped at 95%", offline == want,
+          {"got": offline, "measured": want})
+    request(port, "GET", "/:/unscrobble?key=%s&%s" % (spare, LIBRARY))
+
+
+def near_end(port):
+    """Near-end beats inside a play that passed the minute (`near_end`)."""
+    duration = int(first(port, "/library/metadata/%s" % ROWS["A"])["duration"])
+    for name, sequence in sorted(FIXTURE["near_end"].items()):
+        shape = name.split("/")[0]
+        if sequence["pre_scrobbled"]:
+            request(port, "GET", "/:/scrobble?key=%s&%s" % (ROWS["A"], LIBRARY))
+        session = "c87e3b-%s-%s" % (name, uuid.uuid4().hex[:6])
+        got, want = [], []
+        for state_, at, answer, count, offset_ in sequence["beats"]:
+            position = int(duration * at) if isinstance(at, float) else at
+            body = beat(port, shape, session, state_, position, duration, None, ROWS["A"])[1]
+            got.append([body.get("playbackState"), body.get("viewCount"), body.get("viewOffset")])
+            want.append([answer, count, offset_])
+        check("near end %s" % name, got == want, {"got": got, "measured": want})
+        request(port, "GET", "/:/unscrobble?key=%s&%s" % (ROWS["A"], LIBRARY))
+
+
 def run(port):
     machine = request(port, "GET", "/identity")[1].get("machineIdentifier")
     sequences(port, machine)
     queue_selection(port, machine)
+    ui_surface_replay(port)
+    near_end(port)
 
 
 def main():

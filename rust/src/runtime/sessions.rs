@@ -845,9 +845,10 @@ impl Runtime {
             let track = (session_tag.clone(), listed);
             let mut latch = self.timeline_latch.get(&track).cloned().unwrap_or_default();
             if latch.tag.as_ref() != Some(&tag) {
-                latch = TimelineLatch { tag: Some(tag), latched: false, progressed: false };
+                latch = TimelineLatch { tag: Some(tag), ..TimelineLatch::default() };
             }
             let before = latch.progressed;
+            let closed = latch.closed;
             let crossed = self.library_progress(
                 &key,
                 offset.map(|_| offset_ms),
@@ -863,11 +864,17 @@ impl Runtime {
             } else if offset.is_some() && total > 0 && (offset_ms as f64) < total as f64 * 0.9 {
                 // A beat back under 90% is a new play.
                 latch.latched = false;
+                latch.closed = false;
             }
             let finished = latch.latched;
-            let progressed = before || offset_ms > 60000;
+            // Cycle 87 e3b: a near-end beat that completes nothing does not pass the minute
+            // for the latch; a completion does.
+            let near_end = total > 0 && offset_ms >= total.saturating_mul(9) / 10;
+            let progressed = before || (offset_ms > 60000 && !near_end) || crossed;
             latch.progressed = progressed;
             if state == "stopped" {
+                // A stop after a completion CLOSES it until a beat under 90%.
+                latch.closed = closed || latch.latched;
                 latch.latched = false;
                 latch.progressed = offset_ms > 60000;
             }
@@ -933,14 +940,25 @@ impl Runtime {
             if total > 0 {
                 playback_state = if progressed { "progress" } else { "ignore" };
                 if offset_ms >= total.saturating_mul(9) / 10 {
-                    playback_state = if finished { "complete" } else { "ignore" };
+                    // Cycle 87 e3b, plexscratch42: inside a play that had already passed
+                    // the minute, a near-end beat that completes nothing answers `progress`,
+                    // unless a completion's stop closed the play; a fresh play's stays
+                    // `ignore`. See `server.py`.
+                    playback_state = if finished {
+                        "complete"
+                    } else if before && !closed {
+                        "progress"
+                    } else {
+                        "ignore"
+                    };
                 }
             }
             // Cycle 70: the OFFLINE form marks the item watched when `viewCount` is 1 or
             // more; `viewCount=0` on a watched item clears it.
             if !listed
                 && query.get("offline").map(String::as_str) == Some("1")
-                && playback_state == "ignore"
+                // Cycle 87 e3b: a beat the play latch answers `progress` syncs the same.
+                && playback_state != "complete"
             {
                 if let Some(count) = query
                     .get("viewCount")

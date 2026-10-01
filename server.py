@@ -17494,21 +17494,33 @@ class PlexSim:
             if latch.get("tag") != tag:
                 latch["latched"] = False
                 latch["progressed"] = False
+                latch["closed"] = False
             latch["tag"] = tag
-            progressed = bool(latch.get("progressed"))
+            progressed = before = bool(latch.get("progressed"))
+            closed = bool(latch.get("closed"))
             self.library.progress(int(rating_key), offset_ms, state=state,
                                   duration=total_ms, device_id=device,
                                   session=playing_session, track=track,
                                   progressed=progressed)
+            near_end = bool(total_ms) and offset_ms >= (total_ms * 9) // 10
             if self.library.crossed:
                 latch["latched"] = True
             elif offset is not None and total_ms and offset_ms < total_ms * 0.9:
                 # A beat back under 90% is a new play.
                 latch["latched"] = False
+                latch["closed"] = False
             finished = latch["latched"]
-            progressed = progressed or offset_ms > 60000
+            # Cycle 87 e3b, plexscratch42 (1.42.2), both beat shapes: a beat in the last tenth
+            # that completes nothing does not pass the minute for the latch -- 0 then 95% on a
+            # fresh play, then a stop at 95%, answers `ignore` to the stop -- while a
+            # completion does (92%, a stop at 93%, then 3 000 answers `progress`).
+            progressed = progressed or (offset_ms > 60000 and not near_end) \
+                or self.library.crossed
             latch["progressed"] = progressed
             if state == "stopped":
+                # A stop after a completion CLOSES it: the next near-end beats answer
+                # `ignore` until a beat under 90% starts a new play.
+                latch["closed"] = closed or latch["latched"]
                 latch["latched"] = False
                 latch["progressed"] = offset_ms > 60000
             entry = self.sessions.touch(row, query, headers, address, state,
@@ -17552,7 +17564,20 @@ class PlexSim:
                     # cross into the last tenth inside this session. plexsim called every
                     # near-end beat `complete`, and the crossing rule alone would have left
                     # the refused ones saying `progress`.
-                    playback_state = "complete" if finished else "ignore"
+                    # Cycle 87 e3b, plexscratch42 (1.42.2), both beat shapes: except inside a
+                    # play that had ALREADY passed the minute, where a near-end beat that
+                    # completes nothing answers `progress` -- 70 000, a stop at 75 000, 0,
+                    # then 95% (refused by cycle 70's zero rule) says `progress`, and so does
+                    # the stop at 95% after it; Plex for Android's 0-then-95% after a play it
+                    # stopped at 95% too. A completion CLOSED by its stop turns that back to
+                    # `ignore` (92%, a stop at 93%, then 95%) until a beat under 90%; a fresh
+                    # play's 95% stays `ignore` as cycle 45 measured.
+                    if finished:
+                        playback_state = "complete"
+                    elif before and not closed:
+                        playback_state = "progress"
+                    else:
+                        playback_state = "ignore"
             # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): the
             # OFFLINE form Plex for Android syncs a downloaded item's view state with
             # (`offline=1&time&updated&state=stopped&duration&viewCount`, js:1673773) marks
@@ -17563,8 +17588,11 @@ class PlexSim:
             # `complete` and 0; on an unwatched one it is the ordinary beat. A negative or
             # unparseable value is ignored. plexsim never read the name, so an episode
             # watched offline stayed unwatched once the phone reconnected.
+            # Cycle 87 e3b, plexscratch42: and a beat the play latch would answer `progress`
+            # syncs the same -- test_ui_surface's offline sync after a 95% stop in the same
+            # client answered `complete` 1 on the reference, `progress` on ours.
             if (str(query.get("offline") or "") == "1" and listed is None
-                    and playback_state == "ignore" and str(query.get("viewCount") or "").isdigit()):
+                    and playback_state != "complete" and str(query.get("viewCount") or "").isdigit()):
                 if int(query["viewCount"]) >= 1:
                     self.library.scrobble(int(rating_key), True, device_id=device, view_type=None)
                     playback_state = "complete"

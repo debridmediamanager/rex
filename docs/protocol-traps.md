@@ -3707,3 +3707,20 @@ are changing; replay the client's exact request before altering behavior.
   failure, refused both legacy forms Plex Web's dialog sends, and (oracle) refused music libraries.
   MALFORMED-ONLY for the refusal shapes (Plex Web builds the form from `/system/agents` and
   `/library/sections/prefs`); CLIENT-VISIBLE for the legacy-agent and music creates the dialog offers.
+- **Near the end, a play that has passed the minute answers `progress`; a CLOSED completion
+  answers `ignore`; an offline sync ignores the latch** (cycle 87 e3b, plexscratch42 1.42.2, both
+  beat shapes and test_ui_surface's own c58t/c70 order replayed; `timeline_play_latch_s42.json`
+  `near_end`, `ui_surface_replay`, `p90_*`). A beat in the last tenth that completes nothing
+  answers `progress` inside a play that had already passed the minute -- 70 000, a stop, 0, then
+  95% (refused by cycle 70's zero rule) and the stop at 95% after it -- and `ignore` on a fresh
+  play (cycle 45's rule). It does not itself pass the minute (0, 95%, stop at 95% answers the stop
+  `ignore`); a completion does. A completion closed by its stop answers later near-end beats
+  `ignore` (92%, stop at 93%, then 95%) until a beat under 90% starts a new play (then 0, 95% says
+  `progress` again). An `offline=1` sync marks or clears view state whatever the latch says: in
+  the UI suite's order Plex for Android's offline beat after its own 95% stop answered `complete`
+  1 on the reference and `progress` on ours. The UI suite's c58t check expected the progressed
+  session's STOPPED 30 000 beat to delete the resume point; the reference keeps 110 000 (a stop
+  never deletes), so the check now asserts that, and its c70 crossing check asserts the refused
+  95% beat's measured `progress`. MALFORMED-ONLY for the answer word (python-plexapi discards
+  it); CLIENT-VISIBLE for the offline sync, which Plex for Android uses to report downloads
+  watched (js:1673773) -- after a 95% play it marked nothing on ours.

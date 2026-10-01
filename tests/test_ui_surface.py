@@ -33417,8 +33417,12 @@ def main():
     app_beat_c70(rk_c70b, dur_c70b, dur_c70b * 95 // 100, "stopped", "c70-one")
     one_count_c70b = get(base, "/library/metadata/%s" % rk_c70b)[1]["Metadata"][0].get("viewCount")
     request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % rk_c70b)
+    # Cycle 87 e3b, plexscratch42 replaying this suite's order: the refused 95% beat answers
+    # `progress`, not `ignore` -- the client's play passed the minute (and was stopped at 95%)
+    # in the history check above, and a near-end beat that completes nothing inside such a
+    # play says `progress`. What it does not do is complete.
     check("a crossing beat after a time=0 beat does not complete; after time=1 it does",
-          zero_c70b.get("playbackState") == "ignore" and not zero_count_c70b
+          zero_c70b.get("playbackState") == "progress" and not zero_count_c70b
           and one_c70b.get("playbackState") == "complete" and one_count_c70b == 1,
           str((zero_c70b.get("playbackState"), zero_count_c70b,
                one_c70b.get("playbackState"), one_count_c70b)))
