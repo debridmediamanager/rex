@@ -20613,8 +20613,15 @@ def main():
           str({k_c26c: v_c26c for k_c26c, v_c26c in unstored_c26c.items() if v_c26c}))
     # Cycle 31: read each value ONCE. These series grow while the suite runs, so calling
     # `span_size_c26c` again to build the message could compare two different moments.
-    zero_six_c26c = {which_c26c: (span_size_c26c(which_c26c, "06"),
-                                  span_size_c26c(which_c26c, "6"))
+    # Cycle 87: one pair can still straddle a new sample (zen read resources (3, 4) on the
+    # oracle), so a pair is retaken until both reads land in the same sample window.
+    def zero_six_pair_c26c(which_c26c):
+        for _ in range(5):
+            pair_c26c = (span_size_c26c(which_c26c, "06"), span_size_c26c(which_c26c, "6"))
+            if pair_c26c[0] == pair_c26c[1]:
+                break
+        return pair_c26c
+    zero_six_c26c = {which_c26c: zero_six_pair_c26c(which_c26c)
                      for which_c26c in ("resources", "bandwidth")}
     check("and 06 parses as 6 on every endpoint, resources included",
           all(pair_c26c[0] == pair_c26c[1] for pair_c26c in zero_six_c26c.values()),
