@@ -18221,7 +18221,9 @@ class PlexSim:
             self.notify_timeline(row, self.TIMELINE_QUEUED, None)
             if existing is not None:
                 merged = self.library.merge(existing, [row["ratingKey"]])
-                self.drop_from_queues([int(row["ratingKey"])])
+                # Only what the merge really absorbed leaves the queues: a survivor with
+                # no Media of its own absorbs nothing, and its rows stay queued.
+                self.drop_from_queues([int(other["ratingKey"]) for other in merged])
                 for other in merged:
                     self.notify_timeline(dict(other, title="", year=None),
                                          self.TIMELINE_DELETED, "deleted")

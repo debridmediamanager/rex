@@ -3384,3 +3384,9 @@ are changing; replay the client's exact request before altering behavior.
   key and nothing on `/merge`; both servers stepped once per write and selected the head.
   CLIENT-VISIBLE: Plex Web refetches its queue on the version and discards an answer whose
   selected id it does not hold.
+- **A Fix Match that MERGES is a removal too.** Matching a row onto a guid another row of the
+  library already holds merges the two (recorded: the matched row is deleted and the survivor
+  keeps both Media), so the matched row leaves every play queue by the rule above. The native
+  server retired it and left it queued -- version unmoved, selection naming a 404 -- and the
+  oracle dropped the matched key even when the merge absorbed nothing (a survivor with no Media
+  of its own), taking a row that still exists out of the queue.

@@ -26,6 +26,7 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.parse
 
 from server_command import server_command
 
@@ -258,6 +259,27 @@ def merges():
         check("another queue holding 1006 loses it too and keeps its selection 1010",
               keys(state) == ["1005", "1010", "1011"] and state.get("version") == 2
               and state.get("selectedKey") == "1010", state)
+
+        # Fix Match onto a guid another row of the library already holds MERGES the two
+        # (recorded: the matched row is deleted, the survivor keeps both Media), so the
+        # matched row is a removed row like any other. The native server retired it and
+        # left it queued: the version stood still and the selection named a 404.
+        status, raw = request(port, "GET", "/library/metadata/1011")
+        guid = json.loads(raw)["MediaContainer"]["Metadata"][0]["guid"]
+        status, _ = request(port, "PUT", "/library/metadata/1010/match?guid=%s&name=Match"
+                            % urllib.parse.quote(guid, safe=""))
+        check("PUT /library/metadata/1010/match onto 1011's guid is 200", status == 200, status)
+        check("... and the matched row 1010 is gone (merged into 1011)",
+              request(port, "GET", "/library/metadata/1010")[0] == 404)
+        for queue_id, client in ((on_absorbed, "f-merge-a"), (elsewhere, "f-merge-b")):
+            state = read(port, queue_id, client)
+            check("a Fix Match merge takes 1010 out of queue %s (rows 1005, 1011)" % client,
+                  keys(state) == ["1005", "1011"] and state.get("total") == 2, state)
+            check("... steps its version (2 -> 3)", state.get("version") == 3, state)
+            check("... and moves its selection 1010 to the following row 1011",
+                  state.get("selectedKey") == "1011"
+                  and state.get("selected") in [i for i, k in state.get("rows", []) if k == "1011"],
+                  state)
     finally:
         stop(process)
 

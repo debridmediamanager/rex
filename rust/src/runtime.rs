@@ -19201,7 +19201,11 @@ impl Runtime {
                 object.insert("Media".to_string(), Value::Array(media));
                 object.insert("updatedAt".to_string(), json!(now()));
             }
+            // Only what the merge absorbed leaves the play queues, with the version
+            // stepped per row (`drop_from_queues`); the oracle drops it, this left it.
+            let absorbed = self.subtree_keys(key);
             self.retire_row(key);
+            self.drop_from_queues(&absorbed);
             let mut gone = row.clone();
             gone["title"] = json!("");
             if let Some(object) = gone.as_object_mut() {
