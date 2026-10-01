@@ -3400,3 +3400,12 @@ are changing; replay the client's exact request before altering behavior.
   `_header_value` and left every other reader on Python's parser, which strips all leading
   whitespace; it now rewrites the parsed values off the raw lines. MALFORMED-ONLY: no client
   sends a doubled separator.
+- **`window` and `center` never move a queue's reported selection** (cycle 85 CP, plexscratch42
+  1.42.2 and plexscratch 1.43.4, identical; `tests/fixtures/queue_section_delete_s42.jsonl`,
+  steps `*-F`). A four-row queue with the selection moved to index 2 answers
+  `playQueueSelectedItemOffset 2` and the selected row's `playQueueSelectedMetadataItemID` to
+  `window=1` (three rows listed), `center=<last>` (all four) and `center=<last>&window=1` (two):
+  the parameters pick the rows, the offset stays the selection's index in the WHOLE queue. Both
+  servers rebased it into the slice (1, 3, 1); the oracle also read the metadata id at the rebased
+  position. CLIENT-VISIBLE: python-plexapi's `PlayQueue.get` reads with `window=50`, so a queue
+  whose selection sits past row 50 reported another offset.

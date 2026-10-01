@@ -16721,6 +16721,7 @@ class PlexSim:
         offset = next((i for i, m in enumerate(metadata)
                        if m["playQueueItemID"] == selected), 0)
         total = len(metadata)
+        listed = list(metadata)
         # `window`/`center`: the client asks for a slice AROUND the current item
         # rather than the whole queue, and `playQueueTotalCount` still reports the
         # whole thing. plexsim ignored both and sent every row every time.
@@ -16776,11 +16777,20 @@ class PlexSim:
             fields["playQueueSelectedItemOffset"] = offset if metadata else 0
             fields["playQueueTotalCount"] = total
         elif metadata:
-            fields["playQueueSelectedItemID"] = selected if selected is not None \
-                else metadata[0]["playQueueItemID"]
-            fields["playQueueSelectedItemOffset"] = offset
-            fields["playQueueSelectedMetadataItemID"] = str(
-                items[min(offset, len(items) - 1)]["ratingKey"])
+            # Cycle 85, plexscratch42 (1.42.2) and plexscratch (1.43.4) agree: `window` and
+            # `center` choose which rows are listed and never move the reported selection.
+            # `playQueueSelectedItemOffset` stays the selection's index in the whole queue
+            # (not its place in the slice, not the centre's) and
+            # `playQueueSelectedMetadataItemID` names the SELECTED row. plexsim rebased the
+            # offset into the window and read the metadata id at that rebased position --
+            # python-plexapi's `PlayQueue.get` reads with `window=50`.
+            chosen = selected if selected is not None else metadata[0]["playQueueItemID"]
+            fields["playQueueSelectedItemID"] = chosen
+            fields["playQueueSelectedItemOffset"] = next(
+                (i for i, entry in enumerate(listed) if entry["playQueueItemID"] == chosen), 0)
+            fields["playQueueSelectedMetadataItemID"] = next(
+                (str(entry["ratingKey"]) for entry in items if entry["id"] == chosen),
+                str(items[0]["ratingKey"]))
             fields["playQueueTotalCount"] = total
         if last_added is not None:
             fields["playQueueLastAddedItemID"] = last_added

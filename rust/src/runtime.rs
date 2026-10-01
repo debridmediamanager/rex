@@ -11869,6 +11869,12 @@ impl Runtime {
             .selected
             .and_then(|selected| queue.items.iter().position(|item| item.id == selected))
             .unwrap_or(0);
+        // Cycle 85, plexscratch42 (1.42.2) and plexscratch (1.43.4) agree: `window` and
+        // `center` choose which rows are listed and never move the reported selection --
+        // `playQueueSelectedItemOffset` stays the selection's index in the whole queue, not
+        // its place in the slice and not the centre's. The server rebased it into the
+        // window; python-plexapi's `PlayQueue.get` reads with `window=50`.
+        let selection_index = selected_index;
         let mut centred = false;
         if let Some(center) = query
             .get("center")
@@ -11963,7 +11969,7 @@ impl Runtime {
             fields.insert("playQueueSelectedItemID".to_string(), json!(selected));
             fields.insert(
                 "playQueueSelectedItemOffset".to_string(),
-                json!(selected_index),
+                json!(selection_index),
             );
             if let Some(item) = queue.items.iter().find(|item| item.id == selected) {
                 fields.insert(
