@@ -3364,3 +3364,11 @@ are changing; replay the client's exact request before altering behavior.
   Plex Web's timeline handler repopulates `/library/sections/{sectionID}` on a state-9 frame
   only for a positive id. The frame's title for a media row is unmeasured: a media-item DELETE
   is a 400 on both copies (read-only media); both servers send the row's frame title.
+- **A deleted row leaves the play queues at DELETE time** (cycle 84, B's rlwrite76 restart leg:
+  the shuffled show queue read at version 1 on the native server, 2 on the oracle). The recorded
+  rule (docs/findings.md, "A removed row leaves the play queues") is that the queue shrinks, its
+  version steps and the selection moves to a row that still exists. The native server dropped the
+  row only while rendering the queue, so the version never stepped -- the response the client
+  discards -- and a deleted selected item stayed `playQueueSelectedItemID`. (The oracle drops
+  only the deleted key itself, not a season's cascaded episodes, and not on `/merge`; the native
+  server now drops every removed key of the DELETE.)

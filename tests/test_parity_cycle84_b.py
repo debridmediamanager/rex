@@ -14,6 +14,12 @@
   rows the server recently removed as `state 9` stubs (cycle 9; python-plexapi's
   `LibrarySection.timeline()` reads it).
 
+- A deleted row leaves the play queues with the queue's VERSION stepped and the selection
+  moved to a row that still exists (docs/findings.md, "A removed row leaves the play
+  queues"; B's rlwrite76 restart leg read the shuffled show queue at version 1 on the
+  native server and 2 on the oracle). The native server only filtered the row out at read
+  time: the version never moved and a deleted selected item stayed selected.
+
 A media-item DELETE itself is a 400 on both disposable copies (read-only media), so the
 frame's TITLE for a media row is unmeasured and not asserted here.
 
@@ -152,9 +158,43 @@ def run(port):
               and stub[0].get("metadataState") == "deleted", (status, raw[:400]))
 
 
+def queue_checks(port):
+    """A removed row leaves the play queues: the queue shrinks, its version steps and the
+    selection moves to a row that still exists (docs/findings.md, measured on the reference
+    with the delete cycle's season-removal pair)."""
+    status, raw = request(port, "GET", "/identity")
+    machine = json.loads(raw)["MediaContainer"]["machineIdentifier"]
+    uri = ("server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F30004"
+           % machine)
+    status, raw = request(port, "POST", "/playQueues?type=video&key=%%2Flibrary%%2Fmetadata%%2F1006&uri=%s"
+                          % uri)
+    queue = json.loads(raw)["MediaContainer"] if status == 200 else {}
+    keys = [row.get("ratingKey") for row in queue.get("Metadata") or []]
+    check("a season queue holds its four episodes, 1006 selected",
+          keys == ["1005", "1006", "1010", "1011"]
+          and str(queue.get("playQueueSelectedMetadataItemID")) == "1006", (status, keys, queue.get("playQueueSelectedMetadataItemID")))
+    qid, version = queue.get("playQueueID"), queue.get("playQueueVersion")
+    for gone, rest in (("1011", ["1005", "1006", "1010"]), ("1006", ["1005", "1010"])):
+        request(port, "DELETE", "/library/metadata/%s" % gone)
+        status, raw = request(port, "GET", "/playQueues/%s" % qid)
+        after = json.loads(raw)["MediaContainer"] if status == 200 else {}
+        keys = [row.get("ratingKey") for row in after.get("Metadata") or []]
+        check("deleting queued %s takes it out of the queue" % gone,
+              keys == rest and after.get("playQueueTotalCount") == len(rest), (keys, after.get("playQueueTotalCount")))
+        check("deleting queued %s steps the queue's version (%s -> %s)" % (gone, version, (version or 0) + 1),
+              after.get("playQueueVersion") == (version or 0) + 1, after.get("playQueueVersion"))
+        version = after.get("playQueueVersion")
+        selected = str(after.get("playQueueSelectedMetadataItemID"))
+        item_ids = [row.get("playQueueItemID") for row in after.get("Metadata") or []]
+        check("after deleting %s the selection is a row the queue still lists" % gone,
+              selected in rest and after.get("playQueueSelectedItemID") in item_ids,
+              (selected, after.get("playQueueSelectedItemID"), item_ids))
+
+
 def main():
     process, port = start()
     try:
+        queue_checks(port)
         run(port)
     finally:
         process.terminate()

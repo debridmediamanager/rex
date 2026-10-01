@@ -17398,6 +17398,28 @@ impl Runtime {
                         self.deleted.insert(gone.clone());
                     }
                 }
+                // Measured (docs/findings.md, "A removed row leaves the play queues"): the
+                // queue shrinks, its VERSION steps and the selection moves to a row that
+                // still exists. Filtering the row out only when the queue was read left
+                // the version where it was -- the response the client discards -- and the
+                // selection pointing at an item no longer listed.
+                for queue in self.queues.values_mut() {
+                    let before = queue.items.len();
+                    queue
+                        .items
+                        .retain(|item| !doomed.contains(&item.rating_key));
+                    if queue.items.len() == before {
+                        continue;
+                    }
+                    queue.version += 1;
+                    if !queue
+                        .items
+                        .iter()
+                        .any(|item| Some(item.id) == queue.selected)
+                    {
+                        queue.selected = queue.items.first().map(|item| item.id);
+                    }
+                }
                 // The frame is built from the row as it was: looked up after the removal
                 // it was a bare `{ratingKey}` -- type 1, an empty sectionID and no
                 // `metadataState` for every kind of row -- so Plex Web never repopulated
