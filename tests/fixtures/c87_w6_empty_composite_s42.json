@@ -1,0 +1,1818 @@
+{
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed), EMPTY movie, show and music libraries",
+ "date": "2026-10-01",
+ "request_headers": {
+  "X-Plex-Product": "Plex Web",
+  "X-Plex-Version": "4.162.1",
+  "X-Plex-Platform": "Chrome",
+  "X-Plex-Device": "Windows",
+  "X-Plex-Features": "external-media,indirect-media,hub-style-list"
+ },
+ "created_with": {
+  "movie": {
+   "path": "/library/sections?name=W6%20Empty%20movie&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw6-empty-movie",
+   "status": 201
+  },
+  "show": {
+   "path": "/library/sections?name=W6%20Empty%20show&type=show&agent=tv.plex.agents.series&scanner=Plex%20TV%20Series&language=en-US&location=%2Fdata%2Fw6-empty-show",
+   "status": 201
+  },
+  "artist": {
+   "path": "/library/sections?name=W6%20Empty%20artist&type=artist&agent=tv.plex.agents.music&scanner=Plex%20Music&language=en-US&metadataAgentProviderGroupId=3&location=%2Fdata%2Fw6-empty-artist",
+   "status": 201
+  }
+ },
+ "deleted": {
+  "movie": 200,
+  "show": 200,
+  "artist": 200
+ },
+ "note": "Section ids redacted to {S}. The token rode in the query (Plex Web's appendToken) and is stripped. The `width/height/rows/cols/border/media/repeat` sets are what Plex Web 4.162.1's composite image view (chunk-4030 `GA`) appends to a `composite` url; no Plex Web 4.147.1/4.162.1 call site builds a SECTION composite (a section row carries no `composite`, on kids, zen and plexscratch42).",
+ "exchanges": [
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "movie",
+   "method": "GET",
+   "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "show",
+   "method": "GET",
+   "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/library/sections/{S}/composite",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+   "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+   "accept": "application/json",
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "type": "artist",
+   "method": "GET",
+   "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+   "accept": null,
+   "status": 404,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Content-Length",
+     "85"
+    ],
+    [
+     "Content-Type",
+     "text/html"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ]
+   ],
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  }
+ ],
+ "witnesses": {
+  "plexscratch_1_43_4_empty": {
+   "reference": "plexscratch PMS 1.43.4, the same three empty libraries, same 15 requests each",
+   "statuses": [
+    "empty-artist 404",
+    "empty-movie 404",
+    "empty-show 404"
+   ]
+  },
+  "kids_nonempty": {
+   "reference": "kids PMS 1.43.4 (GET only), the populated Movies and TV Shows libraries",
+   "reads": [
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite/1",
+     "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 45993
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite/1",
+     "accept": "application/json",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 45993
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite/1",
+     "accept": null,
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 45993
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+     "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 4256
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+     "accept": "application/json",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 4256
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+     "accept": null,
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 4256
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+     "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 13350
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+     "accept": "application/json",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 13350
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+     "accept": null,
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 13350
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite",
+     "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+     "status": 404,
+     "content_type": "text/html",
+     "length": 85
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite",
+     "accept": "application/json",
+     "status": 404,
+     "content_type": "text/html",
+     "length": 85
+    },
+    {
+     "label": "kids-movies",
+     "path": "/library/sections/{S}/composite",
+     "accept": null,
+     "status": 404,
+     "content_type": "text/html",
+     "length": 85
+    },
+    {
+     "label": "kids-movies",
+     "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+     "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 16378
+    },
+    {
+     "label": "kids-movies",
+     "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+     "accept": "application/json",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 16378
+    },
+    {
+     "label": "kids-movies",
+     "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+     "accept": null,
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 16378
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite/1",
+     "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 55825
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite/1",
+     "accept": "application/json",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 55825
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite/1",
+     "accept": null,
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 55825
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+     "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 4076
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+     "accept": "application/json",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 4076
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite/1?width=120&height=120&rows=1&cols=1&border=0&media=thumb&repeat=1",
+     "accept": null,
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 4076
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+     "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 16793
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+     "accept": "application/json",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 16793
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite/1?width=256&height=256&rows=2&cols=2&border=0&media=thumb&repeat=1",
+     "accept": null,
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 16793
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite",
+     "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+     "status": 404,
+     "content_type": "text/html",
+     "length": 85
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite",
+     "accept": "application/json",
+     "status": 404,
+     "content_type": "text/html",
+     "length": 85
+    },
+    {
+     "label": "kids-shows",
+     "path": "/library/sections/{S}/composite",
+     "accept": null,
+     "status": 404,
+     "content_type": "text/html",
+     "length": 85
+    },
+    {
+     "label": "kids-shows",
+     "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+     "accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 18855
+    },
+    {
+     "label": "kids-shows",
+     "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+     "accept": "application/json",
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 18855
+    },
+    {
+     "label": "kids-shows",
+     "path": "/photo/:/transcode?width=240&height=240&minSize=1&upscale=1&url=%2Flibrary%2Fsections%2F{S}%2Fcomposite%2F1",
+     "accept": null,
+     "status": 200,
+     "content_type": "image/jpeg",
+     "length": 18855
+    }
+   ]
+  }
+ }
+}

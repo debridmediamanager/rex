@@ -10174,6 +10174,15 @@ class PlexSim:
             version = segments[4]
             if version.isdigit() and int(version) >= 2 ** 31:
                 return ("error", 400, "plexsim: bad request")
+            if not self.catalog.section_items(section_id):
+                # Cycle 87, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4)
+                # for an EMPTY movie, show and music library: the versioned composite is
+                # the ordinary 404 -- with and without Plex Web's `width`, `height`,
+                # `rows`, `cols`, `border`, `media` and `repeat`, under every Accept --
+                # and so is `/photo/:/transcode` of it. A library with members is a jpeg
+                # (kids). There is nothing to build a mosaic from, and plexsim drew a
+                # generated tile for it.
+                return ("error", 404, "plexsim: not found")
             art = self.composite_for("section", section_id)
             if art:
                 return ("image", self._at_width(art, query.get("width")))

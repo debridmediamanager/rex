@@ -3791,3 +3791,12 @@ are changing; replay the client's exact request before altering behavior.
   `/prefs` are 404s, `/hubs/promoted?contentDirectoryID={id}` keeps only Continue Watching and On
   Deck, and `/hubs` keeps `home.music.recent` -- which zen and the copies list with no music
   library at all. plexsim answered all of it the same way; the check guards it.
+- **An EMPTY library's composite is a 404.** Measured on plexscratch42 (1.42.2) and plexscratch
+  (1.43.4) for an empty movie, show and music library made with Add Library's form:
+  `/library/sections/{id}/composite/{n}` -- bare, and with the `width`/`height`/`rows`/`cols`/
+  `border`/`media`/`repeat` set Plex Web's composite view appends -- is the ordinary 85-byte html
+  404 under every Accept, and `/photo/:/transcode?url=` of it is the same 404. A library with
+  members answers a jpeg (kids). plexsim drew a generated PNG tile. MALFORMED-ONLY: no Plex Web
+  4.147.1/4.162.1 call site builds a SECTION composite (its composite view reads a row's own
+  `composite`, and no section row on kids, zen or plexscratch42 carries one), and
+  python-plexapi's `LibrarySection.composite` reads the same absent attribute.

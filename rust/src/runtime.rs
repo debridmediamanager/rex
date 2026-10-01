@@ -14150,6 +14150,19 @@ impl Runtime {
                     // (`composite_for`) at the TMDB variant nearest the asked width, and
                     // a library with no artwork the generated tile.
                     let _ = section;
+                    // Cycle 87, measured on plexscratch42 (1.42.2) and plexscratch
+                    // (1.43.4) for an EMPTY movie, show and music library: the versioned
+                    // composite is the ordinary 404 -- with and without Plex Web's
+                    // `width`, `height`, `rows`, `cols`, `border`, `media` and `repeat`,
+                    // under every Accept -- and so is `/photo/:/transcode` of it. A
+                    // library with members is a jpeg (kids). plexsim drew a generated
+                    // tile for it.
+                    if !self.catalog.items.iter().any(|row| {
+                        string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                            == section_key
+                    }) {
+                        return Response::error(404, "plexsim: not found");
+                    }
                     let art = self
                         .catalog
                         .items
