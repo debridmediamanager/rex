@@ -3239,3 +3239,9 @@ are changing; replay the client's exact request before altering behavior.
   season or show uri added to a queue adds its episodes. The native server queued the one episode
   -- the app had nothing to play next -- and its PUT add put the bare season or show row, which has
   no Media, in the queue. The oracle matched the reference; the native port had dropped the flag.
+- **A candidate row's ELEMENT is part of the answer.** An item's `/themes` lists `Track` rows and
+  its `/clearLogos` `Photo` rows (kids, 1.43.4; `tests/fixtures/candidate_rows_kids.json`).
+  python-plexapi's `themes()` and `logos()` keep only rows of their own tag, so the native
+  server, whose uploaded candidates fell through to the default `Video`, read back an uploaded
+  theme or logo as an empty list while the JSON was identical to the oracle's. Found by cycle 83's
+  B regression `regress59b` F7 printing the element; caught by no JSON comparison.

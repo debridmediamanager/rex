@@ -18312,6 +18312,11 @@ impl Runtime {
                 } else {
                     "theme"
                 };
+                // `Photo` rows for clear logos and `Track` rows for theme music (kids,
+                // 1.43.4, both lists of a show). The default element is `Video`, and
+                // python-plexapi's `logos()`/`themes()` keep only rows of their own tag,
+                // so an uploaded candidate read back as an empty list.
+                let element = if field == "clearLogo" { "Photo" } else { "Track" };
                 let owned = if field == "clearLogo" {
                     row.get("_clearLogo").is_some_and(|value| !value.is_null())
                 } else {
@@ -18333,8 +18338,8 @@ impl Runtime {
                     .filter_map(Value::as_str)
                     .map(|upload| {
                         let path = artwork::candidate_path(key, upload);
-                        json!({"key": path, "ratingKey": upload, "thumb": path,
-                               "selected": current.as_deref() == Some(upload)})
+                        json!({"_element": element, "key": path, "ratingKey": upload,
+                               "thumb": path, "selected": current.as_deref() == Some(upload)})
                     })
                     .collect::<Vec<_>>();
                 let mut fields = Map::new();
