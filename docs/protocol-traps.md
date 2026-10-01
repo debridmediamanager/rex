@@ -3822,3 +3822,11 @@ are changing; replay the client's exact request before altering behavior.
   answered the traceback to all of them. MALFORMED-ONLY: Plex Web 4.147.1 reads such a key only
   for a channel item (`responseType` special-cases `/system/services/url/lookup`), and with no
   channel installed no row carries one.
+- **The framework's ten peer directories PAGE.** `/system/{channels,plugins}/{all,music,video,
+  photos,applications}` on plexscratch42, kids and zen (2026-10-01,
+  `tests/fixtures/c87_w7_peer_paging.json`): a full window by header or query -- `Size=0`
+  included -- answers `totalSize="0"` as the FIRST attribute (144 bytes) and
+  `X-Plex-Container-Start` (echoed, `1` past the end too) / `X-Plex-Container-Total-Size: 0`; a
+  lone Start or Size, or `Start=abc`, is the unpaged 130-byte document. Both servers served the
+  unpaged document whatever was asked. MALFORMED-ONLY: neither Plex Web 4.147.1 nor
+  python-plexapi requests these paths.

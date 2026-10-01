@@ -1,0 +1,5333 @@
+{
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed, no route out); kids 1.43.4 and zen 1.42.2 (GET only) as witnesses",
+ "date": "2026-10-01",
+ "note": "The ten framework peer directories (`/system/{channels,plugins}/{all,music,video,photos,applications}`) with no channel installed, unpaged and paged by header and by query. A full window (Start and Size, Size > 0) adds `totalSize=\"0\"` as the FIRST attribute and the X-Plex-Container-Start/Total-Size response headers (start echoed even past the end); a zero-size window (`Start=0`, `Size=0`) still pages; a partial window (Start or Size alone) or a non-numeric Start is the unpaged 130-byte document. Raw socket, keep-alive; Date dropped.",
+ "exchanges": [
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "plain"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr1"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pageq"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "0"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size0"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "abc"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-abc"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "144"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "142"
+    ],
+    [
+     "Content-Length",
+     "142"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr+gzip"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/channels/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "",
+   "variant": "head+pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/music",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "plain"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr1"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/music?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pageq"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "0"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size0"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "abc"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-abc"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "144"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "142"
+    ],
+    [
+     "Content-Length",
+     "142"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr+gzip"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/channels/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "",
+   "variant": "head+pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/video",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "plain"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr1"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/video?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pageq"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "0"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size0"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "abc"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-abc"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "144"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "142"
+    ],
+    [
+     "Content-Length",
+     "142"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr+gzip"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/channels/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "",
+   "variant": "head+pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/photos",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "plain"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr1"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/photos?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pageq"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "0"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size0"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "abc"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-abc"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "144"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "142"
+    ],
+    [
+     "Content-Length",
+     "142"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr+gzip"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/channels/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "",
+   "variant": "head+pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/applications",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "plain"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr1"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/applications?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pageq"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "0"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size0"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "abc"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-abc"
+  },
+  {
+   "method": "GET",
+   "path": "/system/channels/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "144"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "142"
+    ],
+    [
+     "Content-Length",
+     "142"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr+gzip"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/channels/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "",
+   "variant": "head+pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "plain"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr1"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pageq"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "0"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size0"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "abc"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-abc"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "144"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "142"
+    ],
+    [
+     "Content-Length",
+     "142"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr+gzip"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/plugins/all",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "",
+   "variant": "head+pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/music",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "plain"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr1"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/music?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pageq"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "0"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size0"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "abc"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-abc"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "144"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "142"
+    ],
+    [
+     "Content-Length",
+     "142"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr+gzip"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/plugins/music",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "",
+   "variant": "head+pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/video",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "plain"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr1"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/video?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pageq"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "0"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size0"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "abc"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-abc"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "144"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "142"
+    ],
+    [
+     "Content-Length",
+     "142"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr+gzip"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/plugins/video",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "",
+   "variant": "head+pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/photos",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "plain"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr1"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/photos?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pageq"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "0"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size0"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "abc"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-abc"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "144"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "142"
+    ],
+    [
+     "Content-Length",
+     "142"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr+gzip"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/plugins/photos",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "",
+   "variant": "head+pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/applications",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "plain"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "1"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "1"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr1"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/applications?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+   "request_headers": [],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pageq"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size-only"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "0"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "size0"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "abc"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "3"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "130"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "start-abc"
+  },
+  {
+   "method": "GET",
+   "path": "/system/plugins/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip, deflate, br, zstd"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ],
+    [
+     "Content-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Content-Original-Length",
+     "144"
+    ],
+    [
+     "X-Plex-Content-Compressed-Length",
+     "142"
+    ],
+    [
+     "Content-Length",
+     "142"
+    ]
+   ],
+   "body": "<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer totalSize=\"0\" noHistory=\"0\" replaceParent=\"0\" size=\"0\" identifier=\"com.plexapp.system\"/>\n",
+   "variant": "pagehdr+gzip"
+  },
+  {
+   "method": "HEAD",
+   "path": "/system/plugins/applications",
+   "request_headers": [
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Size",
+     "50"
+    ]
+   ],
+   "status": 200,
+   "headers": [
+    [
+     "X-Plex-Protocol",
+     "1.0"
+    ],
+    [
+     "Cache-Control",
+     "no-cache"
+    ],
+    [
+     "Content-Length",
+     "144"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Set-Cookie",
+     "com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcKY29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK"
+    ],
+    [
+     "X-Plex-Container-Start",
+     "0"
+    ],
+    [
+     "X-Plex-Container-Total-Size",
+     "0"
+    ],
+    [
+     "Connection",
+     "Keep-Alive"
+    ],
+    [
+     "Keep-Alive",
+     "timeout=20"
+    ]
+   ],
+   "body": "",
+   "variant": "head+pagehdr"
+  }
+ ],
+ "witnesses": {
+  "kids": [
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "plain",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "pagehdr",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "pagehdr1",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "start-only",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "size-only",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "size0",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "start-abc",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "pagehdr+gzip",
+    "equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/plugins/all",
+    "variant": "head+pagehdr",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "plain",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "pagehdr",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "pagehdr1",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "start-only",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "size-only",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "size0",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "start-abc",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "pagehdr+gzip",
+    "equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/channels/all",
+    "variant": "head+pagehdr",
+    "equal_to_s42": true
+   }
+  ],
+  "zen": [
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "plain",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "pagehdr",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "pagehdr1",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "start-only",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "size-only",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "size0",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "start-abc",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/plugins/all",
+    "variant": "pagehdr+gzip",
+    "equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/plugins/all",
+    "variant": "head+pagehdr",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "plain",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "pagehdr",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "pagehdr1",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all?X-Plex-Container-Start=0&X-Plex-Container-Size=5",
+    "variant": "pageq",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "start-only",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "size-only",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "size0",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "start-abc",
+    "equal_to_s42": true
+   },
+   {
+    "method": "GET",
+    "path": "/system/channels/all",
+    "variant": "pagehdr+gzip",
+    "equal_to_s42": true
+   },
+   {
+    "method": "HEAD",
+    "path": "/system/channels/all",
+    "variant": "head+pagehdr",
+    "equal_to_s42": true
+   }
+  ]
+ }
+}

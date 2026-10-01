@@ -815,7 +815,10 @@ impl Runtime {
             && segments[0] == "system"
             && FRAMEWORK_PEER_DIRECTORIES.contains(&segments[2])
         {
-            return Response::framework_document(200, FRAMEWORK_EMPTY_CONTAINER.to_vec());
+            // Cycle 87 (`server.py`): all ten page like every other framework container --
+            // `totalSize="0"` and both `X-Plex-Container-*` headers for a full window.
+            let document = std::str::from_utf8(FRAMEWORK_EMPTY_CONTAINER).expect("ascii");
+            return page_framework_document(document, query);
         }
         if route == "/system/notify/serverUpdated" {
             return Response::framework_string(200, Vec::new(), "text/plain");

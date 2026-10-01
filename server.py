@@ -6631,7 +6631,12 @@ class PlexSim:
                     (framework_error if form == "least" else framework_exactly)(name, count))
         if (segments[:2] in (["system", "channels"], ["system", "plugins"])
                 and len(segments) == 3 and segments[2] in FRAMEWORK_PEER_DIRECTORIES):
-            return ("framework-plain", 200, FRAMEWORK_EMPTY_CONTAINER, "application/xml")
+            # Cycle 87, measured on plexscratch42, kids and zen: all ten PAGE like every
+            # other framework container -- a full window answers `totalSize="0"` as the
+            # first attribute and both `X-Plex-Container-*` headers (Start echoed even past
+            # the end), and a partial, invalid or zero-size window is the unpaged document.
+            # plexsim served the 130-byte document whatever was asked.
+            return ("framework-xml", FRAMEWORK_EMPTY_CONTAINER)
         if route == "/system/notify/serverUpdated":
             # Cycle 53: a 200 with an EMPTY body and `text/plain` -- and the framework
             # spells that header `Content-type`, with a lower-case `t`, because

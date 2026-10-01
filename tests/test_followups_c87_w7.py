@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Cycle 87 follow-up W7: the framework's url lookup.
+"""Cycle 87 follow-up W7: the framework's url lookup and its peer directories' paging.
 
 1. `tests/fixtures/c87_w7_url_lookup.json`: `/system/services/url/lookup` is the 464-byte
    traceback only when no `url` argument is given. With one -- empty, relative, a non-URL,
    an http URL, a YouTube link -- plexscratch42, kids and zen answer a 404 with an EMPTY,
    untyped body and the framework cookie, under every Accept, gzip offer, paging and HEAD.
    plexsim answered the traceback to all of them.
+2. `tests/fixtures/c87_w7_peer_paging.json`: the ten `/system/{channels,plugins}/{name}`
+   peer directories page: a full window adds `totalSize="0"` and both
+   `X-Plex-Container-*` headers. plexsim served the unpaged document whatever was asked.
 
 Every request is replayed on a raw keep-alive socket, because `Connection: close` changes
 the header block: it drops `Keep-Alive`.
@@ -120,10 +123,30 @@ def lookup(port, fixture):
               (status, got, body[:120]))
 
 
+def peers(port, fixture):
+    for row in fixture["exchanges"]:
+        status, pairs, body = raw(port, row["method"], row["path"], row["request_headers"])
+        found = dict(pairs)
+        window = {name: value for name, value in pairs if name.startswith("X-Plex-Container-")}
+        measured = {name: value for name, value in row["headers"]
+                    if name.startswith("X-Plex-Container-")}
+        length = found.get("X-Plex-Content-Original-Length", found.get("Content-Length"))
+        measured_all = dict(row["headers"])
+        measured_length = measured_all.get("X-Plex-Content-Original-Length",
+                                           measured_all.get("Content-Length"))
+        check("%s %s [%s] is the measured %d, %s bytes, window %s" % (
+            row["method"], row["path"], row["variant"], row["status"], measured_length,
+            measured or "none"),
+            status == row["status"] and window == measured and length == measured_length
+            and body == row["body"],
+            (status, window, length, body[:150]))
+
+
 def main():
     process, port = start()
     try:
         lookup(port, json.load(open(os.path.join(FIXTURES, "c87_w7_url_lookup.json"))))
+        peers(port, json.load(open(os.path.join(FIXTURES, "c87_w7_peer_paging.json"))))
     finally:
         process.terminate()
         try:
