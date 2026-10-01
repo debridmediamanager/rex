@@ -561,9 +561,12 @@ class Library:
             row["lastRatedAt"] = _now()
         return row
 
-    # What each playback session last reported for an item, keyed (session, ratingKey).
-    # A completion is a CROSSING, so the previous position is the whole state it needs.
+    # What each playback session last reported, keyed by the SESSION alone -- whatever
+    # item that beat was for (cycle 87, below). A completion is a CROSSING, so the
+    # previous position is the whole state it needs.
     _reported = {}
+    # Whether the last `progress` call completed the play: the timeline's answer reads it.
+    crossed = False
     # The (session, ratingKey) pairs whose session has reported a position past the minute:
     # only those delete the resume point with a later sub-minute beat.
     _progressed = set()
@@ -646,20 +649,24 @@ class Library:
                 row.pop("viewOffset", None)
         # A play COMPLETES past 90% on any state -- measured: a `playing` beat at 95%
         # answers `complete` and sets viewCount, and the `stopped` beat after it
-        # counts nothing again. Nothing under a minute ever completes. `_completed`
-        # names the playback session that completed it, so one play does not count
-        # twice while another client's play still counts; a beat back under 90% is a
-        # new play and clears it.
+        # counts nothing again (it did not cross). Nothing under a minute ever completes.
         position = int(offset) if offset is not None else int(row.get("viewOffset") or 0)
+        self.crossed = False
         # The crossing rule, measured on half-hour media: a play is watched only when THIS
         # session's previous position for the item was under 90% of the duration this beat
         # carries. A cold item beaten once at 95% records nothing, and five climbing beats
         # from 95% record nothing either; another client's earlier position does not count,
         # and neither does an offset stored by `/:/progress`. plexsim completed on the
         # position alone.
-        seen = self._reported.get(key)
+        # Cycle 87, measured on plexscratch42 (1.42.2) in 30 beat sequences: the previous
+        # position is the SESSION's last beat, whatever item it named. One session beaten
+        # 3 000 on A and then 92% on B completes B (Plex Web's shape and python-plexapi's
+        # alike), 3 000 on B then 92% on A completes A, and 92% on B then a stop at 93% on
+        # A completes nothing -- A's own last position was 3 000. Another session's beats
+        # still do not count. plexsim kept the position per (session, item).
+        seen = self._reported.get(session or "")
         if offset is not None and total:
-            self._reported[key] = position
+            self._reported[session or ""] = position
             if position > 60000:
                 self._progressed.add(key)
         # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) with Plex for
@@ -684,37 +691,35 @@ class Library:
         # exactly 60 000 (59 999 ignores, 60 000 completes) where `66667 * 0.9` is
         # 60 000.3 and a float comparison would need 60 001. At `duration=100000` both
         # forms agree at 90 000, which is why no earlier cycle could see the difference.
+        # Every crossing counts -- 3 000, 92%, then 50% on another item and 93% on this one
+        # counts this one TWICE in one session (plexscratch42, cycle 87). A crossing needs a
+        # beat under 90% before it, so one play still cannot count twice.
         if completes and crossed and total and position >= (total * 9) // 10:
-            if row.get("_completed") != (session or True):
-                row["_completed"] = session or True
-                row.pop("_completionStopped", None)
-                row["viewCount"] = int(row.get("viewCount", 0)) + 1
-                # Cycle 57: the view came from a PLAYBACK SESSION -- a section's own
-                # Continue Watching shelf lists a show's next episode only once one of
-                # these exists. Cycle 58: it is HISTORY, not view state -- a later
-                # scrobble or unscrobble of the same leaf leaves it standing.
-                row["_viewedInSession"] = True
-                row.pop("viewOffset", None)
-                # Cycle 45: the completion stamps the ROW's own `lastViewedAt`, which
-                # plexsim set only when a `progress` beat happened to run first --
-                # measured on both copies, where a single crossing pair leaves it set. A
-                # watched row without it sorts last under `sort=lastViewedAt`, never
-                # reaches `/recentlyViewed` and cannot win On Deck's most-recently-viewed
-                # rule.
-                row["lastViewedAt"] = _now()
-                self._stamp_view(row, *self._parents(row))
-                self.record_view(row, device_id=device_id)
-                # A completed play bumps the parents' own counters too.
-                for key in ("parentRatingKey", "grandparentRatingKey"):
-                    parent = self.catalog.items.get(int(row[key])) \
-                        if str(row.get(key) or "").isdigit() else None
-                    if parent is not None:
-                        parent["viewCount"] = int(parent.get("viewCount", 0)) + 1
-                        parent["lastViewedAt"] = _now()
-                self.recount(row)
-        elif offset is not None and total and int(offset) < total * 0.9:
-            row.pop("_completed", None)
-            row.pop("_completionStopped", None)
+            self.crossed = True
+            row["viewCount"] = int(row.get("viewCount", 0)) + 1
+            # Cycle 57: the view came from a PLAYBACK SESSION -- a section's own
+            # Continue Watching shelf lists a show's next episode only once one of
+            # these exists. Cycle 58: it is HISTORY, not view state -- a later
+            # scrobble or unscrobble of the same leaf leaves it standing.
+            row["_viewedInSession"] = True
+            row.pop("viewOffset", None)
+            # Cycle 45: the completion stamps the ROW's own `lastViewedAt`, which
+            # plexsim set only when a `progress` beat happened to run first --
+            # measured on both copies, where a single crossing pair leaves it set. A
+            # watched row without it sorts last under `sort=lastViewedAt`, never
+            # reaches `/recentlyViewed` and cannot win On Deck's most-recently-viewed
+            # rule.
+            row["lastViewedAt"] = _now()
+            self._stamp_view(row, *self._parents(row))
+            self.record_view(row, device_id=device_id)
+            # A completed play bumps the parents' own counters too.
+            for key in ("parentRatingKey", "grandparentRatingKey"):
+                parent = self.catalog.items.get(int(row[key])) \
+                    if str(row.get(key) or "").isdigit() else None
+                if parent is not None:
+                    parent["viewCount"] = int(parent.get("viewCount", 0)) + 1
+                    parent["lastViewedAt"] = _now()
+            self.recount(row)
         return row
 
     def remove_from_continue_watching(self, rating_key):

@@ -417,7 +417,12 @@ pub struct Runtime {
     /// The reaper's last tick: process-wide, anchored at start (`sessions._last_reap`).
     last_reap: f64,
     pub started_sessions: HashSet<String>,
-    timeline_offsets: HashMap<(String, String), i64>,
+    /// What each playback session last reported, keyed by the SESSION alone (cycle 87):
+    /// the crossing's previous position is the session's last beat, whatever its item.
+    timeline_offsets: HashMap<String, i64>,
+    /// Per playback session: the (playQueueItemID, item) its last timeline beat named and
+    /// whether a completion is still answering `complete` (cycle 87).
+    pub(crate) timeline_latch: HashMap<String, (Option<String>, String, bool)>,
     completed_sessions: HashSet<(String, String)>,
     completion_pending_stop: HashSet<(String, String)>,
     /// The (session, ratingKey) pairs whose session has reported a position past
@@ -648,6 +653,7 @@ impl Runtime {
             last_reap: now_seconds(),
             started_sessions: HashSet::new(),
             timeline_offsets: HashMap::new(),
+            timeline_latch: HashMap::new(),
             completed_sessions: HashSet::new(),
             completion_pending_stop: HashSet::new(),
             progressed: HashSet::new(),
@@ -9224,10 +9230,12 @@ impl Runtime {
     /// minute (cycle 58).  A beat at exactly the stored position writes nothing.
     /// The completion is a CROSSING (cycles 45/70): this session's previous
     /// non-zero position was under 90% and this one is at `(duration * 9) // 10`
-    /// or past -- then the view counts once per session, stamps `lastViewedAt`,
-    /// writes a history row, bumps the parents, and (cycle 57) records that the
-    /// view came from a playback session.
-    fn library_progress(
+    /// or past -- then the view counts, stamps `lastViewedAt`, writes a history row,
+    /// bumps the parents, and (cycle 57) records that the view came from a playback
+    /// session.  Cycle 87 (plexscratch42): the previous position is the SESSION's last
+    /// beat whatever item it named, and every crossing counts.  Returns whether this
+    /// beat completed the play.
+    pub(crate) fn library_progress(
         &mut self,
         key: &str,
         offset: Option<i64>,
@@ -9235,12 +9243,12 @@ impl Runtime {
         device_id: i64,
         session: &str,
         completes: bool,
-    ) {
+    ) -> bool {
         let Some(row) = self.catalog.get(key).cloned() else {
             if self.playlists.contains_key(key) {
-                self.list_progress(key, offset, total, session);
+                return self.list_progress(key, offset, total, session);
             }
-            return;
+            return false;
         };
         let pair = (session.to_string(), key.to_string());
         let stored = row.get("viewOffset").and_then(Value::as_i64);
@@ -9278,23 +9286,18 @@ impl Runtime {
             }
         }
         let position = offset.or(stored).unwrap_or(0);
-        let seen = self.timeline_offsets.get(&pair).copied();
+        let seen = self.timeline_offsets.get(session).copied();
         if offset.is_some() && total > 0 {
-            self.timeline_offsets.insert(pair.clone(), position);
+            self.timeline_offsets.insert(session.to_string(), position);
             if position > 60000 {
                 self.progressed.insert(pair.clone());
             }
         }
         let crossed =
             seen.is_some_and(|seen| seen > 0 && (seen as f64) < total as f64 * 0.9) && total > 0;
-        if completes && crossed && position >= total.saturating_mul(9) / 10 {
-            let completed = self
-                .catalog
-                .get(key)
-                .and_then(|row| row.get("_completed"))
-                .and_then(Value::as_str)
-                .map(str::to_string);
-            if completed.as_deref() != Some(session) {
+        let completing = completes && crossed && position >= total.saturating_mul(9) / 10;
+        if completing {
+            {
                 let stamp = now();
                 let count = self
                     .catalog
@@ -9302,10 +9305,6 @@ impl Runtime {
                     .and_then(|row| row.get("viewCount"))
                     .and_then(Value::as_i64)
                     .unwrap_or(0);
-                if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                    object.insert("_completed".to_string(), json!(session));
-                    object.shift_remove("_completionStopped");
-                }
                 self.update_view(key, "viewCount", Some(json!(count + 1)));
                 self.viewed_in_session.insert(key.to_string());
                 self.update_view(key, "viewOffset", None);
@@ -9335,12 +9334,8 @@ impl Runtime {
                     self.update_view(&parent, "lastViewedAt", Some(json!(stamp)));
                 }
             }
-        } else if offset.is_some_and(|offset| total > 0 && (offset as f64) < total as f64 * 0.9) {
-            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                object.shift_remove("_completed");
-                object.shift_remove("_completionStopped");
-            }
         }
+        completing
     }
 
     /// A view-state field of a catalog row, or of a list row's own state.
@@ -9392,7 +9387,7 @@ impl Runtime {
     /// The item machine run on a PLAYLIST's own state (cycle 59): the resume
     /// point past a minute, and a crossing past 90% steps the list's view count
     /// from the 1 it is born with.
-    fn list_progress(&mut self, key: &str, offset: Option<i64>, total: i64, session: &str) {
+    fn list_progress(&mut self, key: &str, offset: Option<i64>, total: i64, session: &str) -> bool {
         let pair = (session.to_string(), key.to_string());
         let stored = self.view_state(key, "viewOffset").and_then(|v| v.as_i64());
         if let Some(offset) = offset.filter(|offset| Some(*offset) != stored) {
@@ -9405,24 +9400,18 @@ impl Runtime {
             }
         }
         let position = offset.or(stored).unwrap_or(0);
-        let seen = self.timeline_offsets.get(&pair).copied();
+        let seen = self.timeline_offsets.get(session).copied();
         if offset.is_some() && total > 0 {
-            self.timeline_offsets.insert(pair.clone(), position);
+            self.timeline_offsets.insert(session.to_string(), position);
             if position > 60000 {
                 self.progressed.insert(pair.clone());
             }
         }
         let crossed =
             total > 0 && seen.is_some_and(|seen| seen > 0 && (seen as f64) < total as f64 * 0.9);
-        if crossed && position >= total.saturating_mul(9) / 10 {
-            if self
-                .view_state(key, "_completed")
-                .and_then(|v| v.as_str().map(str::to_string))
-                .as_deref()
-                != Some(session)
+        let completing = crossed && position >= total.saturating_mul(9) / 10;
+        if completing {
             {
-                self.set_view_state(key, "_completed", Some(json!(session)));
-                self.set_view_state(key, "_completionStopped", None);
                 let count = self
                     .view_state(key, "viewCount")
                     .and_then(|v| v.as_i64())
@@ -9431,10 +9420,8 @@ impl Runtime {
                 self.set_view_state(key, "viewOffset", None);
                 self.set_view_state(key, "lastViewedAt", Some(json!(now())));
             }
-        } else if offset.is_some_and(|offset| total > 0 && (offset as f64) < total as f64 * 0.9) {
-            self.set_view_state(key, "_completed", None);
-            self.set_view_state(key, "_completionStopped", None);
         }
+        completing
     }
 
     /// library.progress with `completes=False`: `/:/progress` never completes a

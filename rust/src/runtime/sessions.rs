@@ -740,7 +740,7 @@ impl Runtime {
         query: &HashMap<String, String>,
         headers: &HashMap<String, String>,
     ) -> Response {
-        let rating_key = query.get("ratingKey").cloned().unwrap_or_default();
+        let mut rating_key = query.get("ratingKey").cloned().unwrap_or_default();
         // `state` is the ONE required parameter, and a closed set.
         let Some(state) = query.get("state").filter(|value| !value.is_empty()).cloned() else {
             return Response::error(400, "plexsim: bad request");
@@ -766,8 +766,8 @@ impl Runtime {
         // `duration=0` is "no usable duration", the same as sending none.
         let total = duration_ms.filter(|value| *value > 0).unwrap_or(0);
         let numeric_key = digits(&rating_key);
-        let in_catalog = numeric_key && self.catalog.get(&rating_key).is_some();
-        let listed = numeric_key && !in_catalog && self.playlists.contains_key(&rating_key);
+        let mut in_catalog = numeric_key && self.catalog.get(&rating_key).is_some();
+        let mut listed = numeric_key && !in_catalog && self.playlists.contains_key(&rating_key);
         if !rating_key.is_empty() && !in_catalog && !listed {
             return Response::error(404, "plexsim: no such item");
         }
@@ -778,11 +778,24 @@ impl Runtime {
             .filter(|value| digits(value))
             .and_then(|value| value.parse::<i64>().ok())
         {
+            let mut named = None;
             for queue in self.queues.values_mut() {
-                if queue.items.iter().any(|item| item.id == wanted) {
+                if let Some(item) = queue.items.iter().find(|item| item.id == wanted) {
+                    named = Some(item.rating_key.clone());
                     queue.selected = Some(wanted);
                     queue.deselected = false;
                     break;
+                }
+            }
+            // Cycle 87, plexscratch42 (1.42.2): the queue item NAMES the item the beat is
+            // for, over `ratingKey` -- `ratingKey=A&playQueueItemID=<B's row>` at 92%
+            // completed B and stored B's resume point, 3/3; an id no queue holds falls back
+            // to `ratingKey`.
+            if let Some(named) = named.filter(|named| self.catalog.get(named).is_some()) {
+                if in_catalog || listed {
+                    rating_key = named;
+                    in_catalog = true;
+                    listed = false;
                 }
             }
         }
@@ -800,19 +813,31 @@ impl Runtime {
             } else {
                 playing_session.clone()
             };
-            let completed_by = |runtime: &Self| {
-                runtime
-                    .view_state(&key, "_completed")
-                    .and_then(|value| value.as_str().map(str::to_string))
-            };
             // A completed play answers `complete` to every beat past 90% until a
-            // `stopped` beat has closed it, and `ignore` to every beat after that.
-            let already = completed_by(self).as_deref() == Some(session_tag.as_str())
-                && self.view_state(&key, "_completionStopped").is_some();
-            self.library_progress(&key, offset.map(|_| offset_ms), total, device, &session_tag, true);
-            if state == "stopped" && completed_by(self).as_deref() == Some(session_tag.as_str()) {
-                self.set_view_state(&key, "_completionStopped", Some(json!(true)));
+            // `stopped` beat has closed it, and `ignore` to every beat after that --
+            // cycle 87, plexscratch42: and only while the beats go on naming the SAME item
+            // by the SAME `playQueueItemID` (another row's id, none, an empty one or one
+            // no queue holds on either beat, or any other item's beat between, answers
+            // the stop `ignore` with `viewCount` unchanged).
+            let tag = (
+                query.get("playQueueItemID").filter(|value| !value.is_empty()).cloned(),
+                key.clone(),
+            );
+            let mut latched = match self.timeline_latch.get(&session_tag) {
+                Some((iid, item, latched)) if (iid, item) == (&tag.0, &tag.1) => *latched,
+                _ => false,
+            };
+            let crossed =
+                self.library_progress(&key, offset.map(|_| offset_ms), total, device, &session_tag, true);
+            if crossed {
+                latched = true;
+            } else if offset.is_some() && total > 0 && (offset_ms as f64) < total as f64 * 0.9 {
+                // A beat back under 90% is a new play.
+                latched = false;
             }
+            let finished = latched;
+            self.timeline_latch
+                .insert(session_tag.clone(), (tag.0, tag.1, latched && state != "stopped"));
             let media = self
                 .catalog
                 .get(&key)
@@ -874,8 +899,7 @@ impl Runtime {
             if total > 0 {
                 playback_state = if entry.progressed { "progress" } else { "ignore" };
                 if offset_ms >= total.saturating_mul(9) / 10 {
-                    let finished = completed_by(self).as_deref() == Some(session_tag.as_str());
-                    playback_state = if finished && !already { "complete" } else { "ignore" };
+                    playback_state = if finished { "complete" } else { "ignore" };
                 }
             }
             // Cycle 70: the OFFLINE form marks the item watched when `viewCount` is 1 or

@@ -3502,3 +3502,20 @@ are changing; replay the client's exact request before altering behavior.
   4.162.1 never GETs a provider by id; a provider id reaches it only as the Add/Edit Agent dialog's
   `additionalProvider`, sent as `PUT /media/providers/metadata/group/{custom}/items/{providerId}`,
   which plexsim answers by the group rather than the id (cycle 40).
+- **A timeline beat is for the item its `playQueueItemID` names, its crossing reads the SESSION's
+  last position, and `complete` lasts only while the beats name the same item by the same id**
+  (cycle 87 e1, plexscratch42 1.42.2, 30 beat sequences in Plex Web's shape and python-plexapi's
+  `updateTimeline`; `tests/fixtures/timeline_queue_item_s42.json`). `ratingKey=A` with B's queue
+  row id at 92% completes and stores B, not A (3/3); an id no queue holds falls back to
+  `ratingKey`. The previous position is the session's last beat whatever its item: 3 000 on A then
+  92% on B completes B (python-plexapi too, no queue at all), 3 000 on B then 92% on A completes
+  A, 92% on B then a stop at 93% on A completes nothing, and 92% on A, 50% on B, 93% on A counts A
+  twice. A completion answers `complete` to later beats past 90% only while each carries the same
+  item AND the same raw `playQueueItemID` (absent and empty alike): a stop with no id, a different
+  id, or after any other item's beat answers `ignore` with `viewCount` unchanged. Cycle 86's "the
+  stop answers `ignore`, viewCount and history agree" missed that the view landed on B. Both
+  servers kept the position and the completion per (session, item) and applied the beat to
+  `ratingKey`. The id half is MALFORMED-ONLY (Plex Web always pairs the id with its own item);
+  the session-wide crossing is CLIENT-VISIBLE: python-plexapi's `Video.updateTimeline` sends no
+  session identifier, so one script setting a resume point on one item and then a position past
+  90% on another marks the second watched on the reference and did not on ours.

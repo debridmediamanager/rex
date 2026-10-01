@@ -1,0 +1,1340 @@
+{
+ "_provenance": {
+  "server": "plexscratch42 (PMS 1.42.2.10156), measured 2026-10-01 by cycle 87 agent e1",
+  "shape": "Plex Web's /:/timeline beat (key, ratingKey, playQueueItemID, duration, time, playbackTime, hasMDE=1, context=null:null, state, X-Plex-Playback-Session-Id, X-Plex-Playback-Id and every X-Plex-* in the query; X-Plex-Session-Identifier as a header, one per sequence) -- or, for pa_* sequences, python-plexapi 4.18's Video.updateTimeline query (ratingKey, key, identifier, time, state, duration) with its headers and a fresh client identifier, no session identifier.",
+  "setup": "One play queue per sequence, POST /playQueues?type=video&uri=server://MACHINE/com.plexapp.plugins.library/library/metadata/A,B,C (Plex Web's flags); A, B, C are three unwatched movies of 1 800 690 ms (B: 1 800 690 too). Beats 0.6 s apart. Every write undone (unscrobble, history rows deleted).",
+  "beat": "[state, time (int ms, or float = fraction of the duration), playQueueItemID (A/B/C = that queue row, omit = absent, none = empty, bogus = 999999), the ratingKey sent (A/B), session suffix, answered playbackState, answered viewCount]",
+  "after": "viewCount of A and B after the sequence (null = unwatched)"
+ },
+ "sequences": {
+  "same": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "A",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "A",
+     "A",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "b92": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "B",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "bstop": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "A",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "B",
+     "A",
+     "",
+     "ignore",
+     0
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "omitstop": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "A",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "omit92": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "omit",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "A",
+     "A",
+     "",
+     "ignore",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "bogus92": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "bogus",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "A",
+     "A",
+     "",
+     "ignore",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "b92paused": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "B",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "paused",
+     0.93,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "stopped",
+     0.94,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "b92play": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "B",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "playing",
+     0.93,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "stopped",
+     0.94,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "b92b": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "B",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "B",
+     "A",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "b50": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.5,
+     "B",
+     "A",
+     "",
+     "progress",
+     0
+    ],
+    [
+     "stopped",
+     0.55,
+     "A",
+     "A",
+     "",
+     "progress",
+     0
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": null
+   }
+  },
+  "b50to93": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.5,
+     "B",
+     "A",
+     "",
+     "progress",
+     0
+    ],
+    [
+     "stopped",
+     0.93,
+     "A",
+     "A",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "b3000": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "B",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "A",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "A",
+     "A",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "b92b93a": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "B",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "playing",
+     0.93,
+     "B",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.94,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "a92b93a": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "A",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "playing",
+     0.93,
+     "B",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "stopped",
+     0.94,
+     "A",
+     "A",
+     "",
+     "ignore",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "rksw": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "omit",
+     "B",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "omit",
+     "B",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "rksw_iid": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "B",
+     "B",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "B",
+     "B",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "rksw_back": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "B",
+     "B",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "pa_rksw": {
+   "beats": [
+    [
+     "playing",
+     3000,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "omit",
+     "B",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "omit",
+     "B",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "pa_same": {
+   "beats": [
+    [
+     "playing",
+     3000,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "omit",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "omit",
+     "A",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "pa_back": {
+   "beats": [
+    [
+     "playing",
+     3000,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "omit",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "playing",
+     0.5,
+     "omit",
+     "B",
+     "",
+     "progress",
+     0
+    ],
+    [
+     "stopped",
+     0.93,
+     "omit",
+     "A",
+     "",
+     "complete",
+     2
+    ]
+   ],
+   "after": {
+    "A": 2,
+    "B": null
+   }
+  },
+  "none92": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "none",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "A",
+     "A",
+     "",
+     "ignore",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "nonestop": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "A",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "none",
+     "A",
+     "",
+     "ignore",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "pa_rkback": {
+   "beats": [
+    [
+     "playing",
+     3000,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "omit",
+     "B",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "rkback_omit": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "omit",
+     "B",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "bogus_omit": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "bogus",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": null
+   }
+  },
+  "xsess": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "B",
+     "B",
+     "-2",
+     "ignore",
+     0
+    ],
+    [
+     "stopped",
+     0.93,
+     "B",
+     "B",
+     "-2",
+     "ignore",
+     0
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": null
+   }
+  },
+  "b92under": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "B",
+     "A",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "playing",
+     0.5,
+     "A",
+     "A",
+     "",
+     "progress",
+     0
+    ],
+    [
+     "stopped",
+     0.93,
+     "A",
+     "A",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": 1,
+    "B": 1
+   }
+  },
+  "pa_stopsw": {
+   "beats": [
+    [
+     "stopped",
+     0.5,
+     "omit",
+     "A",
+     "",
+     "progress",
+     0
+    ],
+    [
+     "stopped",
+     0.95,
+     "omit",
+     "B",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "pa_stopsw2": {
+   "beats": [
+    [
+     "playing",
+     3000,
+     "omit",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "stopped",
+     0.5,
+     "omit",
+     "A",
+     "",
+     "progress",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "omit",
+     "B",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "omit",
+     "B",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  },
+  "stopsw": {
+   "beats": [
+    [
+     "paused",
+     0,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "playing",
+     3000,
+     "A",
+     "A",
+     "",
+     "ignore",
+     0
+    ],
+    [
+     "stopped",
+     0.5,
+     "A",
+     "A",
+     "",
+     "progress",
+     0
+    ],
+    [
+     "playing",
+     0.92,
+     "B",
+     "B",
+     "",
+     "complete",
+     1
+    ],
+    [
+     "stopped",
+     0.93,
+     "B",
+     "B",
+     "",
+     "complete",
+     1
+    ]
+   ],
+   "after": {
+    "A": null,
+    "B": 1
+   }
+  }
+ }
+}

@@ -3977,6 +3977,9 @@ class PlexSim:
         # on the ratingKey alone, one client's decision armed every other client's
         # timeline for that item and its own stop disarmed theirs.
         self.decided = set()
+        # Per playback session: the (playQueueItemID, item) its last timeline beat named and
+        # whether a completion is still answering `complete` -- see `timeline`.
+        self._timeline_latch = {}
         # Images uploaded through `POST /library/metadata/{id}/{posters,arts}`, keyed by the
         # `upload://` id a real PMS mints from the bytes.
         self.uploads = {}
@@ -17286,9 +17289,19 @@ class PlexSim:
             wanted = int(query["playQueueItemID"])
             with self.lock:
                 for queue in self.play_queues.values():
-                    if any(e["id"] == wanted for e in queue["items"]):
+                    entry = next((e for e in queue["items"] if e["id"] == wanted), None)
+                    if entry is not None:
                         queue["selected"] = wanted
                         queue.pop("deselected", None)
+                        # Cycle 87, plexscratch42 (1.42.2): the queue item NAMES the item the
+                        # beat is for, over `ratingKey`. `ratingKey=A&playQueueItemID=<B's
+                        # row>` at 92% completed B and stored B's resume point, 3/3, while A
+                        # was untouched; an id no queue holds falls back to `ratingKey`.
+                        # plexsim applied the beat to `ratingKey`.
+                        named = self.catalog.items.get(entry["ratingKey"])
+                        if named is not None and row is not None:
+                            row, listed = named, None
+                            rating_key = str(entry["ratingKey"])
                         break
 
         playback_state = "ignore"
@@ -17303,13 +17316,29 @@ class PlexSim:
                                or client or "")
             # A completed play answers `complete` to every beat past 90% until a
             # `stopped` beat has closed it, and `ignore` to every beat after that.
-            already = (row.get("_completed") == (playing_session or True)
-                       and row.get("_completionStopped"))
+            # Cycle 87, plexscratch42 (1.42.2): and only while the beats go on naming the
+            # SAME item by the SAME `playQueueItemID`. 92% on A then a stop at 93% on A
+            # answers `complete`; the same stop answers `ignore` when the 92% beat carried
+            # another queue row's id (3/3), no id, an empty one or one no queue holds, when
+            # the stop carries none, or when any beat for another item came between -- with
+            # `viewCount` unchanged each time. plexsim kept the latch on the item, per
+            # session, whatever the beats in between said.
+            tag = (str(query.get("playQueueItemID") or "") or None, int(rating_key))
+            latch = self._timeline_latch.setdefault(playing_session or "", {})
+            if latch.get("tag") != tag:
+                latch["latched"] = False
+            latch["tag"] = tag
             self.library.progress(int(rating_key), offset_ms, state=state,
                                   duration=total_ms, device_id=device,
                                   session=playing_session)
-            if state == "stopped" and row.get("_completed") == (playing_session or True):
-                row["_completionStopped"] = True
+            if self.library.crossed:
+                latch["latched"] = True
+            elif offset is not None and total_ms and offset_ms < total_ms * 0.9:
+                # A beat back under 90% is a new play.
+                latch["latched"] = False
+            finished = latch["latched"]
+            if state == "stopped":
+                latch["latched"] = False
             entry = self.sessions.touch(row, query, headers, address, state,
                                         offset_ms, total_ms,
                                         client_profile(query, headers))
@@ -17359,8 +17388,7 @@ class PlexSim:
                     # cross into the last tenth inside this session. plexsim called every
                     # near-end beat `complete`, and the crossing rule alone would have left
                     # the refused ones saying `progress`.
-                    finished = row.get("_completed") == (playing_session or True)
-                    playback_state = "complete" if finished and not already else "ignore"
+                    playback_state = "complete" if finished else "ignore"
             # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): the
             # OFFLINE form Plex for Android syncs a downloaded item's view state with
             # (`offline=1&time&updated&state=stopped&duration&viewCount`, js:1673773) marks
