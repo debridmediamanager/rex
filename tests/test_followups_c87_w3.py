@@ -10,6 +10,13 @@
   is byte-identical to zen's; the bare form is compared with its rows sorted, because
   where `lastfm` and `plexthememusic` fall is zen's own plug-in load order (W2).
 
+- The provider table numbers Personal Media **5** (`/system/agents` numbers it 4), its
+  built-in group is 4 with `metadataAgentProviderId` 5, and provider 4 is the unlisted
+  MusicBrainz intermediary that only its per-id GET answers. Measured identically on kids,
+  zen, plexscratch and a fresh 1.42.2 install (plexscratch42), so a rule and not one
+  database's history; plexsim numbered providers by agent position. Driven by zen's
+  exchanges (`tests/fixtures/c87_w3_provider_ids_zen.json`).
+
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
 
@@ -31,6 +38,7 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 JSON_FIXTURE = os.path.join(HERE, "fixtures", "c87_w2_system_agents_zen.json")
 XML_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_system_agents_xml_zen.json")
+PROVIDER_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_provider_ids_zen.json")
 ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
@@ -142,10 +150,32 @@ def legacy_order(port):
                    % (first, text[first - 60:first + 60], want[first - 60:first + 60])))
 
 
+def provider_ids(port):
+    for exchange in json.load(open(PROVIDER_FIXTURE, encoding="utf-8")):
+        status, text = request(port, exchange["method"], exchange["path"], exchange["headers"])
+        want = exchange["body"]
+        if want is None:
+            check("%s is a %d (zen)" % (exchange["path"], exchange["status"]),
+                  status == exchange["status"], status)
+            continue
+        try:
+            body = json.loads(text)
+        except ValueError:
+            body = text
+        container = want["MediaContainer"]
+        rows = container.get("MetadataAgentProvider") or container.get("MetadataAgentProviderGroup")
+        ids = [(row["id"], [item["metadataAgentProviderId"]
+                            for item in row.get("MetadataAgentProviderGroupItem", [])])
+               for row in rows]
+        check("%s is zen's container, ids %s" % (exchange["path"], ids),
+              status == exchange["status"] and body == want, (status, body))
+
+
 def main():
     process, port = start()
     try:
         legacy_order(port)
+        provider_ids(port)
     finally:
         stop(process)
     passed = sum(results)

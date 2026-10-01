@@ -473,6 +473,13 @@ pub struct Runtime {
     activity_serial: u64,
 }
 
+
+// Cycle 87, zen (1.42.2): provider 4 on every reference, a fresh install included, is
+// the MusicBrainz intermediary, which `/media/providers/metadata` never lists and its
+// per-id GET answers. zen's `uri`/`online` (kids and the fresh copy say `""`/`false`
+// here and on Plex Music alike: the music provider's reachability, not shape).
+const HIDDEN_METADATA_PROVIDER: &str = r#"{"id":4,"identifier":"org.musicbrainz.agents.music","title":"MusicBrainz","uri":"provider://tv.plex.provider.metadata","agentType":"intermediary","online":true,"MetadataType":[{"type":8},{"type":9},{"type":10}]}"#;
+
 impl Runtime {
     pub fn load(options: RuntimeOptions) -> Result<Self, String> {
         let rd_token = std::env::var("RD_TOKEN").unwrap_or_default();
@@ -3124,8 +3131,16 @@ impl Runtime {
                     .into_iter()
                     .map(|number| json!({"type":number}))
                     .collect::<Vec<_>>();
+                // Cycle 87, measured on kids, zen and both scratch copies (one a fresh
+                // 1.42.2 install): the provider table numbers Personal Media 5 where
+                // `/system/agents` numbers it 4. Provider 4 is the unlisted MusicBrainz
+                // intermediary (`HIDDEN_METADATA_PROVIDER`).
+                let id = match identifier {
+                    "tv.plex.agents.none" => json!(5),
+                    _ => agent.get("id").cloned().unwrap_or(Value::Null),
+                };
                 json!({
-                    "id": agent.get("id").cloned().unwrap_or(Value::Null),
+                    "id": id,
                     "identifier": identifier,
                     "title": agent.get("name").cloned().unwrap_or_else(|| json!(identifier)),
                     "uri": if identifier.ends_with(".none") { "" } else { "provider://tv.plex.provider.metadata" },
@@ -3147,11 +3162,14 @@ impl Runtime {
     }
 
     fn metadata_provider_groups(&self) -> Vec<Value> {
+        // Cycle 87: a built-in group is numbered in agent order (Personal Media is group
+        // 4, item 4) and names its provider by the PROVIDER's id (5).
         let mut rows = self
             .metadata_provider_rows()
             .into_iter()
-            .map(|provider| {
-                let id = provider.get("id").cloned().unwrap_or(Value::Null);
+            .enumerate()
+            .map(|(index, provider)| {
+                let id = json!(index + 1);
                 let identifier = provider
                     .get("identifier")
                     .and_then(Value::as_str)
@@ -3304,7 +3322,10 @@ impl Runtime {
             let rows = if group {
                 self.metadata_provider_groups()
             } else {
-                self.metadata_provider_rows()
+                let mut rows = self.metadata_provider_rows();
+                // Cycle 87: the unlisted intermediary answers its own id.
+                rows.push(serde_json::from_str(HIDDEN_METADATA_PROVIDER).unwrap_or(Value::Null));
+                rows
             };
             let picked = rows
                 .into_iter()

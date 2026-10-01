@@ -1,0 +1,451 @@
+[
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 4,
+    "totalSize": 4,
+    "offset": 0,
+    "MetadataAgentProvider": [
+     {
+      "id": 1,
+      "identifier": "tv.plex.agents.movie",
+      "title": "Plex Movie",
+      "uri": "provider://tv.plex.provider.metadata",
+      "agentType": "primary",
+      "online": true,
+      "MetadataType": [
+       {
+        "type": 1
+       }
+      ]
+     },
+     {
+      "id": 2,
+      "identifier": "tv.plex.agents.series",
+      "title": "Plex Series",
+      "uri": "provider://tv.plex.provider.metadata",
+      "agentType": "primary",
+      "online": true,
+      "MetadataType": [
+       {
+        "type": 2
+       },
+       {
+        "type": 3
+       },
+       {
+        "type": 4
+       }
+      ]
+     },
+     {
+      "id": 3,
+      "identifier": "tv.plex.agents.music",
+      "title": "Plex Music",
+      "uri": "provider://tv.plex.provider.metadata",
+      "agentType": "primary",
+      "online": true,
+      "MetadataType": [
+       {
+        "type": 8
+       },
+       {
+        "type": 9
+       },
+       {
+        "type": 10
+       }
+      ]
+     },
+     {
+      "id": 5,
+      "identifier": "tv.plex.agents.none",
+      "title": "Plex Personal Media",
+      "uri": "",
+      "agentType": "primary",
+      "online": true,
+      "MetadataType": [
+       {
+        "type": 1
+       },
+       {
+        "type": 2
+       },
+       {
+        "type": 3
+       },
+       {
+        "type": 4
+       },
+       {
+        "type": 8
+       },
+       {
+        "type": 9
+       },
+       {
+        "type": 10
+       },
+       {
+        "type": 13
+       },
+       {
+        "type": 14
+       },
+       {
+        "type": 20
+       },
+       {
+        "type": 21
+       },
+       {
+        "type": 22
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/group",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 4,
+    "totalSize": 4,
+    "offset": 0,
+    "MetadataAgentProviderGroup": [
+     {
+      "id": 1,
+      "title": "Plex Movie",
+      "primaryIdentifier": "tv.plex.agents.movie",
+      "builtIn": "1",
+      "MetadataAgentProviderGroupItem": [
+       {
+        "id": 1,
+        "metadataAgentProviderGroupId": 1,
+        "metadataAgentProviderId": 1,
+        "order": 1000.0
+       }
+      ]
+     },
+     {
+      "id": 2,
+      "title": "Plex Series",
+      "primaryIdentifier": "tv.plex.agents.series",
+      "builtIn": "1",
+      "MetadataAgentProviderGroupItem": [
+       {
+        "id": 2,
+        "metadataAgentProviderGroupId": 2,
+        "metadataAgentProviderId": 2,
+        "order": 1000.0
+       }
+      ]
+     },
+     {
+      "id": 3,
+      "title": "Plex Music",
+      "primaryIdentifier": "tv.plex.agents.music",
+      "builtIn": "1",
+      "MetadataAgentProviderGroupItem": [
+       {
+        "id": 3,
+        "metadataAgentProviderGroupId": 3,
+        "metadataAgentProviderId": 3,
+        "order": 1000.0
+       }
+      ]
+     },
+     {
+      "id": 4,
+      "title": "Plex Personal Media",
+      "primaryIdentifier": "tv.plex.agents.none",
+      "builtIn": "1",
+      "MetadataAgentProviderGroupItem": [
+       {
+        "id": 4,
+        "metadataAgentProviderGroupId": 4,
+        "metadataAgentProviderId": 5,
+        "order": 1000.0
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/4",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 1,
+    "totalSize": 1,
+    "offset": 0,
+    "MetadataAgentProvider": [
+     {
+      "id": 4,
+      "identifier": "org.musicbrainz.agents.music",
+      "title": "MusicBrainz",
+      "uri": "provider://tv.plex.provider.metadata",
+      "agentType": "intermediary",
+      "online": true,
+      "MetadataType": [
+       {
+        "type": 8
+       },
+       {
+        "type": 9
+       },
+       {
+        "type": 10
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/5",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 1,
+    "totalSize": 1,
+    "offset": 0,
+    "MetadataAgentProvider": [
+     {
+      "id": 5,
+      "identifier": "tv.plex.agents.none",
+      "title": "Plex Personal Media",
+      "uri": "",
+      "agentType": "primary",
+      "online": true,
+      "MetadataType": [
+       {
+        "type": 1
+       },
+       {
+        "type": 2
+       },
+       {
+        "type": 3
+       },
+       {
+        "type": 4
+       },
+       {
+        "type": 8
+       },
+       {
+        "type": 9
+       },
+       {
+        "type": 10
+       },
+       {
+        "type": 13
+       },
+       {
+        "type": 14
+       },
+       {
+        "type": 20
+       },
+       {
+        "type": 21
+       },
+       {
+        "type": 22
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/group/4",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 1,
+    "totalSize": 1,
+    "offset": 0,
+    "MetadataAgentProviderGroup": [
+     {
+      "id": 4,
+      "title": "Plex Personal Media",
+      "primaryIdentifier": "tv.plex.agents.none",
+      "builtIn": "1",
+      "MetadataAgentProviderGroupItem": [
+       {
+        "id": 4,
+        "metadataAgentProviderGroupId": 4,
+        "metadataAgentProviderId": 5,
+        "order": 1000.0
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/6",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 404,
+  "body": null
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata/group/5",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 404,
+  "body": null
+ },
+ {
+  "reference": "zen PMS 1.42.2.10156",
+  "date": "2026-10-01",
+  "method": "GET",
+  "path": "/media/providers/metadata?metadataTypes=8",
+  "headers": {
+   "Accept": "application/json",
+   "X-Plex-Container-Start": "0",
+   "X-Plex-Container-Size": "50"
+  },
+  "status": 200,
+  "body": {
+   "MediaContainer": {
+    "size": 2,
+    "totalSize": 2,
+    "offset": 0,
+    "MetadataAgentProvider": [
+     {
+      "id": 3,
+      "identifier": "tv.plex.agents.music",
+      "title": "Plex Music",
+      "uri": "provider://tv.plex.provider.metadata",
+      "agentType": "primary",
+      "online": true,
+      "MetadataType": [
+       {
+        "type": 8
+       },
+       {
+        "type": 9
+       },
+       {
+        "type": 10
+       }
+      ]
+     },
+     {
+      "id": 5,
+      "identifier": "tv.plex.agents.none",
+      "title": "Plex Personal Media",
+      "uri": "",
+      "agentType": "primary",
+      "online": true,
+      "MetadataType": [
+       {
+        "type": 1
+       },
+       {
+        "type": 2
+       },
+       {
+        "type": 3
+       },
+       {
+        "type": 4
+       },
+       {
+        "type": 8
+       },
+       {
+        "type": 9
+       },
+       {
+        "type": 10
+       },
+       {
+        "type": 13
+       },
+       {
+        "type": 14
+       },
+       {
+        "type": 20
+       },
+       {
+        "type": 21
+       },
+       {
+        "type": 22
+       }
+      ]
+     }
+    ]
+   }
+  }
+ }
+]

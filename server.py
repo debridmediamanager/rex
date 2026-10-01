@@ -6120,18 +6120,22 @@ class PlexSim:
         providers = self.metadata_agent_providers()
         if not group:
             return providers
+        # Cycle 87: a built-in GROUP is numbered 1-4 in agent order and its one item
+        # carries the group's id, but names the PROVIDER by the provider's own id --
+        # Personal Media is group 4, item 4, `metadataAgentProviderId` 5 on all four
+        # references.
         groups = [{
-            "id": row["id"],
+            "id": number,
             "title": row["title"],
             "primaryIdentifier": row["identifier"],
             "builtIn": "1",
             "MetadataAgentProviderGroupItem": [{
-                "id": row["id"],
-                "metadataAgentProviderGroupId": row["id"],
+                "id": number,
+                "metadataAgentProviderGroupId": number,
                 "metadataAgentProviderId": row["id"],
                 "order": 1000.0,
             }],
-        } for row in providers]
+        } for number, row in enumerate(providers, start=1)]
         with self.lock:
             groups.extend(self.metadata_agent_provider_group(entry)
                           for entry in self.metadata_provider_groups.values())
@@ -6148,15 +6152,33 @@ class PlexSim:
                                                 group["MetadataAgentProviderGroupItem"]],
         }
 
+    # Cycle 87, measured on kids, zen, plexscratch and a FRESH 1.42.2 install
+    # (plexscratch42), all 2026-10-01: the provider table numbers Personal Media **5**,
+    # not 4, while `/system/agents` numbers the same agent 4. Provider 4 is the
+    # MusicBrainz intermediary every server creates and the listing never shows; it
+    # answers only its per-id GET. A fresh install agreeing makes it a rule, not one
+    # database's history. plexsim derived both ids from the agent's position.
+    METADATA_PROVIDER_IDS = {"tv.plex.agents.movie": 1, "tv.plex.agents.series": 2,
+                             "tv.plex.agents.music": 3, "tv.plex.agents.none": 5}
+    # zen's row (the version plexsim reports, and the server whose Plex Music row this
+    # table already follows). kids and the fresh install carry `uri: ""` and
+    # `online: false` on it -- and on Plex Music too: that pair is the music provider's
+    # reachability, state rather than shape.
+    HIDDEN_METADATA_PROVIDERS = ({
+        "id": 4, "identifier": "org.musicbrainz.agents.music", "title": "MusicBrainz",
+        "uri": "provider://tv.plex.provider.metadata", "agentType": "intermediary",
+        "online": True, "MetadataType": [{"type": 8}, {"type": 9}, {"type": 10}],
+    },)
+
     @staticmethod
     def metadata_agent_providers():
         """The modern built-in agent-provider table captured from PMS 1.42.2."""
         providers = []
-        for index, agent in enumerate(SYSTEM_AGENTS, start=1):
+        for agent in SYSTEM_AGENTS:
             serves = sorted(int(number) for number, names in AGENT_MEDIA_TYPES.items()
                             if agent["identifier"] in names)
             providers.append({
-                "id": index,
+                "id": PlexSim.METADATA_PROVIDER_IDS[agent["identifier"]],
                 "identifier": agent["identifier"],
                 "title": agent.get("name") or agent["identifier"],
                 # Measured: every modern provider but Personal Media names the
@@ -6315,6 +6337,10 @@ class PlexSim:
             if not wanted.isdigit():
                 return ("error", 400, "plexsim: bad request")
             rows = self.metadata_provider_rows(group=len(segments) == 5)
+            if len(segments) == 4:
+                # Cycle 87: the unlisted intermediary answers its own id.
+                rows = rows + [json.loads(json.dumps(row))
+                               for row in self.HIDDEN_METADATA_PROVIDERS]
             key = ("MetadataAgentProviderGroup" if len(segments) == 5
                    else "MetadataAgentProvider")
             picked = [row for row in rows if str(row.get("id")) == wanted]

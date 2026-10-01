@@ -3488,3 +3488,17 @@ are changing; replay the client's exact request before altering behavior.
   on both references. plexsim used the modern order for all eleven and self-closed the six
   empty ones. After the fix every typed body is byte-identical to zen's
   (`tests/test_followups_c87_w3.py`). MALFORMED-ONLY: Plex Web reads the rows by key.
+- **The metadata PROVIDER table numbers Personal Media 5, not 4; `/system/agents` numbers it 4.**
+  Measured 2026-10-01 on kids (1.43.4), zen (1.42.2), plexscratch and plexscratch42 -- the last a
+  FRESH 1.42.2 install -- so it is a rule, not one database's row history: providers are movie 1,
+  series 2, music 3, Personal Media 5 (kids adds localmedia 6, NFO 7/8); provider **4** is the
+  `org.musicbrainz.agents.music` `intermediary` (`MetadataType` 8, 9, 10), which no listing (nor
+  `?metadataTypes=8`) shows and `GET /media/providers/metadata/4` answers. Built-in GROUPS are
+  numbered 1-4 in agent order, each item carrying the group's id and naming the provider by the
+  provider's id: group 4, item 4, `metadataAgentProviderId` 5. plexsim numbered every provider by
+  agent position, so `/4` answered Personal Media and `/5` was a 404. The MusicBrainz row's
+  `uri`/`online` are zen's (`provider://...`, `true`); kids and the fresh copy say `""`/`false`
+  there and on Plex Music alike -- reachability state, not shape. MALFORMED-ONLY: Plex Web
+  4.162.1 never GETs a provider by id; a provider id reaches it only as the Add/Edit Agent dialog's
+  `additionalProvider`, sent as `PUT /media/providers/metadata/group/{custom}/items/{providerId}`,
+  which plexsim answers by the group rather than the id (cycle 40).
