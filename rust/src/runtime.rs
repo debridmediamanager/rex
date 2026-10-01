@@ -12024,7 +12024,16 @@ impl Runtime {
             self.queues.insert(id.to_string(), queue);
             return Response::error(400, "plexsim: bad request");
         }
-        if query.get("own") == Some(&"1".to_string()) {
+        // Cycle 83, plexscratch42 (1.42.2): only a READ takes -- GET or HEAD with `own=1`
+        // on the queue itself. The creator's own PUT with `own=1` (a move, the Plex Web
+        // shape) steps the version once and leaves the taker the owner. Taking on every
+        // method stepped the move twice and made the creator's next new queue retire the
+        // queue the other player was still playing (404 where the reference answers 200).
+        // The client is read from the query as well as the header (`queue_client`).
+        if query.get("own") == Some(&"1".to_string())
+            && segments.len() == 1
+            && matches!(request.method.as_str(), "GET" | "HEAD")
+        {
             let client = queue_client(query, request);
             if !client.is_empty() && queue.client != client {
                 self.queues.retain(|_, known| known.client != client);

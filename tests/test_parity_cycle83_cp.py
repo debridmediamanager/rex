@@ -107,10 +107,58 @@ def agents_paged(srv):
     check("agents XML, one page of 100: every agent", ids == fx["unpaged_identifiers"], ids)
 
 
+PQX = "repeat=0&own=1&includeChapters=1&includeMarkers=1&includeGeolocation=1&includeExternalMedia=1"
+SHOW_URI = ("server%3A%2F%2Ff1x7u4e0000000000000000000000000000000f1%2Fcom.plexapp.plugins.library"
+            "%2Flibrary%2Fmetadata%2F20001")
+
+
+def new_queue(srv, client):
+    status, doc = srv.json("POST", "/playQueues?type=video&extrasPrefixCount=0&uri=%s&continuous=1&%s"
+                           % (SHOW_URI, PQX), client)
+    mc = doc["MediaContainer"]
+    return mc["playQueueID"], [row["playQueueItemID"] for row in mc["Metadata"]], mc["playQueueVersion"]
+
+
+def queue_take(srv):
+    """plexscratch42, 1.42.2: only a READ with `own=1` takes a queue another client made. A
+    creator's own write with `own=1` (P's kill matrix sends the move, shuffle and unshuffle that
+    way, the Plex Web shape) steps the version once and leaves the taker the owner. The native
+    server took the queue back on any method: the move stepped the version twice, the taker's
+    next read stepped it again, and the creator's next new queue retired the queue the other
+    player was still playing (404 where the reference answers 200)."""
+    fx = FIXTURE["play_queue"]
+    pq, rows, version = new_queue(srv, "c83cp-creator")
+    got = [("create", version)]
+    read = lambda client: srv.json("GET", "/playQueues/%s?%s" % (pq, PQX), client)[1]["MediaContainer"]["playQueueVersion"]
+    got.append(("other GET own=1", read("c83cp-other")))
+    status, doc = srv.json("PUT", "/playQueues/%s/items/%s/move?after=%s&%s" % (pq, rows[-1], rows[0], PQX),
+                           "c83cp-creator")
+    got.append(("creator PUT move own=1", doc["MediaContainer"]["playQueueVersion"]))
+    got.append(("other GET own=1", read("c83cp-other")))
+    got.append(("other GET own=1", read("c83cp-other")))
+    got.append(("creator GET own=1", read("c83cp-creator")))
+    check("queue: version through a take and the creator's move", got == [tuple(x) for x in fx["versions"]], got)
+
+    pq, rows, _ = new_queue(srv, "c83cp-creator2")
+    read = lambda client: srv.json("GET", "/playQueues/%s?%s" % (pq, PQX), client)
+    read("c83cp-other2")
+    srv.json("PUT", "/playQueues/%s/items/%s/move?after=%s&%s" % (pq, rows[-1], rows[0], PQX), "c83cp-creator2")
+    new_queue(srv, "c83cp-creator2")
+    status = read("c83cp-other2")[0]
+    check("queue: the creator's next queue leaves the one another client took",
+          status == fx["creator_new_queue_then_other_reads_old"], status)
+
+    pq, _, _ = new_queue(srv, "c83cp-creator3")
+    srv.req("HEAD", "/playQueues/%s?own=1" % pq, {"Accept": "application/json"}, "c83cp-other3")
+    version = srv.json("GET", "/playQueues/%s" % pq, "c83cp-third")[1]["MediaContainer"]["playQueueVersion"]
+    check("queue: a HEAD with own=1 takes it too", version == fx["head_own_by_other_then_version"], version)
+
+
 def main():
     srv = Server()
     try:
         agents_paged(srv)
+        queue_take(srv)
     finally:
         srv.stop()
     print("PASS %d/%d" % (sum(results), len(results)))

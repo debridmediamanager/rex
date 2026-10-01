@@ -3288,3 +3288,10 @@ are changing; replay the client's exact request before altering behavior.
   response headers. The native server wrote this XML itself, past the pipeline's pager, and sent
   all five agents with no `totalSize`, so plexapi's `agents().totalSize` and `.offset` were None.
   The JSON and the oracle were right. Any handler that renders its own XML skips the pager.
+- **Only a READ with `own=1` takes a play queue** (cycle 83, axis 12, P's kill matrix).
+  plexscratch42 (1.42.2): a queue made by client A and read by client B with `own=1` steps
+  1 -> 2 and B owns it; A's own `PUT .../items/{id}/move?after=...&own=1` steps it once (3) and
+  B still owns it -- B's next read stays at 3, and A's next new queue leaves B's queue alive
+  (200). A `HEAD` with `own=1` takes like the GET (2). The native server took on every method,
+  so A's move stepped 2 -> 4, B's read re-took it (5), and A's next queue retired the queue B
+  was playing (404); the oracle routed HEAD to the write router and never took on it.

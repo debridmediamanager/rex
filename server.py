@@ -8074,7 +8074,7 @@ class PlexSim:
             if number == 0:
                 return self.bare_container(size=0)
             return ("error", 400, "plexsim: bad request")
-        if segments[:1] == ["playQueues"] and len(segments) == 2 and method == "GET" \
+        if segments[:1] == ["playQueues"] and len(segments) == 2 and method in ("GET", "HEAD") \
                 and segments[1] == "1" and "1" not in self.play_queues:
             # Cycle 50: queue 1 is PMS's own background-processing queue, permanently,
             # on all three references -- `/playQueues/2` is a 404 there. Its container
@@ -8085,7 +8085,9 @@ class PlexSim:
                 mediaTagPrefix="/system/bundle/media/flags/",
                 mediaTagVersion=1655122614,
                 playQueueID=1, playQueueShuffled=False, playQueueVersion=-1)
-        if segments[:1] == ["playQueues"] and len(segments) == 2 and method == "GET":
+        if segments[:1] == ["playQueues"] and len(segments) == 2 and method in ("GET", "HEAD"):
+            # Cycle 83, plexscratch42 (1.42.2): a HEAD with `own=1` takes the queue like the
+            # GET does (the version steps). It went to the write router, which never takes.
             return self.get_play_queue(segments[1], query, headers)
         if segments[:1] == ["playQueues"] and len(segments) >= 2:
             return self.play_queue_route(method, segments, query)
