@@ -3205,3 +3205,11 @@ are changing; replay the client's exact request before altering behavior.
   `local://` episode or show, a none-agent library's movie) has no key on its detail either. Both
   servers kept an unmatched movie's stored ids in every listing, and `/hubs` and the native child
   lists gave `local://` rows a one-entry list.
+- **A route that reads its own server must carry the client's QUERY token** (cycle 83, axis 11).
+  Plex for Android sends `X-Plex-Token` as the last query parameter on every image request
+  (`/photo/:/transcode?url=...&width=240&height=240&minSize=1&format=jpeg&X-Plex-Token=...`, no
+  `Accept`). The native transcoder resolved `url` by dispatching an inner request through its own
+  router with only the outer HEADERS, so under `--token` the inner read was refused and every
+  poster tile answered 404 -- the app drew titles where the posters go. `/service(s)/ultrablur/colors`
+  goes through the transcoder and the Categories shelf reads its genre axis the same way. The
+  oracle answered 200 throughout. No suite caught it: every check sent the token as a header.

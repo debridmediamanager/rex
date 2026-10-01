@@ -1,0 +1,41 @@
+{
+ "_provenance": "Plex for Android 2026.9.0 in the cycle-83 emulator (harness/android), captured by the pinning proxy on 2026-10-01: a poster tile on a library's Recommended shelf. The token rides in the QUERY, the app sends no Accept header. Against the native server with its token gate on this answered 404 (33 of 33 tiles); the oracle answered 200.",
+ "method": "GET",
+ "path": "/photo/:/transcode",
+ "query": [
+  [
+   "url",
+   "/library/metadata/1008/thumb/1789180064"
+  ],
+  [
+   "width",
+   "240"
+  ],
+  [
+   "height",
+   "240"
+  ],
+  [
+   "minSize",
+   "1"
+  ],
+  [
+   "format",
+   "jpeg"
+  ],
+  [
+   "X-Plex-Token",
+   "<TOKEN>"
+  ]
+ ],
+ "req_headers": [
+  [
+   "User-Agent",
+   "Dalvik/2.1.0 (Linux; U; Android 13; sdk_gphone64_arm64 Build/TE1A.240213.009)"
+  ],
+  [
+   "Accept-Encoding",
+   "gzip"
+  ]
+ ]
+}

@@ -869,7 +869,7 @@ impl Runtime {
         if !matches!(request.method.as_str(), "GET" | "HEAD") {
             return Response::error(404, "plexsim: not found");
         }
-        let mut headers = request.headers.clone();
+        let mut headers = super::inner_headers(request);
         headers.insert("accept".to_string(), "application/json".to_string());
         let axis = self.request_route(&Request {
             method: "GET".to_string(),

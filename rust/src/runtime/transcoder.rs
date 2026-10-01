@@ -146,7 +146,7 @@ impl Runtime {
             // A GET that MINTS a row must not run from here.
             return Response::photo_error(500, "plexsim: server error");
         }
-        let mut headers = request.headers.clone();
+        let mut headers = super::inner_headers(request);
         headers.insert("accept".to_string(), "application/json".to_string());
         // The transcoder's own width picks the composite's upstream variant, as the
         // oracle's `_at_width` does on the fetched image.

@@ -23253,6 +23253,27 @@ fn options_routed(path: &str) -> bool {
     PREFIXES.iter().any(|prefix| path.starts_with(prefix))
         || EXACT.contains(&path.trim_end_matches('/'))
 }
+/// The headers for a request a route makes of its own server -- the photo transcoder reading
+/// the image it resizes, the Categories shelf reading its genre axis. The inner request runs
+/// through the token gate on its own, so it must carry the outer request's token, which a
+/// client may send in the QUERY: Plex for Android always does (cycle 83, its poster tiles
+/// were all 404s with the gate on until the query token was carried; the oracle's inner
+/// reads never re-entered the gate).
+pub(crate) fn inner_headers(request: &Request) -> HashMap<String, String> {
+    let mut headers = request.headers.clone();
+    if headers.get("x-plex-token").map_or(true, |value| value.is_empty()) {
+        if let Some((_, query)) = request.target.split_once('?') {
+            if let Some((_, token)) = parse_query(query)
+                .into_iter()
+                .find(|(key, value)| key == "X-Plex-Token" && !value.is_empty())
+            {
+                headers.insert("x-plex-token".to_string(), token);
+            }
+        }
+    }
+    headers
+}
+
 fn parse_query(query: &str) -> Vec<(String, String)> {
     query
         .split('&')
