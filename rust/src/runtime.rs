@@ -4001,9 +4001,13 @@ impl Runtime {
                 "subtitle".to_string(),
                 json!(format!("{show_title} S{index:02}")),
             );
+            // Half goes to EVEN (cycle 86, plexscratch): two-season Firefly's first step,
+            // 44.5, is reported as 44 on both the showOrdering write and its undo, while
+            // the same show's scan reports its 49.5 as 50. `f64::round` said 45.
             activity.insert(
                 "progress".to_string(),
-                json!(((number + 1) as f64 * 89.0 / seasons.len().max(1) as f64).round() as i64),
+                json!(((number + 1) as f64 * 89.0 / seasons.len().max(1) as f64).round_ties_even()
+                    as i64),
             );
             self.notify_activity(&activity, "updated");
             self.notify_timeline(season, 5, Some("processing"), None, None);

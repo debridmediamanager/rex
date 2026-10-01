@@ -4512,6 +4512,9 @@ class PlexSim:
             # The same string a season's own frames carry: `<show> S01`.
             activity["subtitle"] = "%s S%02d" % (show.get("title") or "",
                                                  int(season.get("index") or 0))
+            # Python's round is the measured one (cycle 86, plexscratch): two-season
+            # Firefly reports its 44.5 as 44 and the same show's scan its 49.5 as 50 --
+            # half to even, which neither truncation nor half-up gives for both.
             activity["progress"] = int(round(number * 89.0 / max(len(seasons), 1)))
             self.notify_activity(activity, "updated")
             self.notify_timeline(season, self.TIMELINE_DONE, "processing")

@@ -1,0 +1,468 @@
+{
+ "source": "plexscratch (PMS 1.43.4.10903, isolated copy of the lab), 2026-10-01, cycle 86 C+P",
+ "note": "Activity frames only, from /:/eventsource/notifications held open around the write. Firefly is the copy's one matched show: two seasons of three episodes. No token or machine identifier is recorded.",
+ "cascades": [
+  {
+   "request": {
+    "method": "PUT",
+    "path": "/library/metadata/6/prefs?showOrdering=dvd"
+   },
+   "status": 200,
+   "seasons": 2,
+   "frames": [
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "started",
+       "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+       "Activity": {
+        "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly (2002)",
+        "progress": -1
+       }
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "updated",
+       "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+       "Activity": {
+        "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S01",
+        "progress": -1
+       }
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "updated",
+       "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+       "Activity": {
+        "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S01",
+        "progress": 44
+       }
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "updated",
+       "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+       "Activity": {
+        "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S02",
+        "progress": 44
+       }
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "updated",
+       "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+       "Activity": {
+        "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S02",
+        "progress": 89
+       }
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "ended",
+       "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+       "Activity": {
+        "uuid": "4442fa2f-01af-4cbc-bcc4-25d8acc6f7ef",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S02",
+        "progress": 100
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "request": {
+    "method": "PUT",
+    "path": "/library/metadata/6/prefs?showOrdering="
+   },
+   "status": 200,
+   "seasons": 2,
+   "frames": [
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "started",
+       "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+       "Activity": {
+        "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly (2002)",
+        "progress": -1
+       }
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "updated",
+       "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+       "Activity": {
+        "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S01",
+        "progress": -1
+       }
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "updated",
+       "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+       "Activity": {
+        "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S01",
+        "progress": 44
+       }
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "updated",
+       "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+       "Activity": {
+        "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S02",
+        "progress": 44
+       }
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "updated",
+       "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+       "Activity": {
+        "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S02",
+        "progress": 89
+       }
+      }
+     }
+    },
+    {
+     "event": "activity",
+     "data": {
+      "ActivityNotification": {
+       "event": "ended",
+       "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+       "Activity": {
+        "uuid": "1422b8bb-ba69-4710-8234-7fd86bad7b19",
+        "type": "library.update.item.metadata",
+        "cancellable": false,
+        "userID": 1,
+        "title": "Updating Metadata",
+        "subtitle": "Firefly S02",
+        "progress": 100
+       }
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "scan": {
+  "request": {
+   "method": "GET",
+   "path": "/library/sections/2/refresh"
+  },
+  "status": 200,
+  "seasons": 2,
+  "frames": [
+   {
+    "event": "activity",
+    "data": {
+     "ActivityNotification": {
+      "event": "started",
+      "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+      "Activity": {
+       "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+       "type": "library.update.section",
+       "cancellable": false,
+       "userID": 1,
+       "title": "Scanning",
+       "subtitle": "",
+       "progress": 0
+      }
+     }
+    }
+   },
+   {
+    "event": "activity",
+    "data": {
+     "ActivityNotification": {
+      "event": "updated",
+      "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+      "Activity": {
+       "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+       "type": "library.update.section",
+       "cancellable": false,
+       "userID": 1,
+       "title": "Scanning TV Shows",
+       "subtitle": "",
+       "progress": 0
+      }
+     }
+    }
+   },
+   {
+    "event": "progress",
+    "data": {
+     "ProgressNotification": {
+      "message": "Scanning Firefly (2002)"
+     }
+    }
+   },
+   {
+    "event": "progress",
+    "data": {
+     "ProgressNotification": {
+      "message": "Scanning Firefly (2002)/Season 02"
+     }
+    }
+   },
+   {
+    "event": "activity",
+    "data": {
+     "ActivityNotification": {
+      "event": "updated",
+      "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+      "Activity": {
+       "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+       "type": "library.update.section",
+       "cancellable": false,
+       "userID": 1,
+       "title": "Scanning TV Shows",
+       "subtitle": "Firefly (2002) - Season 02",
+       "progress": 50,
+       "Context": {
+        "librarySectionID": "2"
+       }
+      }
+     }
+    }
+   },
+   {
+    "event": "progress",
+    "data": {
+     "ProgressNotification": {
+      "message": "Scanning Firefly (2002)/Season 01"
+     }
+    }
+   },
+   {
+    "event": "activity",
+    "data": {
+     "ActivityNotification": {
+      "event": "updated",
+      "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+      "Activity": {
+       "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+       "type": "library.update.section",
+       "cancellable": false,
+       "userID": 1,
+       "title": "Scanning TV Shows",
+       "subtitle": "Firefly (2002) - Season 01",
+       "progress": 99,
+       "Context": {
+        "librarySectionID": "2"
+       }
+      }
+     }
+    }
+   },
+   {
+    "event": "activity",
+    "data": {
+     "ActivityNotification": {
+      "event": "updated",
+      "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+      "Activity": {
+       "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+       "type": "library.update.section",
+       "cancellable": false,
+       "userID": 1,
+       "title": "Scanning TV Shows",
+       "subtitle": "Firefly (2002) - Season 01",
+       "progress": 100,
+       "Context": {
+        "librarySectionID": "2"
+       }
+      }
+     }
+    }
+   },
+   {
+    "event": "activity",
+    "data": {
+     "ActivityNotification": {
+      "event": "started",
+      "uuid": "0b71a92d-b4c1-482e-8f9c-be53e863c0ec",
+      "Activity": {
+       "uuid": "0b71a92d-b4c1-482e-8f9c-be53e863c0ec",
+       "type": "provider.subscriptions.process",
+       "cancellable": true,
+       "userID": 1,
+       "title": "Processing subscriptions",
+       "subtitle": "",
+       "progress": 0
+      }
+     }
+    }
+   },
+   {
+    "event": "activity",
+    "data": {
+     "ActivityNotification": {
+      "event": "ended",
+      "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+      "Activity": {
+       "uuid": "5824e272-72a8-42f0-997b-7abbc40d96a2",
+       "type": "library.update.section",
+       "cancellable": false,
+       "userID": 1,
+       "title": "Scanning TV Shows",
+       "subtitle": "Firefly (2002) - Season 01",
+       "progress": 100,
+       "Context": {
+        "librarySectionID": "2"
+       }
+      }
+     }
+    }
+   },
+   {
+    "event": "activity",
+    "data": {
+     "ActivityNotification": {
+      "event": "started",
+      "uuid": "efd85266-02e9-4c8f-bd35-a7da0f421c76",
+      "Activity": {
+       "uuid": "efd85266-02e9-4c8f-bd35-a7da0f421c76",
+       "type": "provider.subscriptions.process",
+       "cancellable": true,
+       "userID": 1,
+       "title": "Processing subscriptions",
+       "subtitle": "",
+       "progress": 0
+      }
+     }
+    }
+   },
+   {
+    "event": "activity",
+    "data": {
+     "ActivityNotification": {
+      "event": "ended",
+      "uuid": "efd85266-02e9-4c8f-bd35-a7da0f421c76",
+      "Activity": {
+       "uuid": "efd85266-02e9-4c8f-bd35-a7da0f421c76",
+       "type": "provider.subscriptions.process",
+       "cancellable": true,
+       "userID": 1,
+       "title": "Processing subscriptions",
+       "subtitle": "",
+       "progress": 100
+      }
+     }
+    }
+   },
+   {
+    "event": "activity",
+    "data": {
+     "ActivityNotification": {
+      "event": "ended",
+      "uuid": "0b71a92d-b4c1-482e-8f9c-be53e863c0ec",
+      "Activity": {
+       "uuid": "0b71a92d-b4c1-482e-8f9c-be53e863c0ec",
+       "type": "provider.subscriptions.process",
+       "cancellable": true,
+       "userID": 1,
+       "title": "Processing subscriptions",
+       "subtitle": "",
+       "progress": 100
+      }
+     }
+    }
+   }
+  ]
+ }
+}

@@ -3432,3 +3432,11 @@ are changing; replay the client's exact request before altering behavior.
   cycle 84's one-space rewrite the oracle still answered a leading TAB with a 200 (B's
   `regress64b_ows`, 5/7); it now reads the raw lines. The native server was already right.
   MALFORMED-ONLY: no client sends a TAB in a header.
+- **A show cascade's per-season activity progress rounds half to EVEN** (cycle 86 C+P,
+  plexscratch 1.43.4; `tests/fixtures/show_cascade_progress_s43.json`). Two-season Firefly's
+  `showOrdering=dvd` write and its undo both step `Updating Metadata` -1 -> 44 -> 44 -> 89 -> 100:
+  one season of two, 44.5, is 44. The same show's library scan steps 49.5 to **50**, so neither
+  truncation (49) nor half-up (45) explains both; half-to-even does. The oracle's `round` was
+  right; the native server's `f64::round` said 45. MALFORMED-ONLY: one transient activity frame.
+  The cascade's frame ORDER on 1.43.4 (per-season `updated` at the season's end, no trailing 49)
+  stays recorded-not-implemented (findings, "The show cascade's frame ORDER on 1.43.4").
