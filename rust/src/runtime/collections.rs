@@ -134,6 +134,19 @@ impl Runtime {
             .filter_map(|row| row.get("year").filter(|value| truthy(value)).map(py_str))
             .collect::<Vec<_>>();
         years.sort();
+        // Cycle 87: emptied by removal it keeps the counts it had (`keep_emptied_counts`).
+        let emptied = if rows.is_empty() {
+            collection.extra.get("_emptiedCounts").cloned()
+        } else {
+            None
+        };
+        if let Some(emptied) = &emptied {
+            years = emptied
+                .get("years")
+                .and_then(Value::as_array)
+                .map(|years| years.iter().map(string_value).collect())
+                .unwrap_or_default();
+        }
         let stamp = collection.stamp();
         let unmatched = collection.unmatched();
         let mut row = Map::new();
@@ -199,7 +212,12 @@ impl Runtime {
         row.insert("updatedAt".to_string(), json!(stamp));
         // Cycle 83, plexscratch42 (1.42.2): an EMPTY collection carries no `childCount`
         // on any of its rows (a one-member one says 1); this sent 0.
-        if !rows.is_empty() {
+        if let Some(count) = emptied
+            .as_ref()
+            .and_then(|emptied| emptied.get("childCount"))
+        {
+            row.insert("childCount".to_string(), count.clone());
+        } else if !rows.is_empty() {
             row.insert("childCount".to_string(), json!(rows.len()));
         }
         row.insert(
@@ -395,6 +413,38 @@ impl Runtime {
             }
         }
         edit::set_lock(row, "collection", true);
+    }
+
+    /// Remember the counts a plain collection had when its LAST member leaves.
+    ///
+    /// Cycle 87, measured on plexscratch42 (1.42.2;
+    /// `tests/fixtures/collection_emptied_s42.json`): emptied one member at a time --
+    /// `DELETE .../items/{id}` or the member's `collection[].tag.tag-` edit -- a
+    /// collection keeps the `childCount`, `minYear` and `maxYear` it had with one member
+    /// left, on the DELETE's answer and every read, while `/children` lists nothing. The
+    /// reference stops recomputing the aggregate at zero; one CREATED empty never had one
+    /// (cycle 83). This dropped all three.
+    pub(super) fn keep_emptied_counts(&mut self, id: &str, members: &[Value]) {
+        let Some(collection) = self.collections.get(id).cloned() else {
+            return;
+        };
+        if collection.smart
+            || members.is_empty()
+            || !self.collection_members(&collection).is_empty()
+        {
+            return;
+        }
+        let mut years = members
+            .iter()
+            .filter_map(|row| row.get("year").filter(|value| truthy(value)).map(py_str))
+            .collect::<Vec<_>>();
+        years.sort();
+        if let Some(stored) = self.collections.get_mut(id) {
+            stored.extra.insert(
+                "_emptiedCounts".to_string(),
+                json!({"childCount": members.len(), "years": years}),
+            );
+        }
     }
 
     fn untag_collection_member(&mut self, key: &str, name: &str) {
@@ -1153,10 +1203,12 @@ impl Runtime {
                 .get(id)
                 .is_some_and(|c| c.items.iter().any(|k| k == member));
             if removed {
+                let members = self.collection_members(&collection);
                 if let Some(stored) = self.collections.get_mut(id) {
                     stored.items.retain(|key| key != member);
                     stored.touch();
                 }
+                self.keep_emptied_counts(id, &members);
                 self.untag_collection_member(member, &name);
                 self.dirty = true;
             }

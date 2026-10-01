@@ -1661,8 +1661,10 @@ class Library:
     def remove_collection_item(self, collection, row):
         """Drop one member from a collection, and its Collection tag with it."""
         before = len(collection["items"])
+        members = self._collection_members_before(collection)
         collection["items"] = [k for k in collection["items"]
                                if int(k) != int(row["ratingKey"])]
+        self._keep_emptied_counts(collection, members)
         if len(collection["items"]) != before:
             collection["updatedAt"] = _now()
         tags = [t for t in row.get("Collection") or []
@@ -1689,8 +1691,30 @@ class Library:
         collection = self.find_collection(title, row.get("librarySectionID"))
         if not collection:
             return
+        members = self._collection_members_before(collection)
         collection["items"] = [k for k in collection["items"]
                                if int(k) != int(row["ratingKey"])]
+        self._keep_emptied_counts(collection, members)
+
+    def _collection_members_before(self, collection):
+        return [] if collection.get("smart") else self.collection_children(collection)
+
+    def _keep_emptied_counts(self, collection, members):
+        """Remember the counts a collection had when its LAST member leaves.
+
+        Cycle 87, measured on plexscratch42 (1.42.2;
+        `tests/fixtures/collection_emptied_s42.json`): a plain collection emptied one
+        member at a time -- `DELETE .../items/{id}` or the member's `collection[].tag.tag-`
+        edit -- keeps the `childCount`, `minYear` and `maxYear` it had with one member
+        left, on the DELETE's answer and on every read, while `/children` lists nothing.
+        The reference stops recomputing the aggregate at zero; a collection CREATED empty
+        never had one (cycle 83). plexsim dropped all three.
+        """
+        if members and not self.collection_children(collection):
+            collection["_emptiedCounts"] = {
+                "childCount": len(members),
+                "years": sorted(str(r.get("year")) for r in members if r.get("year")),
+            }
 
     # -- match / unmatch / refresh / split / merge ------------------------
 
@@ -2650,6 +2674,9 @@ class Library:
         """Field set measured on a real PMS's POST /library/collections."""
         rows = self.collection_children(collection)
         years = sorted(str(r.get("year")) for r in rows if r.get("year"))
+        emptied = None if rows else collection.get("_emptiedCounts")
+        if emptied:
+            years = list(emptied["years"])
         stamp = collection["updatedAt"]
         row = {
             "ratingKey": str(collection["ratingKey"]),
@@ -2698,7 +2725,11 @@ class Library:
             if str(collection["librarySectionID"]).isdigit()
             else collection["librarySectionID"],
         }
-        if not rows:
+        if emptied:
+            # Cycle 87: emptied by removal, it keeps the count it had (see
+            # `_keep_emptied_counts`).
+            row["childCount"] = emptied["childCount"]
+        elif not rows:
             # Cycle 83, measured on plexscratch42 (1.42.2) with an episode collection
             # created over a show's key (so it holds nothing): the row carries NO
             # `childCount` -- section `/collections`, `/library/metadata/{id}`,

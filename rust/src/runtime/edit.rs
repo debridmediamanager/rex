@@ -1206,15 +1206,25 @@ impl Runtime {
         }
         for title in &outcome.collection_removed {
             let lowered = title.to_lowercase();
-            if let Some(collection) = self.collections.values_mut().find(|collection| {
-                let tag = if collection.tag.is_empty() {
-                    &collection.title
-                } else {
-                    &collection.tag
-                };
-                tag.to_lowercase() == lowered && collection.section == section
-            }) {
-                collection.items.retain(|item| item != key);
+            if let Some(before) = self
+                .collections
+                .values()
+                .find(|collection| {
+                    let tag = if collection.tag.is_empty() {
+                        &collection.title
+                    } else {
+                        &collection.tag
+                    };
+                    tag.to_lowercase() == lowered && collection.section == section
+                })
+                .cloned()
+            {
+                let id = before.id.clone();
+                let members = self.collection_members(&before);
+                if let Some(collection) = self.collections.get_mut(&id) {
+                    collection.items.retain(|item| item != key);
+                }
+                self.keep_emptied_counts(&id, &members);
             }
         }
     }

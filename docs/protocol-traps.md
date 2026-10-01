@@ -3842,3 +3842,21 @@ are changing; replay the client's exact request before altering behavior.
   cookie, window, connection state, encoding trio, `Content-Length`, `Cache-Control`); the five
   `Cache-Control`-first routes keep it second when gzipped. Both servers kept the plain order
   there and put the encoding trio before `Date`. MALFORMED-ONLY: no client reads header order.
+- **A collection EMPTIED by removing its members keeps the counts it had with one left.**
+  Measured on plexscratch42 (1.42.2), cycle 87 B (`tests/fixtures/collection_emptied_s42.json`):
+  a plain movie collection over a 2006 and a 2010 movie, emptied one `DELETE
+  /library/collections/{id}/items/{id}` at a time, answers `childCount` 1 and `minYear`/`maxYear`
+  2010 on the last DELETE's own answer, `/library/collections/{id}`, `/library/metadata/{id}`,
+  section `/collections` and `all?type=18`, while `/children` lists nothing; a re-add reads the
+  re-added member's year and a second emptying keeps it; removing a one-member collection's tag
+  from the member (`collection[].tag.tag-`) does the same (and the copy's own cycle-49 `C49Empty`
+  still reads 1). The reference stops recomputing the aggregate at zero; a collection CREATED
+  empty never had one and still carries no `childCount` (cycle 83). Both servers dropped all
+  three fields. Found because cycle 87's python-plexapi walk ran the plain-collection steps on
+  plexscratch42 for the first time since cycle 82 (its create had answered a busy-database 500
+  every cycle since). The member-row delete and merge paths that also drop members were not
+  measured (plexscratch42's media is read-only) and are unchanged. CLIENT-VISIBLE: Plex Web
+  4.162.1 subtitles a collection with its `childCount` by subtype (main chunk: `"{itemCount}
+  movie"`, `"{itemCount} shows"`, ..., nothing when the field is absent), so the emptied
+  collection read "1 movie" on the reference and nothing on ours; python-plexapi's
+  `Collection.childCount` after `removeItems` read 1 there and None here.
