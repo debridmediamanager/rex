@@ -3580,3 +3580,14 @@ are changing; replay the client's exact request before altering behavior.
   lowercased it. No official client or python-plexapi request in the corpora sends `type=18` here
   (plexapi's `section.collection()` reads `/all?type=18&title=`; Plex Web reads `/library/search`
   and `/hubs/search`; `/library/sections/{id}` advertises only `search?type=1|2|4`): MALFORMED-ONLY.
+- **A row delete and a merge are list writes too** (cycle 87 E2, closing cycle 83's "the oracle's
+  other unlocked list writes"). Both rewrite every playlist's and collection's item list -- read,
+  filter, assign -- and the oracle ran them outside `sim.lock`, so a playlist CLEAR (or an item
+  remove) landing between the read and the assign was undone: a cleared 40,000-item playlist came
+  back whole in 5, 9 and 10 of 300 barrier pairs (`tests/test_followups_c87_e2.py`, a generated
+  catalog with two whole-library playlists swept ahead of the target and the clear sent 0-1 ms
+  behind the delete; the window is one list comprehension, which a smaller catalog never opens).
+  The DELETE and both merge paths now hold the lock; the native server serialises them already and
+  answered 0 of 300 before and after. No reference measurement applies: a real PMS keeps its lists
+  in SQLite. MALFORMED-ONLY in practice: it needs a delete and a list write inside the same
+  milliseconds.

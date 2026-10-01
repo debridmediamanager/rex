@@ -16,6 +16,15 @@
    viewGroup is `collection` with no viewMode, each row the `/all?type=18` row. Neither
    server searched collections at all. Beside it, kids: the title2 keeps the query
    verbatim (`'TeArS'`, `' TEARS '`) and a padded query is not trimmed.
+3. The oracle's unlocked list writes (cycle 83): a row DELETE (and a merge) rewrites every
+   playlist's item list -- read, filter, assign -- outside the lock the list writes have
+   held since cycle 83. A playlist CLEAR landing between that read and assign is undone,
+   and the cleared playlist comes back whole. The window is a list comprehension, so it is
+   widened the only way a black-box test can: a generated catalog of 40,000 movies, two
+   whole-library playlists ahead of the target (so the delete is still sweeping when a
+   waiting thread's 5 ms GIL request lands) and the clear sent 0, 0.5 or 1 ms behind the
+   delete. The unfixed oracle failed 9 and 10 of 300 pairs; the check asserts none.
+   `--skip-race` leaves it out.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
@@ -25,6 +34,8 @@ the oracle with `PLEXSIM_SERVER=python`.
 import http.client
 import json
 import os
+import shutil
+import tempfile
 import socket
 import subprocess
 import sys
@@ -83,13 +94,13 @@ def request(port, method, path, headers=None):
         connection.close()
 
 
-def start():
+def start(catalog=CATALOG):
     port = free_port()
     process = subprocess.Popen(
-        server_command("--port", port, "--catalog", CATALOG, "--assert-claimed",
+        server_command("--port", port, "--catalog", catalog, "--assert-claimed",
                        "--gdm", "off", root=ROOT),
         cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for _ in range(150):
+    for _ in range(600):
         if process.poll() is not None:
             break
         try:
@@ -348,6 +359,89 @@ def search_checks(port):
             request(port, "DELETE", "/library/collections/%s" % key)
 
 
+# -- 3. a row delete against a playlist clear ---------------------------------------------
+
+RACE_ROWS, RACE_PAIRS = 40000, 300
+
+
+def race_catalog(directory):
+    """catalog_ui.json plus RACE_ROWS lean movies in section 1."""
+    catalog = json.load(open(os.path.join(HERE, "catalog_ui.json")))
+    for number in range(RACE_ROWS):
+        key = 200000 + number
+        catalog["items"].append({
+            "ratingKey": str(key), "key": "/library/metadata/%d" % key,
+            "guid": "plex://movie/%024x" % key, "type": "movie",
+            "title": "Race %05d" % number, "year": 2020, "duration": 60000,
+            "addedAt": 1789180050, "updatedAt": 1789180050,
+            "librarySectionID": 1})
+    path = os.path.join(directory, "catalog.json")
+    with open(path, "w") as handle:
+        json.dump(catalog, handle)
+    return path
+
+
+def race_checks():
+    directory = tempfile.mkdtemp(prefix="plexsim-c87-e2-")
+    try:
+        process, port = start(race_catalog(directory))
+        try:
+            delete_clear_race(port)
+        finally:
+            stop(process)
+    finally:
+        shutil.rmtree(directory, ignore_errors=True)
+
+
+def delete_clear_race(port):
+    machine = container_of(request(port, "GET", "/identity")[1])["machineIdentifier"]
+    library = urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/sections/1/all"
+                                 "?type=1" % machine, safe="")
+    # Dict order is creation order: the two padding lists are swept BEFORE the target.
+    for name in ("Pad%20A", "Pad%20B", "Target"):
+        status, body = request(port, "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"
+                               % (name, library))
+    target = container_of(body)["Metadata"][0]
+    check("the target playlist holds the whole library",
+          status == 200 and target.get("leafCount", 0) >= RACE_ROWS, (status, target.get("leafCount")))
+    victims = ["%d" % (200000 + number) for number in range(RACE_PAIRS)]
+    back, refused = [], []
+    for number, victim in enumerate(victims):
+        if number:
+            request(port, "PUT", "/playlists/%s/items?uri=%s" % (target["ratingKey"], library))
+        connections = [http.client.HTTPConnection("127.0.0.1", port, timeout=60) for _ in range(2)]
+        for connection in connections:
+            connection.connect()
+        barrier, out = threading.Barrier(2), [None, None]
+
+        def send(index, method, path):
+            barrier.wait()
+            if index:
+                time.sleep((number % 3) * 0.0005)
+            connection = connections[index]
+            connection.request(method, path, headers=HEADERS)
+            response = connection.getresponse()
+            response.read()
+            out[index] = response.status
+
+        threads = [threading.Thread(target=send, args=(0, "DELETE", "/library/metadata/%s" % victim)),
+                   threading.Thread(target=send, args=(1, "DELETE", "/playlists/%s/items"
+                                                       % target["ratingKey"]))]
+        [thread.start() for thread in threads]
+        [thread.join() for thread in threads]
+        [connection.close() for connection in connections]
+        if out != [200, 200]:
+            refused.append((victim, out))
+        left = container_of(request(port, "GET", "/playlists/%s" % target["ratingKey"])[1])
+        count = (left.get("Metadata") or [{}])[0].get("leafCount")
+        if count:
+            back.append((victim, count))
+    check("a row delete and a playlist clear released together both answer 200",
+          not refused, refused[:5])
+    check("a cleared playlist stays cleared when a row delete races it (%d pairs)" % RACE_PAIRS,
+          not back, "%d of %d came back, e.g. %s" % (len(back), RACE_PAIRS, back[:4]))
+
+
 def main():
     process, port = start()
     try:
@@ -355,6 +449,8 @@ def main():
         search_checks(port)
     finally:
         stop(process)
+    if "--skip-race" not in sys.argv:
+        race_checks()
     passed = sum(results)
     print("%s %d/%d cycle 87 E2 follow-up checks"
           % ("PASS" if passed == len(results) else "FAIL", passed, len(results)))

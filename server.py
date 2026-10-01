@@ -13537,7 +13537,14 @@ class PlexSim:
                     # real PMS answers 400 when there are none to delete.
                     return ("error", 400, "plexsim: no optimized versions")
                 doomed = self.subtree_keys(rating_key)
-                self.library.delete(rating_key)
+                # Cycle 87: the delete REWRITES every playlist's and collection's item
+                # list (read, filter, assign), so it is a list write and runs inside the
+                # lock every other list write holds since cycle 83. Outside it, a
+                # playlist clear or item remove landing between the read and the assign
+                # was undone: `tests/test_followups_c87_e2.py` saw a cleared 40,000-item
+                # playlist come back whole 9 and 10 times in 300 barrier pairs.
+                with self.lock:
+                    self.library.delete(rating_key)
                 self.drop_from_queues(doomed)
                 self.notify_deleted(row)
                 logger.info("DELETE %s (%s)", rating_key, row.get("title"))
@@ -18393,7 +18400,9 @@ class PlexSim:
                             None)
             self.notify_timeline(row, self.TIMELINE_QUEUED, None)
             if existing is not None:
-                merged = self.library.merge(existing, [row["ratingKey"]])
+                # Cycle 87: a merge removes rows like a delete, under the list lock.
+                with self.lock:
+                    merged = self.library.merge(existing, [row["ratingKey"]])
                 # Only what the merge really absorbed leaves the queues: a survivor with
                 # no Media of its own absorbs nothing, and its rows stay queued.
                 self.drop_from_queues([int(other["ratingKey"]) for other in merged])
@@ -18439,10 +18448,13 @@ class PlexSim:
             if any(other.get("type") != row.get("type") for other in others):
                 return ("error", 400, "plexsim: bad request")
             changed = []
-            if row.get("type") == "show":
-                merged, changed = self.library.merge_shows(row, ids)
-            else:
-                merged = self.library.merge(row, ids)
+            # Cycle 87: a show merge rewrites every playlist's and collection's items,
+            # as a delete does, so both merges run under the list lock.
+            with self.lock:
+                if row.get("type") == "show":
+                    merged, changed = self.library.merge_shows(row, ids)
+                else:
+                    merged = self.library.merge(row, ids)
             # Cycle 84, plexscratch42: every row a merge absorbs leaves the play queues --
             # an episode merge's absorbed episode, a show merge's absorbed episodes -- with
             # the version stepped per row (`drop_from_queues`). plexsim left them queued.
