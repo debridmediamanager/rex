@@ -1,0 +1,1679 @@
+{
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh install)",
+ "date": "2026-10-01",
+ "headers": {
+  "Accept": "application/json",
+  "X-Plex-Product": "Plex Web",
+  "X-Plex-Version": "4.162.1",
+  "X-Plex-Platform": "Chrome"
+ },
+ "note": "Destructive writes, in this order, on a disposable copy restored from a snapshot afterwards. /system/agents bodies are kept as their identifier lists (the JSON parser collapsed repeated Language keys).",
+ "before": {
+  "/media/providers/metadata": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "MetadataAgentProvider": [
+      {
+       "id": 1,
+       "identifier": "tv.plex.agents.movie",
+       "title": "Plex Movie",
+       "uri": "",
+       "agentType": "primary",
+       "online": false,
+       "MetadataType": [
+        {
+         "type": 1
+        }
+       ]
+      },
+      {
+       "id": 2,
+       "identifier": "tv.plex.agents.series",
+       "title": "Plex Series",
+       "uri": "",
+       "agentType": "primary",
+       "online": false,
+       "MetadataType": [
+        {
+         "type": 2
+        },
+        {
+         "type": 3
+        },
+        {
+         "type": 4
+        }
+       ]
+      },
+      {
+       "id": 3,
+       "identifier": "tv.plex.agents.music",
+       "title": "Plex Music",
+       "uri": "",
+       "agentType": "primary",
+       "online": false,
+       "MetadataType": [
+        {
+         "type": 8
+        },
+        {
+         "type": 9
+        },
+        {
+         "type": 10
+        }
+       ]
+      },
+      {
+       "id": 5,
+       "identifier": "tv.plex.agents.none",
+       "title": "Plex Personal Media",
+       "uri": "",
+       "agentType": "primary",
+       "online": true,
+       "MetadataType": [
+        {
+         "type": 1
+        },
+        {
+         "type": 2
+        },
+        {
+         "type": 3
+        },
+        {
+         "type": 4
+        },
+        {
+         "type": 8
+        },
+        {
+         "type": 9
+        },
+        {
+         "type": 10
+        },
+        {
+         "type": 13
+        },
+        {
+         "type": 14
+        },
+        {
+         "type": 20
+        },
+        {
+         "type": 21
+        },
+        {
+         "type": 22
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "/media/providers/metadata/group": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "MetadataAgentProviderGroup": [
+      {
+       "id": 1,
+       "title": "Plex Movie",
+       "primaryIdentifier": "tv.plex.agents.movie",
+       "builtIn": "1",
+       "MetadataAgentProviderGroupItem": [
+        {
+         "id": 1,
+         "metadataAgentProviderGroupId": 1,
+         "metadataAgentProviderId": 1,
+         "order": 1000.0
+        }
+       ]
+      },
+      {
+       "id": 2,
+       "title": "Plex Series",
+       "primaryIdentifier": "tv.plex.agents.series",
+       "builtIn": "1",
+       "MetadataAgentProviderGroupItem": [
+        {
+         "id": 2,
+         "metadataAgentProviderGroupId": 2,
+         "metadataAgentProviderId": 2,
+         "order": 1000.0
+        }
+       ]
+      },
+      {
+       "id": 3,
+       "title": "Plex Music",
+       "primaryIdentifier": "tv.plex.agents.music",
+       "builtIn": "1",
+       "MetadataAgentProviderGroupItem": [
+        {
+         "id": 3,
+         "metadataAgentProviderGroupId": 3,
+         "metadataAgentProviderId": 3,
+         "order": 1000.0
+        }
+       ]
+      },
+      {
+       "id": 4,
+       "title": "Plex Personal Media",
+       "primaryIdentifier": "tv.plex.agents.none",
+       "builtIn": "1",
+       "MetadataAgentProviderGroupItem": [
+        {
+         "id": 4,
+         "metadataAgentProviderGroupId": 4,
+         "metadataAgentProviderId": 5,
+         "order": 1000.0
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "/media/providers/metadata/3": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "MetadataAgentProvider": [
+      {
+       "id": 3,
+       "identifier": "tv.plex.agents.music",
+       "title": "Plex Music",
+       "uri": "",
+       "agentType": "primary",
+       "online": false,
+       "MetadataType": [
+        {
+         "type": 8
+        },
+        {
+         "type": 9
+        },
+        {
+         "type": 10
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "/media/providers/metadata/group/3": {
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "MetadataAgentProviderGroup": [
+      {
+       "id": 3,
+       "title": "Plex Music",
+       "primaryIdentifier": "tv.plex.agents.music",
+       "builtIn": "1",
+       "MetadataAgentProviderGroupItem": [
+        {
+         "id": 3,
+         "metadataAgentProviderGroupId": 3,
+         "metadataAgentProviderId": 3,
+         "order": 1000.0
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "/system/agents?mediaType=8": {
+   "status": 200,
+   "body": {
+    "identifiers": [
+     "com.plexapp.agents.none",
+     "com.plexapp.agents.lastfm",
+     "tv.plex.agents.music",
+     "tv.plex.agents.none"
+    ]
+   }
+  },
+  "/system/agents?mediaType=9": {
+   "status": 200,
+   "body": {
+    "identifiers": [
+     "com.plexapp.agents.none",
+     "com.plexapp.agents.lastfm",
+     "tv.plex.agents.music",
+     "tv.plex.agents.none"
+    ]
+   }
+  }
+ },
+ "steps": [
+  {
+   "method": "DELETE",
+   "path": "/media/providers/metadata/3",
+   "status": 400,
+   "contentType": "text/html",
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>",
+   "after": {
+    "/media/providers/metadata": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 4,
+       "MetadataAgentProvider": [
+        {
+         "id": 1,
+         "identifier": "tv.plex.agents.movie",
+         "title": "Plex Movie",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 1
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "identifier": "tv.plex.agents.series",
+         "title": "Plex Series",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          }
+         ]
+        },
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        },
+        {
+         "id": 5,
+         "identifier": "tv.plex.agents.none",
+         "title": "Plex Personal Media",
+         "uri": "",
+         "agentType": "primary",
+         "online": true,
+         "MetadataType": [
+          {
+           "type": 1
+          },
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          },
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          },
+          {
+           "type": 13
+          },
+          {
+           "type": 14
+          },
+          {
+           "type": 20
+          },
+          {
+           "type": 21
+          },
+          {
+           "type": 22
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 4,
+       "MetadataAgentProviderGroup": [
+        {
+         "id": 1,
+         "title": "Plex Movie",
+         "primaryIdentifier": "tv.plex.agents.movie",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 1,
+           "metadataAgentProviderGroupId": 1,
+           "metadataAgentProviderId": 1,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "title": "Plex Series",
+         "primaryIdentifier": "tv.plex.agents.series",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 2,
+           "metadataAgentProviderGroupId": 2,
+           "metadataAgentProviderId": 2,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 3,
+         "title": "Plex Music",
+         "primaryIdentifier": "tv.plex.agents.music",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 3,
+           "metadataAgentProviderGroupId": 3,
+           "metadataAgentProviderId": 3,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 4,
+         "title": "Plex Personal Media",
+         "primaryIdentifier": "tv.plex.agents.none",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 4,
+           "metadataAgentProviderGroupId": 4,
+           "metadataAgentProviderId": 5,
+           "order": 1000.0
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/3": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "MetadataAgentProvider": [
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group/3": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "MetadataAgentProviderGroup": [
+        {
+         "id": 3,
+         "title": "Plex Music",
+         "primaryIdentifier": "tv.plex.agents.music",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 3,
+           "metadataAgentProviderGroupId": 3,
+           "metadataAgentProviderId": 3,
+           "order": 1000.0
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/system/agents?mediaType=8": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.music",
+       "tv.plex.agents.none"
+      ]
+     }
+    },
+    "/system/agents?mediaType=9": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.music",
+       "tv.plex.agents.none"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/library/sections?name=W3%20Music%20A&type=artist&agent=tv.plex.agents.music&scanner=Plex%20Music&language=en-US&metadataAgentProviderGroupId=3&location=%2Fdata%2Fw3-none",
+   "status": 201,
+   "contentType": "application/json",
+   "body": {
+    "Directory.agent": "tv.plex.agents.music",
+    "Directory.metadataAgentProviderGroupId": 3
+   },
+   "after": {
+    "/media/providers/metadata": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 4,
+       "MetadataAgentProvider": [
+        {
+         "id": 1,
+         "identifier": "tv.plex.agents.movie",
+         "title": "Plex Movie",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 1
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "identifier": "tv.plex.agents.series",
+         "title": "Plex Series",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          }
+         ]
+        },
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        },
+        {
+         "id": 5,
+         "identifier": "tv.plex.agents.none",
+         "title": "Plex Personal Media",
+         "uri": "",
+         "agentType": "primary",
+         "online": true,
+         "MetadataType": [
+          {
+           "type": 1
+          },
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          },
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          },
+          {
+           "type": 13
+          },
+          {
+           "type": 14
+          },
+          {
+           "type": 20
+          },
+          {
+           "type": 21
+          },
+          {
+           "type": 22
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 4,
+       "MetadataAgentProviderGroup": [
+        {
+         "id": 1,
+         "title": "Plex Movie",
+         "primaryIdentifier": "tv.plex.agents.movie",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 1,
+           "metadataAgentProviderGroupId": 1,
+           "metadataAgentProviderId": 1,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "title": "Plex Series",
+         "primaryIdentifier": "tv.plex.agents.series",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 2,
+           "metadataAgentProviderGroupId": 2,
+           "metadataAgentProviderId": 2,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 3,
+         "title": "Plex Music",
+         "primaryIdentifier": "tv.plex.agents.music",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 3,
+           "metadataAgentProviderGroupId": 3,
+           "metadataAgentProviderId": 3,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 4,
+         "title": "Plex Personal Media",
+         "primaryIdentifier": "tv.plex.agents.none",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 4,
+           "metadataAgentProviderGroupId": 4,
+           "metadataAgentProviderId": 5,
+           "order": 1000.0
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/3": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "MetadataAgentProvider": [
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group/3": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "MetadataAgentProviderGroup": [
+        {
+         "id": 3,
+         "title": "Plex Music",
+         "primaryIdentifier": "tv.plex.agents.music",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 3,
+           "metadataAgentProviderGroupId": 3,
+           "metadataAgentProviderId": 3,
+           "order": 1000.0
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/system/agents?mediaType=8": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.music",
+       "tv.plex.agents.none"
+      ]
+     }
+    },
+    "/system/agents?mediaType=9": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.music",
+       "tv.plex.agents.none"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/media/providers/metadata/group/3",
+   "status": 200,
+   "contentType": "text/html",
+   "body": "",
+   "after": {
+    "/media/providers/metadata": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 4,
+       "MetadataAgentProvider": [
+        {
+         "id": 1,
+         "identifier": "tv.plex.agents.movie",
+         "title": "Plex Movie",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 1
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "identifier": "tv.plex.agents.series",
+         "title": "Plex Series",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          }
+         ]
+        },
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        },
+        {
+         "id": 5,
+         "identifier": "tv.plex.agents.none",
+         "title": "Plex Personal Media",
+         "uri": "",
+         "agentType": "primary",
+         "online": true,
+         "MetadataType": [
+          {
+           "type": 1
+          },
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          },
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          },
+          {
+           "type": 13
+          },
+          {
+           "type": 14
+          },
+          {
+           "type": 20
+          },
+          {
+           "type": 21
+          },
+          {
+           "type": 22
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 3,
+       "MetadataAgentProviderGroup": [
+        {
+         "id": 1,
+         "title": "Plex Movie",
+         "primaryIdentifier": "tv.plex.agents.movie",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 1,
+           "metadataAgentProviderGroupId": 1,
+           "metadataAgentProviderId": 1,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "title": "Plex Series",
+         "primaryIdentifier": "tv.plex.agents.series",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 2,
+           "metadataAgentProviderGroupId": 2,
+           "metadataAgentProviderId": 2,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 4,
+         "title": "Plex Personal Media",
+         "primaryIdentifier": "tv.plex.agents.none",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 4,
+           "metadataAgentProviderGroupId": 4,
+           "metadataAgentProviderId": 5,
+           "order": 1000.0
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/3": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "MetadataAgentProvider": [
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group/3": {
+     "status": 404,
+     "body": null
+    },
+    "/system/agents?mediaType=8": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.none"
+      ]
+     }
+    },
+    "/system/agents?mediaType=9": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.none"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/library/sections?name=W3%20Music%20B&type=artist&agent=tv.plex.agents.music&scanner=Plex%20Music&language=en-US&metadataAgentProviderGroupId=3&location=%2Fdata%2Fw3-none",
+   "status": 400,
+   "contentType": null,
+   "body": "unable to find entry for provided 'metadataAgentProviderGroupId'\r\n",
+   "after": {
+    "/media/providers/metadata": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 4,
+       "MetadataAgentProvider": [
+        {
+         "id": 1,
+         "identifier": "tv.plex.agents.movie",
+         "title": "Plex Movie",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 1
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "identifier": "tv.plex.agents.series",
+         "title": "Plex Series",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          }
+         ]
+        },
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        },
+        {
+         "id": 5,
+         "identifier": "tv.plex.agents.none",
+         "title": "Plex Personal Media",
+         "uri": "",
+         "agentType": "primary",
+         "online": true,
+         "MetadataType": [
+          {
+           "type": 1
+          },
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          },
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          },
+          {
+           "type": 13
+          },
+          {
+           "type": 14
+          },
+          {
+           "type": 20
+          },
+          {
+           "type": 21
+          },
+          {
+           "type": 22
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 3,
+       "MetadataAgentProviderGroup": [
+        {
+         "id": 1,
+         "title": "Plex Movie",
+         "primaryIdentifier": "tv.plex.agents.movie",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 1,
+           "metadataAgentProviderGroupId": 1,
+           "metadataAgentProviderId": 1,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "title": "Plex Series",
+         "primaryIdentifier": "tv.plex.agents.series",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 2,
+           "metadataAgentProviderGroupId": 2,
+           "metadataAgentProviderId": 2,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 4,
+         "title": "Plex Personal Media",
+         "primaryIdentifier": "tv.plex.agents.none",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 4,
+           "metadataAgentProviderGroupId": 4,
+           "metadataAgentProviderId": 5,
+           "order": 1000.0
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/3": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "MetadataAgentProvider": [
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group/3": {
+     "status": 404,
+     "body": null
+    },
+    "/system/agents?mediaType=8": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.none"
+      ]
+     }
+    },
+    "/system/agents?mediaType=9": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.none"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/library/sections?name=W3%20Music%20C&type=artist&agent=tv.plex.agents.music&scanner=Plex%20Music&language=en-US&location=%2Fdata%2Fw3-none",
+   "status": 400,
+   "contentType": null,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n",
+   "after": {
+    "/media/providers/metadata": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 4,
+       "MetadataAgentProvider": [
+        {
+         "id": 1,
+         "identifier": "tv.plex.agents.movie",
+         "title": "Plex Movie",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 1
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "identifier": "tv.plex.agents.series",
+         "title": "Plex Series",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          }
+         ]
+        },
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        },
+        {
+         "id": 5,
+         "identifier": "tv.plex.agents.none",
+         "title": "Plex Personal Media",
+         "uri": "",
+         "agentType": "primary",
+         "online": true,
+         "MetadataType": [
+          {
+           "type": 1
+          },
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          },
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          },
+          {
+           "type": 13
+          },
+          {
+           "type": 14
+          },
+          {
+           "type": 20
+          },
+          {
+           "type": 21
+          },
+          {
+           "type": 22
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 3,
+       "MetadataAgentProviderGroup": [
+        {
+         "id": 1,
+         "title": "Plex Movie",
+         "primaryIdentifier": "tv.plex.agents.movie",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 1,
+           "metadataAgentProviderGroupId": 1,
+           "metadataAgentProviderId": 1,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "title": "Plex Series",
+         "primaryIdentifier": "tv.plex.agents.series",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 2,
+           "metadataAgentProviderGroupId": 2,
+           "metadataAgentProviderId": 2,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 4,
+         "title": "Plex Personal Media",
+         "primaryIdentifier": "tv.plex.agents.none",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 4,
+           "metadataAgentProviderGroupId": 4,
+           "metadataAgentProviderId": 5,
+           "order": 1000.0
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/3": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "MetadataAgentProvider": [
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group/3": {
+     "status": 404,
+     "body": null
+    },
+    "/system/agents?mediaType=8": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.none"
+      ]
+     }
+    },
+    "/system/agents?mediaType=9": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.none"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/media/providers/metadata/3",
+   "status": 400,
+   "contentType": "text/html",
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>",
+   "after": {
+    "/media/providers/metadata": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 4,
+       "MetadataAgentProvider": [
+        {
+         "id": 1,
+         "identifier": "tv.plex.agents.movie",
+         "title": "Plex Movie",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 1
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "identifier": "tv.plex.agents.series",
+         "title": "Plex Series",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          }
+         ]
+        },
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        },
+        {
+         "id": 5,
+         "identifier": "tv.plex.agents.none",
+         "title": "Plex Personal Media",
+         "uri": "",
+         "agentType": "primary",
+         "online": true,
+         "MetadataType": [
+          {
+           "type": 1
+          },
+          {
+           "type": 2
+          },
+          {
+           "type": 3
+          },
+          {
+           "type": 4
+          },
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          },
+          {
+           "type": 13
+          },
+          {
+           "type": 14
+          },
+          {
+           "type": 20
+          },
+          {
+           "type": 21
+          },
+          {
+           "type": 22
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/group": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 3,
+       "MetadataAgentProviderGroup": [
+        {
+         "id": 1,
+         "title": "Plex Movie",
+         "primaryIdentifier": "tv.plex.agents.movie",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 1,
+           "metadataAgentProviderGroupId": 1,
+           "metadataAgentProviderId": 1,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 2,
+         "title": "Plex Series",
+         "primaryIdentifier": "tv.plex.agents.series",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 2,
+           "metadataAgentProviderGroupId": 2,
+           "metadataAgentProviderId": 2,
+           "order": 1000.0
+          }
+         ]
+        },
+        {
+         "id": 4,
+         "title": "Plex Personal Media",
+         "primaryIdentifier": "tv.plex.agents.none",
+         "builtIn": "1",
+         "MetadataAgentProviderGroupItem": [
+          {
+           "id": 4,
+           "metadataAgentProviderGroupId": 4,
+           "metadataAgentProviderId": 5,
+           "order": 1000.0
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/media/providers/metadata/3": {
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "MetadataAgentProvider": [
+        {
+         "id": 3,
+         "identifier": "tv.plex.agents.music",
+         "title": "Plex Music",
+         "uri": "",
+         "agentType": "primary",
+         "online": false,
+         "MetadataType": [
+          {
+           "type": 8
+          },
+          {
+           "type": 9
+          },
+          {
+           "type": 10
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "/system/agents?mediaType=8": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.none"
+      ]
+     }
+    },
+    "/system/agents": {
+     "status": 200,
+     "body": {
+      "identifiers": [
+       "com.plexapp.agents.fanarttv",
+       "com.plexapp.agents.none",
+       "com.plexapp.agents.htbackdrops",
+       "com.plexapp.agents.imdb",
+       "com.plexapp.agents.lyricfind",
+       "com.plexapp.agents.thetvdb",
+       "com.plexapp.agents.plexthememusic",
+       "com.plexapp.agents.themoviedb",
+       "com.plexapp.agents.movieposterdb",
+       "com.plexapp.agents.localmedia",
+       "com.plexapp.agents.lastfm",
+       "tv.plex.agents.movie",
+       "tv.plex.agents.series",
+       "tv.plex.agents.none"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/media/providers/metadata/group/3",
+   "status": 404,
+   "contentType": "text/html",
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>",
+   "after": {}
+  }
+ ]
+}

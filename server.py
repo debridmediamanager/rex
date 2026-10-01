@@ -3966,6 +3966,8 @@ class PlexSim:
         self.next_metadata_provider_group = len(SYSTEM_AGENTS) + 1
         # Cycle 87: a BUILT-IN group's renamed title, by group id (plexscratch42).
         self.builtin_group_titles = {}
+        # Cycle 87: the BUILT-IN group ids a client deleted (plexscratch42).
+        self.deleted_builtin_groups = set()
         # Sidecar subtitles the Upload modal has sent, by stream id: the bytes are kept
         # so a DELETE of one can tell an uploaded stream from an embedded track.
         self.uploaded_subtitles = {}
@@ -6174,7 +6176,8 @@ class PlexSim:
                 "metadataAgentProviderId": row["id"],
                 "order": 1000.0,
             }],
-        } for number, row in enumerate(providers, start=1)]
+        } for number, row in enumerate(providers, start=1)
+            if number not in self.deleted_builtin_groups]
         with self.lock:
             groups.extend(self.metadata_agent_provider_group(entry)
                           for entry in self.metadata_provider_groups.values())
@@ -6334,6 +6337,17 @@ class PlexSim:
             group_id = int(segments[4])
             built_in = [row for row in self.metadata_provider_rows(group=True)
                         if row.get("builtIn") and row.get("id") == group_id]
+            if built_in and method == "DELETE" and len(segments) == 5:
+                # Cycle 87, measured on plexscratch42 (fresh 1.42.2): a BUILT-IN group
+                # can be deleted -- `DELETE /group/3` is an empty 200 even with a library
+                # using it -- and it is gone everywhere a group is read: the listing,
+                # `/group/3` (404, and so is a second DELETE), and `/system/agents`, which
+                # drops its agent from the bare list and every `mediaType=`. The provider
+                # row and the libraries naming the group are untouched, and Add Library
+                # then refuses that agent (`create_section`).
+                with self.lock:
+                    self.deleted_builtin_groups.add(group_id)
+                return ("empty", 200)
             if built_in and method == "PUT":
                 # Cycle 87, measured on plexscratch42 (fresh 1.42.2): a BUILT-IN group
                 # takes the rename verb -- `PUT /group/3?title=Plex%20Music`, its own
@@ -6408,6 +6422,11 @@ class PlexSim:
             if len(segments) == 4 and method == "POST":
                 # Cycle 87, plexscratch42: a provider id takes no POST.
                 return ("error", 404, "plexsim: not found")
+            if len(segments) == 4 and method == "DELETE":
+                # Cycle 87, plexscratch42: a BUILT-IN provider cannot be deleted --
+                # `DELETE /media/providers/metadata/3` is a 400 and changes nothing, before
+                # and after its group is deleted. plexsim holds no other kind.
+                return ("error", 400, "plexsim: bad request")
             if len(segments) == 4 and method == "PUT":
                 # Cycle 87, measured on plexscratch42 (fresh 1.42.2) against built-in
                 # provider 1, nothing changing: no `uri` or an empty one is a 400, and a
@@ -20742,6 +20761,11 @@ class PlexSim:
         by_id = {agent["identifier"]: agent for agent in SYSTEM_AGENTS}
         agents = ([by_id[name] for name in AGENT_MEDIA_TYPES.get(str(int(wanted)), [])
                    if name in by_id] if wanted else list(SYSTEM_AGENTS))
+        # Cycle 87, plexscratch42: a modern agent whose BUILT-IN group a client deleted
+        # is gone from both forms (group N is the N-th modern agent).
+        gone = {SYSTEM_AGENTS[number - 1]["identifier"]
+                for number in self.deleted_builtin_groups if 0 < number <= len(SYSTEM_AGENTS)}
+        agents = [agent for agent in agents if agent["identifier"] not in gone]
         # Cycle 53: the eleven LEGACY agents come first, in both forms. In the bare form
         # each carries `MediaType` rows and no `Language` of its own (cycle 56: each
         # MediaType carries ITS languages, 33 for the legacy IMDb movies -- captured into
@@ -21635,6 +21659,24 @@ class PlexSim:
             # 400 whose body is exactly `'language' is invalid`. The client's own form
             # always sends one; plexsim created the library regardless.
             return ("error", 400, "'language' is invalid ")
+        # Cycle 87, measured on plexscratch42 after deleting built-in group 3: Plex Web
+        # 4.162.1's Add Library sends the agent's `/system/agents` id as
+        # `metadataAgentProviderGroupId`, and a group the server does not hold is a 400
+        # ("unable to find entry for provided 'metadataAgentProviderGroupId'"); without
+        # the parameter, a modern agent whose built-in group is gone is a 400 ("unable
+        # to find built-in agent group for provided 'agent'").
+        wanted_group = query.get("metadataAgentProviderGroupId")
+        held = {str(row.get("id")) for row in self.metadata_provider_rows(group=True)}
+        if wanted_group:
+            if str(wanted_group) not in held:
+                return ("error", 400,
+                        "unable to find entry for provided 'metadataAgentProviderGroupId'\r\n")
+        else:
+            modern = [agent["identifier"] for agent in SYSTEM_AGENTS]
+            if query["agent"] in modern and \
+                    modern.index(query["agent"]) + 1 in self.deleted_builtin_groups:
+                return ("error", 400,
+                        "unable to find built-in agent group for provided 'agent'\r\n")
         title = query.get("name") or query.get("title") or "New Library"
         section_type = kind
         seed = "%s-%s" % (title, section_type)

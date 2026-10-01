@@ -27,6 +27,11 @@
   answers the row with the new title, the group listing and `/group/3` keep it, the
   provider row's title does not change, and renaming back restores it. Both servers
   answered the row as held (`tests/fixtures/c87_w3_builtin_group_rename_s42.json`).
+- DELETE on a BUILT-IN id (plexscratch42, destructive, restored from a snapshot after;
+  `tests/fixtures/c87_w3_builtin_deletes_s42.json`): provider 3 is a 400 and stays,
+  before and after its group goes; group 3 is an empty 200 -- gone from the group
+  listing, `/group/3` (404, a second DELETE too) and `/system/agents`' bare list and
+  `mediaType=8`/`9` -- and Add Library then refuses its agent with a 400 either way.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -52,6 +57,7 @@ XML_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_system_agents_xml_zen.json"
 PROVIDER_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_provider_ids_zen.json")
 WRITE_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_provider_writes_s42.json")
 RENAME_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_group_rename_s42.json")
+DELETE_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_deletes_s42.json")
 ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
@@ -227,6 +233,79 @@ def builtin_rename(port):
           request(port, "GET", "/media/providers/metadata/3") == provider_before)
 
 
+def _parsed(text):
+    try:
+        return json.loads(text)
+    except ValueError:
+        return text
+
+
+def _compare_reads(port, headers, label, reads):
+    for path, want in reads.items():
+        status, text = request(port, "GET", path, headers)
+        body = _parsed(text)
+        if want["body"] is None:
+            ok, shown = status == want["status"], status
+        elif path.startswith("/system/agents"):
+            got = [row["identifier"] for row in body["MediaContainer"].get("Agent", [])] \
+                if status == 200 else None
+            want_ids = want["body"]["identifiers"]
+            if path == "/system/agents":
+                # zen's / the copy's own plug-in load order aside (W2).
+                got, want_ids = sorted(got or []), sorted(want_ids)
+            ok, shown = got == want_ids, got
+        elif path == "/media/providers/metadata":
+            # plexsim carries zen's `uri`/`online`; the ids are the question here.
+            got = [row["id"] for row in body["MediaContainer"]["MetadataAgentProvider"]] \
+                if status == 200 else None
+            ok = got == [row["id"] for row in want["body"]["MediaContainer"]["MetadataAgentProvider"]]
+            shown = got
+        elif path == "/media/providers/metadata/3":
+            ok, shown = status == 200, status
+        else:
+            ok, shown = status == want["status"] and body == want["body"], (status, text[:200])
+        check("  ...%s, then %s reads as plexscratch42's" % (label, path), ok, shown)
+
+
+def builtin_deletes(port, fixture):
+    """DELETE on built-in provider 3 and built-in group 3, in plexscratch42's order. The
+    two music-library creates are not replayed: plexsim serves no music library at all
+    (its Add Library refuses `type=artist`), so `derived_creates` asks the same question
+    of a movie library."""
+    headers = fixture["headers"]
+    for step in fixture["steps"]:
+        if step["method"] == "POST":
+            continue
+        status, text = request(port, step["method"], step["path"], headers)
+        empty = step["status"] == 200 and step["body"] == ""
+        check("%s %s on a BUILT-IN id is a %d%s (plexscratch42)"
+              % (step["method"], step["path"], step["status"], " with no body" if empty else ""),
+              status == step["status"] and (not empty or text == ""), (status, text[:200]))
+        _compare_reads(port, headers, "%s %s" % (step["method"], step["path"]), step["after"])
+
+
+def derived_creates(port, fixture):
+    """Add Library after a built-in group is gone. Measured with a music library:
+    `metadataAgentProviderGroupId=3` (what 4.162.1 sends, the agent's `/system/agents` id)
+    is a 400 "unable to find entry for provided 'metadataAgentProviderGroupId'", and no
+    parameter a 400 "unable to find built-in agent group for provided 'agent'". The same
+    lookups, asked of the movie library plexsim does serve."""
+    headers = fixture["headers"]
+    form = ("/library/sections?name=W3%%20%s&type=movie&agent=tv.plex.agents.movie"
+            "&scanner=Plex%%20Movie&language=en-US%s&location=%%2Fdata%%2Fw3-none")
+    status, _ = request(port, "POST", form % ("held", "&metadataAgentProviderGroupId=1"), headers)
+    check("Add Library naming a HELD group (1) is still a 201", status == 201, status)
+    status, _ = request(port, "POST", form % ("gone", "&metadataAgentProviderGroupId=3"), headers)
+    check("Add Library naming the DELETED group 3 is a 400 (plexscratch42's lookup)",
+          status == 400, status)
+    status, _ = request(port, "DELETE", "/media/providers/metadata/group/1", headers)
+    check("DELETE /media/providers/metadata/group/1 is the same empty 200", status == 200, status)
+    for label, extra in (("with", "&metadataAgentProviderGroupId=1"), ("without", "")):
+        status, _ = request(port, "POST", form % (label, extra), headers)
+        check("Add Library for the movie agent %s its deleted group's id is a 400" % label,
+              status == 400, status)
+
+
 def main():
     process, port = start()
     try:
@@ -234,6 +313,14 @@ def main():
         provider_ids(port)
         builtin_writes(port)
         builtin_rename(port)
+    finally:
+        stop(process)
+    # A fresh server: the deletes leave state behind.
+    fixture = json.load(open(DELETE_FIXTURE, encoding="utf-8"))
+    process, port = start()
+    try:
+        builtin_deletes(port, fixture)
+        derived_creates(port, fixture)
     finally:
         stop(process)
     passed = sum(results)

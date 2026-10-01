@@ -405,6 +405,8 @@ pub struct Runtime {
     next_metadata_provider_group: i64,
     /// Cycle 87: a BUILT-IN group's renamed title, by group id (plexscratch42).
     builtin_group_titles: HashMap<i64, String>,
+    /// Cycle 87: the BUILT-IN group ids a client deleted (plexscratch42).
+    pub(crate) deleted_builtin_groups: HashSet<i64>,
     queues: HashMap<String, Queue>,
     download_queues: HashMap<String, Value>,
     pub next_playlist: i64,
@@ -644,6 +646,7 @@ impl Runtime {
             metadata_provider_groups: HashMap::new(),
             next_metadata_provider_group: 5,
             builtin_group_titles: HashMap::new(),
+            deleted_builtin_groups: HashSet::new(),
             queues: HashMap::new(),
             download_queues: HashMap::new(),
             next_playlist: playlists::PLAYLIST_BASE + 1,
@@ -1190,6 +1193,11 @@ impl Runtime {
                 }
             }
         }
+        for id in state.get("deletedBuiltinGroups").and_then(Value::as_array).into_iter().flatten() {
+            if let Some(id) = id.as_i64() {
+                self.deleted_builtin_groups.insert(id);
+            }
+        }
         if let Some(next) = state.get("nextMetadataProviderGroup").and_then(Value::as_i64) {
             self.next_metadata_provider_group = self.next_metadata_provider_group.max(next);
         }
@@ -1415,6 +1423,7 @@ impl Runtime {
             ("sectionPrefs", json!(self.section_prefs.iter().map(|((section, name), value)| json!([section, name, value])).collect::<Vec<_>>())),
             ("metadataProviderGroups", json!(self.metadata_provider_groups.values().map(|group| json!({"id":group.id,"title":group.title,"primaryIdentifier":group.primary_identifier,"items":group.items})).collect::<Vec<_>>())),
             ("nextMetadataProviderGroup", json!(self.next_metadata_provider_group)),
+            ("deletedBuiltinGroups", json!(self.deleted_builtin_groups.iter().collect::<Vec<_>>())),
             ("builtinGroupTitles", json!(self.builtin_group_titles.iter().map(|(id, title)| (id.to_string(), json!(title))).collect::<Map<String, Value>>())),
             ("uploads", json!(self.uploads.iter().map(|(key, (bytes, kind))| (key.clone(), json!([base64_encode(bytes), kind]))).collect::<Map<String, Value>>())),
             ("themeRows", json!(self.theme_rows)),
@@ -3193,6 +3202,7 @@ impl Runtime {
             .metadata_provider_rows()
             .into_iter()
             .enumerate()
+            .filter(|(index, _)| !self.deleted_builtin_groups.contains(&(*index as i64 + 1)))
             .map(|(index, provider)| {
                 let id = json!(index + 1);
                 let title = self
@@ -3385,7 +3395,10 @@ impl Runtime {
         // nothing changing: `PUT /media/providers/metadata/{id}` is a 400 with no or an
         // empty `uri` and a 500 with one PMS cannot reach (it fetches the provider; plexsim
         // hosts none), and POST on the id is a 404.
-        if segments.len() == 4 && matches!(request.method.as_str(), "PUT" | "POST") {
+        // Cycle 87, plexscratch42: a BUILT-IN provider cannot be deleted -- `DELETE
+        // /media/providers/metadata/3` is a 400 and changes nothing, before and after its
+        // group is deleted.
+        if segments.len() == 4 && matches!(request.method.as_str(), "PUT" | "POST" | "DELETE") {
             let wanted = segments[3];
             let held = wanted.bytes().all(|byte| byte.is_ascii_digit())
                 && !wanted.is_empty()
@@ -3395,6 +3408,9 @@ impl Runtime {
                     }));
             if !held || request.method == "POST" {
                 return Response::error(404, "plexsim: not found");
+            }
+            if request.method == "DELETE" {
+                return Response::error(400, "plexsim: bad request");
             }
             return match query.get("uri").filter(|uri| !uri.is_empty()) {
                 Some(_) => Response::error(500, "plexsim: internal server error"),
@@ -3407,6 +3423,25 @@ impl Runtime {
         // Cycle 87, plexscratch42: a BUILT-IN group takes the rename verb (its own title
         // answers the row; a different title is unmeasured, so the row is answered as
         // held) and its items path refuses Personal Media as a custom group's does.
+        // Cycle 87, plexscratch42: a BUILT-IN group can be deleted -- an empty 200 even
+        // with a library using it -- and is then gone from the group listing, its own id
+        // (404, a second DELETE too) and `/system/agents`; the provider row and the
+        // libraries naming it are untouched, and Add Library refuses its agent.
+        if request.method == "DELETE"
+            && segments.len() == 5
+            && !self.metadata_provider_groups.contains_key(group_id)
+        {
+            let number = group_id.parse::<i64>().unwrap_or(0);
+            let held = self
+                .metadata_provider_groups()
+                .iter()
+                .any(|row| row.get("builtIn").is_some() && row.get("id").and_then(Value::as_i64) == Some(number));
+            if held {
+                self.deleted_builtin_groups.insert(number);
+                self.dirty = true;
+                return Response::empty(200);
+            }
+        }
         if request.method == "PUT" && !self.metadata_provider_groups.contains_key(group_id) {
             let built_in = self
                 .metadata_provider_groups()
@@ -8009,6 +8044,36 @@ impl Runtime {
         let language = query.get("language").cloned().unwrap_or_default();
         if !self.known_languages().contains(&language.to_lowercase()) {
             return Response::error(400, "'language' is invalid ");
+        }
+        // Cycle 87, measured on plexscratch42 after deleting built-in group 3: Plex Web
+        // 4.162.1 sends the agent's `/system/agents` id as `metadataAgentProviderGroupId`
+        // and a group the server does not hold is a 400; without it, a modern agent whose
+        // built-in group is gone is a 400.
+        let wanted_group = query
+            .get("metadataAgentProviderGroupId")
+            .filter(|value| !value.is_empty());
+        if let Some(wanted_group) = wanted_group {
+            let held = self.metadata_provider_groups().iter().any(|row| {
+                row.get("id").map(|id| string_value(id)) == Some(wanted_group.clone())
+            });
+            if !held {
+                return Response::error(
+                    400,
+                    "unable to find entry for provided 'metadataAgentProviderGroupId'\r\n",
+                );
+            }
+        } else {
+            let agent = query.get("agent").cloned().unwrap_or_default();
+            let modern = self
+                .metadata_provider_rows()
+                .iter()
+                .position(|row| row.get("identifier").and_then(Value::as_str) == Some(agent.as_str()));
+            if modern.is_some_and(|index| self.deleted_builtin_groups.contains(&(index as i64 + 1))) {
+                return Response::error(
+                    400,
+                    "unable to find built-in agent group for provided 'agent'\r\n",
+                );
+            }
         }
         let key = self
             .catalog

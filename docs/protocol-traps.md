@@ -3667,3 +3667,20 @@ are changing; replay the client's exact request before altering behavior.
   not emulated (one witness). CLIENT-VISIBLE for a client holding the list from before the merge:
   python-plexapi's `Playlist.moveItem(item, after=)` and `removeItems()` send the playlistItemIDs of
   the `items()` it cached (`playlist.py:131-136`, `289-317`).
+- **A BUILT-IN metadata provider cannot be deleted; a built-in GROUP can, and its agent goes with it.**
+  Measured on plexscratch42 (1.42.2, 2026-10-01, destructive, restored from a snapshot after;
+  `tests/fixtures/c87_w3_builtin_deletes_s42.json`). `DELETE /media/providers/metadata/3` is a 400
+  that changes nothing, before and after its group is deleted. `DELETE /media/providers/metadata/
+  group/3` is an empty 200 even with a music library naming group 3: the group is gone from the
+  listing and from `/group/3` (404, a second DELETE too), and `/system/agents` drops
+  `tv.plex.agents.music` from the bare list and from `mediaType=8`/`9`. The provider row and the
+  library naming the group are untouched. Add Library then refuses the agent:
+  `metadataAgentProviderGroupId=3` (what Plex Web 4.162.1 sends -- the agent's `/system/agents` id)
+  is a 400 `unable to find entry for provided 'metadataAgentProviderGroupId'\r\n`, and no such
+  parameter a 400 `unable to find built-in agent group for provided 'agent'\r\n`, both plain text
+  with no Content-Type. Before the deletes the same music create was a 201 echoing
+  `agent: tv.plex.agents.music` and `metadataAgentProviderGroupId: 3`. plexsim answered both
+  DELETEs with the provider row (oracle) or a 404 (native) and ignored the parameter. It still
+  writes its create 400s as the generic HTML page, and refuses `type=artist` outright (no music
+  libraries) -- both older gaps. MALFORMED-ONLY: Plex Web hides Remove on a built-in provider and
+  group.

@@ -1482,6 +1482,18 @@ impl Runtime {
                 .unwrap_or_default(),
             None => modern_all.clone(),
         };
+        // Cycle 87, plexscratch42: a modern agent whose BUILT-IN group a client deleted
+        // is gone from both forms (group N is the N-th modern agent).
+        let gone = modern_all
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| self.deleted_builtin_groups.contains(&(*index as i64 + 1)))
+            .filter_map(|(_, agent)| agent.get("identifier").cloned())
+            .collect::<Vec<_>>();
+        let modern = modern
+            .into_iter()
+            .filter(|agent| agent.get("identifier").is_none_or(|id| !gone.contains(id)))
+            .collect::<Vec<_>>();
         let legacy = match &wanted {
             Some(kind) => tables
                 .legacy_agents
