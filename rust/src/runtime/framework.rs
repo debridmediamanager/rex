@@ -1595,8 +1595,19 @@ impl Runtime {
             response.headers.extend(headed.headers);
             return response;
         }
-        let text = serde_json::to_string(&drop_empty_value(&ordered)).unwrap_or_default();
+        // Cycle 87, zen (1.42.2) under Plex Web's paging headers: a paged JSON answer
+        // repeats every `Language` key exactly as the unpaged one does. This body used to
+        // reach the pipeline's pager already rewritten into repeated keys; the pager parsed
+        // it, which keeps only the LAST of each, and wrote one `Language` per agent back.
+        // Page the array form here, the way the XML branch does, and repeat the keys after:
+        // a container that carries `totalSize` is one the pipeline's pager leaves alone.
         let mut response = Response::bytes(200, "application/json");
+        response.body = serde_json::to_vec(&drop_empty_value(&ordered)).unwrap_or_default();
+        page_container(&mut response, query, "/system/agents");
+        if response.status != 200 {
+            return response;
+        }
+        let text = String::from_utf8(std::mem::take(&mut response.body)).unwrap_or_default();
         response.body = repeat_keys(text).into_bytes();
         response
             .headers

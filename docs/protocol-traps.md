@@ -3462,3 +3462,11 @@ are changing; replay the client's exact request before altering behavior.
   `"primary":"0"`, `"mediaType":"8"`. The XML is unchanged (`1`/`0`). MALFORMED-ONLY: Plex Web's
   `AgentModel` reads `hasPrefs` through `parseBoolean` (`1===Number(e)||"true"===e`), which maps
   `"1"` and `true` alike, and does not read `primary` at all; python-plexapi reads the XML.
+- **A PAGED `/system/agents` JSON still repeats every `Language` (and bare-form `MediaType`) key**
+  (cycle 87 W2, zen 1.42.2 under Plex Web 4.162.1's `X-Plex-Container-Start=0`/`Size=50`, and the
+  `Start=1 Size=2` window; `tests/fixtures/c87_w2_system_agents_zen.json`). The native route wrote
+  its repeated keys and then went through the pipeline's pager, which parsed the body -- keeping
+  the LAST of each repeated key -- and wrote one `Language` per agent back (704 bytes for
+  `mediaType=1` against 6,394). It now pages the array form first, as its XML branch already did.
+  The oracle was right. MALFORMED-ONLY: `JSON.parse` keeps the last duplicate at the first one's
+  position, so Plex Web's parsed object was the same either way; only the wire bytes and length differed.

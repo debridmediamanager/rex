@@ -11,6 +11,8 @@ bodies are kept as RAW TEXT, because the point of two of these checks is the rep
 - A legacy agent's `hasPrefs` and `primary` are JSON BOOLEANS and a bare-form
   `MediaType`'s `mediaType` a NUMBER on kids and zen alike; plexsim sent the strings
   `"0"`/`"1"` its XML capture held.
+- Under paging the native server re-serialised the route's body and wrote each repeated
+  `Language` key once (the last one); the oracle and both references repeat it.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
 default, the oracle with `PLEXSIM_SERVER=python`.
@@ -208,6 +210,7 @@ def main():
         for exchange in exchanges:
             if exchange["path"].startswith("/system/agents"):
                 legacy_types(port, exchange)
+                repeated_keys(port, exchange)
     finally:
         stop(process)
     passed = sum(results)
