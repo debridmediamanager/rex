@@ -22331,6 +22331,16 @@ class Handler(BaseHTTPRequestHandler):
             if len(name) > 1024 or len(value) > 4096 or "\t" in value:
                 self.send_error(400)
                 return False
+        # Cycle 85 B, raw sockets on kids (1.43.4) and plexscratch42 (1.42.2), identical
+        # (`tests/fixtures/header_tab_roku.json`): a TAB ANYWHERE after the colon is a 400 --
+        # leading (`:\tRoku`), after the one optional space (`: \tRoku`, `:  \tRoku`), inner
+        # or trailing, on any header. The check above reads Python's parsed values, which
+        # have already lost their leading whitespace, so a leading TAB passed as a 200.
+        # Read the raw lines instead.
+        for line in self.rfile.lines:
+            if b"\t" in line.partition(b":")[2]:
+                self.send_error(400)
+                return False
         # `email` keeps a line with no colon as a defect rather than a header, so the
         # header object has to be asked about them directly.
         if getattr(self.headers, "defects", None):

@@ -1,0 +1,144 @@
+{
+ "_provenance": "cycle 85 B, raw sockets, 2026-10-01: GET /media/providers with Accept: application/json, X-Plex-Product: Plex for Roku and the header lines below (a TAB is a literal 0x09). libraryPivots counts Pivot rows under /library/sections/ Directories; 0 is the Roku strip. Token redacted.",
+ "request": "GET /media/providers HTTP/1.1",
+ "cells": [
+  {
+   "name": "platform 1sp (control)",
+   "lines": [
+    "X-Plex-Platform: Roku",
+    "X-Plex-Version: 6.4.0"
+   ],
+   "answers": {
+    "kids PMS 1.43.4": {
+     "status": 200,
+     "libraryPivots": 0
+    },
+    "plexscratch42 PMS 1.42.2": {
+     "status": 200,
+     "libraryPivots": 0
+    }
+   }
+  },
+  {
+   "name": "platform leading TAB",
+   "lines": [
+    "X-Plex-Platform:\tRoku",
+    "X-Plex-Version: 6.4.0"
+   ],
+   "answers": {
+    "kids PMS 1.43.4": {
+     "status": 400
+    },
+    "plexscratch42 PMS 1.42.2": {
+     "status": 400
+    }
+   }
+  },
+  {
+   "name": "platform space then TAB",
+   "lines": [
+    "X-Plex-Platform: \tRoku",
+    "X-Plex-Version: 6.4.0"
+   ],
+   "answers": {
+    "kids PMS 1.43.4": {
+     "status": 400
+    },
+    "plexscratch42 PMS 1.42.2": {
+     "status": 400
+    }
+   }
+  },
+  {
+   "name": "platform TAB then space",
+   "lines": [
+    "X-Plex-Platform:\t Roku",
+    "X-Plex-Version: 6.4.0"
+   ],
+   "answers": {
+    "kids PMS 1.43.4": {
+     "status": 400
+    },
+    "plexscratch42 PMS 1.42.2": {
+     "status": 400
+    }
+   }
+  },
+  {
+   "name": "platform two spaces then TAB",
+   "lines": [
+    "X-Plex-Platform:  \tRoku",
+    "X-Plex-Version: 6.4.0"
+   ],
+   "answers": {
+    "kids PMS 1.43.4": {
+     "status": 400
+    },
+    "plexscratch42 PMS 1.42.2": {
+     "status": 400
+    }
+   }
+  },
+  {
+   "name": "platform inner TAB",
+   "lines": [
+    "X-Plex-Platform: Ro\tku",
+    "X-Plex-Version: 6.4.0"
+   ],
+   "answers": {
+    "kids PMS 1.43.4": {
+     "status": 400
+    },
+    "plexscratch42 PMS 1.42.2": {
+     "status": 400
+    }
+   }
+  },
+  {
+   "name": "platform trailing TAB",
+   "lines": [
+    "X-Plex-Platform: Roku\t",
+    "X-Plex-Version: 6.4.0"
+   ],
+   "answers": {
+    "kids PMS 1.43.4": {
+     "status": 400
+    },
+    "plexscratch42 PMS 1.42.2": {
+     "status": 400
+    }
+   }
+  },
+  {
+   "name": "version leading TAB",
+   "lines": [
+    "X-Plex-Platform: Roku",
+    "X-Plex-Version:\t9.7.1"
+   ],
+   "answers": {
+    "kids PMS 1.43.4": {
+     "status": 400
+    },
+    "plexscratch42 PMS 1.42.2": {
+     "status": 400
+    }
+   }
+  },
+  {
+   "name": "unknown header leading TAB",
+   "lines": [
+    "X-Plex-Platform: Roku",
+    "X-Plex-Version: 6.4.0",
+    "X-C85b-Probe:\tvalue"
+   ],
+   "answers": {
+    "kids PMS 1.43.4": {
+     "status": 400
+    },
+    "plexscratch42 PMS 1.42.2": {
+     "status": 400
+    }
+   }
+  }
+ ]
+}

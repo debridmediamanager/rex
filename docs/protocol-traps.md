@@ -3424,3 +3424,11 @@ are changing; replay the client's exact request before altering behavior.
   from a queue with no live row. CLIENT-VISIBLE: Plex Web's queue model sizes itself as
   `max(playQueueTotalCount, rows)` and skips its confirm-playback path when
   `playQueueSelectedMetadataItemID` equals the item asked for.
+- **A TAB anywhere after a header's colon is a 400, leading ones included** (cycle 85 B, raw
+  sockets on kids 1.43.4 and plexscratch42 1.42.2, identical; `tests/fixtures/header_tab_roku.json`).
+  `X-Plex-Platform:\tRoku`, `: \tRoku`, `:\t Roku`, `:  \tRoku`, `Ro\tku`, `Roku\t`,
+  `X-Plex-Version:\t9.7.1` and an unknown header's `:\tvalue` are each a plain 400. Cycle 16's
+  TAB check read Python's parsed values, which had lost their leading whitespace, so after
+  cycle 84's one-space rewrite the oracle still answered a leading TAB with a 200 (B's
+  `regress64b_ows`, 5/7); it now reads the raw lines. The native server was already right.
+  MALFORMED-ONLY: no client sends a TAB in a header.
