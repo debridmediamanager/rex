@@ -3944,3 +3944,16 @@ are changing; replay the client's exact request before altering behavior.
   writes the rows as repeated keys, so its walk sees only the last row of each list.
   CLIENT-VISIBLE: Plex Web's Add Library and Fix Match language selects label each option with
   the row's `title` and preselect the `default` row (`LanguageModel`, `rootPropertyName:"Language"`).
+- **A collection's locks and labels take the ITEM grammar, and a listing shows neither.**
+  plexscratch42 (1.42.2), all three save paths -- `PUT /library/sections/{id}/all?type=18&id=`,
+  `PUT /library/metadata/{id}`, `PUT /library/collections/{id}` (2026-10-02,
+  `tests/fixtures/collection_edit_grammar_s42.json`): every `X.locked=1` lands in the
+  collection's `Field` list (title, summary, contentRating, thumb, label) and `X.locked=0` takes
+  it out; the section save MERGES an indexed `label[N]` (B after A reads [B, A]) and removes
+  what `label[].tag.tag-` names, ignoring case, while the other two paths REPLACE and clear on
+  any removal -- exactly an item's rule. The detail reads carry `Label` then `Field`; a LISTED
+  collection (`all?type=18`, `/collections`, `/library/all?type=18`) carries neither, and no
+  `Guid` under `includeGuids=1`. Both servers stored a `titleSort` lock alone, replaced labels
+  on every path and ignored every removal (python-plexapi's `removeLabel`, the Edit dialog
+  removing the last label); the oracle's collections path dropped labels outright, and the
+  native listing carried both lists and both servers a one-entry `Guid`.

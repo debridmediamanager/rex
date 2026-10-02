@@ -2615,6 +2615,50 @@ class Library:
             collection["summary"] = summary
         collection["updatedAt"] = _now()
 
+    def write_collection_locks_and_labels(self, collection, pairs, section=False):
+        """A collection save's `.locked` columns and its `Label` list. Cycle 88.
+
+        Measured on plexscratch42 (1.42.2) through all three save paths --
+        `PUT /library/sections/{id}/all?type=18&id=`, `PUT /library/metadata/{id}` and
+        `PUT /library/collections/{id}` (`tests/fixtures/collection_edit_grammar_s42.json`):
+        a collection takes the ITEM grammar. Every `X.locked=1` lands in its `Field`
+        list (title, summary, contentRating, thumb, label alike) and `X.locked=0` takes
+        it out; on the SECTION path the indexed `label[N]` list MERGES and a
+        `label[].tag.tag-` removal removes the names it lists, ignoring case, while on
+        the item and collections paths the list REPLACES and any removal clears it.
+        plexsim stored a `titleSort` lock alone, replaced the labels on every path and
+        ignored every removal -- python-plexapi's `removeLabel` and the Edit dialog's
+        "remove the last label" changed nothing, and its lock icons never lit.
+        """
+        adding, removing = [], []
+        for position, (name, value) in enumerate(pairs or []):
+            if name.endswith(".locked"):
+                field = name[: -len(".locked")]
+                if field == "titleSort" or field in NO_OP_FIELDS or not (
+                        field in EDITABLE_FIELDS or field in TAG_KEYS
+                        or field in LOCK_ONLY_FIELDS):
+                    continue
+                if section:
+                    locked = str(value).isdigit() and int(value) == 1
+                else:
+                    locked = str(value) == "1"
+                self._set_lock(collection, field, locked)
+            elif name.split("[", 1)[0].lower() != "label":
+                continue
+            elif ".tag.tag-" in name:
+                removing.extend(urllib.parse.unquote(part)
+                                for part in str(value).split(",") if part)
+            elif ".tag.tag" in name:
+                index = name.split("[", 1)[1].split("]", 1)[0] if "[" in name else ""
+                adding.append((int(index) if index.isdigit() else position, position, value))
+        if not adding and not removing:
+            return
+        wanted = [value for _, _, value in sorted(adding, key=lambda entry: entry[:2]) if value]
+        if section:
+            self._merge_tags(collection, "label", wanted, removing)
+        else:
+            self._set_tags(collection, "label", list(dict.fromkeys(wanted)))
+
     def rename_collection_tag(self, collection, title):
         """Move the members' `Collection` tag to a new name. Cycle 15.
 
@@ -2807,7 +2851,7 @@ class Library:
             # well as the single read -- measured at both
             # /library/sections/{id}/collections and /library/collections/{id}.
             row["content"] = urllib.parse.unquote(collection["uri"])
-        for name in ("titleSort", "contentRating", "collectionSort", "collectionMode", "Field", "Label"):
+        for name in ("titleSort", "contentRating", "collectionSort", "collectionMode", "Label", "Field"):
             # Whatever the Edit Collection dialog and its prefs wrote. Measured: the
             # sort and mode come back as STRING attributes on the row, which is what
             # the dialog reads to show the current selection.

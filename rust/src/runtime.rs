@@ -12317,6 +12317,7 @@ impl Runtime {
                                 | "librarySectionTitle"
                                 | "librarySectionKey"
                                 | "Field"
+                                | "Label"
                         )
                     });
                 }
@@ -16892,7 +16893,15 @@ impl Runtime {
                 .map(|row| {
                     let mut shown = guid_gate(strip_private_value(&row), query);
                     if let Some(object) = shown.as_object_mut() {
-                        for name in ["librarySectionID", "librarySectionTitle", "librarySectionKey"] {
+                        // Cycle 88 (plexscratch42): no `Label` or `Field` on a LISTED
+                        // collection; the oracle's grid projection drops both.
+                        for name in [
+                            "librarySectionID",
+                            "librarySectionTitle",
+                            "librarySectionKey",
+                            "Label",
+                            "Field",
+                        ] {
                             object.shift_remove(name);
                         }
                         object.insert("_light".to_string(), json!(true));

@@ -1,0 +1,4816 @@
+{
+ "_about": "plexscratch42 (PMS 1.42.2), cycle 88 B, 2026-10-02. A plain SHOW collection over one show (Threefold, ratingKey 15, section 3). \"edits\": one fresh collection per save path -- the section save (PUT /library/sections/{id}/all?type=18&id=), the item path (PUT /library/metadata/{id}) and the collections path (PUT /library/collections/{id}) -- taken through the same nine writes (a title with a lock, a summary without one, a content rating with a lock, a bare thumb lock, label A, label B, a lower-case removal of A, then title and label unlocked), each followed by /library/metadata, the type=18 listing and /library/collections. \"reads\": a collection given a Label and a summary lock through the section save, read through its detail and listing paths (JSON; XML for two). Token and machine identifier redacted.",
+ "edits": [
+  {
+   "method": "POST",
+   "path": "/library/collections?type=2&title=C88B+c88b1+section&smart=0&sectionId=3&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F15",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "C88B c88b1 section",
+       "subtype": "show",
+       "summary": "",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/3/all?type=18&id=911&title.value=c88b1%20section&title.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "subtype": "show",
+       "summary": "",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/3/all?type=18&id=911&summary.value=S",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/3/all?type=18&id=911&contentRating.value=TV-14&contentRating.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/3/all?type=18&id=911&thumb.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/3/all?type=18&id=911&label[0].tag.tag=c88b1LabA&label.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 494,
+         "filter": "label=494",
+         "tag": "C88b1LabA"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 494,
+         "filter": "label=494",
+         "tag": "C88b1LabA"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/3/all?type=18&id=911&label[0].tag.tag=c88b1LabB&label.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        },
+        {
+         "id": 494,
+         "filter": "label=494",
+         "tag": "C88b1LabA"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        },
+        {
+         "id": 494,
+         "filter": "label=494",
+         "tag": "C88b1LabA"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/3/all?type=18&id=911&label[].tag.tag-=c88b1laba&label.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/3/all?type=18&id=911&title.locked=0",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/3/all?type=18&id=911&label.locked=0",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/911",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "911",
+       "key": "/library/collections/911/children",
+       "guid": "collection://fc4792b7-3fe2-4be6-8aed-642e0b6045b5",
+       "type": "collection",
+       "title": "c88b1 section",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 493,
+       "ratingCount": 2,
+       "thumb": "/library/collections/911/composite/1790927662?width=400&height=600",
+       "addedAt": 1790927662,
+       "updatedAt": 1790927662,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/911",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=2&title=C88B+c88b1+item&smart=0&sectionId=3&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F15",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "C88B c88b1 item",
+       "subtype": "show",
+       "summary": "",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/912?title.value=c88b1%20item&title.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "subtype": "show",
+       "summary": "",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/912?summary.value=S",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/912?contentRating.value=TV-14&contentRating.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/912?thumb.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/912?label[0].tag.tag=c88b1LabA&label.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 494,
+         "filter": "label=494",
+         "tag": "C88b1LabA"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 494,
+         "filter": "label=494",
+         "tag": "C88b1LabA"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/912?label[0].tag.tag=c88b1LabB&label.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/912?label[].tag.tag-=c88b1laba&label.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/912?title.locked=0",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/912?label.locked=0",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/912",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "912",
+       "key": "/library/collections/912/children",
+       "guid": "collection://6e0c67ca-f88d-4eed-85e1-42bd16de0ff4",
+       "type": "collection",
+       "title": "c88b1 item",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 496,
+       "ratingCount": 2,
+       "thumb": "/library/collections/912/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/912",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=2&title=C88B+c88b1+collections&smart=0&sectionId=3&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F15",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "C88B c88b1 collections",
+       "subtype": "show",
+       "summary": "",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/913?title.value=c88b1%20collections&title.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "subtype": "show",
+       "summary": "",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/913?summary.value=S",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/913?contentRating.value=TV-14&contentRating.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/913?thumb.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/913?label[0].tag.tag=c88b1LabA&label.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 494,
+         "filter": "label=494",
+         "tag": "C88b1LabA"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 494,
+         "filter": "label=494",
+         "tag": "C88b1LabA"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/913?label[0].tag.tag=c88b1LabB&label.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 495,
+         "filter": "label=495",
+         "tag": "C88b1LabB"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/913?label[].tag.tag-=c88b1laba&label.locked=1",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "title"
+        },
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/913?title.locked=0",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/913?label.locked=0",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/913",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "913",
+       "key": "/library/collections/913/children",
+       "guid": "collection://b166dcec-44f0-4ddb-9fcc-a5820362e79b",
+       "type": "collection",
+       "title": "c88b1 collections",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "contentRating": "TV-14",
+       "subtype": "show",
+       "summary": "S",
+       "index": 497,
+       "ratingCount": 2,
+       "thumb": "/library/collections/913/composite/1790927663?width=400&height=600",
+       "addedAt": 1790927663,
+       "updatedAt": 1790927663,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Field": [
+        {
+         "locked": true,
+         "name": "contentRating"
+        },
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/913",
+   "status": 200,
+   "body": ""
+  }
+ ],
+ "reads": [
+  {
+   "method": "POST",
+   "path": "/library/collections?type=2&title=C88B+Reads&smart=0&sectionId=3&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F15",
+   "accept": "application/json",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "914",
+       "key": "/library/collections/914/children",
+       "guid": "collection://9b256762-3a19-4693-8448-499bfb91c590",
+       "type": "collection",
+       "title": "C88B Reads",
+       "subtype": "show",
+       "summary": "",
+       "index": 498,
+       "ratingCount": 2,
+       "thumb": "/library/collections/914/composite/1790927802?width=400&height=600",
+       "addedAt": 1790927802,
+       "updatedAt": 1790927802,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/3/all?type=18&id=914&label[0].tag.tag=c88breadlabel&label.locked=1&summary.value=R&summary.locked=1",
+   "accept": "application/json",
+   "status": 200,
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/914",
+   "accept": "application/json",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "914",
+       "key": "/library/collections/914/children",
+       "guid": "collection://9b256762-3a19-4693-8448-499bfb91c590",
+       "type": "collection",
+       "title": "C88B Reads",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "R",
+       "index": 498,
+       "ratingCount": 2,
+       "thumb": "/library/collections/914/composite/1790927802?width=400&height=600",
+       "addedAt": 1790927802,
+       "updatedAt": 1790927802,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 499,
+         "filter": "label=499",
+         "tag": "C88breadlabel"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "summary"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/914",
+   "accept": "application/json",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "914",
+       "key": "/library/collections/914/children",
+       "guid": "collection://9b256762-3a19-4693-8448-499bfb91c590",
+       "type": "collection",
+       "title": "C88B Reads",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "R",
+       "index": 498,
+       "ratingCount": 2,
+       "thumb": "/library/collections/914/composite/1790927802?width=400&height=600",
+       "addedAt": 1790927802,
+       "updatedAt": 1790927802,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Label": [
+        {
+         "id": 499,
+         "filter": "label=499",
+         "tag": "C88breadlabel"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "summary"
+        },
+        {
+         "locked": true,
+         "name": "label"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?type=18",
+   "accept": "application/json",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "914",
+       "key": "/library/collections/914/children",
+       "guid": "collection://9b256762-3a19-4693-8448-499bfb91c590",
+       "type": "collection",
+       "title": "C88B Reads",
+       "subtype": "show",
+       "summary": "R",
+       "index": 498,
+       "ratingCount": 2,
+       "thumb": "/library/collections/914/composite/1790927802?width=400&height=600",
+       "addedAt": 1790927802,
+       "updatedAt": 1790927802,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "accept": "application/json",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "914",
+       "key": "/library/collections/914/children",
+       "guid": "collection://9b256762-3a19-4693-8448-499bfb91c590",
+       "type": "collection",
+       "title": "C88B Reads",
+       "subtype": "show",
+       "summary": "R",
+       "index": 498,
+       "ratingCount": 2,
+       "thumb": "/library/collections/914/composite/1790927802?width=400&height=600",
+       "addedAt": 1790927802,
+       "updatedAt": 1790927802,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/collections",
+   "accept": "application/json",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "914",
+       "key": "/library/collections/914/children",
+       "guid": "collection://9b256762-3a19-4693-8448-499bfb91c590",
+       "type": "collection",
+       "title": "C88B Reads",
+       "subtype": "show",
+       "summary": "R",
+       "index": 498,
+       "ratingCount": 2,
+       "thumb": "/library/collections/914/composite/1790927802?width=400&height=600",
+       "addedAt": 1790927802,
+       "updatedAt": 1790927802,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/collections?includeGuids=1",
+   "accept": "application/json",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "914",
+       "key": "/library/collections/914/children",
+       "guid": "collection://9b256762-3a19-4693-8448-499bfb91c590",
+       "type": "collection",
+       "title": "C88B Reads",
+       "subtype": "show",
+       "summary": "R",
+       "index": 498,
+       "ratingCount": 2,
+       "thumb": "/library/collections/914/composite/1790927802?width=400&height=600",
+       "addedAt": 1790927802,
+       "updatedAt": 1790927802,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?type=18&title=C88B%20Reads",
+   "accept": "application/json",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "914",
+       "key": "/library/collections/914/children",
+       "guid": "collection://9b256762-3a19-4693-8448-499bfb91c590",
+       "type": "collection",
+       "title": "C88B Reads",
+       "subtype": "show",
+       "summary": "R",
+       "index": 498,
+       "ratingCount": 2,
+       "thumb": "/library/collections/914/composite/1790927802?width=400&height=600",
+       "addedAt": 1790927802,
+       "updatedAt": 1790927802,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/914",
+   "accept": "application/xml",
+   "status": 200,
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\" allowSync=\"1\" identifier=\"com.plexapp.plugins.library\" librarySectionID=\"3\" librarySectionTitle=\"Threefold\" librarySectionUUID=\"61e257ea-900a-4ada-acf5-741f877a770a\" mediaTagPrefix=\"/system/bundle/media/flags/\" mediaTagVersion=\"1758205129\">\n<Directory ratingKey=\"914\" key=\"/library/collections/914/children\" guid=\"collection://9b256762-3a19-4693-8448-499bfb91c590\" type=\"collection\" title=\"C88B Reads\" librarySectionTitle=\"Threefold\" librarySectionID=\"3\" librarySectionKey=\"/library/sections/3\" subtype=\"show\" summary=\"R\" index=\"498\" ratingCount=\"2\" thumb=\"/library/collections/914/composite/1790927802?width=400&amp;height=600\" addedAt=\"1790927802\" updatedAt=\"1790927802\" childCount=\"1\" maxYear=\"2019\" minYear=\"2019\">\n<Label id=\"499\" filter=\"label=499\" tag=\"C88breadlabel\" />\n<Field locked=\"1\" name=\"summary\" />\n<Field locked=\"1\" name=\"label\" />\n</Directory>\n</MediaContainer>\n"
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?includeGuids=1&type=18",
+   "accept": "application/xml",
+   "status": 200,
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<MediaContainer size=\"1\" allowSync=\"1\" art=\"/:/resources/show-fanart.jpg\" identifier=\"com.plexapp.plugins.library\" librarySectionID=\"3\" librarySectionTitle=\"Threefold\" librarySectionUUID=\"61e257ea-900a-4ada-acf5-741f877a770a\" mediaTagPrefix=\"/system/bundle/media/flags/\" mediaTagVersion=\"1758205129\" nocache=\"1\" thumb=\"/:/resources/show.png\" title1=\"Threefold\" title2=\"All Shows\" viewGroup=\"show\" viewMode=\"65592\">\n<Directory ratingKey=\"914\" key=\"/library/collections/914/children\" guid=\"collection://9b256762-3a19-4693-8448-499bfb91c590\" type=\"collection\" title=\"C88B Reads\" subtype=\"show\" summary=\"R\" index=\"498\" ratingCount=\"2\" thumb=\"/library/collections/914/composite/1790927802?width=400&amp;height=600\" addedAt=\"1790927802\" updatedAt=\"1790927802\" childCount=\"1\" maxYear=\"2019\" minYear=\"2019\">\n</Directory>\n</MediaContainer>\n"
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/914",
+   "accept": "application/json",
+   "status": 200,
+   "body": ""
+  }
+ ]
+}

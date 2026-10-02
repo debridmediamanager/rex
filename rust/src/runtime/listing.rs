@@ -269,7 +269,7 @@ impl Runtime {
             // `_listing_row`: each row with its `Image` list.
             let page = page
                 .iter()
-                .map(|row| self.public_row(row, false))
+                .map(|row| listed_collection(self.public_row(row, false)))
                 .collect::<Vec<_>>();
             let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(page))]);
             if paged {
@@ -378,7 +378,7 @@ impl Runtime {
             .map(|row| {
                 if row.get("_collectionRow").is_some() {
                     // `_listing_row`: the `?type=18` row, with its `Image` list.
-                    return self.public_row(row, false);
+                    return listed_collection(self.public_row(row, false));
                 }
                 let mut shown = self.grid_row(row, true, keep_guid, false);
                 if keep_guid && unmatched_guid(row) {
@@ -589,4 +589,15 @@ impl Runtime {
             )])),
         )
     }
+}
+
+/// A collection as a LISTING carries it. Cycle 88, measured on plexscratch42: neither its
+/// `Label` nor its `Field` list -- `/library/all?type=18`, the section's `all?type=18` and
+/// `/collections` alike -- which only the detail reads answer.
+fn listed_collection(mut row: Value) -> Value {
+    if let Some(object) = row.as_object_mut() {
+        object.shift_remove("Label");
+        object.shift_remove("Field");
+    }
+    row
 }

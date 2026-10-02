@@ -1088,6 +1088,11 @@ pub(super) fn listing_guids(row: &Value) -> Option<Value> {
     if unmatched_guid(row) {
         return None;
     }
+    if row.get("type").and_then(Value::as_str) == Some("collection") {
+        // Cycle 88, measured on plexscratch42: a collection row carries no `Guid` under
+        // `includeGuids=1` -- `all?type=18` and section `/collections` alike.
+        return None;
+    }
     match row.get("Guid") {
         Some(Value::Array(list)) if !list.is_empty() => Some(Value::Array(list.clone())),
         _ => row

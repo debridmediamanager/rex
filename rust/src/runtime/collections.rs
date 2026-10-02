@@ -791,7 +791,7 @@ impl Runtime {
 
     /// The collection half of an edit: title, summary, the sort title and content
     /// rating, a sort-title lock and Labels (`library_list_item` PUT).
-    fn write_collection_edit(&mut self, id: &str, pairs: &[(String, String)]) {
+    fn write_collection_edit(&mut self, id: &str, pairs: &[(String, String)], section: bool) {
         let query = pairs.iter().cloned().collect::<HashMap<_, _>>();
         let title = query
             .get("title.value")
@@ -801,28 +801,91 @@ impl Runtime {
             .get("summary.value")
             .or_else(|| query.get("summary"))
             .cloned();
-        let labels = {
-            let pattern = regex::Regex::new(r"^label\[(\d+)\]\.tag\.tag$").expect("valid regex");
-            let mut labels = pairs
-                .iter()
-                .filter_map(|(name, value)| {
-                    pattern
-                        .captures(name)
-                        .and_then(|caps| caps.get(1))
-                        .and_then(|index| index.as_str().parse::<i64>().ok())
-                        .map(|index| (index, value.clone()))
-                })
-                .collect::<Vec<_>>();
-            labels.sort_by_key(|(index, _)| *index);
-            labels
-                .into_iter()
-                .map(|(_, value)| value)
-                .filter(|value| !value.is_empty())
-                .collect::<Vec<_>>()
-        };
-        let label_tags = if labels.is_empty() {
+        // Cycle 88, measured on plexscratch42 through all three save paths
+        // (`tests/fixtures/collection_edit_grammar_s42.json`): a collection's labels take
+        // the ITEM grammar -- on the SECTION path the indexed list MERGES (deduplicated
+        // ignoring case, the collection's other labels after it) and `label[].tag.tag-`
+        // removes what it names; on the item and collections paths the list REPLACES and
+        // any removal clears it. plexsim replaced on every path and ignored removals.
+        let mut adding: Vec<(i64, usize, String)> = Vec::new();
+        let mut removing: Vec<String> = Vec::new();
+        for (position, (name, value)) in pairs.iter().enumerate() {
+            if name.split('[').next().unwrap_or_default().to_lowercase() != "label"
+                || name.ends_with(".locked")
+            {
+                continue;
+            }
+            if name.contains(".tag.tag-") {
+                removing.extend(
+                    value
+                        .split(',')
+                        .filter(|part| !part.is_empty())
+                        .map(percent_decode),
+                );
+            } else if name.contains(".tag.tag") {
+                let index = name
+                    .split_once('[')
+                    .and_then(|(_, rest)| rest.split_once(']'))
+                    .map(|(index, _)| index)
+                    .unwrap_or("");
+                let order = if !index.is_empty() && index.bytes().all(|b| b.is_ascii_digit()) {
+                    index.parse::<i64>().unwrap_or(position as i64)
+                } else {
+                    position as i64
+                };
+                adding.push((order, position, value.clone()));
+            }
+        }
+        adding.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+        let wanted = adding
+            .into_iter()
+            .map(|(_, _, value)| value)
+            .filter(|value| !value.is_empty())
+            .collect::<Vec<_>>();
+        let labels: Option<Vec<String>> = if wanted.is_empty() && removing.is_empty() {
             None
+        } else if section {
+            let gone = removing
+                .iter()
+                .map(|name| name.to_lowercase())
+                .collect::<HashSet<_>>();
+            let mut first = Vec::new();
+            let mut seen = HashSet::new();
+            for value in &wanted {
+                if seen.insert(value.to_lowercase()) {
+                    first.push(value.clone());
+                }
+            }
+            if first.is_empty() && gone.is_empty() {
+                None
+            } else {
+                let kept = self
+                    .collections
+                    .get(id)
+                    .and_then(|collection| collection.extra.get("Label"))
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|tag| tag.get("tag").and_then(Value::as_str))
+                    .filter(|tag| {
+                        let lowered = tag.to_lowercase();
+                        !seen.contains(&lowered) && !gone.contains(&lowered)
+                    })
+                    .map(str::to_string)
+                    .collect::<Vec<_>>();
+                first.extend(kept);
+                Some(first)
+            }
         } else {
+            let mut exact = Vec::new();
+            for value in wanted {
+                if !exact.contains(&value) {
+                    exact.push(value);
+                }
+            }
+            Some(exact)
+        };
+        let label_tags = labels.map(|labels| {
             let mut minted = Vec::new();
             for value in &labels {
                 let lowered = value.to_lowercase();
@@ -839,8 +902,8 @@ impl Runtime {
                     .or_insert_with(("Label".to_string(), lowered), || tag.clone());
                 minted.push(tag);
             }
-            Some(minted)
-        };
+            minted
+        });
         let Some(collection) = self.collections.get_mut(id) else {
             return;
         };
@@ -872,9 +935,33 @@ impl Runtime {
                 collection.extra.insert(name.to_string(), json!(value));
             }
         }
-        if let Some(locked) = query.get("titleSort.locked") {
+        // Cycle 88: every `.locked` column lands in `Field` (plexsim kept a `titleSort`
+        // lock alone), parsed as the path parses it.
+        let locks = pairs
+            .iter()
+            .filter_map(|(name, value)| {
+                let field = name.strip_suffix(".locked")?;
+                if field == "titleSort" || !edit::records_lock(field) {
+                    return None;
+                }
+                let locked = if section {
+                    !value.is_empty()
+                        && value.bytes().all(|b| b.is_ascii_digit())
+                        && value.trim_start_matches('0') == "1"
+                } else {
+                    value == "1"
+                };
+                Some((field.to_string(), locked))
+            })
+            .collect::<Vec<_>>();
+        if query.contains_key("titleSort.locked") || !locks.is_empty() {
             let mut map = collection.extra.clone();
-            edit::set_lock(&mut map, "titleSort", locked == "1");
+            if let Some(locked) = query.get("titleSort.locked") {
+                edit::set_lock(&mut map, "titleSort", locked == "1");
+            }
+            for (field, locked) in &locks {
+                edit::set_lock(&mut map, field, *locked);
+            }
             match map.get("Field") {
                 Some(fields) => {
                     collection.extra.insert("Field".to_string(), fields.clone());
@@ -884,10 +971,16 @@ impl Runtime {
                 }
             }
         }
-        if let Some(tags) = label_tags {
-            collection
-                .extra
-                .insert("Label".to_string(), Value::Array(tags));
+        match label_tags {
+            Some(tags) if !tags.is_empty() => {
+                collection
+                    .extra
+                    .insert("Label".to_string(), Value::Array(tags));
+            }
+            Some(_) => {
+                collection.extra.shift_remove("Label");
+            }
+            None => {}
         }
         if [
             "title",
@@ -1066,7 +1159,7 @@ impl Runtime {
         if let Some(refusal) = self.collection_edit_refusal(&collection, pairs) {
             return refusal;
         }
-        self.write_collection_edit(id, pairs);
+        self.write_collection_edit(id, pairs, true);
         if let Some(after) = self.collections.get(id).cloned() {
             let row = self.dynamic_collection_row(&after);
             self.push_timeline_collection(&was, 3, Some("queued"));
@@ -1154,7 +1247,7 @@ impl Runtime {
                     if let Some(refusal) = self.collection_edit_refusal(&collection, &pairs) {
                         return refusal;
                     }
-                    self.write_collection_edit(id, &pairs);
+                    self.write_collection_edit(id, &pairs, false);
                     if let Some(after) = self.collections.get(id).cloned() {
                         let row = self.dynamic_collection_row(&after);
                         self.push_timeline_collection(&row, 3, Some("loading"));
@@ -1645,7 +1738,7 @@ impl Runtime {
             if let Some(refusal) = self.collection_edit_refusal(collection, &pairs) {
                 return refusal;
             }
-            self.write_collection_edit(&id, &pairs);
+            self.write_collection_edit(&id, &pairs, false);
             if let Some(after) = self.collections.get(&id).cloned() {
                 let row = self.dynamic_collection_row(&after);
                 self.push_timeline_collection(&row, 3, Some("loading"));

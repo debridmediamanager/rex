@@ -3620,6 +3620,11 @@ def _listing_guids(row):
     """
     if _unmatched(row):
         return None
+    if (row or {}).get("type") == "collection":
+        # Cycle 88, measured on plexscratch42: a collection row carries no `Guid` under
+        # `includeGuids=1` -- `all?type=18` and section `/collections` alike -- where
+        # plexsim gave it the one-entry list a guid-only row gets.
+        return None
     guid = (row or {}).get("guid")
     return (row or {}).get("Guid") or ([{"id": guid}] if guid else None)
 
@@ -3692,6 +3697,13 @@ def _listing_row(row):
 
 def _full(row):
     return _part_file_state(_public_row(row), checked=False)
+
+
+def _listed_collection(row):
+    """A collection as a LISTING carries it. Cycle 88, measured on plexscratch42: neither
+    its `Label` nor its `Field` list -- `/library/all?type=18`, the section's `all?type=18`
+    and `/collections` alike -- which only the detail reads answer."""
+    return {k: v for k, v in row.items() if k not in ("Label", "Field")}
 
 
 def _part_file_state(row, checked, resolver=None):
@@ -7664,7 +7676,8 @@ class PlexSim:
                 rows, _ = self._sorted(rows, query.get("sort") or "titleSort")
                 page, paged, start, total = self.page_window(rows, query)
                 fields = {"offset": start, "totalSize": total} if paged else {}
-                return self.container(Metadata=[_listing_row(r) for r in page], **fields)
+                return self.container(Metadata=[_listed_collection(_listing_row(r)) for r in page],
+                                      **fields)
             source = list(catalog.items.values())
             kinds = {value for name, value in query.get("_pairs") or [] if name == "type"}
             scoped_guid = any(
@@ -7734,7 +7747,7 @@ class PlexSim:
                 if row.get("type") == "collection" or "collectionSort" in row:
                     # Measured: the collection row here is the one `?type=18` answers,
                     # unchanged -- not the light grid projection the other rows take.
-                    rows.append(_listing_row(row))
+                    rows.append(_listed_collection(_listing_row(row)))
                     continue
                 entry = _grid_row(_listing_row(row), keep_guid=query.get("includeGuids") == "1")
                 if _unmatched(row):
@@ -9606,6 +9619,9 @@ class PlexSim:
                     edits = {k: v for k, v in query.items() if k not in ("type", "id")}
                     edits["_pairs"] = [(k, v) for k, v in query.get("_pairs") or []
                                        if k not in ("type", "id")]
+                    # Cycle 88: the collection writer below takes the SECTION path's tag
+                    # grammar from here (labels merge, a removal names what it removes).
+                    edits["_section_save"] = "1"
                     # Cycle 58, measured on plexscratch42: a rename to a name some row of
                     # THIS library already carries as a `Collection` tag -- matched
                     # ignoring case, the collection's own old tag included -- is a 409 that
@@ -13394,13 +13410,12 @@ class PlexSim:
                 if query.get("titleSort.locked") is not None:
                     self.library._set_lock(collection, "titleSort",
                                            query["titleSort.locked"] == "1")
-                labels = sorted(((name, value) for name, value in query.get("_pairs") or []
-                                 if re.match(r"^label\[\d+\]\.tag\.tag$", name)),
-                                key=lambda pair: int(pair[0][6:].split("]", 1)[0]))
-                if labels:
-                    # Measured on a writable copy of the reference: a collection takes a
-                    # Label like any item. plexsim ignored the tag.
-                    self.library._set_tags(collection, "label", [value for _, value in labels if value])
+                # Measured on a writable copy of the reference: a collection takes a
+                # Label like any item, and (cycle 88) every lock and the item grammar
+                # for its labels -- the section save sets `_section_save` on the way in.
+                self.library.write_collection_locks_and_labels(
+                    collection, query.get("_pairs") or list(query.items()),
+                    section=bool(query.get("_section_save")))
             else:
                 self.library.edit_playlist(playlist, title=title, summary=summary)
                 # Cycle 83, plexscratch42 (1.42.2): this path STORES what `PUT /playlists/{id}`
@@ -19593,6 +19608,10 @@ class PlexSim:
                 if query.get("titleSort.locked") is not None:
                     self.library._set_lock(collection, "titleSort",
                                            query["titleSort.locked"] == "1")
+                # Cycle 88: every lock, and the ITEM path's label grammar (this path
+                # dropped labels altogether).
+                self.library.write_collection_locks_and_labels(
+                    collection, query.get("_pairs") or list(query.items()))
                 # `title.value=` is an empty title too, which `or` turned into None.
                 title = query.get("title.value")
                 if title is None:

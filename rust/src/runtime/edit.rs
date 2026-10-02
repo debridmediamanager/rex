@@ -259,6 +259,13 @@ fn is_tag_type(name: &str) -> bool {
     tag_key_for(name).is_some()
 }
 
+/// A column a `.locked` write records in `Field` (cycle 88: the collection writer's
+/// test; `hdr10plus` is accepted and recorded nowhere).
+pub(super) fn records_lock(field: &str) -> bool {
+    (has(EDITABLE_FIELDS, field) || is_tag_type(field) || has(LOCK_ONLY_FIELDS, field))
+        && !has(NO_OP_FIELDS, field)
+}
+
 fn has(list: &[&str], name: &str) -> bool {
     list.contains(&name)
 }
