@@ -2700,10 +2700,19 @@ class Library:
         collection = self._collections.pop(int(key), None)
         if collection is None:
             return False
+        # Cycle 88 B3, measured alike on plexscratch42 (1.42.2) and plexscratch (1.43.4),
+        # `tests/fixtures/collection_delete_by_title_s42.json` and `_s43.json`: the delete
+        # untags the members by the collection's CURRENT title, ignoring case -- not by the
+        # tag they carry. An ITEM-path or COLLECTIONS-path rename leaves that tag under the
+        # old name (cycle 9), so the delete then leaves it on them for good; renamed back
+        # (in any case) it goes; renamed onto ANOTHER collection's title, the delete strips
+        # THAT collection's tag, and so its membership. The section path renames the tag
+        # too, so only those two raw renames tell the rules apart.
+        name = collection["title"] or collection.get("tag", collection["title"])
         for member in collection["items"]:
             row = self.catalog.items.get(int(member))
             if row is not None:
-                self._remove_tags(row, "collection", [collection.get("tag", collection["title"])])
+                self._remove_tags(row, "collection", [name])
         return True
 
     def stamp_collection_tags(self, collection):

@@ -1199,9 +1199,40 @@ impl Runtime {
             self.collection_members(&collection)
         };
         self.collections.remove(id);
-        let name = collection.tag_name();
+        // Cycle 88 B3, measured alike on plexscratch42 (1.42.2) and plexscratch (1.43.4),
+        // `tests/fixtures/collection_delete_by_title_s4{2,3}.json`: the delete untags the
+        // members by the collection's CURRENT title, ignoring case -- not by the tag they
+        // carry. An item-path or collections-path rename leaves that tag under the old
+        // name, so the delete leaves it on them for good; renamed onto ANOTHER
+        // collection's title, the delete strips that one's tag, and so its membership.
+        let name = if collection.title.is_empty() {
+            collection.tag_name()
+        } else {
+            collection.title.clone()
+        };
+        let lowered = name.to_lowercase();
+        let other = self
+            .collections
+            .values()
+            .find(|other| {
+                other.section == collection.section && other.tag_name().to_lowercase() == lowered
+            })
+            .map(|other| other.id.clone());
         for key in &collection.items {
             self.untag_collection_member(key, &name);
+            // One member at a time, as the item edit drops one: the emptied counts are
+            // the last member's (`keep_emptied_counts`).
+            let Some(other) = other.as_deref() else {
+                continue;
+            };
+            let members = match self.collections.get(other) {
+                Some(stored) if stored.items.contains(key) => self.collection_members(stored),
+                _ => continue,
+            };
+            if let Some(stored) = self.collections.get_mut(other) {
+                stored.items.retain(|item| item != key);
+            }
+            self.keep_emptied_counts(other, &members);
         }
         for member in &members {
             if let Some(row) = key_of(member).and_then(|key| self.catalog.get(&key).cloned()) {

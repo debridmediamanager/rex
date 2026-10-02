@@ -1,0 +1,4999 @@
+{
+ "_about": "plexscratch (PMS 1.43.4.10903), cycle 88 B3, 2026-10-02: a one-member movie collection renamed on each path, then deleted; the member read after each step. Machine identifier and token redacted.",
+ "tag": "b3d1",
+ "member": "4",
+ "section": "1",
+ "sequences": [
+  {
+   "name": "item",
+   "about": "renamed on the ITEM path, then deleted: the tag stays",
+   "exchanges": [
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=C88B3%20b3d1%20item&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "78",
+         "key": "/library/collections/78/children",
+         "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289",
+         "type": "collection",
+         "title": "C88B3 b3d1 item",
+         "subtype": "movie",
+         "summary": "",
+         "index": 252,
+         "ratingCount": 1,
+         "thumb": "/library/collections/78/composite/1790938751?width=400&height=600",
+         "addedAt": 1790938751,
+         "updatedAt": 1790938751,
+         "childCount": 1,
+         "maxYear": "2012",
+         "minYear": "2012"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "PUT",
+     "path": "/library/metadata/78?title.value=C88B3%20b3d1%20item%20renamed",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/78",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "collections",
+   "about": "a lowercase title renamed on the COLLECTIONS path (test_ui_surface's shape), then deleted: the tag stays",
+   "exchanges": [
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=c88b3%20b3d1%20coll&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "79",
+         "key": "/library/collections/79/children",
+         "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8",
+         "type": "collection",
+         "title": "c88b3 b3d1 coll",
+         "subtype": "movie",
+         "summary": "",
+         "index": 253,
+         "ratingCount": 1,
+         "thumb": "/library/collections/79/composite/1790938752?width=400&height=600",
+         "addedAt": 1790938752,
+         "updatedAt": 1790938752,
+         "childCount": 1,
+         "maxYear": "2012",
+         "minYear": "2012"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "PUT",
+     "path": "/library/collections/79?title=c88b3%20b3d1%20coll%20renamed",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/79",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "section",
+   "about": "renamed on the SECTION path (renames the tag), then deleted: the tag goes",
+   "exchanges": [
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=C88B3%20b3d1%20section&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "80",
+         "key": "/library/collections/80/children",
+         "guid": "collection://bed0b06c-eaae-4e6e-b52e-9b9d972406cf",
+         "type": "collection",
+         "title": "C88B3 b3d1 section",
+         "subtype": "movie",
+         "summary": "",
+         "index": 254,
+         "ratingCount": 1,
+         "thumb": "/library/collections/80/composite/1790938752?width=400&height=600",
+         "addedAt": 1790938752,
+         "updatedAt": 1790938752,
+         "childCount": 1,
+         "maxYear": "2012",
+         "minYear": "2012"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          },
+          {
+           "id": 254,
+           "filter": "collection=254",
+           "tag": "C88B3 b3d1 section",
+           "guid": "collection://bed0b06c-eaae-4e6e-b52e-9b9d972406cf"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "PUT",
+     "path": "/library/sections/1/all?type=18&id=80&title.value=C88B3%20b3d1%20section%20renamed",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          },
+          {
+           "id": 254,
+           "filter": "collection=254",
+           "tag": "C88B3 b3d1 section renamed",
+           "guid": "collection://bed0b06c-eaae-4e6e-b52e-9b9d972406cf"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/80",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "back",
+   "about": "renamed away on the item path and back in another case, then deleted: the tag goes",
+   "exchanges": [
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=C88B3%20b3d1%20back&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "81",
+         "key": "/library/collections/81/children",
+         "guid": "collection://cc6b4b73-73f3-43a1-a2cf-46b1156af774",
+         "type": "collection",
+         "title": "C88B3 b3d1 back",
+         "subtype": "movie",
+         "summary": "",
+         "index": 255,
+         "ratingCount": 1,
+         "thumb": "/library/collections/81/composite/1790938752?width=400&height=600",
+         "addedAt": 1790938752,
+         "updatedAt": 1790938752,
+         "childCount": 1,
+         "maxYear": "2012",
+         "minYear": "2012"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          },
+          {
+           "id": 255,
+           "filter": "collection=255",
+           "tag": "C88B3 b3d1 back",
+           "guid": "collection://cc6b4b73-73f3-43a1-a2cf-46b1156af774"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "PUT",
+     "path": "/library/metadata/81?title.value=C88B3%20b3d1%20back%20away",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "PUT",
+     "path": "/library/metadata/81?title.value=c88b3%20B3D1%20BACK",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          },
+          {
+           "id": 255,
+           "filter": "collection=255",
+           "tag": "C88B3 b3d1 back",
+           "guid": "collection://cc6b4b73-73f3-43a1-a2cf-46b1156af774"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/81",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "steal",
+   "about": "B renamed on the item path to A's title, then B deleted: A's tag goes, and A lists nobody",
+   "exchanges": [
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=C88B3%20b3d1%20alpha&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "82",
+         "key": "/library/collections/82/children",
+         "guid": "collection://9f277567-750b-46da-901d-c9a303e0aa2c",
+         "type": "collection",
+         "title": "C88B3 b3d1 alpha",
+         "subtype": "movie",
+         "summary": "",
+         "index": 256,
+         "ratingCount": 1,
+         "thumb": "/library/collections/82/composite/1790938752?width=400&height=600",
+         "addedAt": 1790938752,
+         "updatedAt": 1790938752,
+         "childCount": 1,
+         "maxYear": "2012",
+         "minYear": "2012"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=C88B3%20b3d1%20beta&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "83",
+         "key": "/library/collections/83/children",
+         "guid": "collection://8e9993ea-6986-4b14-b9dc-424258183739",
+         "type": "collection",
+         "title": "C88B3 b3d1 beta",
+         "subtype": "movie",
+         "summary": "",
+         "index": 257,
+         "ratingCount": 1,
+         "thumb": "/library/collections/83/composite/1790938752?width=400&height=600",
+         "addedAt": 1790938752,
+         "updatedAt": 1790938752,
+         "childCount": 1,
+         "maxYear": "2012",
+         "minYear": "2012"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          },
+          {
+           "id": 256,
+           "filter": "collection=256",
+           "tag": "C88B3 b3d1 alpha",
+           "guid": "collection://9f277567-750b-46da-901d-c9a303e0aa2c"
+          },
+          {
+           "id": 257,
+           "filter": "collection=257",
+           "tag": "C88B3 b3d1 beta",
+           "guid": "collection://8e9993ea-6986-4b14-b9dc-424258183739"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "PUT",
+     "path": "/library/metadata/83?title.value=C88B3%20b3d1%20alpha",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          },
+          {
+           "id": 256,
+           "filter": "collection=256",
+           "tag": "C88B3 b3d1 alpha",
+           "guid": "collection://9f277567-750b-46da-901d-c9a303e0aa2c"
+          },
+          {
+           "id": 257,
+           "filter": "collection=257",
+           "tag": "C88B3 b3d1 beta",
+           "guid": "collection://8e9993ea-6986-4b14-b9dc-424258183739"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/83",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          },
+          {
+           "id": 257,
+           "filter": "collection=257",
+           "tag": "C88B3 b3d1 beta",
+           "guid": "collection://8e9993ea-6986-4b14-b9dc-424258183739"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/collections/82/children",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 0
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/82",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "82",
+         "key": "/library/collections/82/children",
+         "guid": "collection://9f277567-750b-46da-901d-c9a303e0aa2c",
+         "type": "collection",
+         "title": "C88B3 b3d1 alpha",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "subtype": "movie",
+         "summary": "",
+         "index": 256,
+         "ratingCount": 1,
+         "thumb": "/library/collections/82/composite/1790938752?width=400&height=600",
+         "addedAt": 1790938752,
+         "updatedAt": 1790938752,
+         "childCount": 1,
+         "maxYear": "2012",
+         "minYear": "2012"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/82",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/4",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1786914632,
+       "Metadata": [
+        {
+         "ratingKey": "4",
+         "key": "/library/metadata/4",
+         "guid": "plex://movie/5d77699b96b655001fdd3b87",
+         "slug": "tears-of-steel",
+         "studio": "Blender Foundation",
+         "type": "movie",
+         "title": "Tears of Steel",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "Thom just wanted to be an astronaut. His girlfriend Celia just wanted to create robots - and for him to not be freaked out by her cyborg hand. How was Thom supposed to know that breaking up with her would make her take out her anger on the rest of humanity using her robots? It seems the only possible way of undoing everything...is to overwrite her memory of what happened 40 years ago.",
+         "audienceRating": 5.5,
+         "userRating": 5.0,
+         "lastRatedAt": 1767600310,
+         "year": 2012,
+         "tagline": "He just wanted to be awesome in space!",
+         "thumb": "/library/metadata/4/thumb/1790923752",
+         "art": "/library/metadata/4/art/1790923752",
+         "duration": 1800690,
+         "originallyAvailableAt": "2012-09-26",
+         "addedAt": 1789187073,
+         "updatedAt": 1790923752,
+         "audienceRatingImage": "imdb://image.rating",
+         "Media": [
+          {
+           "id": 4,
+           "duration": 1800690,
+           "bitrate": 484,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 4,
+             "key": "/library/parts/4/1789295955/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Tears of Steel (2012)/Tears of Steel (2012) - 1080p.mkv",
+             "size": 109891759,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 7,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 401,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "bitDepth": 8,
+               "chromaLocation": "left",
+               "chromaSubsampling": "4:2:0",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 4,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 8,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "bitrate": 84,
+               "language": "English",
+               "languageTag": "en",
+               "languageCode": "eng",
+               "audioChannelLayout": "mono",
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "English (AAC Mono)",
+               "extendedDisplayTitle": "English (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Tears of Steel",
+           "type": "coverPoster",
+           "url": "/library/metadata/4/thumb/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "background",
+           "url": "/library/metadata/4/art/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "clearLogo",
+           "url": "/library/metadata/4/clearLogo/1790923752"
+          },
+          {
+           "alt": "Tears of Steel",
+           "type": "backgroundSquare",
+           "url": "/library/metadata/4/squareArt/1790923752"
+          }
+         ],
+         "UltraBlurColors": {
+          "topLeft": "243034",
+          "topRight": "725929",
+          "bottomRight": "212a27",
+          "bottomLeft": "020c0c"
+         },
+         "Genre": [
+          {
+           "id": 27,
+           "filter": "genre=27",
+           "tag": "Science Fiction"
+          },
+          {
+           "id": 9,
+           "filter": "genre=9",
+           "tag": "Short"
+          }
+         ],
+         "Country": [
+          {
+           "id": 13,
+           "filter": "country=13",
+           "tag": "Netherlands"
+          }
+         ],
+         "Guid": [
+          {
+           "id": "imdb://tt2285752"
+          }
+         ],
+         "Rating": [
+          {
+           "image": "imdb://image.rating",
+           "value": 5.5,
+           "type": "audience"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 252,
+           "filter": "collection=252",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://b5d5106b-2e8c-476d-b58c-653f7e852289"
+          },
+          {
+           "id": 253,
+           "filter": "collection=253",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://6bc5c262-65e5-4757-85fd-2f7fed8adef8"
+          },
+          {
+           "id": 257,
+           "filter": "collection=257",
+           "tag": "C88B3 b3d1 beta",
+           "guid": "collection://8e9993ea-6986-4b14-b9dc-424258183739"
+          }
+         ],
+         "Director": [
+          {
+           "id": 45,
+           "filter": "director=45",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Writer": [
+          {
+           "id": 46,
+           "filter": "writer=46",
+           "tag": "Ian Hubert",
+           "tagKey": "5d7768830ea56a001e2a68e2",
+           "thumb": "https://metadata-static.plex.tv/0/people/0e349d38e16df14488e82b36ef98bc0c.jpg"
+          }
+         ],
+         "Role": [
+          {
+           "id": 47,
+           "filter": "actor=47",
+           "tag": "Derek de Lint",
+           "tagKey": "5d7768273c3c2a001fbcb1d5",
+           "role": "Old Thom",
+           "thumb": "https://metadata-static.plex.tv/6/people/64e0b956ada7fe02f1441513d5e7f4cf.jpg"
+          },
+          {
+           "id": 48,
+           "filter": "actor=48",
+           "tag": "Sergio Hasselbaink",
+           "tagKey": "5d77689e2d18a4001ff0fb65",
+           "role": "Barley",
+           "thumb": "https://metadata-static.plex.tv/people/5d77689e2d18a4001ff0fb65.jpg"
+          },
+          {
+           "id": 49,
+           "filter": "actor=49",
+           "tag": "Rogier Schippers",
+           "tagKey": "5d776898ad5437001f74a544",
+           "role": "Captain",
+           "thumb": "https://metadata-static.plex.tv/6/people/6864a0d197598bd8084e26c17802ca9d.jpg"
+          },
+          {
+           "id": 50,
+           "filter": "actor=50",
+           "tag": "Vanja Rukavina",
+           "tagKey": "5d77699b96b655001fdd3baf",
+           "role": "Thom",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3baf.jpg"
+          },
+          {
+           "id": 51,
+           "filter": "actor=51",
+           "tag": "Denise Rebergen",
+           "tagKey": "5d77699b96b655001fdd3bb0",
+           "role": "Celia",
+           "thumb": "https://metadata-static.plex.tv/people/5d77699b96b655001fdd3bb0.jpg"
+          },
+          {
+           "id": 52,
+           "filter": "actor=52",
+           "tag": "Jody Bhe",
+           "tagKey": "5d77699b96b655001fdd3bb2",
+           "role": "Djenghis"
+          },
+          {
+           "id": 53,
+           "filter": "actor=53",
+           "tag": "Chris Haley",
+           "tagKey": "5d77699b96b655001fdd3bb1",
+           "role": "Techhead"
+          },
+          {
+           "id": 54,
+           "filter": "actor=54",
+           "tag": "Daan van 't Einde",
+           "tagKey": "5ec55de6c002d50043c61b64",
+           "role": "Scientist"
+          }
+         ],
+         "Producer": [
+          {
+           "id": 12,
+           "filter": "producer=12",
+           "tag": "Ton Roosendaal",
+           "tagKey": "5d776834103a2d001f567902",
+           "thumb": "https://metadata-static.plex.tv/d/people/d0cd238b5a00353ddae78dd55720f7e3.jpg"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,2615 @@
+{
+ "_about": "plexscratch42 (PMS 1.42.2.10156), cycle 88 B3, 2026-10-02: a one-member movie collection renamed on each path, then deleted; the member read after each step. Machine identifier and token redacted.",
+ "tag": "b3d1",
+ "member": "3",
+ "section": "1",
+ "sequences": [
+  {
+   "name": "item",
+   "about": "renamed on the ITEM path, then deleted: the tag stays",
+   "exchanges": [
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=C88B3%20b3d1%20item&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "948",
+         "key": "/library/collections/948/children",
+         "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815",
+         "type": "collection",
+         "title": "C88B3 b3d1 item",
+         "subtype": "movie",
+         "summary": "",
+         "index": 531,
+         "ratingCount": 1,
+         "thumb": "/library/collections/948/composite/1790938750?width=400&height=600",
+         "addedAt": 1790938750,
+         "updatedAt": 1790938750,
+         "childCount": 1,
+         "maxYear": "2006",
+         "minYear": "2006"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "PUT",
+     "path": "/library/metadata/948?title.value=C88B3%20b3d1%20item%20renamed",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/948",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "collections",
+   "about": "a lowercase title renamed on the COLLECTIONS path (test_ui_surface's shape), then deleted: the tag stays",
+   "exchanges": [
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=c88b3%20b3d1%20coll&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "949",
+         "key": "/library/collections/949/children",
+         "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065",
+         "type": "collection",
+         "title": "c88b3 b3d1 coll",
+         "subtype": "movie",
+         "summary": "",
+         "index": 532,
+         "ratingCount": 1,
+         "thumb": "/library/collections/949/composite/1790938750?width=400&height=600",
+         "addedAt": 1790938750,
+         "updatedAt": 1790938750,
+         "childCount": 1,
+         "maxYear": "2006",
+         "minYear": "2006"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "PUT",
+     "path": "/library/collections/949?title=c88b3%20b3d1%20coll%20renamed",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/949",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "section",
+   "about": "renamed on the SECTION path (renames the tag), then deleted: the tag goes",
+   "exchanges": [
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=C88B3%20b3d1%20section&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "950",
+         "key": "/library/collections/950/children",
+         "guid": "collection://690cf561-a887-477e-8b8c-9ce66fc367e3",
+         "type": "collection",
+         "title": "C88B3 b3d1 section",
+         "subtype": "movie",
+         "summary": "",
+         "index": 533,
+         "ratingCount": 1,
+         "thumb": "/library/collections/950/composite/1790938750?width=400&height=600",
+         "addedAt": 1790938750,
+         "updatedAt": 1790938750,
+         "childCount": 1,
+         "maxYear": "2006",
+         "minYear": "2006"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          },
+          {
+           "id": 533,
+           "filter": "collection=533",
+           "tag": "C88B3 b3d1 section",
+           "guid": "collection://690cf561-a887-477e-8b8c-9ce66fc367e3"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "PUT",
+     "path": "/library/sections/1/all?type=18&id=950&title.value=C88B3%20b3d1%20section%20renamed",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          },
+          {
+           "id": 533,
+           "filter": "collection=533",
+           "tag": "C88B3 b3d1 section renamed",
+           "guid": "collection://690cf561-a887-477e-8b8c-9ce66fc367e3"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/950",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "back",
+   "about": "renamed away on the item path and back in another case, then deleted: the tag goes",
+   "exchanges": [
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=C88B3%20b3d1%20back&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "951",
+         "key": "/library/collections/951/children",
+         "guid": "collection://63cdfdcf-f24c-4e7f-bcbc-88735643e4ed",
+         "type": "collection",
+         "title": "C88B3 b3d1 back",
+         "subtype": "movie",
+         "summary": "",
+         "index": 534,
+         "ratingCount": 1,
+         "thumb": "/library/collections/951/composite/1790938751?width=400&height=600",
+         "addedAt": 1790938751,
+         "updatedAt": 1790938751,
+         "childCount": 1,
+         "maxYear": "2006",
+         "minYear": "2006"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          },
+          {
+           "id": 534,
+           "filter": "collection=534",
+           "tag": "C88B3 b3d1 back",
+           "guid": "collection://63cdfdcf-f24c-4e7f-bcbc-88735643e4ed"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "PUT",
+     "path": "/library/metadata/951?title.value=C88B3%20b3d1%20back%20away",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "PUT",
+     "path": "/library/metadata/951?title.value=c88b3%20B3D1%20BACK",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          },
+          {
+           "id": 534,
+           "filter": "collection=534",
+           "tag": "C88B3 b3d1 back",
+           "guid": "collection://63cdfdcf-f24c-4e7f-bcbc-88735643e4ed"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/951",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "steal",
+   "about": "B renamed on the item path to A's title, then B deleted: A's tag goes, and A lists nobody",
+   "exchanges": [
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=C88B3%20b3d1%20alpha&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "952",
+         "key": "/library/collections/952/children",
+         "guid": "collection://56763f68-e2b1-4a1a-b08a-5b827a2ce1fb",
+         "type": "collection",
+         "title": "C88B3 b3d1 alpha",
+         "subtype": "movie",
+         "summary": "",
+         "index": 535,
+         "ratingCount": 1,
+         "thumb": "/library/collections/952/composite/1790938751?width=400&height=600",
+         "addedAt": 1790938751,
+         "updatedAt": 1790938751,
+         "childCount": 1,
+         "maxYear": "2006",
+         "minYear": "2006"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/library/collections?type=1&title=C88B3%20b3d1%20beta&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "Metadata": [
+        {
+         "ratingKey": "953",
+         "key": "/library/collections/953/children",
+         "guid": "collection://1069d3b8-9e90-45a9-b7ff-82de1e64a103",
+         "type": "collection",
+         "title": "C88B3 b3d1 beta",
+         "subtype": "movie",
+         "summary": "",
+         "index": 536,
+         "ratingCount": 1,
+         "thumb": "/library/collections/953/composite/1790938751?width=400&height=600",
+         "addedAt": 1790938751,
+         "updatedAt": 1790938751,
+         "childCount": 1,
+         "maxYear": "2006",
+         "minYear": "2006"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          },
+          {
+           "id": 535,
+           "filter": "collection=535",
+           "tag": "C88B3 b3d1 alpha",
+           "guid": "collection://56763f68-e2b1-4a1a-b08a-5b827a2ce1fb"
+          },
+          {
+           "id": 536,
+           "filter": "collection=536",
+           "tag": "C88B3 b3d1 beta",
+           "guid": "collection://1069d3b8-9e90-45a9-b7ff-82de1e64a103"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "PUT",
+     "path": "/library/metadata/953?title.value=C88B3%20b3d1%20alpha",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          },
+          {
+           "id": 535,
+           "filter": "collection=535",
+           "tag": "C88B3 b3d1 alpha",
+           "guid": "collection://56763f68-e2b1-4a1a-b08a-5b827a2ce1fb"
+          },
+          {
+           "id": 536,
+           "filter": "collection=536",
+           "tag": "C88B3 b3d1 beta",
+           "guid": "collection://1069d3b8-9e90-45a9-b7ff-82de1e64a103"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/953",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          },
+          {
+           "id": 536,
+           "filter": "collection=536",
+           "tag": "C88B3 b3d1 beta",
+           "guid": "collection://1069d3b8-9e90-45a9-b7ff-82de1e64a103"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/collections/952/children",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 0
+      }
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/952",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "952",
+         "key": "/library/collections/952/children",
+         "guid": "collection://56763f68-e2b1-4a1a-b08a-5b827a2ce1fb",
+         "type": "collection",
+         "title": "C88B3 b3d1 alpha",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "subtype": "movie",
+         "summary": "",
+         "index": 535,
+         "ratingCount": 1,
+         "thumb": "/library/collections/952/composite/1790938751?width=400&height=600",
+         "addedAt": 1790938751,
+         "updatedAt": 1790938751,
+         "childCount": 1,
+         "maxYear": "2006",
+         "minYear": "2006"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/library/collections/952",
+     "status": 200,
+     "body": ""
+    },
+    {
+     "method": "GET",
+     "path": "/library/metadata/3",
+     "status": 200,
+     "body": {
+      "MediaContainer": {
+       "size": 1,
+       "allowSync": true,
+       "identifier": "com.plexapp.plugins.library",
+       "librarySectionID": 1,
+       "librarySectionTitle": "Movies",
+       "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+       "mediaTagPrefix": "/system/bundle/media/flags/",
+       "mediaTagVersion": 1758205129,
+       "Metadata": [
+        {
+         "ratingKey": "3",
+         "key": "/library/metadata/3",
+         "guid": "local://3",
+         "type": "movie",
+         "title": "Elephants Dream",
+         "librarySectionTitle": "Movies",
+         "librarySectionID": 1,
+         "librarySectionKey": "/library/sections/1",
+         "summary": "",
+         "skipCount": 34,
+         "year": 2006,
+         "thumb": "/library/metadata/3/thumb/1790174841",
+         "art": "/library/metadata/3/art/1790174841",
+         "duration": 1800690,
+         "addedAt": 1789295931,
+         "updatedAt": 1790174841,
+         "Media": [
+          {
+           "id": 3,
+           "duration": 1800690,
+           "bitrate": 488,
+           "width": 1920,
+           "height": 1080,
+           "aspectRatio": 1.78,
+           "audioChannels": 1,
+           "audioCodec": "aac",
+           "videoCodec": "h264",
+           "videoResolution": "1080",
+           "container": "mkv",
+           "videoFrameRate": "24p",
+           "audioProfile": "lc",
+           "videoProfile": "high",
+           "Part": [
+            {
+             "id": 3,
+             "key": "/library/parts/3/1789295931/file.mkv",
+             "duration": 1800690,
+             "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+             "size": 109875079,
+             "audioProfile": "lc",
+             "container": "mkv",
+             "videoProfile": "high",
+             "Stream": [
+              {
+               "id": 5,
+               "streamType": 1,
+               "default": true,
+               "codec": "h264",
+               "index": 0,
+               "bitrate": 488,
+               "chromaLocation": "left",
+               "codedHeight": 1088,
+               "codedWidth": 1920,
+               "frameRate": 24.0,
+               "hasScalingMatrix": false,
+               "height": 1080,
+               "level": 40,
+               "profile": "high",
+               "refFrames": 1,
+               "scanType": "progressive",
+               "width": 1920,
+               "displayTitle": "1080p",
+               "extendedDisplayTitle": "1080p (H.264)"
+              },
+              {
+               "id": 6,
+               "streamType": 2,
+               "selected": true,
+               "default": true,
+               "codec": "aac",
+               "index": 1,
+               "channels": 1,
+               "profile": "lc",
+               "samplingRate": 44100,
+               "displayTitle": "Unknown (AAC Mono)",
+               "extendedDisplayTitle": "Unknown (AAC Mono)"
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "Image": [
+          {
+           "alt": "Elephants Dream",
+           "type": "coverPoster",
+           "url": "/library/metadata/3/thumb/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "background",
+           "url": "/library/metadata/3/art/1790174841"
+          },
+          {
+           "alt": "Elephants Dream",
+           "type": "clearLogo",
+           "url": "/library/metadata/3/clearLogo/1790174841"
+          }
+         ],
+         "Collection": [
+          {
+           "id": 531,
+           "filter": "collection=531",
+           "tag": "C88B3 b3d1 item",
+           "guid": "collection://d43e2c90-02a4-4965-be34-2677baa87815"
+          },
+          {
+           "id": 532,
+           "filter": "collection=532",
+           "tag": "C88b3 b3d1 coll",
+           "guid": "collection://78b82a99-9af4-4e3f-9dd5-1a6b75a80065"
+          },
+          {
+           "id": 536,
+           "filter": "collection=536",
+           "tag": "C88B3 b3d1 beta",
+           "guid": "collection://1069d3b8-9e90-45a9-b7ff-82de1e64a103"
+          }
+         ],
+         "Field": [
+          {
+           "locked": true,
+           "name": "collection"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

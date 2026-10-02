@@ -1274,6 +1274,10 @@ def main():
             check("collection prefs: %s is a %d" % (why, want), status == want,
                   "HTTP %s" % status)
         request(base, "DELETE", "/library/collections/%s" % ckey)
+        # Cycle 88 B3: renamed on its item path, the delete leaves `Plexsim item probe` on
+        # the movie, as a real PMS does (`collection_delete_by_title_s42.json`); take it off.
+        request(base, "PUT", "/library/metadata/%s?collection%%5B%%5D.tag.tag-=%s"
+                             % (movie, quote("Plexsim item probe")))
     else:
         skip("a collection is editable through /library/metadata/{key}",
              "could not create a collection")
@@ -2266,8 +2270,18 @@ def main():
         check("deleting a collection answers an empty 200", is_empty_200(status, body),
               "HTTP %s" % status)
         _, detail, _ = get(base, "/library/metadata/%s" % movie)
-        check("deleting a collection untags its members",
-              not (detail.get("Metadata") or [{}])[0].get("Collection"))
+        # Cycle 88 B3, measured alike on plexscratch42 (1.42.2) and plexscratch (1.43.4)
+        # with this exact sequence: the delete untags by the collection's CURRENT title, so
+        # after the collections-path rename above the members keep `Plexsim collection`
+        # (`tests/fixtures/collection_delete_by_title_s42.json`). This check used to say the
+        # delete untagged them; the item edit takes the tag off, as on the reference.
+        check("deleting a collection renamed on its collections path leaves its members' tag",
+              [t.get("tag") for t in (detail.get("Metadata") or [{}])[0].get("Collection") or []]
+              == ["Plexsim collection"],
+              (detail.get("Metadata") or [{}])[0].get("Collection"))
+        for member_c88 in [movie] + ([spare] if spare else []):
+            request(base, "PUT", "/library/metadata/%s?collection%%5B%%5D.tag.tag-=%s"
+                                 % (member_c88, quote("Plexsim collection")))
     status, _, _ = get(base, "/library/collections")
     check("the bare collections endpoint 404s, as a real PMS does", status == 404,
           "HTTP %s" % status)
@@ -7885,7 +7899,10 @@ def main():
           "labels %s summary %r" % ([t.get("tag") for t in row_w13d.get("Label") or []], row_w13d.get("summary")))
 
     # Measured on plexscratch: renaming a collection leaves its members' Collection tag as
-    # it was, and deleting it still untags them. plexsim renamed the tag with the collection.
+    # it was. plexsim renamed the tag with the collection. Cycle 88 B3, re-measured with this
+    # exact sequence on plexscratch42 (1.42.2) and plexscratch (1.43.4) alike: the delete
+    # untags by the CURRENT title, so `W13e` stays on the member (the old "still untags
+    # them" was wrong on both); the item edit takes it off.
     _, doc_w13e, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s&title=w13e&uri=%s"
                                              % (movie_section, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))))
     key_w13e = (doc_w13e.get("Metadata") or [{}])[0].get("ratingKey")
@@ -7896,9 +7913,11 @@ def main():
     renamed_w13e = tags_w13e()
     request(base, "DELETE", "/library/collections/%s" % key_w13e)
     deleted_w13e = tags_w13e()
-    check("renaming a collection leaves its members' tag, and deleting it still untags them",
+    request(base, "PUT", "/library/metadata/%s?collection%%5B%%5D.tag.tag-=W13e" % movie)
+    check("renaming a collection leaves its members' tag, and deleting it leaves it too",
           # Cycle 61: the member tag of a new collection is capitalised.
-          renamed_w13e == ["W13e"] and deleted_w13e == [], "%s then %s" % (renamed_w13e, deleted_w13e))
+          renamed_w13e == ["W13e"] and deleted_w13e == ["W13e"] and tags_w13e() == [],
+          "%s then %s" % (renamed_w13e, deleted_w13e))
 
 
     def activities_w15(frames):

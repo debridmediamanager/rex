@@ -3980,3 +3980,14 @@ are changing; replay the client's exact request before altering behavior.
   not -- SQLite's NOCASE. Both servers compared a tag name exactly. Plex Web and python-plexapi
   send the tag's id (plexapi resolves a name to its FilterChoice key first), so no client sends
   a name in another case.
+- **A collection's delete untags its members by its CURRENT title, ignoring case -- on 1.42.2
+  and 1.43.4 alike.** plexscratch42 and plexscratch (2026-10-02,
+  `tests/fixtures/collection_delete_by_title_s42.json` / `_s43.json`, the same sequences): renamed
+  on the ITEM path (`PUT /library/metadata/{id}?title.value=`) or the COLLECTIONS path
+  (`PUT /library/collections/{id}?title=`) the members keep the tag under the old name and the
+  delete leaves it on them for good; renamed on the section path (which renames the tag), or
+  away and back in another case, the delete takes it; renamed onto ANOTHER collection's title,
+  the delete strips that one's tag, so it lists nobody and keeps its counts. Both servers untagged
+  by the stored tag, and `test_ui_surface.py`'s two rename-then-delete checks asserted the untag
+  -- re-run byte for byte on both copies, neither version untags. python-plexapi (`_edit` ->
+  `section()._edit`) and the Edit dialog rename on the section path, so no client reaches it.
