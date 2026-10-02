@@ -6809,8 +6809,14 @@ def main():
           and shows_trimmed9 and all(r.get("mediaCount") == 0 for r in shows_trimmed9),
           "%d movie row(s), %d show row(s)" % (len(trimmed9), len(shows_trimmed9)))
 
-    band9 = {q: get(base, "/statistics/bandwidth?timespan=6%s" % q)
-             for q in ("", "&accountID=999", "&deviceID=999", "&lan=0", "&lan=1", "&lan=true", "&deviceID=")}
+    # The per-second series grows while these reads run (zen: 41 unfiltered, 42 with lan=1),
+    # so the set is retaken until the unfiltered read is the same before and after it.
+    for _band_try9 in range(5):
+        band9 = {q: get(base, "/statistics/bandwidth?timespan=6%s" % q)
+                 for q in ("", "&accountID=999", "&deviceID=999", "&lan=0", "&lan=1", "&lan=true", "&deviceID=")}
+        if (get(base, "/statistics/bandwidth?timespan=6")[1].get("StatisticsBandwidth") or []) \
+                == (band9[""][1].get("StatisticsBandwidth") or []):
+            break
     band_rows9 = {q: len(body.get("StatisticsBandwidth") or []) for q, (_, body, _) in band9.items()}
     band_lan9 = {bool(r.get("lan")) for r in band9[""][1].get("StatisticsBandwidth") or []}
     check("bandwidth statistics filter by account, device and lan, and refuse bad values",
