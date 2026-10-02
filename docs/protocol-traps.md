@@ -3906,3 +3906,21 @@ are changing; replay the client's exact request before altering behavior.
   carrying a q-list or a script subtag (`zh-Hant`, `ca-ES,ca;q=0.9`, `nn,ca`) resolves
   differently on the reference (English, English, Norwegian) and on both servers (Chinese,
   Spanish, English); Plex Web sends one plain tag from its own list.
+- **A music library's own vocabulary is translated.** Read off an empty `type=artist` library on
+  plexscratch42 (1.42.2) through the reads Plex Web 4.162.1 and python-plexapi 4.18.2 make, in
+  every language Plex Web sends (2026-10-02, `tests/fixtures/c87_a_music_i18n_s42.json`): the
+  Meta field, sort and operator titles (`Album Artist` is `Albuminterpret`, `Track Title`
+  `Titel`, `Artist Title` `Albuminterpret` again), the section's `All Artists`/`By Album`/
+  `Search Albums...` rows, the `Search for Artists|Albums|Tracks` prompts and the shelf titles
+  (`Recently Played Music`, `Stations` -- `Radios` in German --, `Artists on Tour`, `New Releases
+  on TIDAL`, `Recently Added Music Videos`) move in up to 34 of the 44 languages Plex Web sends,
+  the same ten as everywhere keeping English. Both servers left all 52 strings in English: the
+  table had been captured off libraries that held no music. The same strings in a movie or show
+  library's `sorts?type=8|9|10` read the same on zen, so cycle 63's bound -- recorded because
+  plexsim could hold no music library -- closes with it now that Add Library makes one. The
+  random `music.vault` shelf is worded around its number (`Keine Wiedergabe seit 11 Monaten`,
+  `Nicht abgespielt in 4 Jahren`; `title_templates.json`), and its period is drawn PER LANGUAGE
+  (each language's hub page is its own cache entry) from two to eleven months or two to five
+  years, wider than the five periods the W5 witness saw: 2,070 reads, one wording per language
+  and unit. plexsim still draws one period per process from the five; the shelf is empty, so no
+  client draws it.

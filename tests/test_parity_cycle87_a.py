@@ -4,6 +4,13 @@ Library commits added, in the request's language.
 
 `tests/fixtures/c87_a_music_i18n_s42.json` was read off plexscratch42 (1.42.2):
 
+- an EMPTY music library made with Plex Web's own Add Library form, then every read
+  Plex Web 4.162.1 and python-plexapi 4.18.2 make for it whose answer moves between
+  English and German, in en, de, fr and ja. A real PMS translates the library's Meta
+  field, sort and operator titles, its `All Artists`/`By Album`/`Search ...` rows, the
+  three search prompts and its shelves' titles; plexsim had none of them in its table.
+- the random `music.vault` shelf's title, read in every language Plex Web sends over
+  forty minutes: `Haven't played in %s months|years` is localised around the number.
 - six refusing Add Library forms that between them raise all eleven refusal lines, in
   every language Plex Web sends and `hu-HU`: three of the lines are translated.
 
@@ -15,6 +22,7 @@ the oracle with `PLEXSIM_SERVER=python`.
 import http.client
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -75,11 +83,94 @@ def ask(port, method, path, headers):
         connection.close()
 
 
+def normalise(document, section):
+    """The library's own number written `{S}` wherever it names the library."""
+    text = json.dumps(document, ensure_ascii=False)
+    s = re.escape(str(section))
+    for pattern in (r"(sections/)%s\b" % s,
+                    r"((?:contentDirectoryID|sectionID)=)%s\b" % s,
+                    r"(%%2C)%s(?=%%2C)" % s,
+                    r"(\.)%s(?=\")" % s,
+                    r"(\"(?:key|id|librarySectionID)\": \")%s(?=\")" % s):
+        text = re.sub(pattern, lambda match: match.group(1) + "{S}", text)
+    text = re.sub(r"(\"librarySectionID\": )%s\b" % s,
+                  lambda match: match.group(1) + "\"{S}\"", text)
+    return json.loads(text)
+
+
+def strings(node, path, out):
+    """Every string attribute, keyed by its element's identifying attributes."""
+    if isinstance(node, dict):
+        # A shelf is named by its identifier alone: a random shelf's key moves.
+        names = ("hubIdentifier",) if "hubIdentifier" in node else ("id", "filter", "key", "type")
+        ids = ["%s=%s" % (k, node[k]) for k in names
+               if k in node and not isinstance(node[k], (dict, list))]
+        tag = path + "{" + ",".join(ids[:2]) + "}"
+        for name, value in node.items():
+            if isinstance(value, (dict, list)):
+                strings(value, tag + "/" + name, out)
+            elif isinstance(value, str):
+                out[tag + "@" + name] = value
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            keyed = isinstance(value, dict) and any(k in value for k in ("id", "hubIdentifier", "filter", "key"))
+            strings(value, path if keyed else "%s[%d]" % (path, index), out)
+    return out
+
+
 def main():
     fixture = json.load(open(FIXTURE, encoding="utf-8"))
     process, port = start()
     try:
         base = dict(fixture["request_headers"], **{"X-Plex-Client-Identifier": "parity-c87-a"})
+        status, body = ask(port, "POST", fixture["created_with"], base)
+        check("the music library is created (%d)" % fixture["created_status"],
+              status == fixture["created_status"], (status, body[:200]))
+        section = json.loads(body)["MediaContainer"]["Directory"][0]["key"]
+
+        # -- the library's own vocabulary, per language --------------------------
+        vault = re.compile(r"^Haven't played in ")
+        for path, by_language in fixture["documents"].items():
+            reference_en = strings(by_language["en"], "", {})
+            _s, mine = ask(port, "GET", path.replace("{S}", str(section)),
+                           dict(base, **{"X-Plex-Language": "en"}))
+            mine_en = strings(normalise(json.loads(mine), section), "", {})
+            # Only what both sides say alike in English is compared: the reference's
+            # other libraries, its uuids and its clock are its own.
+            shared = [k for k, v in reference_en.items()
+                      if mine_en.get(k) == v and not vault.match(v)
+                      and "music.vault" not in k and not k.endswith("@key")]
+            for language in ("de", "fr", "ja"):
+                reference = strings(by_language[language], "", {})
+                _s, mine = ask(port, "GET", path.replace("{S}", str(section)),
+                               dict(base, **{"X-Plex-Language": language}))
+                got = strings(normalise(json.loads(mine), section), "", {})
+                wrong = [(reference_en[k], got.get(k), reference.get(k)) for k in shared
+                         if k in reference and got.get(k) != reference[k]]
+                moved = sum(1 for k in shared if k in reference and reference[k] != reference_en[k])
+                check("%s %s: the %d strings the reference translates read as measured"
+                      % (language, path[:90], moved), not wrong, wrong[:6])
+
+        # -- the random vault shelf's title, around its own number ---------------
+        templates = {}
+        for language, title, key in fixture["vault_reads"]:
+            number, unit = re.search(r"lastViewedAt<=-(\d+)(mon|y)", key).groups()
+            templates.setdefault((language, unit), set()).add(title.replace(number, "%s", 1))
+        check("(reference) each language words a period one way",
+              all(len(v) == 1 for v in templates.values()), templates)
+        wrong = []
+        for language in sorted({language for language, _unit in templates}):
+            _s, mine = ask(port, "GET", "/hubs/sections/%s" % section,
+                           dict(base, **{"X-Plex-Language": language}))
+            for hub in json.loads(mine)["MediaContainer"].get("Hub", []):
+                if hub.get("hubIdentifier", "").startswith("music.vault"):
+                    number, unit = re.search(r"lastViewedAt<=-(\d+)(mon|y)", hub["key"]).groups()
+                    want = next(iter(templates[(language, unit)])).replace("%s", number)
+                    if hub["title"] != want:
+                        wrong.append((language, hub["title"], want))
+        check("the vault shelf's title is worded as measured in %d languages"
+              % len({language for language, _unit in templates}), not wrong, wrong[:6])
+
         # -- Add Library's refusal lines -----------------------------------------
         wrong = []
         for exchange in fixture["refusals"]:
