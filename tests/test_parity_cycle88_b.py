@@ -31,6 +31,11 @@ an explicit `selected`; and the upload is the image at `thumb` (bare, versioned,
 the composite `thumb` (the uploaded poster never showed), listed the bare `upload://` uri as
 the candidate, and served a grey placeholder or a 404 at those paths.
 
+And a tag NAME in a section filter (`tests/fixtures/tag_name_case_kids_zen.json`, kids and
+zen): ASCII letters match ignoring case -- `genre=ANIMATION` is `Animation` -- and a
+non-ASCII letter only in its own case -- `actor=ARINZé KENE` finds Arinzé Kene,
+`ARINZÉ KENE` nothing (SQLite's NOCASE). Both servers compared names exactly.
+
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
 
@@ -53,6 +58,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "collection_edit_grammar_s42.json")
+CASE_FIXTURE = os.path.join(HERE, "fixtures", "tag_name_case_kids_zen.json")
 POSTER_FIXTURES = [os.path.join(HERE, "fixtures", name) for name in
                    ("collection_poster_upload_s42.json", "playlist_poster_upload_s42.json")]
 MOVIE = "1012"                     # catalog_ui's movie, the playlist member
@@ -373,6 +379,42 @@ def server_poster_checks(port, fixture):
                              else "/playlists/%s") % key)
 
 
+def server_case_checks(port, fixture):
+    """The reference's relation, replayed on catalog_ui's own spellings of the same tags."""
+    by_path = {}
+    for exchange in fixture["exchanges"]:
+        query = urllib.parse.unquote(exchange["path"].split("&", 1)[1])
+        by_path[query] = exchange["titles"]
+    canonical = {"genre": "Animation", "country": "Netherlands", "actor": "Arinzé Kene"}
+    for query, titles in by_path.items():
+        name, _, value = query.partition("=")
+        negated = name.endswith("!")
+        field = name.rstrip("!")
+        if field not in canonical or value.lower() not in (canonical[field].lower(),) \
+                and value.upper() != canonical[field].upper():
+            continue
+        base = [t for q, t in by_path.items() if q == "%s=%s" % (name, canonical[field])]
+        if not base and canonical[field] in ("Animation", "Netherlands") and negated:
+            base = None
+        same = (titles == base[0]) if base else bool(titles)
+        status, body = request(port, "GET", "/library/sections/1/all?type=1&%s%s=%s" % (
+            field, "!" if negated else "", urllib.parse.quote(value)))
+        status, exact = request(port, "GET", "/library/sections/1/all?type=1&%s%s=%s" % (
+            field, "!" if negated else "", urllib.parse.quote(canonical[field])))
+        got = sorted(m.get("title") for m in body["MediaContainer"].get("Metadata") or [])
+        want = sorted(m.get("title") for m in exact["MediaContainer"].get("Metadata") or [])
+        folds = value.translate(str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                                              "abcdefghijklmnopqrstuvwxyz")) \
+            == canonical[field].translate(str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                                                        "abcdefghijklmnopqrstuvwxyz"))
+        if not negated:
+            check("reference: %s %s the canonical spelling (an ASCII-only case fold)" % (
+                query, "matches as" if same else "does NOT match as"),
+                  same == folds and bool(want), (same, folds, want))
+        check("%s answers %s" % (query, "the canonical rows" if same else "no row"),
+              got == (want if same else []) and want, (got, want))
+
+
 def main():
     fixture = json.load(open(FIXTURE))
     steps = reference_edits(fixture)
@@ -383,6 +425,7 @@ def main():
         server_read_checks(port, fixture)
         for path in POSTER_FIXTURES:
             server_poster_checks(port, json.load(open(path)))
+        server_case_checks(port, json.load(open(CASE_FIXTURE)))
     finally:
         stop(process)
     passed = sum(results)

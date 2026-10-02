@@ -498,6 +498,14 @@ EMPTY_MATCHES_EVERY = {"studio", "editionTitle"}
 EMPTY_SYNONYM = {"contentRating": "None"}
 
 
+_ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+
+
+def _ascii_lower(text):
+    """Fold the ASCII letters alone, as SQLite's NOCASE collation does."""
+    return str(text).translate(_ASCII_LOWER)
+
+
 def _exact(operator, actual, wanted, field=""):
     """Exact set membership: tag, language and resolution fields.
 
@@ -520,6 +528,12 @@ def _exact(operator, actual, wanted, field=""):
             hit = True
         else:
             hit = not values
+    elif field in TAG_TABLE_FIELDS:
+        # Cycle 88, measured on kids (1.43.4) and zen (1.42.2): a tag NAME matches ignoring
+        # the case of its ASCII letters only -- `genre=ANIMATION` is `Animation`, and
+        # `actor=ARINZé KENE` is `Arinzé Kene` while `ARINZÉ KENE` matches nothing (SQLite's
+        # NOCASE). plexsim compared exactly, so any other case found no row.
+        hit = _ascii_lower(wanted) in {_ascii_lower(value) for value in values}
     else:
         hit = wanted in values
     if operator == "!=":

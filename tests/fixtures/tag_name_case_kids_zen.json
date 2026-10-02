@@ -1,0 +1,177 @@
+{
+ "_about": "cycle 88 B, 2026-10-02: a tag NAME in a section filter, kids (PMS 1.43.4) and zen (1.42.2, paged 50), GET only: ASCII letters match ignoring case, a non-ASCII letter only in its own case (SQLite NOCASE). Titles only; no token.",
+ "exchanges": [
+  {
+   "server": "kids",
+   "path": "/library/sections/1/all?type=1&genre=Animation",
+   "status": 200,
+   "titles": [
+    "Cosmos Laundromat",
+    "Elephants Dream",
+    "Sintel"
+   ]
+  },
+  {
+   "server": "kids",
+   "path": "/library/sections/1/all?type=1&genre=animation",
+   "status": 200,
+   "titles": [
+    "Cosmos Laundromat",
+    "Elephants Dream",
+    "Sintel"
+   ]
+  },
+  {
+   "server": "kids",
+   "path": "/library/sections/1/all?type=1&genre=ANIMATION",
+   "status": 200,
+   "titles": [
+    "Cosmos Laundromat",
+    "Elephants Dream",
+    "Sintel"
+   ]
+  },
+  {
+   "server": "kids",
+   "path": "/library/sections/1/all?type=1&genre!=animation",
+   "status": 200,
+   "titles": [
+    "Big Buck Bunny",
+    "Tears of Steel"
+   ]
+  },
+  {
+   "server": "kids",
+   "path": "/library/sections/1/all?type=1&country=netherlands",
+   "status": 200,
+   "titles": [
+    "Cosmos Laundromat",
+    "Elephants Dream",
+    "Sintel",
+    "Tears of Steel"
+   ]
+  },
+  {
+   "server": "kids",
+   "path": "/library/sections/1/all?type=1&country=NETHERLANDS",
+   "status": 200,
+   "titles": [
+    "Cosmos Laundromat",
+    "Elephants Dream",
+    "Sintel",
+    "Tears of Steel"
+   ]
+  },
+  {
+   "server": "kids",
+   "path": "/library/sections/1/all?type=1&director=colin%20levy",
+   "status": 200,
+   "titles": [
+    "Sintel"
+   ]
+  },
+  {
+   "server": "kids",
+   "path": "/library/sections/1/all?type=1&actor=halina%20reijn",
+   "status": 200,
+   "titles": [
+    "Sintel"
+   ]
+  },
+  {
+   "server": "kids",
+   "path": "/library/sections/1/all?type=1&actor=HALINA%20REIJN",
+   "status": 200,
+   "titles": [
+    "Sintel"
+   ]
+  },
+  {
+   "server": "zen",
+   "path": "/library/sections/1/all?type=1&actor=Arinz%C3%A9%20Kene",
+   "headers": {
+    "X-Plex-Container-Start": "0",
+    "X-Plex-Container-Size": "50"
+   },
+   "status": 200,
+   "totalSize": 1,
+   "titles": [
+    "Tuesday"
+   ]
+  },
+  {
+   "server": "zen",
+   "path": "/library/sections/1/all?type=1&actor=arinz%C3%A9%20kene",
+   "headers": {
+    "X-Plex-Container-Start": "0",
+    "X-Plex-Container-Size": "50"
+   },
+   "status": 200,
+   "totalSize": 1,
+   "titles": [
+    "Tuesday"
+   ]
+  },
+  {
+   "server": "zen",
+   "path": "/library/sections/1/all?type=1&actor=ARINZ%C3%A9%20KENE",
+   "headers": {
+    "X-Plex-Container-Start": "0",
+    "X-Plex-Container-Size": "50"
+   },
+   "status": 200,
+   "totalSize": 1,
+   "titles": [
+    "Tuesday"
+   ]
+  },
+  {
+   "server": "zen",
+   "path": "/library/sections/1/all?type=1&actor=ARINZ%C3%89%20KENE",
+   "headers": {
+    "X-Plex-Container-Start": "0",
+    "X-Plex-Container-Size": "50"
+   },
+   "status": 200,
+   "totalSize": 0,
+   "titles": []
+  },
+  {
+   "server": "zen",
+   "path": "/library/sections/1/all?type=1&actor=Bj%C3%B6rk",
+   "headers": {
+    "X-Plex-Container-Start": "0",
+    "X-Plex-Container-Size": "50"
+   },
+   "status": 200,
+   "totalSize": 1,
+   "titles": [
+    "Dancer in the Dark"
+   ]
+  },
+  {
+   "server": "zen",
+   "path": "/library/sections/1/all?type=1&actor=BJ%C3%B6RK",
+   "headers": {
+    "X-Plex-Container-Start": "0",
+    "X-Plex-Container-Size": "50"
+   },
+   "status": 200,
+   "totalSize": 1,
+   "titles": [
+    "Dancer in the Dark"
+   ]
+  },
+  {
+   "server": "zen",
+   "path": "/library/sections/1/all?type=1&actor=BJ%C3%96RK",
+   "headers": {
+    "X-Plex-Container-Start": "0",
+    "X-Plex-Container-Size": "50"
+   },
+   "status": 200,
+   "totalSize": 0,
+   "titles": []
+  }
+ ]
+}

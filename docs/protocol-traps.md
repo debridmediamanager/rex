@@ -3972,3 +3972,11 @@ are changing; replay the client's exact request before altering behavior.
   playlist's `Field` rides on `/playlists/{id}` and the detail only -- `/playlists` lists none,
   where both servers listed it. The copy's `art` 404 itself carries `X-Plex-Local-Asset: 1`; not
   emulated.
+- **A tag NAME in a filter folds ASCII case only.** kids (1.43.4) and zen (1.42.2), GET
+  (2026-10-02, `tests/fixtures/tag_name_case_kids_zen.json`): `genre=animation` and
+  `genre=ANIMATION` answer `Animation`'s rows (and `genre!=animation` its complement), as do
+  `country=NETHERLANDS` and `actor=HALINA REIJN`; on zen `actor=arinzé kene` and `ARINZé KENE`
+  find Arinzé Kene while `ARINZÉ KENE` finds nothing, and `BJöRK` finds Björk where `BJÖRK` does
+  not -- SQLite's NOCASE. Both servers compared a tag name exactly. Plex Web and python-plexapi
+  send the tag's id (plexapi resolves a name to its FilterChoice key first), so no client sends
+  a name in another case.

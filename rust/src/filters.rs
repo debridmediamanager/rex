@@ -582,6 +582,11 @@ fn exact(operator: &str, actual: &Value, wanted: &str, field: &str) -> bool {
         } else {
             vals.is_empty()
         }
+    } else if is_tag_field(field) {
+        // Cycle 88, measured on kids and zen: a tag NAME matches ignoring the case of its
+        // ASCII letters only (SQLite's NOCASE) -- `genre=ANIMATION` is `Animation`, and
+        // `actor=ARINZé KENE` is `Arinzé Kene` while `ARINZÉ KENE` matches nothing.
+        vals.iter().any(|x| x.eq_ignore_ascii_case(wanted))
     } else {
         vals.iter().any(|x| x == wanted)
     };
