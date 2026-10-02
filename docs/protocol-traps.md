@@ -3929,3 +3929,18 @@ are changing; replay the client's exact request before altering behavior.
   `originallyAvailableAt` is `Aufnahmedatum`/`Pris le`/`撮影日`, in the 34 languages that move;
   both servers left it English. Cycle 63 recorded it as unreachable because plexsim could hold
   no photo library; Add Library now creates one (`type=photo` with `com.plexapp.agents.none`).
+- **A modern agent's `Language` rows exist for every locale Plex Web ships, not 29 of them.**
+  zen (1.42.2) and kids (1.43.4) answer `/system/agents[?mediaType=N]` with a list titled and
+  ordered in the client's language, and the `default` row marked, in af, bg, el, en-GB, es-419,
+  fa, fr-CA, is, my, no, pt-BR, sl, sr, vi and zh-TW too (2026-10-02, read as XML,
+  `tests/fixtures/c88_a_agent_languages_zen.json`). `agent_languages.json` held only the 28
+  languages of cycle 25 plus English, so both servers answered those fifteen with the
+  NO-HEADER list -- `català, Čeština, Dansk...`, `en-US` preselected -- where zen names them
+  `Tiếng Ả Rập...` and preselects `vi-VN` (`bg-BG`, `el-GR`, `en-GB`, `fa-IR`, `fr-CA`,
+  `is-IS`, `pt-BR`, `zh-TW`; af, es-419, my, no, sl and sr keep `en-US`). Each list is its own:
+  pt-BR's equals pt's, but es-419, fr-CA, zh-TW and en-GB are not their base language's, so the
+  table is keyed by the exact tag. The 43-language web corpus carried it for cycles as one
+  `/system/agents` cell per locale, "Vietnamese -> 日本語", taken for positional noise: the JSON
+  writes the rows as repeated keys, so its walk sees only the last row of each list.
+  CLIENT-VISIBLE: Plex Web's Add Library and Fix Match language selects label each option with
+  the row's `title` and preselect the `default` row (`LanguageModel`, `rootPropertyName:"Language"`).
