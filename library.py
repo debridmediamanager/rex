@@ -1710,11 +1710,43 @@ class Library:
         The reference stops recomputing the aggregate at zero; a collection CREATED empty
         never had one (cycle 83). plexsim dropped all three.
         """
-        if members and not self.collection_children(collection):
-            collection["_emptiedCounts"] = {
-                "childCount": len(members),
-                "years": sorted(str(r.get("year")) for r in members if r.get("year")),
-            }
+        if collection.get("smart"):
+            return
+        after = self.collection_children(collection)
+        if len(after) == len(members):
+            return
+        # Cycle 87 B2 (plexscratch 1.43.4, `tests/fixtures/collection_merged_s43.json`): a
+        # removal after a merge recounts from the real members -- unless it empties the
+        # collection, which then keeps the stale counts the merge left (2, 2006-2015 over
+        # what had become one 2015 member), not the one member's.
+        frozen = collection.pop("_frozenCounts", None)
+        if members and not after:
+            collection["_emptiedCounts"] = frozen or self._collection_counts(members)
+
+    @staticmethod
+    def _collection_counts(members):
+        return {
+            "childCount": len(members),
+            "years": sorted(str(r.get("year")) for r in members if r.get("year")),
+        }
+
+    def _freeze_merged_collections(self, rating_key):
+        """A merge does not recount the collections it takes a member from.
+
+        Cycle 87 B2, measured on plexscratch (1.43.4; `tests/fixtures/collection_merged_s43.json`,
+        E4's `merge_playlist_s43.json` beside it): `PUT /library/metadata/18/merge?ids=4` on a
+        collection whose only member was 4 left it reading `childCount` 1 and 4's year, at once
+        and 20 s later, while `/children` listed nothing; `merge?ids=17` on a collection of 17
+        and 18 listed 18 once and still read 2 and both years. The aggregate stays as it was
+        until the next membership write recounts it. plexsim pruned the key and recounted live,
+        so the first lost its `childCount` and the second read 1.
+        """
+        for collection in list(self._collections.values()):
+            if collection.get("smart") or "_frozenCounts" in collection:
+                continue
+            if any(int(k) == int(rating_key) for k in collection["items"]):
+                collection["_frozenCounts"] = self._collection_counts(
+                    self.collection_children(collection))
 
     # -- match / unmatch / refresh / split / merge ------------------------
 
@@ -2001,6 +2033,7 @@ class Library:
             if other is None or int(key) == int(row["ratingKey"]):
                 continue
             row.setdefault("Media", []).extend(other.get("Media") or [])
+            self._freeze_merged_collections(key)
             removed = self.catalog.remove(int(key)) or {int(key)}
             # Cycle 87, measured on plexscratch (1.43.4, `tests/fixtures/merge_playlist_s43.json`):
             # the absorbed row's playlist ENTRY goes with it -- its playlistItemID is a 404
@@ -2510,6 +2543,8 @@ class Library:
             added += 1
         if added:
             collection["updatedAt"] = _now()
+            # Cycle 87 B2: the add after a merge recounts (1, 2010 for one 2010 movie).
+            collection.pop("_frozenCounts", None)
         return added
 
     def collection(self, key):
@@ -2547,6 +2582,7 @@ class Library:
         if int(row["ratingKey"]) not in [int(k) for k in collection["items"]]:
             collection["items"].append(int(row["ratingKey"]))
             collection["updatedAt"] = _now()
+            collection.pop("_frozenCounts", None)
 
     def edit_collection(self, collection, title=None, summary=None):
         """Rename or re-summarise a collection.
@@ -2674,7 +2710,10 @@ class Library:
         """Field set measured on a real PMS's POST /library/collections."""
         rows = self.collection_children(collection)
         years = sorted(str(r.get("year")) for r in rows if r.get("year"))
-        emptied = None if rows else collection.get("_emptiedCounts")
+        # A merge's stale counts first (`_freeze_merged_collections`), then an emptied
+        # collection's last ones (`_keep_emptied_counts`).
+        emptied = collection.get("_frozenCounts") or (
+            None if rows else collection.get("_emptiedCounts"))
         if emptied:
             years = list(emptied["years"])
         stamp = collection["updatedAt"]

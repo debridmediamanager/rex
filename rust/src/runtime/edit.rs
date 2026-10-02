@@ -1201,6 +1201,7 @@ impl Runtime {
             }) {
                 if !collection.items.iter().any(|item| item == key) {
                     collection.items.push(key.to_string());
+                    collection.extra.shift_remove("_frozenCounts");
                 }
             }
         }

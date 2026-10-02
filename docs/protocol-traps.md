@@ -3860,3 +3860,23 @@ are changing; replay the client's exact request before altering behavior.
   movie"`, `"{itemCount} shows"`, ..., nothing when the field is absent), so the emptied
   collection read "1 movie" on the reference and nothing on ours; python-plexapi's
   `Collection.childCount` after `removeItems` read 1 there and None here.
+- **A MERGE does not recount the collections it takes a member from.** Measured on
+  plexscratch (1.43.4), cycle 87 B2 (`tests/fixtures/collection_merged_s43.json`), with
+  python-plexapi's `merge()` shape (`PUT /library/metadata/{a}/merge?ids={b}`,
+  `mixins/split_merge.py:19`): a collection whose ONLY member (2012) is merged into a movie
+  outside it keeps `childCount` 1 and `minYear`/`maxYear` 2012 -- at once and 20 s later, on
+  `/library/collections/{id}`, `/library/metadata/{id}`, section `/collections` and
+  `all?type=18` -- while `/children` (with and without paging) lists nothing and the survivor
+  joins no collection; a collection of a 2006 and a 2015 movie whose 2006 one is merged into
+  the other lists the survivor ONCE and still reads 2, 2006-2015. Removing that survivor (the
+  last member) keeps the stale 2, 2006-2015 (cycle 87 B's stop-at-zero), and the next add
+  recounts from the real members (a 2010 movie: 1, 2010; the survivor back: 2, 2010-2015).
+  This closes E4's unemulated note above (2 over one child). Both servers pruned the key and
+  recounted live, so the solo collection lost `childCount` and the pair read 1; both now
+  store the pre-merge aggregate until a membership write. A collection emptied by a row
+  DELETE stays UNMEASURED: the copy answers 400 to every media-item DELETE
+  (`allowMediaDeletion` true, media mounted read-only), so that path is unchanged. A SHOW
+  merge's effect on a show collection is unmeasured too and unchanged. CLIENT-VISIBLE: Plex
+  Web 4.162.1 subtitles the collection "{itemCount} movie" from `childCount` (the solo one
+  read "1 movie" there and nothing on ours, the pair "2 movies" against "1 movie"), and
+  python-plexapi's `Collection.childCount` after `Movie.merge()` read 1/2 there, None/1 here.

@@ -1,0 +1,4362 @@
+{
+ "_about": "plexscratch (PMS 1.43.4.10903), cycle 87 B2, 2026-10-02: python-plexapi's merge() shape (mixins/split_merge.py:19, PUT /library/metadata/{a}/merge?ids={b}) against plain movie collections. 'solo': collection B2 Solo over Tears of Steel (4, 2012) alone, 4 merged into Cosmos Laundromat (18, 2015, not a member). 'pair': B2 Pair over Elephants Dream (17, 2006) and Cosmos Laundromat (18), 17 merged into 18. Each read set is taken before the merge, at once after it and 20 s later. 'follow': on B2 Pair after its merge, its last member 18 removed, then 3 (Sintel, 2010) added, then 18 re-added. 'delete': the media-item DELETE the copy refuses (allowMediaDeletion true, media mount read-only), so a collection emptied by a row DELETE is unmeasurable here. Token and machine identifier redacted; /:/prefs reduced to its two deletion settings. The scratch copy was reset afterwards. Movie rows are trimmed to ratingKey, key, type, title, year, Collection and their Media ids; collection rows are as served.",
+ "members": {
+  "solo": {
+   "absorbed": {
+    "ratingKey": "4",
+    "year": 2012
+   },
+   "survivor": {
+    "ratingKey": "18",
+    "year": 2015
+   }
+  },
+  "pair": {
+   "absorbed": {
+    "ratingKey": "17",
+    "year": 2006
+   },
+   "survivor": {
+    "ratingKey": "18",
+    "year": 2015
+   }
+  },
+  "follow": {
+   "added": {
+    "ratingKey": "3",
+    "year": 2010
+   }
+  }
+ },
+ "solo": [
+  {
+   "method": "GET",
+   "path": "/library/metadata/4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Tears of Steel",
+       "year": 2012,
+       "Media": [
+        {
+         "id": 4
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Media": [
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B2+Solo&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/66",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/66",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/66/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Tears of Steel",
+       "year": 2012,
+       "Collection": [
+        {
+         "tag": "B2 Solo"
+        }
+       ],
+       "Media": [
+        {
+         "id": 4
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/66/children?X-Plex-Container-Start=0&X-Plex-Container-Size=20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "totalSize": 1,
+     "offset": 0,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Tears of Steel",
+       "year": 2012,
+       "Collection": [
+        {
+         "tag": "B2 Solo"
+        }
+       ],
+       "Media": [
+        {
+         "id": 4
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Tears of Steel",
+       "year": 2012,
+       "Collection": [
+        {
+         "id": 240,
+         "filter": "collection=240",
+         "tag": "B2 Solo",
+         "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a"
+        }
+       ],
+       "Media": [
+        {
+         "id": 4
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Media": [
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/18/merge?ids=4",
+   "status": 200,
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/66",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/66",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/66/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/66/children?X-Plex-Container-Start=0&X-Plex-Container-Size=20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "totalSize": 0,
+     "offset": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/4",
+   "status": 404,
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Media": [
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/66",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/66",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/66/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/66/children?X-Plex-Container-Start=0&X-Plex-Container-Size=20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "totalSize": 0,
+     "offset": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Media": [
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "pair": [
+  {
+   "method": "GET",
+   "path": "/library/metadata/17",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "17",
+       "key": "/library/metadata/17",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "year": 2006,
+       "Media": [
+        {
+         "id": 2
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Media": [
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B2+Pair&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F17%2C18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "Metadata": [
+      {
+       "ratingKey": "17",
+       "key": "/library/metadata/17",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "year": 2006,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        }
+       ]
+      },
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        }
+       ],
+       "Media": [
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children?X-Plex-Container-Start=0&X-Plex-Container-Size=20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "totalSize": 2,
+     "offset": 0,
+     "Metadata": [
+      {
+       "ratingKey": "17",
+       "key": "/library/metadata/17",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "year": 2006,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        }
+       ]
+      },
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        }
+       ],
+       "Media": [
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/17",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "17",
+       "key": "/library/metadata/17",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "year": 2006,
+       "Collection": [
+        {
+         "id": 241,
+         "filter": "collection=241",
+         "tag": "B2 Pair",
+         "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "id": 241,
+         "filter": "collection=241",
+         "tag": "B2 Pair",
+         "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d"
+        }
+       ],
+       "Media": [
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/metadata/18/merge?ids=17",
+   "status": 200,
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        },
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children?X-Plex-Container-Start=0&X-Plex-Container-Size=20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "totalSize": 1,
+     "offset": 0,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        },
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/17",
+   "status": 404,
+   "body": "<html><head><title>Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "id": 241,
+         "filter": "collection=241",
+         "tag": "B2 Pair",
+         "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        },
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        },
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children?X-Plex-Container-Start=0&X-Plex-Container-Size=20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "totalSize": 1,
+     "offset": 0,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        },
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "id": 241,
+         "filter": "collection=241",
+         "tag": "B2 Pair",
+         "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        },
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "follow": [
+  {
+   "method": "DELETE",
+   "path": "/library/collections/67/items/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children?X-Plex-Container-Start=0&X-Plex-Container-Size=20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0,
+     "totalSize": 0,
+     "offset": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899609?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899609,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2006"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Media": [
+        {
+         "id": 2
+        },
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/67/items?uri=server%3A//MACHINE/com.plexapp.plugins.library/library/metadata/3",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899649?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899649,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899649?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899649,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899649?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899649,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "3",
+       "key": "/library/metadata/3",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        },
+        {
+         "tag": "C76P Coll"
+        }
+       ],
+       "Media": [
+        {
+         "id": 3
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children?X-Plex-Container-Start=0&X-Plex-Container-Size=20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "totalSize": 1,
+     "offset": 0,
+     "Metadata": [
+      {
+       "ratingKey": "3",
+       "key": "/library/metadata/3",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        },
+        {
+         "tag": "C76P Coll"
+        }
+       ],
+       "Media": [
+        {
+         "id": 3
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899649?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899649,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899649?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899649,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/3",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "3",
+       "key": "/library/metadata/3",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "id": 236,
+         "filter": "collection=236",
+         "tag": "C76P Coll",
+         "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2"
+        },
+        {
+         "id": 238,
+         "filter": "collection=238",
+         "tag": "C76P Kcoll 235959",
+         "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113"
+        },
+        {
+         "id": 241,
+         "filter": "collection=241",
+         "tag": "B2 Pair",
+         "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d"
+        }
+       ],
+       "Media": [
+        {
+         "id": 3
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/collections/67/items?uri=server%3A//MACHINE/com.plexapp.plugins.library/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899649?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899649,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899649?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899649,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/67",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899649?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899649,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "Metadata": [
+      {
+       "ratingKey": "3",
+       "key": "/library/metadata/3",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        },
+        {
+         "tag": "C76P Coll"
+        }
+       ],
+       "Media": [
+        {
+         "id": 3
+        }
+       ]
+      },
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        },
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/67/children?X-Plex-Container-Start=0&X-Plex-Container-Size=20",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "totalSize": 2,
+     "offset": 0,
+     "Metadata": [
+      {
+       "ratingKey": "3",
+       "key": "/library/metadata/3",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        },
+        {
+         "tag": "C76P Coll"
+        }
+       ],
+       "Media": [
+        {
+         "id": 3
+        }
+       ]
+      },
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "tag": "B2 Pair"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        },
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899649?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899649,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "67",
+       "key": "/library/collections/67/children",
+       "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d",
+       "type": "collection",
+       "title": "B2 Pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 241,
+       "ratingCount": 1,
+       "thumb": "/library/collections/67/composite/1790899649?width=400&height=600",
+       "addedAt": 1790899609,
+       "updatedAt": 1790899649,
+       "childCount": 2,
+       "maxYear": "2015",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "66",
+       "key": "/library/collections/66/children",
+       "guid": "collection://10f85017-dd5f-41ea-8ba0-936f3b8f213a",
+       "type": "collection",
+       "title": "B2 Solo",
+       "subtype": "movie",
+       "summary": "",
+       "index": 240,
+       "ratingCount": 1,
+       "thumb": "/library/collections/66/composite/1790899584?width=400&height=600",
+       "addedAt": 1790899584,
+       "updatedAt": 1790899584,
+       "childCount": 1,
+       "maxYear": "2012",
+       "minYear": "2012"
+      },
+      {
+       "ratingKey": "60",
+       "key": "/library/collections/60/children",
+       "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2",
+       "type": "collection",
+       "title": "C76P Coll",
+       "subtype": "movie",
+       "summary": "",
+       "index": 236,
+       "ratingCount": 1,
+       "thumb": "/library/collections/60/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "63",
+       "key": "/library/collections/63/children",
+       "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113",
+       "type": "collection",
+       "title": "C76P Kcoll 235959",
+       "subtype": "movie",
+       "summary": "",
+       "index": 238,
+       "ratingCount": 1,
+       "thumb": "/library/collections/63/composite/1790891999?width=400&height=600",
+       "addedAt": 1790891999,
+       "updatedAt": 1790891999,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "64",
+       "key": "/library/collections/64/children",
+       "guid": "collection://6584b0fd-0945-4bc6-9619-9b3e30f0fd27",
+       "type": "collection",
+       "title": "C76P Ksmartcoll 000014",
+       "subtype": "movie",
+       "summary": "",
+       "index": 239,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2010",
+       "ratingCount": 101,
+       "thumb": "/library/collections/64/composite/1790892015?width=400&height=600",
+       "addedAt": 1790892015,
+       "updatedAt": 1790892015,
+       "childCount": 2,
+       "smart": "1"
+      },
+      {
+       "ratingKey": "61",
+       "key": "/library/collections/61/children",
+       "guid": "collection://b6a29753-e9c9-4e23-8c81-bba2c9e03538",
+       "type": "collection",
+       "title": "C76P SmartColl",
+       "subtype": "movie",
+       "summary": "",
+       "index": 237,
+       "content": "server://MACHINE/com.plexapp.plugins.library/library/sections/1/all?type=1&year>>=2000",
+       "ratingCount": 101,
+       "thumb": "/library/collections/61/composite/1790891792?width=400&height=600",
+       "addedAt": 1790891792,
+       "updatedAt": 1790891792,
+       "childCount": 5,
+       "smart": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/3",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "3",
+       "key": "/library/metadata/3",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "id": 236,
+         "filter": "collection=236",
+         "tag": "C76P Coll",
+         "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2"
+        },
+        {
+         "id": 238,
+         "filter": "collection=238",
+         "tag": "C76P Kcoll 235959",
+         "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113"
+        },
+        {
+         "id": 241,
+         "filter": "collection=241",
+         "tag": "B2 Pair",
+         "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d"
+        }
+       ],
+       "Media": [
+        {
+         "id": 3
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "18",
+       "key": "/library/metadata/18",
+       "type": "movie",
+       "title": "Cosmos Laundromat",
+       "year": 2015,
+       "Collection": [
+        {
+         "id": 241,
+         "filter": "collection=241",
+         "tag": "B2 Pair",
+         "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d"
+        }
+       ],
+       "Media": [
+        {
+         "id": 2
+        },
+        {
+         "id": 4
+        },
+        {
+         "id": 12
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "delete": [
+  {
+   "method": "GET",
+   "path": "/:/prefs",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 151,
+     "Setting": [
+      {
+       "id": "allowMediaDeletion",
+       "label": "Allow media deletion",
+       "summary": "The owner of the server will be allowed to delete media files from disk.",
+       "type": "bool",
+       "default": true,
+       "value": true,
+       "hidden": false,
+       "advanced": true,
+       "group": "library"
+      },
+      {
+       "id": "allowMediaDeletionLanOnly",
+       "label": "",
+       "summary": "",
+       "type": "bool",
+       "default": false,
+       "value": false,
+       "hidden": true,
+       "advanced": false,
+       "group": "library"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/metadata/3",
+   "status": 400,
+   "body": "<html><head><title>Bad Request</title></head><body><h1>400 Bad Request</h1></body></html>"
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/3",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "e46d000f-bcc4-4b5b-8a7b-1a9d721346ec",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1786914632,
+     "Metadata": [
+      {
+       "ratingKey": "3",
+       "key": "/library/metadata/3",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "id": 236,
+         "filter": "collection=236",
+         "tag": "C76P Coll",
+         "guid": "collection://bcca7207-884b-46d5-b11f-fc2004ba2ab2"
+        },
+        {
+         "id": 238,
+         "filter": "collection=238",
+         "tag": "C76P Kcoll 235959",
+         "guid": "collection://dc192336-ada6-4d67-9149-84cd87382113"
+        },
+        {
+         "id": 241,
+         "filter": "collection=241",
+         "tag": "B2 Pair",
+         "guid": "collection://7762841a-7194-4a90-9b1e-c51467b7e90d"
+        }
+       ],
+       "Media": [
+        {
+         "id": 3
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -19283,6 +19283,7 @@ impl Runtime {
                     );
                     // A merged-away key is retired: a later split never reuses it.
                     let absorbed = self.subtree_keys(&other);
+                    self.freeze_merged_collections(&other);
                     self.retire_row(&other);
                     // Cycle 84, plexscratch42: an absorbed row leaves the play queues.
                     self.drop_from_queues(&absorbed);

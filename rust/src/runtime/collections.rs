@@ -134,12 +134,17 @@ impl Runtime {
             .filter_map(|row| row.get("year").filter(|value| truthy(value)).map(py_str))
             .collect::<Vec<_>>();
         years.sort();
-        // Cycle 87: emptied by removal it keeps the counts it had (`keep_emptied_counts`).
-        let emptied = if rows.is_empty() {
-            collection.extra.get("_emptiedCounts").cloned()
-        } else {
-            None
-        };
+        // Cycle 87: a merge's stale counts first (`freeze_merged_collections`), then an
+        // emptied collection's last ones (`keep_emptied_counts`).
+        let emptied = collection
+            .extra
+            .get("_frozenCounts")
+            .cloned()
+            .or_else(|| {
+                rows.is_empty()
+                    .then(|| collection.extra.get("_emptiedCounts").cloned())
+                    .flatten()
+            });
         if let Some(emptied) = &emptied {
             years = emptied
                 .get("years")
@@ -428,22 +433,54 @@ impl Runtime {
         let Some(collection) = self.collections.get(id).cloned() else {
             return;
         };
-        if collection.smart
-            || members.is_empty()
-            || !self.collection_members(&collection).is_empty()
-        {
+        if collection.smart {
             return;
         }
-        let mut years = members
-            .iter()
-            .filter_map(|row| row.get("year").filter(|value| truthy(value)).map(py_str))
-            .collect::<Vec<_>>();
-        years.sort();
-        if let Some(stored) = self.collections.get_mut(id) {
+        let after = self.collection_members(&collection).len();
+        if after == members.len() {
+            return;
+        }
+        // Cycle 87 B2 (plexscratch 1.43.4, `tests/fixtures/collection_merged_s43.json`): a
+        // removal after a merge recounts from the real members -- unless it empties the
+        // collection, which then keeps the stale counts the merge left (2, 2006-2015 over
+        // what had become one 2015 member), not the one member's.
+        let Some(stored) = self.collections.get_mut(id) else {
+            return;
+        };
+        let frozen = stored.extra.shift_remove("_frozenCounts");
+        if !members.is_empty() && after == 0 {
             stored.extra.insert(
                 "_emptiedCounts".to_string(),
-                json!({"childCount": members.len(), "years": years}),
+                frozen.unwrap_or_else(|| collection_counts(members)),
             );
+        }
+    }
+
+    /// A merge does not recount the collections it takes a member from.
+    ///
+    /// Cycle 87 B2, measured on plexscratch (1.43.4; `tests/fixtures/collection_merged_s43.json`,
+    /// E4's `merge_playlist_s43.json` beside it): `PUT /library/metadata/18/merge?ids=4` on a
+    /// collection whose only member was 4 left it reading `childCount` 1 and 4's year, at once
+    /// and 20 s later, while `/children` listed nothing; `merge?ids=17` on a collection of 17
+    /// and 18 listed 18 once and still read 2 and both years. The aggregate stays as it was
+    /// until the next membership write recounts it. This pruned the key and recounted live,
+    /// so the first lost its `childCount` and the second read 1.
+    pub(super) fn freeze_merged_collections(&mut self, key: &str) {
+        let held = self
+            .collections
+            .values()
+            .filter(|collection| {
+                !collection.smart
+                    && !collection.extra.contains_key("_frozenCounts")
+                    && collection.items.iter().any(|item| item == key)
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        for collection in held {
+            let counts = collection_counts(&self.collection_members(&collection));
+            if let Some(stored) = self.collections.get_mut(&collection.id) {
+                stored.extra.insert("_frozenCounts".to_string(), counts);
+            }
         }
     }
 
@@ -491,6 +528,8 @@ impl Runtime {
         if added > 0 {
             if let Some(stored) = self.collections.get_mut(id) {
                 stored.touch();
+                // Cycle 87 B2: the add after a merge recounts (1, 2010 for one 2010 movie).
+                stored.extra.shift_remove("_frozenCounts");
             }
         }
         added
@@ -1736,4 +1775,15 @@ impl Runtime {
         response.body = path.into_bytes();
         response
     }
+}
+
+/// `{"childCount", "years"}`: the aggregate a plain collection's row reads, stored when the
+/// reference stops recounting it (an emptying removal, a merge).
+fn collection_counts(members: &[Value]) -> Value {
+    let mut years = members
+        .iter()
+        .filter_map(|row| row.get("year").filter(|value| truthy(value)).map(py_str))
+        .collect::<Vec<_>>();
+    years.sort();
+    json!({"childCount": members.len(), "years": years})
 }
