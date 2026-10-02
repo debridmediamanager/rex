@@ -3044,7 +3044,9 @@ def main():
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     gated_base = "http://127.0.0.1:%d" % gated_port
     try:
-        for _attempt in range(40):
+        # Up to a minute: the oracle on a loaded test host took longer than the old ten
+        # seconds to start, and the check then crashed the suite on a refused connection.
+        for _attempt in range(240):
             try:
                 urllib.request.urlopen(gated_base + "/identity", timeout=2).read()
                 break
@@ -14953,7 +14955,7 @@ def main():
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
-        for _attempt in range(40):
+        for _attempt in range(240):  # a minute, as the gated sub-server above
             try:
                 urllib.request.urlopen("http://127.0.0.1:%d/identity" % web_port_c16y,
                                        timeout=2).read()
@@ -23357,7 +23359,7 @@ def main():
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess_c29l.DEVNULL, stderr=subprocess_c29l.DEVNULL)
     try:
-        for _attempt_c29l in range(40):
+        for _attempt_c29l in range(240):  # a minute, as the gated sub-server
             try:
                 urllib.request.urlopen("http://127.0.0.1:%d/identity" % port_c29l,
                                        timeout=2).read()
