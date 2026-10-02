@@ -1,0 +1,3937 @@
+{
+ "_about": "plexscratch42 (PMS 1.42.2), cycle 87 B2b, 2026-10-02: every removal path a client sends, each on its own one-member plain movie collection over Sintel (4, 2010) -- 'children': DELETE /library/collections/{id}/children/{item} (Plex Web); 'items': DELETE /library/collections/{id}/items/{item} (python-plexapi Collection.removeItems, collection.py:353); 'tag': PUT /library/sections/1/all?type=1&id=4&collection[].tag.tag-=<title> (plexapi removeCollection / the item edit) -- then 'children pair', a two-member collection over Elephants Dream (3, 2006) and Sintel emptied through /children one at a time, then 'nouri', a collection POSTed with no uri. Each collection was DELETEd afterwards; the copy's standing C49Empty, C52Amulti and C52Averify were only read. Movie rows trimmed to ratingKey, key, type, title, year and Collection. Token and machine identifier redacted.",
+ "removals": [
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B2B+children&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/897",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/897",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/897/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "tag": "B2B children"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/897/children/4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/897",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/897",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/897/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B2B+items&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/898",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/898",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/898/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "tag": "B2B items"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/898/items/4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/898",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/898",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/898/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 5,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B2B+tag&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/899",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/899",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/899/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "tag": "B2B tag"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/library/sections/1/all?type=1&id=4&collection%5B%5D.tag.tag-=B2B+tag",
+   "status": 200,
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/899",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/899",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/899/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 6,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B2B+children+pair&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3%2C4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/900",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/900",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2006"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/900/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "Metadata": [
+      {
+       "ratingKey": "3",
+       "key": "/library/metadata/3",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "year": 2006,
+       "Collection": [
+        {
+         "tag": "B2B children pair"
+        }
+       ]
+      },
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "tag": "B2B children pair"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 7,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2006"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 7,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 2,
+       "maxYear": "2010",
+       "minYear": "2006"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/900/children/3",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/900",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/900",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/900/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010,
+       "Collection": [
+        {
+         "tag": "B2B children pair"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 7,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 7,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/900/children/4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/900",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/900",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/900/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 7,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 7,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "897",
+       "key": "/library/collections/897/children",
+       "guid": "collection://5e219be7-7a7f-41a7-9ec2-51612ff2e8f8",
+       "type": "collection",
+       "title": "B2B children",
+       "subtype": "movie",
+       "summary": "",
+       "index": 471,
+       "ratingCount": 1,
+       "thumb": "/library/collections/897/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "900",
+       "key": "/library/collections/900/children",
+       "guid": "collection://3e03cdce-7f4f-4dc7-9f57-4060ddb6b577",
+       "type": "collection",
+       "title": "B2B children pair",
+       "subtype": "movie",
+       "summary": "",
+       "index": 474,
+       "ratingCount": 1,
+       "thumb": "/library/collections/900/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "898",
+       "key": "/library/collections/898/children",
+       "guid": "collection://0d90e468-ad0b-4be3-8e52-a025f94f94b9",
+       "type": "collection",
+       "title": "B2B items",
+       "subtype": "movie",
+       "summary": "",
+       "index": 472,
+       "ratingCount": 1,
+       "thumb": "/library/collections/898/composite/1790900987?width=400&height=600",
+       "addedAt": 1790900987,
+       "updatedAt": 1790900987,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "899",
+       "key": "/library/collections/899/children",
+       "guid": "collection://fb3f19d9-8332-4de5-8def-a43cb3522433",
+       "type": "collection",
+       "title": "B2B tag",
+       "subtype": "movie",
+       "summary": "",
+       "index": 473,
+       "ratingCount": 1,
+       "thumb": "/library/collections/899/composite/1790900988?width=400&height=600",
+       "addedAt": 1790900988,
+       "updatedAt": 1790900988,
+       "childCount": 1,
+       "maxYear": "2010",
+       "minYear": "2010"
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/897",
+   "status": 200,
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/898",
+   "status": 200,
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/899",
+   "status": 200,
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/900",
+   "status": 200,
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/library/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 3,
+     "allowSync": false,
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/3",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "3",
+       "key": "/library/metadata/3",
+       "type": "movie",
+       "title": "Elephants Dream",
+       "year": 2006
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/4",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "4",
+       "key": "/library/metadata/4",
+       "type": "movie",
+       "title": "Sintel",
+       "year": 2010
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "nouri": [
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B2B+nouri&smart=0&sectionId=1",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "901",
+       "key": "/library/collections/901/children",
+       "guid": "collection://2544c076-e961-42f8-a141-81b2438c84a3",
+       "type": "collection",
+       "title": "B2B nouri",
+       "subtype": "movie",
+       "summary": "",
+       "index": 475,
+       "ratingCount": 1,
+       "thumb": "/library/collections/901/composite/1790901005?width=400&height=600",
+       "addedAt": 1790901005,
+       "updatedAt": 1790901005
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/901",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "901",
+       "key": "/library/collections/901/children",
+       "guid": "collection://2544c076-e961-42f8-a141-81b2438c84a3",
+       "type": "collection",
+       "title": "B2B nouri",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 475,
+       "ratingCount": 1,
+       "thumb": "/library/collections/901/composite/1790901005?width=400&height=600",
+       "addedAt": 1790901005,
+       "updatedAt": 1790901005
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/901",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "901",
+       "key": "/library/collections/901/children",
+       "guid": "collection://2544c076-e961-42f8-a141-81b2438c84a3",
+       "type": "collection",
+       "title": "B2B nouri",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 475,
+       "ratingCount": 1,
+       "thumb": "/library/collections/901/composite/1790901005?width=400&height=600",
+       "addedAt": 1790901005,
+       "updatedAt": 1790901005
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/901/children",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 0
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/collections",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "901",
+       "key": "/library/collections/901/children",
+       "guid": "collection://2544c076-e961-42f8-a141-81b2438c84a3",
+       "type": "collection",
+       "title": "B2B nouri",
+       "subtype": "movie",
+       "summary": "",
+       "index": 475,
+       "ratingCount": 1,
+       "thumb": "/library/collections/901/composite/1790901005?width=400&height=600",
+       "addedAt": 1790901005,
+       "updatedAt": 1790901005
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "allowSync": true,
+     "art": "/:/resources/movie-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 1,
+     "librarySectionTitle": "Movies",
+     "librarySectionUUID": "45a646dd-8184-4524-ab0a-85eb4b190a7a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Movies",
+     "title2": "All Movies",
+     "viewGroup": "movie",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "901",
+       "key": "/library/collections/901/children",
+       "guid": "collection://2544c076-e961-42f8-a141-81b2438c84a3",
+       "type": "collection",
+       "title": "B2B nouri",
+       "subtype": "movie",
+       "summary": "",
+       "index": 475,
+       "ratingCount": 1,
+       "thumb": "/library/collections/901/composite/1790901005?width=400&height=600",
+       "addedAt": 1790901005,
+       "updatedAt": 1790901005
+      },
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/901",
+   "status": 200,
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/library/all?type=18",
+   "status": 200,
+   "body": {
+    "MediaContainer": {
+     "size": 3,
+     "allowSync": false,
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "289",
+       "key": "/library/collections/289/children",
+       "guid": "collection://2b22a0ad-d1bf-4476-ba6c-7ffaf3d98876",
+       "type": "collection",
+       "title": "C49Empty",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 42,
+       "ratingCount": 1,
+       "thumb": "/library/collections/289/composite/1789694804?width=400&height=600",
+       "addedAt": 1789694804,
+       "updatedAt": 1789694804,
+       "childCount": 1,
+       "maxYear": "2008",
+       "minYear": "2008"
+      },
+      {
+       "ratingKey": "294",
+       "key": "/library/collections/294/children",
+       "guid": "collection://1068f856-b99f-4b9a-a4ff-73de83b0a36d",
+       "type": "collection",
+       "title": "C52Amulti",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 45,
+       "ratingCount": 1,
+       "thumb": "/library/metadata/294/thumb/1789844944",
+       "addedAt": 1789844817,
+       "updatedAt": 1789844944,
+       "Image": [
+        {
+         "alt": "C52Amulti",
+         "type": "coverPoster",
+         "url": "/library/metadata/294/thumb/1789844944"
+        }
+       ]
+      },
+      {
+       "ratingKey": "295",
+       "key": "/library/collections/295/children",
+       "guid": "collection://8a86860d-582f-474a-a15a-4f8804c37927",
+       "type": "collection",
+       "title": "C52Averify",
+       "librarySectionTitle": "Movies",
+       "librarySectionID": 1,
+       "librarySectionKey": "/library/sections/1",
+       "subtype": "movie",
+       "summary": "",
+       "index": 46,
+       "ratingCount": 1,
+       "thumb": "/library/collections/295/composite/1789845094?width=400&height=600",
+       "addedAt": 1789845094,
+       "updatedAt": 1789845094
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

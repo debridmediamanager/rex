@@ -3880,3 +3880,17 @@ are changing; replay the client's exact request before altering behavior.
   Web 4.162.1 subtitles the collection "{itemCount} movie" from `childCount` (the solo one
   read "1 movie" there and nothing on ours, the pair "2 movies" against "1 movie"), and
   python-plexapi's `Collection.childCount` after `Movie.merge()` read 1/2 there, None/1 here.
+- **Every client removal path keeps an emptied collection's count; only a never-filled one has
+  none.** Measured on plexscratch42 (1.42.2), cycle 87 B2b
+  (`tests/fixtures/collection_removal_paths_s42.json`), one one-member movie collection per path:
+  Plex Web's `DELETE /library/collections/{id}/children/{item}`, python-plexapi's `removeItems`
+  (`DELETE .../items/{item}`, `collection.py:353`) and the tag edit `collection[].tag.tag-` all
+  answer 200 and leave `childCount` 1 and the member's year on every read while `/children` is
+  empty; a two-member collection emptied through `/children` one at a time ends at 1 and the
+  last member's year. A collection POSTed with NO `uri` carries no `childCount` or years. So the
+  copy's standing C52Amulti and C52Averify (no `childCount`, nothing under `/children`) never held
+  a counted member -- how they were made is not recorded -- and E4's
+  `tests/test_followups_c87_e4.py`, which rebuilt them by emptying one-member collections through
+  `/children`, failed from b2bad67 on because the servers were right. The test now creates them
+  without a `uri`; neither server changed. (The copy's C49Empty is likewise EMPTY and reads 1, not
+  "one member" as `collection_title_filter.json`'s note says.) CLIENT-VISIBLE rule, no defect.

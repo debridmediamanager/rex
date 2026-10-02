@@ -301,11 +301,98 @@ def merged_state_keys(port):
     return pair, span(2, year[OLDER], year[NEWER])
 
 
+# -- every client removal path keeps the count (cycle 87 B2b) ---------------------------
+
+REMOVALS = os.path.join(HERE, "fixtures", "collection_removal_paths_s42.json")
+
+
+def removal_reference_checks():
+    """plexscratch42: no removal path a client sends drops a one-member collection's count.
+
+    `tests/test_followups_c87_e4.py` rebuilt plexscratch42's childCount-less C52Amulti and
+    C52Averify by emptying one-member collections through `/children/{id}`, and failed once
+    the servers kept the count. Measured: `/children/{id}`, `/items/{id}` and the tag edit
+    all keep `childCount` 1 and the member's year; only a collection that never held a
+    member (POSTed with no `uri`) has none. The test, not the servers, was wrong.
+    """
+    fixture = json.load(open(REMOVALS))
+    exchanges = fixture["removals"]
+    created = [(i, collection_rows(e["body"])[0]) for i, e in enumerate(exchanges)
+               if e["method"] == "POST"]
+    for index, row in created:
+        key, title = row["ratingKey"], row["title"]
+        cleanup = next(i for i, e in enumerate(exchanges) if e["method"] == "DELETE"
+                       and e["path"].count("/") == 3)
+        end = next((i for i, _ in created if i > index), cleanup)
+        block = exchanges[index + 1:end]
+        removal = [e for e in block if e["method"] in ("DELETE", "PUT")]
+        last = removal[-1]
+        after = reference_reads(block[block.index(last) + 1:], key)
+        check("reference %s: %s answers %d" % (title, last["method"], last["status"]),
+              last["status"] == 200, last)
+        check("reference %s: emptied, %d reads keep 1, 2010" % (title, len(after)),
+              len(after) == 4 and all(seen == span(1, 2010) for _, seen in after), after)
+        emptied = reference_children(block[block.index(last) + 1:], key)
+        check("reference %s: /children lists nothing" % title, emptied == [[]], emptied)
+    nouri = fixture["nouri"]
+    rows = collection_rows(nouri[0]["body"])
+    reads_ = reference_reads(nouri[1:], rows[0]["ratingKey"]) if rows else []
+    check("reference: a collection POSTed with no uri has no childCount or years",
+          rows and counts(rows[0]) == {name: None for name in FIELDS}
+          and len(reads_) == 4 and all(seen == counts(rows[0]) for _, seen in reads_),
+          (rows, reads_))
+    standing = {row["title"]: counts(row) for row in collection_rows(nouri[-1]["body"])}
+    check("reference: the copy's own C52Amulti/C52Averify read no childCount, C49Empty 1",
+          standing.get("C52Amulti") == standing.get("C52Averify")
+          == {name: None for name in FIELDS}
+          and standing.get("C49Empty", {}).get("childCount") == 1, standing)
+
+
+def removal_plexsim_checks(port):
+    year = str(metadata(request(port, "GET", "/library/metadata/%s" % NEWER)[1])[0]["year"])
+    paths = {
+        "children": lambda key, title: request(
+            port, "DELETE", "/library/collections/%s/children/%s" % (key, NEWER)),
+        "items": lambda key, title: request(
+            port, "DELETE", "/library/collections/%s/items/%s" % (key, NEWER)),
+        "tag": lambda key, title: request(
+            port, "PUT", "/library/sections/%s/all?" % SECTION + urllib.parse.urlencode(
+                {"type": 1, "id": NEWER, "collection[].tag.tag-": title})),
+    }
+    for name, remove in paths.items():
+        title = "C87B2b %s" % name
+        key = create(port, title, NEWER)
+        status, _ = remove(key, title)
+        check("%s: the removal is a 200" % name, status == 200, status)
+        all_say(port, key, span(1, year), "%s emptied" % name)
+        check("%s: /children lists nothing" % name, children(port, key) == [[], []],
+              children(port, key))
+    key = create(port, "C87B2b pair", OLDER, NEWER)
+    request(port, "DELETE", "/library/collections/%s/children/%s" % (key, OLDER))
+    all_say(port, key, span(1, year), "children pair, one left")
+    request(port, "DELETE", "/library/collections/%s/children/%s" % (key, NEWER))
+    all_say(port, key, span(1, year), "children pair emptied")
+    status, body = request(port, "POST", "/library/collections?" + urllib.parse.urlencode(
+        dict(type=1, title="C87B2b nouri", smart=0, sectionId=SECTION)))
+    rows = collection_rows(body)
+    check("a collection POSTed with no uri has no childCount or years",
+          status == 200 and rows and counts(rows[0]) == {name: None for name in FIELDS},
+          (status, rows))
+    if rows:
+        all_say(port, rows[0]["ratingKey"], {name: None for name in FIELDS}, "nouri")
+
+
 def main():
     reference_checks()
+    removal_reference_checks()
     process, port = start()
     try:
         plexsim_checks(port)
+    finally:
+        stop(process)
+    process, port = start()
+    try:
+        removal_plexsim_checks(port)
     finally:
         stop(process)
     # The stale counts are stored state on the reference (its database never recounts), so a

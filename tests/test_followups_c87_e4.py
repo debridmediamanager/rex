@@ -244,8 +244,10 @@ def season_checks(port):
 # -- 2. a section's collections by title ----------------------------------------------
 
 def make_collection(port, title, members):
-    query = urllib.parse.urlencode([("type", "1"), ("title", title), ("smart", "0"),
-                                    ("sectionId", "1"), ("uri", item_uri(port, members))])
+    fields = [("type", "1"), ("title", title), ("smart", "0"), ("sectionId", "1")]
+    if members:
+        fields.append(("uri", item_uri(port, members)))
+    query = urllib.parse.urlencode(fields)
     status, body = request(port, "POST", "/library/collections?" + query)
     key = (json.loads(body)["MediaContainer"]["Metadata"][0]["ratingKey"]
            if status == 200 else None)
@@ -277,9 +279,14 @@ def title_checks(port):
             request(port, "DELETE", "/library/collections/%s" % key)
     made = []
     for title, count in fixture["s42_collections"].items():
-        key = make_collection(port, title, [member])
-        if key and not count:
-            request(port, "DELETE", "/library/collections/%s/children/%s" % (key, member))
+        # C52Amulti and C52Averify read NO childCount. Emptying a one-member collection
+        # cannot make that row: plexscratch42 keeps `childCount` 1 through every removal
+        # path a client sends (`/children/{id}` and `/items/{id}` DELETEs, the tag edit;
+        # cycle 87 B2b, `tests/fixtures/collection_removal_paths_s42.json`), so this check
+        # broke when the servers learned that rule. A collection that never held a member
+        # -- created with no `uri`, measured there too -- carries none; that is the state
+        # the two standing collections are in, however they got there.
+        key = make_collection(port, title, [member] if count else [])
         made.append(key)
     wrong = run_queries(port, fixture["s42"])
     check("`all?type=18&title=` answers plexscratch42's %d exchanges, empty collections "
