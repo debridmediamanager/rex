@@ -136,10 +136,7 @@ impl Runtime {
             record.insert("stub".to_string(), Value::Object(stub));
         }
         let records = self.section_timeline.entry(section_key).or_default();
-        match records.iter_mut().find(|(existing, _)| existing == key) {
-            Some(slot) => slot.1 = Value::Object(record),
-            None => records.push((key.to_string(), Value::Object(record))),
-        }
+        records.insert(key.to_string(), Value::Object(record));
     }
 
     /// `/library/sections/{id}/timeline` -- what changed in a library lately.
@@ -152,7 +149,12 @@ impl Runtime {
         let mut entries = self
             .section_timeline
             .get(section_key)
-            .cloned()
+            .map(|records| {
+                records
+                    .iter()
+                    .map(|(key, record)| (key.clone(), record.clone()))
+                    .collect::<Vec<_>>()
+            })
             .unwrap_or_default();
         // Newest first; a stable sort keeps insertion order among equal stamps.
         entries.sort_by_key(|(_, record)| -record.get("at").and_then(Value::as_i64).unwrap_or(0));

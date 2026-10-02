@@ -686,7 +686,7 @@ impl Runtime {
         let mut stored = Collection {
             id: id.clone(),
             title: title.clone(),
-            items: Vec::new(),
+            items: Members::default(),
             smart,
             section: section.clone(),
             subtype,
@@ -1240,7 +1240,7 @@ impl Runtime {
             let removed = self
                 .collections
                 .get(id)
-                .is_some_and(|c| c.items.iter().any(|k| k == member));
+                .is_some_and(|c| c.items.contains(member));
             if removed {
                 let members = self.collection_members(&collection);
                 if let Some(stored) = self.collections.get_mut(id) {
@@ -1268,7 +1268,7 @@ impl Runtime {
                     return Response::error(400, "plexsim: bad request");
                 }
             }
-            if !collection.items.iter().any(|key| key == member) {
+            if !collection.items.contains(member) {
                 return Response::error(400, "plexsim: bad request");
             }
             // Measured: a move starts from the order SHOWN and switches the collection
@@ -1294,7 +1294,7 @@ impl Runtime {
                 .unwrap_or(0);
             items.insert(position, member.to_string());
             if let Some(stored) = self.collections.get_mut(id) {
-                stored.items = items;
+                stored.items = items.into();
                 stored
                     .prefs
                     .insert("collectionSort".to_string(), "2".to_string());
@@ -1718,7 +1718,7 @@ impl Runtime {
             if let Some(collection) = self.collections.values().find(|collection| {
                 !collection.smart
                     && collection.tag_name() == name
-                    && collection.items.iter().any(|item| item == key)
+                    && collection.items.contains(key)
             }) {
                 tag_object.insert(
                     "guid".to_string(),

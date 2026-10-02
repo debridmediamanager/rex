@@ -284,7 +284,7 @@ struct Playlist {
 struct Collection {
     id: String,
     title: String,
-    items: Vec<String>,
+    items: Members,
     smart: bool,
     section: String,
     subtype: String,
@@ -295,6 +295,83 @@ struct Collection {
     /// updatedAt, the pinned tagID, titleSort, contentRating, Field, Label and the
     /// names it has held.
     extra: Map<String, Value>,
+}
+
+/// A collection's member keys, in order, with a count of each beside them. Every
+/// row a listing projects asks whether it is a member (`stamp_collection_tags`), and
+/// a scan of the order per row made a 40,000-row section with one whole-library
+/// collection take 2 s per page -- the oracle answers the same page in 0.15 s. Reads
+/// go to the order through `Deref`; every write goes through a method here, so the
+/// two cannot drift apart.
+#[derive(Debug, Clone, Default)]
+struct Members {
+    order: Vec<String>,
+    counts: HashMap<String, usize>,
+}
+
+impl std::ops::Deref for Members {
+    type Target = Vec<String>;
+    fn deref(&self) -> &Vec<String> {
+        &self.order
+    }
+}
+
+impl From<Vec<String>> for Members {
+    fn from(order: Vec<String>) -> Self {
+        let mut counts = HashMap::with_capacity(order.len());
+        for key in &order {
+            *counts.entry(key.clone()).or_insert(0) += 1;
+        }
+        Members { order, counts }
+    }
+}
+
+impl<'a> IntoIterator for &'a Members {
+    type Item = &'a String;
+    type IntoIter = std::slice::Iter<'a, String>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.order.iter()
+    }
+}
+
+impl FromIterator<String> for Members {
+    fn from_iter<I: IntoIterator<Item = String>>(keys: I) -> Self {
+        Members::from(keys.into_iter().collect::<Vec<_>>())
+    }
+}
+
+impl Members {
+    fn contains(&self, key: &str) -> bool {
+        self.counts.contains_key(key)
+    }
+
+    fn push(&mut self, key: String) {
+        *self.counts.entry(key.clone()).or_insert(0) += 1;
+        self.order.push(key);
+    }
+
+    fn forget(&mut self, key: &str) {
+        if let Some(count) = self.counts.get_mut(key) {
+            *count -= 1;
+            if *count == 0 {
+                self.counts.remove(key);
+            }
+        }
+    }
+
+    fn retain(&mut self, mut keep: impl FnMut(&String) -> bool) {
+        let mut gone = Vec::new();
+        self.order.retain(|key| {
+            let kept = keep(key);
+            if !kept {
+                gone.push(key.clone());
+            }
+            kept
+        });
+        for key in gone {
+            self.forget(&key);
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -472,13 +549,18 @@ pub struct Runtime {
     /// Events are retained by sequence so an eventsource/websocket subscriber
     /// can take a snapshot without a mutable callback into the route thread.
     /// This is bounded in `push_event`; it is runtime state, never persisted.
-    events: Vec<(String, Value)>,
+    /// A ring: once the bound is reached every push drops one from the front, and a
+    /// Vec moved all 8,192 retained events to do it (a 40,000-frame cascade, 1 s).
+    events: std::collections::VecDeque<(String, Value)>,
     /// The tag TABLE: a tag outlives its removal from every row, so a re-add keeps
     /// its canonical spelling and id (keyed by row key and lowercased tag).
     tag_table: TagTable,
     /// Per library, the last finished (5) or removed (9) frame of each item, in
     /// insertion order -- what `/library/sections/{id}/timeline` lists.
-    section_timeline: HashMap<String, Vec<(String, Value)>>,
+    /// Keyed by the row's key (an insertion-ordered map, as the oracle's dict is: a
+    /// re-record keeps its slot). A Vec scanned per record made deleting a 40,000-member
+    /// collection -- a frame per member -- take 3 s.
+    section_timeline: HashMap<String, Map<String, Value>>,
     /// How many events the bound has drained from the front of `events`, so a
     /// subscriber's cursor stays a sequence number once the buffer is full.
     events_dropped: usize,
@@ -688,7 +770,7 @@ impl Runtime {
             dirty: false,
             save_serial: 0,
             pending_save: None,
-            events: Vec::new(),
+            events: std::collections::VecDeque::new(),
             section_timeline: HashMap::new(),
             events_dropped: 0,
             history_counter: std::cell::Cell::new(0),
@@ -1389,7 +1471,7 @@ impl Runtime {
             "viewCounts": self.view_counts.borrow().clone(),
             "devices": self.devices.iter().map(|(key, value)| (key.clone(), json!({"name":value.name,"product":value.product,"platform":value.platform,"lastSeenAt":value.last_seen}))).collect::<Map<String, Value>>(),
             "playlists": self.playlists.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items,"itemIds":value.item_ids,"smart":value.smart,"uri":value.uri})).collect::<Vec<_>>(),
-            "collections": self.collections.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items,"smart":value.smart,"section":value.section,"subtype":value.subtype,"prefs":value.prefs,"uri":value.uri,"tag":value.tag,"extra":value.extra})).collect::<Vec<_>>(),
+            "collections": self.collections.values().map(|value| json!({"id":value.id,"title":value.title,"items":value.items.order,"smart":value.smart,"section":value.section,"subtype":value.subtype,"prefs":value.prefs,"uri":value.uri,"tag":value.tag,"extra":value.extra})).collect::<Vec<_>>(),
             // `persist.py` SIM_FIELDS `play_queues`, `next_play_queue(_item)` and the
             // library's own counters: cycle 73 measured a restart keeping play queues
             // with their selected item, and ids counting UP from where they were -- a
@@ -4137,11 +4219,10 @@ impl Runtime {
     }
 
     fn push_event(&mut self, kind: &str, value: Value) {
-        self.events.push((kind.to_string(), value));
-        if self.events.len() > 8192 {
-            let excess = self.events.len() - 8192;
-            self.events.drain(0..excess);
-            self.events_dropped += excess;
+        self.events.push_back((kind.to_string(), value));
+        while self.events.len() > 8192 {
+            self.events.pop_front();
+            self.events_dropped += 1;
         }
     }
 
@@ -20628,6 +20709,14 @@ impl Runtime {
                     }
                 }
             }
+            // Each member's FIRST position, looked up per row: a scan of the list per
+            // row made a 40,000-member list take 2 s per page (the oracle 0.16 s).
+            let mut first_index: HashMap<&str, usize> = HashMap::new();
+            if !playlist.smart {
+                for (index, item) in playlist.items.iter().enumerate() {
+                    first_index.entry(item.as_str()).or_insert(index);
+                }
+            }
             let mut rows = typed_rows
                 .into_iter()
                 .filter(|row| {
@@ -20661,7 +20750,7 @@ impl Runtime {
                     let item_id = (!playlist.smart)
                         .then(|| {
                             let key = key_of(&row)?;
-                            let index = playlist.items.iter().position(|item| *item == key)?;
+                            let index = *first_index.get(key.as_str())?;
                             playlist.item_ids.get(index).copied()
                         })
                         .flatten();
@@ -20812,9 +20901,12 @@ impl Runtime {
                 return Response::error(404, "plexsim: not found");
             };
             let mut added = 0_i64;
+            // Re-adding the whole library checks 40,000 rows against 40,000 members:
+            // a set, not a scan of the list per row (1.7 s per PUT; the oracle 0.03).
+            let mut present: HashSet<String> = stored.items.iter().cloned().collect();
             for row in &keys {
                 let Some(key) = key_of(&row) else { continue };
-                if !stored.items.contains(&key) {
+                if present.insert(key.clone()) {
                     stored.items.push(key);
                     self.next_playlist_item += 1;
                     stored.item_ids.push(self.next_playlist_item);

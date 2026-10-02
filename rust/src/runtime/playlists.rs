@@ -33,7 +33,7 @@ impl Runtime {
         let rows = self
             .playlist_keys(playlist)
             .iter()
-            .filter_map(|key| self.catalog.get(key).cloned())
+            .filter_map(|key| self.catalog.get(key))
             .collect::<Vec<_>>();
         // Cycle 55: `sum(round(duration/1000, 0))` over each item's longest Media, in
         // integer seconds.
@@ -227,9 +227,12 @@ impl Runtime {
             uri: if smart { uri.clone() } else { String::new() },
         };
         if !smart {
+            // A set beside the list: a whole-library uri is 40,000 rows, and a scan of
+            // the list per row took 1.7 s where the oracle takes 0.03.
+            let mut seen = HashSet::with_capacity(rows.len());
             for row in &rows {
                 let Some(row_key) = key_of(row) else { continue };
-                if playlist.items.contains(&row_key) {
+                if !seen.insert(row_key.clone()) {
                     continue;
                 }
                 playlist.items.push(row_key);

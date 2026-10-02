@@ -84,7 +84,7 @@ impl Runtime {
         let mut collections = self.collections.values().collect::<Vec<_>>();
         collections.sort_by_key(|collection| collection.id.parse::<i64>().unwrap_or(i64::MAX));
         for collection in collections {
-            if collection.smart || !collection.items.iter().any(|member| *member == key) {
+            if collection.smart || !collection.items.contains(&key) {
                 continue;
             }
             let mut rows = collection

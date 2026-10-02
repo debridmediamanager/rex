@@ -1199,7 +1199,7 @@ impl Runtime {
                 };
                 tag.to_lowercase() == lowered && collection.section == section
             }) {
-                if !collection.items.iter().any(|item| item == key) {
+                if !collection.items.contains(key) {
                     collection.items.push(key.to_string());
                     collection.extra.shift_remove("_frozenCounts");
                 }
