@@ -1,0 +1,2541 @@
+{
+ "reference": "plexscratch42 PMS 1.42.2.10156 (fresh, unclaimed)",
+ "date": "2026-10-02",
+ "request_headers": {
+  "Accept": "application/json",
+  "X-Plex-Product": "Plex Web",
+  "X-Plex-Version": "4.162.1",
+  "X-Plex-Platform": "Chrome",
+  "X-Plex-Device": "Windows",
+  "X-Plex-Features": "external-media,indirect-media,hub-style-list"
+ },
+ "note": "`refusals`: six refusing Add Library forms (labels from c87_w4_add_library_refusals_s42.json) that between them raise all eleven lines, POSTed with no language, each of the 44 X-Plex-Language values Plex Web sends, en and hu-HU; nothing was created.",
+ "refusals": [
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {},
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "en"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "af"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n‘agent’ is ongeldig vir die gekose biblioteektipe\r\n‘taal’ is ongeldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "ar"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "bg"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "ca"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' no es válido para el tipo de biblioteca seleccionada\r\n'language' no es valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "cs"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' není platný pro vybraný typ knihovny\r\n'jazyk' je neplatný\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "da"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' er ugyldig for den valgte bibliotektype\r\n'sprog' er ugyldigt\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "de"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n„Agent“ ungültig für diesen Mediatheken-Typ\r\n„Sprache“ ungültig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "el"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "en-GB"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "es"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' no es válido para el tipo de biblioteca seleccionada\r\n'language' no es valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "es-419"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' no es válido para el tipo de biblioteca seleccionada\r\n'language' no es valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "et"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "fa"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "fi"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' on virheellinen valitulle kirjastotyypille\r\n'language' on virheellinen\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "fr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' est invalide pour le type de bibliothèque sélectionnée\r\n'language' est invalide\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "fr-CA"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' est invalide pour le type de bibliothèque sélectionnée\r\n'language' est invalide\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "he"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "hr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' je nevaljan za odabrani tip biblioteke\r\n'language' je nevaljan\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "hu"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n\\\"ügynök\\\" érvénytelen a kiválasztott könyvtár típushoz\r\na \\\"nyelv\\\" érvénytelen\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "is"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "it"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' non valido per il tipo di libreria selezionato\r\n'language' non valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "ja"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent'は選択されたライブラリータイプでは使用できません\r\n'language'は無効です\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "ko"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n에이전트가 선택된 라이브러리에 불가합니다.\r\n'언어'가 사용 불가\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "lt"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "my"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "nb"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' er ugyldig for den valgte bibliotektypen\r\n'språk' er ugyldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "nl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is ongeldig voor het geselecteerde bibliotheek type\r\n'taal' is ongeldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "no"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' er ugyldig for den valgte bibliotektypen\r\n'språk' er ugyldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "pl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\nnieprawidłowy dla wybranego typu biblioteki „agent”\r\nnieprawidłowy „język”\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "pt"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agente' é inválido para o tipo de biblioteca selecionada\r\n'Idioma' é inválido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "pt-BR"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' é inválido para o tipo selecionado de biblioteca\r\n'language' é inválido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "pt-PT"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' é inválido para o tipo selecionado de biblioteca\r\n'language' é inválido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "ro"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n„agent” este invalid pentru tipul de bibliotecă selectat\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "ru"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\nнеправильный \"агент\" для выбранного типа библиотеки\r\nнеправильный \"язык\"\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "sk"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' je pre vybraný typ knižnice neplatný\r\n'jazyk' je neplatný\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "sl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n»agent« ni veljaven za izbrano vrsto knjižnice\r\n'jezik' je neveljaven\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "sr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "sv"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' är ogiltig för den valda bibliotekstypen\r\n'language' är ogiltigt\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "th"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "tr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "uk"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\nневірний 'агент' для обраного типу бібліотеки\r\n'мова' не дійсна\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "vi"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "zh"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n‘代理’ 对选择的资料库类型无效\r\n‘语言’ 无效\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "zh-TW"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {},
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "en"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "af"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n‘agent’ is ongeldig vir die gekose biblioteektipe\r\n‘taal’ is ongeldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "ar"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "bg"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "ca"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' no es válido para el tipo de biblioteca seleccionada\r\n'language' no es valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "cs"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' není platný pro vybraný typ knihovny\r\n'jazyk' je neplatný\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "da"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' er ugyldig for den valgte bibliotektype\r\n'sprog' er ugyldigt\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "de"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n„Agent“ ungültig für diesen Mediatheken-Typ\r\n„Sprache“ ungültig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "el"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "en-GB"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "es"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' no es válido para el tipo de biblioteca seleccionada\r\n'language' no es valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "es-419"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' no es válido para el tipo de biblioteca seleccionada\r\n'language' no es valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "et"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "fa"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "fi"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' on virheellinen valitulle kirjastotyypille\r\n'language' on virheellinen\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "fr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' est invalide pour le type de bibliothèque sélectionnée\r\n'language' est invalide\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "fr-CA"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' est invalide pour le type de bibliothèque sélectionnée\r\n'language' est invalide\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "he"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "hr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' je nevaljan za odabrani tip biblioteke\r\n'language' je nevaljan\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "hu"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n\\\"ügynök\\\" érvénytelen a kiválasztott könyvtár típushoz\r\na \\\"nyelv\\\" érvénytelen\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "is"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "it"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' non valido per il tipo di libreria selezionato\r\n'language' non valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "ja"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent'は選択されたライブラリータイプでは使用できません\r\n'language'は無効です\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "ko"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n에이전트가 선택된 라이브러리에 불가합니다.\r\n'언어'가 사용 불가\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "lt"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "my"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "nb"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' er ugyldig for den valgte bibliotektypen\r\n'språk' er ugyldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "nl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is ongeldig voor het geselecteerde bibliotheek type\r\n'taal' is ongeldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "no"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' er ugyldig for den valgte bibliotektypen\r\n'språk' er ugyldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "pl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\nnieprawidłowy dla wybranego typu biblioteki „agent”\r\nnieprawidłowy „język”\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "pt"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agente' é inválido para o tipo de biblioteca selecionada\r\n'Idioma' é inválido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "pt-BR"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' é inválido para o tipo selecionado de biblioteca\r\n'language' é inválido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "pt-PT"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' é inválido para o tipo selecionado de biblioteca\r\n'language' é inválido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "ro"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n„agent” este invalid pentru tipul de bibliotecă selectat\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "ru"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\nнеправильный \"агент\" для выбранного типа библиотеки\r\nнеправильный \"язык\"\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "sk"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' je pre vybraný typ knižnice neplatný\r\n'jazyk' je neplatný\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "sl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n»agent« ni veljaven za izbrano vrsto knjižnice\r\n'jezik' je neveljaven\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "sr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "sv"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' är ogiltig för den valda bibliotekstypen\r\n'language' är ogiltigt\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "th"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "tr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "uk"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\nневірний 'агент' для обраного типу бібліотеки\r\n'мова' не дійсна\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "vi"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "zh"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n‘代理’ 对选择的资料库类型无效\r\n‘语言’ 无效\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "zh-TW"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {},
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "en"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "af"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n‘agent’ is verlore of ongeldig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ar"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'الأداة' مفقود أو غير صالح\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "bg"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ca"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' no está o no es válido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "cs"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' chybí nebo je neplatný\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "da"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' mangler eller er ugyldig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "de"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n\"Agent\" fehlt oder ist ungültig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "el"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "en-GB"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "es"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' no está o no es válido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "es-419"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' no está o no es válido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "et"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n\"agent\" puudub või on kehtetu\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "fa"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "fi"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' puuttuu tai se on virheellinen\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "fr"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' est manquant ou invalide\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "fr-CA"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' est manquant ou invalide\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "he"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' חסר או שגוי\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "hr"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' nedostaje ili je nevažeći\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "hu"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'ügynök' hiányzik vagy érvénytelen\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "is"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "it"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\nL'agente è mancante o non è valido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ja"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent'が存在しないか無効です\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ko"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'에이전트'가 없거나 올바르지 않음\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "lt"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n\"agentas\" trūksta arba negalioja\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "my"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "nb"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' mangler eller er ugyldig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "nl"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' ontbreekt of is ongeldig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "no"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' mangler eller er ugyldig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "pl"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\nbrakujący lub nieprawidłowy „agent”\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "pt"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agente' está em falta ou é inválido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "pt-BR"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agente' está faltando ou é inválido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "pt-PT"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agente' está faltando ou é inválido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ro"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent'-ul lipsește sau este invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ru"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n«агент» отсутствует или недействителен\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "sk"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\nchýba alebo je neplatný 'agent'\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "sl"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n\"agent\" manjka ali ni veljaven\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "sr"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'агент' недостаје или је неважећи\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "sv"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' saknas eller är ogiltig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "th"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "tr"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "uk"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'Агент' відсутній або недійсний\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "vi"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "zh"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n“代理”缺失或无效\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "zh-TW"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {},
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "en"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "af"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n‘agent’ is ongeldig vir die gekose biblioteektipe\r\n‘taal’ is ongeldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "ar"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "bg"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "ca"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' no es válido para el tipo de biblioteca seleccionada\r\n'language' no es valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "cs"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' není platný pro vybraný typ knihovny\r\n'jazyk' je neplatný\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "da"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' er ugyldig for den valgte bibliotektype\r\n'sprog' er ugyldigt\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "de"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n„Agent“ ungültig für diesen Mediatheken-Typ\r\n„Sprache“ ungültig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "el"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "en-GB"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "es"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' no es válido para el tipo de biblioteca seleccionada\r\n'language' no es valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "es-419"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' no es válido para el tipo de biblioteca seleccionada\r\n'language' no es valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "et"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "fa"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "fi"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' on virheellinen valitulle kirjastotyypille\r\n'language' on virheellinen\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "fr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' est invalide pour le type de bibliothèque sélectionnée\r\n'language' est invalide\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "fr-CA"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' est invalide pour le type de bibliothèque sélectionnée\r\n'language' est invalide\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "he"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "hr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' je nevaljan za odabrani tip biblioteke\r\n'language' je nevaljan\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "hu"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n\\\"ügynök\\\" érvénytelen a kiválasztott könyvtár típushoz\r\na \\\"nyelv\\\" érvénytelen\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "is"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "it"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' non valido per il tipo di libreria selezionato\r\n'language' non valido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "ja"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent'は選択されたライブラリータイプでは使用できません\r\n'language'は無効です\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "ko"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n에이전트가 선택된 라이브러리에 불가합니다.\r\n'언어'가 사용 불가\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "lt"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "my"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "nb"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' er ugyldig for den valgte bibliotektypen\r\n'språk' er ugyldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "nl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is ongeldig voor het geselecteerde bibliotheek type\r\n'taal' is ongeldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "no"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' er ugyldig for den valgte bibliotektypen\r\n'språk' er ugyldig\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "pl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\nnieprawidłowy dla wybranego typu biblioteki „agent”\r\nnieprawidłowy „język”\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "pt"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agente' é inválido para o tipo de biblioteca selecionada\r\n'Idioma' é inválido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "pt-BR"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' é inválido para o tipo selecionado de biblioteca\r\n'language' é inválido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "pt-PT"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' é inválido para o tipo selecionado de biblioteca\r\n'language' é inválido\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "ro"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n„agent” este invalid pentru tipul de bibliotecă selectat\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "ru"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\nнеправильный \"агент\" для выбранного типа библиотеки\r\nнеправильный \"язык\"\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "sk"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' je pre vybraný typ knižnice neplatný\r\n'jazyk' je neplatný\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "sl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n»agent« ni veljaven za izbrano vrsto knjižnice\r\n'jezik' je neveljaven\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "sr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "sv"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' är ogiltig för den valda bibliotekstypen\r\n'language' är ogiltigt\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "th"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "tr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "uk"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\nневірний 'агент' для обраного типу бібліотеки\r\n'мова' не дійсна\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "vi"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "zh"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n‘代理’ 对选择的资料库类型无效\r\n‘语言’ 无效\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "zh-TW"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'agent' is invalid for the selected library type\r\n'language' is invalid\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {},
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "en"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "af"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n‘agent’ is verlore of ongeldig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ar"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'الأداة' مفقود أو غير صالح\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "bg"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ca"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' no está o no es válido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "cs"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' chybí nebo je neplatný\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "da"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' mangler eller er ugyldig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "de"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n\"Agent\" fehlt oder ist ungültig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "el"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "en-GB"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "es"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' no está o no es válido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "es-419"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' no está o no es válido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "et"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n\"agent\" puudub või on kehtetu\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "fa"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "fi"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' puuttuu tai se on virheellinen\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "fr"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' est manquant ou invalide\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "fr-CA"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' est manquant ou invalide\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "he"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' חסר או שגוי\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "hr"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' nedostaje ili je nevažeći\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "hu"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'ügynök' hiányzik vagy érvénytelen\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "is"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "it"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\nL'agente è mancante o non è valido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ja"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent'が存在しないか無効です\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ko"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'에이전트'가 없거나 올바르지 않음\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "lt"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n\"agentas\" trūksta arba negalioja\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "my"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "nb"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' mangler eller er ugyldig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "nl"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' ontbreekt of is ongeldig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "no"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' mangler eller er ugyldig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "pl"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\nbrakujący lub nieprawidłowy „agent”\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "pt"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agente' está em falta ou é inválido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "pt-BR"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agente' está faltando ou é inválido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "pt-PT"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agente' está faltando ou é inválido\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ro"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent'-ul lipsește sau este invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "ru"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n«агент» отсутствует или недействителен\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "sk"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\nchýba alebo je neplatný 'agent'\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "sl"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n\"agent\" manjka ali ni veljaven\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "sr"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'агент' недостаје или је неважећи\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "sv"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' saknas eller är ogiltig\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "th"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "tr"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "uk"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'Агент' відсутній або недійсний\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "vi"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "zh"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n“代理”缺失或无效\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "zh-TW"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'agent' is missing or invalid\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {},
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "en"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "af"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n‘taal’ is ongeldig\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "ar"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "bg"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "ca"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' no es valido\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "cs"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'jazyk' je neplatný\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "da"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'sprog' er ugyldigt\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "de"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n„Sprache“ ungültig\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "el"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "en-GB"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "es"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' no es valido\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "es-419"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' no es valido\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "et"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "fa"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "fi"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' on virheellinen\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "fr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' est invalide\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "fr-CA"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' est invalide\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "he"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "hr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' je nevaljan\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "hu"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\na \\\"nyelv\\\" érvénytelen\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "is"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "it"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' non valido\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "ja"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language'は無効です\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "ko"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'언어'가 사용 불가\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "lt"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "my"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "nb"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'språk' er ugyldig\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "nl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'taal' is ongeldig\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "no"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'språk' er ugyldig\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "pl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\nnieprawidłowy „język”\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "pt"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'Idioma' é inválido\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "pt-BR"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' é inválido\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "pt-PT"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' é inválido\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "ro"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "ru"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\nнеправильный \"язык\"\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "sk"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'jazyk' je neplatný\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "sl"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'jezik' je neveljaven\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "sr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "sv"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' är ogiltigt\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "th"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "tr"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "uk"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'мова' не дійсна\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "vi"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "zh"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n‘语言’ 无效\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "zh-TW"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'language' is invalid\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-notfound",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=99",
+   "headers": {
+    "X-Plex-Language": "hu-HU"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nunable to find entry for provided 'metadataAgentProviderGroupId'\r\n'ügynök' érvénytelen a kiválasztott könyvtár típushoz\r\na 'nyelv' érvénytelen\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "order-full-mismatch",
+   "path": "/library/sections?name=&type=bogus&agent=tv.plex.agents.movie&language=zz-ZZ&metadataAgentProviderGroupId=2",
+   "headers": {
+    "X-Plex-Language": "hu-HU"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'type' is missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist')\r\n'scanner' is missing or invalid\r\nagent identifier does not match primary identifier of supplied metadata agent provider group\r\n'ügynök' érvénytelen a kiválasztott könyvtár típushoz\r\na 'nyelv' érvénytelen\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "agent-tvbogus-nogroup",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "hu-HU"
+   },
+   "status": 400,
+   "body": "unable to find built-in agent group for provided 'agent'\r\n'ügynök' hiányzik vagy érvénytelen\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "order-all-nogroup",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.series&language=zz-ZZ",
+   "headers": {
+    "X-Plex-Language": "hu-HU"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\n'scanner' is missing or invalid\r\n'ügynök' érvénytelen a kiválasztott könyvtár típushoz\r\na 'nyelv' érvénytelen\r\n'location' is missing or invalid.\r\n"
+  },
+  {
+   "label": "agent-bogus",
+   "path": "/library/sections?name=W4%20Probe&type=movie&agent=tv.plex.agents.bogus&scanner=Plex%20Movie&language=en-US&metadataAgentProviderGroupId=1&location=%2Fdata%2Fw4-none",
+   "headers": {
+    "X-Plex-Language": "hu-HU"
+   },
+   "status": 400,
+   "body": "agent identifier does not match primary identifier of supplied metadata agent provider group\r\n'ügynök' hiányzik vagy érvénytelen\r\nnew scanner needs to be paired with new agent\r\n"
+  },
+  {
+   "label": "order-all",
+   "path": "/library/sections?name=&type=movie&agent=tv.plex.agents.movie&scanner=Bogus&language=zz-ZZ&metadataAgentProviderGroupId=1",
+   "headers": {
+    "X-Plex-Language": "hu-HU"
+   },
+   "status": 400,
+   "body": "'name' is missing or invalid\r\na 'nyelv' érvénytelen\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
+  }
+ ]
+}

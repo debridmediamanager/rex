@@ -431,6 +431,23 @@ fn activity_text(text: &str, language: &str, table: &Value) -> String {
     text.to_string()
 }
 
+/// `refusal_strings.json` (cycle 87, measured on plexscratch42 in every language Plex
+/// Web sends): the three Add Library refusal lines the server's gettext catalogue
+/// holds, chosen like an activity string (`hu-HU` reads `hu_HU`); the other eight lines
+/// stay English everywhere.
+pub(super) fn refusal_line(catalog: &std::path::Path, text: &str, language: Option<&str>) -> String {
+    static TABLE: std::sync::OnceLock<Value> = std::sync::OnceLock::new();
+    let Some(language) = language else {
+        return text.to_string();
+    };
+    let table = TABLE.get_or_init(|| {
+        load_json_sidecar(catalog, "refusal_strings.json")
+            .and_then(|document| document.get("strings").cloned())
+            .unwrap_or(Value::Null)
+    });
+    activity_text(text, language, table)
+}
+
 /// The language a notification socket was opened with, fixed at the handshake
 /// (cycle 65): `X-Plex-Language` in the query, else the handshake's
 /// `Accept-Language` -- all Plex Web sends.

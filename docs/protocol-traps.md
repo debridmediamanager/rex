@@ -3894,3 +3894,15 @@ are changing; replay the client's exact request before altering behavior.
   `/children`, failed from b2bad67 on because the servers were right. The test now creates them
   without a `uri`; neither server changed. (The copy's C49Empty is likewise EMPTY and reads 1, not
   "one member" as `collection_title_filter.json`'s note says.) CLIENT-VISIBLE rule, no defect.
+- **Three of Add Library's refusal lines follow the request's language.** On plexscratch42 with
+  each of the 44 X-Plex-Language values Plex Web sends and `hu-HU` (2026-10-02, the same
+  fixture), over six forms raising all eleven lines: `'agent' is missing or invalid`, `'agent' is
+  invalid for the selected library type` and `'language' is invalid` are the server's gettext
+  messages (`„Agent“ ungültig für diesen Mediatheken-Typ`, `'language'は無効です`); the other eight
+  stay English everywhere. The language is picked as for an activity string -- `hu-HU` reads the
+  `hu_HU` catalogue, whose quotes differ from `hu`'s -- and the table is `refusal_strings.json`.
+  Both servers wrote every line in English. MALFORMED-ONLY: Plex Web builds a valid form.
+  Measured beside it and NOT changed (a general rule, not this surface's): an `X-Plex-Language`
+  carrying a q-list or a script subtag (`zh-Hant`, `ca-ES,ca;q=0.9`, `nn,ca`) resolves
+  differently on the reference (English, English, Norwegian) and on both servers (Chinese,
+  Spanish, English); Plex Web sends one plain tag from its own list.

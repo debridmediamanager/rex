@@ -3157,6 +3157,17 @@ try:
 except (OSError, ValueError, KeyError):
     ACTIVITY_STRINGS, ACTIVITY_PROGRESS = {}, {}
 
+# Cycle 87, measured on plexscratch42 in every language Plex Web sends: three of an Add
+# Library refusal's eleven lines are in the server's gettext catalogue and follow the
+# request's language like an activity string does (`hu-HU` reads `hu_HU`); the other eight
+# stay English everywhere. plexsim wrote all eleven in English.
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "refusal_strings.json"), encoding="utf-8") as _handle:
+        REFUSAL_STRINGS = json.load(_handle)["strings"]
+except (OSError, ValueError, KeyError):
+    REFUSAL_STRINGS = {}
+
 
 def _localise_activity_text(text, language, table=None):
     """One activity title or subtitle in `language`, or the text itself.
@@ -7342,7 +7353,7 @@ class PlexSim:
                 # Measured: 404 for both, where a POST with a bad form is a 400.
                 return ("error", 404, "plexsim: not found")
             if method == "POST":
-                return self.create_section(query)
+                return self.create_section(query, headers)
             rows = [self.section_directory(s) for s in catalog.sections]
             if _option_on(query, "includePreferences"):
                 # Measured on both servers: every row gains its library's settings,
@@ -21918,7 +21929,7 @@ class PlexSim:
     ADD_LIBRARY_TYPES = {"movie": 1, "show": 2, "artist": 8, "photo": 13,
                          "1": 1, "2": 2, "8": 8, "13": 13}
 
-    def add_library_refusal(self, query):
+    def add_library_refusal(self, query, reply_language=None):
         """The refusal `POST /library/sections` answers for this form, or None.
 
         Measured: the form is refused in TWO stages. A required parameter that is ABSENT
@@ -21997,16 +22008,20 @@ class PlexSim:
             lines.append("'location' is missing or invalid.")
         if not lines:
             return None
-        return ("untyped", 400, "".join(line + "\r\n" for line in lines))
+        # Cycle 87: a line the catalogue holds is written in the request's language.
+        return ("untyped", 400, "".join(
+            _localise_activity_text(line, reply_language, REFUSAL_STRINGS) + "\r\n"
+            for line in lines))
 
-    def create_section(self, query):
+    def create_section(self, query, headers=None):
         """`POST /library/sections` -- Add Library.
 
         plexsim has no filesystem to scan, so the new section starts empty --
         which is also what a real PMS gives you for an empty folder, rather than
         an error. 201 with the created Directory is the measured answer.
         """
-        refusal = self.add_library_refusal(query)
+        refusal = self.add_library_refusal(
+            query, request_language(query, headers, regional=True) if headers else None)
         if refusal is not None:
             return refusal
         kind = query.get("type")

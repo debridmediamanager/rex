@@ -8176,7 +8176,11 @@ impl Runtime {
     /// `type`, `agent` or `language`, or a non-integer group id, is the generic HTML 400;
     /// past that every failing check adds a CRLF line, in a fixed order, and the list is
     /// one 400 with no Content-Type.
-    fn add_library_refusal(&self, query: &HashMap<String, String>) -> Option<Response> {
+    fn add_library_refusal(
+        &self,
+        query: &HashMap<String, String>,
+        reply_language: Option<&str>,
+    ) -> Option<Response> {
         for name in ["name", "type", "agent", "language"] {
             if !query.contains_key(name) {
                 return Some(Response::error(400, "plexsim: Add Library without a field"));
@@ -8313,7 +8317,11 @@ impl Runtime {
         if lines.is_empty() {
             return None;
         }
-        let body = lines.iter().map(|line| format!("{line}\r\n")).collect::<String>();
+        // Cycle 87: a line the catalogue holds is written in the request's language.
+        let body = lines
+            .iter()
+            .map(|line| format!("{}\r\n", i18n::refusal_line(&self.catalog_path, line, reply_language)))
+            .collect::<String>();
         Some(Response::untyped(400, body.into_bytes()))
     }
 
@@ -8321,8 +8329,8 @@ impl Runtime {
     /// form is validated by `add_library_refusal`, a numeric type names a library type, the new library's
     /// uuid is the CRC-32 of `<name>-<type>`, its `prefs[...]` are applied as a prefs
     /// write, and the answer is a 201 bare container naming it in `Location`.
-    fn create_section(&mut self, query: &HashMap<String, String>) -> Response {
-        if let Some(refusal) = self.add_library_refusal(query) {
+    fn create_section(&mut self, query: &HashMap<String, String>, language: Option<&str>) -> Response {
+        if let Some(refusal) = self.add_library_refusal(query, language) {
             return refusal;
         }
         let kind = match query.get("type").map(String::as_str).unwrap_or_default() {
@@ -14130,7 +14138,8 @@ impl Runtime {
             return Response::json(200, plugin_container(Vec::new()));
         }
         if segments == ["library", "sections"] && request.method == "POST" {
-            return self.create_section(query);
+            let language = i18n::socket_language(&self.catalog_path, request);
+            return self.create_section(query, language.as_deref());
         }
         if segments.len() == 3
             && segments[0] == "library"

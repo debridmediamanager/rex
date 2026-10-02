@@ -63,7 +63,7 @@ image -- and loaded relative to `server.py`. Keep the layout flat — the code r
 with `dirname(__file__)`. The descriptors (`server_prefs.json`, `regional_server_prefs.json`,
 `section_prefs.json`, `section_meta.json`, `section_meta_show.json`, `section_meta_artist.json`, `item_prefs.json`,
 `section_prefs_new.json`, `section_filters.json`, `section_sorts.json`, `system_agents.json`,
-`legacy_agents.json`, `agent_languages.json`, `languages.json`, `translations.json`,
+`legacy_agents.json`, `agent_languages.json`, `languages.json`, `translations.json`, `refusal_strings.json`,
 `client_profiles.json`, `spellfix_static_tags.json`, `legacy_agent_config.json`); the image's own tables
 (`plugin_bundles.json`, `plugin_prefs.json`, `attributions.json`, `resource_assets.json`,
 `media_flags.json`); and three files served verbatim at the top of the surface with no token
