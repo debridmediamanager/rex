@@ -9,7 +9,7 @@
   "X-Plex-Device": "Windows",
   "X-Plex-Features": "external-media,indirect-media,hub-style-list"
  },
- "note": "`documents`: the reads Plex Web 4.162.1 and python-plexapi 4.18.2 make for an EMPTY music library whose answer moves with X-Plex-Language, in en/de/fr/ja, the library's number written {S}; uuids redacted. `vault_reads`: the random music.vault shelf of /hubs/sections/{S}, read in each of the 44 X-Plex-Language values Plex Web sends and en, once a minute for forty minutes, and on every hub page read for `documents` ([language, title, key]). `refusals`: six refusing Add Library forms (labels from c87_w4_add_library_refusals_s42.json) that between them raise all eleven lines, POSTed with no language, each of the 44 X-Plex-Language values Plex Web sends, en and hu-HU; nothing was created.",
+ "note": "`documents`: the reads Plex Web 4.162.1 and python-plexapi 4.18.2 make for an EMPTY music library whose answer moves with X-Plex-Language, in en/de/fr/ja, the library's number written {S}; uuids redacted. `vault_reads`: the random music.vault shelf of /hubs/sections/{S}, read in each of the 44 X-Plex-Language values Plex Web sends and en, once a minute for forty minutes, and on every hub page read for `documents` ([language, title, key]). `refusals`: six refusing Add Library forms (labels from c87_w4_add_library_refusals_s42.json) that between them raise all eleven lines, POSTed with no language, each of the 44 X-Plex-Language values Plex Web sends, en and hu-HU; nothing was created. `zen_photo_sorts`: zen's answer to a movie library's `sorts?type=13` (the photo sorts) in en/de/fr/ja.",
  "created_with": "/library/sections?name=C87A%20Music&type=artist&agent=tv.plex.agents.music&scanner=Plex%20Music&language=en-US&metadataAgentProviderGroupId=3&location=%2Fdata%2Fc87a-music",
  "created_status": 201,
  "documents": {
@@ -25823,5 +25823,187 @@
    "status": 400,
    "body": "'name' is missing or invalid\r\na 'nyelv' érvénytelen\r\nnew scanner needs to be paired with new agent\r\n'location' is missing or invalid.\r\n"
   }
- ]
+ ],
+ "zen_photo_sorts": {
+  "reference": "zen PMS 1.42.2.10156, claimed (GET only), its movie library 1, paged 0/20",
+  "path": "/library/sections/1/sorts?type=13",
+  "documents": {
+   "en": {
+    "MediaContainer": {
+     "size": 4,
+     "totalSize": 4,
+     "offset": 0,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "content": "secondary",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Zen Movies",
+     "viewGroup": "secondary",
+     "viewMode": 65592,
+     "Directory": [
+      {
+       "defaultDirection": "desc",
+       "descKey": "addedAt:desc",
+       "key": "addedAt",
+       "title": "Date Added"
+      },
+      {
+       "defaultDirection": "desc",
+       "descKey": "originallyAvailableAt:desc",
+       "key": "originallyAvailableAt",
+       "title": "Date Taken"
+      },
+      {
+       "default": "asc",
+       "defaultDirection": "asc",
+       "descKey": "photo.titleSort:desc,photo.originallyAvailableAt,photo.id",
+       "key": "photo.titleSort,photo.originallyAvailableAt,photo.id",
+       "title": "Name"
+      },
+      {
+       "defaultDirection": "asc",
+       "descKey": "mediaCount:desc,titleSort:asc",
+       "key": "mediaCount,titleSort",
+       "title": "Album"
+      }
+     ]
+    }
+   },
+   "de": {
+    "MediaContainer": {
+     "size": 4,
+     "totalSize": 4,
+     "offset": 0,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "content": "secondary",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Zen Movies",
+     "viewGroup": "secondary",
+     "viewMode": 65592,
+     "Directory": [
+      {
+       "defaultDirection": "desc",
+       "descKey": "addedAt:desc",
+       "key": "addedAt",
+       "title": "Datum hinzugefügt"
+      },
+      {
+       "defaultDirection": "desc",
+       "descKey": "originallyAvailableAt:desc",
+       "key": "originallyAvailableAt",
+       "title": "Aufnahmedatum"
+      },
+      {
+       "default": "asc",
+       "defaultDirection": "asc",
+       "descKey": "photo.titleSort:desc,photo.originallyAvailableAt,photo.id",
+       "key": "photo.titleSort,photo.originallyAvailableAt,photo.id",
+       "title": "Name"
+      },
+      {
+       "defaultDirection": "asc",
+       "descKey": "mediaCount:desc,titleSort:asc",
+       "key": "mediaCount,titleSort",
+       "title": "Album"
+      }
+     ]
+    }
+   },
+   "fr": {
+    "MediaContainer": {
+     "size": 4,
+     "totalSize": 4,
+     "offset": 0,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "content": "secondary",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Zen Movies",
+     "viewGroup": "secondary",
+     "viewMode": 65592,
+     "Directory": [
+      {
+       "defaultDirection": "desc",
+       "descKey": "addedAt:desc",
+       "key": "addedAt",
+       "title": "Date d'ajout"
+      },
+      {
+       "defaultDirection": "desc",
+       "descKey": "originallyAvailableAt:desc",
+       "key": "originallyAvailableAt",
+       "title": "Pris le"
+      },
+      {
+       "default": "asc",
+       "defaultDirection": "asc",
+       "descKey": "photo.titleSort:desc,photo.originallyAvailableAt,photo.id",
+       "key": "photo.titleSort,photo.originallyAvailableAt,photo.id",
+       "title": "Nom"
+      },
+      {
+       "defaultDirection": "asc",
+       "descKey": "mediaCount:desc,titleSort:asc",
+       "key": "mediaCount,titleSort",
+       "title": "Album"
+      }
+     ]
+    }
+   },
+   "ja": {
+    "MediaContainer": {
+     "size": 4,
+     "totalSize": 4,
+     "offset": 0,
+     "allowSync": false,
+     "art": "/:/resources/movie-fanart.jpg",
+     "content": "secondary",
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "thumb": "/:/resources/movie.png",
+     "title1": "Zen Movies",
+     "viewGroup": "secondary",
+     "viewMode": 65592,
+     "Directory": [
+      {
+       "defaultDirection": "desc",
+       "descKey": "addedAt:desc",
+       "key": "addedAt",
+       "title": "追加日"
+      },
+      {
+       "defaultDirection": "desc",
+       "descKey": "originallyAvailableAt:desc",
+       "key": "originallyAvailableAt",
+       "title": "撮影日"
+      },
+      {
+       "default": "asc",
+       "defaultDirection": "asc",
+       "descKey": "photo.titleSort:desc,photo.originallyAvailableAt,photo.id",
+       "key": "photo.titleSort,photo.originallyAvailableAt,photo.id",
+       "title": "名前"
+      },
+      {
+       "defaultDirection": "asc",
+       "descKey": "mediaCount:desc,titleSort:asc",
+       "key": "mediaCount,titleSort",
+       "title": "アルバム"
+      }
+     ]
+    }
+   }
+  }
+ }
 }

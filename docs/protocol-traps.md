@@ -3924,3 +3924,8 @@ are changing; replay the client's exact request before altering behavior.
   years, wider than the five periods the W5 witness saw: 2,070 reads, one wording per language
   and unit. plexsim still draws one period per process from the five; the shelf is empty, so no
   client draws it.
+- **A photo type's `Date Taken` sort is translated.** zen (1.42.2), a movie library's
+  `sorts?type=13`, every language (2026-10-02, the same fixture's `zen_photo_sorts`):
+  `originallyAvailableAt` is `Aufnahmedatum`/`Pris le`/`撮影日`, in the 34 languages that move;
+  both servers left it English. Cycle 63 recorded it as unreachable because plexsim could hold
+  no photo library; Add Library now creates one (`type=photo` with `com.plexapp.agents.none`).
