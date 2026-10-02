@@ -199,12 +199,20 @@ impl Runtime {
                 ),
             );
         }
+        // Cycle 88, measured on plexscratch42: once a poster is UPLOADED (or picked) the
+        // collection's `thumb` is its own versioned `/library/metadata/{id}/thumb/{v}` on
+        // every read, the composite only before that.
+        let own_thumb = collection
+            .extra
+            .get("thumb")
+            .map(string_value)
+            .filter(|thumb| thumb.starts_with(&format!("/library/metadata/{}/thumb/", collection.id)));
         row.insert(
             "thumb".to_string(),
-            json!(format!(
+            json!(own_thumb.clone().unwrap_or_else(|| format!(
                 "/library/collections/{}/composite/{stamp}?width=400&height=600",
                 collection.id
-            )),
+            ))),
         );
         row.insert(
             "addedAt".to_string(),
@@ -263,11 +271,6 @@ impl Runtime {
                 row.insert(name.to_string(), json!(value));
             }
         }
-        for name in ["Field", "Label"] {
-            if let Some(value) = collection.extra.get(name).filter(|value| !value.is_null()) {
-                row.insert(name.to_string(), value.clone());
-            }
-        }
         if let Some(value) = collection
             .prefs
             .get("collectionFilterBasedOnUser")
@@ -279,6 +282,20 @@ impl Runtime {
             // Measured: a SMART collection carries no minYear/maxYear.
             row.insert("minYear".to_string(), json!(years[0]));
             row.insert("maxYear".to_string(), json!(years[years.len() - 1]));
+        }
+        if let Some(thumb) = &own_thumb {
+            // Cycle 88 (plexscratch42): an own poster is also the row's `coverPoster`
+            // `Image`, on the detail reads and the listing alike, ahead of its tags.
+            row.insert(
+                "Image".to_string(),
+                json!([{"alt": collection.title, "type": "coverPoster", "url": thumb}]),
+            );
+        }
+        // Cycle 88: the detail reads carry `Label` then `Field`.
+        for name in ["Label", "Field"] {
+            if let Some(value) = collection.extra.get(name).filter(|value| !value.is_null()) {
+                row.insert(name.to_string(), value.clone());
+            }
         }
         // Cycle 21: the per-user state sits after `ratingCount` (or `index` once an
         // unmatch removed it) and before `thumb`.
@@ -1599,12 +1616,8 @@ impl Runtime {
             let rows = self.collection_members(collection);
             return self.composite_image(&rows, query);
         }
-        if tail.len() == 1
-            && matches!(tail[0], "poster" | "art" | "thumb")
-            && matches!(method, "GET" | "HEAD")
-        {
-            // Cycle 52: a collection with no uploaded artwork owns none of these.
-            return Response::error(404, "plexsim: not found");
+        if let Some(response) = self.list_artwork_read(&id, true, tail, query, method) {
+            return response;
         }
         if tail.len() == 1
             && matches!(

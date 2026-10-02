@@ -1,0 +1,604 @@
+{
+ "_about": "plexscratch42 (PMS 1.42.2), cycle 88 B, 2026-10-02: a plain SHOW collection (one member, Threefold) -- or a video playlist over one movie when \"kind\" says so, read at /playlists and /playlists/{id} in place of the type=18 listing and /library/collections/{id} -- given a poster UPLOAD (POST /library/metadata/{id}/posters, a 213-byte PNG); its detail, type=18 listing, /library/collections and /posters reads before and after; then every artwork read of it -- the versioned thumb (GET, HEAD), the bare thumb, thumb/1, poster, art, the upload candidate key, an unknown candidate and the transcoder. Bodies of image reads are recorded by length and by whether they are the uploaded bytes. Token and machine identifier redacted.",
+ "kind": "playlist",
+ "upload_bytes": 213,
+ "tag": "c88bpl1",
+ "exchanges": [
+  {
+   "method": "POST",
+   "path": "/playlists?type=video&title=C88B+Poster+c88bpl1&smart=0&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "388"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "926",
+       "key": "/playlists/926/items",
+       "guid": "com.plexapp.agents.none://4da81510-a127-49b2-8af2-a165a0576383",
+       "type": "playlist",
+       "title": "C88B Poster c88bpl1",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "composite": "/playlists/926/composite/1790929690",
+       "duration": 1800000,
+       "leafCount": 1,
+       "addedAt": 1790929690,
+       "updatedAt": 1790929690
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "565"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": false,
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "926",
+       "key": "/playlists/926/items",
+       "guid": "com.plexapp.agents.none://4da81510-a127-49b2-8af2-a165a0576383",
+       "type": "playlist",
+       "title": "C88B Poster c88bpl1",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "composite": "/playlists/926/composite/1790929690",
+       "viewCount": 1,
+       "lastViewedAt": 1790929690,
+       "duration": 1800000,
+       "leafCount": 1,
+       "addedAt": 1790929690,
+       "updatedAt": 1790929690
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/playlists",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "1491"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "Metadata": [
+      {
+       "ratingKey": "926",
+       "key": "/playlists/926/items",
+       "guid": "com.plexapp.agents.none://4da81510-a127-49b2-8af2-a165a0576383",
+       "type": "playlist",
+       "title": "C88B Poster c88bpl1",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "composite": "/playlists/926/composite/1790929690",
+       "viewCount": 1,
+       "lastViewedAt": 1790929690,
+       "duration": 1800000,
+       "leafCount": 1,
+       "addedAt": 1790929690,
+       "updatedAt": 1790929690
+      },
+      {
+       "ratingKey": "287",
+       "key": "/playlists/287/items",
+       "guid": "com.plexapp.agents.none://9edf9b39-8b48-405f-944e-6e79002e4ff0",
+       "type": "playlist",
+       "title": "cy49b-0",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "viewCount": 1,
+       "lastViewedAt": 1789692327,
+       "thumb": "/library/metadata/287/thumb/1790923125",
+       "leafCount": 0,
+       "addedAt": 1789692327,
+       "updatedAt": 1790923125,
+       "Image": [
+        {
+         "alt": "cy49b-0",
+         "type": "coverPoster",
+         "url": "/library/metadata/287/thumb/1790923125"
+        }
+       ]
+      },
+      {
+       "ratingKey": "288",
+       "key": "/playlists/288/items",
+       "guid": "com.plexapp.agents.none://89079507-226a-4596-8b3b-4c7a32f20f30",
+       "type": "playlist",
+       "title": "cy49c-0",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "viewCount": 1,
+       "lastViewedAt": 1789692328,
+       "leafCount": 0,
+       "addedAt": 1789692328,
+       "updatedAt": 1790174292
+      },
+      {
+       "ratingKey": "296",
+       "key": "/playlists/296/items",
+       "guid": "com.plexapp.agents.none://8d88c221-6112-4cf8-817e-e957370f9836",
+       "type": "playlist",
+       "title": "P52Averify",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "viewCount": 1,
+       "lastViewedAt": 1789845094,
+       "leafCount": 0,
+       "addedAt": 1789845094,
+       "updatedAt": 1790527505
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/playlists/926",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "388"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "926",
+       "key": "/playlists/926/items",
+       "guid": "com.plexapp.agents.none://4da81510-a127-49b2-8af2-a165a0576383",
+       "type": "playlist",
+       "title": "C88B Poster c88bpl1",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "composite": "/playlists/926/composite/1790929690",
+       "duration": 1800000,
+       "leafCount": 1,
+       "addedAt": 1790929690,
+       "updatedAt": 1790929690
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926/posters",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "336"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "key": "/playlists/926/composite/1790929690?width=400&height=600",
+       "ratingKey": "default://",
+       "thumb": "/playlists/926/composite/1790929690?width=200&height=300",
+       "selected": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/library/metadata/926/posters",
+   "status": 200,
+   "headers": {
+    "Content-Type": "text/html",
+    "Cache-Control": "no-cache",
+    "Content-Length": "0"
+   },
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "763"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": false,
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "926",
+       "key": "/playlists/926/items",
+       "guid": "com.plexapp.agents.none://4da81510-a127-49b2-8af2-a165a0576383",
+       "type": "playlist",
+       "title": "C88B Poster c88bpl1",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "composite": "/playlists/926/composite/1790929691",
+       "viewCount": 1,
+       "lastViewedAt": 1790929690,
+       "thumb": "/library/metadata/926/thumb/1790929691",
+       "duration": 1800000,
+       "leafCount": 1,
+       "addedAt": 1790929690,
+       "updatedAt": 1790929691,
+       "Image": [
+        {
+         "alt": "C88B Poster c88bpl1",
+         "type": "coverPoster",
+         "url": "/library/metadata/926/thumb/1790929691"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/playlists",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "1648"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 4,
+     "Metadata": [
+      {
+       "ratingKey": "926",
+       "key": "/playlists/926/items",
+       "guid": "com.plexapp.agents.none://4da81510-a127-49b2-8af2-a165a0576383",
+       "type": "playlist",
+       "title": "C88B Poster c88bpl1",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "composite": "/playlists/926/composite/1790929691",
+       "viewCount": 1,
+       "lastViewedAt": 1790929690,
+       "thumb": "/library/metadata/926/thumb/1790929691",
+       "duration": 1800000,
+       "leafCount": 1,
+       "addedAt": 1790929690,
+       "updatedAt": 1790929691,
+       "Image": [
+        {
+         "alt": "C88B Poster c88bpl1",
+         "type": "coverPoster",
+         "url": "/library/metadata/926/thumb/1790929691"
+        }
+       ]
+      },
+      {
+       "ratingKey": "287",
+       "key": "/playlists/287/items",
+       "guid": "com.plexapp.agents.none://9edf9b39-8b48-405f-944e-6e79002e4ff0",
+       "type": "playlist",
+       "title": "cy49b-0",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "viewCount": 1,
+       "lastViewedAt": 1789692327,
+       "thumb": "/library/metadata/287/thumb/1790923125",
+       "leafCount": 0,
+       "addedAt": 1789692327,
+       "updatedAt": 1790923125,
+       "Image": [
+        {
+         "alt": "cy49b-0",
+         "type": "coverPoster",
+         "url": "/library/metadata/287/thumb/1790923125"
+        }
+       ]
+      },
+      {
+       "ratingKey": "288",
+       "key": "/playlists/288/items",
+       "guid": "com.plexapp.agents.none://89079507-226a-4596-8b3b-4c7a32f20f30",
+       "type": "playlist",
+       "title": "cy49c-0",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "viewCount": 1,
+       "lastViewedAt": 1789692328,
+       "leafCount": 0,
+       "addedAt": 1789692328,
+       "updatedAt": 1790174292
+      },
+      {
+       "ratingKey": "296",
+       "key": "/playlists/296/items",
+       "guid": "com.plexapp.agents.none://8d88c221-6112-4cf8-817e-e957370f9836",
+       "type": "playlist",
+       "title": "P52Averify",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "viewCount": 1,
+       "lastViewedAt": 1789845094,
+       "leafCount": 0,
+       "addedAt": 1789845094,
+       "updatedAt": 1790527505
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/playlists/926",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "586"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "926",
+       "key": "/playlists/926/items",
+       "guid": "com.plexapp.agents.none://4da81510-a127-49b2-8af2-a165a0576383",
+       "type": "playlist",
+       "title": "C88B Poster c88bpl1",
+       "summary": "",
+       "smart": false,
+       "playlistType": "video",
+       "composite": "/playlists/926/composite/1790929691",
+       "thumb": "/library/metadata/926/thumb/1790929691",
+       "duration": 1800000,
+       "leafCount": 1,
+       "addedAt": 1790929690,
+       "updatedAt": 1790929691,
+       "Image": [
+        {
+         "alt": "C88B Poster c88bpl1",
+         "type": "coverPoster",
+         "url": "/library/metadata/926/thumb/1790929691"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926/posters",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "639"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "key": "/library/metadata/926/file?url=upload%3A%2F%2Fposters%2F09490fc6757f5d2d1a4475497e1db4cda2fe94db",
+       "ratingKey": "upload://posters/09490fc6757f5d2d1a4475497e1db4cda2fe94db",
+       "thumb": "/library/metadata/926/file?url=upload%3A%2F%2Fposters%2F09490fc6757f5d2d1a4475497e1db4cda2fe94db",
+       "selected": true
+      },
+      {
+       "key": "/playlists/926/composite/1790929691?width=400&height=600",
+       "ratingKey": "default://",
+       "thumb": "/playlists/926/composite/1790929691?width=200&height=300",
+       "selected": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926/thumb/1790929691",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": {
+    "bytes": 213,
+    "is_upload": true
+   }
+  },
+  {
+   "method": "HEAD",
+   "path": "/library/metadata/926/thumb/1790929691",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926/thumb",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": {
+    "bytes": 213,
+    "is_upload": true
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926/thumb/1",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": {
+    "bytes": 213,
+    "is_upload": true
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926/poster",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": {
+    "bytes": 213,
+    "is_upload": true
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926/art",
+   "status": 404,
+   "headers": {
+    "Content-Type": "text/html",
+    "Cache-Control": "no-cache",
+    "Content-Length": "85"
+   },
+   "body": {
+    "bytes": 85,
+    "is_upload": false
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926/file?url=upload%3A%2F%2Fposters%2F09490fc6757f5d2d1a4475497e1db4cda2fe94db",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": {
+    "bytes": 213,
+    "is_upload": true
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/926/file?url=upload%3A%2F%2Fposters%2F0000",
+   "status": 404,
+   "headers": {
+    "Content-Type": "text/html",
+    "Cache-Control": "no-cache",
+    "Content-Length": "85"
+   },
+   "body": {
+    "bytes": 85,
+    "is_upload": false
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/photo/:/transcode?width=100&height=100&url=%2Flibrary%2Fmetadata%2F926%2Fthumb%2F1790929691",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "Cache-Control": "max-age=259200",
+    "Content-Length": "206"
+   },
+   "body": {
+    "bytes": 206,
+    "is_upload": false
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/playlists/926",
+   "status": 204,
+   "headers": {
+    "Content-Type": "text/html",
+    "Cache-Control": "no-cache",
+    "Content-Length": "0"
+   },
+   "body": ""
+  }
+ ]
+}

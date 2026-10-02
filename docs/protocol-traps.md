@@ -3957,3 +3957,18 @@ are changing; replay the client's exact request before altering behavior.
   on every path and ignored every removal (python-plexapi's `removeLabel`, the Edit dialog
   removing the last label); the oracle's collections path dropped labels outright, and the
   native listing carried both lists and both servers a one-entry `Guid`.
+- **A list's poster UPLOAD becomes its poster.** plexscratch42 (1.42.2), a show collection and a
+  video playlist (2026-10-02, `tests/fixtures/{collection,playlist}_poster_upload_s42.json`): after
+  `POST /library/metadata/{id}/posters` the row's `thumb` is its own
+  `/library/metadata/{id}/thumb/{v}` -- at the new `updatedAt` -- on the detail reads and the
+  listing, with a `coverPoster` `Image` beside it and `Field [thumb]` locked on the detail reads;
+  `/posters` lists the upload FIRST under `/library/metadata/{id}/file?url=upload%3A...` (key
+  and thumb) and the composite LAST, each with an explicit `selected`; and the uploaded bytes are
+  the image at the versioned `thumb`, the bare `thumb`, `thumb/1`, `poster`, the candidate key and
+  through the transcoder (`image/jpeg`, `X-Plex-Local-Asset`), while `art` stays a 404. Both
+  servers kept the composite `thumb` (the uploaded poster never showed), named the bare
+  `upload://` uri as the candidate (a broken tile) and answered a grey placeholder or a 404 at
+  those paths (a playlist's row already took the upload, and its own `thumb` 404'd on both). A
+  playlist's `Field` rides on `/playlists/{id}` and the detail only -- `/playlists` lists none,
+  where both servers listed it. The copy's `art` 404 itself carries `X-Plex-Local-Asset: 1`; not
+  emulated.

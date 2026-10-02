@@ -8531,11 +8531,21 @@ class PlexSim:
                     r"^/library/metadata/(\d+)/(thumb|art|poster|background)(/|$)", inner)
                 if owner is not None:
                     row = catalog.items.get(int(owner.group(1)))
-                    if row is None:
+                    collection = (self.library.collection(owner.group(1))
+                                  or self.library.playlist(owner.group(1))) \
+                        if row is None else None
+                    if row is None and collection is None:
                         return ("error", 404, "plexsim: no such item")
                     field = {"poster": "thumb", "background": "art"}.get(
                         owner.group(2), owner.group(2))
-                    if not self._owns(row, field):
+                    if collection is not None:
+                        # Cycle 88, measured on plexscratch42: a LIST's uploaded
+                        # poster transcodes like an item's (the direct path is the image);
+                        # anything it does not own is the direct path's 404.
+                        if field != "thumb" or not str(collection.get("thumb") or "") \
+                                .startswith("/library/metadata/%s/" % owner.group(1)):
+                            return ("error", 404, "plexsim: not found")
+                    elif not self._owns(row, field):
                         # The transcoder does not re-resolve: it answers what the direct
                         # path answers, and a row that BORROWS this field 404s there
                         # (cycle 26). plexsim resolved through `artwork_for`, which falls
@@ -13108,6 +13118,11 @@ class PlexSim:
             row = (self.library._collection_row(collection) if collection is not None
                    else self.library._playlist_row(target))
             composite = (row.get("composite") or row.get("thumb") or "").split("?")[0]
+            if collection is not None:
+                # Cycle 88: an uploaded poster takes the row's `thumb`; the composite
+                # candidate is still the collection's own composite at its `updatedAt`.
+                composite = "/library/collections/%s/composite/%s" % (
+                    collection["ratingKey"], collection.get("updatedAt"))
             if not composite:
                 # Cycle 52, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4):
                 # an EMPTY playlist carries neither `composite` nor `thumb` on its row --
@@ -13123,6 +13138,29 @@ class PlexSim:
                     target.get("ratingKey"), target.get("updatedAt") or target.get("addedAt"))
             entries = []
             uploaded = target.get("_poster_url" if segments[3] == "posters" else "_art_url")
+            uploads = list((target.get("_uploads") or {}).get("thumb") or [])
+            if segments[3] == "posters" and uploads:
+                # Cycle 88, measured on plexscratch42 (1.42.2) on a collection and a
+                # playlist: a list lists its UPLOADS first, as an item lists them --
+                # `key`/`thumb` the server path `/library/metadata/{id}/file?url=upload%3A...`
+                # -- and the composite last, each with an explicit `selected`. plexsim put
+                # the composite first and the bare `upload://` uri in all three, a broken
+                # tile in Change Poster.
+                entries = [{"key": _candidate_path(target["ratingKey"], key),
+                            "ratingKey": key,
+                            "thumb": _candidate_path(target["ratingKey"], key),
+                            "selected": uploaded == key} for key in uploads]
+                entries.append({"key": "%s?width=400&height=600" % composite,
+                                "ratingKey": "default://",
+                                "thumb": "%s?width=200&height=300" % composite,
+                                "selected": not uploaded})
+                if uploaded and uploaded not in uploads:
+                    # A remote pick (unmeasurable on the isolated copy, which cannot fetch
+                    # it) stays the selected candidate after the rest, as before.
+                    entries.append({"key": uploaded, "ratingKey": uploaded,
+                                    "thumb": uploaded, "selected": True})
+                return self.tag_container(
+                    size=len(entries), Metadata=entries, _xml={"Metadata": "Photo"})
             if segments[3] == "posters":
                 # Cycle 15, measured on the copy: `/arts` is EMPTY on a collection --
                 # plexsim handed back the POSTER there, so Change Background offered
@@ -13199,6 +13237,25 @@ class PlexSim:
             return self.tag_container(
                 size=0,
                 _xml={"Metadata": "Photo" if segments[3] == "clearLogos" else "Track"})
+        if len(segments) == 4 and segments[3] == "file" and method in ("GET", "HEAD"):
+            # Cycle 88, measured on plexscratch42: an uploaded candidate's `key`/`thumb`
+            # (`/library/metadata/{id}/file?url=upload%3A...`) serves the upload, as an
+            # item's does; one this collection was never given is a 404, and no `url` the
+            # item path's 400. plexsim 404'd it, so the Change Poster tile was broken.
+            if not query.get("url"):
+                return ("error", 400, "plexsim: bad request")
+            wanted = urllib.parse.unquote(query["url"].replace("%2E", "."))
+            if wanted in ((target_row.get("_uploads") or {}).get("thumb") or []) \
+                    and wanted in self.uploads:
+                return ("image", wanted)
+            return ("error", 404, "plexsim: not found")
+        if len(segments) == 5 and segments[3] in ("poster", "art", "thumb") \
+                and method in ("GET", "HEAD"):
+            # Cycle 88, measured on plexscratch42: a list's VERSIONED artwork path
+            # -- the `thumb` an upload gives it, and any other version -- is the same
+            # image as the bare one. plexsim 404'd it, so the poster a client drew from
+            # the row's own `thumb` never loaded.
+            segments = segments[:4]
         if len(segments) == 4 and segments[3] in ("poster", "art", "thumb") \
                 and method in ("GET", "HEAD"):
             # Cycle 52: the ownership rule is the ITEM's, and it reads the LIST's own
@@ -13234,7 +13291,10 @@ class PlexSim:
                 if method == "DELETE":
                     # Cycle 31: a 404 on 1.42.2, like the item path below.
                     return ("error", 404, "plexsim: not found")
-                return ("image-key", target_row, leaf)
+                # Cycle 88, measured on plexscratch42: `thumb` is the POSTER's image too
+                # (the uploaded bytes, `X-Plex-Local-Asset`); the responder read `art` for
+                # it and served a list's grey placeholder.
+                return ("image-key", target_row, "poster" if leaf == "thumb" else leaf)
             if method not in ("GET", "HEAD", "PUT"):
                 return ("error", 404, "plexsim: not found")
             if leaf == "match":
@@ -19286,6 +19346,11 @@ class PlexSim:
             "themes": ("theme", "upload://themes", "audio/mpeg3"),
             "clearLogos": ("clearLogo", "upload://clearLogos", "image/jpeg"),
         }.get(kind, ("art", "upload://art", "image/jpeg"))
+        if field == "thumb" and (self.library.collection(row.get("ratingKey")) is row
+                                 or self.library.playlist(row.get("ratingKey")) is row):
+            # Cycle 88, measured on plexscratch42: a COLLECTION's and a PLAYLIST's poster
+            # upload locks its `thumb` (`Field [thumb]` on the detail reads).
+            self.library._set_lock(row, "thumb", True)
         if row.get("type") == "season":
             prefix += "/seasons/%s" % row.get("index")
         elif row.get("type") == "episode":
@@ -20004,6 +20069,9 @@ class PlexSim:
                 if unsupported:
                     return ("error", 500,
                             "plexsim: unsupported sort key %s" % unsupported)
+            # Cycle 88, measured on plexscratch42: a playlist's locks (`Field`) ride on
+            # `/playlists/{id}` and `/library/metadata/{id}` only; the listing carries none.
+            rows = [{k: v for k, v in r.items() if k != "Field"} for r in rows]
             answer = self.paged_container(rows, query)
             if query.get("includeMeta") == "1":
                 # Measured on both references, byte-identical: the playlist page's
@@ -22160,6 +22228,12 @@ class PlexSim:
     def artwork_for(self, rating_key, kind):
         """The image behind a row's poster/background: an uploaded key, or a remote URL."""
         row = self.catalog.items.get(int(rating_key)) if str(rating_key).isdigit() else None
+        if not row and str(rating_key).isdigit():
+            # Cycle 88, measured on plexscratch42: a COLLECTION's uploaded poster is the
+            # image at its `thumb`, bare and versioned, and through the transcoder.
+            # plexsim looked for the row among the library's items alone and served its
+            # grey placeholder (or a 404) for a list's own upload.
+            row = self.library.collection(rating_key) or self.library.playlist(rating_key)
         if not row:
             return None
         if kind in ("thumb", "poster"):

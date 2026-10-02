@@ -6095,6 +6095,82 @@ impl Runtime {
             .unwrap_or((index + 1) as i64)
     }
 
+    /// A list's stored columns: a collection's `extra`, a playlist's edits.
+    fn list_columns(&self, id: &str, is_collection: bool) -> Option<Map<String, Value>> {
+        if is_collection {
+            self.collections.get(id).map(|collection| collection.extra.clone())
+        } else {
+            self.edits.get(id).cloned()
+        }
+    }
+
+    /// `GET|HEAD /library/metadata/{list}/{poster,thumb,thumb/{v},art,file}`. Cycle 52: a
+    /// list with nothing uploaded owns none of the artwork leaves. Cycle 88, measured on
+    /// plexscratch42 on a collection and a playlist: once a poster is uploaded, `poster`,
+    /// `thumb` and every VERSIONED `thumb/{v}` are its bytes (`image/jpeg`, a local asset,
+    /// `no-cache`) and `art` stays a 404; the upload's candidate key
+    /// (`file?url=upload%3A...`) serves it too, one the list was never given is a 404 and
+    /// no `url` the item path's 400. We 404'd them all, so an uploaded list poster -- the
+    /// row's own `thumb` -- never loaded and the Change Poster tile was broken.
+    fn list_artwork_read(
+        &self,
+        id: &str,
+        is_collection: bool,
+        tail: &[&str],
+        query: &HashMap<String, String>,
+        method: &str,
+    ) -> Option<Response> {
+        if !matches!(method, "GET" | "HEAD") {
+            return None;
+        }
+        let columns = self.list_columns(id, is_collection).unwrap_or_default();
+        let serve = |body: Vec<u8>, content_type: String, local: bool| {
+            let mut response = Response::bytes(200, content_type);
+            response.body = body;
+            if local {
+                response
+                    .headers
+                    .push(("X-Plex-Local-Asset".to_string(), "1".to_string()));
+                response
+                    .headers
+                    .push(("Cache-Control".to_string(), "no-cache".to_string()));
+            }
+            response
+                .headers
+                .push(("Accept-Ranges".to_string(), "bytes".to_string()));
+            response
+        };
+        if tail.len() == 1 && tail[0] == "file" {
+            let Some(url) = query.get("url").filter(|url| !url.is_empty()) else {
+                return Some(Response::error(400, "plexsim: bad request"));
+            };
+            let wanted = percent_decode(&url.replace("%2E", "."));
+            let mine = columns
+                .get("_uploads")
+                .and_then(Value::as_array)
+                .is_some_and(|list| list.iter().any(|known| known.as_str() == Some(wanted.as_str())));
+            return Some(match self.uploads.get(&wanted).cloned() {
+                Some((body, content_type)) if mine => serve(body, content_type, false),
+                _ => Response::error(404, "plexsim: not found"),
+            });
+        }
+        if !(1..=2).contains(&tail.len()) || !matches!(tail[0], "poster" | "art" | "thumb") {
+            return None;
+        }
+        let own = columns
+            .get("thumb")
+            .map(string_value)
+            .is_some_and(|thumb| thumb.starts_with(&format!("/library/metadata/{id}/thumb/")));
+        let upload = columns
+            .get("_poster_url")
+            .map(string_value)
+            .and_then(|url| self.uploads.get(&url).cloned());
+        Some(match upload {
+            Some((body, content_type)) if own && tail[0] != "art" => serve(body, content_type, true),
+            _ => Response::error(404, "plexsim: not found"),
+        })
+    }
+
     /// The private candidate a list's artwork picker lists as SELECTED: whatever the
     /// last pick or upload stored (`_poster_url` / `_art_url` on the oracle's row).
     fn list_private_url(&self, id: &str, is_collection: bool, private: &str) -> Option<String> {
@@ -6170,6 +6246,9 @@ impl Runtime {
                     return Response::error(404, "plexsim: not found");
                 };
                 reversion(&mut collection.extra);
+                if field == "posters" {
+                    remember_list_upload(&mut collection.extra, &upload);
+                }
                 if let Some(stored) = self.collections.get(id).cloned() {
                     let row = self.dynamic_collection_row(&stored);
                     self.push_timeline_collection(&row, 5, None);
@@ -6178,7 +6257,11 @@ impl Runtime {
                 let Some(playlist) = self.playlists.get(id).cloned() else {
                     return Response::error(404, "plexsim: not found");
                 };
-                reversion(self.edits.entry(id.to_string()).or_default());
+                let columns = self.edits.entry(id.to_string()).or_default();
+                reversion(columns);
+                if field == "posters" {
+                    remember_list_upload(columns, &upload);
+                }
                 self.push_timeline_playlist(&playlist, 5, None);
             }
             self.dirty = true;
@@ -6226,6 +6309,45 @@ impl Runtime {
                 "thumb": format!("{composite}?width=200&height=300"),
                 "selected": true,
             }));
+        }
+        let uploads = self
+            .list_columns(id, is_collection)
+            .and_then(|columns| columns.get("_uploads").cloned())
+            .and_then(|list| list.as_array().cloned())
+            .map(|list| list.iter().map(string_value).collect::<Vec<_>>())
+            .unwrap_or_default();
+        if field == "posters" && !uploads.is_empty() {
+            // Cycle 88, measured on plexscratch42 (1.42.2) on a collection and a playlist:
+            // a list lists its UPLOADS first, as an item lists them -- `key`/`thumb` the
+            // server path `/library/metadata/{id}/file?url=upload%3A...` -- and the
+            // composite last, each with an explicit `selected`. We put the composite first
+            // and the bare `upload://` uri in all three, a broken tile in Change Poster.
+            let selected = self.list_private_url(id, is_collection, private);
+            let mut listed = Vec::new();
+            for upload in &uploads {
+                let path = artwork::candidate_path(id, upload);
+                listed.push(json!({"_element": "Photo", "key": path, "ratingKey": upload,
+                    "thumb": path, "selected": selected.as_deref() == Some(upload.as_str())}));
+            }
+            for mut entry in entries {
+                if let Some(object) = entry.as_object_mut() {
+                    object.insert("selected".to_string(), json!(selected.is_none()));
+                }
+                listed.push(entry);
+            }
+            if let Some(picked) = selected.filter(|url| !uploads.contains(url)) {
+                // A remote pick (unmeasurable on the isolated copy, which cannot fetch it)
+                // stays the selected candidate after the rest, as before.
+                listed.push(json!({"_element": "Photo", "key": picked, "ratingKey": picked,
+                    "thumb": picked, "selected": true}));
+            }
+            return Response::json(
+                200,
+                self.tag_container(Map::from_iter([(
+                    "Metadata".to_string(),
+                    Value::Array(listed),
+                )])),
+            );
         }
         if let Some(uploaded) = self.list_private_url(id, is_collection, private) {
             // The picked or uploaded candidate is the SELECTED one, and the composite row
@@ -12120,7 +12242,15 @@ impl Runtime {
                     .map(|value| value.split(',').any(|kind| kind == own))
                     .unwrap_or(true)
             })
-            .map(|p| self.playlist_row(p, false, true))
+            .map(|p| {
+                // Cycle 88, measured on plexscratch42: a playlist's locks (`Field`) ride on
+                // `/playlists/{id}` and `/library/metadata/{id}` only; the listing has none.
+                let mut row = self.playlist_row(p, false, true);
+                if let Some(object) = row.as_object_mut() {
+                    object.shift_remove("Field");
+                }
+                row
+            })
             .collect::<Vec<_>>();
         // Cycle 16: the SMART lists come first, then `titleSort` within each group,
         // and every tie under an explicit sort falls back to the same.
@@ -20874,6 +21004,11 @@ impl Runtime {
         if tail.len() == 1 && matches!(tail[0], "posters" | "arts" | "clearLogos" | "themes") {
             return self.list_artwork_response(&playlist.id, false, tail[0], request);
         }
+        if let Some(response) =
+            self.list_artwork_read(&playlist.id, false, tail, query, request.method.as_str())
+        {
+            return response;
+        }
         if tail.len() == 1 && matches!(tail[0], "thumbs" | "banners") {
             // Cycle 16, measured on plexscratch: a list answers these two the way an
             // ITEM does -- 200 with an empty candidate container.
@@ -26561,5 +26696,19 @@ fn sync_version_response(request: &Request, response: &mut Response) {
     }
     if let Ok(bytes) = serde_json::to_vec(&document) {
         response.body = bytes;
+    }
+}
+
+/// Cycle 88, measured on plexscratch42 on a collection and a playlist: a list's poster
+/// upload locks its `thumb` (`Field [thumb]`), and stays one of its candidates.
+fn remember_list_upload(columns: &mut Map<String, Value>, upload: &str) {
+    edit::set_lock(columns, "thumb", true);
+    let uploads = columns
+        .entry("_uploads".to_string())
+        .or_insert_with(|| json!([]));
+    if let Some(list) = uploads.as_array_mut() {
+        if !list.iter().any(|known| known.as_str() == Some(upload)) {
+            list.push(json!(upload));
+        }
     }
 }

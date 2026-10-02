@@ -20,11 +20,23 @@ of the collection wrong. Re-measured through all three save paths and recorded i
     no `Label`, no `Field` and, under `includeGuids=1`, no `Guid`; the detail reads carry
     `Label` then `Field`.
 
+And the plexapi walk's `coll.uploadPoster` step, re-measured in
+`tests/fixtures/collection_poster_upload_s42.json` (a playlist takes the same rule,
+`playlist_poster_upload_s42.json`): a poster UPLOAD makes the collection's
+`thumb` its own `/library/metadata/{id}/thumb/{v}` (the composite before), adds a
+`coverPoster` `Image`, locks `thumb` and moves `updatedAt`; `/posters` lists the upload first
+under a `/library/metadata/{id}/file?url=upload%3A...` key and the composite last, each with
+an explicit `selected`; and the upload is the image at `thumb` (bare, versioned, `thumb/1`),
+`poster`, the candidate key and the transcoder, while `art` stays a 404. Both servers kept
+the composite `thumb` (the uploaded poster never showed), listed the bare `upload://` uri as
+the candidate, and served a grey placeholder or a 404 at those paths.
+
 Drives a real server process (`tests/server_command.py`): the native binary by default,
 the oracle with `PLEXSIM_SERVER=python`.
 
     python3 tests/test_parity_cycle88_b.py
 """
+import base64
 import http.client
 import json
 import os
@@ -41,6 +53,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "collection_edit_grammar_s42.json")
+POSTER_FIXTURES = [os.path.join(HERE, "fixtures", name) for name in
+                   ("collection_poster_upload_s42.json", "playlist_poster_upload_s42.json")]
+MOVIE = "1012"                     # catalog_ui's movie, the playlist member
+# The 206-byte PNG the fixture's upload was made of; the recorded upload is these bytes
+# plus the fixture's `tag`, which keeps its sha1 (and so its candidate) fresh on the copy.
+POSTER_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAIAAAAip+O/AAAACXBIWXMAAAABAAAAAQBPJcTWAAAAgElE"
+    "QVR4nO3PwQkAIBDAMAX3H/lwCB9BaCZo96y/HR3wqgGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0B"
+    "rQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0B"
+    "rQGtAe0CHaQCfFnVhS0AAAAASUVORK5CYII=")
 ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
@@ -66,14 +88,16 @@ def free_port():
     return port
 
 
-def request(port, method, path):
+def request(port, method, path, body=None, raw=False):
     connection = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
     try:
-        connection.request(method, path, headers=dict(HEADERS, Connection="close"))
+        connection.request(method, path, body=body, headers=dict(HEADERS, Connection="close"))
         response = connection.getresponse()
-        body = response.read()
+        data = response.read()
+        if raw:
+            return response.status, data, dict(response.getheaders())
         try:
-            return response.status, json.loads(body) if body.strip() else None
+            return response.status, json.loads(data) if data.strip() else None
         except ValueError:
             return response.status, None
     finally:
@@ -243,6 +267,112 @@ def server_read_checks(port, fixture):
     request(port, "DELETE", "/library/collections/%s" % key)
 
 
+def poster_view(path, body, key):
+    """A read's collection, reduced to what the upload rule is about, ids and stamps cut."""
+    rows = ((body or {}).get("MediaContainer") or {}).get("Metadata") or []
+    if path.split("?")[0].endswith("/posters"):
+        return [{"ratingKey": "upload" if str(e.get("ratingKey")).startswith("upload://")
+                 else e.get("ratingKey"),
+                 "key": ("file" if "/file?url=upload%3A%2F%2Fposters%2F" in e.get("key", "")
+                         else "composite" if "/composite/" in e.get("key", "") else e.get("key")),
+                 "thumb_is_key": e.get("thumb") == e.get("key") if "/file?" in e.get("key", "")
+                 else e.get("thumb", "").endswith("width=200&height=300"),
+                 "selected": e.get("selected")} for e in rows]
+    out = []
+    for row in rows:
+        if str(row.get("ratingKey")) != str(key):
+            continue
+        thumb = str(row.get("thumb") or "")
+        own = "/library/metadata/%s/thumb/" % key
+        out.append({
+            "thumb": "own" if thumb.startswith(own) else
+                     "composite" if "/composite/" in thumb else thumb,
+            "versioned_at_updatedAt": thumb.startswith(own)
+                                      and thumb[len(own):] == str(row.get("updatedAt")),
+            "Image": [(i.get("type"), i.get("alt") == row.get("title"), i.get("url") == thumb)
+                      for i in row.get("Image") or []],
+            "Field": [f.get("name") for f in row.get("Field") or []]})
+    return out
+
+
+def server_poster_checks(port, fixture):
+    kind = fixture.get("kind", "collection")
+    png = POSTER_PNG + fixture["tag"].encode()
+    if len(png) != fixture["upload_bytes"]:
+        raise SystemExit("the fixture's upload was %d bytes" % fixture["upload_bytes"])
+    status, body = request(port, "GET", "/identity")
+    machine = body["MediaContainer"]["machineIdentifier"]
+    uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s" % (
+        machine, MEMBER if kind == "collection" else MOVIE)
+    exchanges = fixture["exchanges"]
+    ref_key = str(exchanges[0]["body"]["MediaContainer"]["Metadata"][0]["ratingKey"])
+    if kind == "collection":
+        status, body = request(port, "POST", "/library/collections?" + urllib.parse.urlencode(
+            dict(type=2, title="C88B Poster " + fixture["tag"], smart=0, sectionId=SECTION,
+                 uri=uri)))
+    else:
+        status, body = request(port, "POST", "/playlists?" + urllib.parse.urlencode(
+            dict(type="video", title="C88B Poster " + fixture["tag"], smart=0, uri=uri)))
+    key = str(body["MediaContainer"]["Metadata"][0]["ratingKey"])
+    thumb = candidate = None
+    for exchange in exchanges[1:]:
+        method, path = exchange["method"], exchange["path"]
+        if path.startswith(("/library/collections?", "/playlists?")):
+            continue
+        if method == "DELETE":
+            break
+        if "/thumb/" in path and not path.endswith("/thumb/1") and thumb:
+            path = thumb
+        elif "/file?url=upload%3A%2F%2Fposters%2F" in path and "%2F0000" not in path \
+                and candidate:
+            path = candidate
+        elif path.startswith("/photo/:/transcode") and thumb:
+            path = "/photo/:/transcode?width=100&height=100&url=" + urllib.parse.quote(
+                thumb, safe="")
+        path = (path.replace("/%s/" % ref_key, "/%s/" % key).replace("/%s?" % ref_key, "/%s?" % key)
+                .replace("/sections/%s/" % REF_SECTION, "/sections/%s/" % SECTION))
+        if path.endswith("/%s" % ref_key):
+            path = path[: -len(ref_key)] + key
+        ref = exchange["body"]
+        if method == "POST":
+            got_status, _, _ = request(port, "POST", path, body=png, raw=True)
+            check("%s upload answers %s" % (kind, exchange["status"]),
+                  got_status == exchange["status"], got_status)
+            continue
+        if isinstance(ref, dict) and "MediaContainer" in ref:
+            got_status, got = request(port, method, path)
+            want = poster_view(exchange["path"], ref, ref_key)
+            have = poster_view(path, got, key)
+            check("%s %s %s reads %s" % (kind, method, exchange["path"].replace(ref_key, "{id}"),
+                                          want),
+                  got_status == exchange["status"] and have == want, (got_status, have))
+            if path.split("?")[0] == "/library/metadata/%s" % key:
+                thumb = ((got or {}).get("MediaContainer") or {}).get("Metadata", [{}])[0].get("thumb")
+            if path.endswith("/posters"):
+                rows = ((got or {}).get("MediaContainer") or {}).get("Metadata") or []
+                candidate = next((e.get("key") for e in rows
+                                  if str(e.get("ratingKey")).startswith("upload://")), None)
+            continue
+        got_status, data, headers = request(port, method, path, raw=True)
+        transcoded = path.startswith("/photo/")
+        # The local-asset mark is compared on the images only: the copy's `art` 404 carries
+        # one too, a header on an error page no client reads (recorded, not emulated).
+        ok = exchange["status"] == 200
+        want = (exchange["status"], exchange["headers"].get("Content-Type"),
+                None if transcoded or not ok else exchange["headers"].get("X-Plex-Local-Asset"),
+                None if transcoded or method == "HEAD" or not isinstance(ref, dict)
+                else ref.get("is_upload"))
+        have = (got_status, headers.get("Content-Type"),
+                None if transcoded or not ok else headers.get("X-Plex-Local-Asset"),
+                None if transcoded or method == "HEAD" or not isinstance(ref, dict)
+                else data == png)
+        check("%s %s %s is %s" % (kind, method, exchange["path"].replace(ref_key, "{id}")[:70],
+                                  want),
+              have == want, have)
+    request(port, "DELETE", ("/library/collections/%s" if kind == "collection"
+                             else "/playlists/%s") % key)
+
+
 def main():
     fixture = json.load(open(FIXTURE))
     steps = reference_edits(fixture)
@@ -251,6 +381,8 @@ def main():
     try:
         server_edit_checks(port, steps)
         server_read_checks(port, fixture)
+        for path in POSTER_FIXTURES:
+            server_poster_checks(port, json.load(open(path)))
     finally:
         stop(process)
     passed = sum(results)

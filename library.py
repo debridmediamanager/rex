@@ -2806,8 +2806,14 @@ class Library:
             # which `childCount` already carries.
             "ratingCount": (TYPE_NUMBERS.get(collection["subtype"], 1)
                             + (100 if collection.get("smart") else 0)),
-            "thumb": "/library/collections/%s/composite/%d?width=400&height=600"
-                     % (collection["ratingKey"], stamp),
+            # Cycle 88, measured on plexscratch42: once a poster is UPLOADED (or picked) the
+            # collection's `thumb` is its own versioned `/library/metadata/{id}/thumb/{v}`
+            # on every read, the composite only before that.
+            "thumb": (collection.get("thumb")
+                      if str(collection.get("thumb") or "").startswith(
+                          "/library/metadata/%s/thumb/" % collection["ratingKey"])
+                      else "/library/collections/%s/composite/%d?width=400&height=600"
+                      % (collection["ratingKey"], stamp)),
             "addedAt": collection["addedAt"],
             "updatedAt": stamp,
             "childCount": len(rows),
@@ -2851,7 +2857,7 @@ class Library:
             # well as the single read -- measured at both
             # /library/sections/{id}/collections and /library/collections/{id}.
             row["content"] = urllib.parse.unquote(collection["uri"])
-        for name in ("titleSort", "contentRating", "collectionSort", "collectionMode", "Label", "Field"):
+        for name in ("titleSort", "contentRating", "collectionSort", "collectionMode"):
             # Whatever the Edit Collection dialog and its prefs wrote. Measured: the
             # sort and mode come back as STRING attributes on the row, which is what
             # the dialog reads to show the current selection.
@@ -2867,6 +2873,15 @@ class Library:
             # computed them from whatever the query matched at that moment.
             row["minYear"] = years[0]
             row["maxYear"] = years[-1]
+        if row["thumb"].startswith("/library/metadata/"):
+            # Cycle 88 (plexscratch42): an own poster is also the row's `coverPoster`
+            # `Image`, on the detail reads and the listing alike, ahead of its tags.
+            row["Image"] = [{"alt": collection["title"], "type": "coverPoster",
+                             "url": row["thumb"]}]
+        for name in ("Label", "Field"):
+            # Cycle 88: the detail reads carry `Label` then `Field`.
+            if collection.get(name) is not None:
+                row[name] = collection[name]
         # Cycle 26: with `ratingCount` gone the state block keeps the same slot --
         # measured with a rating and an offset on an unmatched collection, where it
         # still sits after `index` and before `thumb`.

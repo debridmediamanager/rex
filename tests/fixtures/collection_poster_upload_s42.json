@@ -1,0 +1,561 @@
+{
+ "_about": "plexscratch42 (PMS 1.42.2), cycle 88 B, 2026-10-02: a plain SHOW collection (one member, Threefold) given a poster UPLOAD (POST /library/metadata/{id}/posters, a 213-byte PNG); its detail, type=18 listing, /library/collections and /posters reads before and after; then every artwork read of it -- the versioned thumb (GET, HEAD), the bare thumb, thumb/1, poster, art, the upload candidate key, an unknown candidate and the transcoder. Bodies of image reads are recorded by length and by whether they are the uploaded bytes. Token and machine identifier redacted.",
+ "upload_bytes": 213,
+ "tag": "c88bpf1",
+ "exchanges": [
+  {
+   "method": "POST",
+   "path": "/library/collections?type=2&title=C88B+Poster+c88bpf1&smart=0&sectionId=3&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F15",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "441"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "Metadata": [
+      {
+       "ratingKey": "923",
+       "key": "/library/collections/923/children",
+       "guid": "collection://1e0822c2-e615-4e4e-b550-c7c1f2fcac8a",
+       "type": "collection",
+       "title": "C88B Poster c88bpf1",
+       "subtype": "show",
+       "summary": "",
+       "index": 512,
+       "ratingCount": 2,
+       "thumb": "/library/collections/923/composite/1790929313?width=400&height=600",
+       "addedAt": 1790929313,
+       "updatedAt": 1790929313,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "789"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "923",
+       "key": "/library/collections/923/children",
+       "guid": "collection://1e0822c2-e615-4e4e-b550-c7c1f2fcac8a",
+       "type": "collection",
+       "title": "C88B Poster c88bpf1",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "",
+       "index": 512,
+       "ratingCount": 2,
+       "thumb": "/library/collections/923/composite/1790929313?width=400&height=600",
+       "addedAt": 1790929313,
+       "updatedAt": 1790929313,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?type=18",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "854"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "923",
+       "key": "/library/collections/923/children",
+       "guid": "collection://1e0822c2-e615-4e4e-b550-c7c1f2fcac8a",
+       "type": "collection",
+       "title": "C88B Poster c88bpf1",
+       "subtype": "show",
+       "summary": "",
+       "index": 512,
+       "ratingCount": 2,
+       "thumb": "/library/collections/923/composite/1790929313?width=400&height=600",
+       "addedAt": 1790929313,
+       "updatedAt": 1790929313,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/923",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "789"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "923",
+       "key": "/library/collections/923/children",
+       "guid": "collection://1e0822c2-e615-4e4e-b550-c7c1f2fcac8a",
+       "type": "collection",
+       "title": "C88B Poster c88bpf1",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "",
+       "index": 512,
+       "ratingCount": 2,
+       "thumb": "/library/collections/923/composite/1790929313?width=400&height=600",
+       "addedAt": 1790929313,
+       "updatedAt": 1790929313,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923/posters",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "356"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "key": "/library/collections/923/composite/1790929313?width=400&height=600",
+       "ratingKey": "default://",
+       "thumb": "/library/collections/923/composite/1790929313?width=200&height=300",
+       "selected": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/library/metadata/923/posters",
+   "status": 200,
+   "headers": {
+    "Content-Type": "text/html",
+    "Cache-Control": "no-cache",
+    "Content-Length": "0"
+   },
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "910"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "923",
+       "key": "/library/collections/923/children",
+       "guid": "collection://1e0822c2-e615-4e4e-b550-c7c1f2fcac8a",
+       "type": "collection",
+       "title": "C88B Poster c88bpf1",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "",
+       "index": 512,
+       "ratingCount": 2,
+       "thumb": "/library/metadata/923/thumb/1790929314",
+       "addedAt": 1790929313,
+       "updatedAt": 1790929314,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Image": [
+        {
+         "alt": "C88B Poster c88bpf1",
+         "type": "coverPoster",
+         "url": "/library/metadata/923/thumb/1790929314"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/3/all?type=18",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "934"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "art": "/:/resources/show-fanart.jpg",
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "nocache": true,
+     "thumb": "/:/resources/show.png",
+     "title1": "Threefold",
+     "title2": "All Shows",
+     "viewGroup": "show",
+     "viewMode": 65592,
+     "Metadata": [
+      {
+       "ratingKey": "923",
+       "key": "/library/collections/923/children",
+       "guid": "collection://1e0822c2-e615-4e4e-b550-c7c1f2fcac8a",
+       "type": "collection",
+       "title": "C88B Poster c88bpf1",
+       "subtype": "show",
+       "summary": "",
+       "index": 512,
+       "ratingCount": 2,
+       "thumb": "/library/metadata/923/thumb/1790929314",
+       "addedAt": 1790929313,
+       "updatedAt": 1790929314,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Image": [
+        {
+         "alt": "C88B Poster c88bpf1",
+         "type": "coverPoster",
+         "url": "/library/metadata/923/thumb/1790929314"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/923",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "910"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 1,
+     "allowSync": true,
+     "identifier": "com.plexapp.plugins.library",
+     "librarySectionID": 3,
+     "librarySectionTitle": "Threefold",
+     "librarySectionUUID": "61e257ea-900a-4ada-acf5-741f877a770a",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "ratingKey": "923",
+       "key": "/library/collections/923/children",
+       "guid": "collection://1e0822c2-e615-4e4e-b550-c7c1f2fcac8a",
+       "type": "collection",
+       "title": "C88B Poster c88bpf1",
+       "librarySectionTitle": "Threefold",
+       "librarySectionID": 3,
+       "librarySectionKey": "/library/sections/3",
+       "subtype": "show",
+       "summary": "",
+       "index": 512,
+       "ratingCount": 2,
+       "thumb": "/library/metadata/923/thumb/1790929314",
+       "addedAt": 1790929313,
+       "updatedAt": 1790929314,
+       "childCount": 1,
+       "maxYear": "2019",
+       "minYear": "2019",
+       "Image": [
+        {
+         "alt": "C88B Poster c88bpf1",
+         "type": "coverPoster",
+         "url": "/library/metadata/923/thumb/1790929314"
+        }
+       ],
+       "Field": [
+        {
+         "locked": true,
+         "name": "thumb"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923/posters",
+   "status": 200,
+   "headers": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Length": "659"
+   },
+   "body": {
+    "MediaContainer": {
+     "size": 2,
+     "identifier": "com.plexapp.plugins.library",
+     "mediaTagPrefix": "/system/bundle/media/flags/",
+     "mediaTagVersion": 1758205129,
+     "Metadata": [
+      {
+       "key": "/library/metadata/923/file?url=upload%3A%2F%2Fposters%2Fb63011f4fd1ac97cfea41e93dd68dbcc1b2f8b11",
+       "ratingKey": "upload://posters/b63011f4fd1ac97cfea41e93dd68dbcc1b2f8b11",
+       "thumb": "/library/metadata/923/file?url=upload%3A%2F%2Fposters%2Fb63011f4fd1ac97cfea41e93dd68dbcc1b2f8b11",
+       "selected": true
+      },
+      {
+       "key": "/library/collections/923/composite/1790929314?width=400&height=600",
+       "ratingKey": "default://",
+       "thumb": "/library/collections/923/composite/1790929314?width=200&height=300",
+       "selected": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923/thumb/1790929314",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": {
+    "bytes": 213,
+    "is_upload": true
+   }
+  },
+  {
+   "method": "HEAD",
+   "path": "/library/metadata/923/thumb/1790929314",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": ""
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923/thumb",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": {
+    "bytes": 213,
+    "is_upload": true
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923/thumb/1",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": {
+    "bytes": 213,
+    "is_upload": true
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923/poster",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": {
+    "bytes": 213,
+    "is_upload": true
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923/art",
+   "status": 404,
+   "headers": {
+    "Content-Type": "text/html",
+    "X-Plex-Local-Asset": "1",
+    "Cache-Control": "no-cache",
+    "Content-Length": "85"
+   },
+   "body": {
+    "bytes": 85,
+    "is_upload": false
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923/file?url=upload%3A%2F%2Fposters%2Fb63011f4fd1ac97cfea41e93dd68dbcc1b2f8b11",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "Cache-Control": "no-cache",
+    "Accept-Ranges": "bytes",
+    "Content-Length": "213"
+   },
+   "body": {
+    "bytes": 213,
+    "is_upload": true
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/923/file?url=upload%3A%2F%2Fposters%2F0000",
+   "status": 404,
+   "headers": {
+    "Content-Type": "text/html",
+    "Cache-Control": "no-cache",
+    "Content-Length": "85"
+   },
+   "body": {
+    "bytes": 85,
+    "is_upload": false
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/photo/:/transcode?width=100&height=100&url=%2Flibrary%2Fmetadata%2F923%2Fthumb%2F1790929314",
+   "status": 200,
+   "headers": {
+    "Content-Type": "image/jpeg",
+    "Cache-Control": "max-age=259200",
+    "Content-Length": "206"
+   },
+   "body": {
+    "bytes": 206,
+    "is_upload": false
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/library/collections/923",
+   "status": 200,
+   "headers": {
+    "Content-Type": "text/html",
+    "Cache-Control": "no-cache",
+    "Content-Length": "0"
+   },
+   "body": ""
+  }
+ ]
+}

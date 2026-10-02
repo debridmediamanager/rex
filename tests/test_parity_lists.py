@@ -257,6 +257,18 @@ def test_list_artwork(server):
             _, _, listed = server.json("GET", "/library/metadata/%s/%s" % (key, leaf))
             expected = "upload://%s/%s" % (kind, IMAGE_SHA1)
             got = [(row.get("key"), row.get("selected")) for row in rows(listed)]
+            if leaf == "posters":
+                # Cycle 88, measured on plexscratch42 (1.42.2): a list's poster uploads
+                # come FIRST under their `/library/metadata/{id}/file?url=` key, and the
+                # composite last with an explicit `selected`
+                # (`tests/fixtures/*_poster_upload_s42.json`).
+                served = "/library/metadata/%s/file?url=%s" % (
+                    key, urllib.parse.quote(expected, safe="").replace(".", "%2E"))
+                check("the %s's posters list leads with the upload, keyed by its sha1 and "
+                      "selected, and ends with the unselected composite" % name,
+                      got[:1] == [(served, True)] and len(got) == 2
+                      and got[1][1] is False and "/composite/" in str(got[1][0]), got)
+                continue
             check("the %s's %s list ends with the upload, keyed by its sha1 and selected"
                   % (name, leaf), got[-1:] == [(expected, True)]
                   and all(selected is None for _, selected in got[:-1]), got)
