@@ -2057,6 +2057,21 @@ impl Runtime {
                 }
             }
         }
+        // Cycle 88, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) with one
+        // movie joining nine collections (tests/fixtures/collection_listing_order_s*.json):
+        // every light row carries TWO, the first two BY TITLE with ASCII case folded and
+        // nothing else -- `aardvark` before `Alpha`, `10x` before `9x`, `0F` before `0é` --
+        // where the detail row keeps the join order. Genre and Role take the detail order's
+        // head instead, so the obvious `take(2)` names the wrong two.
+        if let Some(tags) = object.get_mut("Collection").and_then(Value::as_array_mut) {
+            tags.sort_by_cached_key(|tag| {
+                tag.get("tag")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_ascii_lowercase()
+            });
+            tags.truncate(2);
+        }
         if let Some(media_rows) = object.get_mut("Media").and_then(Value::as_array_mut) {
             for media in media_rows {
                 if let Some(parts) = media.get_mut("Part").and_then(Value::as_array_mut) {

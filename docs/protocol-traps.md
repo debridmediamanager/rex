@@ -3991,3 +3991,10 @@ are changing; replay the client's exact request before altering behavior.
   by the stored tag, and `test_ui_surface.py`'s two rename-then-delete checks asserted the untag
   -- re-run byte for byte on both copies, neither version untags. python-plexapi (`_edit` ->
   `section()._edit`) and the Edit dialog rename on the section path, so no client reaches it.
+- **A LISTING row carries two `Collection` tags, the first two BY TITLE**, ASCII case folded
+  and nothing else (`aardvark` < `Alpha`, `10x` < `9x`, `0F` < `0é`), on 1.42.2 and 1.43.4
+  alike: the grid with or without `includeCollections=1`, `/library/all`, both searches,
+  `/hubs/search`, `recentlyAdded`, a collection's `/children` on both paths and a show's grid
+  row. The DETAIL row keeps every tag in join order. Unlike `Genre`/`Role`, whose light lists
+  are the head of the detail order. python-plexapi never reloads a non-empty list, so
+  `Movie.collections` off `section.all()` is exactly those two.

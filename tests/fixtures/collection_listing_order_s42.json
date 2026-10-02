@@ -1,0 +1,656 @@
+{
+ "_about": "plexscratch42 (1.42.2): collections created on one movie; every listing surface read in the client's request shape, then the collections deleted. Each GET keeps only the member's rows (ratingKey, type, title, Collection).",
+ "tag": "b4c214832",
+ "member": "3",
+ "show": null,
+ "exchanges": [
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B4C214832%20Delta&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+   "headers": {},
+   "status": 200,
+   "created": {
+    "ratingKey": "972",
+    "title": "B4C214832 Delta"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1&X-Plex-Product=Plex%20Web&X-Plex-Version=4.160.0&X-Plex-Container-Start=0&X-Plex-Container-Size=50&X-Plex-Language=en",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 Delta"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B4C214832%20Alpha&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+   "headers": {},
+   "status": 200,
+   "created": {
+    "ratingKey": "973",
+    "title": "B4C214832 Alpha"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1&X-Plex-Product=Plex%20Web&X-Plex-Version=4.160.0&X-Plex-Container-Start=0&X-Plex-Container-Size=50&X-Plex-Language=en",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 Alpha"
+      },
+      {
+       "tag": "B4C214832 Delta"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B4C214832%20Charlie&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+   "headers": {},
+   "status": 200,
+   "created": {
+    "ratingKey": "974",
+    "title": "B4C214832 Charlie"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1&X-Plex-Product=Plex%20Web&X-Plex-Version=4.160.0&X-Plex-Container-Start=0&X-Plex-Container-Size=50&X-Plex-Language=en",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 Alpha"
+      },
+      {
+       "tag": "B4C214832 Charlie"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B4C214832%20Bravo&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+   "headers": {},
+   "status": 200,
+   "created": {
+    "ratingKey": "975",
+    "title": "B4C214832 Bravo"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1&X-Plex-Product=Plex%20Web&X-Plex-Version=4.160.0&X-Plex-Container-Start=0&X-Plex-Container-Size=50&X-Plex-Language=en",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 Alpha"
+      },
+      {
+       "tag": "B4C214832 Bravo"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B4C214832%20aardvark&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+   "headers": {},
+   "status": 200,
+   "created": {
+    "ratingKey": "976",
+    "title": "B4C214832 aardvark"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1&X-Plex-Product=Plex%20Web&X-Plex-Version=4.160.0&X-Plex-Container-Start=0&X-Plex-Container-Size=50&X-Plex-Language=en",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 aardvark"
+      },
+      {
+       "tag": "B4C214832 Alpha"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B4C214832%2010x&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+   "headers": {},
+   "status": 200,
+   "created": {
+    "ratingKey": "977",
+    "title": "B4C214832 10x"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1&X-Plex-Product=Plex%20Web&X-Plex-Version=4.160.0&X-Plex-Container-Start=0&X-Plex-Container-Size=50&X-Plex-Language=en",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 10x"
+      },
+      {
+       "tag": "B4C214832 aardvark"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B4C214832%209x&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+   "headers": {},
+   "status": 200,
+   "created": {
+    "ratingKey": "978",
+    "title": "B4C214832 9x"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1&X-Plex-Product=Plex%20Web&X-Plex-Version=4.160.0&X-Plex-Container-Start=0&X-Plex-Container-Size=50&X-Plex-Language=en",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 10x"
+      },
+      {
+       "tag": "B4C214832 9x"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B4C214832%200%C3%A9&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+   "headers": {},
+   "status": 200,
+   "created": {
+    "ratingKey": "979",
+    "title": "B4C214832 0é"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1&X-Plex-Product=Plex%20Web&X-Plex-Version=4.160.0&X-Plex-Container-Start=0&X-Plex-Container-Size=50&X-Plex-Language=en",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0é"
+      },
+      {
+       "tag": "B4C214832 10x"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/library/collections?type=1&title=B4C214832%200F&smart=0&sectionId=1&uri=server%3A%2F%2FMACHINE%2Fcom.plexapp.plugins.library%2Flibrary%2Fmetadata%2F3",
+   "headers": {},
+   "status": 200,
+   "created": {
+    "ratingKey": "980",
+    "title": "B4C214832 0F"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1&X-Plex-Product=Plex%20Web&X-Plex-Version=4.160.0&X-Plex-Container-Start=0&X-Plex-Container-Size=50&X-Plex-Language=en",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/3",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "id": 555,
+       "filter": "collection=555",
+       "tag": "B4C214832 Delta",
+       "guid": "collection://21a2cbe6-2558-4db4-bae7-b2b0aa73bb56"
+      },
+      {
+       "id": 556,
+       "filter": "collection=556",
+       "tag": "B4C214832 Alpha",
+       "guid": "collection://4a4cbb47-a6b9-4100-a251-e3734c56d18a"
+      },
+      {
+       "id": 557,
+       "filter": "collection=557",
+       "tag": "B4C214832 Charlie",
+       "guid": "collection://1178e9f1-a99e-4b66-b217-1e8734284b24"
+      },
+      {
+       "id": 558,
+       "filter": "collection=558",
+       "tag": "B4C214832 Bravo",
+       "guid": "collection://b560f57a-d9ba-4ad2-aa46-c4134164053b"
+      },
+      {
+       "id": 559,
+       "filter": "collection=559",
+       "tag": "B4C214832 aardvark",
+       "guid": "collection://b780b19e-d5e2-4806-b0a2-f8afc8bd8058"
+      },
+      {
+       "id": 560,
+       "filter": "collection=560",
+       "tag": "B4C214832 10x",
+       "guid": "collection://6b0d2efb-c8b2-42c9-8eed-3e9064d290aa"
+      },
+      {
+       "id": 561,
+       "filter": "collection=561",
+       "tag": "B4C214832 9x",
+       "guid": "collection://1c4a0ca7-a40e-48be-bdc3-316d0e3f8766"
+      },
+      {
+       "id": 562,
+       "filter": "collection=562",
+       "tag": "B4C214832 0é",
+       "guid": "collection://8a34edad-1029-4f42-b319-305bc4b95a54"
+      },
+      {
+       "id": 563,
+       "filter": "collection=563",
+       "tag": "B4C214832 0F",
+       "guid": "collection://8bf605ff-9974-4eac-ae59-4836f3ed8191"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/3?includeCollections=1",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "id": 555,
+       "filter": "collection=555",
+       "tag": "B4C214832 Delta",
+       "guid": "collection://21a2cbe6-2558-4db4-bae7-b2b0aa73bb56"
+      },
+      {
+       "id": 556,
+       "filter": "collection=556",
+       "tag": "B4C214832 Alpha",
+       "guid": "collection://4a4cbb47-a6b9-4100-a251-e3734c56d18a"
+      },
+      {
+       "id": 557,
+       "filter": "collection=557",
+       "tag": "B4C214832 Charlie",
+       "guid": "collection://1178e9f1-a99e-4b66-b217-1e8734284b24"
+      },
+      {
+       "id": 558,
+       "filter": "collection=558",
+       "tag": "B4C214832 Bravo",
+       "guid": "collection://b560f57a-d9ba-4ad2-aa46-c4134164053b"
+      },
+      {
+       "id": 559,
+       "filter": "collection=559",
+       "tag": "B4C214832 aardvark",
+       "guid": "collection://b780b19e-d5e2-4806-b0a2-f8afc8bd8058"
+      },
+      {
+       "id": 560,
+       "filter": "collection=560",
+       "tag": "B4C214832 10x",
+       "guid": "collection://6b0d2efb-c8b2-42c9-8eed-3e9064d290aa"
+      },
+      {
+       "id": 561,
+       "filter": "collection=561",
+       "tag": "B4C214832 9x",
+       "guid": "collection://1c4a0ca7-a40e-48be-bdc3-316d0e3f8766"
+      },
+      {
+       "id": 562,
+       "filter": "collection=562",
+       "tag": "B4C214832 0é",
+       "guid": "collection://8a34edad-1029-4f42-b319-305bc4b95a54"
+      },
+      {
+       "id": 563,
+       "filter": "collection=563",
+       "tag": "B4C214832 0F",
+       "guid": "collection://8bf605ff-9974-4eac-ae59-4836f3ed8191"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1&X-Plex-Product=Plex%20Web&X-Plex-Version=4.160.0&X-Plex-Container-Start=0&X-Plex-Container-Size=50&X-Plex-Language=en",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all?includeGuids=1",
+   "headers": {
+    "X-Plex-Container-Start": "0",
+    "X-Plex-Container-Size": "50"
+   },
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/all",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/all?type=1",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/search?type=1&title=Elephants",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/search?query=Elephants&searchTypes=movies",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/hubs/search?query=Elephants",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/sections/1/recentlyAdded",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/recentlyAdded",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/collections/972/children",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/library/metadata/972/children",
+   "headers": {},
+   "status": 200,
+   "rows": [
+    {
+     "ratingKey": "3",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "Collection": [
+      {
+       "tag": "B4C214832 0F"
+      },
+      {
+       "tag": "B4C214832 0é"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

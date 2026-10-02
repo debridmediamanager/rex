@@ -2494,8 +2494,9 @@ def _public_row(row):
 # five-clip library cannot show this -- no item has enough tags to be truncated -- which
 # is why eleven cycles of row-shape work missed it. `Director` is not capped in any
 # sample available (the richest row in 240 zen movies has two), so it is left alone
-# rather than guessed at; `Collection` and `Label` had no sample either.
-GRID_TAG_CAPS = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3, "Director": 3}
+# rather than guessed at. `Collection` is capped at 2 too, but by title (cycle 88, below).
+GRID_TAG_CAPS = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3, "Director": 3,
+                 "Collection": 2}
 # Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie made
 # to carry every tag family at once: a light row carries exactly `Genre, Country,
 # Director, Writer, Role, Collection` and NOT `Label`, `Style`, `Similar` or `Mood` --
@@ -3672,9 +3673,19 @@ def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
         if isinstance(out.get(key), list):
             # Cycle 62: a member's light row keeps a renamed collection's OLD name (see
             # `library.rename_collection_tag`).
-            out[key] = [{"tag": stale.get(str(tag["tag"]).lower(), tag["tag"])
-                         if key == "Collection" else tag["tag"]} for tag in out[key]
-                        if isinstance(tag, dict) and tag.get("tag")][:GRID_TAG_CAPS.get(key)]
+            tags = [{"tag": stale.get(str(tag["tag"]).lower(), tag["tag"])
+                     if key == "Collection" else tag["tag"]} for tag in out[key]
+                    if isinstance(tag, dict) and tag.get("tag")]
+            if key == "Collection":
+                # Cycle 88, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) with
+                # one movie joining nine collections (tests/fixtures/
+                # collection_listing_order_s*.json): every light row carries TWO, the first
+                # two BY TITLE with ASCII case folded and nothing else -- `aardvark` before
+                # `Alpha`, `10x` before `9x`, `0F` before `0é` -- where the detail row keeps
+                # the join order. Unlike Genre/Role, whose light lists are the detail
+                # order's head, so the obvious `[:2]` names the wrong two.
+                tags.sort(key=lambda tag: filters_module._ascii_lower(tag["tag"]))
+            out[key] = tags[:GRID_TAG_CAPS.get(key)]
     if out.get("Media"):
         # A Media that `excludeElements=Part` already emptied keeps its `partCount` and
         # gains no `Part` list back: an empty one here made the response-wide pass count
