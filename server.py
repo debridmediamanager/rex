@@ -11788,9 +11788,17 @@ class PlexSim:
                 # `sort=random` (Plex Web's "Randomly", which sends no seed) is a fresh
                 # order on EVERY request, `random:desc` too. Only a seed holds one.
                 # plexsim hashed a fixed "0" seed, so the grid never reshuffled.
-                salt = seed or "%.17g" % random.random()
-                ordered = sorted(ordered, key=lambda r: zlib.crc32(
-                    ("%s/%s" % (salt, r.get("ratingKey"))).encode()))
+                # Cycle 90: and the order is UNIFORM -- kids' five movies gave 44
+                # distinct orders in 60 reads (tests/fixtures/c90_n_unseeded_random_
+                # orders.json). A fresh salt under CRC-32 is not: CRC is affine, so a
+                # new salt only XORs every row's key with one mask -- six movies came
+                # out in 8 of 720 orders, two pairs side by side in every one of them.
+                # A seed keeps its CRC order, which is all a seed has to be: stable.
+                if seed:
+                    ordered = sorted(ordered, key=lambda r: zlib.crc32(
+                        ("%s/%s" % (seed, r.get("ratingKey"))).encode()))
+                else:
+                    ordered = random.sample(ordered, len(ordered))
                 if descending:
                     ordered.reverse()
                 continue

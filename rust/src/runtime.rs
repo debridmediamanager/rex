@@ -5759,21 +5759,21 @@ impl Runtime {
                 // Cycle 73: a bare `sort=random` is a fresh order on every request;
                 // only a seed holds one.  The order is the CRC-32 of
                 // `<seed>/<ratingKey>`, and `desc` reverses it.
-                let salt = if seed.is_empty() {
-                    format!(
-                        "{}",
-                        SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .map(|duration| duration.as_nanos())
-                            .unwrap_or(0)
-                    )
+                //
+                // Cycle 90: an unseeded order is also UNIFORM -- kids' five movies gave
+                // 44 distinct orders in 60 reads (tests/fixtures/c90_n_unseeded_random_
+                // orders.json). A fresh salt under CRC-32 is not: CRC is affine, so a new
+                // salt only XORs every row's key with one mask -- six movies came out in
+                // 8 of 720 orders, two pairs side by side in every one. A seed keeps
+                // its CRC order, which only has to be stable.
+                if seed.is_empty() {
+                    shuffle_in_place(&mut rows);
                 } else {
-                    seed
-                };
-                rows.sort_by_key(|row| {
-                    let key = row.get("ratingKey").map(string_value).unwrap_or_else(|| "None".to_string());
-                    crc32(format!("{salt}/{key}").as_bytes())
-                });
+                    rows.sort_by_key(|row| {
+                        let key = row.get("ratingKey").map(string_value).unwrap_or_else(|| "None".to_string());
+                        crc32(format!("{seed}/{key}").as_bytes())
+                    });
+                }
                 if descending {
                     rows.reverse();
                 }

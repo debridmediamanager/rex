@@ -4012,3 +4012,14 @@ are changing; replay the client's exact request before altering behavior.
   CLIENT-VISIBLE: the collection page's star rating (cycle 21), python-plexapi
   `Collection.userRating`/`guid` (`Collection._loadData`). It is also why B's s42 chain sees
   `coll.editTitle` 409 and a pre-rated `C63B Coll`: a dead run left those tags behind.
+- **An unseeded `sort=random` is a UNIFORM order, not merely a different one** (cycle 90, N's
+  `fix76` leg: plexsim's six reads repeated two orders, zen's never did). Sixty reads of the
+  Android grid's request (`type=1&sort=random&includeCollections=1&includeAdvanced=1`, paged
+  0/30): kids' five movies gave 44 distinct orders (a uniform draw: 47), plexscratch42's 24 gave
+  60 of 60 (`tests/fixtures/c90_n_unseeded_random_orders.json`). Both servers ordered by the
+  CRC-32 of `<fresh salt>/<ratingKey>`, and CRC is affine: a new salt only XORs every row's key
+  with one mask, so `catalog_ui`'s six movies came out in 8 of 720 orders over 300 reads, two
+  pairs side by side in every one. An unseeded draw is now a real shuffle (oracle
+  `random.sample`, native `shuffle_in_place`); `random:<seed>` keeps its CRC order,
+  which only has to be stable. CLIENT-VISIBLE: Plex Web's "Randomly" and the Android grid send
+  this request; the shuffled grid repeated itself every few loads.
