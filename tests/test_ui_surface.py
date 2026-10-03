@@ -7340,19 +7340,28 @@ def main():
         skip("progress stores a position past the end without completing, and needs a numeric time",
              "need a second movie")
 
-    # Measured on plexscratch: a negative rating other than -1 clears the stars and KEEPS
-    # lastRatedAt; only -1 clears both. plexsim cleared both for any negative rating.
+    # Measured on plexscratch: a negative rating other than -1 clears the stars and leaves
+    # a lastRatedAt; -1 clears both from a RATED row. plexsim cleared both for any negative
+    # rating. Cycle 90, plexscratch42 (1.42.2, tests/fixtures/rating_noop_s42.json): a -1
+    # of a row with no stars is no write at all, so after the -5 it KEEPS that lastRatedAt.
     rate_w10e = "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=%%s" % movie
     request(base, "GET", rate_w10e % "6")
     request(base, "GET", rate_w10e % "-5")
     minus5_w10e = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     request(base, "GET", rate_w10e % "-1")
     minus1_w10e = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    request(base, "GET", rate_w10e % "6")
+    request(base, "GET", rate_w10e % "-1")
+    cleared_w10e = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     check("a negative rating other than -1 clears the stars and keeps lastRatedAt",
           "userRating" not in minus5_w10e and minus5_w10e.get("lastRatedAt")
-          and "userRating" not in minus1_w10e and "lastRatedAt" not in minus1_w10e,
-          "-5: %r/%r, -1: %r/%r" % (minus5_w10e.get("userRating"), minus5_w10e.get("lastRatedAt"),
-                                    minus1_w10e.get("userRating"), minus1_w10e.get("lastRatedAt")))
+          and "userRating" not in minus1_w10e
+          and minus1_w10e.get("lastRatedAt") == minus5_w10e.get("lastRatedAt")
+          and "userRating" not in cleared_w10e and "lastRatedAt" not in cleared_w10e,
+          "-5: %r/%r, -1: %r/%r, 6 then -1: %r/%r"
+          % (minus5_w10e.get("userRating"), minus5_w10e.get("lastRatedAt"),
+             minus1_w10e.get("userRating"), minus1_w10e.get("lastRatedAt"),
+             cleared_w10e.get("userRating"), cleared_w10e.get("lastRatedAt")))
 
     # Measured on plexscratch: a timeline `time` past the `duration` sent with it, a negative
     # or unparseable `time` and an unparseable `duration` are each a 400. plexsim answered
@@ -30514,8 +30523,10 @@ def main():
           "userRating" not in row_c54c and int(row_c54c.get("lastRatedAt") or 0) >= since_c54c,
           "userRating=%r lastRatedAt=%r" % (row_c54c.get("userRating"),
                                             row_c54c.get("lastRatedAt")))
-    request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1"
-            % movie)
+    # A -1 clears a lastRatedAt only from a RATED row (cycle 90): rate it first.
+    for value_c54c in ("7", "-1"):
+        request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=%s"
+                % (movie, value_c54c))
 
     # Cycle 54, measured on zen (1.42.2) and kids (1.43.4): three of cycle 53's ten schema
     # columns are DATES, not integers. `lastSkippedAt`, `beginsAt` and `endsAt` each take
@@ -30536,8 +30547,9 @@ def main():
     # `<<=2020-01-01` are all the 3,465 unrated movies and `!=5` is the 422 rated ones.
     # Cycle 20's "a NULL date matches nothing" holds for every OTHER date column.
     request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
-    request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1"
-            % movie)
+    for value_c54d in ("7", "-1"):   # -1 clears lastRatedAt only from a rated row (cycle 90)
+        request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=%s"
+                % (movie, value_c54d))
     wrong_c54d = []
     for column_c54d in ("lastViewedAt", "lastRatedAt", "lastSkippedAt"):
         for filter_c54d, want_c54d in (("=0", True), ("%3C%3C=1", True),

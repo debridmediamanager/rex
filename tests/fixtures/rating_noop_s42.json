@@ -1,0 +1,331 @@
+{
+ "reference": "plexscratch42, PMS 1.42.2",
+ "measured": "2026-10-03",
+ "note": "one write at a time on an episode that starts unrated; viewUpdatedAt read through the section filter viewUpdatedAt>>= the second before the write; lastRatedAt classed unset / kept / new",
+ "item": {
+  "unchanged_value": [
+   {
+    "write": "rate:7",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:7",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "rate:7.0",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:7",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:7.0",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:8",
+    "status": 200,
+    "userRating": 8.0,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "sect:8",
+    "status": 200,
+    "userRating": 8.0,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "rate:8",
+    "status": 200,
+    "userRating": 8.0,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "rate:10",
+    "status": 200,
+    "userRating": 10.0,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:10.0",
+    "status": 200,
+    "userRating": 10.0,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "rate:7.5",
+    "status": 200,
+    "userRating": 7.5,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:7.50",
+    "status": 200,
+    "userRating": 7.5,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "rate:0",
+    "status": 200,
+    "userRating": 0.0,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:0",
+    "status": 200,
+    "userRating": 0.0,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:0",
+    "status": 200,
+    "userRating": 0.0,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   }
+  ],
+  "clear": [
+   {
+    "write": "rate:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "rate:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "rate:7",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:7",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "sect:",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "sect:",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:7",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "sect:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "sect:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset",
+    "viewUpdatedAt_stamped": false
+   }
+  ],
+  "other_negative": [
+   {
+    "write": "rate:-5",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:-5",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "kept",
+    "viewUpdatedAt_stamped": false
+   },
+   {
+    "write": "sect:-5",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "sect:-5",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:7",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "sect:-5",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:7",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   },
+   {
+    "write": "rate:-5",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "new",
+    "viewUpdatedAt_stamped": true
+   }
+  ]
+ },
+ "collection": {
+  "unchanged_value": [
+   {
+    "write": "rate:7",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "new"
+   },
+   {
+    "write": "rate:7",
+    "status": 200,
+    "userRating": 7.0,
+    "lastRatedAt": "kept"
+   },
+   {
+    "write": "rate:8",
+    "status": 200,
+    "userRating": 8.0,
+    "lastRatedAt": "new"
+   },
+   {
+    "write": "rate:8",
+    "status": 200,
+    "userRating": 8.0,
+    "lastRatedAt": "kept"
+   },
+   {
+    "write": "rate:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset"
+   },
+   {
+    "write": "rate:-1",
+    "status": 200,
+    "userRating": null,
+    "lastRatedAt": "unset"
+   }
+  ]
+ },
+ "ids": {
+  "item": "393 (episode, type 4, section 3)",
+  "collection_member": "391 (show)"
+ },
+ "how": "tests/test_parity_cycle90_b.py --capture BASE TOKEN OUT re-measures it (writes; restores the item)"
+}

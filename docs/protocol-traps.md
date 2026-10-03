@@ -4023,3 +4023,16 @@ are changing; replay the client's exact request before altering behavior.
   `random.sample`, native `shuffle_in_place`); `random:<seed>` keeps its CRC order,
   which only has to be stable. CLIENT-VISIBLE: Plex Web's "Randomly" and the Android grid send
   this request; the shuffled grid repeated itself every few loads.
+- **A rating write that changes nothing is not a write** (plexscratch42, 1.42.2, 2026-10-03,
+  `tests/fixtures/rating_noop_s42.json`), on `/:/rate` and on the section path's
+  `userRating.value=` alike, which are the same write. A value numerically EQUAL to the stored
+  rating (`7` after `7`, `10.0` after `10`, `0` after `0`, either path after the other) stamps
+  neither `lastRatedAt` nor `viewUpdatedAt`; a clear (`-1`, an empty section value) of a row with
+  no stored rating stamps nothing and KEEPS a `lastRatedAt` a `-5` left; any other negative is
+  never unchanged and stamps both every time. A section-path change stamps `viewUpdatedAt` like
+  `/:/rate` does, and a section-path `-5` stamps `lastRatedAt`. A collection keeps the
+  `lastRatedAt` rule, which is how B's chain met it: `Collection.rate(7)` on a re-created
+  collection that already reads 7. Both servers re-stamped on every `/:/rate`, stamped on a clear
+  of nothing, never stamped `viewUpdatedAt` on the section path and cleared `lastRatedAt` on a
+  section `-5`. CLIENT-VISIBLE: Recently Watched and a section's `/onDeck` order by
+  `viewUpdatedAt`, so a re-rate moved a row to the front; python-plexapi reads `lastRatedAt`.

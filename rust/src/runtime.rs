@@ -10240,7 +10240,8 @@ impl Runtime {
     /// `/:/rate?key=&identifier=&rating=` -- the star rating.  An unparseable
     /// rating is a 400 refused BEFORE a foreign identifier; -1 clears both the
     /// stars and `lastRatedAt`; any other negative clears the stars and STAMPS
-    /// `lastRatedAt` (cycle 54).  Every rating stamps `viewUpdatedAt`.
+    /// `lastRatedAt` (cycle 54).  A rating that changes the row stamps
+    /// `viewUpdatedAt`; one that changes nothing is nothing (`rating_write`).
     fn route_rate(&mut self, query: &HashMap<String, String>) -> Response {
         let rating = query
             .get("rating")
@@ -10259,34 +10260,36 @@ impl Runtime {
         let rating = rating.unwrap_or(-1.0);
         if self.catalog.get(&key).is_none() {
             let state = self.list_state_mut(&key);
-            if rating == -1.0 {
-                state.shift_remove("userRating");
-                state.shift_remove("lastRatedAt");
-            } else if rating < 0.0 {
-                state.shift_remove("userRating");
-                state.insert("lastRatedAt".to_string(), json!(now()));
-            } else {
-                state.insert("userRating".to_string(), json!(rating));
-                state.insert("lastRatedAt".to_string(), json!(now()));
+            let stored = state.get("userRating").and_then(Value::as_f64);
+            if let Some((stars, rated_at)) = rating_write(stored, rating) {
+                for (field, value) in [("userRating", stars), ("lastRatedAt", rated_at)] {
+                    match value {
+                        Some(value) => {
+                            state.insert(field.to_string(), value);
+                        }
+                        None => {
+                            state.shift_remove(field);
+                        }
+                    }
+                }
+                self.dirty = true;
+                self.save_if_dirty();
             }
-            self.dirty = true;
-            self.save_if_dirty();
             info!("RATE {key} -> {}", logging::py_opt(query.get("rating")));
             return Response::empty(200);
         }
-        self.stamp_view(&[key.clone()]);
         info!("RATE {key} -> {}", logging::py_opt(query.get("rating")));
-        if rating == -1.0 {
-            self.update_view(&key, "userRating", None);
-            self.update_view(&key, "lastRatedAt", None);
-        } else if rating < 0.0 {
-            self.update_view(&key, "userRating", None);
-            self.update_view(&key, "lastRatedAt", Some(json!(now())));
-        } else {
-            self.update_view(&key, "userRating", Some(json!(rating)));
-            self.update_view(&key, "lastRatedAt", Some(json!(now())));
+        let stored = self
+            .catalog
+            .get(&key)
+            .and_then(|row| row.get("userRating"))
+            .and_then(Value::as_f64);
+        if let Some((stars, rated_at)) = rating_write(stored, rating) {
+            self.stamp_view(&[key.clone()]);
+            self.update_view(&key, "userRating", stars);
+            self.update_view(&key, "lastRatedAt", rated_at);
+            self.save_if_dirty();
         }
-        self.save_if_dirty();
         Response::empty(200)
     }
 
@@ -24758,6 +24761,29 @@ fn now() -> i64 {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs() as i64
+}
+
+/// One rating write -- `/:/rate` or the section path's `userRating.value=` -- against a
+/// row whose stored rating is `stored`: the `(userRating, lastRatedAt)` to write (`None`
+/// removes), or `None` when the write is not a write at all and stamps nothing.
+///
+/// Cycle 90, measured on plexscratch42 (1.42.2) one write at a time on both paths
+/// (`tests/fixtures/rating_noop_s42.json`): a value EQUAL to the stored one (`7` after
+/// `7`, `10.0` after `10`, either path after the other) stamps neither `lastRatedAt`
+/// nor `viewUpdatedAt`; a clear (`-1`) of a row with no stored rating stamps nothing
+/// and keeps a `lastRatedAt` a `-5` left; any OTHER negative clears the stars and
+/// stamps both every time.  Both servers re-stamped on every write, which moved a
+/// re-rated row to the front of Recently Watched (ordered by `viewUpdatedAt`).
+fn rating_write(stored: Option<f64>, rating: f64) -> Option<(Option<Value>, Option<Value>)> {
+    if rating == -1.0 {
+        stored.map(|_| (None, None))
+    } else if rating < 0.0 {
+        Some((None, Some(json!(now()))))
+    } else if stored == Some(rating) {
+        None
+    } else {
+        Some((Some(json!(rating)), Some(json!(now()))))
+    }
 }
 
 fn unix_year(timestamp: i64) -> i64 {

@@ -552,8 +552,26 @@ class Library:
         row = self.state_row(rating_key)
         if row is None:
             return None
-        self._stamp_view(row)
+        self._write_rating(row, rating)
+        return row
+
+    def _write_rating(self, row, rating):
+        """One rating write, from `/:/rate` or the section path's `userRating.value=`.
+
+        Cycle 90, measured on plexscratch42 (1.42.2) one write at a time, both paths
+        (`tests/fixtures/rating_noop_s42.json`): a write that leaves the stored rating
+        as it was is NOT a write. A value equal to the stored one (`7` after `7`,
+        `10.0` after `10`, either path after the other) stamps neither `lastRatedAt`
+        nor `viewUpdatedAt`; a clear (`-1`, an empty section value) of a row with no
+        stored rating stamps nothing and keeps a `lastRatedAt` a `-5` left. Any OTHER
+        negative is never unchanged: it clears the stars and stamps both every time.
+        plexsim re-stamped on every write, so re-rating a row moved it to the front
+        of Recently Watched, which orders by `viewUpdatedAt`.
+        """
+        stored = row.get("userRating")
         if rating is None or rating == -1:
+            if stored is None:
+                return
             row.pop("userRating", None)
             row.pop("lastRatedAt", None)
         elif rating < 0:
@@ -565,9 +583,11 @@ class Library:
             row.pop("userRating", None)
             row["lastRatedAt"] = _now()
         else:
+            if stored is not None and float(stored) == float(rating):
+                return
             row["userRating"] = float(rating)
             row["lastRatedAt"] = _now()
-        return row
+        self._stamp_view(row)
 
     # What each playback session last reported, keyed by the SESSION and its track --
     # whatever item that beat was for (cycle 87, below). A completion is a CROSSING, so
@@ -1325,19 +1345,19 @@ class Library:
                     or (text and not re.fullmatch(r"[+-]?\d+(\.\d+)?", text)):
                 raise EditError(500, "unparseable %s %r" % (field, value))
             number = float(text) if text else None
-            if number is None or (number < 0 and field in ("userRating", "rating",
-                                                           "audienceRating")):
+            if field == "userRating":
+                # Cycle 90: the section path's rating IS a rating write -- the same
+                # unchanged-is-nothing rule, a change stamps `viewUpdatedAt`, and `-5`
+                # stamps `lastRatedAt` (plexscratch42; it cleared both here).
+                self._write_rating(row, -1 if number is None else number)
+                return
+            if number is None or (number < 0 and field in ("rating", "audienceRating")):
                 # Cycle 20, measured on plexscratch: a negative `rating` or
                 # `audienceRating` REMOVES the field, the way a negative year does --
-                # plexsim stored -3.0 and the preplay page printed it. `userRating`
-                # already behaved this way.
+                # plexsim stored -3.0 and the preplay page printed it.
                 row.pop(field, None)
-                if field == "userRating":
-                    row.pop("lastRatedAt", None)
             else:
                 row[field] = number
-                if field == "userRating":
-                    row["lastRatedAt"] = _now()
             return
         if value == "":
             if field == "year" and section:

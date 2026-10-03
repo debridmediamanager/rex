@@ -729,20 +729,36 @@ impl Runtime {
             } else {
                 text.parse::<f64>().ok()
             };
+            if field == "userRating" {
+                // Cycle 90: the section path's rating IS a rating write -- the same
+                // unchanged-is-nothing rule as `/:/rate`, a change stamps
+                // `viewUpdatedAt`, and `-5` stamps `lastRatedAt` (plexscratch42; it
+                // cleared both here).  The row is the catalog row's copy the caller
+                // writes back.
+                let stored = row.get("userRating").and_then(Value::as_f64);
+                if let Some((stars, rated_at)) = rating_write(stored, number.unwrap_or(-1.0)) {
+                    for (name, value) in [("userRating", stars), ("lastRatedAt", rated_at)] {
+                        match value {
+                            Some(value) => {
+                                row.insert(name.to_string(), value);
+                            }
+                            None => {
+                                row.shift_remove(name);
+                            }
+                        }
+                    }
+                    row.insert("_viewUpdatedAt".to_string(), json!(now()));
+                }
+                return Ok(());
+            }
             match number {
                 Some(number) if number >= 0.0 => {
                     row.insert(field.to_string(), json!(number));
-                    if field == "userRating" {
-                        row.insert("lastRatedAt".to_string(), json!(now()));
-                    }
                 }
                 _ => {
                     // Cycle 20: a negative rating REMOVES the field, the way a
                     // negative year does.
                     row.shift_remove(field);
-                    if field == "userRating" {
-                        row.shift_remove("lastRatedAt");
-                    }
                 }
             }
             return Ok(());
