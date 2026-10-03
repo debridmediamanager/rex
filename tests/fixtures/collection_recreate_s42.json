@@ -1,0 +1,467 @@
+{
+ "server": "plexscratch42 (PMS 1.42.2)",
+ "measured": "2026-10-03",
+ "ids": {
+  "movies": "1",
+  "movie": "3",
+  "shows": "3",
+  "show": "15"
+ },
+ "note": "Each sequence creates, writes, deletes and re-creates a collection under the same name; every write was undone (rating -1, delete). The tag rows and the guid-keyed settings outlive it on the copy by design.",
+ "runs": [
+  {
+   "name": "rated",
+   "steps": [
+    {
+     "step": "create",
+     "sent": "C89B Fx Rated",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Rated",
+      "guid": "collection://33657be5-b5e0-4023-a167-4427eb10d58d",
+      "index": 575,
+      "librarySectionID": 1,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1005"
+     }
+    },
+    {
+     "step": "rate",
+     "sent": "7",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Rated",
+      "guid": "collection://33657be5-b5e0-4023-a167-4427eb10d58d",
+      "index": 575,
+      "librarySectionID": 1,
+      "userRating": 7.0,
+      "lastRatedAt": 1791019560,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1005"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    },
+    {
+     "step": "create",
+     "sent": "C89B Fx Rated",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Rated",
+      "guid": "collection://33657be5-b5e0-4023-a167-4427eb10d58d",
+      "index": 575,
+      "librarySectionID": 1,
+      "userRating": 7.0,
+      "lastRatedAt": 1791019560,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1006"
+     }
+    },
+    {
+     "step": "listing",
+     "row": {
+      "title": "C89B Fx Rated",
+      "guid": "collection://33657be5-b5e0-4023-a167-4427eb10d58d",
+      "index": 575,
+      "librarySectionID": null,
+      "userRating": 7.0,
+      "lastRatedAt": 1791019560,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null
+     }
+    },
+    {
+     "step": "member",
+     "tags": [
+      {
+       "tag": "C89B Fx Rated",
+       "guid": "collection://33657be5-b5e0-4023-a167-4427eb10d58d"
+      }
+     ]
+    },
+    {
+     "step": "rate",
+     "sent": "-1",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Rated",
+      "guid": "collection://33657be5-b5e0-4023-a167-4427eb10d58d",
+      "index": 575,
+      "librarySectionID": 1,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1006"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    }
+   ]
+  },
+  {
+   "name": "case",
+   "steps": [
+    {
+     "step": "create",
+     "sent": "C89B Fx Recase",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Recase",
+      "guid": "collection://a829b398-7954-4984-86e2-446e18ff1f63",
+      "index": 576,
+      "librarySectionID": 1,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1007"
+     }
+    },
+    {
+     "step": "rate",
+     "sent": "7",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Recase",
+      "guid": "collection://a829b398-7954-4984-86e2-446e18ff1f63",
+      "index": 576,
+      "librarySectionID": 1,
+      "userRating": 7.0,
+      "lastRatedAt": 1791019560,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1007"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    },
+    {
+     "step": "create",
+     "sent": "c89b fx recase",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Recase",
+      "guid": "collection://a829b398-7954-4984-86e2-446e18ff1f63",
+      "index": 576,
+      "librarySectionID": 1,
+      "userRating": 7.0,
+      "lastRatedAt": 1791019560,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1008"
+     }
+    },
+    {
+     "step": "rate",
+     "sent": "-1",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Recase",
+      "guid": "collection://a829b398-7954-4984-86e2-446e18ff1f63",
+      "index": 576,
+      "librarySectionID": 1,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1008"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    }
+   ]
+  },
+  {
+   "name": "prefs",
+   "steps": [
+    {
+     "step": "create",
+     "sent": "C89B Fx Prefs",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Prefs",
+      "guid": "collection://a14fbc7f-7f93-4604-a11e-328d9ca5ac22",
+      "index": 577,
+      "librarySectionID": 1,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1009"
+     }
+    },
+    {
+     "step": "prefs",
+     "sent": "collectionMode=0&collectionSort=1",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Prefs",
+      "guid": "collection://a14fbc7f-7f93-4604-a11e-328d9ca5ac22",
+      "index": 577,
+      "librarySectionID": 1,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": "0",
+      "collectionSort": "1",
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1009"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    },
+    {
+     "step": "create",
+     "sent": "C89B Fx Prefs",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Prefs",
+      "guid": "collection://a14fbc7f-7f93-4604-a11e-328d9ca5ac22",
+      "index": 577,
+      "librarySectionID": 1,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1010"
+     }
+    },
+    {
+     "step": "prefs",
+     "sent": "collectionSort=0",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Prefs",
+      "guid": "collection://a14fbc7f-7f93-4604-a11e-328d9ca5ac22",
+      "index": 577,
+      "librarySectionID": 1,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": "0",
+      "collectionSort": "0",
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1010"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    }
+   ]
+  },
+  {
+   "name": "smart",
+   "steps": [
+    {
+     "step": "create",
+     "sent": "C89B Fx Smart",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Smart",
+      "guid": "collection://95557260-54df-40c8-963b-7d9174057f97",
+      "index": 578,
+      "librarySectionID": 3,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1011"
+     }
+    },
+    {
+     "step": "prefs",
+     "sent": "collectionMode=0",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Smart",
+      "guid": "collection://95557260-54df-40c8-963b-7d9174057f97",
+      "index": 578,
+      "librarySectionID": 3,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": "0",
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1011"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    },
+    {
+     "step": "create",
+     "sent": "C89B Fx Smart",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Smart",
+      "guid": "collection://95557260-54df-40c8-963b-7d9174057f97",
+      "index": 578,
+      "librarySectionID": 3,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1012"
+     }
+    },
+    {
+     "step": "prefs",
+     "sent": "collectionFilterBasedOnUser=1",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Smart",
+      "guid": "collection://95557260-54df-40c8-963b-7d9174057f97",
+      "index": 578,
+      "librarySectionID": 3,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": "0",
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": "1",
+      "ratingKey": "1012"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    }
+   ]
+  },
+  {
+   "name": "cross",
+   "steps": [
+    {
+     "step": "create",
+     "sent": "C89B Fx Cross",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Cross",
+      "guid": "collection://45115128-6d2d-4654-ad11-c2d868732841",
+      "index": 579,
+      "librarySectionID": 1,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1013"
+     }
+    },
+    {
+     "step": "rate",
+     "sent": "7",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Cross",
+      "guid": "collection://45115128-6d2d-4654-ad11-c2d868732841",
+      "index": 579,
+      "librarySectionID": 1,
+      "userRating": 7.0,
+      "lastRatedAt": 1791019561,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1013"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    },
+    {
+     "step": "create",
+     "sent": "C89B Fx Cross",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Cross",
+      "guid": "collection://45115128-6d2d-4654-ad11-c2d868732841",
+      "index": 579,
+      "librarySectionID": 3,
+      "userRating": 7.0,
+      "lastRatedAt": 1791019561,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1014"
+     }
+    },
+    {
+     "step": "rate",
+     "sent": "-1",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Cross",
+      "guid": "collection://45115128-6d2d-4654-ad11-c2d868732841",
+      "index": 579,
+      "librarySectionID": 3,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1014"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    }
+   ]
+  },
+  {
+   "name": "fresh",
+   "steps": [
+    {
+     "step": "create",
+     "sent": "C89B Fx Fresh",
+     "status": 200,
+     "row": {
+      "title": "C89B Fx Fresh",
+      "guid": "collection://c66be1e3-f4ac-4f76-a7b1-7b48c091cebc",
+      "index": 580,
+      "librarySectionID": 1,
+      "userRating": null,
+      "lastRatedAt": null,
+      "collectionMode": null,
+      "collectionSort": null,
+      "collectionFilterBasedOnUser": null,
+      "ratingKey": "1015"
+     }
+    },
+    {
+     "step": "delete",
+     "status": 200
+    }
+   ]
+  }
+ ]
+}

@@ -13072,11 +13072,14 @@ class PlexSim:
             # refuses it with a 400. plexsim refused it everywhere.
             accepted = ("collectionSort", "collectionMode") + (
                 ("collectionFilterBasedOnUser",) if collection.get("smart") else ())
+            written = [name for name in query
+                       if not name.startswith("X-Plex-") and name != "_pairs"]
+            if any(name not in accepted for name in written):
+                return ("error", 400, "plexsim: bad request")
+            self.library.inherit_collection_prefs(collection, written)
             for name, value in query.items():
                 if name.startswith("X-Plex-") or name == "_pairs":
                     continue
-                if name not in accepted:
-                    return ("error", 400, "plexsim: bad request")
                 if name == "collectionFilterBasedOnUser":
                     collection[name] = str(value)
                 elif value == "":

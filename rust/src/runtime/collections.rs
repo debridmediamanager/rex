@@ -29,6 +29,9 @@ const LIST_STATE: &[&str] = &[
     "lastRatedAt",
 ];
 
+/// The settings `PUT /library/metadata/{collection}/prefs` stores.
+const COLLECTION_PREFS: [&str; 3] = ["collectionMode", "collectionSort", "collectionFilterBasedOnUser"];
+
 impl Collection {
     /// The tag the collection's members carry -- the name it was created under, which
     /// an ITEM-path rename leaves alone (cycle 9).
@@ -38,6 +41,17 @@ impl Collection {
         } else {
             self.tag.clone()
         }
+    }
+
+    /// The collection's guid. Cycle 89: it is its TAG's, so a collection created under a
+    /// deleted one's name carries the deleted one's; one stored before cycle 89 has none
+    /// of its own and was always minted from its id.
+    pub(super) fn guid(&self) -> String {
+        self.extra
+            .get("guid")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .unwrap_or_else(|| format!("collection://plexsim-{}", self.id))
     }
 
     pub(super) fn stamp(&self) -> i64 {
@@ -165,7 +179,7 @@ impl Runtime {
             json!(if unmatched {
                 format!("local://{}", collection.id)
             } else {
-                format!("collection://plexsim-{}", collection.id)
+                collection.guid()
             }),
         );
         row.insert("type".to_string(), json!("collection"));
@@ -683,11 +697,26 @@ impl Runtime {
         let smart = query.get("smart").map(String::as_str) == Some("1");
         let id = self.next_collection.to_string();
         self.next_collection += 1;
-        let title = if title.is_empty() {
+        let mut title = if title.is_empty() {
             "Untitled".to_string()
         } else {
             title.clone()
         };
+        // Cycle 89, measured on plexscratch42 (1.42.2),
+        // `tests/fixtures/collection_recreate_s42.json`: a collection's guid lives on its
+        // TAG and the rating and prefs are stored against the guid, so one created under
+        // a DELETED collection's name -- ignoring case, whatever its library -- takes that
+        // name's spelling as its title, its guid, and the userRating and lastRatedAt from
+        // the first read; its old prefs come back with the next prefs write. Both servers
+        // minted a new guid and brought nothing back.
+        let previous = self.collection_guids.get(&title.to_lowercase()).cloned();
+        if let Some(spelling) = previous
+            .as_ref()
+            .and_then(|previous| previous.get("tag"))
+            .and_then(Value::as_str)
+        {
+            title = spelling.to_string();
+        }
         let known = self
             .tag_table
             .get(&("Collection".to_string(), title.to_lowercase()))
@@ -700,6 +729,35 @@ impl Runtime {
         extra.insert("addedAt".to_string(), json!(stamp));
         extra.insert("updatedAt".to_string(), json!(stamp));
         extra.insert("_names".to_string(), json!([tag.to_lowercase()]));
+        match &previous {
+            Some(previous) => {
+                extra.insert(
+                    "guid".to_string(),
+                    previous.get("guid").cloned().unwrap_or(Value::Null),
+                );
+                for (name, value) in previous
+                    .get("state")
+                    .and_then(Value::as_object)
+                    .into_iter()
+                    .flatten()
+                {
+                    extra.insert(name.clone(), value.clone());
+                }
+                if let Some(prefs) = previous
+                    .get("prefs")
+                    .and_then(Value::as_object)
+                    .filter(|prefs| !prefs.is_empty())
+                {
+                    extra.insert("_inheritedPrefs".to_string(), Value::Object(prefs.clone()));
+                }
+            }
+            None => {
+                extra.insert(
+                    "guid".to_string(),
+                    json!(format!("collection://plexsim-{id}")),
+                );
+            }
+        }
         let mut stored = Collection {
             id: id.clone(),
             title: title.clone(),
@@ -1199,6 +1257,32 @@ impl Runtime {
             self.collection_members(&collection)
         };
         self.collections.remove(id);
+        // Cycle 89: the tag outlives the collection, and with it the guid and what is
+        // stored against the guid -- a later create under this name takes them back.
+        let state = ["userRating", "lastRatedAt"]
+            .iter()
+            .filter_map(|name| {
+                collection
+                    .extra
+                    .get(*name)
+                    .filter(|value| !value.is_null())
+                    .map(|value| (name.to_string(), value.clone()))
+            })
+            .collect::<Map<String, Value>>();
+        let prefs = COLLECTION_PREFS
+            .iter()
+            .filter_map(|name| {
+                collection
+                    .prefs
+                    .get(*name)
+                    .map(|value| (name.to_string(), json!(value)))
+            })
+            .collect::<Map<String, Value>>();
+        self.collection_guids.insert(
+            collection.tag_name().to_lowercase(),
+            json!({"tag": collection.tag_name(), "guid": collection.guid(),
+                "state": state, "prefs": prefs}),
+        );
         // Cycle 88 B3, measured alike on plexscratch42 (1.42.2) and plexscratch (1.43.4),
         // `tests/fixtures/collection_delete_by_title_s4{2,3}.json`: the delete untags the
         // members by the collection's CURRENT title, ignoring case -- not by the tag they
@@ -1543,6 +1627,16 @@ impl Runtime {
                 return Response::error(400, "plexsim: bad request");
             }
             if let Some(stored) = self.collections.get_mut(&id) {
+                // Cycle 89 (plexscratch42): a re-created collection reads none of its old
+                // prefs until a prefs write is ACCEPTED -- then every old one it does not
+                // write comes back with it. A refused write (above) brings nothing.
+                if let Some(Value::Object(inherited)) = stored.extra.shift_remove("_inheritedPrefs") {
+                    for (name, value) in inherited {
+                        if !writes.iter().any(|(written, _)| *written == name) {
+                            stored.prefs.insert(name, string_value(&value));
+                        }
+                    }
+                }
                 for (name, value) in writes {
                     if name == "collectionFilterBasedOnUser" {
                         stored.prefs.insert(name, value);
@@ -1859,7 +1953,7 @@ impl Runtime {
             }) {
                 tag_object.insert(
                     "guid".to_string(),
-                    json!(format!("collection://plexsim-{}", collection.id)),
+                    json!(collection.guid()),
                 );
             }
         }

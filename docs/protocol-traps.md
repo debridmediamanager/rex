@@ -3998,3 +3998,17 @@ are changing; replay the client's exact request before altering behavior.
   row. The DETAIL row keeps every tag in join order. Unlike `Genre`/`Role`, whose light lists
   are the head of the detail order. python-plexapi never reloads a non-empty list, so
   `Movie.collections` off `section.all()` is exactly those two.
+- **A collection created under a DELETED collection's name IS that collection again** to
+  everything keyed by its guid (plexscratch42, 1.42.2, 2026-10-03,
+  `tests/fixtures/collection_recreate_s42.json`). The guid lives on the collection's TAG
+  (`tags.extra_data` `at:guid`), the tag outlives the collection, and the rating and the prefs
+  are stored against the guid: the new collection reads the old guid and index, the old
+  `userRating` and the ORIGINAL `lastRatedAt` from its first read (detail and listing), and its
+  member's tag carries that guid. The name matches ignoring case, in any library, and the title
+  takes the old spelling (`c89b fx recase` reads `C89B Fx Recase`). The old `collectionMode` /
+  `collectionSort` / `collectionFilterBasedOnUser` do NOT show until a prefs write is ACCEPTED,
+  then come back beside it (`collectionSort=0` brings back `collectionMode=0`); summary and
+  locks do not come back. Both servers minted a fresh guid and nothing came back.
+  CLIENT-VISIBLE: the collection page's star rating (cycle 21), python-plexapi
+  `Collection.userRating`/`guid` (`Collection._loadData`). It is also why B's s42 chain sees
+  `coll.editTitle` 409 and a pre-rated `C63B Coll`: a dead run left those tags behind.

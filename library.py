@@ -358,6 +358,14 @@ class Library:
         # id and spelling -- measured. plexsim looked only at the rows, so clearing
         # a tag lost its identity.
         self._tags = {}
+        # Cycle 89, measured on plexscratch42 (1.42.2),
+        # `tests/fixtures/collection_recreate_s42.json`: a collection's guid lives on its
+        # TAG, and the per-user rating and the collection prefs are stored against that
+        # guid -- so a collection created under a deleted one's name (ignoring case, in
+        # any library) is that collection again to everything keyed by it. By the
+        # lowercased tag name: the spelling, the guid, the rating and the prefs it held
+        # when it was deleted.
+        self._collection_guids = {}
         # Play history, newest last -- the order /status/sessions/history/all
         # returns (measured on fun: the newest rows are at the highest offset).
         self._history = []
@@ -2511,6 +2519,22 @@ class Library:
             # smart playlist rewrites it -- see playlist_content().
             "uri": uri if smart else None,
         }
+        # Cycle 89 (plexscratch42): created under a DELETED collection's name, ignoring
+        # case and whatever its library, the collection takes that name's spelling as its
+        # title, its guid, and the userRating and lastRatedAt rated against the guid --
+        # `c89b recase` after `C89B Recase` reads `C89B Recase`, its old guid and 7.0
+        # from the first read. Its old prefs come back with the next prefs write
+        # (`_inherited_prefs`). plexsim minted a new guid and nothing came back.
+        previous = self._collection_guids.get(collection["title"].lower())
+        if previous:
+            collection["title"] = previous["tag"]
+            collection["guid"] = previous["guid"]
+            for name, value in (previous.get("state") or {}).items():
+                collection[name] = value
+            if previous.get("prefs"):
+                collection["_inherited_prefs"] = dict(previous["prefs"])
+        else:
+            collection["guid"] = "collection://plexsim-%s" % key
         self._derive_title_sort(collection)
         # Cycle 61, measured on both copies: the members' tag of a NEW collection titled
         # `c61c lowcreate` is `C61c lowcreate` -- the title stays as typed -- and an
@@ -2713,7 +2737,37 @@ class Library:
             row = self.catalog.items.get(int(member))
             if row is not None:
                 self._remove_tags(row, "collection", [name])
+        # Cycle 89: the tag outlives the collection, and with it the guid and what is
+        # stored against the guid -- a later create under this name takes them back.
+        tag = collection.get("tag", collection["title"])
+        self._collection_guids[str(tag).lower()] = {
+            "tag": tag,
+            "guid": self.collection_guid(collection),
+            "state": {name: collection[name] for name in ("userRating", "lastRatedAt")
+                      if collection.get(name) is not None},
+            "prefs": {name: collection[name] for name in self.COLLECTION_PREFS
+                      if collection.get(name) is not None},
+        }
         return True
+
+    # The settings `PUT /library/metadata/{collection}/prefs` stores.
+    COLLECTION_PREFS = ("collectionMode", "collectionSort", "collectionFilterBasedOnUser")
+
+    @staticmethod
+    def collection_guid(collection):
+        # A collection stored before cycle 89 has no guid of its own: it was always
+        # minted from the ratingKey.
+        return collection.get("guid") or "collection://plexsim-%s" % collection["ratingKey"]
+
+    def inherit_collection_prefs(self, collection, written):
+        """Cycle 89 (plexscratch42): a re-created collection reads none of its old prefs
+        until a prefs write is ACCEPTED -- then every old one it does not write comes back
+        with it (`collectionSort=0` brings back `collectionMode=0`; on a smart one
+        `collectionFilterBasedOnUser=1` does). A refused write brings nothing."""
+        inherited = collection.pop("_inherited_prefs", None) or {}
+        for name, value in inherited.items():
+            if name not in written:
+                collection[name] = value
 
     def stamp_collection_tags(self, collection):
         """Put the collection's guid on every member's `Collection` tag. Cycle 15.
@@ -2723,7 +2777,7 @@ class Library:
         12 had already shown for a detail row's tags in general.
         """
         name = collection.get("tag", collection["title"])
-        guid = "collection://plexsim-%s" % collection["ratingKey"]
+        guid = self.collection_guid(collection)
         # A SMART collection has no stored member list -- it tags nobody, measured.
         for member in collection.get("items") or []:
             row = self.catalog.items.get(int(member))
@@ -2790,7 +2844,7 @@ class Library:
             # unmatch handler's own write to the row it was handed never survived.
             "guid": ("local://%s" % collection["ratingKey"]
                      if collection.get("_unmatched")
-                     else "collection://plexsim-%s" % collection["ratingKey"]),
+                     else self.collection_guid(collection)),
             "type": "collection",
             "title": collection["title"],
             "subtype": ("unknown" if collection.get("_unmatched")

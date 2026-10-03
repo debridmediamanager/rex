@@ -493,6 +493,10 @@ pub struct Runtime {
     next_playlist_item: i64,
     /// Keys a merge or a delete freed: a split never reuses one (measured).
     retired_keys: Vec<i64>,
+    /// Cycle 89 (plexscratch42): what a DELETED collection's tag keeps -- its spelling,
+    /// its guid and what is stored against the guid (the rating and the prefs) -- by the
+    /// lowercased tag name. `library.py`'s `_collection_guids`.
+    collection_guids: HashMap<String, Value>,
     /// Client identifiers in the order the server first saw them (`""` is device 1).
     device_order: Vec<String>,
     device_first_seen: HashMap<String, i64>,
@@ -737,6 +741,7 @@ impl Runtime {
             next_playlist: playlists::PLAYLIST_BASE + 1,
             next_playlist_item: 0,
             retired_keys: Vec::new(),
+            collection_guids: HashMap::new(),
             device_order: vec![String::new()],
             device_first_seen: HashMap::new(),
             plays: Vec::new(),
@@ -1207,6 +1212,9 @@ impl Runtime {
             if let Some(keys) = state.get("retiredKeys").and_then(Value::as_array) {
                 self.retired_keys = keys.iter().filter_map(Value::as_i64).collect();
             }
+            if let Some(names) = state.get("collectionGuids").and_then(Value::as_object) {
+                self.collection_guids = names.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+            }
             for (name, set) in [
                 ("hiddenContinue", &mut self.hidden_continue),
                 ("viewedInSession", &mut self.viewed_in_session),
@@ -1516,6 +1524,7 @@ impl Runtime {
             ("downloadQueues", json!(self.download_queues)),
             ("historyCounter", json!(self.history_counter.get())),
             ("retiredKeys", json!(self.retired_keys)),
+            ("collectionGuids", json!(self.collection_guids.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Map<String, Value>>())),
             ("hiddenContinue", json!(self.hidden_continue.iter().collect::<Vec<_>>())),
             ("viewedInSession", json!(self.viewed_in_session.iter().collect::<Vec<_>>())),
         ];
