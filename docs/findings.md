@@ -11302,6 +11302,48 @@ an unmatched show on the isolated plexscratch losing its own artwork fields (nee
 server, where an unmatch is forbidden); deleting the last library section (unmeasurable); the trial
 deployment with a claimed test identity (the user's).
 
+#### The ninety-fourth pass — Plex for Android 2026.19.1
+
+Cycle 93 met the stopping rule, but the reopen table's Android row was wrong: the 2026.9.0 it
+recorded (read off the owner's phone) is a May 2026 build, and Google Play has served newer ones
+since; on 2026-10-05 the current build was **2026.19.1** (versionCode 971050475, updated
+2026-10-01). It was installed over 2026.9.0 on the emulator (Android accepted the update, so the
+signer is Plex's) and both Hermes bundles were censused with the new `handover/tools/apkcensus.py`
+(`handover/android-census-2026.19.1.md`): 330 -> 412 request templates, PMS-bound 63 -> 80; 19
+PMS-bound added (a server dashboard: `/statistics/bandwidth|resources|media`, `/status/sessions`,
+history with account/section/item filters, `/library/all/top`; `/library/sections/{id}/prefs` on
+every item detail; `POST /library/collections`; `playlistType`/`subType` list filters), 2 removed,
+9 changed. The `/player/playback/*` and `/player/timeline/*` family is the app's companion remote,
+sent to a player's own address, not to a PMS.
+
+Every new PMS request, issued in the app's captured shape, answered as the references do, and the
+dashboard, history, Top Played and per-item play history render on plexsim. Two rules were built:
+
+* **A client PING on `/:/websockets/notifications` is answered with a PONG carrying its payload**
+  (kids and zen, at once, unmasked). plexsim never answered, and 2026.19.1 closes the socket after
+  exactly 50 s (1006) and never reopens it, so every server push after the first minute was lost.
+  The app opens the socket only when the account carries the `WebsocketsForPms` feature, and it
+  authenticates with the ACCOUNT token. CLIENT-VISIBLE.
+* **A `/library/all/top` row is the light listing row plus the section fields, `globalViewCount`
+  and `userCount` after `updatedAt`, and a trailing `User` list**; show and season rows drop the
+  per-user view fields, a season adds `leafCount`/`viewedLeafCount` before `addedAt`. Both servers
+  sent the detail row (`Guid`, `Rating`, a show's `Location`). The app reads only the title,
+  image and the two counts, so it rendered the same either way.
+
+Live playback on the live catalog matched plexscratch by template (play queue, decision, part reads,
+timeline beats), and the dashboard's Stop Playback (`/status/sessions/terminate?sessionId=&reason=`)
+answered the recorded empty 200 with `terminationCode 2006` on the next timeline.
+
+**Measured and not acted on.** zen closes the socket after ponging an EMPTY ping where kids does
+not (single witness, no client sends one). Bounds of the instrument: an episode cannot be played
+in the emulator (every live-catalog episode is eac3, which it cannot decode, and plexsim has no
+transcoder); the 19.1 `PUT /library/parts` with playback headers needs a direct-playable item with a
+second audio or subtitle stream; activity frames for a subtitle download need a subtitle provider.
+Whether 1.43.4 also drops a show's per-user fields on a top row is unmeasured (kids has no show
+plays). Instrument: B's s42 legs lost the same 95% beat to plexscratch42's statistics job (a ~50 s
+write hold every ~80 s) in every run; the leg now waits for a hold to end in s42's log and sends the
+beat once.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
