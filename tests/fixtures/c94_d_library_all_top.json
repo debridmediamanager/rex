@@ -1,0 +1,1493 @@
+{
+ "about": "cycle 94 territory D: /library/all/top rows against the section listing row of the same item, as Plex for Android 2026.19.1 asks (js:1521748 useTopCharts). Tokens never recorded; zen paged 0/50.",
+ "exchanges": [
+  {
+   "server": "kids",
+   "version": "1.43.4",
+   "request": {
+    "method": "GET",
+    "path": "/library/all/top?type=1&limit=10",
+    "headers": {
+     "Accept": "application/json",
+     "X-Plex-Product": "Plex for Android (Mobile)",
+     "X-Plex-Version": "2026.19.1",
+     "X-Plex-Platform": "Android"
+    }
+   },
+   "top": [
+    {
+     "ratingKey": "1",
+     "key": "/library/metadata/1",
+     "guid": "plex://movie/5d7768352e80df001ebde4c9",
+     "slug": "big-buck-bunny",
+     "type": "movie",
+     "title": "Big Buck Bunny",
+     "librarySectionTitle": "Movies",
+     "librarySectionID": 1,
+     "librarySectionKey": "/library/sections/1",
+     "summary": "",
+     "year": 2008,
+     "thumb": "/library/metadata/1/thumb/1789256269",
+     "art": "/library/metadata/1/art/1789256269",
+     "duration": 10031,
+     "originallyAvailableAt": "2008-04-10",
+     "addedAt": 1789187071,
+     "updatedAt": 1789256269,
+     "globalViewCount": 3,
+     "userCount": 1,
+     "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+     "loudnessAnalysisVersion": "0.02",
+     "primaryExtraKey": "/library/metadata/5",
+     "useOriginalTitle": "-1",
+     "Media": [
+      {
+       "id": 1,
+       "duration": 10031,
+       "bitrate": 4999,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 1,
+       "audioCodec": "aac",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "videoProfile": "high",
+       "hasVoiceActivity": false,
+       "Part": [
+        {
+         "id": 1,
+         "key": "/library/parts/1/1789187071/file.mkv",
+         "duration": 10031,
+         "file": "/data/movies/Big Buck Bunny (2008)/Big Buck Bunny (2008) - 1080p.mkv",
+         "size": 6273654,
+         "container": "mkv",
+         "videoProfile": "high"
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Big Buck Bunny",
+       "type": "coverPoster",
+       "url": "/library/metadata/1/thumb/1789256269"
+      },
+      {
+       "alt": "Big Buck Bunny",
+       "type": "background",
+       "url": "/library/metadata/1/art/1789256269"
+      },
+      {
+       "alt": "Big Buck Bunny",
+       "type": "clearLogo",
+       "url": "/library/metadata/1/clearLogo/1789256269"
+      },
+      {
+       "alt": "Big Buck Bunny",
+       "type": "backgroundSquare",
+       "url": "/library/metadata/1/squareArt/1789256269"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "480805",
+      "topRight": "0504f7",
+      "bottomRight": "0404f8",
+      "bottomLeft": "000303"
+     },
+     "User": [
+      {
+       "id": 1
+      }
+     ]
+    },
+    {
+     "ratingKey": "18",
+     "key": "/library/metadata/18",
+     "guid": "plex://movie/5d776bd7594b2b001e6e4d2f",
+     "slug": "cosmos-laundromat",
+     "studio": "Blender Foundation",
+     "type": "movie",
+     "title": "Cosmos Laundromat",
+     "librarySectionTitle": "Movies",
+     "librarySectionID": 1,
+     "librarySectionKey": "/library/sections/1",
+     "summary": "On a desolate island, a suicidal sheep named Franck meets his fate\u2026in the form of a quirky salesman named Victor, who offers him the gift of a lifetime. The gift is many lifetimes, actually, in many different worlds \u2013 each lasting just a few minutes. In the sequel to the pilot, Franck will find a new reason to live\u2026in the form of a bewitching female adventurer named Tara, who awakens his long-lost lust for life. But can Franck keep up with her?",
+     "audienceRating": 5.6,
+     "userRating": 6.0,
+     "viewCount": 2,
+     "lastViewedAt": 1789644568,
+     "lastRatedAt": 1767600315,
+     "year": 2015,
+     "tagline": "Any life you ever wanted!",
+     "thumb": "/library/metadata/18/thumb/1789234024",
+     "art": "/library/metadata/18/art/1789234024",
+     "duration": 10030,
+     "originallyAvailableAt": "2015-08-10",
+     "addedAt": 1789234023,
+     "updatedAt": 1789234024,
+     "globalViewCount": 2,
+     "userCount": 1,
+     "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+     "loudnessAnalysisVersion": "0.02",
+     "Media": [
+      {
+       "id": 12,
+       "duration": 10030,
+       "bitrate": 4989,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 1,
+       "audioCodec": "aac",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mp4",
+       "videoFrameRate": "24p",
+       "optimizedForStreaming": 1,
+       "has64bitOffsets": false,
+       "videoProfile": "high",
+       "hasVoiceActivity": false,
+       "Part": [
+        {
+         "id": 12,
+         "key": "/library/parts/12/1789220749/file.mp4",
+         "duration": 10030,
+         "file": "/data/movies/Cosmos Laundromat (2015)/Cosmos Laundromat (2015) - 1080p.mp4",
+         "size": 6265416,
+         "container": "mp4",
+         "has64bitOffsets": false,
+         "optimizedForStreaming": true,
+         "videoProfile": "high"
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Cosmos Laundromat",
+       "type": "coverPoster",
+       "url": "/library/metadata/18/thumb/1789234024"
+      },
+      {
+       "alt": "Cosmos Laundromat",
+       "type": "background",
+       "url": "/library/metadata/18/art/1789234024"
+      },
+      {
+       "alt": "Cosmos Laundromat",
+       "type": "backgroundSquare",
+       "url": "/library/metadata/18/squareArt/1789234024"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "2d2457",
+      "topRight": "904338",
+      "bottomRight": "491e4a",
+      "bottomLeft": "143835"
+     },
+     "Genre": [
+      {
+       "tag": "Animation"
+      },
+      {
+       "tag": "Fantasy"
+      }
+     ],
+     "Country": [
+      {
+       "tag": "Netherlands"
+      }
+     ],
+     "Director": [
+      {
+       "tag": "Mathieu Auvray"
+      }
+     ],
+     "Writer": [
+      {
+       "tag": "Esther Wouda"
+      }
+     ],
+     "Role": [
+      {
+       "tag": "Pierre Bokma"
+      },
+      {
+       "tag": "Reinout Scholten van Aschat"
+      }
+     ],
+     "User": [
+      {
+       "id": 1
+      }
+     ]
+    },
+    {
+     "ratingKey": "17",
+     "key": "/library/metadata/17",
+     "guid": "plex://movie/5d776833103a2d001f5674a1",
+     "slug": "elephants-dream",
+     "studio": "Blender Foundation",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "librarySectionTitle": "Movies",
+     "librarySectionID": 1,
+     "librarySectionKey": "/library/sections/1",
+     "contentRating": "Not Rated",
+     "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+     "audienceRating": 5.4,
+     "year": 2006,
+     "thumb": "/library/metadata/17/thumb/1789203303",
+     "art": "/library/metadata/17/art/1789203303",
+     "duration": 10031,
+     "originallyAvailableAt": "2006-05-04",
+     "addedAt": 1789187071,
+     "updatedAt": 1789203303,
+     "globalViewCount": 1,
+     "userCount": 1,
+     "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+     "loudnessAnalysisVersion": "0.02",
+     "primaryExtraKey": "/library/metadata/5",
+     "Media": [
+      {
+       "id": 2,
+       "duration": 10031,
+       "bitrate": 5010,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 1,
+       "audioCodec": "aac",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "videoProfile": "high",
+       "hasVoiceActivity": false,
+       "Part": [
+        {
+         "id": 2,
+         "key": "/library/parts/2/1789187074/file.mkv",
+         "duration": 10031,
+         "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+         "size": 6287100,
+         "container": "mkv",
+         "videoProfile": "high"
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Elephants Dream",
+       "type": "coverPoster",
+       "url": "/library/metadata/17/thumb/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "background",
+       "url": "/library/metadata/17/art/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "clearLogo",
+       "url": "/library/metadata/17/clearLogo/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "backgroundSquare",
+       "url": "/library/metadata/17/squareArt/1789203303"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "122e44",
+      "topRight": "844f1e",
+      "bottomRight": "964106",
+      "bottomLeft": "1a4154"
+     },
+     "Genre": [
+      {
+       "tag": "Animation"
+      },
+      {
+       "tag": "Science Fiction"
+      }
+     ],
+     "Country": [
+      {
+       "tag": "Netherlands"
+      }
+     ],
+     "Director": [
+      {
+       "tag": "Bassam Kurdali"
+      }
+     ],
+     "Writer": [
+      {
+       "tag": "Andreas Goralczyk"
+      },
+      {
+       "tag": "Pepijn Zwanenberg"
+      }
+     ],
+     "Role": [
+      {
+       "tag": "Tygo Gernandt"
+      },
+      {
+       "tag": "Cas Jansen"
+      }
+     ],
+     "User": [
+      {
+       "id": 1
+      }
+     ]
+    }
+   ],
+   "listing_request": {
+    "method": "GET",
+    "path": "/library/sections/1/all"
+   },
+   "listing": [
+    {
+     "ratingKey": "1",
+     "key": "/library/metadata/1",
+     "guid": "plex://movie/5d7768352e80df001ebde4c9",
+     "slug": "big-buck-bunny",
+     "type": "movie",
+     "title": "Big Buck Bunny",
+     "summary": "",
+     "year": 2008,
+     "thumb": "/library/metadata/1/thumb/1789256269",
+     "art": "/library/metadata/1/art/1789256269",
+     "duration": 10031,
+     "originallyAvailableAt": "2008-04-10",
+     "addedAt": 1789187071,
+     "updatedAt": 1789256269,
+     "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+     "loudnessAnalysisVersion": "0.02",
+     "primaryExtraKey": "/library/metadata/5",
+     "useOriginalTitle": "-1",
+     "Media": [
+      {
+       "id": 1,
+       "duration": 10031,
+       "bitrate": 4999,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 1,
+       "audioCodec": "aac",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "videoProfile": "high",
+       "hasVoiceActivity": false,
+       "Part": [
+        {
+         "id": 1,
+         "key": "/library/parts/1/1789187071/file.mkv",
+         "duration": 10031,
+         "file": "/data/movies/Big Buck Bunny (2008)/Big Buck Bunny (2008) - 1080p.mkv",
+         "size": 6273654,
+         "container": "mkv",
+         "videoProfile": "high"
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Big Buck Bunny",
+       "type": "coverPoster",
+       "url": "/library/metadata/1/thumb/1789256269"
+      },
+      {
+       "alt": "Big Buck Bunny",
+       "type": "background",
+       "url": "/library/metadata/1/art/1789256269"
+      },
+      {
+       "alt": "Big Buck Bunny",
+       "type": "clearLogo",
+       "url": "/library/metadata/1/clearLogo/1789256269"
+      },
+      {
+       "alt": "Big Buck Bunny",
+       "type": "backgroundSquare",
+       "url": "/library/metadata/1/squareArt/1789256269"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "480805",
+      "topRight": "0504f7",
+      "bottomRight": "0404f8",
+      "bottomLeft": "000303"
+     }
+    },
+    {
+     "ratingKey": "18",
+     "key": "/library/metadata/18",
+     "guid": "plex://movie/5d776bd7594b2b001e6e4d2f",
+     "slug": "cosmos-laundromat",
+     "studio": "Blender Foundation",
+     "type": "movie",
+     "title": "Cosmos Laundromat",
+     "summary": "On a desolate island, a suicidal sheep named Franck meets his fate\u2026in the form of a quirky salesman named Victor, who offers him the gift of a lifetime. The gift is many lifetimes, actually, in many different worlds \u2013 each lasting just a few minutes. In the sequel to the pilot, Franck will find a new reason to live\u2026in the form of a bewitching female adventurer named Tara, who awakens his long-lost lust for life. But can Franck keep up with her?",
+     "audienceRating": 5.6,
+     "userRating": 6.0,
+     "viewCount": 2,
+     "lastViewedAt": 1789644568,
+     "lastRatedAt": 1767600315,
+     "year": 2015,
+     "tagline": "Any life you ever wanted!",
+     "thumb": "/library/metadata/18/thumb/1789234024",
+     "art": "/library/metadata/18/art/1789234024",
+     "duration": 10030,
+     "originallyAvailableAt": "2015-08-10",
+     "addedAt": 1789234023,
+     "updatedAt": 1789234024,
+     "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+     "loudnessAnalysisVersion": "0.02",
+     "Media": [
+      {
+       "id": 12,
+       "duration": 10030,
+       "bitrate": 4989,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 1,
+       "audioCodec": "aac",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mp4",
+       "videoFrameRate": "24p",
+       "optimizedForStreaming": 1,
+       "has64bitOffsets": false,
+       "videoProfile": "high",
+       "hasVoiceActivity": false,
+       "Part": [
+        {
+         "id": 12,
+         "key": "/library/parts/12/1789220749/file.mp4",
+         "duration": 10030,
+         "file": "/data/movies/Cosmos Laundromat (2015)/Cosmos Laundromat (2015) - 1080p.mp4",
+         "size": 6265416,
+         "container": "mp4",
+         "has64bitOffsets": false,
+         "optimizedForStreaming": true,
+         "videoProfile": "high"
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Cosmos Laundromat",
+       "type": "coverPoster",
+       "url": "/library/metadata/18/thumb/1789234024"
+      },
+      {
+       "alt": "Cosmos Laundromat",
+       "type": "background",
+       "url": "/library/metadata/18/art/1789234024"
+      },
+      {
+       "alt": "Cosmos Laundromat",
+       "type": "backgroundSquare",
+       "url": "/library/metadata/18/squareArt/1789234024"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "2d2457",
+      "topRight": "904338",
+      "bottomRight": "491e4a",
+      "bottomLeft": "143835"
+     },
+     "Genre": [
+      {
+       "tag": "Animation"
+      },
+      {
+       "tag": "Fantasy"
+      }
+     ],
+     "Country": [
+      {
+       "tag": "Netherlands"
+      }
+     ],
+     "Director": [
+      {
+       "tag": "Mathieu Auvray"
+      }
+     ],
+     "Writer": [
+      {
+       "tag": "Esther Wouda"
+      }
+     ],
+     "Role": [
+      {
+       "tag": "Pierre Bokma"
+      },
+      {
+       "tag": "Reinout Scholten van Aschat"
+      }
+     ]
+    },
+    {
+     "ratingKey": "17",
+     "key": "/library/metadata/17",
+     "guid": "plex://movie/5d776833103a2d001f5674a1",
+     "slug": "elephants-dream",
+     "studio": "Blender Foundation",
+     "type": "movie",
+     "title": "Elephants Dream",
+     "contentRating": "Not Rated",
+     "summary": "The two main characters are on a journey in the folds of a giant Machine, exploring the twisted and dark complex of wires, gears and cogs. Until one moment a conflict arises that throws out all their assumptions. This movie short couples lively fun with passionate characters in an epic story line.",
+     "audienceRating": 5.4,
+     "year": 2006,
+     "thumb": "/library/metadata/17/thumb/1789203303",
+     "art": "/library/metadata/17/art/1789203303",
+     "duration": 10031,
+     "originallyAvailableAt": "2006-05-04",
+     "addedAt": 1789187071,
+     "updatedAt": 1789203303,
+     "audienceRatingImage": "rottentomatoes://image.rating.spilled",
+     "loudnessAnalysisVersion": "0.02",
+     "primaryExtraKey": "/library/metadata/5",
+     "Media": [
+      {
+       "id": 2,
+       "duration": 10031,
+       "bitrate": 5010,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 1,
+       "audioCodec": "aac",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "videoProfile": "high",
+       "hasVoiceActivity": false,
+       "Part": [
+        {
+         "id": 2,
+         "key": "/library/parts/2/1789187074/file.mkv",
+         "duration": 10031,
+         "file": "/data/movies/Elephants Dream (2006)/Elephants Dream (2006) - 1080p.mkv",
+         "size": 6287100,
+         "container": "mkv",
+         "videoProfile": "high"
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Elephants Dream",
+       "type": "coverPoster",
+       "url": "/library/metadata/17/thumb/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "background",
+       "url": "/library/metadata/17/art/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "clearLogo",
+       "url": "/library/metadata/17/clearLogo/1789203303"
+      },
+      {
+       "alt": "Elephants Dream",
+       "type": "backgroundSquare",
+       "url": "/library/metadata/17/squareArt/1789203303"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "122e44",
+      "topRight": "844f1e",
+      "bottomRight": "964106",
+      "bottomLeft": "1a4154"
+     },
+     "Genre": [
+      {
+       "tag": "Animation"
+      },
+      {
+       "tag": "Science Fiction"
+      }
+     ],
+     "Country": [
+      {
+       "tag": "Netherlands"
+      }
+     ],
+     "Director": [
+      {
+       "tag": "Bassam Kurdali"
+      }
+     ],
+     "Writer": [
+      {
+       "tag": "Andreas Goralczyk"
+      },
+      {
+       "tag": "Pepijn Zwanenberg"
+      }
+     ],
+     "Role": [
+      {
+       "tag": "Tygo Gernandt"
+      },
+      {
+       "tag": "Cas Jansen"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "server": "zen",
+   "version": "1.42.2",
+   "request": {
+    "method": "GET",
+    "path": "/library/all/top?type=2&limit=10",
+    "headers": {
+     "Accept": "application/json",
+     "X-Plex-Product": "Plex for Android (Mobile)",
+     "X-Plex-Version": "2026.19.1",
+     "X-Plex-Platform": "Android",
+     "X-Plex-Container-Start": "0",
+     "X-Plex-Container-Size": "50"
+    }
+   },
+   "top": [
+    {
+     "ratingKey": "19756",
+     "key": "/library/metadata/19756/children",
+     "guid": "plex://show/5d9c08364eefaa001f5d85c5",
+     "slug": "bosch",
+     "studio": "Hieronymus Pictures",
+     "type": "show",
+     "title": "Bosch",
+     "librarySectionTitle": "Bench TV",
+     "librarySectionID": 4,
+     "librarySectionKey": "/library/sections/4",
+     "contentRating": "TV-MA",
+     "contentRatingAge": 16,
+     "summary": "Harry Bosch is a homicide detective in the LAPD. He is doggedly determined to solve the cases that come his way, relying on good old-fashioned police work: following leads, looking for the smallest of clues, gathering evidence. He doesn't always toe the party line which often gets him into trouble with his superiors but he always gets the perpetrator, which more than makes up for this.",
+     "index": 1,
+     "audienceRating": 7.9,
+     "year": 2014,
+     "tagline": "Based on the best selling novels by Michael Connelly.",
+     "thumb": "/library/metadata/19756/thumb/1790999233",
+     "art": "/library/metadata/19756/art/1790999233",
+     "theme": "/library/metadata/19756/theme/1790999233",
+     "duration": 3000000,
+     "originallyAvailableAt": "2014-02-06",
+     "leafCount": 10,
+     "viewedLeafCount": 2,
+     "childCount": 1,
+     "addedAt": 1788084170,
+     "updatedAt": 1790999233,
+     "deletedAt": 1788138157,
+     "globalViewCount": 73,
+     "userCount": 1,
+     "audienceRatingImage": "themoviedb://image.rating",
+     "primaryExtraKey": "/library/metadata/19768",
+     "Image": [
+      {
+       "alt": "Bosch",
+       "type": "coverPoster",
+       "url": "/library/metadata/19756/thumb/1790999233"
+      },
+      {
+       "alt": "Bosch",
+       "type": "background",
+       "url": "/library/metadata/19756/art/1790999233"
+      },
+      {
+       "alt": "Bosch",
+       "type": "clearLogo",
+       "url": "/library/metadata/19756/clearLogo/1790999233"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "19294f",
+      "topRight": "150303",
+      "bottomRight": "993a30",
+      "bottomLeft": "864d2d"
+     },
+     "Genre": [
+      {
+       "tag": "Crime"
+      },
+      {
+       "tag": "Drama"
+      }
+     ],
+     "Country": [
+      {
+       "tag": "United States of America"
+      }
+     ],
+     "Role": [
+      {
+       "tag": "Titus Welliver"
+      },
+      {
+       "tag": "Jamie Hector"
+      },
+      {
+       "tag": "Amy Aquino"
+      }
+     ],
+     "User": [
+      {
+       "id": 1
+      }
+     ]
+    }
+   ],
+   "listing_request": {
+    "method": "GET",
+    "path": "/library/sections/4/all?title=Bosch"
+   },
+   "listing": [
+    {
+     "ratingKey": "19756",
+     "key": "/library/metadata/19756/children",
+     "guid": "plex://show/5d9c08364eefaa001f5d85c5",
+     "slug": "bosch",
+     "studio": "Hieronymus Pictures",
+     "type": "show",
+     "title": "Bosch",
+     "contentRating": "TV-MA",
+     "contentRatingAge": 16,
+     "summary": "Harry Bosch is a homicide detective in the LAPD. He is doggedly determined to solve the cases that come his way, relying on good old-fashioned police work: following leads, looking for the smallest of clues, gathering evidence. He doesn't always toe the party line which often gets him into trouble with his superiors but he always gets the perpetrator, which more than makes up for this.",
+     "index": 1,
+     "audienceRating": 7.9,
+     "userRating": 8.0,
+     "viewCount": 73,
+     "skipCount": 26,
+     "lastViewedAt": 1788088024,
+     "lastRatedAt": 1767607986,
+     "year": 2014,
+     "tagline": "Based on the best selling novels by Michael Connelly.",
+     "thumb": "/library/metadata/19756/thumb/1790999233",
+     "art": "/library/metadata/19756/art/1790999233",
+     "theme": "/library/metadata/19756/theme/1790999233",
+     "duration": 3000000,
+     "originallyAvailableAt": "2014-02-06",
+     "leafCount": 10,
+     "viewedLeafCount": 2,
+     "childCount": 1,
+     "addedAt": 1788084170,
+     "updatedAt": 1790999233,
+     "deletedAt": 1788138157,
+     "audienceRatingImage": "themoviedb://image.rating",
+     "primaryExtraKey": "/library/metadata/19768",
+     "Image": [
+      {
+       "alt": "Bosch",
+       "type": "coverPoster",
+       "url": "/library/metadata/19756/thumb/1790999233"
+      },
+      {
+       "alt": "Bosch",
+       "type": "background",
+       "url": "/library/metadata/19756/art/1790999233"
+      },
+      {
+       "alt": "Bosch",
+       "type": "clearLogo",
+       "url": "/library/metadata/19756/clearLogo/1790999233"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "19294f",
+      "topRight": "150303",
+      "bottomRight": "993a30",
+      "bottomLeft": "864d2d"
+     },
+     "Genre": [
+      {
+       "tag": "Crime"
+      },
+      {
+       "tag": "Drama"
+      }
+     ],
+     "Country": [
+      {
+       "tag": "United States of America"
+      }
+     ],
+     "Role": [
+      {
+       "tag": "Titus Welliver"
+      },
+      {
+       "tag": "Jamie Hector"
+      },
+      {
+       "tag": "Amy Aquino"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "server": "zen",
+   "version": "1.42.2",
+   "request": {
+    "method": "GET",
+    "path": "/library/all/top?type=3&limit=3"
+   },
+   "top": [
+    {
+     "ratingKey": "19757",
+     "key": "/library/metadata/19757/children",
+     "parentRatingKey": "19756",
+     "guid": "plex://season/602e622ec96042002d07aad4",
+     "parentGuid": "plex://show/5d9c08364eefaa001f5d85c5",
+     "parentSlug": "bosch",
+     "parentStudio": "Hieronymus Pictures",
+     "type": "season",
+     "title": "Season 1",
+     "parentKey": "/library/metadata/19756",
+     "librarySectionTitle": "Bench TV",
+     "librarySectionID": 4,
+     "librarySectionKey": "/library/sections/4",
+     "parentTitle": "Bosch",
+     "summary": "In season one, Harry Bosch, an LAPD homicide detective, stands trial for the fatal shooting of a serial murder suspect -- just as a cold case involving the remains of a missing boy forces Bosch to confront his past. As daring recruit, Julia Brasher, catches his eye, and departmental politics heat up, Bosch will pursue justice at all costs.",
+     "index": 1,
+     "parentIndex": 1,
+     "parentYear": 2014,
+     "thumb": "/library/metadata/19757/thumb/1788084192",
+     "art": "/library/metadata/19757/art/1788084192",
+     "parentThumb": "/library/metadata/19756/thumb/1790999233",
+     "parentTheme": "/library/metadata/19756/theme/1790999233",
+     "leafCount": 10,
+     "viewedLeafCount": 2,
+     "addedAt": 1788084170,
+     "updatedAt": 1788084192,
+     "deletedAt": 1788138157,
+     "globalViewCount": 73,
+     "userCount": 1,
+     "Image": [
+      {
+       "alt": "Season 1",
+       "type": "coverPoster",
+       "url": "/library/metadata/19757/thumb/1788084192"
+      },
+      {
+       "alt": "Season 1",
+       "type": "background",
+       "url": "/library/metadata/19757/art/1788084192"
+      },
+      {
+       "alt": "Season 1",
+       "type": "clearLogo",
+       "url": "/library/metadata/19756/clearLogo/1790999233"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "19294f",
+      "topRight": "150303",
+      "bottomRight": "993a30",
+      "bottomLeft": "864d2d"
+     },
+     "User": [
+      {
+       "id": 1
+      }
+     ]
+    }
+   ],
+   "listing_request": {
+    "method": "GET",
+    "path": "/library/sections/4/all?type=3&parent=19756"
+   },
+   "listing": [
+    {
+     "ratingKey": "19757",
+     "key": "/library/metadata/19757/children",
+     "parentRatingKey": "19756",
+     "guid": "plex://season/602e622ec96042002d07aad4",
+     "parentGuid": "plex://show/5d9c08364eefaa001f5d85c5",
+     "parentSlug": "bosch",
+     "parentStudio": "Hieronymus Pictures",
+     "type": "season",
+     "title": "Season 1",
+     "parentKey": "/library/metadata/19756",
+     "parentTitle": "Bosch",
+     "summary": "In season one, Harry Bosch, an LAPD homicide detective, stands trial for the fatal shooting of a serial murder suspect -- just as a cold case involving the remains of a missing boy forces Bosch to confront his past. As daring recruit, Julia Brasher, catches his eye, and departmental politics heat up, Bosch will pursue justice at all costs.",
+     "index": 1,
+     "parentIndex": 1,
+     "viewCount": 73,
+     "skipCount": 26,
+     "lastViewedAt": 1788088024,
+     "parentYear": 2014,
+     "thumb": "/library/metadata/19757/thumb/1788084192",
+     "art": "/library/metadata/19757/art/1788084192",
+     "parentThumb": "/library/metadata/19756/thumb/1790999233",
+     "parentTheme": "/library/metadata/19756/theme/1790999233",
+     "addedAt": 1788084170,
+     "updatedAt": 1788084192,
+     "deletedAt": 1788138157,
+     "Image": [
+      {
+       "alt": "Season 1",
+       "type": "coverPoster",
+       "url": "/library/metadata/19757/thumb/1788084192"
+      },
+      {
+       "alt": "Season 1",
+       "type": "background",
+       "url": "/library/metadata/19757/art/1788084192"
+      },
+      {
+       "alt": "Season 1",
+       "type": "clearLogo",
+       "url": "/library/metadata/19756/clearLogo/1790999233"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "19294f",
+      "topRight": "150303",
+      "bottomRight": "993a30",
+      "bottomLeft": "864d2d"
+     }
+    }
+   ]
+  },
+  {
+   "server": "zen",
+   "version": "1.42.2",
+   "request": {
+    "method": "GET",
+    "path": "/library/all/top?type=4&limit=3"
+   },
+   "top": [
+    {
+     "ratingKey": "19758",
+     "key": "/library/metadata/19758",
+     "parentRatingKey": "19757",
+     "grandparentRatingKey": "19756",
+     "guid": "plex://episode/6111983d0be0fb002c2c5d01",
+     "parentGuid": "plex://season/602e622ec96042002d07aad4",
+     "grandparentGuid": "plex://show/5d9c08364eefaa001f5d85c5",
+     "grandparentSlug": "bosch",
+     "type": "episode",
+     "title": "Chapter One: 'Tis the Season",
+     "grandparentKey": "/library/metadata/19756",
+     "parentKey": "/library/metadata/19757",
+     "librarySectionTitle": "Bench TV",
+     "librarySectionID": 4,
+     "librarySectionKey": "/library/sections/4",
+     "grandparentTitle": "Bosch",
+     "parentTitle": "Season 1",
+     "contentRating": "TV-MA",
+     "summary": "An LAPD homicide detective works to solve the murder of a 13-year-old boy while standing trial in federal court for the murder of a serial killer. Based on Michael Connelly's best-selling book series, 'Bosch'.",
+     "index": 1,
+     "parentIndex": 1,
+     "audienceRating": 8.2,
+     "skipCount": 7,
+     "year": 2015,
+     "thumb": "/library/metadata/19758/thumb/1788084192",
+     "art": "/library/metadata/19757/art/1788084192",
+     "parentThumb": "/library/metadata/19757/thumb/1788084192",
+     "grandparentThumb": "/library/metadata/19756/thumb/1790999233",
+     "grandparentArt": "/library/metadata/19756/art/1790999233",
+     "grandparentTheme": "/library/metadata/19756/theme/1790999233",
+     "duration": 2873888,
+     "originallyAvailableAt": "2015-01-14",
+     "addedAt": 1788084170,
+     "updatedAt": 1788084192,
+     "deletedAt": 1788138157,
+     "globalViewCount": 12,
+     "userCount": 1,
+     "audienceRatingImage": "themoviedb://image.rating",
+     "Media": [
+      {
+       "id": 26037,
+       "duration": 2873888,
+       "bitrate": 6153,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 6,
+       "audioCodec": "eac3",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "videoProfile": "high",
+       "deletedAt": 1788138157,
+       "hasVoiceActivity": false,
+       "Part": [
+        {
+         "id": 26037,
+         "key": "/library/parts/26037/1788081126/file.mkv",
+         "duration": 2873888,
+         "file": "/mnt/benchplex/tv/Bosch (2014)/Season 01/Bosch - S01E01.mkv",
+         "size": 2210528776,
+         "container": "mkv",
+         "failureBIFResultCode": "3",
+         "failureBIFRetryCount": "4",
+         "hasThumbnail": "1",
+         "videoProfile": "high"
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Chapter One: 'Tis the Season",
+       "type": "coverPoster",
+       "url": "/library/metadata/19756/thumb/1790999233"
+      },
+      {
+       "alt": "Chapter One: 'Tis the Season",
+       "type": "snapshot",
+       "url": "/library/metadata/19758/thumb/1788084192"
+      },
+      {
+       "alt": "Chapter One: 'Tis the Season",
+       "type": "background",
+       "url": "/library/metadata/19757/art/1788084192"
+      },
+      {
+       "alt": "Chapter One: 'Tis the Season",
+       "type": "clearLogo",
+       "url": "/library/metadata/19756/clearLogo/1790999233"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "322e10",
+      "topRight": "5e6224",
+      "bottomRight": "6d5c2a",
+      "bottomLeft": "454a95"
+     },
+     "Director": [
+      {
+       "tag": "Jim McKay"
+      }
+     ],
+     "Writer": [
+      {
+       "tag": "Eric Overmyer"
+      },
+      {
+       "tag": "Michael Connelly"
+      }
+     ],
+     "Role": [
+      {
+       "tag": "Titus Welliver"
+      },
+      {
+       "tag": "Jamie Hector"
+      },
+      {
+       "tag": "Amy Aquino"
+      }
+     ],
+     "User": [
+      {
+       "id": 1
+      }
+     ]
+    },
+    {
+     "ratingKey": "19759",
+     "key": "/library/metadata/19759",
+     "parentRatingKey": "19757",
+     "grandparentRatingKey": "19756",
+     "guid": "plex://episode/5d9c0fe2e98e47001eb62b01",
+     "parentGuid": "plex://season/602e622ec96042002d07aad4",
+     "grandparentGuid": "plex://show/5d9c08364eefaa001f5d85c5",
+     "grandparentSlug": "bosch",
+     "type": "episode",
+     "title": "Chapter Two: Lost Light",
+     "grandparentKey": "/library/metadata/19756",
+     "parentKey": "/library/metadata/19757",
+     "librarySectionTitle": "Bench TV",
+     "librarySectionID": 4,
+     "librarySectionKey": "/library/sections/4",
+     "grandparentTitle": "Bosch",
+     "parentTitle": "Season 1",
+     "contentRating": "TV-MA",
+     "summary": "A routine traffic stop lands a suspect who poses a lethal new threat, while Bosch and J. Edgar pursue a promising lead in the bones case. Bosch locks horns with Deputy Chief Irving over his ongoing court battle, just as his relationship with Brasher picks up. And murder suspect Raynard Waits makes a startling confession about Bosch's cold case.",
+     "index": 2,
+     "parentIndex": 1,
+     "audienceRating": 7.1,
+     "skipCount": 1,
+     "year": 2015,
+     "thumb": "/library/metadata/19759/thumb/1788084192",
+     "art": "/library/metadata/19757/art/1788084192",
+     "parentThumb": "/library/metadata/19757/thumb/1788084192",
+     "grandparentThumb": "/library/metadata/19756/thumb/1790999233",
+     "grandparentArt": "/library/metadata/19756/art/1790999233",
+     "grandparentTheme": "/library/metadata/19756/theme/1790999233",
+     "duration": 2563616,
+     "originallyAvailableAt": "2015-02-13",
+     "addedAt": 1788084171,
+     "updatedAt": 1788084192,
+     "deletedAt": 1788138157,
+     "globalViewCount": 11,
+     "userCount": 1,
+     "audienceRatingImage": "themoviedb://image.rating",
+     "Media": [
+      {
+       "id": 26038,
+       "duration": 2563616,
+       "bitrate": 5549,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 6,
+       "audioCodec": "eac3",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "videoProfile": "high",
+       "deletedAt": 1788138157,
+       "hasVoiceActivity": false,
+       "Part": [
+        {
+         "id": 26038,
+         "key": "/library/parts/26038/1788081126/file.mkv",
+         "duration": 2563616,
+         "file": "/mnt/benchplex/tv/Bosch (2014)/Season 01/Bosch - S01E02.mkv",
+         "size": 1778138438,
+         "container": "mkv",
+         "failureBIFResultCode": "3",
+         "failureBIFRetryCount": "4",
+         "hasThumbnail": "1",
+         "videoProfile": "high"
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Chapter Two: Lost Light",
+       "type": "coverPoster",
+       "url": "/library/metadata/19756/thumb/1790999233"
+      },
+      {
+       "alt": "Chapter Two: Lost Light",
+       "type": "snapshot",
+       "url": "/library/metadata/19759/thumb/1788084192"
+      },
+      {
+       "alt": "Chapter Two: Lost Light",
+       "type": "background",
+       "url": "/library/metadata/19757/art/1788084192"
+      },
+      {
+       "alt": "Chapter Two: Lost Light",
+       "type": "clearLogo",
+       "url": "/library/metadata/19756/clearLogo/1790999233"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "233311",
+      "topRight": "815202",
+      "bottomRight": "854f03",
+      "bottomLeft": "344d03"
+     },
+     "Director": [
+      {
+       "tag": "Kevin Dowling"
+      }
+     ],
+     "Writer": [
+      {
+       "tag": "Joe Gonzalez"
+      },
+      {
+       "tag": "Tom Bernardo"
+      }
+     ],
+     "Role": [
+      {
+       "tag": "Titus Welliver"
+      },
+      {
+       "tag": "Jamie Hector"
+      },
+      {
+       "tag": "Amy Aquino"
+      }
+     ],
+     "User": [
+      {
+       "id": 1
+      }
+     ]
+    }
+   ],
+   "listing_request": {
+    "method": "GET",
+    "path": "/library/sections/4/all?type=4&show.id=19756"
+   },
+   "listing": [
+    {
+     "ratingKey": "19758",
+     "key": "/library/metadata/19758",
+     "parentRatingKey": "19757",
+     "grandparentRatingKey": "19756",
+     "guid": "plex://episode/6111983d0be0fb002c2c5d01",
+     "parentGuid": "plex://season/602e622ec96042002d07aad4",
+     "grandparentGuid": "plex://show/5d9c08364eefaa001f5d85c5",
+     "grandparentSlug": "bosch",
+     "type": "episode",
+     "title": "Chapter One: 'Tis the Season",
+     "grandparentKey": "/library/metadata/19756",
+     "parentKey": "/library/metadata/19757",
+     "grandparentTitle": "Bosch",
+     "parentTitle": "Season 1",
+     "contentRating": "TV-MA",
+     "summary": "An LAPD homicide detective works to solve the murder of a 13-year-old boy while standing trial in federal court for the murder of a serial killer. Based on Michael Connelly's best-selling book series, 'Bosch'.",
+     "index": 1,
+     "parentIndex": 1,
+     "audienceRating": 8.2,
+     "skipCount": 7,
+     "year": 2015,
+     "thumb": "/library/metadata/19758/thumb/1788084192",
+     "art": "/library/metadata/19757/art/1788084192",
+     "parentThumb": "/library/metadata/19757/thumb/1788084192",
+     "grandparentThumb": "/library/metadata/19756/thumb/1790999233",
+     "grandparentArt": "/library/metadata/19756/art/1790999233",
+     "grandparentTheme": "/library/metadata/19756/theme/1790999233",
+     "duration": 2873888,
+     "originallyAvailableAt": "2015-01-14",
+     "addedAt": 1788084170,
+     "updatedAt": 1788084192,
+     "deletedAt": 1788138157,
+     "audienceRatingImage": "themoviedb://image.rating",
+     "Media": [
+      {
+       "id": 26037,
+       "duration": 2873888,
+       "bitrate": 6153,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 6,
+       "audioCodec": "eac3",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "videoProfile": "high",
+       "deletedAt": 1788138157,
+       "hasVoiceActivity": false,
+       "Part": [
+        {
+         "id": 26037,
+         "key": "/library/parts/26037/1788081126/file.mkv",
+         "duration": 2873888,
+         "file": "/mnt/benchplex/tv/Bosch (2014)/Season 01/Bosch - S01E01.mkv",
+         "size": 2210528776,
+         "container": "mkv",
+         "failureBIFResultCode": "3",
+         "failureBIFRetryCount": "4",
+         "hasThumbnail": "1",
+         "videoProfile": "high"
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Chapter One: 'Tis the Season",
+       "type": "coverPoster",
+       "url": "/library/metadata/19756/thumb/1790999233"
+      },
+      {
+       "alt": "Chapter One: 'Tis the Season",
+       "type": "snapshot",
+       "url": "/library/metadata/19758/thumb/1788084192"
+      },
+      {
+       "alt": "Chapter One: 'Tis the Season",
+       "type": "background",
+       "url": "/library/metadata/19757/art/1788084192"
+      },
+      {
+       "alt": "Chapter One: 'Tis the Season",
+       "type": "clearLogo",
+       "url": "/library/metadata/19756/clearLogo/1790999233"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "322e10",
+      "topRight": "5e6224",
+      "bottomRight": "6d5c2a",
+      "bottomLeft": "454a95"
+     },
+     "Director": [
+      {
+       "tag": "Jim McKay"
+      }
+     ],
+     "Writer": [
+      {
+       "tag": "Eric Overmyer"
+      },
+      {
+       "tag": "Michael Connelly"
+      }
+     ],
+     "Role": [
+      {
+       "tag": "Titus Welliver"
+      },
+      {
+       "tag": "Jamie Hector"
+      },
+      {
+       "tag": "Amy Aquino"
+      }
+     ]
+    },
+    {
+     "ratingKey": "19759",
+     "key": "/library/metadata/19759",
+     "parentRatingKey": "19757",
+     "grandparentRatingKey": "19756",
+     "guid": "plex://episode/5d9c0fe2e98e47001eb62b01",
+     "parentGuid": "plex://season/602e622ec96042002d07aad4",
+     "grandparentGuid": "plex://show/5d9c08364eefaa001f5d85c5",
+     "grandparentSlug": "bosch",
+     "type": "episode",
+     "title": "Chapter Two: Lost Light",
+     "grandparentKey": "/library/metadata/19756",
+     "parentKey": "/library/metadata/19757",
+     "grandparentTitle": "Bosch",
+     "parentTitle": "Season 1",
+     "contentRating": "TV-MA",
+     "summary": "A routine traffic stop lands a suspect who poses a lethal new threat, while Bosch and J. Edgar pursue a promising lead in the bones case. Bosch locks horns with Deputy Chief Irving over his ongoing court battle, just as his relationship with Brasher picks up. And murder suspect Raynard Waits makes a startling confession about Bosch's cold case.",
+     "index": 2,
+     "parentIndex": 1,
+     "audienceRating": 7.1,
+     "skipCount": 1,
+     "year": 2015,
+     "thumb": "/library/metadata/19759/thumb/1788084192",
+     "art": "/library/metadata/19757/art/1788084192",
+     "parentThumb": "/library/metadata/19757/thumb/1788084192",
+     "grandparentThumb": "/library/metadata/19756/thumb/1790999233",
+     "grandparentArt": "/library/metadata/19756/art/1790999233",
+     "grandparentTheme": "/library/metadata/19756/theme/1790999233",
+     "duration": 2563616,
+     "originallyAvailableAt": "2015-02-13",
+     "addedAt": 1788084171,
+     "updatedAt": 1788084192,
+     "deletedAt": 1788138157,
+     "audienceRatingImage": "themoviedb://image.rating",
+     "Media": [
+      {
+       "id": 26038,
+       "duration": 2563616,
+       "bitrate": 5549,
+       "width": 1920,
+       "height": 1080,
+       "aspectRatio": 1.78,
+       "audioChannels": 6,
+       "audioCodec": "eac3",
+       "videoCodec": "h264",
+       "videoResolution": "1080",
+       "container": "mkv",
+       "videoFrameRate": "24p",
+       "videoProfile": "high",
+       "deletedAt": 1788138157,
+       "hasVoiceActivity": false,
+       "Part": [
+        {
+         "id": 26038,
+         "key": "/library/parts/26038/1788081126/file.mkv",
+         "duration": 2563616,
+         "file": "/mnt/benchplex/tv/Bosch (2014)/Season 01/Bosch - S01E02.mkv",
+         "size": 1778138438,
+         "container": "mkv",
+         "failureBIFResultCode": "3",
+         "failureBIFRetryCount": "4",
+         "hasThumbnail": "1",
+         "videoProfile": "high"
+        }
+       ]
+      }
+     ],
+     "Image": [
+      {
+       "alt": "Chapter Two: Lost Light",
+       "type": "coverPoster",
+       "url": "/library/metadata/19756/thumb/1790999233"
+      },
+      {
+       "alt": "Chapter Two: Lost Light",
+       "type": "snapshot",
+       "url": "/library/metadata/19759/thumb/1788084192"
+      },
+      {
+       "alt": "Chapter Two: Lost Light",
+       "type": "background",
+       "url": "/library/metadata/19757/art/1788084192"
+      },
+      {
+       "alt": "Chapter Two: Lost Light",
+       "type": "clearLogo",
+       "url": "/library/metadata/19756/clearLogo/1790999233"
+      }
+     ],
+     "UltraBlurColors": {
+      "topLeft": "233311",
+      "topRight": "815202",
+      "bottomRight": "854f03",
+      "bottomLeft": "344d03"
+     },
+     "Director": [
+      {
+       "tag": "Kevin Dowling"
+      }
+     ],
+     "Writer": [
+      {
+       "tag": "Joe Gonzalez"
+      },
+      {
+       "tag": "Tom Bernardo"
+      }
+     ],
+     "Role": [
+      {
+       "tag": "Titus Welliver"
+      },
+      {
+       "tag": "Jamie Hector"
+      },
+      {
+       "tag": "Amy Aquino"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

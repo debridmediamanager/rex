@@ -4049,3 +4049,13 @@ are changing; replay the client's exact request before altering behavior.
   1 before binding. `--no-state` or an explicit `--state` still starts a second server.
   Not reachable through any client request, but CLIENT-VISIBLE to the clients of such a
   second server (`tests/test_parity_cycle92_cp.py`).
+- **A `/library/all/top` row is the LIGHT listing row, not the detail row** (cycle 94, Plex for
+  Android 2026.19.1's Top Played, js:1521748). Measured on kids (movies) and zen (a show, a season,
+  episodes) against the same item's section listing row (`tests/fixtures/c94_d_library_all_top.json`):
+  the listing row plus the librarySection triple, `globalViewCount`/`userCount` straight after
+  `updatedAt` (`deletedAt`) and `User` last -- no `Guid`, `Rating` or `Location`. A show or
+  season row drops the listing's per-user aggregate (`viewCount`, `skipCount`, `lastViewedAt`,
+  `userRating`, `lastRatedAt`); a season row gains `leafCount`/`viewedLeafCount` before `addedAt`.
+  Whether 1.43.4 also drops a show's aggregate is unmeasured (kids has no show plays).
+  MALFORMED-ONLY in rendering: TopChart reads title, type, ratingKey, image and the two counts
+  (`tests/test_parity_cycle94_d.py`).

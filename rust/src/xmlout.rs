@@ -373,6 +373,9 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
             "addedAt",
             "updatedAt",
             "deletedAt",
+            // Cycle 94, zen's `/library/all/top?type=3` row.
+            "globalViewCount",
+            "userCount",
         ],
         "Directory[show]" => &[
             "ratingKey",
@@ -413,6 +416,9 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
             "addedAt",
             "updatedAt",
             "deletedAt",
+            // Cycle 94, zen's `/library/all/top?type=2` row.
+            "globalViewCount",
+            "userCount",
             "audienceRatingImage",
             "episodeSort",
             "flattenSeasons",
@@ -610,6 +616,9 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
             "originallyAvailableAt",
             "addedAt",
             "updatedAt",
+            // Cycle 94, zen's `/library/all/top?type=4` rows.
+            "globalViewCount",
+            "userCount",
             "audienceRatingImage",
             "deletedAt",
             "chapterSource",
@@ -667,6 +676,9 @@ fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
             "addedAt",
             "updatedAt",
             "deletedAt",
+            // Cycle 94, kids' `/library/all/top?type=1` rows.
+            "globalViewCount",
+            "userCount",
             "audienceRatingImage",
             "chapterSource",
             "primaryExtraKey",

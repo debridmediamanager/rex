@@ -247,7 +247,10 @@ _ATTR_ORDER = {
         "lastRatedAt",
         "year", "parentYear",
         "thumb", "art", "parentThumb", "parentTheme", "leafCount",
-        "viewedLeafCount", "addedAt", "updatedAt", "deletedAt"
+        "viewedLeafCount", "addedAt", "updatedAt", "deletedAt",
+        # Cycle 94, measured on zen's `/library/all/top?type=3` row: the play counts follow
+        # `deletedAt` (`updatedAt` where there is none).
+        "globalViewCount", "userCount"
     ),
     "Directory[show]": (
         "ratingKey", "key", "guid", "slug", "studio", "type", "title",
@@ -263,7 +266,10 @@ _ATTR_ORDER = {
         "leafCount", "viewedLeafCount", "childCount",
         # Cycle 79: `seasonCount` -- a show with a season 0 -- follows `childCount` on zen.
         "seasonCount", "addedAt", "updatedAt",
-        "deletedAt", "audienceRatingImage", "episodeSort", "flattenSeasons"
+        # Cycle 94: a `/library/all/top` row's play counts sit after `deletedAt` and before
+        # `audienceRatingImage` (zen's show row; kids' movie rows agree for movies).
+        "deletedAt", "globalViewCount", "userCount", "audienceRatingImage", "episodeSort",
+        "flattenSeasons"
     ),
     "Field": (
         "locked", "name"
@@ -389,7 +395,10 @@ _ATTR_ORDER = {
         "lastRatedAt",
         "year", "thumb", "art", "parentThumb",
         "grandparentThumb", "grandparentArt", "grandparentTheme", "duration",
-        "originallyAvailableAt", "addedAt", "updatedAt", "audienceRatingImage",
+        "originallyAvailableAt", "addedAt", "updatedAt",
+        # Cycle 94, zen's `/library/all/top?type=4` rows: the play counts follow
+        # `updatedAt` (and that row's `deletedAt`) and precede `audienceRatingImage`.
+        "globalViewCount", "userCount", "audienceRatingImage",
         "deletedAt", "chapterSource"
     ),
     "Video[clip]": (
@@ -407,6 +416,8 @@ _ATTR_ORDER = {
         "summary", "rating", "audienceRating", "userRating", "viewCount",
         "lastViewedAt", "includedAt", "lastRatedAt", "year", "tagline", "thumb", "art",
         "duration", "originallyAvailableAt", "addedAt", "updatedAt", "deletedAt",
+        # Cycle 94, kids' `/library/all/top?type=1` rows.
+        "globalViewCount", "userCount",
         "audienceRatingImage", "chapterSource", "primaryExtraKey",
         "useOriginalTitle", "ratingImage"
     ),

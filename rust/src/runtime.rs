@@ -1976,6 +1976,44 @@ impl Runtime {
         row
     }
 
+    /// A `/library/all/top` row. Cycle 94, measured with Plex for Android 2026.19.1's own
+    /// request on kids (1.43.4, movies) and zen (1.42.2, a show, a season, episodes) against
+    /// the same item's section listing row (tests/fixtures/c94_d_library_all_top.json): the
+    /// LIGHT listing row plus the librarySection triple, `globalViewCount` and `userCount`
+    /// (the writer places them after `updatedAt`/`deletedAt`) and `User` last -- no `Guid`,
+    /// `Rating` or `Location`, which the detail projection plexsim answered carried. A show
+    /// or season drops the listing's per-user aggregate; a season gains `leafCount` and
+    /// `viewedLeafCount`, which its listing row does not carry, before `addedAt`.
+    fn top_row(&self, original: &Value, plays: i64, accounts: &BTreeSet<i64>) -> Value {
+        let full = self.public_row(original, false);
+        let light = self.grid_row(original, true, false, false);
+        let kind = original.get("type").and_then(Value::as_str).unwrap_or_default();
+        let aggregate = ["viewCount", "skipCount", "lastViewedAt", "userRating", "lastRatedAt"];
+        let mut out = Map::new();
+        if let Some(object) = light.as_object() {
+            for (name, value) in object {
+                if matches!(kind, "show" | "season") && aggregate.contains(&name.as_str()) {
+                    continue;
+                }
+                if name == "addedAt" && kind == "season" {
+                    for count in ["leafCount", "viewedLeafCount"] {
+                        if let Some(value) = full.get(count) {
+                            out.insert(count.to_string(), value.clone());
+                        }
+                    }
+                }
+                out.insert(name.clone(), value.clone());
+            }
+        }
+        out.insert("globalViewCount".to_string(), json!(plays));
+        out.insert("userCount".to_string(), json!(accounts.len()));
+        out.insert(
+            "User".to_string(),
+            Value::Array(accounts.iter().map(|id| json!({"id": id})).collect()),
+        );
+        Value::Object(out)
+    }
+
     fn grid_row(
         &self,
         original: &Value,
@@ -8766,17 +8804,7 @@ impl Runtime {
             .take(take)
             .filter_map(|key| {
                 let row = self.catalog.get(&key.to_string())?;
-                // The oracle's `_listing_row` is the FULL detail projection.
-                let mut shown = self.detail_row(row);
-                if let Some(object) = shown.as_object_mut() {
-                    object.insert("globalViewCount".to_string(), json!(plays[&key]));
-                    object.insert("userCount".to_string(), json!(viewers[&key].len()));
-                    object.insert(
-                        "User".to_string(),
-                        Value::Array(viewers[&key].iter().map(|id| json!({"id": id})).collect()),
-                    );
-                }
-                Some(shown)
+                Some(self.top_row(row, plays[&key], &viewers[&key]))
             })
             .collect::<Vec<_>>();
         Response::json(

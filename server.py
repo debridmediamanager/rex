@@ -3706,6 +3706,43 @@ def _listing_row(row):
     return _part_file_state(_public_row(row), checked=False)
 
 
+TOP_AGGREGATE = ("viewCount", "skipCount", "lastViewedAt", "userRating", "lastRatedAt")
+
+
+def _top_row(row, plays, accounts):
+    """A `/library/all/top` row -- the Dashboard's Top Played and the Home Top shelf.
+
+    Cycle 94, measured with Plex for Android 2026.19.1's own request (js:1521748) on kids
+    (1.43.4, movies) and zen (1.42.2, a show, a season, episodes), each against the SAME item's
+    section listing row (tests/fixtures/c94_d_library_all_top.json): the top row is the LIGHT
+    listing row plus the librarySection triple, `globalViewCount` and `userCount` straight
+    after `updatedAt` (`deletedAt` where there is one) and a `User` list last. So no `Guid`,
+    `Rating` or `Location`, which plexsim sent because it answered the detail projection. A
+    show or season row drops the listing's per-user aggregate, and a season row carries
+    `leafCount`/`viewedLeafCount`, which its listing row does not, just before `addedAt`.
+    """
+    full = _listing_row(row)
+    light = _grid_row(full)
+    kind = row.get("type")
+    out = {}
+    for name, value in light.items():
+        if kind in ("show", "season") and name in TOP_AGGREGATE:
+            continue
+        if name == "addedAt" and kind == "season":
+            for count in ("leafCount", "viewedLeafCount"):
+                if count in full:
+                    out[count] = full[count]
+        out[name] = value
+        if name == ("deletedAt" if "deletedAt" in light else "updatedAt"):
+            out["globalViewCount"] = plays
+            out["userCount"] = len(accounts)
+    out.setdefault("globalViewCount", plays)
+    out.setdefault("userCount", len(accounts))
+    # Who watched it, which is what the Home shelf's avatar reads.
+    out["User"] = [{"id": account} for account in accounts]
+    return out
+
+
 def _full(row):
     return _part_file_state(_public_row(row), checked=False)
 
@@ -7868,12 +7905,7 @@ class PlexSim:
             limit = int(query.get("limit", 12) or 12)
             rows = []
             for key in ordered[:limit]:
-                row = _listing_row(catalog.items[key])
-                row["globalViewCount"] = plays[key]
-                row["userCount"] = len(viewers[key])
-                # Who watched it, which is what the Home shelf's avatar reads.
-                row["User"] = [{"id": account} for account in sorted(viewers[key])]
-                rows.append(row)
+                rows.append(_top_row(catalog.items[key], plays[key], sorted(viewers[key])))
             return self.container(Metadata=rows)
 
         if segments[:2] == ["library", "streams"]:
