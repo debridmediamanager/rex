@@ -7,9 +7,13 @@ all of it in memory and reloaded `catalog.json`, which made a restart the undo
 button: a watched episode came back unwatched, a playlist vanished, a renamed server
 took its old name back.
 
-This is opt-in (`--state FILE`), because the test suites depend on the old
-behaviour: `test_ui_surface.py` writes rows, lists and sections, and its checks
-assume every instance it starts begins from the fixture.
+This is the default: `state.pickle` beside the catalog (the native server's is
+`state.json`), or `--state FILE` / `$PLEXSIM_STATE`. `--no-state`, or an empty
+`$PLEXSIM_STATE`, turns it off, and the test suites run that way: `test_ui_surface.py`
+writes rows, lists and sections, and its checks assume every instance it starts
+begins from the fixture. Two servers started on one catalog would overwrite each
+other's default file, so it is held by an advisory lock for the life of the process,
+and a second server finding it held runs without one (`resolve_path`).
 
 What is kept is the state the server itself mutates, and nothing it derives or
 only holds for a live connection:
@@ -106,6 +110,36 @@ def dumps(value):
 
 def loads(blob):
     return _PlainUnpickler(io.BytesIO(blob)).load()
+
+
+def resolve_path(named, catalog_path):
+    """The state file `main()` keeps, or None. `--state` and `--no-state` share one
+    destination (the last given wins; `--no-state` stores an empty path), then
+    `$PLEXSIM_STATE`, where empty also means none, then `state.pickle` beside the
+    catalog, locked for this process: a default another server holds is not shared."""
+    if named is None:
+        named = os.environ.get("PLEXSIM_STATE")
+    if named is not None:
+        return named or None
+    path = os.path.join(os.path.dirname(os.path.abspath(catalog_path)), "state.pickle")
+    import fcntl
+    try:
+        handle = open(path + ".lock", "a")
+    except OSError as error:
+        logger.warning("cannot open %s.lock (%s): running without a state file", path, error)
+        return None
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        logger.warning("state file %s is in use by another plexsim: running without a state file", path)
+        return None
+    _LOCKS.append(handle)
+    return path
+
+
+# The default state file's lock, held open until the process exits.
+_LOCKS = []
 
 
 def catalog_digest(path):

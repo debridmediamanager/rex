@@ -20,7 +20,8 @@ def server_command(*args, root=None):
     With no environment override this is the native release binary under
     ``root``; ``PLEXSIM_SERVER=python`` is the Python oracle. Any other override
     may contain a quoted executable path and additional fixed arguments, for
-    example ``'/tmp/rust build/plexsim' --serve``.
+    example ``'/tmp/rust build/plexsim' --serve``. ``--no-state`` is added unless
+    the arguments name ``--state`` or ``--no-state`` themselves.
     """
 
     if root is None:
@@ -45,4 +46,10 @@ def server_command(*args, root=None):
         if not command:
             raise ValueError("PLEXSIM_SERVER must name an executable command")
 
-    return command + [str(arg) for arg in args]
+    args = [str(arg) for arg in args]
+    # A state file is the server's default (`state.json` beside the catalog), and the
+    # suites rely on a restart reloading the fixture: a test server keeps nothing
+    # unless the test asks for a state file itself.
+    if not any(arg in ("--state", "--no-state") or arg.startswith("--state=") for arg in args):
+        args.append("--no-state")
+    return command + args

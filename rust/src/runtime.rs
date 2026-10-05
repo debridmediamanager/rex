@@ -239,7 +239,7 @@ impl Default for RuntimeOptions {
             tls_cert: None,
             tls_key: None,
             gdm: "auto".to_string(),
-            state: std::env::var("PLEXSIM_STATE").ok().map(PathBuf::from),
+            state: None,
             announce_url: None,
             device_id: None,
             verbose: false,
@@ -22734,6 +22734,58 @@ fn start_state_saver(runtime: SharedRuntime) {
     });
 }
 
+/// `server.py` `main()`'s state file. A real PMS keeps everything a client changes in
+/// its database, so a state file is the default: `state.json` beside the catalog,
+/// like `tmdb_cache.json` and `claim_state.json`. `--no-state` (or an empty
+/// `PLEXSIM_STATE`) turns it off, which is what the test suites run with: their
+/// checks assume a restart reloads the fixture. Two servers started on one catalog
+/// would otherwise overwrite each other's file, so the default is held by an
+/// advisory lock for the life of the process, and a second server finding it held
+/// runs without one rather than sharing it. An explicit `--state` is taken as given.
+fn resolve_state_path(options: &RuntimeOptions) -> Option<PathBuf> {
+    // `--state` and `--no-state` share one destination, so the last one given wins;
+    // `--no-state` (an empty path) and an empty `PLEXSIM_STATE` both mean none.
+    let named = options
+        .state
+        .clone()
+        .or_else(|| std::env::var_os("PLEXSIM_STATE").map(PathBuf::from));
+    if let Some(path) = named {
+        return Some(path).filter(|path| !path.as_os_str().is_empty());
+    }
+    let catalog = std::path::absolute(&options.catalog).unwrap_or_else(|_| options.catalog.clone());
+    let path = catalog
+        .parent()
+        .map_or_else(|| PathBuf::from("state.json"), |dir| dir.join("state.json"));
+    let lock_path = sidecar(&path, "lock");
+    let file = match fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(&lock_path)
+    {
+        Ok(file) => file,
+        Err(error) => {
+            warning!(
+                "cannot open {} ({error}): running without a state file",
+                lock_path.display()
+            );
+            return None;
+        }
+    };
+    use std::os::unix::io::AsRawFd;
+    // SAFETY: flock on a descriptor this function owns; the descriptor is leaked on
+    // success so the lock lasts as long as the process.
+    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
+        warning!(
+            "state file {} is in use by another plexsim: running without a state file",
+            path.display()
+        );
+        return None;
+    }
+    std::mem::forget(file);
+    Some(path)
+}
+
 pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     logging::set_verbose(options.verbose);
     // `main()`: parts resolve through Real-Debrid, and an empty key is no key.
@@ -22765,6 +22817,8 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         )?)),
         None => None,
     };
+    let mut options = options;
+    options.state = resolve_state_path(&options);
     let loaded = Runtime::load(options)?;
     if let Some(path) = &loaded.state_path {
         info!("state file {}: {}", path.display(), loaded.state_summary);

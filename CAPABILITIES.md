@@ -279,14 +279,17 @@ Sources: [server.py](server.py), [xmlout.py](xmlout.py),
 
 ## Persistence
 
-With `--state FILE` (or `PLEXSIM_STATE`) the server saves what clients change to
-one file and restores it at start. A client write (any non-GET request, and the
+The server saves what clients change to one file and restores it at start: by
+default `state.json` beside the catalog (the Python server's is `state.pickle`), or
+`--state FILE` / `PLEXSIM_STATE`. A client write (any non-GET request, and the
 scrobble, rate, progress and timeline GETs), and a client's first request or a
 changed device name or platform, is on disk before it is answered, so a
 crash loses nothing a client was told succeeded -- a real PMS keeps writes answered a
 fraction of a second before a hard kill. Everything else is saved within about two
-seconds, every minute regardless, and on SIGTERM or Ctrl-C. It is off by default because the test suites rely
-on a restart undoing their writes.
+seconds, every minute regardless, and on SIGTERM or Ctrl-C. `--no-state` (or an empty
+`PLEXSIM_STATE`) turns it off, which is how the test suites run: they rely on a restart
+undoing their writes. A second server started on the same catalog does not share the
+first one's default file; it runs without one and logs that.
 
 | Kept | Not kept |
 |---|---|
@@ -332,7 +335,7 @@ Sources: [persist.py](persist.py), [persistence checks](tests/test_persist.py).
 | Proxy or redirect media | `--part-mode proxy` or `--part-mode redirect` |
 | Answer LAN discovery | `--gdm on`, or `auto` when serving on port 32400 |
 | Serve HTTPS | `--tls-cert` and the corresponding key via `--tls-key` or the certificate file |
-| Keep library changes across restarts | `--state FILE` or `PLEXSIM_STATE` |
+| Keep library changes across restarts | On by default (`state.json` beside the catalog); `--state FILE` or `PLEXSIM_STATE` to move it, `--no-state` to turn it off |
 | Import owner cloud watch/rating state | Real claim, account consent, and `PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64` service-token setup |
 
 Plex and RD account credentials serve different purposes. Possessing a Plex
@@ -345,7 +348,7 @@ them enabled.
 | Area | Current boundary |
 |---|---|
 | Transcoding/remuxing | No video/audio conversion, bitrate reduction, subtitle burning, or transcoded streaming fallback |
-| Persistence | Opt-in: without `--state`, watch state, edits, lists, library changes, uploads, preferences, and statistics last until restart. With it, a catalog rebuild keeps only view state and server-level settings. There is no PMS database, backup format, or export. Claim state and metadata caches have separate persistent files |
+| Persistence | On by default; with `--no-state`, watch state, edits, lists, library changes, uploads, preferences, and statistics last until restart. With it on, a catalog rebuild keeps only view state and server-level settings. There is no PMS database, backup format, or export. Claim state and metadata caches have separate persistent files |
 | Acquisition | No built-in torrent search, magnet acquisition, continuous RD-library synchronization, or automatic discovery of new media |
 | Scanning/analysis | No complete filesystem scanner, media-analysis pipeline, generated thumbnails, intro/credits detection, or actual PMS database backups |
 | Subtitle delivery | Embedded extraction is unimplemented; uploaded subtitles are served, embedded tracks are not |

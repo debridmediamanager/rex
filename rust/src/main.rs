@@ -33,6 +33,7 @@ const SERVER_OPTIONS: &[(&str, &str, bool)] = &[
     ("--heartbeat-interval", "HEARTBEAT_INTERVAL", true),
     ("--account-state-interval", "ACCOUNT_STATE_INTERVAL", true),
     ("--state", "STATE", true),
+    ("--no-state", "", false),
 ];
 
 /// `parser.print_usage()`: argparse's wrapped usage block, with this binary's name.
@@ -76,7 +77,8 @@ fn server_help() -> String {
         ("--gdm", "answer Plex's LAN discovery protocol on udp/32410 and udp/32414"),
         ("--plex-direct-host", "the <hash>.plex.direct hostname to advertise in GDM's Host: line; omitted entirely when unknown, which is what a PMS with no certificate does"),
         ("--account-state-interval", "seconds between claimed-account watch/rating imports"),
-        ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default OFF: without it a restart reloads the catalog as it is on disk, which the test suites rely on"),
+        ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: state.json beside the catalog (state.pickle for the Python server), or $PLEXSIM_STATE"),
+        ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $PLEXSIM_STATE"),
     ]
     .into_iter()
     .collect();
@@ -232,6 +234,7 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
             "--heartbeat-interval" => options.heartbeat_interval = int(&value)?.try_into().map_err(|_| format!("argument {flag}: invalid int value: '{value}'"))?,
             "--account-state-interval" => options.account_state_interval = int(&value)?.try_into().map_err(|_| format!("argument {flag}: invalid int value: '{value}'"))?,
             "--state" => options.state = Some(PathBuf::from(value)),
+            "--no-state" => options.state = Some(PathBuf::new()),
             _ => unreachable!("every SERVER_OPTIONS flag is matched"),
         }
         // argparse checks `choices` as it consumes the option, before any later `-h`.

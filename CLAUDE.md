@@ -40,7 +40,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `server.py` | The Python oracle: every route as measured. Read it first for any behaviour, then its Rust counterpart. |
 | `library.py` | The mutable half: watch state, edits, playlists, collections, history |
 | `filters.py` | Plex's filter query language: the operator is part of the KEY |
-| `persist.py` | `--state`: the one file that keeps the mutable half across a restart |
+| `persist.py` | the state file (on by default, `--no-state` off): the one file that keeps the mutable half across a restart |
 | `sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
 | `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
 | `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
@@ -70,8 +70,8 @@ with `dirname(__file__)`. The descriptors (`server_prefs.json`, `regional_server
 (`crossdomain.xml`, `clientaccesspolicy.xml`, `favicon.ico`). Two runtime files are the
 exception to the flat rule: `tmdb_cache.json` and `claim_state.json` are resolved beside the
 **catalog**, not beside `server.py`, because they are state rather than measurement.
-The `--state` file is state too, and lives wherever that flag names (`run.sh.example`
-puts it beside the catalog).
+The state file is state too: beside the catalog by default (`state.json`), or wherever
+`--state` names.
 
 The native server finds the same sidecars beside the catalog, then one directory up,
 then in its working directory (`sidecar_roots` in `runtime.rs`), so run it from the
@@ -120,11 +120,15 @@ launchctl remove com.plexsim.dev
 
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
-`--state FILE` (or `PLEXSIM_STATE`) keeps what clients change -- watch state, ratings,
-edits, deletes, playlists, collections, history, sections, preferences, uploads, queues,
-and the device and statistics tables -- across restarts; see `persist.py` for what is
-and is not kept. It is **off by default**, because every suite relies on a restart
-being the undo button: never pass it to a test instance. The file is tied to the
+The state file keeps what clients change -- watch state, ratings, edits, deletes,
+playlists, collections, history, sections, preferences, uploads, queues, and the device
+and statistics tables -- across restarts; see `persist.py` for what is and is not kept.
+It is **on by default** since 2026-10-05: `state.json` beside the catalog (the Python
+oracle's is `state.pickle`), or `--state FILE` / `PLEXSIM_STATE`. A second server on the
+same catalog finds the default locked and runs without one. Every suite relies on a
+restart being the undo button, so **a test instance runs with `--no-state`**:
+`tests/server_command.py` adds it to every server a suite starts, and a cycle tree's
+`server.py` shim sets an empty `PLEXSIM_STATE`, so only a leg that names `--state` keeps one. The file is tied to the
 catalog's digest; after a catalog rebuild only view state (by guid, then part file) and
 the server-level settings carry over, and the old file is kept as `<file>.stale`.
 
@@ -406,11 +410,11 @@ closed local port for any run that must not reach plex.tv.
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
 collections, and finally deletes a row and a section. Everything it touches is in
 memory, so restarting the server is the undo button — provided it was started
-without `--state` — but run it against a test instance, started on the fixture the
+with `--no-state` — but run it against a test instance, started on the fixture the
 checks are written against:
 
 ```bash
-RD_TOKEN=dummy rust/target/release/plexsim --port 32500 --catalog tests/catalog_ui.json --assert-claimed &
+RD_TOKEN=dummy rust/target/release/plexsim --port 32500 --catalog tests/catalog_ui.json --assert-claimed --no-state &
 python3 tests/test_ui_surface.py --base http://127.0.0.1:32500
 ```
 

@@ -12,9 +12,10 @@ export RD_TOKEN=...
 # and udp/32414 by default, which is what a real PMS does and what lets an official
 # client on the same network find it without plex.tv. `--gdm off` turns it off.
 #
-# --state keeps watch state, edits, playlists, collections, history, preferences,
-# uploads and the device/statistics tables across restarts (gitignored). Leave it
-# out and a restart reloads catalog.json as it is on disk. The native server writes
+# The server keeps watch state, edits, playlists, collections, history, preferences,
+# uploads and the device/statistics tables across restarts in state.json beside the
+# catalog (gitignored) by default; --state FILE moves it, and with --no-state a
+# restart reloads catalog.json as it is on disk. The native server writes
 # JSON and refuses the Python server's pickle files, so a state file does not carry
 # over from one to the other.
 #
@@ -22,7 +23,6 @@ export RD_TOKEN=...
 # The Python server (the measured oracle) still runs with: python3 server.py <flags>
 exec rust/target/release/plexsim \
   --port 32400 \
-  --state state.json \
   --part-mode proxy \
   --assert-claimed \
   --verbose

@@ -48,14 +48,19 @@ def free_port():
 
 
 class Instance:
-    def __init__(self, catalog, state=None):
+    def __init__(self, catalog, state=None, args=(), default=False, env_state=None):
         self.port = free_port()
         command = server_command("--port", self.port, "--catalog", catalog,
-                                 "--gdm", "off", "--assert-claimed", root=ROOT)
+                                 "--gdm", "off", "--assert-claimed", *args, root=ROOT)
+        if default:
+            # The server's own default: neither `--state` nor `--no-state`.
+            command.remove("--no-state")
         if state:
             command += ["--state", state]
         env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1")
         env.pop("PLEXSIM_STATE", None)
+        if env_state is not None:
+            env["PLEXSIM_STATE"] = env_state
         self.log = tempfile.TemporaryFile()
         self.proc = subprocess.Popen(command, cwd=ROOT, env=env,
                                      stdout=subprocess.DEVNULL, stderr=self.log)
@@ -146,6 +151,62 @@ def write_everything(instance, machine):
 
 def differing(before, after):
     return [path for path in before if before[path] != after.get(path)]
+
+
+def default_state():
+    """A state file is the default: `state.json` (the Python server's `state.pickle`)
+    beside the catalog, held by one server at a time; `--no-state` and an empty
+    `PLEXSIM_STATE` turn it off, and the last of `--state`/`--no-state` wins."""
+    work = tempfile.mkdtemp(prefix="plexsim-persist-default-")
+    try:
+        catalog = os.path.join(work, "catalog.json")
+        shutil.copy(os.path.join(HERE, "catalog_ui.json"), catalog)
+        files = [os.path.join(work, name) for name in ("state.json", "state.pickle")]
+        watched = lambda instance: first(
+            instance.request("GET", "/library/metadata/1007")[1]).get("viewCount")
+
+        owner = Instance(catalog, default=True)
+        owner.request("GET", "/:/scrobble?key=1007&identifier=" + LIBRARY)
+        # A second server on the same catalog must not share the owner's file.
+        second = Instance(catalog, default=True)
+        second.request("GET", "/:/rate?key=1008&identifier=%s&rating=8" % LIBRARY)
+        second.stop()
+        check("a second server on one catalog runs without the held default file",
+              "in use by another plexsim" in second.output(), second.output()[-600:])
+        owner.stop(signal.SIGTERM)
+        kept = [path for path in files if os.path.exists(path)]
+        check("with no state flag the server keeps a state file beside its catalog",
+              len(kept) == 1, "files %s; log %s" % (kept, owner.output()[-600:]))
+
+        restarted = Instance(catalog, default=True)
+        check("a default restart keeps a write",
+              watched(restarted) == 1, "viewCount %s" % watched(restarted))
+        rated = first(restarted.request("GET", "/library/metadata/1008")[1]).get("userRating")
+        check("the second server's write is not in the owner's file", rated is None,
+              "userRating %s" % rated)
+        restarted.stop()
+
+        for label, instance in (
+                ("--no-state", lambda: Instance(catalog, args=("--no-state",))),
+                ("an empty PLEXSIM_STATE", lambda: Instance(catalog, default=True, env_state="")),
+                ("--state then --no-state",
+                 lambda: Instance(catalog, args=("--state", os.path.join(work, "other"),
+                                                 "--no-state")))):
+            server = instance()
+            check("%s ignores the default file and reads the fixture" % label,
+                  watched(server) is None and "state file" not in server.output(),
+                  "viewCount %s; log %s" % (watched(server), server.output()[-400:]))
+            server.request("GET", "/:/scrobble?key=1009&identifier=" + LIBRARY)
+            server.stop(signal.SIGTERM)
+        check("--state then --no-state writes no file",
+              not os.path.exists(os.path.join(work, "other")))
+        after = Instance(catalog, default=True)
+        check("a run without a state file leaves the default file as it was",
+              watched(after) == 1
+              and first(after.request("GET", "/library/metadata/1009")[1]).get("viewCount") is None)
+        after.stop()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def main():
@@ -324,6 +385,7 @@ def main():
         refusing.stop()
     finally:
         shutil.rmtree(work, ignore_errors=True)
+    default_state()
 
     print("\n%d/%d passed" % (sum(results), len(results)))
     return 0 if all(results) else 1

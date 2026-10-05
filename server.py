@@ -26158,10 +26158,14 @@ def main():
                         default=accountstate_module.DEFAULT_INTERVAL,
                         help="seconds between claimed-account watch/rating imports")
     parser.add_argument(
-        "--state", default=os.environ.get("PLEXSIM_STATE"),
+        "--state", default=None,
         help="file to keep watch state, edits, lists, history, preferences, uploads "
-             "and statistics in across restarts. Default OFF: without it a restart "
-             "reloads the catalog as it is on disk, which the test suites rely on")
+             "and statistics in across restarts. Default: state.json beside the "
+             "catalog (state.pickle for the Python server), or $PLEXSIM_STATE")
+    parser.add_argument(
+        "--no-state", dest="state", action="store_const", const="",
+        help="keep nothing across a restart: a restart reloads the catalog as it is "
+             "on disk, which the test suites rely on. Also an empty $PLEXSIM_STATE")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -26206,8 +26210,9 @@ def main():
         tmdb=tmdb,
     )
     store = None
-    if args.state:
-        store = persist_module.Store(args.state, args.catalog)
+    state_path = persist_module.resolve_path(args.state, args.catalog)
+    if state_path:
+        store = persist_module.Store(state_path, args.catalog)
         logger.info("state file %s: %s", store.path, store.restore(sim))
         # The claim reports the server's name to plex.tv; a restored rename is it.
         claim.name = catalog.friendly

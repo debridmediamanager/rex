@@ -42,9 +42,10 @@ Jellyfin.
 - **Claimed-server emulation**, calibrated field by field against the account's
   own real servers at `/identity`, `/media/providers`, `/:/prefs` and
   `/library/sections`.
-- **Survives a restart**, with `--state FILE`: watch state, edits, playlists,
-  collections, history, sections, preferences and uploads are saved as they
-  change and restored at start. Without it a restart reloads `catalog.json`.
+- **Survives a restart**: watch state, edits, playlists, collections, history,
+  sections, preferences and uploads are saved as they change (to `state.json`
+  beside the catalog, or `--state FILE`) and restored at start. With
+  `--no-state` a restart reloads `catalog.json`.
 - **Published over a named Cloudflare tunnel**, so clients reach it without a
   port forward or a `*.plex.direct` certificate.
 
@@ -71,8 +72,8 @@ client bundle with `--web-root`, or point any Plex client at the host.
 The Python server (`server.py` and its modules) is kept in the tree as the
 measured reference the native server is ported from and compared against. It
 runs with the same flags (`python3 server.py ...`), and `PLEXSIM_SERVER=python`
-points the black-box test suites at it. Its `--state` file is a pickle that the
-native server does not read. The last Python-only `main` is the `python-server`
+points the black-box test suites at it. Its state file is a pickle (`state.pickle` by
+default) that the native server does not read. The last Python-only `main` is the `python-server`
 branch.
 
 ## Tests
