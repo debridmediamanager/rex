@@ -14,14 +14,21 @@ just before `addedAt`. An episode row (zen) and a movie row (kids) keep the list
 state; whether 1.43.4 also drops a show's aggregate is not measured (kids has no show plays).
 plexsim answered the full detail row here.
 
+The notification socket answers a client PING with a PONG carrying the same payload, at once
+(`tests/fixtures/c94_d_ws_ping.json`, kids and zen). Plex for Android 2026.19.1 pings its
+`/:/websockets/notifications` socket and, getting no pong from plexsim, dropped it after 50 s
+(close 1006) and never reopened it.
+
 Drives a real server process (`tests/server_command.py`): the native binary by default, the
 oracle with `PLEXSIM_SERVER=python`. Binds a port in 25420-25429.
 
     python3 tests/test_parity_cycle94_d.py
 """
+import base64
 import http.client
 import json
 import os
+import struct
 import socket
 import subprocess
 import sys
@@ -175,11 +182,84 @@ def server_checks(port):
                   sorted(dropped))
 
 
+PING_FIXTURE = os.path.join(HERE, "fixtures", "c94_d_ws_ping.json")
+
+
+def ws_open(port):
+    sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+    key = base64.b64encode(os.urandom(16)).decode()
+    sock.sendall(("GET /:/websockets/notifications HTTP/1.1\r\nHost: 127.0.0.1:%d\r\n"
+                  "Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: %s\r\n"
+                  "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Protocol: GET\r\n"
+                  "Origin: http://10.0.2.2\r\n\r\n" % (port, key)).encode())
+    buf = b""
+    while b"\r\n\r\n" not in buf:
+        chunk = sock.recv(4096)
+        if not chunk:
+            break
+        buf += chunk
+    head, _, rest = buf.partition(b"\r\n\r\n")
+    return sock, head.split(b"\r\n")[0], rest
+
+
+def ws_ping_answer(sock, buf, payload, seconds=2.5):
+    """Send one masked PING, return the hex of every non-text frame answered in `seconds`."""
+    mask = os.urandom(4)
+    sock.sendall(bytes([0x89, 0x80 | len(payload)]) + mask +
+                 bytes(b ^ mask[i % 4] for i, b in enumerate(payload)))
+    got, end = [], time.time() + seconds
+    sock.settimeout(0.3)
+    while time.time() < end:
+        try:
+            chunk = sock.recv(4096)
+            if not chunk:
+                got.append("EOF")
+                break
+            buf += chunk
+        except socket.timeout:
+            pass
+        while len(buf) >= 2:
+            op, n, off = buf[0] & 15, buf[1] & 127, 2
+            if n == 126:
+                n, off = struct.unpack(">H", buf[2:4])[0], 4
+            elif n == 127:
+                n, off = struct.unpack(">Q", buf[2:10])[0], 10
+            if len(buf) < off + n:
+                break
+            if op not in (1, 9):   # text events and the server's own 10 s pings are not answers
+                got.append(buf[:off + n].hex())
+            buf = buf[off + n:]
+        if got:
+            break
+    return got, buf
+
+
+def ping_checks(port):
+    fixture = json.load(open(PING_FIXTURE))
+    for exchange in fixture["exchanges"]:
+        check("reference: %s answers a %r ping with an unmasked pong of the same payload" % (
+            exchange["server"], exchange["ping"]),
+              exchange["answer"][:1] == [(b"\x8a" + bytes([len(exchange["ping"])])
+                                          + exchange["ping"].encode()).hex()], exchange["answer"])
+    for payload in (b"c94d", b""):
+        sock, status, buf = ws_open(port)
+        check("the notification socket upgrades (%s)" % status.decode(errors="replace"),
+              b" 101 " in status, status)
+        first, buf = ws_ping_answer(sock, buf, payload)
+        expect = (b"\x8a" + bytes([len(payload)]) + payload).hex()
+        check("a %r ping is answered with pong %s" % (payload.decode(), expect), first == [expect], first)
+        second, buf = ws_ping_answer(sock, buf, b"second")
+        check("after a %r ping the socket still pongs" % payload.decode(),
+              second == [(b"\x8a\x06second").hex()], second)
+        sock.close()
+
+
 def main():
     reference_checks()
     process, port = start()
     try:
         server_checks(port)
+        ping_checks(port)
     finally:
         process.terminate()
         try:

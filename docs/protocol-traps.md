@@ -4059,3 +4059,11 @@ are changing; replay the client's exact request before altering behavior.
   Whether 1.43.4 also drops a show's aggregate is unmeasured (kids has no show plays).
   MALFORMED-ONLY in rendering: TopChart reads title, type, ratingKey, image and the two counts
   (`tests/test_parity_cycle94_d.py`).
+- **The notification socket answers a client PING with a PONG at once**, unmasked, same payload
+  (`89 84 <mask> c94d` -> `8a 04 63 39 34 64`, empty -> `8a 00`; kids and zen,
+  `tests/fixtures/c94_d_ws_ping.json`). plexsim ignored client pings. Plex for Android 2026.19.1
+  pings its `/:/websockets/notifications` socket and dropped plexsim's after exactly 50 s (close
+  1006, four runs) and never reopened it, so it saw no `playing` or activity event on plexsim;
+  with pongs the socket stays open and carries them. CLIENT-VISIBLE. zen also CLOSES (`88 00`)
+  after ponging an EMPTY ping where kids does not: recorded, not emulated
+  (`tests/test_parity_cycle94_d.py`).

@@ -25626,6 +25626,8 @@ class Handler(BaseHTTPRequestHandler):
             # measurement taken WITHOUT the `filters=log` the client actually sends.
             # With it, the reference pushes log lines continuously (386 in 14 s).
             sim.log_sink(sink)
+        # The ping/pong reply in `_client_went_away` writes under the same lock.
+        self._ws_write_lock = lock
         # Keep it alive with server-side pings. A silent socket is eventually
         # reaped by proxies, and Cloudflare sits in front of this one. Measured: the
         # reference pings every 10 s with a ONE-byte payload, not every 20 empty.
@@ -25692,9 +25694,27 @@ class Handler(BaseHTTPRequestHandler):
         masked = bool(head[1] & 0x80)
         # Drain the rest of the frame so the next read starts on a boundary.
         try:
-            self.connection.recv(length + (4 if masked else 0))
+            rest = self.connection.recv(length + (4 if masked else 0))
         except OSError:
             return True
+        if opcode == 0x9:
+            # Cycle 94, measured on kids (1.43.4) and zen (1.42.2): a client PING is answered
+            # at once with an unmasked PONG carrying the same payload (`89 84 <mask> c94d` ->
+            # `8a 04 63 39 34 64`; an empty ping -> `8a 00`). plexsim read the ping and said
+            # nothing. Plex for Android 2026.19.1 pings its notification socket and, with no
+            # pong, drops it after 50 s with 1006 and never reopens it -- so the app lost
+            # every server event (the subtitle-download activity it waits on, playing
+            # sessions) on plexsim alone. (zen also CLOSES after ponging an EMPTY ping, where
+            # kids keeps the socket; that split is recorded, not emulated.)
+            payload = rest[4:] if masked else rest
+            if masked:
+                payload = bytes(b ^ rest[i % 4] for i, b in enumerate(payload))
+            try:
+                with getattr(self, "_ws_write_lock", threading.Lock()):
+                    self.connection.sendall(struct.pack("!BB", 0x8A, len(payload)) + payload)
+            except OSError:
+                return True
+            return False
         if opcode == 0x8:
             # Echo the close with status 1000, which is what the reference sends.
             try:

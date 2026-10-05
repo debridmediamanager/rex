@@ -23699,6 +23699,28 @@ fn handle_websocket<S: Read + Write + PollRead>(
                 if stream.read_exact(&mut rest).is_err() {
                     return Ok(());
                 }
+                if opcode == 0x9 {
+                    // Cycle 94, measured on kids and zen: a client PING is answered at once
+                    // with an unmasked PONG carrying the same payload. Plex for Android
+                    // 2026.19.1 drops a socket that never pongs after 50 s (1006) and does
+                    // not reopen it. See the oracle's `_client_went_away`.
+                    let payload: Vec<u8> = if masked {
+                        rest[4..]
+                            .iter()
+                            .enumerate()
+                            .map(|(index, byte)| byte ^ rest[index % 4])
+                            .collect()
+                    } else {
+                        rest.clone()
+                    };
+                    let mut frame = vec![0x8A, payload.len() as u8];
+                    frame.extend_from_slice(&payload);
+                    stream
+                        .write_all(&frame)
+                        .and_then(|_| stream.flush())
+                        .map_err(|error| gone(error.to_string()))?;
+                    continue;
+                }
                 if opcode == 0x8 {
                     let _ = stream
                         .write_all(&[0x88, 0x02, 0x03, 0xE8])
