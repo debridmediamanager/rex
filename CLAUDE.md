@@ -125,7 +125,8 @@ playlists, collections, history, sections, preferences, uploads, queues, and the
 and statistics tables -- across restarts; see `persist.py` for what is and is not kept.
 It is **on by default** since 2026-10-05: `state.json` beside the catalog (the Python
 oracle's is `state.pickle`), or `--state FILE` / `PLEXSIM_STATE`. A second server on the
-same catalog finds the default locked and runs without one. Every suite relies on a
+same catalog finds the default locked and exits 1, as a second PMS on a served data
+directory does (cycle 92). Every suite relies on a
 restart being the undo button, so **a test instance runs with `--no-state`**:
 `tests/server_command.py` adds it to every server a suite starts, and a cycle tree's
 `server.py` shim sets an empty `PLEXSIM_STATE`, so only a leg that names `--state` keeps one. The file is tied to the
