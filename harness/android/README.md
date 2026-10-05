@@ -101,6 +101,20 @@ each writes a UI dump, a screenshot and the capture-line range it produced.
   graphs because the copy 404s `/statistics/*`, and Top Played retries the 404ing
   `/library/all/top` in a loop.
 
+* **A cold start of 2026.19.1 restores the last screen** (the Server dashboard, say), which has no
+  tab bar; `walk.py`'s `reset()` backs out to Home first, and its library step taps the sheet's
+  `<lib> on <server>` row by label. The overflow button is `action-button-overflow`, not "More".
+* **2026.19.1 opens `/:/websockets/notifications` only for an account with the
+  `WebsocketsForPms` feature** (uuid `0668d10e-...`, from `/api/v2/features`); the test account
+  lacks it. `featinject.py` adds it to the answer in the proxy (nothing is written to plex.tv);
+  load it BEFORE `tap.py` so the tap records the edited body. The socket carries the ACCOUNT
+  token, not the server's: a plexsim started with `--token` 401s it. `wstap.py` logs every frame
+  and the close (`wslog=`); mitmproxy does not count ping/pong frames as messages.
+* **Pin a copy on Tailscale through a local relay** when the proxy has to see it: droid only maps
+  `10.0.2.2:32588` to loopback, and a `100.x` connection bypasses the proxy entirely; with a
+  `10.0.2.2:<port>` relay the favourites hook cannot reach the target and the sheet shows the
+  ACCOUNT's real favourites -- never pick one of those rows.
+
 ## Request census
 
 `handover/tools/apkcensus.py decompile <apk or split dir> <out>` pulls the Hermes bundle out of

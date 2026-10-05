@@ -112,6 +112,12 @@ def step(name):
 def reset():
     adb("shell", "am", "start", "-S", "-W", "-n", "com.plexapp.android/tv.plex.app.MainActivity")
     time.sleep(14)
+    # 2026.19.1 restores the last screen on a cold start (the Server dashboard, say), which
+    # has no tab bar; back out until Home's tabs are there.
+    for _ in range(4):
+        if find(r"Libraries, tab 2 of 5"):
+            break
+        back(3)
 
 
 def to_library(lib):
@@ -120,6 +126,9 @@ def to_library(lib):
     # 2026.19.1 opens the Favorite Libraries sheet straight from the tab while no library is
     # selected; 2026.9.0 drew a zero state whose "<lib> library on <server>" button opened it.
     if find(r"^Favorite Libraries$") or tap(r" library on ", wait=4):
+        # 2026.19.1 names each sheet row "<lib> on <server>"; tap it by that label.
+        if tap(r"^%s on [^.]*$" % re.escape(lib), wait=7):
+            return
         adb("shell", "input", "tap", "797", "2248")   # See All Libraries
         time.sleep(5)
         # The sheet is bottom-anchored: its last row sits at 1632 and each row is 150
@@ -193,7 +202,8 @@ def _():
     for i in range(4):
         adb("shell", "input", "swipe", "540", "700", "540", "1800", "300")
         time.sleep(1)
-    if tap("^More$", wait=4):
+    # 2026.19.1 labels the overflow button by its id, not "More".
+    if tap("^More$|^action-button-overflow$", wait=4):
         snap("movie-more")
         back()
     if tap("^Off$", wait=4):
@@ -229,7 +239,7 @@ def _():
         snap("season")
         swipe()
         snap("season-down")
-        if tap(r"^Episode 1|^E1|1\. |S1 · E1|S1 E1", wait=7):
+        if tap(r"^Episode 1|^E1|1\. |S1 · E1|S1 E1|Season \d+ • Episode \d+", wait=7):
             snap("episode")
             swipe()
             snap("episode-down")
