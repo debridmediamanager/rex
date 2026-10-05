@@ -117,7 +117,9 @@ def reset():
 def to_library(lib):
     reset()
     tap(r"Libraries, tab 2 of 5", wait=7)
-    if tap(r" library on ", wait=4):
+    # 2026.19.1 opens the Favorite Libraries sheet straight from the tab while no library is
+    # selected; 2026.9.0 drew a zero state whose "<lib> library on <server>" button opened it.
+    if find(r"^Favorite Libraries$") or tap(r" library on ", wait=4):
         adb("shell", "input", "tap", "797", "2248")   # See All Libraries
         time.sleep(5)
         # The sheet is bottom-anchored: its last row sits at 1632 and each row is 150

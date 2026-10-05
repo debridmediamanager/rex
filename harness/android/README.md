@@ -1,6 +1,7 @@
 # The Android instrument — Plex for Android in an emulator, pinned to one server
 
-Cycle 70's instrument. Plex for Android 2026.9.0 is a **React Native app compiled to Hermes
+Cycle 70's instrument. Plex for Android (2026.9.0 then; **2026.19.1**, versionCode 971050475,
+since cycle 94) is a **React Native app compiled to Hermes
 bytecode**, a codebase separate from Plex Web, so it builds its own requests. This directory drives
 the real app in a local arm64 emulator through mitmproxy, pinned to exactly one server (plexsim or a
 writable reference copy), and records every exchange the way `harness/scripts/tap.py` does for the
@@ -84,3 +85,26 @@ each writes a UI dump, a screenshot and the capture-line range it produced.
 * **Never pass a path containing `claude` to a long-lived process** on the driver's Mac: an hourly
   launchd job there `kill -9`s every tty-less process whose command line matches it. Symlink the
   work directory (`ln -s <scratch> ~/pxc70`) and use `DROID_WORK=~/pxc70`.
+* **2026.19.1 opens the Favorite Libraries sheet straight from the Libraries tab** while no
+  library is selected (cycle 94); 2026.9.0 drew a zero state whose "<lib> library on <server>"
+  button opened it. `walk.py` accepts either.
+* **After sign-in, 2026.19.1 can sit on `screen-loading`** with no further PMS request until the
+  app is force-stopped and started again: `signin.py` then reports `state None` although the
+  sign-in itself succeeded, and `am force-stop` + `am start` reaches Home (cycle 94, three times).
+* **A pinned connection on a Tailscale address (`100.x`) does not go through the proxy**: the
+  app reached plexscratch at `100.101.10.1:32410` directly, so nothing of it is in the tap log and
+  `rewrite.txt` cannot touch it. Read the copy's own `Logs/Plex Media Server.log` (`Request:`
+  lines) for the exact requests, or pin a `10.0.2.2` address that a local relay forwards.
+* **Pinned to an unclaimed copy, a first sign-in lands on "Review Your Favorite Libraries"**
+  with nothing favourited; Continue reaches a Home with no server shelves. The Server screen
+  (Profile, `menu-user-servers`) still works: its Dashboard hides the Bandwidth, CPU and RAM
+  graphs because the copy 404s `/statistics/*`, and Top Played retries the 404ing
+  `/library/all/top` in a loop.
+
+## Request census
+
+`handover/tools/apkcensus.py decompile <apk or split dir> <out>` pulls the Hermes bundle out of
+the base APK and decompiles it; `census` and `diff` list every request template with its base
+(PMS helper, plex.tv-family client, player-direct, in-app route) and call site.
+`handover/android-census-2026.19.1.md` is the 2026.9.0 -> 2026.19.1 diff.
+
