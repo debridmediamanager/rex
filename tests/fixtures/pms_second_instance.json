@@ -1,0 +1,12 @@
+{
+  "what": "A second Plex Media Server process started on a data directory another one is already serving",
+  "measured": "2026-10-05 03:55 CEST on plexscratch (PMS 1.43.4.10903-e5521bd8c, plexinc/pms-docker), cycle 92",
+  "command": "docker exec -u plex plexscratch-plex env PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR='/config/Library/Application Support' PLEX_MEDIA_SERVER_HOME=/usr/lib/plexmediaserver timeout 25 '/usr/lib/plexmediaserver/Plex Media Server'",
+  "stdout": "Plex Media Server is already running. Will not start...\n",
+  "exit": 1,
+  "seconds": "returned at once, well inside the 25 s timeout",
+  "pid_file_before": "246",
+  "pid_file_after": "246",
+  "log_lines_added": 0,
+  "running_server_after": "pid 246 still the only Plex Media Server process, still answering"
+}

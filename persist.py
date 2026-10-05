@@ -11,9 +11,9 @@ This is the default: `state.pickle` beside the catalog (the native server's is
 `state.json`), or `--state FILE` / `$PLEXSIM_STATE`. `--no-state`, or an empty
 `$PLEXSIM_STATE`, turns it off, and the test suites run that way: `test_ui_surface.py`
 writes rows, lists and sections, and its checks assume every instance it starts
-begins from the fixture. Two servers started on one catalog would overwrite each
-other's default file, so it is held by an advisory lock for the life of the process,
-and a second server finding it held runs without one (`resolve_path`).
+begins from the fixture. The default file is the server's data directory, held by an
+advisory lock for the life of the process; a second server finding it held refuses to
+start, as a second PMS on a served data directory does (`resolve_path`).
 
 What is kept is the state the server itself mutates, and nothing it derives or
 only holds for a live connection:
@@ -116,7 +116,7 @@ def resolve_path(named, catalog_path):
     """The state file `main()` keeps, or None. `--state` and `--no-state` share one
     destination (the last given wins; `--no-state` stores an empty path), then
     `$PLEXSIM_STATE`, where empty also means none, then `state.pickle` beside the
-    catalog, locked for this process: a default another server holds is not shared."""
+    catalog, locked for this process: a default another server holds ends this one."""
     if named is None:
         named = os.environ.get("PLEXSIM_STATE")
     if named is not None:
@@ -132,14 +132,23 @@ def resolve_path(named, catalog_path):
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         handle.close()
-        logger.warning("state file %s is in use by another plexsim: running without a state file", path)
-        return None
+        # Cycle 92, measured on plexscratch: a second PMS on a data directory another
+        # one is serving prints this line and exits 1 at once. Running on without the
+        # file instead served clients whose every write vanished at the next restart,
+        # or, when this server came back first, the other server's writes in their place.
+        logger.error("state file %s is in use by another plexsim", path)
+        print(ALREADY_RUNNING, flush=True)
+        raise SystemExit(1)
     _LOCKS.append(handle)
     return path
 
 
 # The default state file's lock, held open until the process exits.
 _LOCKS = []
+
+# What a second Plex Media Server on a served data directory prints before it exits 1
+# (`tests/fixtures/pms_second_instance.json`).
+ALREADY_RUNNING = "Plex Media Server is already running. Will not start..."
 
 
 def catalog_digest(path):

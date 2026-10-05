@@ -289,7 +289,9 @@ fraction of a second before a hard kill. Everything else is saved within about t
 seconds, every minute regardless, and on SIGTERM or Ctrl-C. `--no-state` (or an empty
 `PLEXSIM_STATE`) turns it off, which is how the test suites run: they rely on a restart
 undoing their writes. A second server started on the same catalog does not share the
-first one's default file; it runs without one and logs that.
+first one's default file: it refuses to start, printing what a second PMS on a served
+data directory prints (`Plex Media Server is already running. Will not start...`) and
+exiting 1.
 
 | Kept | Not kept |
 |---|---|

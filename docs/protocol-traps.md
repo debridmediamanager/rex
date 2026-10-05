@@ -4036,3 +4036,16 @@ are changing; replay the client's exact request before altering behavior.
   of nothing, never stamped `viewUpdatedAt` on the section path and cleared `lastRatedAt` on a
   section `-5`. CLIENT-VISIBLE: Recently Watched and a section's `/onDeck` order by
   `viewUpdatedAt`, so a re-rate moved a row to the front; python-plexapi reads `lastRatedAt`.
+- **A second server on a held default state file refuses to start, as a second PMS does.**
+  Measured cycle 92 on plexscratch (PMS 1.43.4, `tests/fixtures/pms_second_instance.json`):
+  launching `Plex Media Server` again on the data directory the running one serves prints
+  `Plex Media Server is already running. Will not start...` and exits 1 at once, leaving
+  the pid file and the log untouched. plexsim's default state file (`state.json` /
+  `state.pickle` beside the catalog) is that directory, and since `8978e61` a second
+  server finding it locked ran on WITHOUT a state file: its clients' ratings, watched
+  flags, playlists and server name vanished at the next restart, and when it came back
+  before the first server it took the first one's file and showed that server's writes
+  instead of its own (native and oracle alike). Both now print the measured line and exit
+  1 before binding. `--no-state` or an explicit `--state` still starts a second server.
+  Not reachable through any client request, but CLIENT-VISIBLE to the clients of such a
+  second server (`tests/test_parity_cycle92_cp.py`).

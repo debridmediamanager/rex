@@ -167,12 +167,19 @@ def default_state():
 
         owner = Instance(catalog, default=True)
         owner.request("GET", "/:/scrobble?key=1007&identifier=" + LIBRARY)
-        # A second server on the same catalog must not share the owner's file.
-        second = Instance(catalog, default=True)
-        second.request("GET", "/:/rate?key=1008&identifier=%s&rating=8" % LIBRARY)
-        second.stop()
-        check("a second server on one catalog runs without the held default file",
-              "in use by another plexsim" in second.output(), second.output()[-600:])
+        # A second server on the same catalog must not share the owner's file, and
+        # (cycle 92, as a second PMS on a served data directory) does not start at all:
+        # `test_parity_cycle92_cp.py` holds the measured exit and message.
+        try:
+            second = Instance(catalog, default=True)
+        except SystemExit as refused:
+            check("a second server on one catalog refuses the held default file",
+                  "in use by another plexsim" in str(refused), str(refused)[-600:])
+        else:
+            second.request("GET", "/:/rate?key=1008&identifier=%s&rating=8" % LIBRARY)
+            second.stop()
+            check("a second server on one catalog refuses the held default file", False,
+                  second.output()[-600:])
         owner.stop(signal.SIGTERM)
         kept = [path for path in files if os.path.exists(path)]
         check("with no state flag the server keeps a state file beside its catalog",

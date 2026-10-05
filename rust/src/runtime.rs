@@ -22738,10 +22738,10 @@ fn start_state_saver(runtime: SharedRuntime) {
 /// its database, so a state file is the default: `state.json` beside the catalog,
 /// like `tmdb_cache.json` and `claim_state.json`. `--no-state` (or an empty
 /// `PLEXSIM_STATE`) turns it off, which is what the test suites run with: their
-/// checks assume a restart reloads the fixture. Two servers started on one catalog
-/// would otherwise overwrite each other's file, so the default is held by an
-/// advisory lock for the life of the process, and a second server finding it held
-/// runs without one rather than sharing it. An explicit `--state` is taken as given.
+/// checks assume a restart reloads the fixture. The default is the server's data
+/// directory, held by an advisory lock for the life of the process; a second server
+/// finding it held refuses to start, as a second PMS does. An explicit `--state` is
+/// taken as given.
 fn resolve_state_path(options: &RuntimeOptions) -> Option<PathBuf> {
     // `--state` and `--no-state` share one destination, so the last one given wins;
     // `--no-state` (an empty path) and an empty `PLEXSIM_STATE` both mean none.
@@ -22776,11 +22776,14 @@ fn resolve_state_path(options: &RuntimeOptions) -> Option<PathBuf> {
     // SAFETY: flock on a descriptor this function owns; the descriptor is leaked on
     // success so the lock lasts as long as the process.
     if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
-        warning!(
-            "state file {} is in use by another plexsim: running without a state file",
-            path.display()
-        );
-        return None;
+        // Cycle 92, measured on plexscratch (`tests/fixtures/pms_second_instance.json`):
+        // a second PMS on a data directory another one is serving prints this line and
+        // exits 1 at once. Running on without the file instead served clients whose
+        // every write vanished at the next restart, or, when this server came back
+        // first, the other server's writes in their place.
+        error!("state file {} is in use by another plexsim", path.display());
+        println!("Plex Media Server is already running. Will not start...");
+        std::process::exit(1);
     }
     std::mem::forget(file);
     Some(path)
