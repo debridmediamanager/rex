@@ -26,17 +26,22 @@ def main():
             os.makedirs(os.path.dirname(native))
             open(native, "w").close()
             default = server_command("--port", 32500, root=repo)
-            assert default == [native, "--port", "32500"]
+            # A state file is the server's default; a test server keeps none unless asked.
+            assert default == [native, "--port", "32500", "--no-state"]
+            assert server_command("--state", "s", root=repo) == [native, "--state", "s"]
+            assert server_command("--state=s", root=repo) == [native, "--state=s"]
+            assert server_command("--no-state", root=repo) == [native, "--no-state"]
 
         os.environ["PLEXSIM_SERVER"] = "python"
         oracle = server_command("--port", 32500, root="/repo with spaces")
-        assert oracle == [sys.executable, "/repo with spaces/server.py", "--port", "32500"]
+        assert oracle == [sys.executable, "/repo with spaces/server.py", "--port", "32500",
+                          "--no-state"]
 
         os.environ["PLEXSIM_SERVER"] = '"/tmp/native build/plexsim" --profile "test mode"'
         selected = server_command("--port", 32501, "--catalog", "/tmp/catalog.json",
                                   root="/unused")
         assert selected == ["/tmp/native build/plexsim", "--profile", "test mode",
-                            "--port", "32501", "--catalog", "/tmp/catalog.json"]
+                            "--port", "32501", "--catalog", "/tmp/catalog.json", "--no-state"]
 
         os.environ["PLEXSIM_SERVER"] = "   "
         try:
