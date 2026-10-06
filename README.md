@@ -93,6 +93,11 @@ export RD_TOKEN=...                      # keys come from the environment, never
 ./manager.py create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
 ./manager.py start living-room
 ./manager.py list                        # status | logs | stop | restart | delete [--purge] | build
+
+# or from its keys alone: the catalog is built from the whole Real-Debrid library
+export RD_TOKEN=... TMDB_KEY=... PLEX_TOKEN=... DMM_API_KEY=...
+./manager.py create den --port 32401 --gdm on
+./manager.py build den --start           # build_catalog.py --library, then start (restart if running)
 ```
 
 Each server gets `managed/servers/<name>/`, whose `plexsim.db` holds its catalog (copied

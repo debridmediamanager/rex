@@ -125,8 +125,9 @@ launchctl remove com.plexsim.dev
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
 Several servers, started and stopped on demand: `./manager.py serve`, then
-`./manager.py create NAME --port P --catalog PATH` (keys from `RD_TOKEN`/`TMDB_KEY`/
-`PLEX_TOKEN`/`PLEXSIM_TOKEN` in the environment) and `start|stop|list|logs NAME`. Its data
+`./manager.py create NAME --port P [--catalog PATH]` (keys from `RD_TOKEN`/`TMDB_KEY`/
+`PLEX_TOKEN`/`PLEXSIM_TOKEN`/`DMM_API_KEY` in the environment) and `start|stop|list|logs NAME`;
+without a catalog, `build NAME --start` builds it from the whole library first. Its data
 lives in `managed/` (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
 starts its own manager on a temporary root.
 
