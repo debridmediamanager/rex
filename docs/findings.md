@@ -11344,6 +11344,13 @@ plays). Instrument: B's s42 legs lost the same 95% beat to plexscratch42's stati
 write hold every ~80 s) in every run; the leg now waits for a hold to end in s42's log and sends the
 beat once.
 
+#### The ninety-fifth pass — clean on all twelve axes under Plex for Android 2026.19.1
+
+Cycle 95 repeated every axis on the cycle-94 head, with the new app's legs (its request ledger, the emulator walk,
+the dashboard, and a notification socket held open for more than twelve minutes through real playback) as a standing
+part of axis 11. **Zero client-visible and zero malformed-only findings.** The `/library/all/top` shape built in
+cycle 94 reproduced the fixture on fresh servers in three territories.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
