@@ -13,6 +13,11 @@ catalogdb.py), which the server takes as `--catalog` and keeps its state in too.
 existing JSON catalog is moved into one with
 
     ./build_catalog.py --convert catalog.json --out plexsim.db
+
+`--library` builds from every downloaded torrent in the Real-Debrid account instead of
+named links, identifying each torrent first (identify.py: an id in its name, its hash
+in DMM with `DMM_API_KEY`, then Plex's matcher and TMDB) and writing what each was
+identified as, and how surely, to `identify_report.json` beside the output.
 """
 
 import argparse
@@ -29,6 +34,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import catalogdb  # noqa: E402
+import identify as identify_module  # noqa: E402
 import hierarchy as hierarchy_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
 from debrid import Resolver  # noqa: E402
@@ -131,6 +137,17 @@ def main():
         help="TMDB api key; without it rows keep their probe-derived titles only",
     )
     parser.add_argument(
+        "--library",
+        action="store_true",
+        help="build from every downloaded torrent in the Real-Debrid account",
+    )
+    parser.add_argument("--limit", type=int, help="with --library: only the first N torrents")
+    parser.add_argument(
+        "--dmm-api-key",
+        default=os.environ.get("DMM_API_KEY"),
+        help="DMM API key (a sponsor's): identify torrents by hash first",
+    )
+    parser.add_argument(
         "--convert",
         metavar="JSON",
         help="write an existing JSON catalog into the --out database and stop",
@@ -163,14 +180,20 @@ def main():
         parser.error("RD_TOKEN must be set")
 
     links = list(args.link)
+    # Torrent-level identity, by link: a torrent's name and hash say which title it is
+    # far better than one file's name inside it (identify.py).
+    torrents = []
     for torrent_id in args.torrent:
-        request = urllib.request.Request(
-            "https://api.real-debrid.com/rest/1.0/torrents/info/" + torrent_id,
-            headers={"Authorization": "Bearer " + token},
-        )
-        with urllib.request.urlopen(request, timeout=30) as response:
-            info = json.load(response)
-        links.extend(info.get("links") or [])
+        torrents.append(rd_get(token, "/torrents/info/" + torrent_id))
+    if args.library:
+        listed = [t for t in list_torrents(token) if t.get("status") == "downloaded"]
+        torrents.extend(listed[: args.limit] if args.limit else listed)
+    for torrent in torrents:
+        # `GET /torrents` lists some torrents with no links (the newest 210 of the
+        # account's 3,390 on 2026-10-06); their own `/torrents/info` carries them.
+        if not torrent.get("links") and torrent.get("id"):
+            torrent["links"] = (rd_get(token, "/torrents/info/" + torrent["id"]) or {}).get("links") or []
+        links.extend(torrent.get("links") or [])
 
     if not links:
         parser.error("no links to build from")
@@ -185,6 +208,8 @@ def main():
     else:
         print("no TMDB key: rows will carry filename-derived titles and no artwork")
 
+    identity_of = identify_torrents(torrents, tmdb, args)
+
     # machineIdentifier must be stable across restarts: plex.tv keys the
     # registered device on it, and a client that saw the old one treats a new
     # value as a different server.
@@ -198,10 +223,20 @@ def main():
     rating_key = 1000
     for link in links:
         print("resolving %s" % link, flush=True)
-        try:
-            url, size = resolver.resolve(link)
-        except Exception as error:
-            print("  SKIP unrestrict failed: %s" % error, flush=True)
+        url = None
+        # Real-Debrid answers 429 to a library's worth of unrestricts in a row (8 of
+        # 70 in a row on 2026-10-06); back off and try again rather than drop the file.
+        for attempt in range(6):
+            try:
+                url, size = resolver.resolve(link)
+                break
+            except Exception as error:
+                if "429" in str(error) and attempt < 5:
+                    time.sleep(2 ** attempt)
+                    continue
+                print("  SKIP unrestrict failed: %s" % error, flush=True)
+                break
+        if url is None:
             continue
 
         filename = urllib.parse.unquote(url.rsplit("/", 1)[-1])
@@ -270,9 +305,13 @@ def main():
             }
 
         identified = False
+        identity = identity_of.get(link)
+        chosen = None
+        if identity and identity.get("tmdb"):
+            chosen = ("tv" if identity["kind"] == "show" else "movie", identity["tmdb"])
         if tmdb is not None:
             try:
-                identified = metadata_module.enrich(row, tmdb, parsed)
+                identified = metadata_module.enrich(row, tmdb, parsed, chosen=chosen)
             except Exception as error:
                 print("  metadata lookup failed: %s" % error, flush=True)
         if stacked:
@@ -324,6 +363,62 @@ def main():
     save_catalog(args.out, document)
 
     print("\nwrote %s: %d item(s), machine=%s" % (args.out, len(items), machine))
+
+
+def rd_get(token, path):
+    request = urllib.request.Request(
+        "https://api.real-debrid.com/rest/1.0" + path,
+        headers={"Authorization": "Bearer " + token},
+    )
+    with urllib.request.urlopen(request, timeout=60) as response:
+        body = response.read()
+    return json.loads(body) if body else None
+
+
+def list_torrents(token):
+    """Every torrent in the account; `GET /torrents` pages at up to 2,500 and answers
+    204 past the last page. Each row carries its name, hash, status and links."""
+    rows, page = [], 1
+    while True:
+        batch = rd_get(token, "/torrents?limit=2500&page=%d" % page) or []
+        rows.extend(batch)
+        if len(batch) < 2500:
+            return rows
+        page += 1
+
+
+def identify_torrents(torrents, tmdb, args):
+    """{link: identity} for every link of the given torrents, and the report."""
+    if not torrents:
+        return {}
+    out_dir = os.path.dirname(os.path.abspath(args.out))
+    plex = None
+    if os.environ.get("PLEX_TOKEN"):
+        plex = metadata_module.PlexProvider(
+            os.environ["PLEX_TOKEN"], os.path.join(out_dir, "plex_cache.json"))
+    known = {}
+    if args.dmm_api_key:
+        dmm = identify_module.Dmm(args.dmm_api_key, os.path.join(out_dir, "dmm_cache.json"))
+        known = dmm.lookup([t.get("hash", "") for t in torrents])
+        print("DMM knows %d of %d torrents by hash" % (len(known), len(torrents)), flush=True)
+    identifier = identify_module.Identifier(tmdb=tmdb, plex=plex, known=known)
+    by_link, report = {}, []
+    for torrent in torrents:
+        identity = identifier.identify(torrent.get("filename") or "", torrent.get("hash"),
+                                       files=len(torrent.get("links") or []))
+        report.append(dict(identity, hash=torrent.get("hash"), id=torrent.get("id")))
+        for link in torrent.get("links") or []:
+            by_link[link] = identity
+        print("  %-7s %-10s %s -> %s" % (identity["confidence"], identity["source"] or "-",
+                                          (torrent.get("filename") or "")[:50],
+                                          identity["imdb"] or "?"), flush=True)
+    counts = {}
+    for row in report:
+        counts[row["confidence"]] = counts.get(row["confidence"], 0) + 1
+    print("identified: " + ", ".join("%d %s" % (v, k) for k, v in sorted(counts.items())))
+    with open(os.path.join(out_dir, "identify_report.json"), "w") as handle:
+        json.dump(report, handle, indent=1)
+    return by_link
 
 
 def is_database(path):

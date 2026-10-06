@@ -275,6 +275,34 @@ class PlexProvider:
                 return rows[0]["guid"], rows[0].get("slug")
         return None
 
+    def match_title(self, kind, title, year=None, filename=None):
+        """The provider's own match for a release name, as a real PMS asks for it.
+
+        plexlab's outbound capture (kids, 1.43.4) holds the body a scan sends:
+        `{"excludeElements": "Media", "type": 1, "title": "Big Buck Bunny", "year": 2008,
+        "filename": "Big Buck Bunny (2008)/Big Buck Bunny (2008) - 1080p.mkv", "hash":
+        ...}`, answered with one row whose `Guid` list carries `imdb://` and `tmdb://`.
+        The `hash` is the server's own file hash, which a debrid link has no bytes for;
+        without it 184 of 198 labelled movies still matched right (identify.py).
+        Returns {guid, kind, title, year, imdb, tmdb} or None.
+        """
+        body = {"excludeElements": "Media", "type": self.KIND_TYPE[kind], "title": title}
+        if year:
+            body["year"] = year
+        if filename:
+            body["filename"] = filename
+        payload = self._call("POST", "/library/metadata/matches", body)
+        rows = ((payload or {}).get("MediaContainer") or {}).get("Metadata") or []
+        if not rows or not rows[0].get("guid", "").startswith("plex://%s/" % kind):
+            return None
+        row = rows[0]
+        ids = [guid.get("id", "") for guid in row.get("Guid") or []]
+        imdb = next((value[7:] for value in ids if value.startswith("imdb://")), None)
+        tmdb = next((value[7:] for value in ids if value.startswith("tmdb://")), None)
+        return {"guid": row["guid"], "kind": kind, "title": row.get("title"),
+                "year": row.get("year"), "imdb": imdb,
+                "tmdb": int(tmdb) if tmdb and tmdb.isdigit() else None}
+
     def children(self, guid):
         """{index: guid} of a show's seasons or a season's episodes."""
         payload = self._call("GET", "/library/metadata/%s/children" % guid.rsplit("/", 1)[-1])

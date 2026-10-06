@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""identify.py against the user's own Real-Debrid library, with DMM's labels as the key.
+
+`fixtures/identify/corpus.json` is 200 labelled torrents (names and hashes as
+Real-Debrid lists them, the IMDb id DMM maps each hash to) and every TMDB and Plex
+answer the identifier read for them, trimmed, recorded 2026-10-06 by
+`probes/record_identify_corpus.py`. Replayed offline: no network, no keys.
+
+The old builder (the name to TMDB's first hit) named 167 of them right. The labels are
+DMM's, not ground truth: the few disputed pairs are films sharing a title and a year,
+where the label is as likely wrong as the match.
+
+    python3 tests/test_identify.py
+"""
+import json
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(HERE))
+import identify  # noqa: E402
+import metadata  # noqa: E402
+
+results = []
+
+
+def check(name, ok, detail=""):
+    results.append(ok)
+    print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + detail))
+
+
+CORPUS = json.load(open(os.path.join(HERE, "fixtures", "identify", "corpus.json")))
+
+
+class ReplayTmdb(metadata.Tmdb):
+    def __init__(self, record):
+        self._record = record
+        self.missed = []
+
+    def _get(self, path, **params):
+        key = json.dumps([path, sorted(params.items())])
+        if key not in self._record:
+            self.missed.append(key)
+        return self._record.get(key) or {}
+
+
+class ReplayPlex(metadata.PlexProvider):
+    def __init__(self, record):
+        super().__init__("replay", None, opener=self._refuse)
+        self._record = record
+        self.missed = []
+
+    @staticmethod
+    def _refuse(method, path, body):
+        raise AssertionError("no network in a replay")
+
+    def _call(self, method, path, body=None):
+        key = json.dumps([method, path, body], sort_keys=True)
+        if key not in self._record:
+            self.missed.append(key)
+        return self._record.get(key) or {}
+
+
+def parsing():
+    # Each one a release in the library that the old parser got wrong.
+    cases = [
+        ("www.UIndex.org    -    The Matrix 1999 1080p Bluray OPUS 7 1 AV1-WhiskeyJack",
+         "The Matrix", 1999, False),
+        ("The.Matrix.Remastered.1999.2160p.UHD.BluRay.10bit.HDR.x265-HazMatt.mkv",
+         "The Matrix", 1999, False),
+        ("Matrix 4Kremux2160.pctreload1.com.mkv", "Matrix", None, False),
+        ("The.Sopranos.S01.1080p.BluRay.Rus.Eng.HDCLUB", "The Sopranos", None, True),
+        ("Planet.Earth.II.S01.1080p.BluRay.HEVC-tlacatlc6", "Planet Earth II", None, True),
+        ("[Lia] One Piece - 0001-1000 [1080p]", "One Piece", None, True),
+        ("For the Birds (2000).mkv", "For the Birds", 2000, False),
+        ("How to Make a Killing (2026) {imdb-tt4357198}", "How to Make a Killing", 2026, False),
+        ("Lanterns.2026.S01E08.1080p.x265-ELiTE.mkv", "Lanterns", 2026, True),
+        ("Avatar - The Last Airbender (2005 - 2008) [1080p]", "Avatar - The Last Airbender",
+         2005, True),
+    ]
+    for name, title, year, show in cases:
+        parsed = identify.parse_name(name)
+        got = (parsed["title"], parsed["year"], identify.is_show(parsed))
+        check("parse %r" % name[:50], got == (title, year, show), "got %s" % (got,))
+    check("an id written into the name is read",
+          identify.explicit_ids("How to Make a Killing (2026) {imdb-tt4357198}")
+          == {"imdb": "tt4357198"})
+    check("a tmdb tag is read", identify.explicit_ids("Film (2020) {tmdb-12345}") == {"tmdb": "12345"})
+
+
+def corpus():
+    tmdb, plex = ReplayTmdb(CORPUS["tmdb"]), ReplayPlex(CORPUS["plex"])
+    identifier = identify.Identifier(tmdb=tmdb, plex=plex)
+    torrents = CORPUS["torrents"]
+    identities = [(t, identifier.identify(t["name"], files=t["files"])) for t in torrents]
+    check("every provider answer the identifier asked for is recorded",
+          not tmdb.missed and not plex.missed,
+          "tmdb %s plex %s" % (tmdb.missed[:2], plex.missed[:2]))
+    right = sum(1 for t, i in identities if i["imdb"] == t["truth"])
+    old = sum(1 for t in torrents if t["old"] == t["truth"])
+    check("names more of the library right than the old builder (%d vs %d of %d)"
+          % (right, old, len(torrents)), right >= 190 and right > old,
+          "right %d, old %d" % (right, old))
+    agreed = [(t, i) for t, i in identities if i["confidence"] == identify.AGREED]
+    agreed_right = sum(1 for t, i in agreed if i["imdb"] == t["truth"])
+    check("where Plex and TMDB agree the answer is right at least 97%% (%d/%d)"
+          % (agreed_right, len(agreed)),
+          agreed and agreed_right / len(agreed) >= 0.97 and len(agreed) >= 150,
+          "%d of %d" % (agreed_right, len(agreed)))
+    wrong_confident = [t["name"] for t, i in identities
+                       if i["imdb"] and i["imdb"] != t["truth"] and i["confidence"] != identify.AGREED
+                       and "disputed" not in i]
+    check("a wrong answer that is not marked agreed carries the competing match",
+          len(wrong_confident) <= 2, "undisputed wrong: %s" % wrong_confident)
+    check("every answer names a Plex guid, a kind and a source",
+          all(i["plex"] and i["kind"] in ("movie", "show") and i["source"]
+              for _t, i in identities if i["imdb"]))
+
+
+def exact():
+    known = {"a" * 40: "tt0133093"}
+
+    class FindTmdb(ReplayTmdb):
+        def _get(self, path, **params):
+            if path == "find/tt0133093":
+                return {"movie_results": [{"id": 603}], "tv_results": []}
+            return {}
+
+    class GuidPlex(ReplayPlex):
+        def _call(self, method, path, body=None):
+            if body == {"type": 1, "guid": "tmdb://603"}:
+                return {"MediaContainer": {"Metadata": [{"guid": "plex://movie/5d776825880197001ec967c8"}]}}
+            return {}
+
+    identifier = identify.Identifier(tmdb=FindTmdb({}), plex=GuidPlex({}), known=known)
+    by_hash = identifier.identify("Some.Unparseable.Thing.mkv", info_hash="A" * 40)
+    check("a hash DMM knows is exact, whatever the name says",
+          by_hash["confidence"] == identify.EXACT and by_hash["imdb"] == "tt0133093"
+          and by_hash["tmdb"] == 603 and by_hash["plex"] == "plex://movie/5d776825880197001ec967c8",
+          str(dict(by_hash)))
+    tagged = identifier.identify("Matrix {imdb-tt0133093}")
+    check("an id in the name is exact", tagged["confidence"] == identify.EXACT
+          and tagged["source"] == "name id", str(dict(tagged)))
+    nothing = identify.Identifier().identify("Unknown.Release.2020.mkv")
+    check("with no source, nothing is guessed", nothing["confidence"] == identify.NONE
+          and nothing["imdb"] is None)
+
+
+def dmm_client():
+    calls = []
+
+    def opener(batch):
+        calls.append(len(batch))
+        return {"identities": {h: {"imdbId": "tt0000001"} for h in batch if h.startswith("b")}}
+
+    dmm = identify.Dmm("key", None, opener=opener)
+    hashes = ["b%039d" % n for n in range(700)] + ["c" * 40, "not-a-hash"]
+    found = dmm.lookup(hashes)
+    check("DMM is asked in batches of 500 and answers only what it knows",
+          calls == [500, 201] and len(found) == 700 and "c" * 40 not in found, "calls %s found %d" % (calls, len(found)))
+    dmm.lookup(hashes)
+    check("a hash asked once is not asked again", calls == [500, 201], str(calls))
+
+
+if __name__ == "__main__":
+    parsing()
+    corpus()
+    exact()
+    dmm_client()
+    failed = results.count(False)
+    print("\n%d/%d passed" % (len(results) - failed, len(results)))
+    sys.exit(1 if failed else 0)
