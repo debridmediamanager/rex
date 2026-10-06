@@ -553,6 +553,10 @@ pub struct Runtime {
     /// What the state database holds as of the last snapshot; a snapshot writes only
     /// the difference (`store.rs`).
     store_cache: store::Cache,
+    /// Bumped whenever the spelling vocabulary is replaced (it is never edited in
+    /// place), so a save rewrites it only then rather than serialising it every time.
+    spelling_serial: u64,
+    spelling_saved: u64,
     /// Events are retained by sequence so an eventsource/websocket subscriber
     /// can take a snapshot without a mutable callback into the route thread.
     /// This is bounded in `push_event`; it is runtime state, never persisted.
@@ -786,6 +790,8 @@ impl Runtime {
             save_serial: 0,
             pending_save: None,
             store_cache: store::Cache::default(),
+            spelling_serial: 0,
+            spelling_saved: 0,
             events: std::collections::VecDeque::new(),
             section_timeline: HashMap::new(),
             events_dropped: 0,
@@ -832,6 +838,7 @@ impl Runtime {
                 self.store_cache = cache;
                 let source = StateSource::Database(path.clone());
                 self.restore_state(state, &source)?;
+                self.spelling_saved = self.spelling_serial;
                 return Ok(());
             }
             store::Saved::Legacy(bytes) => (bytes, StateSource::Legacy(origin.clone())),
@@ -883,6 +890,7 @@ impl Runtime {
         store::remove_sidecars(&path);
         fs::rename(&migrating, &path).map_err(|e| e.to_string())?;
         self.store_cache = cache;
+        self.spelling_saved = self.spelling_serial;
         info!("state file {} imported into {}", origin.display(), path.display());
         Ok(())
     }
@@ -1214,6 +1222,7 @@ impl Runtime {
                 self.spelling = state
                     .get("spelling")
                     .and_then(spellfix::SearchIndex::from_value);
+                self.spelling_serial += 1;
             }
             for value in state.get("queues").and_then(Value::as_array).into_iter().flatten() {
                 let text = |name: &str| value.get(name).and_then(Value::as_str).map(str::to_string);
@@ -1517,10 +1526,21 @@ impl Runtime {
         let Some(path) = self.state_path.clone() else {
             return Ok(None);
         };
-        let state = self.state_document(false);
+        let mut state = self.state_document(false);
         self.dirty = false;
+        // The vocabulary only when it was replaced since the last snapshot.
+        let mut separate = vec!["items"];
+        if self.spelling_serial == self.spelling_saved {
+            separate.push("spelling");
+        } else if let Some(object) = state.as_object_mut() {
+            object.insert(
+                "spelling".to_string(),
+                json!(self.spelling.as_ref().map(spellfix::SearchIndex::to_value)),
+            );
+            self.spelling_saved = self.spelling_serial;
+        }
         let mut delta = match state.as_object() {
-            Some(document) => self.store_cache.diff(document, &["items"]),
+            Some(document) => self.store_cache.diff(document, &separate),
             None => return Err("state is not a document".to_string()),
         };
         // The catalog rows by key: only those written since the last snapshot are
@@ -1549,8 +1569,10 @@ impl Runtime {
     /// The state as one document, as the legacy file held it and the database stores it.
     /// `full` includes the catalog rows, which a snapshot diffs by key instead.
     fn state_document(&self, full: bool) -> Value {
+        // `viewState` is the overlay a file from before the rows were kept restores
+        // from; the database keeps the rows, so only the full (legacy) document needs it.
         let mut view = Map::new();
-        for item in self.catalog.items() {
+        for item in self.catalog.items().iter().filter(|_| full) {
             let Some(key) = key_of(item) else {
                 continue;
             };
@@ -1605,7 +1627,6 @@ impl Runtime {
             "nextCollection": self.next_collection,
             "sections": self.catalog.sections,
             "tagTable": self.tag_table.iter().map(|((field, lowered), value)| json!([field, lowered, value])).collect::<Vec<_>>(),
-            "spelling": self.spelling.as_ref().map(spellfix::SearchIndex::to_value),
             "deviceOrder": self.device_order,
             "deviceFirstSeen": self.device_first_seen,
             "plays": self.plays.iter().map(|(at, kind, seconds, device)| json!([at, kind, seconds, device])).collect::<Vec<_>>(),
@@ -1641,6 +1662,16 @@ impl Runtime {
         if let Some(object) = state.as_object_mut() {
             for (name, value) in extra {
                 object.insert(name.to_string(), value);
+            }
+        }
+        if let Some(object) = state.as_object_mut() {
+            if full {
+                object.insert(
+                    "spelling".to_string(),
+                    json!(self.spelling.as_ref().map(spellfix::SearchIndex::to_value)),
+                );
+            } else {
+                object.shift_remove("viewState");
             }
         }
         if full {
@@ -6778,6 +6809,7 @@ impl Runtime {
             self.catalog.items(),
             &static_tags,
         ));
+        self.spelling_serial += 1;
     }
 
     /// Every request registers its client -- header or query alike -- in the order the
