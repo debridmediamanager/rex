@@ -69,6 +69,16 @@ cp run.sh.example run.sh                 # fill in RD_TOKEN
 Then open `http://127.0.0.1:32400/web/index.html` if you are serving a web
 client bundle with `--web-root`, or point any Plex client at the host.
 
+To build the catalog from your whole Real-Debrid account, identifying every torrent
+first (a written-in id, its hash in DMM, then Plex's matcher and TMDB):
+
+```bash
+RD_TOKEN=... TMDB_KEY=... PLEX_TOKEN=... DMM_API_KEY=... \
+    python3 build_catalog.py --library --out plexsim.db   # then --catalog plexsim.db
+```
+
+What each torrent was identified as, and how surely, is in `identify_report.json`.
+
 ### The Python oracle
 
 The Python server (`server.py` and its modules) is kept in the tree as the

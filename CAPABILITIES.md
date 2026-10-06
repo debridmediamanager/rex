@@ -54,8 +54,16 @@ Sources: [server.py](server.py), [gdm.py](gdm.py), [claim.py](claim.py),
 
 ## Catalog creation and metadata
 
-- Build `catalog.json` from existing restricted RD links or links belonging to
-  specified RD torrent IDs.
+- Build a catalog from restricted RD links, from specified RD torrent IDs, or from
+  the whole account (`build_catalog.py --library`).
+- Identify each torrent before probing it (`identify.py`): an IMDb/TMDB id written
+  in its name, its info hash in DMM (`DMM_API_KEY`, a sponsor key; DMM knew 50% of
+  a 3,347-torrent library by hash), then the cleaned name to Plex's own matcher and
+  TMDB. Where those two agree (86% of 200 labelled torrents) the answer was right
+  98% of the time; overall 193 of 200 were right, against 167 for the earlier
+  first-search-hit method. Each torrent's answer, its confidence (`exact`,
+  `agreed`, `single`, `none`) and any competing match go to `identify_report.json`
+  for review; nothing unmatched is guessed.
 - Resolve playable CDN URLs on demand and cache them with an expiry.
 - Probe remote media using `ffprobe` without storing the complete file locally.
 - Derive real container, duration, bitrate, resolution, frame-rate, codec,

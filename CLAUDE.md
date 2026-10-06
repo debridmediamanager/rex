@@ -51,6 +51,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `gdm.py` | Plex's LAN discovery protocol: the UDP half of being FOUND |
 | `gate.py` | Applies a client's direct-play gate to the catalog |
 | `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
+| `identify.py` | which title a Real-Debrid torrent is: an id in its name, its hash in DMM, then Plex's matcher and TMDB, with their agreement as the confidence |
 | `build_catalog.py` | Builds `catalog.json` from real RD content |
 | `claim.py`, `heartbeat.py` | plex.tv claim flow and registration upkeep |
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
@@ -356,6 +357,7 @@ python3 tests/test_mediainfo.py             # mediainfo.py against a real PMS's 
 python3 tests/test_decision.py              # decision.py against 1,872 measured decisions; no server
 python3 tests/test_gdm.py                   # gdm.py against four real servers' GDM; no server
 python3 tests/test_persist.py               # --state across SIGTERM, SIGKILL and a rebuilt catalog; starts its own
+python3 tests/test_identify.py              # identify.py against 200 labelled torrents of the real library; offline
 python3 tests/test_sqlite_store.py          # the state/catalog database: rows written per save, legacy import; starts its own
 python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
 python3 tests/test_plextv.py                # claim, announce, account import and restart against a LOCAL stub plex.tv
