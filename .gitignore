@@ -34,3 +34,5 @@ plexsim.db*
 *.db-wal
 *.db-shm
 *.db.*
+managed/
+managed.log
