@@ -79,6 +79,66 @@ RD_TOKEN=... TMDB_KEY=... PLEX_TOKEN=... DMM_API_KEY=... \
 
 What each torrent was identified as, and how surely, is in `identify_report.json`.
 
+### Running several servers: manager.py
+
+`manager.py` is a control service on top of the server. It runs **no** plexsim server
+until you start one: you create a server from a configuration (port, Real-Debrid key,
+catalog, options), start and stop it, and the manager supervises it -- an unexpected exit
+is restarted with a backoff, and one that keeps dying is marked failed. Whatever was
+running when the manager stopped is running again when it starts. Stdlib Python only.
+
+```bash
+./manager.py serve                       # API + page on http://127.0.0.1:32300; prints the admin token once
+export RD_TOKEN=...                      # keys come from the environment, never the command line
+./manager.py create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
+./manager.py start living-room
+./manager.py list                        # status | logs | stop | restart | delete [--purge] | build
+```
+
+Each server gets `managed/servers/<name>/`, whose `plexsim.db` holds its catalog (copied
+in; a JSON catalog is converted) and, on the native server, its state. Keys are stored in
+`managed/manager.db` (mode 600) and passed to each server through its environment; the
+API redacts them. `http://127.0.0.1:32300/` is a small page for the same operations (paste
+the admin token from `managed/admin.token`). `build NAME` runs `build_catalog.py --library`
+into the server's database as a background job.
+
+Run the manager itself under the init system, so it outlives any shell. macOS (launchd,
+`~/Library/LaunchAgents/com.plexsim.manager.plist`):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.plexsim.manager</string>
+  <key>ProgramArguments</key><array>
+    <string>/usr/bin/python3</string><string>/path/to/plexsim/manager.py</string><string>serve</string>
+  </array>
+  <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/path/to/plexsim/managed.log</string>
+  <key>StandardErrorPath</key><string>/path/to/plexsim/managed.log</string>
+</dict></plist>
+```
+
+Linux (systemd, `/etc/systemd/system/plexsim-manager.service`); `KillMode=mixed` lets the
+manager's own SIGTERM stop its servers, which it restores at the next start:
+
+```ini
+[Unit]
+Description=plexsim manager
+After=network-online.target
+
+[Service]
+User=ben
+WorkingDirectory=/path/to/plexsim
+ExecStart=/usr/bin/python3 /path/to/plexsim/manager.py serve
+KillMode=mixed
+TimeoutStopSec=60
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
 ### The Python oracle
 
 The Python server (`server.py` and its modules) is kept in the tree as the

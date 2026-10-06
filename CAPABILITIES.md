@@ -48,6 +48,11 @@ axis.
 - Require a configured Plex token for protected requests. Authentication is
   optional and is off unless configured; public bootstrap routes remain
   accessible according to the measured protocol.
+- Run several servers under `manager.py`, which starts none by default: each is
+  created from a configuration (port, keys, catalog, options), started and stopped
+  through an API, a CLI or a page, restarted with a backoff when it exits
+  unexpectedly, marked failed when it keeps exiting, and restored after the
+  manager itself restarts if it was running then.
 
 Sources: [server.py](server.py), [gdm.py](gdm.py), [claim.py](claim.py),
 [heartbeat.py](heartbeat.py), [Android harness](harness/android/README.md).
@@ -376,6 +381,7 @@ Sources: [store.rs](rust/src/store.rs), [catalogdb.py](catalogdb.py),
 | Capability | Requirement |
 |---|---|
 | Start the server and resolve RD content | `RD_TOKEN` and a suitable catalog |
+| Start and stop servers on demand | `manager.py serve`; each server's keys, catalog and options in its configuration |
 | Probe media while building the catalog | `ffprobe` available to the builder |
 | TMDB enrichment and live match candidates | `TMDB_KEY` (or the builder's `--tmdb-key`) |
 | Genuine Plex metadata IDs for Android details | `PLEX_TOKEN` available to the catalog builder/relink step |

@@ -41,6 +41,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `library.py` | The mutable half: watch state, edits, playlists, collections, history |
 | `filters.py` | Plex's filter query language: the operator is part of the KEY |
 | `persist.py` | the state file (on by default, `--no-state` off): the one file that keeps the mutable half across a restart. The oracle's is a pickle; the native server's is `rust/src/store.rs`, a SQLite database written by the row |
+| `manager.py` | the control service: runs no server until one is started, then supervises the ones it started (API on 127.0.0.1:32300, CLI, a page); README "Running several servers" |
 | `catalogdb.py` | the catalog in a SQLite database: what `build_catalog.py --out *.db` / `--convert` write and both servers read with `--catalog *.db` |
 | `sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
 | `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
@@ -122,6 +123,12 @@ launchctl remove com.plexsim.dev
 ```
 
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
+
+Several servers, started and stopped on demand: `./manager.py serve`, then
+`./manager.py create NAME --port P --catalog PATH` (keys from `RD_TOKEN`/`TMDB_KEY`/
+`PLEX_TOKEN`/`PLEXSIM_TOKEN` in the environment) and `start|stop|list|logs NAME`. Its data
+lives in `managed/` (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
+starts its own manager on a temporary root.
 
 The state file keeps what clients change -- watch state, ratings, edits, deletes,
 playlists, collections, history, sections, preferences, uploads, queues, and the device
@@ -359,6 +366,7 @@ python3 tests/test_gdm.py                   # gdm.py against four real servers' 
 python3 tests/test_persist.py               # --state across SIGTERM, SIGKILL and a rebuilt catalog; starts its own
 python3 tests/test_identify.py              # identify.py against 200 labelled torrents of the real library; offline
 python3 tests/test_sqlite_store.py          # the state/catalog database: rows written per save, legacy import; starts its own
+python3 tests/test_manager.py               # manager.py end to end: create, start, crash restart, give-up, restore; starts its own
 python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
 python3 tests/test_plextv.py                # claim, announce, account import and restart against a LOCAL stub plex.tv
 python3 tests/test_session_reaper.py        # Now Playing's 180 s + 30 s-tick reaper; ~3.5 min of wall clock
