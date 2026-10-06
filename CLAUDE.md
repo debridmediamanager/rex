@@ -40,7 +40,8 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `server.py` | The Python oracle: every route as measured. Read it first for any behaviour, then its Rust counterpart. |
 | `library.py` | The mutable half: watch state, edits, playlists, collections, history |
 | `filters.py` | Plex's filter query language: the operator is part of the KEY |
-| `persist.py` | the state file (on by default, `--no-state` off): the one file that keeps the mutable half across a restart |
+| `persist.py` | the state file (on by default, `--no-state` off): the one file that keeps the mutable half across a restart. The oracle's is a pickle; the native server's is `rust/src/store.rs`, a SQLite database written by the row |
+| `catalogdb.py` | the catalog in a SQLite database: what `build_catalog.py --out *.db` / `--convert` write and both servers read with `--catalog *.db` |
 | `sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
 | `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
 | `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
@@ -70,8 +71,9 @@ with `dirname(__file__)`. The descriptors (`server_prefs.json`, `regional_server
 (`crossdomain.xml`, `clientaccesspolicy.xml`, `favicon.ico`). Two runtime files are the
 exception to the flat rule: `tmdb_cache.json` and `claim_state.json` are resolved beside the
 **catalog**, not beside `server.py`, because they are state rather than measurement.
-The state file is state too: beside the catalog by default (`state.json`), or wherever
-`--state` names.
+The state file is state too: a SQLite database beside the catalog by default
+(`plexsim.db`), the catalog itself when the catalog is a database, or wherever `--state`
+names.
 
 The native server finds the same sidecars beside the catalog, then one directory up,
 then in its working directory (`sidecar_roots` in `runtime.rs`), so run it from the
@@ -123,8 +125,11 @@ A plain `nohup ... &` from an agent tool call **does not survive** the call.
 The state file keeps what clients change -- watch state, ratings, edits, deletes,
 playlists, collections, history, sections, preferences, uploads, queues, and the device
 and statistics tables -- across restarts; see `persist.py` for what is and is not kept.
-It is **on by default** since 2026-10-05: `state.json` beside the catalog (the Python
-oracle's is `state.pickle`), or `--state FILE` / `PLEXSIM_STATE`. A second server on the
+It is **on by default** since 2026-10-05: a SQLite database written by the row since
+2026-10-06 (`rust/src/store.rs`), `plexsim.db` beside the catalog or the catalog's own
+database when the catalog is one (`catalogdb.py`, `build_catalog.py --convert`); an old
+`state.json` is imported once and kept as `state.json.migrated`. The Python oracle's is
+`state.pickle`. `--state FILE` / `PLEXSIM_STATE` move it. A second server on the
 same catalog finds the default locked and exits 1, as a second PMS on a served data
 directory does (cycle 92). Every suite relies on a
 restart being the undo button, so **a test instance runs with `--no-state`**:
@@ -351,6 +356,7 @@ python3 tests/test_mediainfo.py             # mediainfo.py against a real PMS's 
 python3 tests/test_decision.py              # decision.py against 1,872 measured decisions; no server
 python3 tests/test_gdm.py                   # gdm.py against four real servers' GDM; no server
 python3 tests/test_persist.py               # --state across SIGTERM, SIGKILL and a rebuilt catalog; starts its own
+python3 tests/test_sqlite_store.py          # the state/catalog database: rows written per save, legacy import; starts its own
 python3 tests/test_concurrency.py           # barrier races, 32-thread load, backlog, --state kills, reaper, slow sockets; ~4 min
 python3 tests/test_plextv.py                # claim, announce, account import and restart against a LOCAL stub plex.tv
 python3 tests/test_session_reaper.py        # Now Playing's 180 s + 30 s-tick reaper; ~3.5 min of wall clock

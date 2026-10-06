@@ -43,9 +43,11 @@ Jellyfin.
   own real servers at `/identity`, `/media/providers`, `/:/prefs` and
   `/library/sections`.
 - **Survives a restart**: watch state, edits, playlists, collections, history,
-  sections, preferences and uploads are saved as they change (to `state.json`
-  beside the catalog, or `--state FILE`) and restored at start. With
-  `--no-state` a restart reloads `catalog.json`.
+  sections, preferences and uploads are saved as they change, a row at a time, to
+  a SQLite database (`plexsim.db` beside the catalog, or `--state FILE`) and
+  restored at start. The catalog can live in the same database
+  (`build_catalog.py --convert catalog.json --out plexsim.db`, then
+  `--catalog plexsim.db`). With `--no-state` a restart reloads the catalog.
 - **Published over a named Cloudflare tunnel**, so clients reach it without a
   port forward or a `*.plex.direct` certificate.
 

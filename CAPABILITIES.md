@@ -295,9 +295,15 @@ Sources: [server.py](server.py), [xmlout.py](xmlout.py),
 
 ## Persistence
 
-The server saves what clients change to one file and restores it at start: by
-default `state.json` beside the catalog (the Python server's is `state.pickle`), or
-`--state FILE` / `PLEXSIM_STATE`. A client write (any non-GET request, and the
+The server saves what clients change to a SQLite database and restores it at start:
+by default `plexsim.db` beside a JSON catalog, or the catalog's own database when the
+catalog is one (below), or `--state FILE` / `PLEXSIM_STATE`. The Python server keeps
+a pickle (`state.pickle`) instead. Each collection -- the catalog rows, history,
+lists, devices, statistics -- is stored a row per element, and a save writes only the
+elements that changed, in one transaction: one rating on a 20,000-row library writes
+a handful of rows, where the earlier JSON file was rewritten whole on every save. An
+older `state.json` beside the catalog is imported once and kept as
+`state.json.migrated`. A client write (any non-GET request, and the
 scrobble, rate, progress and timeline GETs), and a client's first request or a
 changed device name or platform, is on disk before it is answered, so a
 crash loses nothing a client was told succeeded -- a real PMS keeps writes answered a
@@ -315,7 +321,7 @@ exiting 1.
 | Metadata edits, locks, item preferences, and artwork selections | Activities, notification sockets, and log lines |
 | Match/Unmatch, merges, splits, deleted items and media versions | Random-shelf seeds and match candidates |
 | Playlists, collections, the tag table, and their id counters | The resource graph and connection table |
-| Play history and view counts (Top/popular shelves) | The `catalog.json` input, which is never rewritten |
+| Play history and view counts (Top/popular shelves) | The catalog input, which the server never rewrites |
 | Created, renamed, and deleted sections; section and show settings | |
 | Server preferences (including the server name) and agent settings | |
 | Uploaded posters, art and subtitles; minted theme rows | |
@@ -323,20 +329,39 @@ exiting 1.
 | Play and download queues | |
 | The device table and bandwidth/play statistics | |
 
-The file belongs to the catalog it was saved over. When `catalog.json` changes,
+The state belongs to the catalog it was saved over. When the catalog changes,
 its rows and keys can no longer be overlaid, so only each row's view state and
 ratings (matched by guid, then by part file) and the server preferences, agent
 settings, device table, and statistics carry over. Edits, lists, history, and
-library changes stay in the previous file, kept as `<file>.stale`. An unreadable
-file is kept as `<file>.corrupt` and the server starts fresh; the file admits only
-plain data, so it cannot name code to run.
+library changes stay in a copy of the previous database, kept as `<file>.stale`. An
+unreadable file is kept as `<file>.corrupt` and the server starts fresh; the file
+admits only plain data, so it cannot name code to run.
+
+The catalog can be a database too. `build_catalog.py --out plexsim.db` writes one,
+and `build_catalog.py --convert catalog.json --out plexsim.db` moves an existing JSON
+catalog into one. Run with `--catalog plexsim.db`: both servers read it, it serves
+exactly what its JSON source serves, and the native state then lives in the same
+file. A database records the digest of the JSON it came from, so a state saved over
+`catalog.json` carries over unchanged. Rebuilding the catalog into the same database
+replaces only the catalog's rows; the state is set aside as above at the next start.
+
+A save looks only at what changed: the catalog tracks the rows a request writes, and
+the spelling vocabulary is rewritten only when it is rebuilt. Measured on zen with a
+20,000-row catalog, a rating write (saved before it is answered) took a median 2.3 ms
+and wrote about 100 KB, where the JSON file took 2.7 s and rewrote 126 MB; at 200 and
+2,000 rows it took 4.4 and 4.7 ms. The library is still held in memory while serving,
+and a first save after a start, or after rows are added, removed or reordered, looks
+at every row once. The database is larger than the JSON was (169 MB against 125 MB
+at 20,000 rows).
 
 Restored rows keep the shape they had when the file was first written. A later
 change to the load-time row or media rules reaches them only after the file is
 removed or the catalog is rebuilt, because re-running those rules would undo user
 edits and locks.
 
-Sources: [persist.py](persist.py), [persistence checks](tests/test_persist.py).
+Sources: [store.rs](rust/src/store.rs), [catalogdb.py](catalogdb.py),
+[persist.py](persist.py), [persistence checks](tests/test_persist.py),
+[database checks](tests/test_sqlite_store.py).
 
 ## Configuration requirements
 
@@ -353,7 +378,8 @@ Sources: [persist.py](persist.py), [persistence checks](tests/test_persist.py).
 | Proxy or redirect media | `--part-mode proxy` or `--part-mode redirect` |
 | Answer LAN discovery | `--gdm on`, or `auto` when serving on port 32400 |
 | Serve HTTPS | `--tls-cert` and the corresponding key via `--tls-key` or the certificate file |
-| Keep library changes across restarts | On by default (`state.json` beside the catalog); `--state FILE` or `PLEXSIM_STATE` to move it, `--no-state` to turn it off |
+| Keep library changes across restarts | On by default (`plexsim.db` beside the catalog, or the catalog's own database); `--state FILE` or `PLEXSIM_STATE` to move it, `--no-state` to turn it off |
+| Keep the catalog in a database | `build_catalog.py --out plexsim.db`, or `--convert catalog.json --out plexsim.db`; then `--catalog plexsim.db` |
 | Import owner cloud watch/rating state | Real claim, account consent, and `PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64` service-token setup |
 
 Plex and RD account credentials serve different purposes. Possessing a Plex
@@ -430,8 +456,8 @@ part-byte suites. Cycles 83-95 then ran every audit axis against it (above). It 
 not yet run as the deployed instance: that trial needs a claimed test identity on
 plex.tv.
 
-Known native differences from the oracle: the native state file is JSON
-(`state.json`) and does not read the oracle's pickle (`state.pickle`), and a
+Known native differences from the oracle: the native state is a SQLite database
+(`plexsim.db`) and does not read the oracle's pickle (`state.pickle`), and a
 refused CDN URL is dropped at once where the oracle keeps it for its expiry (the
 same answer, one fewer dead read).
 

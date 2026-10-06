@@ -4040,7 +4040,7 @@ are changing; replay the client's exact request before altering behavior.
   Measured cycle 92 on plexscratch (PMS 1.43.4, `tests/fixtures/pms_second_instance.json`):
   launching `Plex Media Server` again on the data directory the running one serves prints
   `Plex Media Server is already running. Will not start...` and exits 1 at once, leaving
-  the pid file and the log untouched. plexsim's default state file (`state.json` /
+  the pid file and the log untouched. plexsim's default state file (`plexsim.db` /
   `state.pickle` beside the catalog) is that directory, and since `8978e61` a second
   server finding it locked ran on WITHOUT a state file: its clients' ratings, watched
   flags, playlists and server name vanished at the next restart, and when it came back
