@@ -70,7 +70,7 @@ impl Runtime {
         let stamp_of = |row: &Value| row.get("lastViewedAt").and_then(Value::as_i64).unwrap_or(0);
         let mut rows: Vec<(i64, Value)> = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| {
                 truthy(row, "viewOffset")
@@ -81,7 +81,7 @@ impl Runtime {
             .collect();
         let mut order: Vec<String> = Vec::new();
         let mut shows: HashMap<String, Vec<Value>> = HashMap::new();
-        for row in &self.catalog.items {
+        for row in self.catalog.items() {
             if row.get("type").and_then(Value::as_str) == Some("episode") {
                 let show = string_value(row.get("grandparentRatingKey").unwrap_or(&Value::Null));
                 if !shows.contains_key(&show) {
@@ -503,7 +503,7 @@ impl Runtime {
     ) -> Vec<Value> {
         let mut leaves = leaves_in.unwrap_or_else(|| {
             self.catalog
-                .items
+                .items()
                 .iter()
                 .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
                 .cloned()
@@ -634,7 +634,7 @@ impl Runtime {
         }
         let leaves = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
             .cloned()
@@ -654,7 +654,7 @@ impl Runtime {
             Some("1") => {
                 let mut rows = self
                     .catalog
-                    .items
+                    .items()
                     .iter()
                     .filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
                     .cloned()

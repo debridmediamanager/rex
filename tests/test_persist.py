@@ -48,7 +48,7 @@ def free_port():
 
 
 class Instance:
-    def __init__(self, catalog, state=None, args=(), default=False, env_state=None):
+    def __init__(self, catalog, state=None, args=(), default=False, env_state=None, wait=10):
         self.port = free_port()
         command = server_command("--port", self.port, "--catalog", catalog,
                                  "--gdm", "off", "--assert-claimed", *args, root=ROOT)
@@ -64,7 +64,7 @@ class Instance:
         self.log = tempfile.TemporaryFile()
         self.proc = subprocess.Popen(command, cwd=ROOT, env=env,
                                      stdout=subprocess.DEVNULL, stderr=self.log)
-        for _ in range(100):
+        for _ in range(int(wait * 10)):
             try:
                 socket.create_connection(("127.0.0.1", self.port), timeout=1).close()
                 return

@@ -534,7 +534,7 @@ impl Runtime {
         {
             return Some(found.clone());
         }
-        for other in &self.catalog.items {
+        for other in self.catalog.items() {
             if let Some(found) = other
                 .get(key)
                 .and_then(Value::as_array)
@@ -1286,7 +1286,7 @@ impl Runtime {
                 }
             }
         }
-        for child in self.catalog.items.iter_mut() {
+        for child in self.catalog.items_mut().iter_mut() {
             let Some(child) = child.as_object_mut() else {
                 continue;
             };

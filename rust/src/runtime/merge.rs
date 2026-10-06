@@ -19,7 +19,7 @@ impl Runtime {
         let base = key_base(kind);
         let in_range = |key: i64| (base..base + 10000).contains(&key);
         self.catalog
-            .items
+            .items()
             .iter()
             .filter_map(|row| key_of(row).and_then(|key| key.parse::<i64>().ok()))
             .chain(self.retired_keys.iter().copied())

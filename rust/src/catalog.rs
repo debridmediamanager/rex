@@ -1,6 +1,6 @@
 //! Native catalog model shared by the future library and HTTP layers.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
@@ -14,8 +14,19 @@ pub struct Catalog {
     /// arbitrary server properties rather than narrowing the catalog schema.
     pub document: Map<String, Value>,
     pub sections: Vec<Value>,
-    pub items: Vec<Value>,
+    /// Private so that every mutable path is seen: `get_mut` records its row and
+    /// `items_mut` marks them all, which is how a save writes only what changed
+    /// (`store.rs`) instead of serialising every row to find out.
+    items: Vec<Value>,
     pub by_id: HashMap<String, usize>,
+    changes: Changes,
+}
+
+/// The rows changed since the last `take_changes`: by key, or all of them.
+#[derive(Debug, Clone, Default)]
+pub struct Changes {
+    pub all: bool,
+    pub keys: HashSet<String>,
 }
 
 impl Catalog {
@@ -39,6 +50,7 @@ impl Catalog {
             sections,
             items,
             by_id: HashMap::new(),
+            changes: Changes { all: true, keys: HashSet::new() },
         };
         catalog.rebuild_index();
         Ok(catalog)
@@ -79,7 +91,24 @@ impl Catalog {
     }
     pub fn get_mut(&mut self, rating_key: &str) -> Option<&mut Value> {
         let index = *self.by_id.get(rating_key)?;
+        if !self.changes.all {
+            self.changes.keys.insert(rating_key.to_string());
+        }
         self.items.get_mut(index)
+    }
+
+    pub fn items(&self) -> &Vec<Value> {
+        &self.items
+    }
+
+    /// Every row, mutably: a save then looks at them all.
+    pub fn items_mut(&mut self) -> &mut Vec<Value> {
+        self.changes.all = true;
+        &mut self.items
+    }
+
+    pub fn take_changes(&mut self) -> Changes {
+        std::mem::take(&mut self.changes)
     }
 
     pub fn children(&self, parent_key: &str) -> Vec<Value> {
@@ -97,11 +126,13 @@ impl Catalog {
     }
 
     pub fn add(&mut self, item: Value) {
+        self.changes.all = true;
         self.items.push(item);
         self.rebuild_index();
     }
     pub fn remove(&mut self, rating_key: &str) -> Option<Value> {
         let index = *self.by_id.get(rating_key)?;
+        self.changes.all = true;
         let removed = self.items.remove(index);
         self.rebuild_index();
         Some(removed)
@@ -111,6 +142,7 @@ impl Catalog {
     /// projections. This is deliberately explicit: callers can load raw rows
     /// for diagnostics without silently changing the evidence document.
     pub fn normalize(&mut self) {
+        self.changes.all = true;
         for item in self.items.iter_mut() {
             if let Some(media) = item.get_mut("Media").and_then(Value::as_array_mut) {
                 for media in media.iter_mut() {
@@ -129,6 +161,7 @@ impl Catalog {
     /// `normalize_rows`, and the `catalog-normalize` parity command mirrors only those
     /// two, which leave the stored titles alone.
     pub fn retitle_streams(&mut self) {
+        self.changes.all = true;
         for item in self.items.iter_mut() {
             for media in item
                 .get_mut("Media")

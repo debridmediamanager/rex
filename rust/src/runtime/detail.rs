@@ -73,7 +73,7 @@ impl Runtime {
             // size-0 block rather than omitting it.
             let extras = self
                 .catalog
-                .items
+                .items()
                 .iter()
                 .filter(|candidate| {
                     candidate.get("type").and_then(Value::as_str) == Some("clip")

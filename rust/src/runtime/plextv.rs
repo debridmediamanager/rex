@@ -1449,7 +1449,7 @@ impl super::Runtime {
         };
         let Some((key, count)) = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| row.get("guid").and_then(Value::as_str) == Some(guid))
             .find_map(|row| {

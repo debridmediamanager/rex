@@ -280,7 +280,7 @@ impl Runtime {
         }
         let mut source = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| {
                 type_number.is_some() || row.get("type").and_then(Value::as_str) != Some("clip")
@@ -517,7 +517,7 @@ impl Runtime {
         // The library's clips: every clip owned by a parent in this section.
         let mut rows = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| {
                 row.get("type").and_then(Value::as_str) == Some("clip")

@@ -226,7 +226,7 @@ impl Runtime {
         };
         let mut rows = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| {
                 row.get("type").and_then(Value::as_str) == Some(wanted)

@@ -622,13 +622,13 @@ impl Runtime {
             .unwrap_or_default();
         catalog.normalize();
         catalog.retitle_streams();
-        show_listing_columns(&mut catalog.items);
-        number_catalog_tags(&mut catalog.items);
+        show_listing_columns(catalog.items_mut());
+        number_catalog_tags(catalog.items_mut());
         // The catalog's `_strip_show_fields`: an episode carries no Genre, Country,
         // studio, tagline, originalTitle, rating or Label of its own -- the enriched
         // file row copied the SHOW's. Dropped from storage at load, so nothing that
         // reads the rows (the tag table, a filter) sees the show's copies either.
-        for item in &mut catalog.items {
+        for item in catalog.items_mut() {
             if item.get("type").and_then(Value::as_str) != Some("episode") {
                 continue;
             }
@@ -648,7 +648,7 @@ impl Runtime {
         }
         // Cycle 41: `Part.accessible`/`exists` are a DETAIL option (`checkFiles=1`), never
         // a stored field a listing or a plain read carries; the checked read computes them.
-        for item in &mut catalog.items {
+        for item in catalog.items_mut() {
             for media in item
                 .get_mut("Media")
                 .and_then(Value::as_array_mut)
@@ -872,7 +872,7 @@ impl Runtime {
         // The import: the restored state into a new database beside the target, then
         // the legacy file aside and the database into place.
         let migrating = sidecar(&path, "migrating");
-        let document = self.state_document();
+        let document = self.state_document(true);
         let cache = document
             .as_object()
             .ok_or_else(|| "state is not a document".to_string())
@@ -928,7 +928,7 @@ impl Runtime {
         // overlays below.
         let restored_rows = !rebuilt && state.get("items").is_some_and(Value::is_array);
         if restored_rows {
-            self.catalog.items = state
+            *self.catalog.items_mut() = state
                 .get("items")
                 .and_then(Value::as_array)
                 .cloned()
@@ -1463,7 +1463,7 @@ impl Runtime {
         // `setdefault`: the FIRST row holding a guid or a file answers for it.
         let mut by_guid: HashMap<(String, String), usize> = HashMap::new();
         let mut by_file: HashMap<(String, String), usize> = HashMap::new();
-        for (index, row) in self.catalog.items.iter().enumerate() {
+        for (index, row) in self.catalog.items().iter().enumerate() {
             if let Some(guid) = row.get("guid").and_then(Value::as_str).filter(|g| !g.is_empty()) {
                 by_guid.entry((kind(row), guid.to_string())).or_insert(index);
             }
@@ -1487,7 +1487,7 @@ impl Runtime {
             let Some(index) = target else {
                 continue;
             };
-            if let Some(row) = self.catalog.items[index].as_object_mut() {
+            if let Some(row) = self.catalog.items_mut()[index].as_object_mut() {
                 for field in VIEW_FIELDS {
                     match old.get(field) {
                         Some(value) => {
@@ -1517,12 +1517,23 @@ impl Runtime {
         let Some(path) = self.state_path.clone() else {
             return Ok(None);
         };
-        let state = self.state_document();
+        let state = self.state_document(false);
         self.dirty = false;
-        let delta = match state.as_object() {
-            Some(document) => self.store_cache.diff(document),
+        let mut delta = match state.as_object() {
+            Some(document) => self.store_cache.diff(document, &["items"]),
             None => return Err("state is not a document".to_string()),
         };
+        // The catalog rows by key: only those written since the last snapshot are
+        // serialised, unless rows were added, removed or reordered.
+        let changes = self.catalog.take_changes();
+        let catalog = &self.catalog;
+        delta.extend(self.store_cache.diff_rows(
+            "items",
+            catalog.items(),
+            (!changes.all).then_some(&changes.keys),
+            key_of,
+            |key| catalog.get(key),
+        ));
         if delta.is_empty() {
             return Ok(None);
         }
@@ -1536,9 +1547,10 @@ impl Runtime {
     }
 
     /// The state as one document, as the legacy file held it and the database stores it.
-    fn state_document(&self) -> Value {
+    /// `full` includes the catalog rows, which a snapshot diffs by key instead.
+    fn state_document(&self, full: bool) -> Value {
         let mut view = Map::new();
-        for item in &self.catalog.items {
+        for item in self.catalog.items() {
             let Some(key) = key_of(item) else {
                 continue;
             };
@@ -1591,7 +1603,6 @@ impl Runtime {
             "nextPlaylist": self.next_playlist,
             "nextPlaylistItem": self.next_playlist_item,
             "nextCollection": self.next_collection,
-            "items": self.catalog.items,
             "sections": self.catalog.sections,
             "tagTable": self.tag_table.iter().map(|((field, lowered), value)| json!([field, lowered, value])).collect::<Vec<_>>(),
             "spelling": self.spelling.as_ref().map(spellfix::SearchIndex::to_value),
@@ -1632,6 +1643,11 @@ impl Runtime {
                 object.insert(name.to_string(), value);
             }
         }
+        if full {
+            if let Some(object) = state.as_object_mut() {
+                object.insert("items".to_string(), Value::Array(self.catalog.items().clone()));
+            }
+        }
         state
     }
 
@@ -1644,7 +1660,7 @@ impl Runtime {
 
     fn section_rows(&self, key: &str) -> Vec<Value> {
         self.catalog
-            .items
+            .items()
             .iter()
             .filter(|item| {
                 string_value(item.get("librarySectionID").unwrap_or(&Value::Null)) == key
@@ -3840,7 +3856,7 @@ impl Runtime {
         if type_number == 318 {
             let mut names = self
                 .catalog
-                .items
+                .items()
                 .iter()
                 .filter_map(|row| row.get("studio").and_then(Value::as_str))
                 .map(str::to_string)
@@ -3886,7 +3902,7 @@ impl Runtime {
             .map(|(_, tag)| tag);
         let on_rows = self
             .catalog
-            .items
+            .items()
             .iter()
             .flat_map(|row| row.get(element).and_then(Value::as_array).into_iter().flatten());
         for tag in on_rows.chain(table) {
@@ -3963,7 +3979,7 @@ impl Runtime {
         let mut found = None;
         let mut rows = Vec::new();
         let mut seen = HashSet::new();
-        for row in &self.catalog.items {
+        for row in self.catalog.items() {
             for (element, name, tag_type) in [
                 ("Role", "actor", 6_i64),
                 ("Director", "director", 4_i64),
@@ -4109,7 +4125,7 @@ impl Runtime {
                 .unwrap_or("movie");
             let members = if section_filter.is_some() {
                 self.catalog
-                    .items
+                    .items()
                     .iter()
                     .filter(|row| {
                         string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
@@ -4265,7 +4281,7 @@ impl Runtime {
         };
         let rows = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| row.get("type").and_then(Value::as_str) == Some(wanted))
             .filter(|row| {
@@ -4795,7 +4811,7 @@ impl Runtime {
                 let guid = format!("local://{key}");
                 let episodes = self
                     .catalog
-                    .items
+                    .items()
                     .iter()
                     .filter(|leaf| {
                         leaf.get("type").and_then(Value::as_str) == Some("episode")
@@ -5065,7 +5081,7 @@ impl Runtime {
     fn choose_rows(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<Value> {
         let mut rows = if let Some(section) = section {
             self.catalog
-                .items
+                .items()
                 .iter()
                 .filter(|row| {
                     string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
@@ -5073,7 +5089,7 @@ impl Runtime {
                 .cloned()
                 .collect()
         } else {
-            self.catalog.items.clone()
+            self.catalog.items().clone()
         };
         if let Some(number) = type_number {
             let kind = match number {
@@ -6568,7 +6584,7 @@ impl Runtime {
             None => {
                 let highest = self
                     .catalog
-                    .items
+                    .items()
                     .iter()
                     .filter_map(|row| key_of(row).and_then(|k| k.parse::<i64>().ok()))
                     .max()
@@ -6759,7 +6775,7 @@ impl Runtime {
             })
             .unwrap_or_default();
         self.spelling = Some(spellfix::SearchIndex::build(
-            &self.catalog.items,
+            self.catalog.items(),
             &static_tags,
         ));
     }
@@ -8105,7 +8121,7 @@ impl Runtime {
         let section_key = string_value(section.get("key").unwrap_or(&Value::Null));
         let mut counts: HashMap<String, i64> = HashMap::new();
         let mut duration = 0i64;
-        for row in &self.catalog.items {
+        for row in self.catalog.items() {
             if string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) != section_key {
                 continue;
             }
@@ -8916,7 +8932,7 @@ impl Runtime {
         // episode in that season; adding the season row itself must not create
         // a second entry beside it.
         let mut dated = Vec::<(i64, Value)>::new();
-        for row in &self.catalog.items {
+        for row in self.catalog.items() {
             if row.get("type").and_then(Value::as_str) == Some("movie") {
                 dated.push((
                     row.get("addedAt").and_then(Value::as_i64).unwrap_or(0),
@@ -8927,7 +8943,7 @@ impl Runtime {
         let mut seasons: HashMap<String, (i64, Value)> = HashMap::new();
         for episode in self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
         {
@@ -9056,7 +9072,7 @@ impl Runtime {
         };
         let mut rows = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
             .filter(|row| {
@@ -9072,7 +9088,7 @@ impl Runtime {
             .collect::<Vec<_>>();
         for show in self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| row.get("type").and_then(Value::as_str) == Some("show"))
         {
@@ -9418,7 +9434,7 @@ impl Runtime {
         let include_device = device.is_none_or(|value| value == "1");
         let mut rows = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| row.get("viewCount").is_some())
             .flat_map(|row| {
@@ -10007,7 +10023,7 @@ impl Runtime {
                 let show = row.get("grandparentRatingKey").map(string_value);
                 let siblings = self
                     .catalog
-                    .items
+                    .items()
                     .iter()
                     .filter(|other| other.get("grandparentRatingKey").map(string_value) == show)
                     .filter_map(key_of)
@@ -10952,7 +10968,7 @@ impl Runtime {
         let items = self.section_rows(section_key);
         let episodes = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| {
                 row.get("type").and_then(Value::as_str) == Some("episode")
@@ -11764,7 +11780,7 @@ impl Runtime {
         let needle = raw.to_lowercase();
         let matches = |kind: Option<&str>| {
             self.catalog
-                .items
+                .items()
                 .iter()
                 .filter(|row| {
                     if raw.chars().count() == 1 {
@@ -12020,7 +12036,7 @@ impl Runtime {
         for (element, kind, tag_type) in fields {
             let mut per_section: HashMap<(String, String), (String, i64, bool, Option<String>)> =
                 HashMap::new();
-            for row in &self.catalog.items {
+            for row in self.catalog.items() {
                 let section = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
                 if section_filter.is_some_and(|wanted| wanted != section) {
                     continue;
@@ -12196,7 +12212,7 @@ impl Runtime {
             .map(String::as_str);
         let mut rows = self
             .catalog
-            .items
+            .items()
             .iter()
             .filter(|row| {
                 search_text_matches(raw, row.get("title").and_then(Value::as_str).unwrap_or(""))
@@ -13469,7 +13485,7 @@ impl Runtime {
         let mut files = Vec::new();
         if query.get("includeFiles").map(String::as_str) == Some("1") {
             let mut unique = BTreeSet::new();
-            for row in &self.catalog.items {
+            for row in self.catalog.items() {
                 for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
                     for part in media.get("Part").and_then(Value::as_array).into_iter().flatten()
                     {
@@ -14527,7 +14543,7 @@ impl Runtime {
                     // under every Accept -- and so is `/photo/:/transcode` of it. A
                     // library with members is a jpeg (kids). plexsim drew a generated
                     // tile for it.
-                    if !self.catalog.items.iter().any(|row| {
+                    if !self.catalog.items().iter().any(|row| {
                         string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
                             == section_key
                     }) {
@@ -14535,7 +14551,7 @@ impl Runtime {
                     }
                     let art = self
                         .catalog
-                        .items
+                        .items()
                         .iter()
                         .filter(|row| {
                             string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
@@ -14627,7 +14643,7 @@ impl Runtime {
                         // happened to share the section's number.
                         let mut doomed = self
                             .catalog
-                            .items
+                            .items()
                             .iter()
                             .filter(|row| {
                                 row.get("librarySectionID").map(string_value).as_deref()
@@ -14638,7 +14654,7 @@ impl Runtime {
                         loop {
                             let below = self
                                 .catalog
-                                .items
+                                .items()
                                 .iter()
                                 .filter(|row| {
                                     ["parentRatingKey", "grandparentRatingKey"].iter().any(|name| {
@@ -14656,7 +14672,7 @@ impl Runtime {
                             doomed.extend(below);
                         }
                         self.catalog
-                            .items
+                            .items_mut()
                             .retain(|row| key_of(row).is_none_or(|key| !doomed.contains(&key)));
                         self.catalog.rebuild_index();
                         self.deleted.extend(doomed);
@@ -15431,7 +15447,7 @@ impl Runtime {
                             self.meta_field_title(scope, field)
                         },
                         value_title_of: &|_field, value| {
-                            self.catalog.items.iter().find_map(|row| {
+                            self.catalog.items().iter().find_map(|row| {
                                 [
                                     "Genre",
                                     "Collection",
@@ -16723,7 +16739,7 @@ impl Runtime {
                 return Response::error(404, "plexsim: not found");
             };
             if request.method == "GET" || request.method == "HEAD" {
-                for row in &self.catalog.items {
+                for row in self.catalog.items() {
                     for media in row
                         .get("Media")
                         .and_then(Value::as_array)
@@ -16767,7 +16783,7 @@ impl Runtime {
             if request.method == "PUT" {
                 // Measured on a writable copy: a PUT to a stream it HAS is 200 with an
                 // empty body and stores nothing; one it does not have is a 400.
-                let known = self.catalog.items.iter().any(|row| {
+                let known = self.catalog.items().iter().any(|row| {
                     row.get("Media")
                         .and_then(Value::as_array)
                         .into_iter()
@@ -16798,7 +16814,7 @@ impl Runtime {
             if request.method == "DELETE" {
                 let mut found = false;
                 let mut uploaded = false;
-                for row in &mut self.catalog.items {
+                for row in self.catalog.items_mut() {
                     for media in row
                         .get_mut("Media")
                         .and_then(Value::as_array_mut)
@@ -18488,7 +18504,7 @@ impl Runtime {
                 let mut index = 0;
                 while index < doomed.len() {
                     let parent = doomed[index].clone();
-                    for item in &self.catalog.items {
+                    for item in self.catalog.items() {
                         let child = item.get("parentRatingKey").map(string_value);
                         if child.as_deref() == Some(parent.as_str()) {
                             if let Some(child_key) = key_of(item) {
@@ -18507,7 +18523,7 @@ impl Runtime {
                         .unwrap_or_default();
                     let siblings = self
                         .catalog
-                        .items
+                        .items()
                         .iter()
                         .filter(|item| {
                             item.get("parentRatingKey").map(string_value).as_deref()
@@ -19381,7 +19397,7 @@ impl Runtime {
                 // `/library/streams/{id}` key, `transient: "0"`, selected -- no language.
                 let id = self
                     .catalog
-                    .items
+                    .items()
                     .iter()
                     .flat_map(|item| {
                         item.get("Media")
@@ -19859,7 +19875,7 @@ impl Runtime {
             .get("type")
             .and_then(Value::as_str)
             .unwrap_or_default();
-        let snapshot = self.catalog.items.clone();
+        let snapshot = self.catalog.items().clone();
         let descendants = snapshot
             .iter()
             .filter_map(|candidate| {
@@ -20210,7 +20226,7 @@ impl Runtime {
             .unwrap_or_default();
         let existing = (!guid.is_empty())
             .then(|| {
-                self.catalog.items.iter().find(|other| {
+                self.catalog.items().iter().find(|other| {
                     key_of(other).as_deref() != Some(key)
                         && other.get("guid").and_then(Value::as_str) == Some(guid.as_str())
                         && other.get("librarySectionID").map(string_value).as_deref()
@@ -21640,7 +21656,7 @@ impl Runtime {
                 wanted.push((2, number.to_string()));
             }
         }
-        let owner_index = self.catalog.items.iter().position(|row| {
+        let owner_index = self.catalog.items().iter().position(|row| {
             row.get("Media")
                 .and_then(Value::as_array)
                 .into_iter()
@@ -21660,7 +21676,7 @@ impl Runtime {
         if wanted.is_empty() {
             return Response::empty(200);
         }
-        let owner = self.catalog.items[owner_index].clone();
+        let owner = self.catalog.items()[owner_index].clone();
         let streams_of = |stream_type: i64| {
             owner
                 .get("Media")
@@ -21709,7 +21725,7 @@ impl Runtime {
             }
         }
         let all_parts = query.get("allParts").is_some_and(|value| value == "1");
-        if let Some(media_rows) = self.catalog.items[owner_index]
+        if let Some(media_rows) = self.catalog.items_mut()[owner_index]
             .get_mut("Media")
             .and_then(Value::as_array_mut)
         {
@@ -21811,7 +21827,7 @@ impl Runtime {
             .and_then(|v| v.parse::<i64>().ok())
             .unwrap_or(0);
         let mut part = None;
-        for row in &self.catalog.items {
+        for row in self.catalog.items() {
             for media in row
                 .get("Media")
                 .and_then(Value::as_array)
@@ -22966,7 +22982,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
             Arc::clone(&guard.plextv),
             guard.machine.clone(),
             guard.friendly.clone(),
-            guard.catalog.items.len(),
+            guard.catalog.items().len(),
             guard.part_mode.clone(),
         )
     };

@@ -381,6 +381,9 @@ pub struct Delta {
 }
 
 impl Delta {
+    pub fn extend(&mut self, other: Delta) {
+        self.ops.extend(other.ops);
+    }
     pub fn len(&self) -> usize {
         self.ops.len()
     }
@@ -391,7 +394,9 @@ impl Delta {
 
 impl Cache {
     /// Diff `state` against the cache, update the cache to it, and return the writes.
-    pub fn diff(&mut self, state: &Map<String, Value>) -> Delta {
+    /// `separate` names fields diffed by `diff_rows` instead, which are therefore not
+    /// gone for being absent from `state`.
+    pub fn diff(&mut self, state: &Map<String, Value>, separate: &[&str]) -> Delta {
         let mut delta = Delta::default();
         for (field, value) in state {
             let name = format!("{STATE}{field}");
@@ -454,7 +459,7 @@ impl Cache {
         let gone: Vec<String> = self
             .docs
             .keys()
-            .filter(|field| !state.contains_key(*field))
+            .filter(|field| !state.contains_key(*field) && !separate.contains(&field.as_str()))
             .cloned()
             .collect();
         for field in gone {
@@ -464,6 +469,84 @@ impl Cache {
             self.docs.remove(&field);
             self.collections.remove(&field);
         }
+        delta
+    }
+}
+
+impl Cache {
+    /// An array field kept by its rows' own keys (the catalog's `ratingKey`), so a save
+    /// can serialise only the rows `changed` names. `changed: None` -- rows added,
+    /// removed or reordered -- serialises them all, as does a first save; an element
+    /// with no key or a repeated one is kept by content, like any array element.
+    pub fn diff_rows<'a>(
+        &mut self,
+        field: &str,
+        rows: &'a [Value],
+        changed: Option<&HashSet<String>>,
+        key_of: impl Fn(&Value) -> Option<String>,
+        get: impl Fn(&str) -> Option<&'a Value>,
+    ) -> Delta {
+        let name = format!("{STATE}{field}");
+        let mut delta = Delta::default();
+        let known = self.docs.get(field).map(|(kind, _)| *kind) == Some(Kind::Array)
+            && self.collections.contains_key(field);
+        if let (Some(changed), true) = (changed, known) {
+            let collection = self.collections.get_mut(field).expect("checked above");
+            let mut complete = true;
+            let mut puts = Vec::with_capacity(changed.len());
+            for key in changed {
+                match (collection.rows.get(key).copied(), get(key)) {
+                    (Some((pos, hash)), Some(row)) => {
+                        let body = row.to_string();
+                        let new_hash = hash_text(&body);
+                        if new_hash != hash {
+                            puts.push((key.clone(), pos, new_hash, body));
+                        }
+                    }
+                    // A key the stored rows do not hold: fall through to a full pass.
+                    _ => {
+                        complete = false;
+                        break;
+                    }
+                }
+            }
+            if complete {
+                for (key, pos, hash, body) in puts {
+                    collection.rows.insert(key.clone(), (pos, hash));
+                    delta.ops.push(Op::Put { coll: name.clone(), key, pos, body });
+                }
+                return delta;
+            }
+        }
+        if self.docs.get(field).map(|(kind, _)| *kind) != Some(Kind::Array) {
+            if self.docs.contains_key(field) {
+                delta.ops.push(Op::ClearRows { coll: name.clone() });
+            }
+            delta.ops.push(Op::Doc { name: name.clone(), kind: Kind::Array, body: None });
+            self.docs.insert(field.to_string(), (Kind::Array, 0));
+            self.collections.remove(field);
+        }
+        let mut taken: HashSet<String> = HashSet::with_capacity(rows.len());
+        let mut seen: HashMap<u64, usize> = HashMap::new();
+        let entries = rows
+            .iter()
+            .map(|row| {
+                let body = row.to_string();
+                let key = match key_of(row) {
+                    Some(key) if !key.starts_with('#') && taken.insert(key.clone()) => key,
+                    _ => {
+                        let hash = hash_text(&body);
+                        let occurrence = seen.entry(hash).or_insert(0);
+                        let key = format!("#{hash:016x}.{occurrence}");
+                        *occurrence += 1;
+                        key
+                    }
+                };
+                (key, body)
+            })
+            .collect();
+        let collection = self.collections.entry(field.to_string()).or_default();
+        diff_collection(&name, collection, entries, &mut delta);
         delta
     }
 }
@@ -616,7 +699,7 @@ pub fn write_fresh(path: &Path, state: &Map<String, Value>) -> Result<Cache, Str
     let _ = fs::remove_file(path);
     remove_sidecars(path);
     let mut cache = Cache::default();
-    let delta = cache.diff(state);
+    let delta = cache.diff(state, &[]);
     let mut connection = open(path)?;
     apply(&mut connection, &[delta])?;
     // Closing checkpoints the log into the file, which is then renamed into place.
@@ -727,11 +810,11 @@ mod tests {
         let items: Vec<Value> = (0..1000)
             .map(|n| json!({"ratingKey": n.to_string()}))
             .collect();
-        let first = cache.diff(&state(json!({"items": items.clone(), "name": "x"})));
+        let first = cache.diff_all(&state(json!({"items": items.clone(), "name": "x"})));
         assert_eq!(first.len(), 1002);
         let mut changed = items.clone();
         changed[500] = json!({"ratingKey": "500", "userRating": 8});
-        let second = cache.diff(&state(json!({"items": changed.clone(), "name": "x"})));
+        let second = cache.diff_all(&state(json!({"items": changed.clone(), "name": "x"})));
         // The old element out, the new one in, nothing else.
         assert_eq!(second.len(), 2, "{second:?}");
         let mut removed = changed.clone();
@@ -739,16 +822,40 @@ mod tests {
         removed.push(json!({"ratingKey": "new"}));
         assert_eq!(
             cache
-                .diff(&state(json!({"items": removed, "name": "x"})))
+                .diff_all(&state(json!({"items": removed, "name": "x"})))
                 .len(),
             2
         );
         assert!(
             cache
-                .diff(&state(json!({"items": items_after(&changed), "name": "x"})))
+                .diff_all(&state(json!({"items": items_after(&changed), "name": "x"})))
                 .len()
                 > 2
         );
+    }
+
+    impl Cache {
+        fn diff_all(&mut self, state: &Map<String, Value>) -> Delta {
+            self.diff(state, &[])
+        }
+    }
+
+    #[test]
+    fn rows_by_key_write_only_the_changed_row() {
+        let mut cache = Cache::default();
+        let mut rows: Vec<Value> = (0..1000).map(|n| json!({"ratingKey": n.to_string()})).collect();
+        let key = |row: &Value| row.get("ratingKey").and_then(Value::as_str).map(str::to_string);
+        let snapshot = rows.clone();
+        let first = cache.diff_rows("items", &snapshot, None, key, |_| None);
+        assert_eq!(first.len(), 1001);
+        rows[7] = json!({"ratingKey": "7", "userRating": 8});
+        let changed: HashSet<String> = ["7".to_string(), "8".to_string()].into();
+        let lookup = rows.clone();
+        let second = cache.diff_rows("items", &lookup, Some(&changed), key, |k| {
+            lookup.iter().find(|row| row.get("ratingKey").and_then(Value::as_str) == Some(k))
+        });
+        // Row 8 was touched but is unchanged: only row 7 is written.
+        assert_eq!(second.len(), 1, "{second:?}");
     }
 
     fn items_after(items: &[Value]) -> Vec<Value> {
@@ -771,7 +878,7 @@ mod tests {
             json!([{"a": 1}, {"c": 3}, {"a": 1}, {"b": [1, 2]}]),
         );
         next.remove("name");
-        let delta = cache.diff(&next);
+        let delta = cache.diff(&next, &[]);
         let mut connection = open(&path).unwrap();
         apply(&mut connection, &[delta]).unwrap();
         match read_state(&path).unwrap() {

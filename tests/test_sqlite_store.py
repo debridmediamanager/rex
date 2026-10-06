@@ -9,7 +9,8 @@ suite holds what replaced it:
 * the default state is `plexsim.db` beside a JSON catalog, a SQLite database whose
   collections are stored a row per element;
 * one client write on a 20,000-row catalog touches a handful of rows, counted by
-  SQLite triggers installed in the server's own database;
+  SQLite triggers installed in the server's own database, and is saved without
+  serialising the other rows (catalog row changes are tracked, `catalog.rs`);
 * a legacy `state.json` (recorded from the native server before the change,
   `fixtures/legacy_state_native.json`) is imported once and kept aside;
 * `--catalog` takes a database written by `build_catalog.py --convert`: it serves
@@ -33,6 +34,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 
 from test_persist import Instance, LIBRARY, check, first, results
 
@@ -134,7 +136,7 @@ def one_write_touches_few_rows():
     work, catalog = workdir(document=large_catalog(20000))
     try:
         state = os.path.join(work, "plexsim.db")
-        server = Instance(catalog, state=state)
+        server = Instance(catalog, state=state, wait=180)
         scrobble(server)
         server.stop()
         if not is_sqlite(state):
@@ -151,7 +153,23 @@ def one_write_touches_few_rows():
                 CREATE TRIGGER audit_d AFTER DELETE ON row BEGIN
                     INSERT INTO audit VALUES ('delete', OLD.coll); END;
             """)
-        server = Instance(catalog, state=state)
+        server = Instance(catalog, state=state, wait=180)
+        # A write is saved before it is answered; finding what changed must not cost
+        # the whole library. With every row serialised to diff it, each of these took
+        # 2.7 s on zen against 2.2 ms without a state file.
+        took = []
+        for index in range(5):
+            started = time.monotonic()
+            server.request("GET", "/:/rate?key=%d&identifier=%s&rating=3" % (
+                600200 + index, LIBRARY))
+            took.append(time.monotonic() - started)
+        took.sort()
+        check("a write on a 20,000-row catalog is saved without serialising every row",
+              took[2] < 0.5, "median %.3f s of %s" % (took[2], ["%.3f" % t for t in took]))
+        server.stop()
+        with sqlite3.connect(state) as db:
+            db.execute("DELETE FROM audit")
+        server = Instance(catalog, state=state, wait=180)
         status = server.request(
             "GET", "/:/rate?key=600123&identifier=%s&rating=8" % LIBRARY)[0]
         rated = first(server.request("GET", "/library/metadata/600123")[1]).get("userRating")
@@ -160,7 +178,7 @@ def one_write_touches_few_rows():
             touched = db.execute("SELECT op, coll FROM audit").fetchall()
         check(name, status == 200 and rated == 8 and 0 < len(touched) <= 10,
               "status %s, userRating %s, %d rows: %s" % (status, rated, len(touched), touched[:12]))
-        server = Instance(catalog, state=state)
+        server = Instance(catalog, state=state, wait=180)
         kept = first(server.request("GET", "/library/metadata/600123")[1]).get("userRating")
         check("that rating is restored after a hard kill", kept == 8, "userRating %s" % kept)
         server.stop()

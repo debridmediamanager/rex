@@ -1190,7 +1190,7 @@ impl Runtime {
             let lowered = wanted.to_lowercase();
             let mut taken = self
                 .catalog
-                .items
+                .items()
                 .iter()
                 .filter(|row| {
                     string_value(row.get("librarySectionID").unwrap_or(&Value::Null))

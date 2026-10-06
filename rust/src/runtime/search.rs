@@ -399,7 +399,7 @@ impl Runtime {
         if needle.chars().count() == 1 {
             return self
                 .catalog
-                .items
+                .items()
                 .iter()
                 .filter(searchable)
                 .filter(|row| fold_query(text_of(row, "title")).trim() == needle)
@@ -442,7 +442,7 @@ impl Runtime {
                 .all(|term| title_words.iter().any(|word| word.starts_with(term)))
         };
         self.catalog
-            .items
+            .items()
             .iter()
             .filter(searchable)
             .filter(|row| hit(text_of(row, "title")) || hit(text_of(row, "originalTitle")))
@@ -526,7 +526,7 @@ impl Runtime {
         // (hub, row, tag, name, tier)
         let mut direct_tags: Vec<(&str, Value, Value, String, &'static str)> = Vec::new();
         for (hub, field) in SEARCH_TAG_HUBS {
-            for row in &self.catalog.items {
+            for row in self.catalog.items() {
                 for tag in row
                     .get(*field)
                     .and_then(Value::as_array)
@@ -543,7 +543,7 @@ impl Runtime {
             }
         }
         let collection_hit = needle.chars().count() >= 2
-            && self.catalog.items.iter().any(|row| {
+            && self.catalog.items().iter().any(|row| {
                 row.get("Collection")
                     .and_then(Value::as_array)
                     .into_iter()
@@ -565,7 +565,7 @@ impl Runtime {
         };
         if let Some(spelling) = &spelling {
             let mut seen = rows.iter().filter_map(key_of).collect::<HashSet<_>>();
-            for row in &self.catalog.items {
+            for row in self.catalog.items() {
                 if !matches!(
                     row.get("type").and_then(Value::as_str),
                     Some("movie" | "show")
@@ -599,7 +599,7 @@ impl Runtime {
                     .iter()
                     .filter(|(hub, _)| matches!(*hub, "actor" | "director"))
                 {
-                    for row in &self.catalog.items {
+                    for row in self.catalog.items() {
                         for tag in row
                             .get(*field)
                             .and_then(Value::as_array)
@@ -876,7 +876,7 @@ impl Runtime {
             // name -> (tag, rows, tier)
             let mut seen: BTreeMap<String, (Value, Vec<String>, &'static str)> = BTreeMap::new();
             if needle.chars().count() >= 2 {
-                for row in &self.catalog.items {
+                for row in self.catalog.items() {
                     if string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
                         != section_key
                     {
