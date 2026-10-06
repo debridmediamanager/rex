@@ -7,7 +7,7 @@ second Plex Media Server started on the data directory another one is serving pr
 touching the pid file or the log. There is never a second server whose writes live
 only in memory.
 
-plexsim's default state file (`state.json`/`state.pickle` beside the catalog) is that
+plexsim's default state file (`plexsim.db`/`state.pickle` beside the catalog) is that
 data directory. A second server that found it held ran WITHOUT a state file, and its
 clients saw what a PMS never shows: everything they wrote (a rating, a watched flag,
 a playlist, the server's name) gone after a restart; and when the second server was

@@ -77,7 +77,7 @@ fn server_help() -> String {
         ("--gdm", "answer Plex's LAN discovery protocol on udp/32410 and udp/32414"),
         ("--plex-direct-host", "the <hash>.plex.direct hostname to advertise in GDM's Host: line; omitted entirely when unknown, which is what a PMS with no certificate does"),
         ("--account-state-interval", "seconds between claimed-account watch/rating imports"),
-        ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: state.json beside the catalog (state.pickle for the Python server), or $PLEXSIM_STATE"),
+        ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: plexsim.db beside the catalog, or the catalog itself when it is a database (state.pickle for the Python server), or $PLEXSIM_STATE"),
         ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $PLEXSIM_STATE"),
     ]
     .into_iter()

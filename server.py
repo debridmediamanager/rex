@@ -68,6 +68,7 @@ http.client._MAXHEADERS = 101
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import catalogdb  # noqa: E402
 import claim as claim_module  # noqa: E402
 import accountstate as accountstate_module  # noqa: E402
 import heartbeat as heartbeat_module  # noqa: E402
@@ -1589,8 +1590,12 @@ class Catalog:
     """
 
     def __init__(self, path):
-        with open(path) as handle:
-            document = json.load(handle)
+        # A catalog `build_catalog.py` wrote into a database (catalogdb.py).
+        if catalogdb.is_sqlite(path):
+            document = catalogdb.read(path)
+        else:
+            with open(path) as handle:
+                document = json.load(handle)
 
         self.machine = document["machineIdentifier"]
         self.friendly = document.get("friendlyName", "plexsim")
@@ -26212,8 +26217,9 @@ def main():
     parser.add_argument(
         "--state", default=None,
         help="file to keep watch state, edits, lists, history, preferences, uploads "
-             "and statistics in across restarts. Default: state.json beside the "
-             "catalog (state.pickle for the Python server), or $PLEXSIM_STATE")
+             "and statistics in across restarts. Default: plexsim.db beside the "
+             "catalog, or the catalog itself when it is a database (state.pickle for "
+             "the Python server), or $PLEXSIM_STATE")
     parser.add_argument(
         "--no-state", dest="state", action="store_const", const="",
         help="keep nothing across a restart: a restart reloads the catalog as it is "

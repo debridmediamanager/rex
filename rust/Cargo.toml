@@ -13,6 +13,7 @@ regex = "1"
 flate2 = { version = "1", default-features = false, features = ["zlib"] }
 rustls = "0.23"
 rustls-pemfile = "2"
+rusqlite = { version = "0.40", features = ["bundled"] }
 
 [lib]
 path = "src/lib.rs"

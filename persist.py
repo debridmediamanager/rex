@@ -59,6 +59,7 @@ import pickle
 import socket
 import threading
 
+import catalogdb
 import spellfix as spellfix_module
 
 logger = logging.getLogger("plexsim.persist")
@@ -152,6 +153,9 @@ ALREADY_RUNNING = "Plex Media Server is already running. Will not start..."
 
 
 def catalog_digest(path):
+    # A database catalog records the digest of the JSON it came from.
+    if catalogdb.is_sqlite(path):
+        return catalogdb.digest(path)
     with open(path, "rb") as handle:
         return hashlib.sha256(handle.read()).hexdigest()
 

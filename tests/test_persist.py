@@ -154,14 +154,14 @@ def differing(before, after):
 
 
 def default_state():
-    """A state file is the default: `state.json` (the Python server's `state.pickle`)
+    """A state file is the default: `plexsim.db` (the Python server's `state.pickle`)
     beside the catalog, held by one server at a time; `--no-state` and an empty
     `PLEXSIM_STATE` turn it off, and the last of `--state`/`--no-state` wins."""
     work = tempfile.mkdtemp(prefix="plexsim-persist-default-")
     try:
         catalog = os.path.join(work, "catalog.json")
         shutil.copy(os.path.join(HERE, "catalog_ui.json"), catalog)
-        files = [os.path.join(work, name) for name in ("state.json", "state.pickle")]
+        files = [os.path.join(work, name) for name in ("plexsim.db", "state.pickle")]
         watched = lambda instance: first(
             instance.request("GET", "/library/metadata/1007")[1]).get("viewCount")
 
@@ -317,12 +317,18 @@ def main():
         reader = Instance(catalog, coalesced)
         reader.request("GET", "/:/scrobble?key=1007&identifier=" + LIBRARY)
         time.sleep(2.5)
-        saved_at = os.stat(coalesced).st_mtime_ns
+
+        # The native state is a database in WAL mode: a commit lands in `<file>-wal`
+        # until a checkpoint moves it into the file, so either one's change is a save.
+        def written(path):
+            return max(os.stat(name).st_mtime_ns for name in (path, path + "-wal")
+                       if os.path.exists(name))
+        saved_at = written(coalesced)
         for _ in range(5):
             reader.request("GET", "/library/metadata/1007")
-        rewritten_by_reads = os.stat(coalesced).st_mtime_ns != saved_at
+        rewritten_by_reads = written(coalesced) != saved_at
         time.sleep(2.5)
-        saved_later = os.stat(coalesced).st_mtime_ns != saved_at
+        saved_later = written(coalesced) != saved_at
         reader.stop()
         check("a read is not saved before its answer, and the interval saves it",
               not rewritten_by_reads and saved_later,

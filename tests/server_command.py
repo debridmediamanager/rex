@@ -47,7 +47,7 @@ def server_command(*args, root=None):
             raise ValueError("PLEXSIM_SERVER must name an executable command")
 
     args = [str(arg) for arg in args]
-    # A state file is the server's default (`state.json` beside the catalog), and the
+    # A state file is the server's default (`plexsim.db` beside the catalog), and the
     # suites rely on a restart reloading the fixture: a test server keeps nothing
     # unless the test asks for a state file itself.
     if not any(arg in ("--state", "--no-state") or arg.startswith("--state=") for arg in args):

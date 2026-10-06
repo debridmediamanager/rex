@@ -7,6 +7,12 @@ Media/Part/Stream attributes come from that probe rather than from a guess.
 See mediainfo.py for why the numbers have to be real.
 
     RD_TOKEN=... ./build_catalog.py --link RESTRICTED_LINK ...
+
+An `--out` ending in `.db` writes the catalog into a SQLite database instead (see
+catalogdb.py), which the server takes as `--catalog` and keeps its state in too. An
+existing JSON catalog is moved into one with
+
+    ./build_catalog.py --convert catalog.json --out plexsim.db
 """
 
 import argparse
@@ -22,6 +28,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import catalogdb  # noqa: E402
 import hierarchy as hierarchy_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
 from debrid import Resolver  # noqa: E402
@@ -124,18 +131,30 @@ def main():
         help="TMDB api key; without it rows keep their probe-derived titles only",
     )
     parser.add_argument(
+        "--convert",
+        metavar="JSON",
+        help="write an existing JSON catalog into the --out database and stop",
+    )
+    parser.add_argument(
         "--relink",
         action="store_true",
         help="only relink the guids of the existing --out catalog to Plex's (needs PLEX_TOKEN)",
     )
     args = parser.parse_args()
 
+    if args.convert:
+        with open(args.convert, "rb") as handle:
+            source = handle.read()
+        document = json.loads(source)
+        catalogdb.write(args.out, document, source_bytes=source)
+        print("wrote %s: %d item(s) from %s" % (args.out, len(document.get("items") or []),
+                                                 args.convert))
+        return
+
     if args.relink:
-        with open(args.out) as handle:
-            document = json.load(handle)
+        document = load_catalog(args.out)
         count = relink_guids(document["items"], args.out)
-        with open(args.out, "w") as handle:
-            json.dump(document, handle, indent=2)
+        save_catalog(args.out, document)
         print("relinked %d row(s) in %s" % (count, args.out))
         return
 
@@ -302,10 +321,29 @@ def main():
         "sections": sections,
         "items": items,
     }
-    with open(args.out, "w") as handle:
-        json.dump(document, handle, indent=2)
+    save_catalog(args.out, document)
 
     print("\nwrote %s: %d item(s), machine=%s" % (args.out, len(items), machine))
+
+
+def is_database(path):
+    return path.endswith(".db") or catalogdb.is_sqlite(path)
+
+
+def load_catalog(path):
+    if catalogdb.is_sqlite(path):
+        return catalogdb.read(path)
+    with open(path) as handle:
+        return json.load(handle)
+
+
+def save_catalog(path, document):
+    """`catalog.json`, or the catalog half of a database (its state is left alone)."""
+    if is_database(path):
+        catalogdb.write(path, document)
+        return
+    with open(path, "w") as handle:
+        json.dump(document, handle, indent=2)
 
 
 def relink_guids(items, out):

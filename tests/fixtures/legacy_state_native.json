@@ -1,0 +1,4604 @@
+{
+  "format": 1,
+  "machineIdentifier": "f1x7u4e0000000000000000000000000000000f1",
+  "catalogPath": "/private/tmp/claude-501/lg.WM83/catalog.json",
+  "catalogDigest": "d779e813ec82294f5b7cceb0054fc88c1e494718",
+  "friendlyName": "Legacy Server",
+  "prefs": {
+    "FriendlyName": "Legacy Server"
+  },
+  "edits": {
+    "1008": {
+      "title": "Legacy Title",
+      "Field": [
+        {
+          "locked": true,
+          "name": "title"
+        }
+      ]
+    }
+  },
+  "addedSections": [],
+  "deleted": [],
+  "viewState": {
+    "1007": {
+      "viewCount": 1,
+      "lastViewedAt": 1791292541,
+      "_viewUpdatedAt": 1791292541
+    },
+    "1008": {
+      "lastRatedAt": 1791292541,
+      "userRating": 8.0,
+      "_viewUpdatedAt": 1791292541
+    }
+  },
+  "history": [
+    {
+      "historyKey": "/status/sessions/history/1",
+      "key": "/library/metadata/1007",
+      "ratingKey": "1007",
+      "librarySectionID": "1",
+      "type": "movie",
+      "viewedAt": 1791292541,
+      "accountID": 1,
+      "deviceID": 1,
+      "_history": true,
+      "thumb": "/library/metadata/1007/thumb/1789180064",
+      "title": "Tears of Steel",
+      "originallyAvailableAt": "2012-09-25",
+      "viewType": 1
+    }
+  ],
+  "viewCounts": {
+    "1007": 1
+  },
+  "devices": {},
+  "playlists": [],
+  "collections": [],
+  "queues": [],
+  "nextQueue": 2,
+  "nextQueueItem": 2,
+  "nextPlaylist": 40001,
+  "nextPlaylistItem": 0,
+  "nextCollection": 50001,
+  "items": [
+    {
+      "ratingKey": "1007",
+      "key": "/library/metadata/1007",
+      "guid": "plex://movie/520a1a3c2c634f2594808ee9",
+      "type": "movie",
+      "title": "Tears of Steel",
+      "year": 2012,
+      "summary": "The film’s premise is about a group of warriors and scientists, who gathered at the “Oude Kerk” in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
+      "duration": 734167,
+      "addedAt": 1789180064,
+      "updatedAt": 1789180064,
+      "thumb": "/library/metadata/1007/thumb/1789180064",
+      "art": "/library/metadata/1007/art/1789180064",
+      "contentRating": "NR",
+      "Media": [
+        {
+          "id": 100700,
+          "duration": 734167,
+          "bitrate": 6225,
+          "width": 1920,
+          "height": 800,
+          "aspectRatio": 2.35,
+          "audioChannels": 2,
+          "audioCodec": "vorbis",
+          "videoCodec": "vp8",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": null,
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10070,
+              "key": "/library/parts/10070/1789180064/file.webm",
+              "duration": 734167,
+              "file": "/plexsim/1/Tears of Steel.webm",
+              "size": 571346576,
+              "container": "mkv",
+              "videoProfile": null,
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1007001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "vp8",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 800,
+                  "profile": null,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": null,
+                  "colorTrc": null,
+                  "colorSpace": null,
+                  "frameRate": 24.0,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (VP8)"
+                },
+                {
+                  "id": 1007002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "vorbis",
+                  "index": 1,
+                  "channels": 2,
+                  "audioChannelLayout": "stereo",
+                  "samplingRate": 48000,
+                  "displayTitle": "Unknown (VORBIS Stereo)",
+                  "extendedDisplayTitle": "Unknown (VORBIS Stereo)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2012-09-25",
+      "audienceRating": 5.7,
+      "studio": "Blender Foundation",
+      "Genre": [
+        {
+          "tag": "Science Fiction",
+          "id": 658108,
+          "filter": "genre=658108"
+        },
+        {
+          "tag": "Animation",
+          "id": 16771,
+          "filter": "genre=16771"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "Netherlands",
+          "id": 734516,
+          "filter": "country=734516"
+        }
+      ],
+      "Role": [
+        {
+          "tag": "Derek de Lint",
+          "role": "Old Thom",
+          "thumb": "https://image.tmdb.org/t/p/w185/8fRRmh8EYZBlUtu1Wlop0j22QcP.jpg",
+          "tagKey": "d7d5e5b2456f53e5d3e6c600",
+          "id": 837308,
+          "filter": "actor=837308"
+        },
+        {
+          "tag": "Sergio Hasselbaink",
+          "role": "Barly",
+          "thumb": "https://image.tmdb.org/t/p/w185/6xjL2LqOEURISAzzFLtYsIVmGT1.jpg",
+          "tagKey": "04991f28a7d0e389d2281ac1",
+          "id": 191529,
+          "filter": "actor=191529"
+        },
+        {
+          "tag": "Vanja Rukavina",
+          "role": "Thom",
+          "thumb": "https://image.tmdb.org/t/p/w185/4zzhALIIwYvBFmem3dm6nOZg8py.jpg",
+          "tagKey": "ab35e46a83a6498d0e962f52",
+          "id": 406313,
+          "filter": "actor=406313"
+        },
+        {
+          "tag": "Denise Rebergen",
+          "role": "Celia",
+          "thumb": "https://image.tmdb.org/t/p/w185/hBJjiMZsz5WaEgCpkUsw7Z0lekD.jpg",
+          "tagKey": "8c457f118df4baabb8512aa6",
+          "id": 538701,
+          "filter": "actor=538701"
+        },
+        {
+          "tag": "Rogier Schippers",
+          "role": "Kapitän",
+          "thumb": "https://image.tmdb.org/t/p/w185/fUeXGTjkNZPwHK1JZwtiK6SUYmT.jpg",
+          "tagKey": "66f61ce348019638b0b4d253",
+          "id": 640592,
+          "filter": "actor=640592"
+        },
+        {
+          "tag": "Chris Haley",
+          "role": "Tech head",
+          "tagKey": "d54fdf122cf09022537c0063",
+          "id": 604513,
+          "filter": "actor=604513"
+        }
+      ],
+      "Director": [
+        {
+          "tag": "Ian Hubert",
+          "tagKey": "93b699d0aba64b389680807d",
+          "id": 44221,
+          "filter": "director=44221"
+        }
+      ],
+      "Writer": [
+        {
+          "tag": "Ian Hubert",
+          "tagKey": "93b699d0aba64b389680807d",
+          "id": 294277,
+          "filter": "writer=294277"
+        }
+      ],
+      "Guid": [
+        {
+          "id": "imdb://tt5129250"
+        },
+        {
+          "id": "tmdb://133701"
+        }
+      ],
+      "_poster_url": "https://image.tmdb.org/t/p/w342/8qy3jRmaHR7f8VZh3iXCqCWfFsH.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/fOy6SL5Zs2PFcNXwqEPIDPrLB1q.jpg",
+      "librarySectionID": 1,
+      "librarySectionTitle": "Debrid Movies",
+      "librarySectionKey": "/library/sections/1",
+      "slug": "tears-of-steel",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 5.7,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "viewCount": 1,
+      "lastViewedAt": 1791292541,
+      "_viewUpdatedAt": 1791292541
+    },
+    {
+      "ratingKey": "1008",
+      "key": "/library/metadata/1008",
+      "guid": "plex://movie/520a1a3c2c634f2594808ee9-fixture1008",
+      "type": "movie",
+      "title": "Legacy Title",
+      "year": 2012,
+      "summary": "The film’s premise is about a group of warriors and scientists, who gathered at the “Oude Kerk” in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
+      "duration": 734167,
+      "addedAt": 1789180064,
+      "updatedAt": 1789180064,
+      "thumb": "/library/metadata/1008/thumb/1789180064",
+      "art": "/library/metadata/1008/art/1789180064",
+      "contentRating": "NR",
+      "Media": [
+        {
+          "id": 100800,
+          "duration": 734167,
+          "bitrate": 6225,
+          "width": 1920,
+          "height": 800,
+          "aspectRatio": 2.35,
+          "audioChannels": 2,
+          "audioCodec": "vorbis",
+          "videoCodec": "vp8",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": null,
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10080,
+              "key": "/library/parts/10080/1789180064/file.webm",
+              "duration": 734167,
+              "file": "/plexsim/1/Tears of Steel.webm",
+              "size": 571346576,
+              "container": "mkv",
+              "videoProfile": null,
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1008001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "vp8",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 800,
+                  "profile": null,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": null,
+                  "colorTrc": null,
+                  "colorSpace": null,
+                  "frameRate": 24.0,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (VP8)"
+                },
+                {
+                  "id": 1008002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "vorbis",
+                  "index": 1,
+                  "channels": 2,
+                  "audioChannelLayout": "stereo",
+                  "samplingRate": 48000,
+                  "displayTitle": "Unknown (VORBIS Stereo)",
+                  "extendedDisplayTitle": "Unknown (VORBIS Stereo)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2012-09-25",
+      "audienceRating": 5.7,
+      "studio": "Blender Foundation",
+      "Genre": [
+        {
+          "tag": "Science Fiction",
+          "id": 658108,
+          "filter": "genre=658108"
+        },
+        {
+          "tag": "Animation",
+          "id": 16771,
+          "filter": "genre=16771"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "Netherlands",
+          "id": 734516,
+          "filter": "country=734516"
+        }
+      ],
+      "Role": [
+        {
+          "tag": "Derek de Lint",
+          "role": "Old Thom",
+          "thumb": "https://image.tmdb.org/t/p/w185/8fRRmh8EYZBlUtu1Wlop0j22QcP.jpg",
+          "tagKey": "d7d5e5b2456f53e5d3e6c600",
+          "id": 837308,
+          "filter": "actor=837308"
+        },
+        {
+          "tag": "Sergio Hasselbaink",
+          "role": "Barly",
+          "thumb": "https://image.tmdb.org/t/p/w185/6xjL2LqOEURISAzzFLtYsIVmGT1.jpg",
+          "tagKey": "04991f28a7d0e389d2281ac1",
+          "id": 191529,
+          "filter": "actor=191529"
+        },
+        {
+          "tag": "Vanja Rukavina",
+          "role": "Thom",
+          "thumb": "https://image.tmdb.org/t/p/w185/4zzhALIIwYvBFmem3dm6nOZg8py.jpg",
+          "tagKey": "ab35e46a83a6498d0e962f52",
+          "id": 406313,
+          "filter": "actor=406313"
+        },
+        {
+          "tag": "Denise Rebergen",
+          "role": "Celia",
+          "thumb": "https://image.tmdb.org/t/p/w185/hBJjiMZsz5WaEgCpkUsw7Z0lekD.jpg",
+          "tagKey": "8c457f118df4baabb8512aa6",
+          "id": 538701,
+          "filter": "actor=538701"
+        },
+        {
+          "tag": "Rogier Schippers",
+          "role": "Kapitän",
+          "thumb": "https://image.tmdb.org/t/p/w185/fUeXGTjkNZPwHK1JZwtiK6SUYmT.jpg",
+          "tagKey": "66f61ce348019638b0b4d253",
+          "id": 640592,
+          "filter": "actor=640592"
+        },
+        {
+          "tag": "Chris Haley",
+          "role": "Tech head",
+          "tagKey": "d54fdf122cf09022537c0063",
+          "id": 604513,
+          "filter": "actor=604513"
+        }
+      ],
+      "Director": [
+        {
+          "tag": "Ian Hubert",
+          "tagKey": "93b699d0aba64b389680807d",
+          "id": 44221,
+          "filter": "director=44221"
+        }
+      ],
+      "Writer": [
+        {
+          "tag": "Ian Hubert",
+          "tagKey": "93b699d0aba64b389680807d",
+          "id": 294277,
+          "filter": "writer=294277"
+        }
+      ],
+      "Guid": [
+        {
+          "id": "imdb://tt5129250"
+        },
+        {
+          "id": "tmdb://133701"
+        }
+      ],
+      "_poster_url": "https://image.tmdb.org/t/p/w342/8qy3jRmaHR7f8VZh3iXCqCWfFsH.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/fOy6SL5Zs2PFcNXwqEPIDPrLB1q.jpg",
+      "librarySectionID": 1,
+      "librarySectionTitle": "Debrid Movies",
+      "librarySectionKey": "/library/sections/1",
+      "slug": "tears-of-steel",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 5.7,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "_viewUpdatedAt": 1791292541,
+      "userRating": 8.0,
+      "lastRatedAt": 1791292541,
+      "Field": [
+        {
+          "locked": true,
+          "name": "title"
+        }
+      ]
+    },
+    {
+      "ratingKey": "1009",
+      "key": "/library/metadata/1009",
+      "guid": "plex://movie/520a1a3c2c634f2594808ee9-fixture1009",
+      "type": "movie",
+      "title": "Tears of Steel (fixture copy 3)",
+      "year": 2012,
+      "summary": "The film’s premise is about a group of warriors and scientists, who gathered at the “Oude Kerk” in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
+      "duration": 734167,
+      "addedAt": 1789180064,
+      "updatedAt": 1789180064,
+      "thumb": "/library/metadata/1009/thumb/1789180064",
+      "art": "/library/metadata/1009/art/1789180064",
+      "contentRating": "NR",
+      "Media": [
+        {
+          "id": 100900,
+          "duration": 734167,
+          "bitrate": 6225,
+          "width": 1920,
+          "height": 800,
+          "aspectRatio": 2.35,
+          "audioChannels": 2,
+          "audioCodec": "vorbis",
+          "videoCodec": "vp8",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": null,
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10090,
+              "key": "/library/parts/10090/1789180064/file.webm",
+              "duration": 734167,
+              "file": "/plexsim/1/Tears of Steel.webm",
+              "size": 571346576,
+              "container": "mkv",
+              "videoProfile": null,
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1009001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "vp8",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 800,
+                  "profile": null,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": null,
+                  "colorTrc": null,
+                  "colorSpace": null,
+                  "frameRate": 24.0,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (VP8)"
+                },
+                {
+                  "id": 1009002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "vorbis",
+                  "index": 1,
+                  "channels": 2,
+                  "audioChannelLayout": "stereo",
+                  "samplingRate": 48000,
+                  "displayTitle": "Unknown (VORBIS Stereo)",
+                  "extendedDisplayTitle": "Unknown (VORBIS Stereo)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2012-09-25",
+      "audienceRating": 5.7,
+      "studio": "Blender Foundation",
+      "Genre": [
+        {
+          "tag": "Science Fiction",
+          "id": 658108,
+          "filter": "genre=658108"
+        },
+        {
+          "tag": "Animation",
+          "id": 16771,
+          "filter": "genre=16771"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "Netherlands",
+          "id": 734516,
+          "filter": "country=734516"
+        }
+      ],
+      "Role": [
+        {
+          "tag": "Derek de Lint",
+          "role": "Old Thom",
+          "thumb": "https://image.tmdb.org/t/p/w185/8fRRmh8EYZBlUtu1Wlop0j22QcP.jpg",
+          "tagKey": "d7d5e5b2456f53e5d3e6c600",
+          "id": 837308,
+          "filter": "actor=837308"
+        },
+        {
+          "tag": "Sergio Hasselbaink",
+          "role": "Barly",
+          "thumb": "https://image.tmdb.org/t/p/w185/6xjL2LqOEURISAzzFLtYsIVmGT1.jpg",
+          "tagKey": "04991f28a7d0e389d2281ac1",
+          "id": 191529,
+          "filter": "actor=191529"
+        },
+        {
+          "tag": "Vanja Rukavina",
+          "role": "Thom",
+          "thumb": "https://image.tmdb.org/t/p/w185/4zzhALIIwYvBFmem3dm6nOZg8py.jpg",
+          "tagKey": "ab35e46a83a6498d0e962f52",
+          "id": 406313,
+          "filter": "actor=406313"
+        },
+        {
+          "tag": "Denise Rebergen",
+          "role": "Celia",
+          "thumb": "https://image.tmdb.org/t/p/w185/hBJjiMZsz5WaEgCpkUsw7Z0lekD.jpg",
+          "tagKey": "8c457f118df4baabb8512aa6",
+          "id": 538701,
+          "filter": "actor=538701"
+        },
+        {
+          "tag": "Rogier Schippers",
+          "role": "Kapitän",
+          "thumb": "https://image.tmdb.org/t/p/w185/fUeXGTjkNZPwHK1JZwtiK6SUYmT.jpg",
+          "tagKey": "66f61ce348019638b0b4d253",
+          "id": 640592,
+          "filter": "actor=640592"
+        },
+        {
+          "tag": "Chris Haley",
+          "role": "Tech head",
+          "tagKey": "d54fdf122cf09022537c0063",
+          "id": 604513,
+          "filter": "actor=604513"
+        }
+      ],
+      "Director": [
+        {
+          "tag": "Ian Hubert",
+          "tagKey": "93b699d0aba64b389680807d",
+          "id": 44221,
+          "filter": "director=44221"
+        }
+      ],
+      "Writer": [
+        {
+          "tag": "Ian Hubert",
+          "tagKey": "93b699d0aba64b389680807d",
+          "id": 294277,
+          "filter": "writer=294277"
+        }
+      ],
+      "Guid": [
+        {
+          "id": "imdb://tt5129250"
+        },
+        {
+          "id": "tmdb://133701"
+        }
+      ],
+      "_poster_url": "https://image.tmdb.org/t/p/w342/8qy3jRmaHR7f8VZh3iXCqCWfFsH.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/fOy6SL5Zs2PFcNXwqEPIDPrLB1q.jpg",
+      "librarySectionID": 1,
+      "librarySectionTitle": "Debrid Movies",
+      "librarySectionKey": "/library/sections/1",
+      "slug": "tears-of-steel",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 5.7,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      }
+    },
+    {
+      "ratingKey": "1012",
+      "key": "/library/metadata/1012",
+      "guid": "plex://movie/614ee97b618cd92600cef3e1",
+      "type": "movie",
+      "title": "Trust No One: The Hunt for the Crypto King",
+      "year": 2022,
+      "summary": "When the young founder of a collapsing cryptocurrency exchange dies unexpectedly, irate investors suspect there's more to his death than meets the eye.",
+      "duration": 5456672,
+      "addedAt": 1789180050,
+      "updatedAt": 1789180050,
+      "thumb": "/library/metadata/1012/thumb/1789180050",
+      "art": "/library/metadata/1012/art/1789180050",
+      "Media": [
+        {
+          "id": 101200,
+          "duration": 5456672,
+          "bitrate": 2090,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "hevc",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "main 10",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10120,
+              "key": "/library/parts/10120/1789180050/file.mkv",
+              "duration": 5456672,
+              "file": "/plexsim/1/Trust.No.One.The.Hunt.for.the.Crypto.King.2022.1080p.NF.WEB.DL.DDP5.1.DV.HEVC-WiNEY.mkv",
+              "size": 1425792014,
+              "container": "mkv",
+              "videoProfile": "main 10",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1012001,
+                  "streamType": 1,
+                  "codec": "hevc",
+                  "index": 0,
+                  "streamIdentifier": null,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "main 10",
+                  "level": 120,
+                  "refFrames": null,
+                  "bitDepth": 10,
+                  "chromaSubsampling": "4:2:0",
+                  "chromaLocation": "left",
+                  "codedHeight": 1080,
+                  "codedWidth": 1920,
+                  "codecID": null,
+                  "colorPrimaries": null,
+                  "colorTrc": null,
+                  "colorSpace": null,
+                  "colorRange": "pc",
+                  "frameRate": 23.976,
+                  "scanType": null,
+                  "DOVIPresent": true,
+                  "DOVIProfile": 5,
+                  "DOVILevel": 3,
+                  "DOVIBLCompatID": 0,
+                  "DOVIBLPresent": true,
+                  "DOVIELPresent": false,
+                  "DOVIRPUPresent": true,
+                  "DOVIVersion": "1.0",
+                  "default": true,
+                  "displayTitle": "1080p DoVi",
+                  "extendedDisplayTitle": "1080p DoVi (HEVC Main 10)"
+                },
+                {
+                  "id": 1012002,
+                  "streamType": 2,
+                  "codec": "eac3",
+                  "index": 1,
+                  "streamIdentifier": null,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "bitDepth": null,
+                  "selected": true,
+                  "default": true,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1012003,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 2,
+                  "streamIdentifier": null,
+                  "language": "العربية",
+                  "languageCode": "ara",
+                  "languageTag": "ar",
+                  "displayTitle": "العربية",
+                  "extendedDisplayTitle": "العربية (SRT)"
+                },
+                {
+                  "id": 1012004,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 3,
+                  "streamIdentifier": null,
+                  "language": "Čeština",
+                  "languageCode": "ces",
+                  "languageTag": "cs",
+                  "displayTitle": "Čeština",
+                  "extendedDisplayTitle": "Čeština (SRT)"
+                },
+                {
+                  "id": 1012005,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 4,
+                  "streamIdentifier": null,
+                  "language": "Dansk",
+                  "languageCode": "dan",
+                  "languageTag": "da",
+                  "displayTitle": "Dansk",
+                  "extendedDisplayTitle": "Dansk (SRT)"
+                },
+                {
+                  "id": 1012006,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 5,
+                  "streamIdentifier": null,
+                  "language": "Deutsch",
+                  "languageCode": "deu",
+                  "languageTag": "de",
+                  "displayTitle": "Deutsch",
+                  "extendedDisplayTitle": "Deutsch (SRT)"
+                },
+                {
+                  "id": 1012007,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 6,
+                  "streamIdentifier": null,
+                  "language": "Ελληνικά",
+                  "languageCode": "ell",
+                  "languageTag": "el",
+                  "displayTitle": "Ελληνικά",
+                  "extendedDisplayTitle": "Ελληνικά (SRT)"
+                },
+                {
+                  "id": 1012008,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 7,
+                  "streamIdentifier": null,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "title": "SDH",
+                  "displayTitle": "English",
+                  "extendedDisplayTitle": "SDH (English SRT)"
+                },
+                {
+                  "id": 1012009,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 8,
+                  "streamIdentifier": null,
+                  "language": "Español",
+                  "languageCode": "spa",
+                  "languageTag": "es",
+                  "title": "Latin American",
+                  "displayTitle": "Español",
+                  "extendedDisplayTitle": "Latin American (Español SRT)"
+                },
+                {
+                  "id": 1012010,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 9,
+                  "streamIdentifier": null,
+                  "language": "Español",
+                  "languageCode": "spa",
+                  "languageTag": "es",
+                  "title": "European",
+                  "displayTitle": "Español",
+                  "extendedDisplayTitle": "European (Español SRT)"
+                },
+                {
+                  "id": 1012011,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 10,
+                  "streamIdentifier": null,
+                  "language": "Suomi",
+                  "languageCode": "fin",
+                  "languageTag": "fi",
+                  "displayTitle": "Suomi",
+                  "extendedDisplayTitle": "Suomi (SRT)"
+                },
+                {
+                  "id": 1012012,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 11,
+                  "streamIdentifier": null,
+                  "language": "Français",
+                  "languageCode": "fra",
+                  "languageTag": "fr",
+                  "displayTitle": "Français",
+                  "extendedDisplayTitle": "Français (SRT)"
+                },
+                {
+                  "id": 1012013,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 12,
+                  "streamIdentifier": null,
+                  "language": "עברית",
+                  "languageCode": "heb",
+                  "languageTag": "he",
+                  "displayTitle": "עברית",
+                  "extendedDisplayTitle": "עברית (SRT)"
+                },
+                {
+                  "id": 1012014,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 13,
+                  "streamIdentifier": null,
+                  "language": "Hrvatski",
+                  "languageCode": "hrv",
+                  "languageTag": "hr",
+                  "displayTitle": "Hrvatski",
+                  "extendedDisplayTitle": "Hrvatski (SRT)"
+                },
+                {
+                  "id": 1012015,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 14,
+                  "streamIdentifier": null,
+                  "language": "magyar",
+                  "languageCode": "hun",
+                  "languageTag": "hu",
+                  "displayTitle": "magyar",
+                  "extendedDisplayTitle": "magyar (SRT)"
+                },
+                {
+                  "id": 1012016,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 15,
+                  "streamIdentifier": null,
+                  "language": "Indonesia",
+                  "languageCode": "ind",
+                  "languageTag": "id",
+                  "displayTitle": "Indonesia",
+                  "extendedDisplayTitle": "Indonesia (SRT)"
+                },
+                {
+                  "id": 1012017,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 16,
+                  "streamIdentifier": null,
+                  "language": "Italiano",
+                  "languageCode": "ita",
+                  "languageTag": "it",
+                  "displayTitle": "Italiano",
+                  "extendedDisplayTitle": "Italiano (SRT)"
+                },
+                {
+                  "id": 1012018,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 17,
+                  "streamIdentifier": null,
+                  "language": "日本語",
+                  "languageCode": "jpn",
+                  "languageTag": "ja",
+                  "displayTitle": "日本語",
+                  "extendedDisplayTitle": "日本語 (SRT)"
+                },
+                {
+                  "id": 1012019,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 18,
+                  "streamIdentifier": null,
+                  "language": "한국어",
+                  "languageCode": "kor",
+                  "languageTag": "ko",
+                  "displayTitle": "한국어",
+                  "extendedDisplayTitle": "한국어 (SRT)"
+                },
+                {
+                  "id": 1012020,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 19,
+                  "streamIdentifier": null,
+                  "language": "Melayu",
+                  "languageCode": "msa",
+                  "languageTag": "ms",
+                  "displayTitle": "Melayu",
+                  "extendedDisplayTitle": "Melayu (SRT)"
+                },
+                {
+                  "id": 1012021,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 20,
+                  "streamIdentifier": null,
+                  "language": "norsk bokmål",
+                  "languageCode": "nob",
+                  "languageTag": "nb",
+                  "displayTitle": "norsk bokmål",
+                  "extendedDisplayTitle": "norsk bokmål (SRT)"
+                },
+                {
+                  "id": 1012022,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 21,
+                  "streamIdentifier": null,
+                  "language": "Nederlands",
+                  "languageCode": "nld",
+                  "languageTag": "nl",
+                  "displayTitle": "Nederlands",
+                  "extendedDisplayTitle": "Nederlands (SRT)"
+                },
+                {
+                  "id": 1012023,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 22,
+                  "streamIdentifier": null,
+                  "language": "polski",
+                  "languageCode": "pol",
+                  "languageTag": "pl",
+                  "displayTitle": "polski",
+                  "extendedDisplayTitle": "polski (SRT)"
+                },
+                {
+                  "id": 1012024,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 23,
+                  "streamIdentifier": null,
+                  "language": "Português",
+                  "languageCode": "por",
+                  "languageTag": "pt",
+                  "title": "Brazilian",
+                  "displayTitle": "Português",
+                  "extendedDisplayTitle": "Brazilian (Português SRT)"
+                },
+                {
+                  "id": 1012025,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 24,
+                  "streamIdentifier": null,
+                  "language": "Português",
+                  "languageCode": "por",
+                  "languageTag": "pt",
+                  "title": "European",
+                  "displayTitle": "Português",
+                  "extendedDisplayTitle": "European (Português SRT)"
+                },
+                {
+                  "id": 1012026,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 25,
+                  "streamIdentifier": null,
+                  "language": "română",
+                  "languageCode": "ron",
+                  "languageTag": "ro",
+                  "displayTitle": "română",
+                  "extendedDisplayTitle": "română (SRT)"
+                },
+                {
+                  "id": 1012027,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 26,
+                  "streamIdentifier": null,
+                  "language": "Русский",
+                  "languageCode": "rus",
+                  "languageTag": "ru",
+                  "displayTitle": "Русский",
+                  "extendedDisplayTitle": "Русский (SRT)"
+                },
+                {
+                  "id": 1012028,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 27,
+                  "streamIdentifier": null,
+                  "language": "Svenska",
+                  "languageCode": "swe",
+                  "languageTag": "sv",
+                  "displayTitle": "Svenska",
+                  "extendedDisplayTitle": "Svenska (SRT)"
+                },
+                {
+                  "id": 1012029,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 28,
+                  "streamIdentifier": null,
+                  "language": "ไทย",
+                  "languageCode": "tha",
+                  "languageTag": "th",
+                  "displayTitle": "ไทย",
+                  "extendedDisplayTitle": "ไทย (SRT)"
+                },
+                {
+                  "id": 1012030,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 29,
+                  "streamIdentifier": null,
+                  "language": "Türkçe",
+                  "languageCode": "tur",
+                  "languageTag": "tr",
+                  "displayTitle": "Türkçe",
+                  "extendedDisplayTitle": "Türkçe (SRT)"
+                },
+                {
+                  "id": 1012031,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 30,
+                  "streamIdentifier": null,
+                  "language": "Українська",
+                  "languageCode": "ukr",
+                  "languageTag": "uk",
+                  "displayTitle": "Українська",
+                  "extendedDisplayTitle": "Українська (SRT)"
+                },
+                {
+                  "id": 1012032,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 31,
+                  "streamIdentifier": null,
+                  "language": "Tiếng Việt",
+                  "languageCode": "vie",
+                  "languageTag": "vi",
+                  "displayTitle": "Tiếng Việt",
+                  "extendedDisplayTitle": "Tiếng Việt (SRT)"
+                },
+                {
+                  "id": 1012033,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 32,
+                  "streamIdentifier": null,
+                  "language": "中文",
+                  "languageCode": "zho",
+                  "languageTag": "zh",
+                  "title": "Simplified",
+                  "displayTitle": "中文",
+                  "extendedDisplayTitle": "Simplified (中文 SRT)"
+                },
+                {
+                  "id": 1012034,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 33,
+                  "streamIdentifier": null,
+                  "language": "中文",
+                  "languageCode": "zho",
+                  "languageTag": "zh",
+                  "title": "Traditional",
+                  "displayTitle": "中文",
+                  "extendedDisplayTitle": "Traditional (中文 SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2022-03-30",
+      "audienceRating": 6.1,
+      "contentRating": "R",
+      "studio": "Minnow Films",
+      "Genre": [
+        {
+          "tag": "Documentary",
+          "id": 841880,
+          "filter": "genre=841880"
+        },
+        {
+          "tag": "Crime",
+          "id": 670594,
+          "filter": "genre=670594"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "United Kingdom",
+          "id": 507717,
+          "filter": "country=507717"
+        }
+      ],
+      "Director": [
+        {
+          "tag": "Luke Sewell",
+          "tagKey": "bd3c729eba4ef29893cda118",
+          "id": 780577,
+          "filter": "director=780577"
+        }
+      ],
+      "Guid": [
+        {
+          "id": "imdb://tt15479902"
+        },
+        {
+          "id": "tmdb://946327"
+        }
+      ],
+      "_poster_url": "https://image.tmdb.org/t/p/w342/2ZzllPVrYmBn28Kc7PZaQ0PrQat.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/poL87RE9mtvfiAKas8DHtdqA6nG.jpg",
+      "librarySectionID": 1,
+      "librarySectionTitle": "Debrid Movies",
+      "librarySectionKey": "/library/sections/1",
+      "slug": "trust-no-one-the-hunt-for-the-crypto-king",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 6.1,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      }
+    },
+    {
+      "ratingKey": "1013",
+      "key": "/library/metadata/1013",
+      "guid": "plex://movie/60a69a74ba9733002ddf78f6",
+      "type": "movie",
+      "title": "Tuesday",
+      "year": 2024,
+      "summary": "A mother and her teenage daughter must confront Death when it arrives in the form of an astonishing talking bird.",
+      "duration": 6653888,
+      "addedAt": 1789180050,
+      "updatedAt": 1789180050,
+      "thumb": "/library/metadata/1013/thumb/1789180050",
+      "art": "/library/metadata/1013/art/1789180050",
+      "Media": [
+        {
+          "id": 101300,
+          "duration": 6653888,
+          "bitrate": 1710,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "hevc",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "main 10",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10130,
+              "key": "/library/parts/10130/1789180050/file.mkv",
+              "duration": 6653888,
+              "file": "/plexsim/1/Tuesday.2022.1080p.NF.WEB.DL.DDP5.1.DV.H.265-PMI.mkv",
+              "size": 1421990771,
+              "container": "mkv",
+              "videoProfile": "main 10",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1013001,
+                  "streamType": 1,
+                  "codec": "hevc",
+                  "index": 0,
+                  "streamIdentifier": null,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "main 10",
+                  "level": 120,
+                  "refFrames": null,
+                  "bitDepth": 10,
+                  "chromaSubsampling": "4:2:0",
+                  "chromaLocation": "left",
+                  "codedHeight": 1080,
+                  "codedWidth": 1920,
+                  "codecID": null,
+                  "colorPrimaries": null,
+                  "colorTrc": null,
+                  "colorSpace": null,
+                  "colorRange": "pc",
+                  "frameRate": 23.976,
+                  "scanType": null,
+                  "DOVIPresent": true,
+                  "DOVIProfile": 5,
+                  "DOVILevel": 3,
+                  "DOVIBLCompatID": 0,
+                  "DOVIBLPresent": true,
+                  "DOVIELPresent": false,
+                  "DOVIRPUPresent": true,
+                  "DOVIVersion": "1.0",
+                  "default": true,
+                  "displayTitle": "1080p DoVi",
+                  "extendedDisplayTitle": "1080p DoVi (HEVC Main 10)"
+                },
+                {
+                  "id": 1013002,
+                  "streamType": 2,
+                  "codec": "eac3",
+                  "index": 1,
+                  "streamIdentifier": null,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "bitDepth": null,
+                  "selected": true,
+                  "default": true,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1013003,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 2,
+                  "streamIdentifier": null,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "title": "SDH",
+                  "displayTitle": "English",
+                  "extendedDisplayTitle": "SDH (English SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2024-06-07",
+      "audienceRating": 6.8,
+      "contentRating": "R",
+      "studio": "A24",
+      "Genre": [
+        {
+          "tag": "Fantasy",
+          "id": 728821,
+          "filter": "genre=728821"
+        },
+        {
+          "tag": "Drama",
+          "id": 25779,
+          "filter": "genre=25779"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "United Kingdom",
+          "id": 507717,
+          "filter": "country=507717"
+        },
+        {
+          "tag": "United States of America",
+          "id": 387550,
+          "filter": "country=387550"
+        }
+      ],
+      "Role": [
+        {
+          "tag": "Julia Louis-Dreyfus",
+          "role": "Zora",
+          "thumb": "https://image.tmdb.org/t/p/w185/iEfHQNrVbVFesDPjdySom9nqsFg.jpg",
+          "tagKey": "733bf38732fa9fd0b8da0241",
+          "id": 20200,
+          "filter": "actor=20200"
+        },
+        {
+          "tag": "Lola Petticrew",
+          "role": "Tuesday",
+          "thumb": "https://image.tmdb.org/t/p/w185/wc7o4vu3amWNiXkR88JxniYroAI.jpg",
+          "tagKey": "7b90ea557b492e17f4c85dad",
+          "id": 99991,
+          "filter": "actor=99991"
+        },
+        {
+          "tag": "Arinzé Kene",
+          "role": "Death",
+          "thumb": "https://image.tmdb.org/t/p/w185/bD8kUAc3ZEkz08dWszWnqcAQify.jpg",
+          "tagKey": "93123a95ad496e01775dd254",
+          "id": 315720,
+          "filter": "actor=315720"
+        },
+        {
+          "tag": "Leah Harvey",
+          "role": "Nurse Billie",
+          "thumb": "https://image.tmdb.org/t/p/w185/j5bEw0gtE9RGTq2y4WoQ6HUa9di.jpg",
+          "tagKey": "175f37c8c17eef7d17513fa9",
+          "id": 626306,
+          "filter": "actor=626306"
+        },
+        {
+          "tag": "Jay Simpson",
+          "role": "Spike",
+          "thumb": "https://image.tmdb.org/t/p/w185/4UDQaaRqvMqPwJbUxJVZ7u6P7Wt.jpg",
+          "tagKey": "fa8c18ee028b2729a0667c40",
+          "id": 12035,
+          "filter": "actor=12035"
+        },
+        {
+          "tag": "Ellie James",
+          "role": "Willow",
+          "thumb": "https://image.tmdb.org/t/p/w185/sfWWp69KlcxuIuymP7jOuW49FS7.jpg",
+          "tagKey": "06077964f7c995180fe1b9fe",
+          "id": 182630,
+          "filter": "actor=182630"
+        }
+      ],
+      "Director": [
+        {
+          "tag": "Daina Oniunas-Pusić",
+          "tagKey": "9bae67b86064c2fa629c2e38",
+          "id": 697535,
+          "filter": "director=697535"
+        }
+      ],
+      "Writer": [
+        {
+          "tag": "Daina Oniunas-Pusić",
+          "tagKey": "9bae67b86064c2fa629c2e38",
+          "id": 607084,
+          "filter": "writer=607084"
+        }
+      ],
+      "Guid": [
+        {
+          "id": "imdb://tt14682800"
+        },
+        {
+          "id": "tmdb://831395"
+        }
+      ],
+      "_poster_url": "https://image.tmdb.org/t/p/w342/zrd6blans3SqghHSxPAl7tqnaOf.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/ebmY8j6bfTsxUdhVtTaoNITch6u.jpg",
+      "librarySectionID": 1,
+      "librarySectionTitle": "Debrid Movies",
+      "librarySectionKey": "/library/sections/1",
+      "slug": "tuesday",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 6.8,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      }
+    },
+    {
+      "ratingKey": "1014",
+      "key": "/library/metadata/1014",
+      "guid": "local://1014",
+      "type": "movie",
+      "title": "Vinaipayan",
+      "year": 2026,
+      "summary": "",
+      "duration": 1682218,
+      "addedAt": 1789180050,
+      "updatedAt": 1789180050,
+      "thumb": "/library/metadata/1014/thumb/1789180050",
+      "art": "/library/metadata/1014/art/1789180050",
+      "Media": [
+        {
+          "id": 101400,
+          "duration": 1682218,
+          "bitrate": 5298,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "aac",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "main",
+          "audioProfile": "lc",
+          "Part": [
+            {
+              "id": 10140,
+              "key": "/library/parts/10140/1789180050/file.mkv",
+              "duration": 1682218,
+              "file": "/plexsim/1/Vinaipayan.2026.1080p.SFLIX.WEB.DL.AAC5.1.H.264-PMi-XDMovies.mkv",
+              "size": 1114087637,
+              "container": "mkv",
+              "videoProfile": "main",
+              "audioProfile": "lc",
+              "Stream": [
+                {
+                  "id": 1014001,
+                  "streamType": 1,
+                  "codec": "h264",
+                  "index": 0,
+                  "streamIdentifier": null,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "main",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "chromaLocation": "left",
+                  "codedHeight": 1088,
+                  "codedWidth": 1920,
+                  "codecID": null,
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "colorRange": "tv",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "default": true,
+                  "original": true,
+                  "language": "தமிழ்",
+                  "languageCode": "tam",
+                  "languageTag": "ta",
+                  "title": "PMi-XDMovies",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "PMi-XDMovies (1080p H.264)"
+                },
+                {
+                  "id": 1014002,
+                  "streamType": 2,
+                  "codec": "aac",
+                  "index": 1,
+                  "streamIdentifier": null,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1",
+                  "samplingRate": 48000,
+                  "bitDepth": null,
+                  "profile": "lc",
+                  "selected": true,
+                  "default": true,
+                  "language": "தமிழ்",
+                  "languageCode": "tam",
+                  "languageTag": "ta",
+                  "title": "Tamil",
+                  "displayTitle": "தமிழ் (AAC 5.1)",
+                  "extendedDisplayTitle": "Tamil (தமிழ் AAC 5.1)"
+                },
+                {
+                  "id": 1014003,
+                  "streamType": 3,
+                  "canAutoSync": false,
+                  "codec": "srt",
+                  "index": 2,
+                  "streamIdentifier": null,
+                  "dub": true,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "title": "PMi-XDMovies",
+                  "displayTitle": "English",
+                  "extendedDisplayTitle": "PMi-XDMovies (English SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "librarySectionID": 1,
+      "librarySectionTitle": "Debrid Movies",
+      "librarySectionKey": "/library/sections/1",
+      "slug": "vinaipayan",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      }
+    },
+    {
+      "ratingKey": "20001",
+      "key": "/library/metadata/20001/children",
+      "guid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "type": "show",
+      "title": "The Simpsons",
+      "titleSort": "Simpsons",
+      "summary": "Set in Springfield, the average American town, the show focuses on the antics and everyday adventures of the Simpson family; Homer, Marge, Bart, Lisa and Maggie, as well as a virtual cast of thousands. Since the beginning, the series has been a pop culture icon, attracting hundreds of celebrities to guest star. The show has also made name for itself in its fearless satirical take on politics, media and American life in general.",
+      "year": 1989,
+      "thumb": "/library/metadata/20001/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "childCount": 4,
+      "leafCount": 8,
+      "viewedLeafCount": 0,
+      "_poster_url": "https://image.tmdb.org/t/p/w342/uWpG7GqfKGQqX4YMAo3nv5OrglV.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "contentRating": "12",
+      "studio": "Gracie Films",
+      "Genre": [
+        {
+          "tag": "Animation",
+          "id": 16771,
+          "filter": "genre=16771"
+        },
+        {
+          "tag": "Comedy",
+          "id": 244689,
+          "filter": "genre=244689"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "United States of America",
+          "id": 387550,
+          "filter": "country=387550"
+        }
+      ],
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg",
+          "tagKey": "63e45d85f74252cf531d51d9",
+          "id": 487624,
+          "filter": "actor=487624"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg",
+          "tagKey": "101ca2673ad29029abeab558",
+          "id": 457236,
+          "filter": "actor=457236"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg",
+          "tagKey": "bc19ba44c57b94846a949cc3",
+          "id": 739069,
+          "filter": "actor=739069"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg",
+          "tagKey": "21007ba7f6b20ffeb304fd22",
+          "id": 627513,
+          "filter": "actor=627513"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg",
+          "tagKey": "36a0b4ff483ad559d424b73d",
+          "id": 153284,
+          "filter": "actor=153284"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg",
+          "tagKey": "ad898711e66fc1df3709675d",
+          "id": 240905,
+          "filter": "actor=240905"
+        }
+      ],
+      "audienceRating": 8.0,
+      "tagline": "Just a product of society that's lost its good manners.",
+      "Guid": [
+        {
+          "id": "imdb://tt0096697"
+        },
+        {
+          "id": "tmdb://456"
+        }
+      ],
+      "Location": [
+        {
+          "path": "/plexsim/2/20001"
+        }
+      ],
+      "slug": "the-simpsons",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 8.0,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "index": 1,
+      "duration": 1311769,
+      "originallyAvailableAt": "2007-12-16"
+    },
+    {
+      "ratingKey": "30001",
+      "key": "/library/metadata/30001/children",
+      "type": "season",
+      "guid": "plex://season/2319f21a0e7c7cda123bbba3",
+      "title": "Season 19",
+      "index": 19,
+      "parentIndex": 1,
+      "year": 2007,
+      "summary": "",
+      "parentRatingKey": "20001",
+      "parentKey": "/library/metadata/20001",
+      "parentTitle": "The Simpsons",
+      "parentThumb": "/library/metadata/20001/thumb/1789180059",
+      "parentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "thumb": "/library/metadata/30001/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "leafCount": 1,
+      "viewedLeafCount": 0,
+      "parentStudio": "Gracie Films",
+      "_poster_url": "https://image.tmdb.org/t/p/w342/nLKZJ1ozVvYFtaOynzkShE8wN4k.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "parentSlug": "the-simpsons"
+    },
+    {
+      "ratingKey": "1001",
+      "key": "/library/metadata/1001",
+      "guid": "plex://episode/a683d9c98b39e2e1915920ed",
+      "type": "episode",
+      "title": "Eternal Moonshine of the Simpson Mind",
+      "year": 2007,
+      "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+      "duration": 1311769,
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "thumb": "/library/metadata/1001/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "Media": [
+        {
+          "id": 100100,
+          "duration": 1311769,
+          "bitrate": 9428,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "high",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10010,
+              "key": "/library/parts/10010/1789180059/file.mkv",
+              "duration": 1311769,
+              "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "size": 1546039833,
+              "container": "mkv",
+              "videoProfile": "high",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1001001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "high",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (H.264)"
+                },
+                {
+                  "id": 1001002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "eac3",
+                  "index": 1,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1001003,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "displayTitle": "English",
+                  "canAutoSync": false,
+                  "extendedDisplayTitle": "English (SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2007-12-16",
+      "audienceRating": 8.0,
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg",
+          "tagKey": "63e45d85f74252cf531d51d9",
+          "id": 487624,
+          "filter": "actor=487624"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg",
+          "tagKey": "101ca2673ad29029abeab558",
+          "id": 457236,
+          "filter": "actor=457236"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg",
+          "tagKey": "bc19ba44c57b94846a949cc3",
+          "id": 739069,
+          "filter": "actor=739069"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg",
+          "tagKey": "21007ba7f6b20ffeb304fd22",
+          "id": 627513,
+          "filter": "actor=627513"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg",
+          "tagKey": "36a0b4ff483ad559d424b73d",
+          "id": 153284,
+          "filter": "actor=153284"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg",
+          "tagKey": "ad898711e66fc1df3709675d",
+          "id": 240905,
+          "filter": "actor=240905"
+        }
+      ],
+      "index": 9,
+      "parentIndex": 19,
+      "grandparentTitle": "The Simpsons",
+      "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "parentRatingKey": "30001",
+      "parentKey": "/library/metadata/30001",
+      "parentTitle": "Season 19",
+      "parentThumb": "/library/metadata/30001/thumb/1789180059",
+      "grandparentRatingKey": "20001",
+      "grandparentKey": "/library/metadata/20001",
+      "grandparentThumb": "/library/metadata/20001/thumb/1789180059",
+      "grandparentArt": "/library/metadata/20001/art/1789180059",
+      "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "parentGuid": "plex://season/2319f21a0e7c7cda123bbba3",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "grandparentSlug": "the-simpsons",
+      "contentRating": "12",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 8.0,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating"
+    },
+    {
+      "ratingKey": "30002",
+      "key": "/library/metadata/30002/children",
+      "type": "season",
+      "guid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30002",
+      "title": "Season 20",
+      "index": 20,
+      "parentIndex": 1,
+      "year": 2007,
+      "summary": "",
+      "parentRatingKey": "20001",
+      "parentKey": "/library/metadata/20001",
+      "parentTitle": "The Simpsons",
+      "parentThumb": "/library/metadata/20001/thumb/1789180059",
+      "parentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "thumb": "/library/metadata/30001/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "leafCount": 2,
+      "viewedLeafCount": 0,
+      "parentStudio": "Gracie Films",
+      "_poster_url": "https://image.tmdb.org/t/p/w342/nLKZJ1ozVvYFtaOynzkShE8wN4k.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "parentSlug": "the-simpsons"
+    },
+    {
+      "ratingKey": "1002",
+      "key": "/library/metadata/1002",
+      "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1002",
+      "type": "episode",
+      "title": "Fixture Episode 1",
+      "year": 2007,
+      "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+      "duration": 1311769,
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "thumb": "/library/metadata/1002/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "Media": [
+        {
+          "id": 100200,
+          "duration": 1311769,
+          "bitrate": 9428,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "high",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10020,
+              "key": "/library/parts/10020/1789180059/file.mkv",
+              "duration": 1311769,
+              "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "size": 1546039833,
+              "container": "mkv",
+              "videoProfile": "high",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1002001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "high",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (H.264)"
+                },
+                {
+                  "id": 1002002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "eac3",
+                  "index": 1,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1002003,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "displayTitle": "English",
+                  "canAutoSync": false,
+                  "extendedDisplayTitle": "English (SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2007-12-16",
+      "audienceRating": 8.0,
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg",
+          "tagKey": "63e45d85f74252cf531d51d9",
+          "id": 487624,
+          "filter": "actor=487624"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg",
+          "tagKey": "101ca2673ad29029abeab558",
+          "id": 457236,
+          "filter": "actor=457236"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg",
+          "tagKey": "bc19ba44c57b94846a949cc3",
+          "id": 739069,
+          "filter": "actor=739069"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg",
+          "tagKey": "21007ba7f6b20ffeb304fd22",
+          "id": 627513,
+          "filter": "actor=627513"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg",
+          "tagKey": "36a0b4ff483ad559d424b73d",
+          "id": 153284,
+          "filter": "actor=153284"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg",
+          "tagKey": "ad898711e66fc1df3709675d",
+          "id": 240905,
+          "filter": "actor=240905"
+        }
+      ],
+      "index": 1,
+      "parentIndex": 20,
+      "grandparentTitle": "The Simpsons",
+      "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "parentRatingKey": "30002",
+      "parentKey": "/library/metadata/30002",
+      "parentTitle": "Season 20",
+      "grandparentRatingKey": "20001",
+      "grandparentKey": "/library/metadata/20001",
+      "grandparentThumb": "/library/metadata/20001/thumb/1789180059",
+      "grandparentArt": "/library/metadata/20001/art/1789180059",
+      "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "parentGuid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30002",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "grandparentSlug": "the-simpsons",
+      "contentRating": "12",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 8.0,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating"
+    },
+    {
+      "ratingKey": "1003",
+      "key": "/library/metadata/1003",
+      "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1003",
+      "type": "episode",
+      "title": "Fixture Episode 2",
+      "year": 2007,
+      "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+      "duration": 1311769,
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "thumb": "/library/metadata/1003/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "Media": [
+        {
+          "id": 100300,
+          "duration": 1311769,
+          "bitrate": 9428,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "high",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10030,
+              "key": "/library/parts/10030/1789180059/file.mkv",
+              "duration": 1311769,
+              "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "size": 1546039833,
+              "container": "mkv",
+              "videoProfile": "high",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1003001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "high",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (H.264)"
+                },
+                {
+                  "id": 1003002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "eac3",
+                  "index": 1,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1003003,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "displayTitle": "English",
+                  "canAutoSync": false,
+                  "extendedDisplayTitle": "English (SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2007-12-16",
+      "audienceRating": 8.0,
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg",
+          "tagKey": "63e45d85f74252cf531d51d9",
+          "id": 487624,
+          "filter": "actor=487624"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg",
+          "tagKey": "101ca2673ad29029abeab558",
+          "id": 457236,
+          "filter": "actor=457236"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg",
+          "tagKey": "bc19ba44c57b94846a949cc3",
+          "id": 739069,
+          "filter": "actor=739069"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg",
+          "tagKey": "21007ba7f6b20ffeb304fd22",
+          "id": 627513,
+          "filter": "actor=627513"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg",
+          "tagKey": "36a0b4ff483ad559d424b73d",
+          "id": 153284,
+          "filter": "actor=153284"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg",
+          "tagKey": "ad898711e66fc1df3709675d",
+          "id": 240905,
+          "filter": "actor=240905"
+        }
+      ],
+      "index": 2,
+      "parentIndex": 20,
+      "grandparentTitle": "The Simpsons",
+      "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "parentRatingKey": "30002",
+      "parentKey": "/library/metadata/30002",
+      "parentTitle": "Season 20",
+      "grandparentRatingKey": "20001",
+      "grandparentKey": "/library/metadata/20001",
+      "grandparentThumb": "/library/metadata/20001/thumb/1789180059",
+      "grandparentArt": "/library/metadata/20001/art/1789180059",
+      "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "parentGuid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30002",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "grandparentSlug": "the-simpsons",
+      "contentRating": "12",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 8.0,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating"
+    },
+    {
+      "ratingKey": "30003",
+      "key": "/library/metadata/30003/children",
+      "type": "season",
+      "guid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30003",
+      "title": "Season 21",
+      "index": 21,
+      "parentIndex": 1,
+      "year": 2007,
+      "summary": "",
+      "parentRatingKey": "20001",
+      "parentKey": "/library/metadata/20001",
+      "parentTitle": "The Simpsons",
+      "parentThumb": "/library/metadata/20001/thumb/1789180059",
+      "parentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "thumb": "/library/metadata/30001/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "leafCount": 1,
+      "viewedLeafCount": 0,
+      "parentStudio": "Gracie Films",
+      "_poster_url": "https://image.tmdb.org/t/p/w342/nLKZJ1ozVvYFtaOynzkShE8wN4k.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "parentSlug": "the-simpsons"
+    },
+    {
+      "ratingKey": "1004",
+      "key": "/library/metadata/1004",
+      "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1004",
+      "type": "episode",
+      "title": "Fixture Episode 3",
+      "year": 2007,
+      "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+      "duration": 1311769,
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "thumb": "/library/metadata/1004/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "Media": [
+        {
+          "id": 100400,
+          "duration": 1311769,
+          "bitrate": 9428,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "high",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10040,
+              "key": "/library/parts/10040/1789180064/file.webm",
+              "duration": 1311769,
+              "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "size": 1546039833,
+              "container": "mkv",
+              "videoProfile": "high",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1002001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "high",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (H.264)"
+                },
+                {
+                  "id": 1002002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "eac3",
+                  "index": 1,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1002003,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "displayTitle": "English",
+                  "canAutoSync": false,
+                  "extendedDisplayTitle": "English (SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        },
+        {
+          "id": 100401,
+          "duration": 1311769,
+          "bitrate": 9428,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "high",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10041,
+              "key": "/library/parts/10041/1789180064/file.webm",
+              "duration": 1311769,
+              "file": "/plexsim/2/Fixture Episode 3 (second version).webm",
+              "size": 1546039833,
+              "container": "mkv",
+              "videoProfile": "high",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1002001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "high",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (H.264)"
+                },
+                {
+                  "id": 1002002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "eac3",
+                  "index": 1,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1002003,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "displayTitle": "English",
+                  "canAutoSync": false,
+                  "extendedDisplayTitle": "English (SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2007-12-16",
+      "audienceRating": 8.0,
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg",
+          "tagKey": "63e45d85f74252cf531d51d9",
+          "id": 487624,
+          "filter": "actor=487624"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg",
+          "tagKey": "101ca2673ad29029abeab558",
+          "id": 457236,
+          "filter": "actor=457236"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg",
+          "tagKey": "bc19ba44c57b94846a949cc3",
+          "id": 739069,
+          "filter": "actor=739069"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg",
+          "tagKey": "21007ba7f6b20ffeb304fd22",
+          "id": 627513,
+          "filter": "actor=627513"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg",
+          "tagKey": "36a0b4ff483ad559d424b73d",
+          "id": 153284,
+          "filter": "actor=153284"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg",
+          "tagKey": "ad898711e66fc1df3709675d",
+          "id": 240905,
+          "filter": "actor=240905"
+        }
+      ],
+      "index": 1,
+      "parentIndex": 21,
+      "grandparentTitle": "The Simpsons",
+      "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "parentRatingKey": "30003",
+      "parentKey": "/library/metadata/30003",
+      "parentTitle": "Season 21",
+      "grandparentRatingKey": "20001",
+      "grandparentKey": "/library/metadata/20001",
+      "grandparentThumb": "/library/metadata/20001/thumb/1789180059",
+      "grandparentArt": "/library/metadata/20001/art/1789180059",
+      "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "parentGuid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30003",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "grandparentSlug": "the-simpsons",
+      "contentRating": "12",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 8.0,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating"
+    },
+    {
+      "ratingKey": "30004",
+      "key": "/library/metadata/30004/children",
+      "type": "season",
+      "guid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30004",
+      "title": "Season 22",
+      "index": 22,
+      "parentIndex": 1,
+      "year": 2007,
+      "summary": "",
+      "parentRatingKey": "20001",
+      "parentKey": "/library/metadata/20001",
+      "parentTitle": "The Simpsons",
+      "parentThumb": "/library/metadata/20001/thumb/1789180059",
+      "parentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "thumb": "/library/metadata/30001/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "leafCount": 4,
+      "viewedLeafCount": 0,
+      "parentStudio": "Gracie Films",
+      "_poster_url": "https://image.tmdb.org/t/p/w342/nLKZJ1ozVvYFtaOynzkShE8wN4k.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "parentSlug": "the-simpsons"
+    },
+    {
+      "ratingKey": "1005",
+      "key": "/library/metadata/1005",
+      "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1005",
+      "type": "episode",
+      "title": "Fixture Episode 4",
+      "year": 2007,
+      "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+      "duration": 1311769,
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "thumb": "/library/metadata/1005/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "Media": [
+        {
+          "id": 100500,
+          "duration": 1311769,
+          "bitrate": 9428,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "high",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10050,
+              "key": "/library/parts/10050/1789180064/file.webm",
+              "duration": 1311769,
+              "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "size": 1546039833,
+              "container": "mkv",
+              "videoProfile": "high",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1002001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "high",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (H.264)"
+                },
+                {
+                  "id": 1002002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "eac3",
+                  "index": 1,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1002003,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "displayTitle": "English",
+                  "canAutoSync": false,
+                  "extendedDisplayTitle": "English (SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2007-12-16",
+      "audienceRating": 8.0,
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg",
+          "tagKey": "63e45d85f74252cf531d51d9",
+          "id": 487624,
+          "filter": "actor=487624"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg",
+          "tagKey": "101ca2673ad29029abeab558",
+          "id": 457236,
+          "filter": "actor=457236"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg",
+          "tagKey": "bc19ba44c57b94846a949cc3",
+          "id": 739069,
+          "filter": "actor=739069"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg",
+          "tagKey": "21007ba7f6b20ffeb304fd22",
+          "id": 627513,
+          "filter": "actor=627513"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg",
+          "tagKey": "36a0b4ff483ad559d424b73d",
+          "id": 153284,
+          "filter": "actor=153284"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg",
+          "tagKey": "ad898711e66fc1df3709675d",
+          "id": 240905,
+          "filter": "actor=240905"
+        }
+      ],
+      "index": 1,
+      "parentIndex": 22,
+      "grandparentTitle": "The Simpsons",
+      "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "parentRatingKey": "30004",
+      "parentKey": "/library/metadata/30004",
+      "parentTitle": "Season 22",
+      "grandparentRatingKey": "20001",
+      "grandparentKey": "/library/metadata/20001",
+      "grandparentThumb": "/library/metadata/20001/thumb/1789180059",
+      "grandparentArt": "/library/metadata/20001/art/1789180059",
+      "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "parentGuid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30004",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "grandparentSlug": "the-simpsons",
+      "contentRating": "12",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 8.0,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating"
+    },
+    {
+      "ratingKey": "1006",
+      "key": "/library/metadata/1006",
+      "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1006",
+      "type": "episode",
+      "title": "Fixture Episode 5",
+      "year": 2007,
+      "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+      "duration": 1311769,
+      "addedAt": 1789180061,
+      "updatedAt": 1789180059,
+      "thumb": "/library/metadata/1006/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "Media": [
+        {
+          "id": 100600,
+          "duration": 1311769,
+          "bitrate": 9428,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "high",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10060,
+              "key": "/library/parts/10060/1789180064/file.webm",
+              "duration": 1311769,
+              "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "size": 1546039833,
+              "container": "mkv",
+              "videoProfile": "high",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1002001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "high",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (H.264)"
+                },
+                {
+                  "id": 1002002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "eac3",
+                  "index": 1,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1002003,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "displayTitle": "English",
+                  "canAutoSync": false,
+                  "extendedDisplayTitle": "English (SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2007-12-16",
+      "audienceRating": 8.0,
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg",
+          "tagKey": "63e45d85f74252cf531d51d9",
+          "id": 487624,
+          "filter": "actor=487624"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg",
+          "tagKey": "101ca2673ad29029abeab558",
+          "id": 457236,
+          "filter": "actor=457236"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg",
+          "tagKey": "bc19ba44c57b94846a949cc3",
+          "id": 739069,
+          "filter": "actor=739069"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg",
+          "tagKey": "21007ba7f6b20ffeb304fd22",
+          "id": 627513,
+          "filter": "actor=627513"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg",
+          "tagKey": "36a0b4ff483ad559d424b73d",
+          "id": 153284,
+          "filter": "actor=153284"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg",
+          "tagKey": "ad898711e66fc1df3709675d",
+          "id": 240905,
+          "filter": "actor=240905"
+        }
+      ],
+      "index": 2,
+      "parentIndex": 22,
+      "grandparentTitle": "The Simpsons",
+      "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "parentRatingKey": "30004",
+      "parentKey": "/library/metadata/30004",
+      "parentTitle": "Season 22",
+      "grandparentRatingKey": "20001",
+      "grandparentKey": "/library/metadata/20001",
+      "grandparentThumb": "/library/metadata/20001/thumb/1789180059",
+      "grandparentArt": "/library/metadata/20001/art/1789180059",
+      "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "parentGuid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30004",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "grandparentSlug": "the-simpsons",
+      "contentRating": "12",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 8.0,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating"
+    },
+    {
+      "ratingKey": "1010",
+      "key": "/library/metadata/1010",
+      "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1010",
+      "type": "episode",
+      "title": "Fixture Episode 6",
+      "year": 2007,
+      "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+      "duration": 1311769,
+      "addedAt": 1789180062,
+      "updatedAt": 1789180059,
+      "thumb": "/library/metadata/1010/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "Media": [
+        {
+          "id": 101000,
+          "duration": 1311769,
+          "bitrate": 9428,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "high",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10100,
+              "key": "/library/parts/10100/1789180064/file.webm",
+              "duration": 1311769,
+              "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "size": 1546039833,
+              "container": "mkv",
+              "videoProfile": "high",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1002001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "high",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (H.264)"
+                },
+                {
+                  "id": 1002002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "eac3",
+                  "index": 1,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1002003,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "displayTitle": "English",
+                  "canAutoSync": false,
+                  "extendedDisplayTitle": "English (SRT)"
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2007-12-16",
+      "audienceRating": 8.0,
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg",
+          "tagKey": "63e45d85f74252cf531d51d9",
+          "id": 487624,
+          "filter": "actor=487624"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg",
+          "tagKey": "101ca2673ad29029abeab558",
+          "id": 457236,
+          "filter": "actor=457236"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg",
+          "tagKey": "bc19ba44c57b94846a949cc3",
+          "id": 739069,
+          "filter": "actor=739069"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg",
+          "tagKey": "21007ba7f6b20ffeb304fd22",
+          "id": 627513,
+          "filter": "actor=627513"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg",
+          "tagKey": "36a0b4ff483ad559d424b73d",
+          "id": 153284,
+          "filter": "actor=153284"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg",
+          "tagKey": "ad898711e66fc1df3709675d",
+          "id": 240905,
+          "filter": "actor=240905"
+        }
+      ],
+      "index": 3,
+      "parentIndex": 22,
+      "grandparentTitle": "The Simpsons",
+      "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "parentRatingKey": "30004",
+      "parentKey": "/library/metadata/30004",
+      "parentTitle": "Season 22",
+      "grandparentRatingKey": "20001",
+      "grandparentKey": "/library/metadata/20001",
+      "grandparentThumb": "/library/metadata/20001/thumb/1789180059",
+      "grandparentArt": "/library/metadata/20001/art/1789180059",
+      "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "parentGuid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30004",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "grandparentSlug": "the-simpsons",
+      "contentRating": "12",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 8.0,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating"
+    },
+    {
+      "ratingKey": "1011",
+      "key": "/library/metadata/1011",
+      "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1011",
+      "type": "episode",
+      "title": "Fixture Episode 7",
+      "year": 2007,
+      "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+      "duration": 1311769,
+      "addedAt": 1789180063,
+      "updatedAt": 1789180059,
+      "thumb": "/library/metadata/1011/thumb/1789180059",
+      "art": "/library/metadata/20001/art/1789180059",
+      "Media": [
+        {
+          "id": 101100,
+          "duration": 1311769,
+          "bitrate": 9428,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "high",
+          "audioProfile": null,
+          "Part": [
+            {
+              "id": 10110,
+              "key": "/library/parts/10110/1789180064/file.webm",
+              "duration": 1311769,
+              "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "size": 1546039833,
+              "container": "mkv",
+              "videoProfile": "high",
+              "audioProfile": null,
+              "Stream": [
+                {
+                  "id": 1002001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "high",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p",
+                  "extendedDisplayTitle": "1080p (H.264)"
+                },
+                {
+                  "id": 1002002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "eac3",
+                  "index": 1,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (EAC3 5.1)",
+                  "extendedDisplayTitle": "English (EAC3 5.1)"
+                },
+                {
+                  "id": 1002003,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "displayTitle": "English",
+                  "canAutoSync": false,
+                  "extendedDisplayTitle": "English (SRT)"
+                },
+                {
+                  "id": 1002004,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "language": "Français",
+                  "languageCode": "fra",
+                  "languageTag": "fr",
+                  "displayTitle": "Français",
+                  "title": null,
+                  "extendedDisplayTitle": "Français (SRT)",
+                  "canAutoSync": false
+                }
+              ]
+            }
+          ],
+          "hasVoiceActivity": false
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2007-12-16",
+      "audienceRating": 8.0,
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg",
+          "tagKey": "63e45d85f74252cf531d51d9",
+          "id": 487624,
+          "filter": "actor=487624"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg",
+          "tagKey": "101ca2673ad29029abeab558",
+          "id": 457236,
+          "filter": "actor=457236"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg",
+          "tagKey": "bc19ba44c57b94846a949cc3",
+          "id": 739069,
+          "filter": "actor=739069"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg",
+          "tagKey": "21007ba7f6b20ffeb304fd22",
+          "id": 627513,
+          "filter": "actor=627513"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg",
+          "tagKey": "36a0b4ff483ad559d424b73d",
+          "id": 153284,
+          "filter": "actor=153284"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg",
+          "tagKey": "ad898711e66fc1df3709675d",
+          "id": 240905,
+          "filter": "actor=240905"
+        }
+      ],
+      "index": 4,
+      "parentIndex": 22,
+      "grandparentTitle": "The Simpsons",
+      "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "parentRatingKey": "30004",
+      "parentKey": "/library/metadata/30004",
+      "parentTitle": "Season 22",
+      "grandparentRatingKey": "20001",
+      "grandparentKey": "/library/metadata/20001",
+      "grandparentThumb": "/library/metadata/20001/thumb/1789180059",
+      "grandparentArt": "/library/metadata/20001/art/1789180059",
+      "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "parentGuid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30004",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "grandparentSlug": "the-simpsons",
+      "contentRating": "12",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 8.0,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating"
+    }
+  ],
+  "sections": [
+    {
+      "key": "1",
+      "type": "movie",
+      "title": "Debrid Movies",
+      "uuid": "4d3316c14882aeacb807a385e2b089e2a47f563f"
+    },
+    {
+      "key": "2",
+      "type": "show",
+      "title": "Debrid TV",
+      "uuid": "f4ff9b82807b7e5a1972f3b818062ffee2e373e8"
+    }
+  ],
+  "tagTable": [],
+  "spelling": {
+    "metadata": [
+      [
+        1,
+        "(",
+        4,
+        "(",
+        ""
+      ],
+      [
+        2,
+        ")",
+        4,
+        ")",
+        ""
+      ],
+      [
+        14,
+        ":",
+        2,
+        ":",
+        ""
+      ],
+      [
+        3,
+        "1",
+        2,
+        "1",
+        "9"
+      ],
+      [
+        4,
+        "19",
+        2,
+        "19",
+        "9"
+      ],
+      [
+        5,
+        "2",
+        4,
+        "2",
+        "9"
+      ],
+      [
+        6,
+        "20",
+        2,
+        "20",
+        "9"
+      ],
+      [
+        7,
+        "21",
+        2,
+        "21",
+        "9"
+      ],
+      [
+        8,
+        "22",
+        2,
+        "22",
+        "9"
+      ],
+      [
+        9,
+        "3",
+        4,
+        "3",
+        "9"
+      ],
+      [
+        10,
+        "4",
+        2,
+        "4",
+        "9"
+      ],
+      [
+        11,
+        "5",
+        2,
+        "5",
+        "9"
+      ],
+      [
+        12,
+        "6",
+        2,
+        "6",
+        "9"
+      ],
+      [
+        13,
+        "7",
+        2,
+        "7",
+        "9"
+      ],
+      [
+        26,
+        "of",
+        8,
+        "of",
+        "AB"
+      ],
+      [
+        17,
+        "episode",
+        14,
+        "episode",
+        "ABACADA"
+      ],
+      [
+        18,
+        "eternal",
+        2,
+        "eternal",
+        "ADRML"
+      ],
+      [
+        27,
+        "one",
+        2,
+        "one",
+        "AMA"
+      ],
+      [
+        21,
+        "hunt",
+        2,
+        "hunt",
+        "AMD"
+      ],
+      [
+        19,
+        "fixture",
+        18,
+        "fixture",
+        "BACDR"
+      ],
+      [
+        36,
+        "vinaipayan",
+        2,
+        "vinaipayan",
+        "BAMABAM"
+      ],
+      [
+        20,
+        "for",
+        2,
+        "for",
+        "BR"
+      ],
+      [
+        15,
+        "copy",
+        4,
+        "copy",
+        "CABA"
+      ],
+      [
+        28,
+        "season",
+        8,
+        "season",
+        "CACAM"
+      ],
+      [
+        29,
+        "simpson",
+        2,
+        "simpson",
+        "CAMBCAM"
+      ],
+      [
+        30,
+        "simpsons",
+        2,
+        "simpsons",
+        "CAMBCAMC"
+      ],
+      [
+        22,
+        "king",
+        2,
+        "king",
+        "CAMC"
+      ],
+      [
+        31,
+        "steel",
+        6,
+        "steel",
+        "CDL"
+      ],
+      [
+        16,
+        "crypto",
+        2,
+        "crypto",
+        "CRBDA"
+      ],
+      [
+        33,
+        "the",
+        7,
+        "the",
+        "DA"
+      ],
+      [
+        35,
+        "tuesday",
+        2,
+        "tuesday",
+        "DACDA"
+      ],
+      [
+        32,
+        "tears",
+        6,
+        "tears",
+        "DRC"
+      ],
+      [
+        34,
+        "trust",
+        2,
+        "trust",
+        "DRCD"
+      ],
+      [
+        25,
+        "no",
+        2,
+        "no",
+        "MA"
+      ],
+      [
+        24,
+        "moonshine",
+        2,
+        "moonshine",
+        "MAMCAMA"
+      ],
+      [
+        23,
+        "mind",
+        2,
+        "mind",
+        "MAMD"
+      ]
+    ],
+    "tags": [
+      [
+        1,
+        "(",
+        26,
+        "(",
+        ""
+      ],
+      [
+        2,
+        ")",
+        26,
+        ")",
+        ""
+      ],
+      [
+        3,
+        "+",
+        1,
+        "+",
+        ""
+      ],
+      [
+        4,
+        "-",
+        3,
+        "-",
+        ""
+      ],
+      [
+        5,
+        ".",
+        1,
+        ".",
+        ""
+      ],
+      [
+        6,
+        "/",
+        18,
+        "/",
+        ""
+      ],
+      [
+        11,
+        ":",
+        9,
+        ":",
+        ""
+      ],
+      [
+        7,
+        "133701",
+        1,
+        "133701",
+        "9"
+      ],
+      [
+        8,
+        "456",
+        1,
+        "456",
+        "9"
+      ],
+      [
+        9,
+        "831395",
+        1,
+        "831395",
+        "9"
+      ],
+      [
+        10,
+        "946327",
+        1,
+        "946327",
+        "9"
+      ],
+      [
+        12,
+        "a24",
+        1,
+        "a24",
+        "A9"
+      ],
+      [
+        82,
+        "of",
+        1,
+        "of",
+        "AB"
+      ],
+      [
+        13,
+        "absolute",
+        1,
+        "absolute",
+        "ABCLDA"
+      ],
+      [
+        84,
+        "optimized",
+        2,
+        "optimized",
+        "ABDAMACAD"
+      ],
+      [
+        57,
+        "hubert",
+        1,
+        "hubert",
+        "ABRD"
+      ],
+      [
+        81,
+        "ocean",
+        1,
+        "ocean",
+        "ACAM"
+      ],
+      [
+        56,
+        "hasselbaink",
+        1,
+        "hasselbaink",
+        "ACLBAMC"
+      ],
+      [
+        22,
+        "azaria",
+        1,
+        "azaria",
+        "ACR"
+      ],
+      [
+        58,
+        "ian",
+        1,
+        "ian",
+        "AM"
+      ],
+      [
+        59,
+        "image",
+        1,
+        "image",
+        "AMACA"
+      ],
+      [
+        16,
+        "amazon",
+        1,
+        "amazon",
+        "AMACAM"
+      ],
+      [
+        120,
+        "united",
+        2,
+        "united",
+        "AMADAD"
+      ],
+      [
+        83,
+        "oniunas",
+        1,
+        "oniunas",
+        "AMAMAC"
+      ],
+      [
+        18,
+        "animation",
+        1,
+        "animation",
+        "AMAMADAM"
+      ],
+      [
+        53,
+        "hank",
+        1,
+        "hank",
+        "AMC"
+      ],
+      [
+        60,
+        "imdb",
+        4,
+        "imdb",
+        "AMDB"
+      ],
+      [
+        61,
+        "international",
+        1,
+        "international",
+        "AMDRMADAML"
+      ],
+      [
+        17,
+        "america",
+        1,
+        "america",
+        "AMRCA"
+      ],
+      [
+        89,
+        "pusić",
+        1,
+        "pusic",
+        "BACAC"
+      ],
+      [
+        46,
+        "fiction",
+        1,
+        "fiction",
+        "BACDAM"
+      ],
+      [
+        87,
+        "petticrew",
+        1,
+        "petticrew",
+        "BADACRB"
+      ],
+      [
+        121,
+        "vanja",
+        1,
+        "vanja",
+        "BAMCA"
+      ],
+      [
+        45,
+        "fantasy",
+        1,
+        "fantasy",
+        "BAMDACA"
+      ],
+      [
+        49,
+        "foundation",
+        1,
+        "foundation",
+        "BAMDADAM"
+      ],
+      [
+        24,
+        "blu",
+        1,
+        "blu",
+        "BL"
+      ],
+      [
+        47,
+        "films",
+        2,
+        "films",
+        "BLMC"
+      ],
+      [
+        23,
+        "blender",
+        1,
+        "blender",
+        "BLMDR"
+      ],
+      [
+        25,
+        "bluray",
+        1,
+        "bluray",
+        "BLR"
+      ],
+      [
+        48,
+        "for",
+        2,
+        "for",
+        "BR"
+      ],
+      [
+        88,
+        "production",
+        1,
+        "production",
+        "BRDACDAM"
+      ],
+      [
+        86,
+        "parts",
+        1,
+        "parts",
+        "BRDC"
+      ],
+      [
+        50,
+        "france",
+        1,
+        "france",
+        "BRMCA"
+      ],
+      [
+        63,
+        "jay",
+        1,
+        "jay",
+        "CA"
+      ],
+      [
+        101,
+        "sewell",
+        1,
+        "sewell",
+        "CABL"
+      ],
+      [
+        66,
+        "kavner",
+        1,
+        "kavner",
+        "CABMR"
+      ],
+      [
+        109,
+        "superfan",
+        1,
+        "superfan",
+        "CABRBAM"
+      ],
+      [
+        97,
+        "schippers",
+        1,
+        "schippers",
+        "CABRC"
+      ],
+      [
+        104,
+        "skyshowtime",
+        1,
+        "skyshowtime",
+        "CACABDAMA"
+      ],
+      [
+        96,
+        "sagas",
+        1,
+        "sagas",
+        "CACAC"
+      ],
+      [
+        99,
+        "seasons",
+        1,
+        "seasons",
+        "CACAMC"
+      ],
+      [
+        27,
+        "castellaneta",
+        1,
+        "castellaneta",
+        "CACDLMADA"
+      ],
+      [
+        67,
+        "kene",
+        1,
+        "kene",
+        "CAMA"
+      ],
+      [
+        62,
+        "james",
+        1,
+        "james",
+        "CAMAC"
+      ],
+      [
+        30,
+        "comedy",
+        1,
+        "comedy",
+        "CAMADA"
+      ],
+      [
+        29,
+        "combined",
+        1,
+        "combined",
+        "CAMBAMAD"
+      ],
+      [
+        103,
+        "simpson",
+        1,
+        "simpson",
+        "CAMBCAM"
+      ],
+      [
+        98,
+        "science",
+        1,
+        "science",
+        "CAMCA"
+      ],
+      [
+        68,
+        "kingdom",
+        1,
+        "kingdom",
+        "CAMCDAM"
+      ],
+      [
+        106,
+        "states",
+        1,
+        "states",
+        "CDADAC"
+      ],
+      [
+        107,
+        "story",
+        1,
+        "story",
+        "CDR"
+      ],
+      [
+        108,
+        "streaming",
+        1,
+        "streaming",
+        "CDRMAMC"
+      ],
+      [
+        64,
+        "julia",
+        1,
+        "julia",
+        "CL"
+      ],
+      [
+        65,
+        "julie",
+        1,
+        "julie",
+        "CL"
+      ],
+      [
+        90,
+        "quality",
+        1,
+        "quality",
+        "CLDA"
+      ],
+      [
+        105,
+        "smith",
+        1,
+        "smith",
+        "CMAD"
+      ],
+      [
+        102,
+        "shearer",
+        1,
+        "shearer",
+        "CR"
+      ],
+      [
+        28,
+        "chris",
+        1,
+        "chris",
+        "CRC"
+      ],
+      [
+        51,
+        "gracie",
+        1,
+        "gracie",
+        "CRCA"
+      ],
+      [
+        100,
+        "sergio",
+        1,
+        "sergio",
+        "CRCA"
+      ],
+      [
+        26,
+        "cartwright",
+        1,
+        "cartwright",
+        "CRDRCD"
+      ],
+      [
+        31,
+        "crime",
+        1,
+        "crime",
+        "CRMA"
+      ],
+      [
+        115,
+        "tt0096697",
+        1,
+        "tt0096697",
+        "D9"
+      ],
+      [
+        116,
+        "tt14682800",
+        1,
+        "tt14682800",
+        "D9"
+      ],
+      [
+        117,
+        "tt15479902",
+        1,
+        "tt15479902",
+        "D9"
+      ],
+      [
+        118,
+        "tt5129250",
+        1,
+        "tt5129250",
+        "D9"
+      ],
+      [
+        35,
+        "de",
+        1,
+        "de",
+        "DA"
+      ],
+      [
+        110,
+        "the",
+        1,
+        "the",
+        "DA"
+      ],
+      [
+        42,
+        "dub",
+        1,
+        "dub",
+        "DAB"
+      ],
+      [
+        39,
+        "documentary",
+        1,
+        "documentary",
+        "DACAMAMDR"
+      ],
+      [
+        38,
+        "disney",
+        1,
+        "disney",
+        "DACMA"
+      ],
+      [
+        34,
+        "database",
+        1,
+        "database",
+        "DADABACA"
+      ],
+      [
+        112,
+        "thetvdb",
+        24,
+        "thetvdb",
+        "DADBDB"
+      ],
+      [
+        33,
+        "dan",
+        1,
+        "dan",
+        "DAM"
+      ],
+      [
+        32,
+        "daina",
+        1,
+        "daina",
+        "DAMA"
+      ],
+      [
+        111,
+        "themoviedb",
+        1,
+        "themoviedb",
+        "DAMABADB"
+      ],
+      [
+        36,
+        "denise",
+        1,
+        "denise",
+        "DAMACA"
+      ],
+      [
+        113,
+        "thumb",
+        1,
+        "thumb",
+        "DAMB"
+      ],
+      [
+        119,
+        "tv",
+        1,
+        "tv",
+        "DB"
+      ],
+      [
+        43,
+        "dvd",
+        1,
+        "dvd",
+        "DBD"
+      ],
+      [
+        114,
+        "tmdb",
+        4,
+        "tmdb",
+        "DMDB"
+      ],
+      [
+        41,
+        "dreyfus",
+        1,
+        "dreyfus",
+        "DRBAC"
+      ],
+      [
+        37,
+        "derek",
+        1,
+        "derek",
+        "DRC"
+      ],
+      [
+        40,
+        "drama",
+        1,
+        "drama",
+        "DRMA"
+      ],
+      [
+        44,
+        "ellie",
+        1,
+        "ellie",
+        "L"
+      ],
+      [
+        52,
+        "haley",
+        1,
+        "haley",
+        "L"
+      ],
+      [
+        69,
+        "leah",
+        1,
+        "leah",
+        "L"
+      ],
+      [
+        72,
+        "lola",
+        1,
+        "lola",
+        "L"
+      ],
+      [
+        73,
+        "louis",
+        1,
+        "louis",
+        "LC"
+      ],
+      [
+        74,
+        "luke",
+        1,
+        "luke",
+        "LCA"
+      ],
+      [
+        70,
+        "legacy",
+        1,
+        "legacy",
+        "LCACA"
+      ],
+      [
+        15,
+        "alternate",
+        2,
+        "alternate",
+        "LDRMADA"
+      ],
+      [
+        71,
+        "lint",
+        1,
+        "lint",
+        "LMD"
+      ],
+      [
+        77,
+        "movie",
+        1,
+        "movie",
+        "MABA"
+      ],
+      [
+        76,
+        "mobile",
+        1,
+        "mobile",
+        "MABL"
+      ],
+      [
+        79,
+        "netflix",
+        2,
+        "netflix",
+        "MADBLC"
+      ],
+      [
+        80,
+        "netherlands",
+        1,
+        "netherlands",
+        "MADRLMDC"
+      ],
+      [
+        75,
+        "minnow",
+        1,
+        "minnow",
+        "MAMAB"
+      ],
+      [
+        78,
+        "nancy",
+        1,
+        "nancy",
+        "MAMCA"
+      ],
+      [
+        54,
+        "harry",
+        1,
+        "harry",
+        "R"
+      ],
+      [
+        92,
+        "ray",
+        1,
+        "ray",
+        "R"
+      ],
+      [
+        55,
+        "harvey",
+        1,
+        "harvey",
+        "RBA"
+      ],
+      [
+        93,
+        "rebergen",
+        1,
+        "rebergen",
+        "RBRCAM"
+      ],
+      [
+        19,
+        "arc",
+        1,
+        "arc",
+        "RC"
+      ],
+      [
+        95,
+        "rukavina",
+        1,
+        "rukavina",
+        "RCABAMA"
+      ],
+      [
+        85,
+        "original",
+        1,
+        "original",
+        "RCAML"
+      ],
+      [
+        94,
+        "rogier",
+        1,
+        "rogier",
+        "RCR"
+      ],
+      [
+        14,
+        "aired",
+        3,
+        "aired",
+        "RD"
+      ],
+      [
+        21,
+        "art",
+        1,
+        "art",
+        "RD"
+      ],
+      [
+        91,
+        "rating",
+        1,
+        "rating",
+        "RDAMC"
+      ],
+      [
+        20,
+        "arinzé",
+        1,
+        "arinze",
+        "RMCA"
+      ],
+      [
+        122,
+        "yeardley",
+        1,
+        "yeardley",
+        "YRDL"
+      ]
+    ]
+  },
+  "deviceOrder": [
+    "",
+    "legacy-fixture"
+  ],
+  "deviceFirstSeen": {
+    "legacy-fixture": 1791292541,
+    "": 1791292539
+  },
+  "plays": [],
+  "bandwidthBytes": 0,
+  "byteBuckets": [
+    [
+      2,
+      true,
+      [
+        [
+          1791292541,
+          0
+        ]
+      ]
+    ]
+  ],
+  "sectionPrefs": [],
+  "metadataProviderGroups": [],
+  "nextMetadataProviderGroup": 5,
+  "deletedBuiltinGroups": [],
+  "builtinGroupTitles": {},
+  "uploads": {},
+  "themeRows": {},
+  "themeNext": 0,
+  "downloadQueues": {},
+  "historyCounter": 1,
+  "retiredKeys": [],
+  "collectionGuids": {},
+  "hiddenContinue": [],
+  "viewedInSession": []
+}

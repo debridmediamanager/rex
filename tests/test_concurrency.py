@@ -990,6 +990,13 @@ def state_parses(path):
     except OSError as error:
         return False, str(error)
     try:
+        if blob[:16] == b"SQLite format 3\x00":
+            # The native server's state database (`rust/src/store.rs`).
+            import sqlite3
+            with sqlite3.connect(path) as db:
+                kind = db.execute("SELECT kind FROM doc WHERE name = 'state:format'").fetchone()
+                check = db.execute("PRAGMA quick_check").fetchone()
+            return kind == ("value",) and check == ("ok",), "database %s %s" % (kind, check)
         document = json.loads(blob) if blob[:1] == b"{" else restricted_pickle(blob)
         return isinstance(document, dict), type(document).__name__
     except Exception as error:  # noqa: BLE001

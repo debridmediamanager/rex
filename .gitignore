@@ -28,3 +28,9 @@ rust/target/
 state.pickle.*
 state.json
 state.json.*
+plexsim.db
+plexsim.db*
+*.db
+*.db-wal
+*.db-shm
+*.db.*

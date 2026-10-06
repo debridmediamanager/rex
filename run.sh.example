@@ -13,11 +13,16 @@ export RD_TOKEN=...
 # client on the same network find it without plex.tv. `--gdm off` turns it off.
 #
 # The server keeps watch state, edits, playlists, collections, history, preferences,
-# uploads and the device/statistics tables across restarts in state.json beside the
-# catalog (gitignored) by default; --state FILE moves it, and with --no-state a
-# restart reloads catalog.json as it is on disk. The native server writes
-# JSON and refuses the Python server's pickle files, so a state file does not carry
-# over from one to the other.
+# uploads and the device/statistics tables across restarts in a SQLite database,
+# plexsim.db beside the catalog (gitignored), by default, writing only what changed;
+# --state FILE moves it, and with --no-state a restart reloads the catalog as it is on
+# disk. An older state.json beside the catalog is imported into it once and kept as
+# state.json.migrated. The Python server keeps a pickle instead, so a state file does
+# not carry over from one server to the other.
+#
+# The catalog can live in a database too, and the state then shares that one file:
+#   ./build_catalog.py --convert catalog.json --out plexsim.db
+# and pass --catalog plexsim.db below.
 #
 # Build the server first: cargo build --release --manifest-path rust/Cargo.toml
 # The Python server (the measured oracle) still runs with: python3 server.py <flags>

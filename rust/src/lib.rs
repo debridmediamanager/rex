@@ -12,4 +12,5 @@ pub mod hierarchy;
 pub mod mediainfo;
 pub mod metadata;
 pub mod runtime;
+pub mod store;
 pub mod xmlout;

@@ -23,7 +23,7 @@ use rustls_pemfile::{certs, pkcs8_private_keys, rsa_private_keys};
 use serde_json::{json, Map, Value};
 use sha1::{Digest, Sha1};
 
-use crate::{catalog::Catalog, decision, metadata, xmlout};
+use crate::{catalog::Catalog, decision, metadata, store, xmlout};
 
 mod artwork;
 mod axes;
@@ -550,6 +550,9 @@ pub struct Runtime {
     /// its connection writes after releasing the runtime lock (`write_snapshot`).
     save_serial: u64,
     pending_save: Option<StateSnapshot>,
+    /// What the state database holds as of the last snapshot; a snapshot writes only
+    /// the difference (`store.rs`).
+    store_cache: store::Cache,
     /// Events are retained by sequence so an eventsource/websocket subscriber
     /// can take a snapshot without a mutable callback into the route thread.
     /// This is bounded in `push_event`; it is runtime state, never persisted.
@@ -603,13 +606,20 @@ impl Runtime {
                     .unwrap_or_else(|| PathBuf::from("."));
                 tmdb::Tmdb::new(key, directory.join("tmdb_cache.json"))
             });
-        let raw_catalog =
-            fs::read(&options.catalog).map_err(|error| format!("cannot read catalog: {error}"))?;
+        // A catalog `build_catalog.py` wrote into a database carries the digest of the
+        // JSON it came from, so a state saved over that JSON is still this catalog's.
+        let from_database = store::is_sqlite(&options.catalog);
+        let (mut catalog, source_digest) = if from_database {
+            let (value, digest) = store::read_catalog(&options.catalog)?;
+            (Catalog::from_value(value)?, digest)
+        } else {
+            let raw_catalog = fs::read(&options.catalog)
+                .map_err(|error| format!("cannot read catalog: {error}"))?;
+            (Catalog::load(&options.catalog)?, bytes_digest(&raw_catalog))
+        };
         let decision_profiles = load_json_sidecar(&options.catalog, "client_profiles.json")
             .and_then(|value| serde_json::from_value(value).ok())
             .unwrap_or_default();
-        let mut catalog = Catalog::load(&options.catalog)?;
-        let source_digest = bytes_digest(&raw_catalog);
         catalog.normalize();
         catalog.retitle_streams();
         show_listing_columns(&mut catalog.items);
@@ -775,6 +785,7 @@ impl Runtime {
             dirty: false,
             save_serial: 0,
             pending_save: None,
+            store_cache: store::Cache::default(),
             events: std::collections::VecDeque::new(),
             section_timeline: HashMap::new(),
             events_dropped: 0,
@@ -800,23 +811,56 @@ impl Runtime {
         Ok(runtime)
     }
 
+    /// The state database (`store.rs`), or a legacy JSON state file, which is imported
+    /// into a database at the same place -- the default's legacy name, `state.json`
+    /// beside the catalog, into `plexsim.db` -- and kept aside as `<file>.migrated`.
     fn load_state(&mut self) -> Result<(), String> {
         let Some(path) = self.state_path.clone() else {
             return Ok(());
         };
-        let bytes = match fs::read(&path) {
-            Ok(bytes) => bytes,
-            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
-            Err(error) => return Err(format!("cannot read state file: {error}")),
+        let mut saved = store::read_state(&path)?;
+        let mut origin = path.clone();
+        if matches!(saved, store::Saved::Missing) {
+            if let Some(legacy) = LEGACY_STATE.get().filter(|legacy| legacy.exists()) {
+                origin = legacy.clone();
+                saved = store::read_state(legacy)?;
+            }
+        }
+        let (bytes, source) = match saved {
+            store::Saved::Missing | store::Saved::Empty => return Ok(()),
+            store::Saved::Database(state, cache) => {
+                self.store_cache = cache;
+                let source = StateSource::Database(path.clone());
+                self.restore_state(state, &source)?;
+                return Ok(());
+            }
+            store::Saved::Legacy(bytes) => (bytes, StateSource::Legacy(origin.clone())),
+            store::Saved::Unreadable(bytes, reason) => {
+                if bytes.starts_with(&[0x80]) {
+                    eprintln!("state files hold no classes");
+                }
+                let same = |one: &Path, two: &Path| {
+                    fs::canonicalize(one).ok().is_some_and(|one| fs::canonicalize(two).ok() == Some(one))
+                };
+                if same(&origin, &self.catalog_path) {
+                    // Never move a catalog database aside as a corrupt state file.
+                    return Err(format!("state in {} unreadable: {reason}", origin.display()));
+                }
+                let corrupt = sidecar(&origin, "corrupt");
+                let _ = fs::rename(&origin, &corrupt);
+                store::remove_sidecars(&origin);
+                error!(
+                    "state file unreadable ({reason}); moved to {} and starting fresh",
+                    corrupt.display()
+                );
+                return Ok(());
+            }
         };
         let state: Value = match serde_json::from_slice(&bytes) {
             Ok(value) => value,
             Err(parse_error) => {
-                if bytes.starts_with(&[0x80]) {
-                    eprintln!("state files hold no classes");
-                }
-                let corrupt = sidecar(&path, "corrupt");
-                let _ = fs::rename(&path, &corrupt);
+                let corrupt = sidecar(&origin, "corrupt");
+                let _ = fs::rename(&origin, &corrupt);
                 error!(
                     "state file unreadable ({parse_error}); moved to {} and starting fresh",
                     corrupt.display()
@@ -824,9 +868,45 @@ impl Runtime {
                 return Ok(());
             }
         };
+        self.restore_state(state, &source)?;
+        // The import: the restored state into a new database beside the target, then
+        // the legacy file aside and the database into place.
+        let migrating = sidecar(&path, "migrating");
+        let document = self.state_document();
+        let cache = document
+            .as_object()
+            .ok_or_else(|| "state is not a document".to_string())
+            .and_then(|document| store::write_fresh(&migrating, document))?;
+        if origin.exists() {
+            fs::rename(&origin, sidecar(&origin, "migrated")).map_err(|e| e.to_string())?;
+        }
+        store::remove_sidecars(&path);
+        fs::rename(&migrating, &path).map_err(|e| e.to_string())?;
+        self.store_cache = cache;
+        info!("state file {} imported into {}", origin.display(), path.display());
+        Ok(())
+    }
+
+    /// A state saved over another catalog, or in another format: kept aside as
+    /// `<file>.stale` -- the database copied whole, its state then dropped -- and the
+    /// server starts from the catalog.
+    fn set_state_aside(&mut self, source: &StateSource) {
+        match source {
+            StateSource::Legacy(file) => {
+                let _ = fs::rename(file, sidecar(file, "stale"));
+            }
+            StateSource::Database(file) => {
+                if let Err(error) = store::set_aside(file, &sidecar(file, "stale")) {
+                    error!("state not set aside: {error}");
+                }
+                self.store_cache = store::Cache::default();
+            }
+        }
+    }
+
+    fn restore_state(&mut self, state: Value, source: &StateSource) -> Result<(), String> {
         if state.get("format").and_then(Value::as_i64) != Some(1) {
-            let stale = sidecar(&path, "stale");
-            let _ = fs::rename(&path, stale);
+            self.set_state_aside(source);
             return Ok(());
         }
         if state.get("containsClasses").and_then(Value::as_bool) == Some(true) {
@@ -835,8 +915,7 @@ impl Runtime {
         let mut rebuilt = false;
         if let Some(saved_digest) = state.get("catalogDigest").and_then(Value::as_str) {
             if saved_digest != self.source_digest {
-                let stale = sidecar(&path, "stale");
-                let _ = fs::rename(&path, stale);
+                self.set_state_aside(source);
                 rebuilt = true;
             }
         }
@@ -1349,7 +1428,7 @@ impl Runtime {
         self.state_summary = if rebuilt {
             warning!(
                 "catalog changed since the state was saved: carried view state for {carried} rows and the server settings; edits, lists, history and library changes stay in {}",
-                sidecar(&path, "stale").display()
+                sidecar(source.file(), "stale").display()
             );
             format!("carried over {carried} rows")
         } else {
@@ -1438,6 +1517,26 @@ impl Runtime {
         let Some(path) = self.state_path.clone() else {
             return Ok(None);
         };
+        let state = self.state_document();
+        self.dirty = false;
+        let delta = match state.as_object() {
+            Some(document) => self.store_cache.diff(document),
+            None => return Err("state is not a document".to_string()),
+        };
+        if delta.is_empty() {
+            return Ok(None);
+        }
+        self.save_serial += 1;
+        // Queued under the runtime lock, so deltas are written in the order taken.
+        store::enqueue(self.save_serial, delta);
+        Ok(Some(StateSnapshot {
+            serial: self.save_serial,
+            path,
+        }))
+    }
+
+    /// The state as one document, as the legacy file held it and the database stores it.
+    fn state_document(&self) -> Value {
         let mut view = Map::new();
         for item in &self.catalog.items {
             let Some(key) = key_of(item) else {
@@ -1533,14 +1632,7 @@ impl Runtime {
                 object.insert(name.to_string(), value);
             }
         }
-        let bytes = serde_json::to_vec_pretty(&state).map_err(|e| e.to_string())?;
-        self.dirty = false;
-        self.save_serial += 1;
-        Ok(Some(StateSnapshot {
-            serial: self.save_serial,
-            path,
-            bytes,
-        }))
+        state
     }
 
     fn section(&self, key: &str) -> Option<&Value> {
@@ -4258,8 +4350,10 @@ impl Runtime {
     fn save_if_dirty(&mut self) {
         if self.dirty && self.state_path.is_some() {
             match self.snapshot_state() {
-                // A later snapshot holds everything an earlier one did.
-                Ok(snapshot) => self.pending_save = snapshot,
+                // A later snapshot is written with every earlier one queued before it;
+                // a snapshot that found nothing new leaves the pending one in place.
+                Ok(Some(snapshot)) => self.pending_save = Some(snapshot),
+                Ok(None) => {}
                 // `except OSError as error: logger.error("state not saved: %s", error)`.
                 Err(error) => error!("state not saved: {error}"),
             }
@@ -22656,44 +22750,39 @@ extern "C" fn on_sigterm(_signal: libc::c_int) {
     TERMINATE.store(true, std::sync::atomic::Ordering::SeqCst);
 }
 
-/// One serialised state file and its place in the order snapshots were taken.
+/// Where a restored state came from: the database itself, or a legacy JSON file.
+enum StateSource {
+    Database(PathBuf),
+    Legacy(PathBuf),
+}
+
+impl StateSource {
+    fn file(&self) -> &Path {
+        match self {
+            StateSource::Database(file) | StateSource::Legacy(file) => file,
+        }
+    }
+}
+
+/// The default's legacy file, `state.json` beside the catalog, when no database is there
+/// yet: `load_state` imports it.
+static LEGACY_STATE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// A snapshot queued for the state database, by its place in the order taken.
 #[derive(Debug)]
 struct StateSnapshot {
     serial: u64,
     path: PathBuf,
-    bytes: Vec<u8>,
 }
 
-/// The serial of the snapshot on disk. Writes queue on it rather than on the runtime
-/// lock: a client write's save -- serialise, write, fsync, rename -- ran under that
-/// lock, so every other client, `/identity` included, waited out each one; 32 clients
-/// under `--state` saw `/identity` take up to 0.78 s where the oracle, which saves
-/// outside its request lock, took 0.16 s (`tests/test_concurrency.py`).
-static STATE_WRITTEN: Mutex<u64> = Mutex::new(0);
-
-/// `Store.save`: `<path>.tmp`, fsynced, then `os.replace` -- and an OSError's text as
-/// Python writes it, which is what the `state not saved` line carries. A snapshot older
-/// than the one already on disk is skipped: the newer one holds its write too.
+/// Make a snapshot durable: every delta queued up to it is committed to the state
+/// database, outside the runtime lock. A client write's save ran under that lock when it
+/// was a whole-file rewrite, so every other client, `/identity` included, waited out
+/// each one; 32 clients saw `/identity` take up to 0.78 s where the oracle, which saves
+/// outside its request lock, took 0.16 s (`tests/test_concurrency.py`). A snapshot whose
+/// deltas a later flush already committed is done.
 fn write_snapshot(snapshot: &StateSnapshot) -> Result<(), String> {
-    let mut written = STATE_WRITTEN
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if snapshot.serial <= *written {
-        return Ok(());
-    }
-    let path = &snapshot.path;
-    let tmp = PathBuf::from(format!("{}.tmp", path.display()));
-    let result = fs::File::create(&tmp).and_then(|mut handle| {
-        handle.write_all(&snapshot.bytes)?;
-        handle.flush()?;
-        handle.sync_all()
-    });
-    result.map_err(|e| format!("{}: '{}'", py_os_error(&e), tmp.display()))?;
-    fs::rename(&tmp, path).map_err(|e| {
-        format!("{}: '{}' -> '{}'", py_os_error(&e), tmp.display(), path.display())
-    })?;
-    *written = snapshot.serial;
-    Ok(())
+    store::flush(&snapshot.path, snapshot.serial)
 }
 
 fn write_or_log(snapshot: Option<StateSnapshot>) {
@@ -22763,8 +22852,9 @@ fn start_state_saver(runtime: SharedRuntime) {
 }
 
 /// `server.py` `main()`'s state file. A real PMS keeps everything a client changes in
-/// its database, so a state file is the default: `state.json` beside the catalog,
-/// like `tmdb_cache.json` and `claim_state.json`. `--no-state` (or an empty
+/// its database, so a state database is the default: `plexsim.db` beside a JSON
+/// catalog, like `tmdb_cache.json` and `claim_state.json`, or the catalog's own
+/// database when the catalog is one (`build_catalog.py --out *.db`). `--no-state` (or an empty
 /// `PLEXSIM_STATE`) turns it off, which is what the test suites run with: their
 /// checks assume a restart reloads the fixture. The default is the server's data
 /// directory, held by an advisory lock for the life of the process; a second server
@@ -22781,9 +22871,15 @@ fn resolve_state_path(options: &RuntimeOptions) -> Option<PathBuf> {
         return Some(path).filter(|path| !path.as_os_str().is_empty());
     }
     let catalog = std::path::absolute(&options.catalog).unwrap_or_else(|_| options.catalog.clone());
-    let path = catalog
-        .parent()
-        .map_or_else(|| PathBuf::from("state.json"), |dir| dir.join("state.json"));
+    let directory = catalog.parent().map_or_else(|| PathBuf::from("."), Path::to_path_buf);
+    let path = if store::is_sqlite(&catalog) {
+        catalog.clone()
+    } else {
+        directory.join("plexsim.db")
+    };
+    if !path.exists() {
+        let _ = LEGACY_STATE.set(directory.join("state.json"));
+    }
     let lock_path = sidecar(&path, "lock");
     let file = match fs::OpenOptions::new()
         .create(true)
