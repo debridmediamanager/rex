@@ -1,14 +1,15 @@
 # plexsim capabilities
 
 This is the feature inventory of the current movie/TV server, based on the code
-and recorded measurements through **cycle 82**. It describes
+and recorded measurements through **cycle 95** (reopen triggers re-checked
+2026-10-06, none fired). It describes
 implemented behavior and its prerequisites, not the current health or
 configuration of a deployed instance.
 
 plexsim presents a Plex library backed by Real-Debrid links and streams the
 original media without keeping complete media files locally. Its largest limit
-is **direct play only**. Library changes last across restarts only when the
-server runs with `--state`; without it a restart reloads the catalog.
+is **direct play only**. Library changes last across restarts: a state file
+beside the catalog is kept by default, and `--no-state` turns that off.
 
 `--state` (after cycle 72) made the server's mutable state survive restarts; see
 [Persistence](#persistence). Cycle 73 added a server restart as the twelfth audit
@@ -17,12 +18,24 @@ they are answered, sidecar subtitle bytes, play-queue ownership and flags, the
 Shuffle toggle, and season 0 `Specials`. Cycles 80-82 found nothing further on
 any of the twelve axes, the last under python-plexapi 4.18.3.
 
+Since 2026-09-30 the server is the native Rust binary (see
+[Implementation](#implementation)). Cycles 83-86 ran the twelve axes against it and
+fixed what they found, among them Plex for Android's poster tiles, `continuous=1`
+episode queues, delete notifications and play-queue windows. Cycles 87-91 covered Plex
+Web 4.162.1: provider and agent pages, music libraries, and collection, list-artwork
+and random-sort rules. Cycle 92 made the state file the default. Cycle 94 covered Plex
+for Android 2026.19.1: its server dashboard, history filters, Top Played and the
+notification socket's ping/pong. Cycles 91, 93 and 95 found nothing further on any
+axis.
+
 ## Client access and discovery
 
 - Serve an extracted official Plex Web bundle at `/web` and answer the requests
-  used by its library and administration screens.
-- Support the measured native Plex for Android browsing, detail, playback-state,
-  history, and post-play request flows. Its detail pages require genuine Plex
+  used by its library and administration screens. The bundled build is 4.147.1;
+  the hosted 4.162.1 build can be laid out for `--web-root` and is covered too.
+- Support the measured native Plex for Android (2026.19.1) browsing, detail,
+  playback-state, history, post-play, server-dashboard, history-filter and Top
+  Played request flows, and keep its notification socket open. Its detail pages require genuine Plex
   metadata IDs; the catalog builder can obtain them.
 - Support the tested `python-plexapi` read, write, and playback workflows.
 - Answer Plex LAN discovery through GDM on UDP ports 32410 and 32414.
@@ -83,6 +96,7 @@ Sources: [build_catalog.py](build_catalog.py), [metadata.py](metadata.py),
 - Related/similar items and collection-related shelves where the catalog has
   the metadata needed to populate them.
 - Android's post-play Up Next shelf, derived from the show's viewing state.
+- Top Played (`/library/all/top`) rows with global view and user counts.
 - Extras and other optional detail blocks where the catalog supplies them.
 
 Sources: [server.py](server.py), [hierarchy.py](hierarchy.py),
@@ -184,7 +198,7 @@ Sources: [library.py](library.py), [server.py](server.py).
 | Reorder members | Supported for ordinary lists | Supported with applicable collection ordering |
 | Browse and play members | Supported | Supported through collection/library selections |
 | Smart query membership | Supported | Supported |
-| Artwork | Composite artwork responses | Supported artwork selection/upload and composite responses |
+| Artwork | Composite artwork responses; an uploaded poster becomes the list's thumb | Supported artwork selection/upload and composite responses |
 | Additional behavior | Recent-playlist shelves and viewing state | Ordering/display preferences, member tags, and related shelves |
 
 Smart-list membership is governed by its query; ordinary item-list mutations
@@ -237,7 +251,8 @@ Sources: [sessions.py](sessions.py), [server.py](server.py).
 
 - Render server settings groups and read/save supported preference values.
 - Render library and item preferences, including advanced settings.
-- Create, rename/edit, and delete library sections.
+- Create, rename/edit, and delete library sections, music sections included
+  (their measured, localised empty-library surface; see the music limit below).
 - Expose agent, scanner, and language choices and virtual folder browsing.
 - Handle scan and cancellation requests for individual/all libraries.
 - Handle Refresh Metadata, Analyze, Empty Trash, and maintenance-task requests
@@ -259,7 +274,8 @@ Sources: [server.py](server.py), [library.py](library.py),
 ## Notifications, protocol compatibility, and localization
 
 - WebSocket and event-stream notifications for playback, item edits/deletions,
-  queues, preferences, scans, activities, and logs.
+  queues, preferences, scans, activities, and logs. A client's ping on the
+  WebSocket is answered with a pong, which Plex for Android needs to keep it open.
 - JSON and Plex XML responses with measured element shapes and value types.
 - Paging, counts, query projections, and supported include/exclude options.
 - Measured authentication, HTTP method, header, compression, range, and error
@@ -356,7 +372,7 @@ them enabled.
 | Subtitle delivery | Embedded extraction is unimplemented; uploaded subtitles are served, embedded tracks are not |
 | Mobile offline downloads | Original-file downloading works; the mobile queue/add/media/decision workflow is incomplete |
 | Multi-user operation | No complete sharing, managed-user, permission-isolation, or independent per-user watch-state system |
-| Music/photos | Some section and protocol surfaces exist, but there is no complete music or photo ingestion/library backend |
+| Music/photos | A music section can be created and answers as an empty music library would; there is no music or photo ingestion, so neither ever holds items |
 | Live TV/DVR | No tuner, EPG, live-TV streaming, or recording backend |
 | Remote-player control | No complete Plex Companion player discovery/control implementation |
 | DLNA | A library listing route exists; it is not a complete DLNA service |
@@ -375,12 +391,11 @@ written and not a live deployment health check.
 | Check | Recorded result |
 |---|---|
 | UI surface (2026-09-30) | 1,979/1,979 with a TMDB key and a real RD token, no skips; 1,975/1,975 without them, 3 skips |
-| Navigation (cycle 79) | 29/29 on the fixture catalog, 25/25 on the live account catalog |
-| python-plexapi conformance (cycle 79) | 38/38 |
-| Playback/byte/decode suite (cycle 79) | 5/5 |
-| Offline suites (cycle 79) | All thirteen passing |
-| `--state` persistence (`test_persist.py`) | 16/16 |
-| Cycle 82 compatibility repeat | Zero client-visible and zero new malformed-only findings across all 12 audit axes, under python-plexapi 4.18.3 |
+| Navigation (cycle 95, live account catalog, real RD) | 25/25 on both servers |
+| python-plexapi conformance (cycle 95) | 38/38 on both servers |
+| Playback/byte/decode suite (cycle 95) | 5/5 on both servers |
+| `--state` persistence (`test_persist.py`, cycle 92) | 27/27 on both servers, default-state checks included |
+| Cycle 95 compatibility repeat | Zero client-visible and zero malformed-only findings across all 12 audit axes, against the native server, under Plex Web 4.147.1 and 4.162.1, Plex for Android 2026.19.1 and python-plexapi 4.18.3 |
 
 Without credentials the UI suite skips exactly three checks: the two Fix Match
 checks, which need `TMDB_KEY`, and Download, which needs a real `RD_TOKEN` and a
@@ -394,7 +409,7 @@ The 12-axis stopping criterion applies to the defined audit coverage. It does
 not remove the limitations above or establish parity with every PMS version.
 
 Evidence: [current status and coverage](HANDOVER.md),
-[cycle 82 record](HANDOVER.md#cycle-82--python-plexapi-4183-clean-on-all-twelve-axes),
+[cycle 95 record](handover/cycle95-report.md),
 [test suites](tests/), [reference harness](harness/README.md).
 
 ## Implementation
@@ -411,12 +426,14 @@ without), and passed python-plexapi conformance 38/38, the real-media
 playback/decode suite 5/5, the plex.tv suite 47/47 (claim, announce, account
 import and a restart, against a local plex.tv stub), navigation 29/29, `--state`
 persistence 17/17, and the TLS, GDM, prefix-registry, regional-preference and
-part-byte suites. It has not yet run as the deployed instance.
+part-byte suites. Cycles 83-95 then ran every audit axis against it (above). It has
+not yet run as the deployed instance: that trial needs a claimed test identity on
+plex.tv.
 
-Known native differences from the oracle: the native `--state` file is JSON and
-does not read the oracle's pickle; `--web-root` does not default to `./webclient`;
-about sixty of the oracle's per-route log lines (edit, play queue, decision,
-timeline, part) are not written; and Console thread names differ slightly.
+Known native differences from the oracle: the native state file is JSON
+(`state.json`) and does not read the oracle's pickle (`state.pickle`), and a
+refused CDN URL is dropped at once where the oracle keeps it for its expiry (the
+same answer, one fewer dead read).
 
 ## Keeping this inventory current
 
