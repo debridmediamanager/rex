@@ -11,7 +11,8 @@ running when the manager stopped is running again when it starts, and nothing el
     ./manager.py create living-room --port 32400 --catalog catalog.json   # RD_TOKEN from env
     ./manager.py start living-room
     ./manager.py list | status NAME | logs NAME | stop NAME | restart NAME | delete NAME
-    ./manager.py build NAME        # build_catalog.py --library into the server's database
+    ./manager.py create den --port 32401           # no catalog: built from the library
+    ./manager.py build den --start # build_catalog.py --library into its database, then start
 
 Everything lives under the root (default `managed/` beside this file, mode 700):
 
@@ -66,10 +67,11 @@ DEFAULT_LISTEN = "127.0.0.1:32300"
 DEFAULT_BINARY = os.path.join(HERE, "rust", "target", "release", "plexsim")
 
 NAME = re.compile(r"^[a-z0-9-]{1,40}$")
-SECRETS = ("rd_token", "tmdb_key", "plex_token", "token")
-# What each secret is called in the server's environment.
+SECRETS = ("rd_token", "tmdb_key", "plex_token", "token", "dmm_api_key")
+# What each secret is called in the server's (and its catalog build's) environment.
+# DMM_API_KEY is the build's alone: build_catalog.py identifies torrents by hash with it.
 SECRET_ENV = {"rd_token": "RD_TOKEN", "tmdb_key": "TMDB_KEY", "plex_token": "PLEX_TOKEN",
-              "token": "PLEXSIM_TOKEN"}
+              "token": "PLEXSIM_TOKEN", "dmm_api_key": "DMM_API_KEY"}
 STOP_GRACE = 15          # seconds between SIGTERM and SIGKILL; the server saves on SIGTERM
 FAILURE_WINDOW = 600     # a server that fails this often within ten minutes ...
 FAILURE_LIMIT = 5        # ... is marked failed rather than restarted again
@@ -100,14 +102,16 @@ def validate(config, partial=False):
     """The configuration as stored, or Refused(400). `partial` checks a PATCH's fields."""
     if not isinstance(config, dict):
         raise Refused(400, "the configuration must be a JSON object")
-    known = {"name", "port", "rd_token", "catalog", "tmdb_key", "plex_token", "token",
+    known = {"name", "port", "rd_token", "catalog", "tmdb_key", "plex_token", "token", "dmm_api_key",
              "friendly_name", "part_mode", "host", "gdm", "announce_url", "public_url",
              "web_root", "assert_claimed", "verbose", "extra_args", "restart"}
     unknown = sorted(set(config) - known)
     if unknown:
         raise Refused(400, "unknown field(s): %s" % ", ".join(unknown))
     out = dict(config)
-    required = () if partial else ("name", "port", "rd_token", "catalog")
+    # No catalog is needed to create a server: one created from its keys alone gets its
+    # catalog from `build` (the whole Real-Debrid library) before it can start.
+    required = () if partial else ("name", "port", "rd_token")
     for field in required:
         if out.get(field) in (None, ""):
             raise Refused(400, "%s is required" % field)
@@ -117,7 +121,7 @@ def validate(config, partial=False):
         port = out["port"]
         if not isinstance(port, int) or isinstance(port, bool) or not 1024 <= port <= 65535:
             raise Refused(400, "port must be an integer from 1024 to 65535")
-    if "catalog" in out:
+    if out.get("catalog") is not None:
         catalog = out["catalog"]
         if isinstance(catalog, dict):
             catalog = catalog.get("path")
@@ -126,7 +130,7 @@ def validate(config, partial=False):
         if not os.path.isfile(catalog):
             raise Refused(400, "catalog %s does not exist" % catalog)
         out["catalog"] = catalog
-    for field in ("rd_token", "tmdb_key", "plex_token", "token", "friendly_name",
+    for field in ("rd_token", "tmdb_key", "plex_token", "token", "dmm_api_key", "friendly_name",
                   "announce_url", "public_url", "web_root", "host"):
         if field in out and out[field] is not None and not isinstance(out[field], str):
             raise Refused(400, "%s must be a string" % field)
@@ -275,6 +279,7 @@ class Manager:
         self.failures = {}    # name -> [exit times]
         self.due = {}         # name -> when a backoff restart is due
         self.builds = {}      # name -> Popen of a running build
+        self.start_after = set()  # builds asked to (re)start their server on success
         self.stopping = False
 
     # storage
@@ -338,7 +343,10 @@ class Manager:
             if name in self.names():
                 raise Refused(409, "a server named %s exists" % name)
             self.check_port(name, config["port"])
-            import_catalog(config["catalog"], self.catalog_path(name), config.get("friendly_name"))
+            if config.get("catalog"):
+                import_catalog(config["catalog"], self.catalog_path(name), config.get("friendly_name"))
+            else:
+                os.makedirs(self.directory(name), exist_ok=True)
             now = time.time()
             self.db.execute("INSERT INTO servers(name, config, desired, status, created_at, updated_at)"
                             " VALUES (?, ?, 'stopped', 'stopped', ?, ?)",
@@ -357,7 +365,7 @@ class Manager:
             config = validate(config)
             if "port" in changes:
                 self.check_port(name, config["port"])
-            if "catalog" in changes or "friendly_name" in changes:
+            if config.get("catalog") and ("catalog" in changes or "friendly_name" in changes):
                 import_catalog(config["catalog"], self.catalog_path(name), config.get("friendly_name"))
             self.update(name, config=config)
         return self.view(name)
@@ -389,6 +397,9 @@ class Manager:
         """Start the process; the caller holds the lock and has set desired=running."""
         row = self.row(name)
         config = row["config"]
+        if not catalogdb.is_sqlite(self.catalog_path(name)):
+            raise Refused(409, "%s has no catalog yet: build it first (POST /servers/%s/build)"
+                          % (name, name))
         if not port_free(config["host"], config["port"]):
             raise Refused(409, "port %d is in use" % config["port"])
         log_path = os.path.join(self.directory(name), "server.log")
@@ -529,6 +540,14 @@ class Manager:
                     self.builds.pop(name, None)
                     self.db.execute("UPDATE builds SET status=?, exit=?, ended_at=? WHERE name=?",
                                     ("succeeded" if code == 0 else "failed", code, now, name))
+                    if name in self.start_after:
+                        self.start_after.discard(name)
+                        if code == 0:
+                            # A running server reads its catalog at start: restart it.
+                            # On its own thread, since stopping waits for the server.
+                            action = self.restart if name in self.procs else self.start
+                            threading.Thread(target=self.quietly, args=(action, name),
+                                             daemon=True).start()
 
     def exited(self, name, code, now, reason=None):
         """A supervised server stopped without being asked to."""
@@ -557,6 +576,13 @@ class Manager:
         self.due[name] = now + delay
         self.update(name, pid=None, status="restarting", last_exit=last_exit,
                     last_error="restarting in %d s" % delay)
+
+    @staticmethod
+    def quietly(action, name):
+        try:
+            action(name)
+        except Refused as error:
+            print("manager: %s after its build: %s" % (name, error), file=sys.stderr, flush=True)
 
     def monitor(self):
         while not self.stopping:
@@ -629,14 +655,19 @@ class Manager:
                 pass
 
     # catalog builds
-    def build(self, name):
+    def build(self, name, start=False):
+        """`build_catalog.py --library` into the server's database, as a job. `start`:
+        once it succeeds, start the server (or restart it, to serve the new catalog)."""
         with self.lock:
             row = self.row(name)
             if name in self.builds:
                 raise Refused(409, "a build for %s is already running" % name)
+            os.makedirs(self.directory(name), exist_ok=True)
             log = open(os.path.join(self.directory(name), "build.log"), "wb")
-            argv = [sys.executable, os.path.join(HERE, "build_catalog.py"), "--library",
-                    "--out", self.catalog_path(name)]
+            # PLEXSIM_MANAGER_BUILDER replaces the builder (tests/test_manager.py: a real
+            # library build needs a Real-Debrid account and the network).
+            builder = os.environ.get("PLEXSIM_MANAGER_BUILDER") or os.path.join(HERE, "build_catalog.py")
+            argv = [sys.executable, builder, "--library", "--out", self.catalog_path(name)]
             if row["config"].get("friendly_name"):
                 argv += ["--name", row["config"]["friendly_name"]]
             try:
@@ -646,6 +677,8 @@ class Manager:
             finally:
                 log.close()
             self.builds[name] = proc
+            if start:
+                self.start_after.add(name)
             self.db.execute("INSERT OR REPLACE INTO builds VALUES (?, 'running', NULL, ?, NULL)",
                             (name, time.time()))
         return self.build_status(name)
@@ -676,11 +709,12 @@ pre{background:#f4f4f4;padding:8px;max-height:300px;overflow:auto}</style></head
 <h2>New server</h2>
 <form id=f onsubmit="create(event)">
 <input name=name placeholder="name" required> <input name=port type=number placeholder="port" required>
-<input name=catalog placeholder="/absolute/path/catalog.json or .db" size=40 required><br>
+<input name=catalog placeholder="catalog .json/.db (optional: else build from the library)" size=48><br>
 <input name=rd_token type=password placeholder="Real-Debrid key" required>
 <input name=tmdb_key type=password placeholder="TMDB key (optional)">
 <input name=plex_token type=password placeholder="Plex token (optional)">
-<input name=token type=password placeholder="server token (optional)"><br>
+<input name=token type=password placeholder="server token (optional)">
+<input name=dmm_api_key type=password placeholder="DMM API key (optional)"><br>
 <input name=friendly_name placeholder="friendly name (optional)">
 <select name=part_mode><option>proxy<option>redirect</select>
 <select name=gdm><option>auto<option>on<option>off</select>
@@ -698,14 +732,15 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','
 async function load(){try{const list=await api('GET','/servers');document.getElementById('rows').innerHTML=list.map(s=>
 `<tr><td>${esc(s.name)}<td>${s.port}<td>${esc(s.status)}<td>${esc(s.desired)}<td>${esc(s.last_exit)}<td>
 ${['start','stop','restart'].map(a=>`<button onclick="act('${esc(s.name)}','${a}')">${a}</button>`).join(' ')}
-<button onclick="logs('${esc(s.name)}')">logs</button> <button onclick="del('${esc(s.name)}')">delete</button>`).join('')}
+<button onclick="build('${esc(s.name)}')">build &amp; start</button> <button onclick="logs('${esc(s.name)}')">logs</button> <button onclick="del('${esc(s.name)}')">delete</button>`).join('')}
 catch(e){out.textContent=e.message}}
 async function act(n,a){try{await api('POST','/servers/'+n+'/'+a)}catch(e){out.textContent=e.message};load()}
+async function build(n){try{await api('POST','/servers/'+n+'/build',{start:true});out.textContent='building '+n+' from the library...'}catch(e){out.textContent=e.message}}
 async function logs(n){try{out.textContent=(await api('GET','/servers/'+n+'/logs?lines=200')).lines.join('\\n')}catch(e){out.textContent=e.message}}
 async function del(n){if(!confirm('Delete '+n+'? Its files are kept.'))return;try{await api('DELETE','/servers/'+n)}catch(e){out.textContent=e.message};load()}
 async function create(ev){ev.preventDefault();const d=Object.fromEntries(new FormData(ev.target));
-const c={name:d.name,port:+d.port,catalog:d.catalog,rd_token:d.rd_token,part_mode:d.part_mode,gdm:d.gdm,assert_claimed:!!d.assert_claimed};
-for(const k of ['tmdb_key','plex_token','token','friendly_name'])if(d[k])c[k]=d[k];
+const c={name:d.name,port:+d.port,rd_token:d.rd_token,part_mode:d.part_mode,gdm:d.gdm,assert_claimed:!!d.assert_claimed};
+for(const k of ['catalog','tmdb_key','plex_token','token','dmm_api_key','friendly_name'])if(d[k])c[k]=d[k];
 try{await api('POST','/servers',c);ev.target.reset()}catch(e){out.textContent=e.message};load()}
 load();setInterval(load,3000);
 </script></body></html>"""
@@ -775,7 +810,7 @@ def make_handler(manager, admin_token):
                 return self.reply(200, manager.logs_of(name, max(1, min(lines, 10000))))
             if len(parts) == 3 and action == "build":
                 if method == "POST":
-                    return self.reply(202, manager.build(name))
+                    return self.reply(202, manager.build(name, bool(self.body().get("start"))))
                 if method == "GET":
                     return self.reply(200, manager.build_status(name))
             raise Refused(404, "no such route")
@@ -889,12 +924,14 @@ def client(args):
                 row["name"], row["port"], row["status"], row["desired"], row["last_exit"] or ""))
         return
     if args.command == "create":
-        config = {"name": args.name, "port": args.port, "catalog": os.path.abspath(args.catalog),
+        config = {"name": args.name, "port": args.port,
+                  "catalog": os.path.abspath(args.catalog) if args.catalog else None,
                   "part_mode": args.part_mode, "gdm": args.gdm, "host": args.host,
                   "restart": args.restart, "assert_claimed": args.assert_claimed,
                   "verbose": args.verbose, "extra_args": args.extra_arg or []}
         for field, default_env in (("rd_token", "RD_TOKEN"), ("tmdb_key", "TMDB_KEY"),
-                                   ("plex_token", "PLEX_TOKEN"), ("token", "PLEXSIM_TOKEN")):
+                                   ("plex_token", "PLEX_TOKEN"), ("token", "PLEXSIM_TOKEN"),
+                                   ("dmm_api_key", "DMM_API_KEY")):
             value = secret(args, field, default_env)
             if value:
                 config[field] = value
@@ -914,8 +951,11 @@ def client(args):
     elif args.command == "delete":
         print(json.dumps(call(args, "DELETE", "/servers/%s%s" % (name, "?purge=1" if args.purge else ""))))
     elif args.command == "build":
-        method = "GET" if args.status else "POST"
-        print(json.dumps(call(args, method, "/servers/%s/build" % name), indent=1))
+        if args.status:
+            print(json.dumps(call(args, "GET", "/servers/%s/build" % name), indent=1))
+        else:
+            print(json.dumps(call(args, "POST", "/servers/%s/build" % name,
+                                  {"start": bool(args.start)}), indent=1))
 
 
 def main(argv=None):
@@ -936,9 +976,11 @@ def main(argv=None):
     clientish(create)
     create.add_argument("name")
     create.add_argument("--port", type=int, required=True)
-    create.add_argument("--catalog", required=True, help="a .json or .db catalog, copied into the server's directory")
+    create.add_argument("--catalog", help="a .json or .db catalog, copied into the server's directory;"
+                                          " without one, `build` the server's catalog from the library")
     for field, default_env in (("rd_token", "RD_TOKEN"), ("tmdb_key", "TMDB_KEY"),
-                               ("plex_token", "PLEX_TOKEN"), ("token", "PLEXSIM_TOKEN")):
+                               ("plex_token", "PLEX_TOKEN"), ("token", "PLEXSIM_TOKEN"),
+                               ("dmm_api_key", "DMM_API_KEY")):
         create.add_argument("--%s-env" % field.replace("_", "-"), dest=field + "_env", metavar="VAR",
                             help="environment variable holding it (default %s)" % default_env)
     create.add_argument("--friendly-name")
@@ -965,6 +1007,8 @@ def main(argv=None):
             p.add_argument("--purge", action="store_true", help="also remove its directory")
         if command == "build":
             p.add_argument("--status", action="store_true", help="show the last build instead of starting one")
+            p.add_argument("--start", action="store_true",
+                           help="start the server (or restart it) once the build succeeds")
 
     args = parser.parse_args(argv)
     args.root = os.path.abspath(args.root)

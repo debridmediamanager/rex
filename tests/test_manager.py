@@ -141,10 +141,24 @@ def config(name, port, **extra):
                  "gdm": "off", "assert_claimed": True}, **extra)
 
 
+# Stands in for build_catalog.py --library (which needs a Real-Debrid account and the
+# network): writes catalog_ui.json into --out the way the builder writes a database.
+FAKE_BUILDER = """import sys, json
+sys.path.insert(0, %r)
+import catalogdb
+out = sys.argv[sys.argv.index("--out") + 1]
+catalogdb.write(out, json.load(open(%r)))
+print("built", out)
+"""
+
+
 def main():
     work = tempfile.mkdtemp(prefix="plexsim-manager-")
     root = os.path.join(work, "root")
     binary = server_binary(work)
+    builder = os.path.join(work, "fake_build_catalog.py")
+    with open(builder, "w") as handle:
+        handle.write(FAKE_BUILDER % (ROOT, CATALOG))
     print("server: %s" % binary)
     manager = Manager(root, binary)
     try:
@@ -238,6 +252,33 @@ def main():
         check("a server that keeps dying is marked failed, not restarted forever",
               failed and failed["desired"] == "stopped" and "exit 2" in (failed["last_exit"] or ""),
               manager.api("GET", "/servers/broken")[1])
+
+        # -- a server from its keys alone: no catalog until it is built ----------
+        e = free_port()
+        status, keyed = manager.api("POST", "/servers", {
+            "name": "keyed", "port": e, "rd_token": "dummy-rd", "dmm_api_key": "dmm-secret",
+            "gdm": "off", "assert_claimed": True})
+        check("a server can be created from its keys alone",
+              status == 201 and keyed["status"] == "stopped"
+              and keyed["config"]["dmm_api_key"] == "***", keyed)
+        status, refused = manager.api("POST", "/servers/keyed/start")
+        check("it cannot start before its catalog is built",
+              status == 409 and "build" in refused.get("error", "") and not answers(e), refused)
+        os.environ["PLEXSIM_MANAGER_BUILDER"] = builder
+        manager.stop()
+        manager.start()
+        status, job = manager.api("POST", "/servers/keyed/build", {"start": True})
+        built = wait_for(lambda: (lambda v: v["status"] in ("succeeded", "failed") and v)(
+            manager.api("GET", "/servers/keyed/build")[1]), 60)
+        check("build then start: the build succeeds", status == 202 and built
+              and built["status"] == "succeeded", built)
+        identity = wait_for(lambda: answers(e) and get_json(e, "/identity"), 90)
+        check("and the server starts on the catalog it built",
+              identity and identity["MediaContainer"]["machineIdentifier"] == machine, identity)
+        manager.api("DELETE", "/servers/keyed?purge=1")
+        os.environ.pop("PLEXSIM_MANAGER_BUILDER")
+        manager.stop()
+        manager.start()
 
         manager.api("POST", "/servers", config("idle", c))
         status, job = manager.api("POST", "/servers/idle/build")

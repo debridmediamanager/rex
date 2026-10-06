@@ -25,6 +25,7 @@ import hashlib
 import json
 import os
 import re
+import sqlite3
 import subprocess
 import sys
 import time
@@ -213,7 +214,8 @@ def main():
     # machineIdentifier must be stable across restarts: plex.tv keys the
     # registered device on it, and a client that saw the old one treats a new
     # value as a different server.
-    machine = hashlib.sha1(("plexsim/" + args.name).encode()).hexdigest()[:40]
+    machine = existing_machine(args.out) or hashlib.sha1(
+        ("plexsim/" + args.name).encode()).hexdigest()[:40]
 
     sections = hierarchy_module.sections(args.name)
 
@@ -363,6 +365,16 @@ def main():
     save_catalog(args.out, document)
 
     print("\nwrote %s: %d item(s), machine=%s" % (args.out, len(items), machine))
+
+
+def existing_machine(out):
+    """The machineIdentifier of the catalog already at `out`, if any. A rebuild (the
+    manager's `build`, a new torrent added) must not change it: clients and plex.tv know
+    the server by it, and a new one is a different server to them."""
+    try:
+        return (load_catalog(out) or {}).get("machineIdentifier") if os.path.exists(out) else None
+    except (OSError, ValueError, sqlite3.Error):
+        return None
 
 
 def rd_get(token, path):
