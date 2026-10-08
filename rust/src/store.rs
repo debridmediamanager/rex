@@ -475,9 +475,10 @@ impl Cache {
 
 impl Cache {
     /// An array field kept by its rows' own keys (the catalog's `ratingKey`), so a save
-    /// can serialise only the rows `changed` names. `changed: None` -- rows added,
-    /// removed or reordered -- serialises them all, as does a first save; an element
-    /// with no key or a repeated one is kept by content, like any array element.
+    /// can serialise only the rows `changed` names: a row written, appended (`position`
+    /// past every stored row) or removed. `changed: None` -- rows reordered or keyless --
+    /// serialises them all, as does a first save; an element with no key or a repeated
+    /// one is kept by content, like any array element.
     pub fn diff_rows<'a>(
         &mut self,
         field: &str,
@@ -485,6 +486,7 @@ impl Cache {
         changed: Option<&HashSet<String>>,
         key_of: impl Fn(&Value) -> Option<String>,
         get: impl Fn(&str) -> Option<&'a Value>,
+        position: impl Fn(&str) -> Option<usize>,
     ) -> Delta {
         let name = format!("{STATE}{field}");
         let mut delta = Delta::default();
@@ -494,6 +496,8 @@ impl Cache {
             let collection = self.collections.get_mut(field).expect("checked above");
             let mut complete = true;
             let mut puts = Vec::with_capacity(changed.len());
+            let mut appended = Vec::new();
+            let mut gone = Vec::new();
             for key in changed {
                 match (collection.rows.get(key).copied(), get(key)) {
                     (Some((pos, hash)), Some(row)) => {
@@ -503,17 +507,58 @@ impl Cache {
                             puts.push((key.clone(), pos, new_hash, body));
                         }
                     }
-                    // A key the stored rows do not hold: fall through to a full pass.
+                    (Some(_), None) => gone.push(key.clone()),
+                    (None, Some(row)) if !key.starts_with('#') => match position(key) {
+                        Some(at) => appended.push((at, key.clone(), row)),
+                        None => {
+                            complete = false;
+                            break;
+                        }
+                    },
+                    // Added and removed again since the last save.
+                    (None, None) => {}
                     _ => {
                         complete = false;
                         break;
                     }
                 }
             }
+            // An appended row goes after every stored one, in the rows' own order --
+            // which is only true when each sits past every row already stored, so
+            // anything else (a row inserted in the middle) takes the full pass.
+            appended.sort_by_key(|(at, _, _)| *at);
+            let stored = collection.order.len() - gone.len();
+            if appended
+                .iter()
+                .enumerate()
+                .any(|(offset, (at, _, _))| *at != stored + offset)
+            {
+                complete = false;
+            }
             if complete {
                 for (key, pos, hash, body) in puts {
                     collection.rows.insert(key.clone(), (pos, hash));
                     delta.ops.push(Op::Put { coll: name.clone(), key, pos, body });
+                }
+                if !gone.is_empty() {
+                    let gone_set: HashSet<&String> = gone.iter().collect();
+                    collection.order.retain(|key| !gone_set.contains(key));
+                    for key in gone {
+                        collection.rows.remove(&key);
+                        delta.ops.push(Op::Delete { coll: name.clone(), key });
+                    }
+                }
+                let mut next = collection
+                    .order
+                    .last()
+                    .and_then(|key| collection.rows.get(key))
+                    .map_or(0.0, |(pos, _)| pos + 1.0);
+                for (_, key, row) in appended {
+                    let body = row.to_string();
+                    collection.rows.insert(key.clone(), (next, hash_text(&body)));
+                    collection.order.push(key.clone());
+                    delta.ops.push(Op::Put { coll: name.clone(), key, pos: next, body });
+                    next += 1.0;
                 }
                 return delta;
             }
@@ -846,16 +891,53 @@ mod tests {
         let mut rows: Vec<Value> = (0..1000).map(|n| json!({"ratingKey": n.to_string()})).collect();
         let key = |row: &Value| row.get("ratingKey").and_then(Value::as_str).map(str::to_string);
         let snapshot = rows.clone();
-        let first = cache.diff_rows("items", &snapshot, None, key, |_| None);
+        let first = cache.diff_rows("items", &snapshot, None, key, |_| None, |_| None);
         assert_eq!(first.len(), 1001);
         rows[7] = json!({"ratingKey": "7", "userRating": 8});
         let changed: HashSet<String> = ["7".to_string(), "8".to_string()].into();
         let lookup = rows.clone();
+        let find = |rows: &[Value], k: &str| {
+            rows.iter().position(|row| row.get("ratingKey").and_then(Value::as_str) == Some(k))
+        };
         let second = cache.diff_rows("items", &lookup, Some(&changed), key, |k| {
-            lookup.iter().find(|row| row.get("ratingKey").and_then(Value::as_str) == Some(k))
-        });
+            find(&lookup, k).map(|at| &lookup[at])
+        }, |k| find(&lookup, k));
         // Row 8 was touched but is unchanged: only row 7 is written.
         assert_eq!(second.len(), 1, "{second:?}");
+    }
+
+    #[test]
+    fn an_appended_or_removed_row_is_one_write_and_keeps_the_order() {
+        let dir = std::env::temp_dir().join(format!("plexsim-append-{}", std::process::id()));
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("state.db");
+        let key = |row: &Value| row.get("ratingKey").and_then(Value::as_str).map(str::to_string);
+        let find = |rows: &[Value], k: &str| {
+            rows.iter().position(|row| row.get("ratingKey").and_then(Value::as_str) == Some(k))
+        };
+        let mut rows: Vec<Value> = (0..100).map(|n| json!({"ratingKey": n.to_string()})).collect();
+        let mut cache = write_fresh(&path, &state(json!({"format": 1}))).unwrap();
+        let mut connection = open(&path).unwrap();
+        let first = cache.diff_rows("items", &rows, None, key, |_| None, |_| None);
+        apply(&mut connection, &[first]).unwrap();
+        rows.remove(40);
+        rows.push(json!({"ratingKey": "new-1"}));
+        rows.push(json!({"ratingKey": "new-2"}));
+        let changed: HashSet<String> =
+            ["40".to_string(), "new-2".to_string(), "new-1".to_string()].into();
+        let snapshot = rows.clone();
+        let delta = cache.diff_rows("items", &snapshot, Some(&changed), key, |k| {
+            find(&snapshot, k).map(|at| &snapshot[at])
+        }, |k| find(&snapshot, k));
+        // One delete and two appends: no other row is serialised or moved.
+        assert_eq!(delta.len(), 3, "{delta:?}");
+        apply(&mut connection, &[delta]).unwrap();
+        drop(connection);
+        match read_state(&path).unwrap() {
+            Saved::Database(value, _) => assert_eq!(value["items"], Value::Array(rows)),
+            _ => panic!("not read back"),
+        }
+        let _ = fs::remove_dir_all(&dir);
     }
 
     fn items_after(items: &[Value]) -> Vec<Value> {

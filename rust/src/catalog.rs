@@ -74,11 +74,7 @@ impl Catalog {
     pub fn rebuild_index(&mut self) {
         self.by_id.clear();
         for (index, item) in self.items.iter().enumerate() {
-            if let Some(key) = item.get("ratingKey").and_then(|v| match v {
-                Value::String(v) => Some(v.clone()),
-                Value::Number(v) => Some(v.to_string()),
-                _ => None,
-            }) {
+            if let Some(key) = key_value(item) {
                 self.by_id.insert(key, index);
             }
         }
@@ -125,17 +121,36 @@ impl Catalog {
             .collect()
     }
 
+    /// Append a row. A row with a key is recorded by its key, so a save writes that one
+    /// row (`store.rs` appends it) rather than looking at every row: a scan adds rows to a
+    /// live library one release at a time.
     pub fn add(&mut self, item: Value) {
-        self.changes.all = true;
+        let key = key_value(&item);
         self.items.push(item);
-        self.rebuild_index();
+        match key {
+            Some(key) => {
+                self.by_id.insert(key.clone(), self.items.len() - 1);
+                if !self.changes.all {
+                    self.changes.keys.insert(key);
+                }
+            }
+            None => self.changes.all = true,
+        }
     }
+    /// Remove a row; the others keep their order, so a save deletes the one row.
     pub fn remove(&mut self, rating_key: &str) -> Option<Value> {
         let index = *self.by_id.get(rating_key)?;
-        self.changes.all = true;
+        if !self.changes.all {
+            self.changes.keys.insert(rating_key.to_string());
+        }
         let removed = self.items.remove(index);
         self.rebuild_index();
         Some(removed)
+    }
+
+    /// Where a row sits in `items`, which is the order a save stores rows in.
+    pub fn position(&self, rating_key: &str) -> Option<usize> {
+        self.by_id.get(rating_key).copied()
     }
 
     /// Apply load-time corrections to row hierarchy, media fields, and stream
@@ -191,6 +206,14 @@ impl Catalog {
     }
 }
 
+fn key_value(item: &Value) -> Option<String> {
+    item.get("ratingKey").and_then(|v| match v {
+        Value::String(v) => Some(v.clone()),
+        Value::Number(v) => Some(v.to_string()),
+        _ => None,
+    })
+}
+
 impl TryFrom<Value> for Catalog {
     type Error = String;
     fn try_from(value: Value) -> Result<Self, Self::Error> {
@@ -209,5 +232,22 @@ mod tests {
         .unwrap();
         assert_eq!(catalog.to_value()["custom"]["x"], 1);
         assert_eq!(catalog.get("1").unwrap()["ratingKey"], "1");
+    }
+
+    #[test]
+    fn add_and_remove_record_only_their_own_key() {
+        let mut catalog = Catalog::from_value(serde_json::json!({"sections":[],"items":[
+            {"ratingKey":"1"},{"ratingKey":"2"},{"ratingKey":"3"}]}))
+        .unwrap();
+        catalog.take_changes();
+        catalog.add(serde_json::json!({"ratingKey":"9"}));
+        catalog.remove("2");
+        let changes = catalog.take_changes();
+        assert!(!changes.all);
+        assert_eq!(changes.keys, HashSet::from(["9".to_string(), "2".to_string()]));
+        assert_eq!(catalog.position("9"), Some(2));
+        assert_eq!(catalog.get("3").unwrap()["ratingKey"], "3");
+        catalog.add(serde_json::json!({"title":"keyless"}));
+        assert!(catalog.take_changes().all, "a row without a key is found by a full pass");
     }
 }

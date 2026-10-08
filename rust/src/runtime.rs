@@ -44,6 +44,7 @@ mod notify;
 mod playlists;
 mod plextv;
 mod resume;
+mod scan;
 mod search;
 mod sessions;
 mod showprefs;
@@ -493,6 +494,11 @@ pub struct Runtime {
     next_playlist_item: i64,
     /// Keys a merge or a delete freed: a split never reuses one (measured).
     retired_keys: Vec<i64>,
+    /// The next key a scanned row takes (`mint_key`): one sequence for every kind, as a
+    /// real PMS's metadata ids are, above every key the catalog, a list or a retired row
+    /// ever held, and saved -- a key handed out once is never handed out again, which is
+    /// what lets zurg keep the ratingKey it matched a release to.
+    next_scan_key: i64,
     /// Cycle 89 (plexscratch42): what a DELETED collection's tag keeps -- its spelling,
     /// its guid and what is stored against the guid (the rating and the prefs) -- by the
     /// lowercased tag name. `library.py`'s `_collection_guids`.
@@ -755,6 +761,7 @@ impl Runtime {
             next_playlist: playlists::PLAYLIST_BASE + 1,
             next_playlist_item: 0,
             retired_keys: Vec::new(),
+            next_scan_key: 0,
             collection_guids: HashMap::new(),
             device_order: vec![String::new()],
             device_first_seen: HashMap::new(),
@@ -807,6 +814,7 @@ impl Runtime {
             .device_first_seen
             .insert(String::new(), started_at);
         runtime.load_state()?;
+        runtime.settle_scan_key();
         // The claim reports the server's name to plex.tv; a restored rename is it.
         runtime.claim_mut().name = runtime.friendly.clone();
         // A restored vocabulary is kept as it stood (cycle 73); only a fresh start, or
@@ -921,8 +929,21 @@ impl Runtime {
             return Err("state files hold no classes".to_string());
         }
         let mut rebuilt = false;
+        // A library the scanner built is the state's own: its rows were never in the
+        // catalog file, their keys are minted once and never renumbered, so the rule
+        // below -- written for `build_catalog.py`, which renumbered every row on a rebuild
+        // -- would throw away rows nothing can rebuild. Its state is kept row by row
+        // whatever the catalog file now says; the file's new rows join it.
+        let scanned = state
+            .get("items")
+            .and_then(Value::as_array)
+            .is_some_and(|rows| rows.iter().any(|row| row.get("_scanned").is_some_and(truthy)));
+        let mut joining = Vec::new();
         if let Some(saved_digest) = state.get("catalogDigest").and_then(Value::as_str) {
-            if saved_digest != self.source_digest {
+            if saved_digest != self.source_digest && scanned {
+                info!("catalog changed; the scanned library keeps its saved rows by key");
+                joining = self.catalog.items().clone();
+            } else if saved_digest != self.source_digest {
                 self.set_state_aside(source);
                 rebuilt = true;
             }
@@ -936,11 +957,23 @@ impl Runtime {
         // overlays below.
         let restored_rows = !rebuilt && state.get("items").is_some_and(Value::is_array);
         if restored_rows {
-            *self.catalog.items_mut() = state
+            let mut rows = state
                 .get("items")
                 .and_then(Value::as_array)
                 .cloned()
                 .unwrap_or_default();
+            let held: HashSet<String> = rows.iter().filter_map(key_of).collect();
+            let deleted: HashSet<String> = state
+                .get("deleted")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .map(string_value)
+                .collect();
+            rows.extend(joining.into_iter().filter(|row| {
+                key_of(row).is_some_and(|key| !held.contains(&key) && !deleted.contains(&key))
+            }));
+            *self.catalog.items_mut() = rows;
             if let Some(sections) = state.get("sections").and_then(Value::as_array) {
                 self.catalog.sections = sections.clone();
             }
@@ -1300,6 +1333,9 @@ impl Runtime {
             if let Some(keys) = state.get("retiredKeys").and_then(Value::as_array) {
                 self.retired_keys = keys.iter().filter_map(Value::as_i64).collect();
             }
+            if let Some(next) = state.get("nextScanKey").and_then(Value::as_i64) {
+                self.next_scan_key = self.next_scan_key.max(next);
+            }
             if let Some(names) = state.get("collectionGuids").and_then(Value::as_object) {
                 self.collection_guids = names.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
             }
@@ -1553,6 +1589,7 @@ impl Runtime {
             (!changes.all).then_some(&changes.keys),
             key_of,
             |key| catalog.get(key),
+            |key| catalog.position(key),
         ));
         if delta.is_empty() {
             return Ok(None);
@@ -1655,6 +1692,7 @@ impl Runtime {
             ("downloadQueues", json!(self.download_queues)),
             ("historyCounter", json!(self.history_counter.get())),
             ("retiredKeys", json!(self.retired_keys)),
+            ("nextScanKey", json!(self.next_scan_key)),
             ("collectionGuids", json!(self.collection_guids.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Map<String, Value>>())),
             ("hiddenContinue", json!(self.hidden_continue.iter().collect::<Vec<_>>())),
             ("viewedInSession", json!(self.viewed_in_session.iter().collect::<Vec<_>>())),
