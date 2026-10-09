@@ -610,10 +610,14 @@ impl Runtime {
             }
         }
         let force = query.get("force").map(String::as_str) == Some("1");
-        // With zurg, the scan is real: listed, fetched and applied off the request thread
-        // (`scan.rs`), whose frames follow as it runs. A real PMS answers the request at
-        // once and scans in the background too.
-        if let Some(queue) = &self.scans {
+        // A library whose folders are zurg's is really scanned: listed, fetched and applied
+        // off the request thread (`scan.rs`), whose frames follow as it runs. A real PMS
+        // answers the request at once and scans in the background too. Any other library
+        // has nothing to list and keeps the catalog's measured skeleton below.
+        let zurg_folders = self.zurg.as_ref().is_some_and(|zurg| {
+            self.locations(section).iter().any(|path| zurg.dav_path(path).is_some())
+        });
+        if let Some(queue) = self.scans.as_ref().filter(|_| zurg_folders) {
             queue.push(scan::ScanJob {
                 section: section_id.to_string(),
                 path: query.get("path").filter(|value| !value.is_empty()).cloned(),
