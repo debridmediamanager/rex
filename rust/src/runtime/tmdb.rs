@@ -138,3 +138,10 @@ impl Tmdb {
         )
     }
 }
+
+/// What `identify.rs` reads TMDB through: `_get`, cached like every other lookup.
+impl crate::identify::TmdbSource for Tmdb {
+    fn get(&self, path: &str, params: &[(&str, String)]) -> Option<Value> {
+        Tmdb::get(self, path, params)
+    }
+}

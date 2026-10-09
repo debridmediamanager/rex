@@ -42,6 +42,7 @@ mod logging;
 mod merge;
 mod notify;
 mod playlists;
+mod plexmeta;
 mod plextv;
 mod resume;
 mod scan;
@@ -455,7 +456,10 @@ pub struct Runtime {
     /// scan it sends and waits while a `library.update.section` one runs.
     scanning: Option<(String, Map<String, Value>)>,
     /// `metadata.Tmdb`, only with `TMDB_KEY`: without it Fix Match has no candidates.
-    tmdb: Option<tmdb::Tmdb>,
+    tmdb: Option<Arc<tmdb::Tmdb>>,
+    /// Plex's metadata agent, only with `PLEX_TOKEN`: what a scan matches a release with
+    /// and where a matched row's real `plex://` guid comes from.
+    plex: Option<Arc<plexmeta::PlexMeta>>,
     /// Fix Match guid -> the TMDB `(kind, id)` that minted it, so `PUT .../match`
     /// re-identifies the row from what the person picked.
     match_candidates: HashMap<String, (String, Value)>,
@@ -625,7 +629,17 @@ impl Runtime {
                     .ok()
                     .and_then(|path| path.parent().map(Path::to_path_buf))
                     .unwrap_or_else(|| PathBuf::from("."));
-                tmdb::Tmdb::new(key, directory.join("tmdb_cache.json"))
+                Arc::new(tmdb::Tmdb::new(key, directory.join("tmdb_cache.json")))
+            });
+        let plex = std::env::var("PLEX_TOKEN")
+            .ok()
+            .filter(|token| !token.is_empty())
+            .map(|token| {
+                let directory = std::path::absolute(&options.catalog)
+                    .ok()
+                    .and_then(|path| path.parent().map(Path::to_path_buf))
+                    .unwrap_or_else(|| PathBuf::from("."));
+                Arc::new(plexmeta::PlexMeta::new(token, directory.join("plex_cache.json")))
             });
         // A catalog `build_catalog.py` wrote into a database carries the digest of the
         // JSON it came from, so a state saved over that JSON is still this catalog's.
@@ -733,6 +747,7 @@ impl Runtime {
             scanning: None,
             // Fix Match needs a live agent; the cache lives beside the catalog.
             tmdb,
+            plex,
             match_candidates: HashMap::new(),
             pending_part: None,
             pending_image: None,

@@ -13,7 +13,7 @@
 
 use super::zurg::{ListError, Zurg};
 use super::*;
-use crate::identify;
+use crate::identify::{self, Identifier, PlexSource, TmdbSource};
 use crate::{hierarchy, mediainfo};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Condvar;
@@ -83,6 +83,8 @@ struct Plan {
     targets: Vec<Target>,
     /// Every file the library's rows read, and the row reading it.
     known: HashMap<String, Known>,
+    tmdb: Option<Arc<tmdb::Tmdb>>,
+    plex: Option<Arc<plexmeta::PlexMeta>>,
 }
 
 struct Target {
@@ -105,6 +107,9 @@ struct Arrival {
     release: String,
     release_path: String,
     entry: Value,
+    /// What identification gave this file's row: TMDB's fields (`metadata::enrich`),
+    /// Plex's guids, and how sure (`identify.rs`).
+    meta: Option<Map<String, Value>>,
 }
 
 /// The release folder a file sits in: `/dav/<dir>/<release>/...` -> (`<dir>/<release>`,
@@ -148,6 +153,141 @@ fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
     let file = identify::parse_name(file_name);
     let episode = file.episode.or(release.episode)?;
     Some((file.season.or(release.season).unwrap_or(1), episode))
+}
+
+/// Identification, off the lock, once per release: who it is (`identify.rs` -- an IMDb
+/// id zurg found is exact; otherwise its name to Plex's matcher and TMDB, their agreement
+/// the confidence), then for each new file the fields TMDB gives its row and Plex's own
+/// guids for it. A release named as the other kind of title than its library's, or not
+/// at all, stays unmatched for Fix Match.
+fn name_release(plan: &Plan, arrivals: &mut [Arrival], files: usize) {
+    let (tmdb, plex) = (plan.tmdb.as_deref(), plan.plex.as_deref());
+    let Some(first) = arrivals.first() else {
+        return;
+    };
+    if tmdb.is_none() && plex.is_none() {
+        return;
+    }
+    let hash = first
+        .entry
+        .get("hash")
+        .and_then(Value::as_str)
+        .filter(|hash| !hash.is_empty())
+        .unwrap_or("zurg")
+        .to_ascii_lowercase();
+    let mut known = HashMap::new();
+    if let Some(imdb) = first.entry.get("imdb_id").and_then(Value::as_str).filter(|id| !id.is_empty()) {
+        known.insert(hash.clone(), imdb.to_string());
+    }
+    let identifier = Identifier {
+        tmdb: tmdb.map(|t| t as &dyn TmdbSource),
+        plex: plex.map(|p| p as &dyn PlexSource),
+        known,
+    };
+    let release = first.release.clone();
+    let identity = identifier.identify_as(&release, Some(&hash), files, Some(&plan.kind));
+    let report = json!({
+        "confidence": identity.confidence, "source": identity.source, "imdb": identity.imdb,
+        "tmdb": identity.tmdb, "plex": identity.plex,
+        "disputed": identity.disputed.as_ref().map(|d| json!({"tmdb": d.tmdb, "imdb": d.imdb, "kind": d.kind})),
+    });
+    let matched = identity.kind == plan.kind
+        && (identity.tmdb.is_some() || identity.plex.is_some() || identity.imdb.is_some());
+    info!(
+        "SCAN identified {release:?} -> {} {} ({})",
+        identity.confidence,
+        identity.imdb.as_deref().unwrap_or("?"),
+        identity.source.as_deref().unwrap_or("-")
+    );
+    if !matched {
+        for arrival in arrivals.iter_mut() {
+            arrival.meta = Some(Map::from_iter([("_identify".to_string(), report.clone())]));
+        }
+        return;
+    }
+    let show = plan.kind == "show";
+    let tmdb_kind = if show { "tv" } else { "movie" };
+    let details = tmdb.zip(identity.tmdb).and_then(|(t, id)| identify::tmdb_details(t, tmdb_kind, id));
+    let externals: Vec<Value> = identity
+        .imdb
+        .iter()
+        .map(|imdb| json!({"id": format!("imdb://{imdb}")}))
+        .chain(identity.tmdb.iter().map(|id| json!({"id": format!("tmdb://{id}")})))
+        .collect();
+    let seasons = match (show, plex, identity.plex.as_deref()) {
+        (true, Some(p), Some(guid)) => identify::plex_children(p, guid),
+        _ => HashMap::new(),
+    };
+    let mut episodes: HashMap<String, HashMap<String, String>> = HashMap::new();
+    for arrival in arrivals.iter_mut() {
+        let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
+        let numbers = if show { episode_of(&release, &file_name) } else { None };
+        let mut meta = Map::new();
+        meta.insert("title".to_string(), json!(identity.parsed.title));
+        meta.insert("summary".to_string(), json!(""));
+        if let (Some(details), Some(id), Some(t)) = (&details, identity.tmdb, plan.tmdb.as_deref()) {
+            let parsed = Map::from_iter([
+                ("title".to_string(), json!(identity.parsed.title)),
+                ("year".to_string(), json!(identity.parsed.year)),
+                ("season".to_string(), json!(numbers.map(|n| n.0))),
+                ("episode".to_string(), json!(numbers.map(|n| n.1))),
+            ]);
+            let (episode, season) = match numbers {
+                Some((season, episode)) => (
+                    t.episode(&json!(id), &json!(season), &json!(episode)),
+                    t.season(&json!(id), &json!(season)),
+                ),
+                None => (None, None),
+            };
+            metadata::enrich(
+                &mut meta,
+                details,
+                &parsed,
+                episode.as_ref(),
+                Some(season.as_ref().unwrap_or(&json!({}))),
+                tmdb_kind,
+                id,
+            );
+        } else if !externals.is_empty() {
+            // Named, but no TMDB to describe it: the ids alone.
+            let field = if show { "_show_external_guids" } else { "Guid" };
+            meta.insert(field.to_string(), Value::Array(externals.clone()));
+        }
+        if let Some(year) = identity.parsed.year.filter(|_| !meta.contains_key("year") && !show) {
+            meta.insert("year".to_string(), json!(year));
+        }
+        let identity_key = identity
+            .tmdb
+            .map(|id| format!("tmdb:{id}"))
+            .or_else(|| identity.imdb.as_ref().map(|imdb| format!("imdb:{imdb}")))
+            .or_else(|| identity.plex.clone())
+            .unwrap_or_default();
+        meta.insert("_identity".to_string(), json!(identity_key));
+        if show {
+            meta.insert("_tmdb_id".to_string(), json!(identity_key));
+        }
+        // Plex's own guids, which a real PMS's rows carry and plex.tv knows (cycle 70).
+        if let Some(guid) = &identity.plex {
+            if !show {
+                meta.insert("guid".to_string(), json!(guid));
+            } else {
+                meta.insert("_show_guid".to_string(), json!(guid));
+                if let Some((season, episode)) = numbers {
+                    if let Some(season_guid) = seasons.get(&season.to_string()) {
+                        meta.insert("_season_guid".to_string(), json!(season_guid));
+                        let children = episodes.entry(season_guid.clone()).or_insert_with(|| {
+                            plex.map(|p| identify::plex_children(p, season_guid)).unwrap_or_default()
+                        });
+                        if let Some(episode_guid) = children.get(&episode.to_string()) {
+                            meta.insert("guid".to_string(), json!(episode_guid));
+                        }
+                    }
+                }
+            }
+        }
+        meta.insert("_identify".to_string(), report.clone());
+        arrival.meta = Some(meta);
+    }
 }
 
 fn under(file: &str, folder: &str) -> bool {
@@ -268,7 +408,7 @@ fn scan(shared: &SharedRuntime, zurg: &Zurg, job: &ScanJob) -> bool {
     let mut arrivals = Vec::new();
     let mut created = Vec::new();
     let mut last = String::new();
-    for (index, (_, (name, release_path, files, _))) in releases.into_iter().enumerate() {
+    for (index, (_, (name, release_path, files, count))) in releases.into_iter().enumerate() {
         lock(shared).scan_progress(&mut activity, &plan.key, &name, (index * 99 / total) as i64);
         let mut release = Vec::new();
         for found in files {
@@ -278,10 +418,12 @@ fn scan(shared: &SharedRuntime, zurg: &Zurg, job: &ScanJob) -> bool {
                     release: name.clone(),
                     release_path: release_path.clone(),
                     entry,
+                    meta: None,
                 }),
                 Err(error) => warning!("SCAN {} skipped: {error}", found.file),
             }
         }
+        name_release(&plan, &mut release, count);
         if total > 1 {
             // A whole library is added release by release, so a long first scan shows
             // (and saves) what it has found so far.
@@ -451,6 +593,8 @@ impl Runtime {
             title: string_value(section.get("title").unwrap_or(&Value::Null)),
             targets,
             known,
+            tmdb: self.tmdb.clone(),
+            plex: self.plex.clone(),
         })
     }
 
@@ -700,6 +844,18 @@ impl Runtime {
             leaf["_generatedTitle"] = json!(true);
             leaf.as_object_mut()?.shift_remove("year");
             leaf["_release_path"] = json!(arrival.release_path.clone());
+        }
+        if let Some(meta) = &arrival.meta {
+            for (field, value) in meta {
+                leaf[field.as_str()] = value.clone();
+            }
+            // TMDB named the show but not this episode: `enrich` left the SHOW's title
+            // on it, so it keeps its generated one.
+            if plan.kind == "show" && !meta.contains_key("index") {
+                leaf["title"] = json!(format!("Episode {episode}"));
+            } else if let Some(object) = leaf.as_object_mut() {
+                object.shift_remove("_generatedTitle");
+            }
         }
         Some(leaf)
     }
@@ -1173,6 +1329,93 @@ mod tests {
         assert!(runtime.catalog.get("1002").is_some(), "the file's new row joins");
         assert!(!dir.join("plexsim.db.stale").exists());
         drop(runtime);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The identification pass on zurg's two real entries (`fixtures/zurg/entries.json`),
+    /// offline: TMDB's and Plex's answers sit in their on-disk caches, which is where a
+    /// live lookup would have put them. The answers are written for the test.
+    #[test]
+    fn an_imdb_id_from_zurg_names_the_release_and_plex_names_its_guids() {
+        let dir = std::env::temp_dir().join(format!("plexsim-name-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let api = "https://api.themoviedb.org/3";
+        let details = "append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates";
+        let tmdb_cache = json!({
+            format!("{api}/find/tt0103827?external_source=imdb_id&api_key=KEY"):
+                {"movie_results": [{"id": 31639}], "tv_results": []},
+            format!("{api}/movie/31639?{details}&api_key=KEY"):
+                {"title": "Blame It on the Bellboy", "release_date": "1992-03-06",
+                 "overview": "A hotel mix-up.", "external_ids": {"imdb_id": "tt0103827"}},
+            format!("{api}/find/tt0397306?external_source=imdb_id&api_key=KEY"):
+                {"movie_results": [], "tv_results": [{"id": 1433}]},
+            format!("{api}/tv/1433?{details}&api_key=KEY"):
+                {"name": "American Dad!", "first_air_date": "2005-02-06",
+                 "external_ids": {"imdb_id": "tt0397306"}},
+            format!("{api}/tv/1433/season/5?api_key=KEY"): {"id": 3626, "air_date": "2009-09-27"},
+            format!("{api}/tv/1433/season/5/episode/7?append_to_response=external_ids&api_key=KEY"):
+                {"id": 512000, "name": "Phantom of the Telethon", "air_date": "2009-11-15",
+                 "external_ids": {"imdb_id": "tt1508003"}},
+        });
+        fs::write(dir.join("tmdb_cache.json"), tmdb_cache.to_string()).unwrap();
+        let plex_cache = json!({
+            r#"POST /library/metadata/matches {"guid": "tmdb://31639", "type": 1}"#:
+                {"MediaContainer": {"Metadata": [{"guid": "plex://movie/5d7768279ab5440020ad6e0e"}]}},
+            r#"POST /library/metadata/matches {"guid": "tmdb://1433", "type": 2}"#:
+                {"MediaContainer": {"Metadata": [{"guid": "plex://show/5d9c086c46115600200aa2fe"}]}},
+            "GET /library/metadata/5d9c086c46115600200aa2fe/children ":
+                {"MediaContainer": {"Metadata": [{"index": 5, "guid": "plex://season/602e67d31d3358002c411c37"}]}},
+            "GET /library/metadata/602e67d31d3358002c411c37/children ":
+                {"MediaContainer": {"Metadata": [{"index": 7, "guid": "plex://episode/5d9c0ab4705e7a001e6d4a2b"}]}},
+        });
+        fs::write(dir.join("plex_cache.json"), plex_cache.to_string()).unwrap();
+        let entries: Value = serde_json::from_str(
+            &fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/fixtures/zurg/entries.json")).unwrap(),
+        )
+        .unwrap();
+        let arrival = |kind: &str| {
+            let fixture = &entries["entries"][kind];
+            let release = fixture["release"].as_str().unwrap().to_string();
+            let file = format!("/zurg/x/{release}/{}", fixture["file"].as_str().unwrap());
+            Arrival {
+                found: Found { dav: String::new(), file, size: 1 },
+                release: release.clone(),
+                release_path: format!("/zurg/x/{release}"),
+                entry: fixture["entry"].clone(),
+                meta: None,
+            }
+        };
+        let plan = |kind: &str| Plan {
+            key: "1".to_string(),
+            kind: kind.to_string(),
+            title: "x".to_string(),
+            targets: Vec::new(),
+            known: HashMap::new(),
+            tmdb: Some(Arc::new(tmdb::Tmdb::new("testkey".to_string(), dir.join("tmdb_cache.json")))),
+            plex: Some(Arc::new(plexmeta::PlexMeta::new("token".to_string(), dir.join("plex_cache.json")))),
+        };
+        let mut movie = vec![arrival("movie")];
+        name_release(&plan("movie"), &mut movie, 1);
+        let meta = movie[0].meta.clone().unwrap();
+        assert_eq!(meta["title"], "Blame It on the Bellboy");
+        assert_eq!(meta["year"], 1992);
+        assert_eq!(meta["guid"], "plex://movie/5d7768279ab5440020ad6e0e");
+        assert_eq!(meta["Guid"], json!([{"id": "imdb://tt0103827"}, {"id": "tmdb://31639"}]));
+        assert_eq!(meta["_identify"]["confidence"], "exact");
+        let mut episode = vec![arrival("episode")];
+        name_release(&plan("show"), &mut episode, 1);
+        let meta = episode[0].meta.clone().unwrap();
+        assert_eq!(meta["title"], "Phantom of the Telethon");
+        assert_eq!(meta["_show_title"], "American Dad!");
+        assert_eq!(meta["_show_guid"], "plex://show/5d9c086c46115600200aa2fe");
+        assert_eq!(meta["_season_guid"], "plex://season/602e67d31d3358002c411c37");
+        assert_eq!(meta["guid"], "plex://episode/5d9c0ab4705e7a001e6d4a2b");
+        assert_eq!((meta["_season"].clone(), meta["_episode"].clone()), (json!(5), json!(7)));
+        // A movie library's release that is a show is not forced into a movie.
+        let mut wrong = vec![arrival("episode")];
+        name_release(&plan("movie"), &mut wrong, 1);
+        assert!(!wrong[0].meta.clone().unwrap().contains_key("guid"));
         let _ = fs::remove_dir_all(&dir);
     }
 

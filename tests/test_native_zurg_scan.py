@@ -11,7 +11,9 @@ the key it matched the release to disappears.
 
 The zurg here is a stub: PROPFIND listings in zurg's own shape, entries carrying two
 real stored probes (`fixtures/zurg/entries.json`), file bytes behind basic auth, and a
-503 while "loading". No TMDB or Plex key: what a scan finds stays unidentified.
+503 while "loading". With no TMDB or Plex key what a scan finds stays unidentified; with
+`TMDB_KEY` and `PLEX_TOKEN` in the environment the two real releases are identified
+live (their IMDb ids are zurg's) and must come back with TMDB's titles and Plex's guids.
 
 Native only: the Python oracle serves a fixed catalog and does not scan.
 
@@ -39,6 +41,7 @@ ROOT = os.path.dirname(HERE)
 FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "zurg", "entries.json")))["entries"]
 AUTH = "Basic " + base64.b64encode(b"zuser:zpass").decode()
 BODY = bytes(range(256)) * 64
+KEYED = bool(os.environ.get("TMDB_KEY") and os.environ.get("PLEX_TOKEN"))
 NEW = "Qzxv.Wmplk.2024.1080p.WEB-DL"
 
 results = []
@@ -241,7 +244,7 @@ class Server:
         self.port = free_port()
         env = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port, ZURG_USER="zuser",
                    ZURG_PASSWORD="zpass", PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
-        for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY", "PLEX_TOKEN"):
+        for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN") + (() if KEYED else ("TMDB_KEY", "PLEX_TOKEN")):
             env.pop(name, None)
         self.log = open(os.path.join(work, "server.log"), "ab")
         self.process = subprocess.Popen(
@@ -339,9 +342,16 @@ def main():
               media.get("videoCodec") == "h264" and media.get("container") == "mkv"
               and media.get("duration") == 4707078 and len(streams) == 4,
               {k: media.get(k) for k in ("videoCodec", "container", "duration")})
-        check("unidentified, it carries the local agent's guid and no private field",
-              found.get("guid") == "local://%s" % found.get("ratingKey")
-              and not any(k.startswith("_") for k in found), found.get("guid"))
+        if KEYED:
+            check("zurg's IMDb id names it exactly: Plex's own guid and both external ids",
+                  (found.get("guid") or "").startswith("plex://movie/")
+                  and {"id": "imdb://tt0103827"} in (found.get("Guid") or [])
+                  and any(g.get("id", "").startswith("tmdb://") for g in found.get("Guid") or []),
+                  (found.get("guid"), found.get("Guid")))
+        else:
+            check("unidentified, it carries the local agent's guid and no private field",
+                  found.get("guid") == "local://%s" % found.get("ratingKey")
+                  and not any(k.startswith("_") for k in found), found.get("guid"))
         episodes = server.rows("/library/sections/2/all?type=4&includeGuids=1")
         shows = server.rows("/library/sections/2/all?includeGuids=1")
         show_episode = episodes[0] if episodes else {}
@@ -351,6 +361,15 @@ def main():
               and show_episode.get("grandparentTitle") == "American Dad!"
               and show_episode.get("grandparentRatingKey") == shows[0].get("ratingKey"),
               (episodes, shows))
+        if KEYED:
+            show = shows[0] if shows else {}
+            check("the show and the episode carry Plex's guids, the episode TMDB's title",
+                  (show.get("guid") or "").startswith("plex://show/")
+                  and {"id": "imdb://tt0397306"} in (show.get("Guid") or [])
+                  and (show_episode.get("guid") or "").startswith("plex://episode/")
+                  and show_episode.get("title") not in ("Episode 7", "American Dad!"),
+                  (show.get("guid"), show.get("Guid"), show_episode.get("guid"),
+                   show_episode.get("title")))
         keys = {row["ratingKey"] for row in movies + episodes + shows}
 
         # -- playback reads zurg's WebDAV with zurg's credential ----------------------
