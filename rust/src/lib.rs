@@ -9,6 +9,7 @@ pub mod decision;
 pub mod filters;
 pub mod gate;
 pub mod hierarchy;
+pub mod identify;
 pub mod mediainfo;
 pub mod metadata;
 pub mod runtime;
