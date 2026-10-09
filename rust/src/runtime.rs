@@ -448,6 +448,12 @@ pub struct Runtime {
     /// zurg, when `ZURG_URL` names one: every Part's bytes, and the library scans.
     /// Shared with the part reads that stream outside the lock.
     zurg: Option<Arc<zurg::Zurg>>,
+    /// The scanner's queue, once `serve` started it (only with zurg).
+    scans: Option<Arc<scan::ScanQueue>>,
+    /// The library a scan is running in and its activity as it stands: what
+    /// `/activities` lists and `refreshing` reports. zurg asks `/activities` before every
+    /// scan it sends and waits while a `library.update.section` one runs.
+    scanning: Option<(String, Map<String, Value>)>,
     /// `metadata.Tmdb`, only with `TMDB_KEY`: without it Fix Match has no candidates.
     tmdb: Option<tmdb::Tmdb>,
     /// Fix Match guid -> the TMDB `(kind, id)` that minted it, so `PUT .../match`
@@ -723,6 +729,8 @@ impl Runtime {
             catalog_path: options.catalog,
             source_digest,
             zurg: zurg::Zurg::from_env(&options.zurg_mount).map(Arc::new),
+            scans: None,
+            scanning: None,
             // Fix Match needs a live agent; the cache lives beside the catalog.
             tmdb,
             match_candidates: HashMap::new(),
@@ -2868,7 +2876,7 @@ impl Runtime {
             "scannedAt": created,
             "contentChangedAt": section.get("contentChangedAt").cloned().unwrap_or(json!(rows.len())),
             "filters": true,
-            "refreshing": false,
+            "refreshing": self.scanning.as_ref().is_some_and(|(scanned, _)| *scanned == key),
             "allowSync": false,
             "content": true,
             "directory": true,
@@ -5444,8 +5452,11 @@ impl Runtime {
             return row.get("parentRatingKey").cloned().unwrap_or(Value::Null);
         }
         if field == "trash" {
-            // plexsim holds no trashed row; kids' own answer is 0 everywhere.
-            return json!(0);
+            // Measured (plexscratch, `missing_file_scan_s43.json`): a trashed movie or
+            // episode -- a file a scan found gone -- is `trash=1`; its show, though it
+            // carries `deletedAt` too, is not.
+            let leaf = matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"));
+            return json!(i64::from(leaf && row.get("deletedAt").is_some()));
         }
         if matches!(
             field,
@@ -7942,9 +7953,14 @@ impl Runtime {
             ("GET" | "HEAD", "/status/sessions") => self.route_sessions(&query),
             // `server.py`: the running activities -- every native activity starts and
             // ends inside the request that ran it, so the list between requests is empty.
-            ("GET" | "HEAD", "/activities") => {
-                Response::json(200, json!({"MediaContainer": {"size": 0}}))
-            }
+            // A zurg scan runs off the request thread, and is listed while it does.
+            ("GET" | "HEAD", "/activities") => match &self.scanning {
+                Some((_, activity)) => Response::json(
+                    200,
+                    json!({"MediaContainer": {"size": 1, "Activity": [Value::Object(activity.clone())]}}),
+                ),
+                None => Response::json(200, json!({"MediaContainer": {"size": 0}})),
+            },
             ("GET" | "HEAD", "/status/sessions/background") => {
                 Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }
@@ -15635,6 +15651,11 @@ impl Runtime {
                         "refresh" => self.refresh_section(&section_key, &section, query),
                         _ => {}
                     }
+                    if segments[3] == "emptyTrash" && self.empty_section_trash(&section_key) > 0 {
+                        info!("SECTION emptyTrash {section_key}");
+                        self.save_if_dirty();
+                        return Response::empty(200);
+                    }
                     if matches!(segments[3], "emptyTrash" | "analyze") {
                         let leaf = segments[3];
                         info!("SECTION {leaf} {section_key} -- nothing to {leaf}, plexsim owns no files");
@@ -23023,6 +23044,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         info!("state file {}: {}", path.display(), loaded.state_summary);
     }
     let runtime = Arc::new(Mutex::new(loaded));
+    scan::start_scanner(&runtime);
     // `logger.addHandler(_Capture())`: Download Logs and the Console see what follows.
     logging::start_capture();
     if let Some(cert) = &tls_cert {

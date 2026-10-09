@@ -41,6 +41,23 @@ impl Runtime {
         type_number: Option<i64>,
         title_override: Option<&str>,
     ) {
+        self.push_timeline_entry_with(row, state, metadata_state, media_state, type_number, title_override, None);
+    }
+
+    /// The same, naming an episode's season and show (`parentItemID`, `rootItemID`): what
+    /// a scan's created frame and an emptied trash's deleted frame carry (measured,
+    /// `missing_file_scan_s43.json` 3b and 4b).
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn push_timeline_entry_with(
+        &mut self,
+        row: &Value,
+        state: i64,
+        metadata_state: Option<&str>,
+        media_state: Option<&str>,
+        type_number: Option<i64>,
+        title_override: Option<&str>,
+        parents: Option<(String, String)>,
+    ) {
         let title = title_override
             .map(str::to_string)
             .unwrap_or_else(|| self.frame_title(row));
@@ -82,6 +99,10 @@ impl Runtime {
         }
         if let Some(media_state) = media_state.filter(|value| !value.is_empty()) {
             entry.insert("mediaState".to_string(), json!(media_state));
+        }
+        if let Some((parent, root)) = parents {
+            entry.insert("parentItemID".to_string(), json!(parent));
+            entry.insert("rootItemID".to_string(), json!(root));
         }
         self.record_section_timeline(row, &key, state, at);
         self.push_event("timeline", json!({"TimelineEntry": Value::Object(entry)}));

@@ -1,15 +1,343 @@
-//! The live library: rows a scan adds to the running server, on keys that never change.
+//! The live library: what a scan of zurg adds to the running server, on keys that never
+//! change.
 //!
 //! The catalog file used to be the whole library, loaded once at start. A library fed by
-//! zurg changes while the server runs, and zurg keeps the ratingKey it matched each
-//! release to (and drops the release's IMDb id when that key disappears), so a row's key
-//! is minted once and kept across scans and restarts.
+//! zurg changes while the server runs: zurg's Plex integration (its `plex_server_url`
+//! pointed here) asks for `GET /library/sections/{id}/refresh?path=<mount>/<dir>/<release>`
+//! whenever a release arrives, changes or goes, and this module answers it the way a real
+//! PMS's scanner does -- off the request thread, one scan at a time. It lists the folder
+//! on zurg's WebDAV, adds each new file (zurg's `/api/library/entry` names the release,
+//! its IMDb id and the file's ffprobe), and trashes what is gone. zurg keeps the
+//! ratingKey it matched each release to and drops the release's IMDb id when that key
+//! disappears, so a row's key is minted once and kept across scans and restarts.
 
+use super::zurg::{ListError, Zurg};
 use super::*;
+use crate::identify;
+use crate::{hierarchy, mediainfo};
+use std::collections::{BTreeMap, VecDeque};
+use std::sync::Condvar;
 
 /// Where minted keys start: above the catalog's own ranges (movies and episodes 1000+,
 /// shows 20000+, seasons 30000+), playlists (40000+) and collections (50000+).
 const SCAN_KEY_BASE: i64 = 100_000;
+
+/// One refresh a client or zurg asked for: a library, the folder in it, and `force`.
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct ScanJob {
+    pub section: String,
+    pub path: Option<String>,
+    pub force: bool,
+}
+
+/// Scans waiting for the scanner thread, which runs them one at a time.
+pub(crate) struct ScanQueue {
+    jobs: Mutex<VecDeque<ScanJob>>,
+    wake: Condvar,
+}
+
+impl std::fmt::Debug for ScanQueue {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("ScanQueue").finish()
+    }
+}
+
+impl ScanQueue {
+    fn new() -> Self {
+        Self { jobs: Mutex::new(VecDeque::new()), wake: Condvar::new() }
+    }
+
+    /// Queue a scan; one already waiting for the same folder is not queued twice.
+    pub(super) fn push(&self, job: ScanJob) {
+        let mut jobs = self.jobs.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        if !jobs.contains(&job) {
+            jobs.push_back(job);
+            self.wake.notify_one();
+        }
+    }
+
+    fn pop(&self) -> ScanJob {
+        let mut jobs = self.jobs.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        loop {
+            if let Some(job) = jobs.pop_front() {
+                return job;
+            }
+            jobs = self.wake.wait(jobs).unwrap_or_else(|poisoned| poisoned.into_inner());
+        }
+    }
+}
+
+/// A media file a listing found.
+#[derive(Debug, Clone)]
+struct Found {
+    dav: String,
+    file: String,
+    size: u64,
+}
+
+/// What a scan knows before it lists anything, taken under the lock.
+struct Plan {
+    key: String,
+    kind: String,
+    title: String,
+    targets: Vec<Target>,
+    /// Every file the library's rows read, and the row reading it.
+    known: HashMap<String, Known>,
+}
+
+struct Target {
+    path: String,
+    dav: String,
+    /// A library's own folder, as opposed to one inside it.
+    root: bool,
+}
+
+#[derive(Debug, Clone)]
+struct Known {
+    key: String,
+    pending: bool,
+}
+
+/// A new file and what zurg says about its release, ready to become a row.
+struct Arrival {
+    found: Found,
+    /// The release folder's name and its path under the mount.
+    release: String,
+    release_path: String,
+    entry: Value,
+}
+
+/// The release folder a file sits in: `/dav/<dir>/<release>/...` -> (`<dir>/<release>`,
+/// `<release>`). A file directly in a library's folder is its own release.
+fn release_of(dav: &str) -> (String, String) {
+    let rest = dav.strip_prefix("/dav/").unwrap_or(dav);
+    let parts: Vec<&str> = rest.split('/').collect();
+    if parts.len() >= 3 {
+        (format!("{}/{}", parts[0], parts[1]), parts[1].to_string())
+    } else {
+        let name = parts.last().copied().unwrap_or_default().to_string();
+        (rest.to_string(), name)
+    }
+}
+
+fn extension(file: &str) -> String {
+    file.rsplit_once('.')
+        .map(|(_, extension)| extension.to_ascii_lowercase())
+        .filter(|extension| (2..=5).contains(&extension.len()))
+        .unwrap_or_else(|| "mkv".to_string())
+}
+
+fn stem(file: &str) -> &str {
+    let name = file.rsplit('/').next().unwrap_or(file);
+    name.rsplit_once('.').map_or(name, |(stem, _)| stem)
+}
+
+/// Plex's scanners skip a release's sample clip; a separate row titled as the film
+/// would be the result here.
+fn is_sample(file: &str) -> bool {
+    stem(file)
+        .to_ascii_lowercase()
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .any(|word| word == "sample")
+}
+
+/// (season, episode) of a show's file: the file's own numbers, else its release's; an
+/// episode with no season (absolute numbering) is season 1.
+fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
+    let release = identify::parse_name(release);
+    let file = identify::parse_name(file_name);
+    let episode = file.episode.or(release.episode)?;
+    Some((file.season.or(release.season).unwrap_or(1), episode))
+}
+
+fn under(file: &str, folder: &str) -> bool {
+    let folder = folder.trim_end_matches('/');
+    file == folder || file.starts_with(&format!("{folder}/"))
+}
+
+/// Start the scanner thread and queue each library's first scan: zurg tells the
+/// server what changes while it runs, and the start finds what changed while it did not.
+pub(super) fn start_scanner(shared: &SharedRuntime) {
+    let (zurg, queue) = {
+        let Ok(mut runtime) = shared.lock() else {
+            return;
+        };
+        let Some(zurg) = runtime.zurg.clone() else {
+            return;
+        };
+        let queue = Arc::new(ScanQueue::new());
+        runtime.scans = Some(Arc::clone(&queue));
+        let sections = runtime
+            .catalog
+            .sections
+            .iter()
+            .filter(|section| {
+                runtime
+                    .locations(section)
+                    .iter()
+                    .any(|path| zurg.dav_path(path).is_some())
+            })
+            .filter_map(|section| section.get("key").map(string_value))
+            .collect::<Vec<_>>();
+        for section in sections {
+            queue.push(ScanJob { section, path: None, force: false });
+        }
+        (zurg, queue)
+    };
+    let shared = Arc::clone(shared);
+    let _ = thread::Builder::new()
+        .name("scanner".to_string())
+        .spawn(move || {
+            logging::name_thread("scanner".to_string());
+            loop {
+                let job = queue.pop();
+                if !scan(&shared, &zurg, &job) {
+                    // zurg answers 503 while it loads its library: ask again shortly.
+                    thread::sleep(std::time::Duration::from_secs(5));
+                    queue.push(job);
+                }
+            }
+        });
+}
+
+fn lock(shared: &SharedRuntime) -> std::sync::MutexGuard<'_, Runtime> {
+    shared.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// One scan: list off the lock, fetch what is new off the lock, change the library
+/// under it. Answers false when zurg is still loading and the scan should be retried.
+fn scan(shared: &SharedRuntime, zurg: &Zurg, job: &ScanJob) -> bool {
+    let started = std::time::Instant::now();
+    let Some(plan) = lock(shared).scan_plan(zurg, job) else {
+        return true;
+    };
+    let mut present: BTreeMap<String, Found> = BTreeMap::new();
+    let mut settled: Vec<String> = Vec::new();
+    let mut failed = None;
+    for target in &plan.targets {
+        match zurg.walk(&target.dav, if target.root { 2 } else { 1 }) {
+            // Measured (plexscratch, `missing_file_scan_s43.json` 6b1-6b4): a library
+            // folder that is missing, unreadable or EMPTY trashes nothing, whatever
+            // `autoEmptyTrash` says. An empty listing is what a zurg still loading its
+            // library looks like through a mount, so it is never taken for "all gone".
+            Ok(files) if files.is_empty() && target.root => {}
+            Ok(files) => {
+                for (dav, size) in files {
+                    let file = zurg.file_path(&dav);
+                    present.insert(file.clone(), Found { dav, file, size });
+                }
+                settled.push(target.path.clone());
+            }
+            // A release folder zurg no longer has: everything in it is gone (6a).
+            Err(ListError::Gone) if !target.root => settled.push(target.path.clone()),
+            Err(ListError::Gone) => {}
+            Err(ListError::Loading) => {
+                info!("SCAN section {} waits: zurg is still loading its library", plan.key);
+                return false;
+            }
+            Err(ListError::Failed(error)) => {
+                failed = Some(error);
+                break;
+            }
+        }
+    }
+    let mut activity = lock(shared).scan_started(&plan.key, &plan.title);
+    if let Some(error) = failed {
+        error!("SCAN section {} cannot list zurg, nothing changed: {error}", plan.key);
+        present.clear();
+        settled.clear();
+    }
+    // Every release in the listing is a step of the scan's progress; only new files
+    // are fetched.
+    let mut releases: BTreeMap<String, (String, String, Vec<Found>, usize)> = BTreeMap::new();
+    for found in present.values() {
+        let (id, name) = release_of(&found.dav);
+        let entry = releases.entry(id).or_insert_with(|| {
+            let release_path = zurg.file_path(&format!(
+                "/dav/{}",
+                release_of(&found.dav).0
+            ));
+            (name, release_path, Vec::new(), 0)
+        });
+        entry.3 += 1;
+        if !plan.known.contains_key(&found.file) && !is_sample(&found.file) {
+            entry.2.push(found.clone());
+        }
+    }
+    let total = releases.len().max(1);
+    let mut arrivals = Vec::new();
+    let mut created = Vec::new();
+    let mut last = String::new();
+    for (index, (_, (name, release_path, files, _))) in releases.into_iter().enumerate() {
+        lock(shared).scan_progress(&mut activity, &plan.key, &name, (index * 99 / total) as i64);
+        let mut release = Vec::new();
+        for found in files {
+            match zurg.entry(&found.dav) {
+                Ok(entry) => release.push(Arrival {
+                    found,
+                    release: name.clone(),
+                    release_path: release_path.clone(),
+                    entry,
+                }),
+                Err(error) => warning!("SCAN {} skipped: {error}", found.file),
+            }
+        }
+        if total > 1 {
+            // A whole library is added release by release, so a long first scan shows
+            // (and saves) what it has found so far.
+            created.extend(lock(shared).place_arrivals(&plan, release));
+        } else {
+            arrivals.extend(release);
+        }
+        last = name;
+    }
+    // A row added before zurg had probed its file gets its streams once it has.
+    let mut probed = Vec::new();
+    for (file, known) in &plan.known {
+        if known.pending {
+            if let Some(found) = present.get(file) {
+                if let Ok(entry) = zurg.entry(&found.dav) {
+                    if entry.get("media_info").is_some_and(Value::is_object) {
+                        probed.push((known.key.clone(), entry));
+                    }
+                }
+            }
+        }
+    }
+    let mut runtime = lock(shared);
+    activity.insert("subtitle".to_string(), json!(last));
+    runtime.scan_progress(&mut activity, &plan.key, &last, 99);
+    // Measured (4a): a folder scan announces its new row after the step at 99.
+    created.extend(runtime.place_arrivals(&plan, arrivals));
+    let filled = runtime.fill_probes(probed);
+    let (trashed, restored) = runtime.settle_missing(&plan, &present, &settled);
+    runtime.scan_finished(&mut activity, &plan.key);
+    for key in &created {
+        runtime.created_metadata_frames(key);
+    }
+    if job.force {
+        for row in runtime.section_rows(&plan.key) {
+            if let Some(key) = key_of(&row) {
+                runtime.push_refresh_events(&key);
+            }
+        }
+    }
+    if !created.is_empty() || filled > 0 || trashed > 0 || restored > 0 {
+        runtime.touch_gdm();
+        runtime.dirty = true;
+    }
+    info!(
+        "SCAN section {} path={} -> {} new, {} probed, {} gone, {} back, in {:.1}s",
+        plan.key,
+        job.path.as_deref().map_or("None".to_string(), crate::filters::py_repr),
+        created.len(),
+        filled,
+        trashed,
+        restored,
+        started.elapsed().as_secs_f64()
+    );
+    true
+}
 
 impl Runtime {
     /// After the state is restored: the next minted key sits above every key in use or
@@ -32,6 +360,739 @@ impl Runtime {
         self.next_scan_key += 1;
         self.dirty = true;
         key.to_string()
+    }
+
+    /// A library's folders, as its `Location` rows name them.
+    pub(super) fn locations(&self, section: &Value) -> Vec<String> {
+        section
+            .get("Location")
+            .and_then(Value::as_array)
+            .map(|rows| {
+                rows.iter()
+                    .map(|row| string_value(row.get("path").unwrap_or(&Value::Null)))
+                    .filter(|path| !path.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// `autoEmptyTrash`, as `/:/prefs` reports it: a write, else the captured value.
+    fn auto_empty_trash(&self) -> bool {
+        let value = self.prefs.get("autoEmptyTrash").cloned().or_else(|| {
+            load_json_sidecar(&self.catalog_path, "server_prefs.json")
+                .and_then(|rows| rows.as_array().cloned())
+                .and_then(|rows| {
+                    rows.into_iter()
+                        .find(|row| row.get("id").and_then(Value::as_str) == Some("autoEmptyTrash"))
+                })
+                .and_then(|row| row.get("value").cloned())
+        });
+        match value {
+            Some(Value::Bool(on)) => on,
+            Some(Value::String(text)) => matches!(text.as_str(), "1" | "true"),
+            Some(Value::Number(number)) => number.as_i64() == Some(1),
+            _ => false,
+        }
+    }
+
+    fn scan_plan(&self, zurg: &Zurg, job: &ScanJob) -> Option<Plan> {
+        let section = self.section(&job.section)?.clone();
+        let kind = section.get("type").and_then(Value::as_str).unwrap_or("movie").to_string();
+        if !matches!(kind.as_str(), "movie" | "show") {
+            return None;
+        }
+        let locations = self.locations(&section);
+        let wanted = job.path.as_deref().map(|path| path.trim_end_matches('/'));
+        let targets = match wanted {
+            Some(path) => vec![Target {
+                path: path.to_string(),
+                dav: zurg.dav_path(path).unwrap_or_default(),
+                root: locations.iter().any(|location| location.trim_end_matches('/') == path),
+            }],
+            None => locations
+                .iter()
+                .map(|location| Target {
+                    path: location.trim_end_matches('/').to_string(),
+                    dav: zurg.dav_path(location).unwrap_or_default(),
+                    root: true,
+                })
+                .collect(),
+        }
+        .into_iter()
+        .filter(|target| !target.dav.is_empty())
+        .collect();
+        let mut known = HashMap::new();
+        for row in self.catalog.items() {
+            if string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) != job.section
+                || !matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+            {
+                continue;
+            }
+            let Some(key) = key_of(row) else {
+                continue;
+            };
+            for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
+                for part in media.get("Part").and_then(Value::as_array).into_iter().flatten() {
+                    if let Some(file) = part.get("file").and_then(Value::as_str) {
+                        known.insert(
+                            file.to_string(),
+                            Known {
+                                key: key.clone(),
+                                pending: row.get("_probePending").is_some_and(truthy),
+                            },
+                        );
+                    }
+                }
+            }
+        }
+        Some(Plan {
+            key: job.section.clone(),
+            kind,
+            title: string_value(section.get("title").unwrap_or(&Value::Null)),
+            targets,
+            known,
+        })
+    }
+
+    /// The scan's opening frames, as `notify_section_scan` writes them.
+    fn scan_started(&mut self, section: &str, title: &str) -> Map<String, Value> {
+        let mut activity = butler::new_activity("library.update.section", "Scanning", false);
+        self.notify_activity(&activity, "started");
+        self.notify_status(&format!("Scanning the \"{title}\" section"), "");
+        activity.insert("title".to_string(), json!(format!("Scanning {title}")));
+        self.notify_activity(&activity, "updated");
+        activity.insert("Context".to_string(), json!({"librarySectionID": section}));
+        self.scanning = Some((section.to_string(), activity.clone()));
+        activity
+    }
+
+    /// Measured (6a2): a folder scan's steps name the release folder, at 0 then 99.
+    fn scan_progress(&mut self, activity: &mut Map<String, Value>, section: &str, subtitle: &str, progress: i64) {
+        activity.insert("subtitle".to_string(), json!(subtitle));
+        activity.insert("progress".to_string(), json!(progress));
+        activity.insert("Context".to_string(), json!({"librarySectionID": section}));
+        self.notify_activity(activity, "updated");
+        self.scanning = Some((section.to_string(), activity.clone()));
+    }
+
+    fn scan_finished(&mut self, activity: &mut Map<String, Value>, section: &str) {
+        activity.insert("progress".to_string(), json!(100));
+        activity.insert("Context".to_string(), json!({"librarySectionID": section}));
+        self.notify_activity(activity, "updated");
+        let mut outer = butler::new_activity(
+            "provider.subscriptions.process",
+            "Processing subscriptions",
+            true,
+        );
+        self.notify_activity(&outer, "started");
+        self.notify_activity(activity, "ended");
+        self.scanning = None;
+        self.notify_status(
+            "Library scan complete",
+            "Extra information may still be downloading from the Internet",
+        );
+        let mut inner = outer.clone();
+        inner.insert("uuid".to_string(), json!(butler::activity_uuid()));
+        self.notify_activity(&inner, "started");
+        inner.insert("progress".to_string(), json!(100));
+        self.notify_activity(&inner, "ended");
+        outer.insert("progress".to_string(), json!(100));
+        self.notify_activity(&outer, "ended");
+    }
+
+    /// New files become rows: keys minted, Media built from zurg's probe, episodes placed
+    /// under the show and season they belong to (existing ones kept, by identity).
+    /// Answers the keys of every row created, parents first.
+    fn place_arrivals(&mut self, plan: &Plan, arrivals: Vec<Arrival>) -> Vec<String> {
+        if arrivals.is_empty() {
+            return Vec::new();
+        }
+        let taken: HashSet<String> = self.catalog.items().iter().flat_map(row_files).collect();
+        let mut leaves = Vec::new();
+        for arrival in arrivals {
+            // A file another row already reads (a scan raced a rename back).
+            if taken.contains(&arrival.found.file) {
+                continue;
+            }
+            match self.leaf_for(plan, &arrival) {
+                Some(leaf) => leaves.push(leaf),
+                None => warning!("SCAN {} has no episode number; not placed", arrival.found.file),
+            }
+        }
+        if leaves.is_empty() {
+            return Vec::new();
+        }
+        let mut rows = hierarchy::build(leaves);
+        // `build` numbers new shows and seasons from its own bases; each becomes the
+        // library's existing show (same identity) or season (same show and index), or
+        // takes a fresh key.
+        let mut rekeyed: HashMap<String, String> = HashMap::new();
+        let mut existing: HashSet<String> = HashSet::new();
+        let identity_of = |rows: &[Value], show: &str| {
+            rows.iter()
+                .find(|row| row.get("grandparentRatingKey").map(string_value).as_deref() == Some(show))
+                .and_then(|row| row.get("_identity").cloned())
+        };
+        for index in 0..rows.len() {
+            if rows[index].get("type").and_then(Value::as_str) != Some("show") {
+                continue;
+            }
+            let temporary = key_of(&rows[index]).unwrap_or_default();
+            let identity = identity_of(&rows, &temporary).unwrap_or(Value::Null);
+            let found = self.catalog.items().iter().find(|row| {
+                row.get("type").and_then(Value::as_str) == Some("show")
+                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == plan.key
+                    && row.get("_identity") == Some(&identity)
+            });
+            let key = match found.and_then(key_of) {
+                Some(key) => {
+                    existing.insert(key.clone());
+                    key
+                }
+                None => self.mint_key(),
+            };
+            rows[index]["_identity"] = identity;
+            rekeyed.insert(temporary, key);
+        }
+        for index in 0..rows.len() {
+            if rows[index].get("type").and_then(Value::as_str) != Some("season") {
+                continue;
+            }
+            let temporary = key_of(&rows[index]).unwrap_or_default();
+            let show = rows[index].get("parentRatingKey").map(string_value).unwrap_or_default();
+            let show = rekeyed.get(&show).cloned().unwrap_or(show);
+            let season_index = rows[index].get("index").and_then(Value::as_i64);
+            let found = self.catalog.items().iter().find(|row| {
+                row.get("type").and_then(Value::as_str) == Some("season")
+                    && row.get("parentRatingKey").map(string_value).as_deref() == Some(show.as_str())
+                    && row.get("index").and_then(Value::as_i64) == season_index
+            });
+            let key = match found.and_then(key_of) {
+                Some(key) => {
+                    existing.insert(key.clone());
+                    key
+                }
+                None => self.mint_key(),
+            };
+            rekeyed.insert(temporary, key);
+        }
+        rekey(&mut rows, &rekeyed);
+        let section_id = plan.key.parse::<i64>().map(Value::from).unwrap_or_else(|_| json!(plan.key));
+        let mut created = Vec::new();
+        let mut episodes = Vec::new();
+        for mut row in rows {
+            let key = key_of(&row).unwrap_or_default();
+            let kind = row.get("type").and_then(Value::as_str).unwrap_or_default().to_string();
+            if let Some(object) = row.as_object_mut() {
+                object.insert("librarySectionID".to_string(), section_id.clone());
+                object.insert("librarySectionTitle".to_string(), json!(plan.title));
+                object.insert(
+                    "librarySectionKey".to_string(),
+                    json!(format!("/library/sections/{}", plan.key)),
+                );
+                object.insert("_scanned".to_string(), json!(true));
+                // A show and season nobody identified: the local agent's guid, on their
+                // own keys (the episode's was copied up by `build`).
+                if matches!(kind.as_str(), "show" | "season")
+                    && object.get("guid").and_then(Value::as_str).map_or(true, |guid| guid.starts_with("local://"))
+                {
+                    object.insert("guid".to_string(), json!(format!("local://{key}")));
+                }
+                if kind == "show" {
+                    // A real PMS's show Location is the show's folder; here, the
+                    // release folder each episode came from.
+                    object.insert("Location".to_string(), json!([]));
+                }
+            }
+            if existing.contains(&key) {
+                continue;
+            }
+            if kind == "episode" {
+                episodes.push(key.clone());
+            }
+            prepare_rows(std::slice::from_mut(&mut row));
+            self.catalog.add(row);
+            created.push(key);
+        }
+        for key in &episodes {
+            self.inherit_parents(key);
+        }
+        for key in &created {
+            self.push_created_frames(key);
+        }
+        created
+    }
+
+    /// The leaf row a new file becomes, keyed; `None` for a show's file with no episode.
+    fn leaf_for(&mut self, plan: &Plan, arrival: &Arrival) -> Option<Value> {
+        let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
+        let release = identify::parse_name(&arrival.release);
+        let (season, episode) = if plan.kind == "show" {
+            episode_of(&arrival.release, &file_name)?
+        } else {
+            (0, 0)
+        };
+        let key = self.mint_key();
+        let rating = key.parse::<i64>().unwrap_or(0);
+        let stamp = now();
+        let extension = extension(&file_name);
+        let part_id = rating * 10;
+        let probe = arrival
+            .entry
+            .get("media_info")
+            .filter(|probe| probe.is_object())
+            .cloned();
+        let size = arrival
+            .entry
+            .get("size")
+            .and_then(Value::as_u64)
+            .filter(|size| *size > 0)
+            .unwrap_or(arrival.found.size);
+        let media = mediainfo::build_media(
+            probe.as_ref().unwrap_or(&json!({"format": {}, "streams": []})),
+            rating * 100,
+            part_id,
+            &format!("/library/parts/{part_id}/{stamp}/file.{extension}"),
+            &arrival.found.file,
+            size as i64,
+            Some(&extension),
+        );
+        let title = if release.title.is_empty() { stem(&file_name).to_string() } else { release.title.clone() };
+        let mut leaf = json!({
+            "ratingKey": key,
+            "key": format!("/library/metadata/{key}"),
+            "guid": format!("local://{key}"),
+            "type": plan.kind.clone(),
+            "title": title,
+            "summary": "",
+            "duration": media.get("duration").cloned().unwrap_or(json!(0)),
+            "addedAt": stamp,
+            "updatedAt": stamp,
+            "thumb": format!("/library/metadata/{key}/thumb/{stamp}"),
+            "art": format!("/library/metadata/{key}/art/{stamp}"),
+            "Media": [media],
+            "_identity": format!("title:{}", hierarchy::fold_title(&release.title).to_lowercase()),
+            "_release": arrival.release.clone(),
+        });
+        if let Some(year) = release.year {
+            leaf["year"] = json!(year);
+        }
+        if probe.is_none() {
+            leaf["_probePending"] = json!(true);
+        }
+        if let Some(hash) = arrival.entry.get("hash").and_then(Value::as_str) {
+            leaf["_hash"] = json!(hash);
+        }
+        let _ = &arrival.release_path;
+        if plan.kind == "show" {
+            leaf["_kind"] = json!("tv");
+            leaf["_tmdb_id"] = leaf["_identity"].clone();
+            leaf["_season"] = json!(season);
+            leaf["_episode"] = json!(episode);
+            leaf["_show_title"] = json!(leaf["title"].clone());
+            leaf["_show_summary"] = json!("");
+            if let Some(year) = release.year {
+                leaf["_show_year"] = json!(year);
+            }
+            // The local agent's episode: its generated title, marked as generated so an
+            // index edit re-titles it (`unmatch_row`).
+            leaf["title"] = json!(format!("Episode {episode}"));
+            leaf["_generatedTitle"] = json!(true);
+            leaf.as_object_mut()?.shift_remove("year");
+            leaf["_release_path"] = json!(arrival.release_path.clone());
+        }
+        Some(leaf)
+    }
+
+    /// An episode's parent fields, read off the rows it now sits under.
+    fn inherit_parents(&mut self, key: &str) {
+        let Some(episode) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        let season_key = episode.get("parentRatingKey").map(string_value).unwrap_or_default();
+        let Some(season) = self.catalog.get(&season_key).cloned() else {
+            return;
+        };
+        let show_key = season.get("parentRatingKey").map(string_value).unwrap_or_default();
+        let Some(show) = self.catalog.get(&show_key).cloned() else {
+            return;
+        };
+        let release_path = episode.get("_release_path").cloned();
+        if let Some(row) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
+            for (field, value) in [
+                ("parentRatingKey", json!(season_key)),
+                ("parentKey", json!(format!("/library/metadata/{season_key}"))),
+                ("parentTitle", season.get("title").cloned().unwrap_or(Value::Null)),
+                ("parentIndex", season.get("index").cloned().unwrap_or(Value::Null)),
+                ("parentGuid", season.get("guid").cloned().unwrap_or(Value::Null)),
+                ("parentThumb", season.get("thumb").cloned().unwrap_or(Value::Null)),
+                ("grandparentRatingKey", json!(show_key)),
+                ("grandparentKey", json!(format!("/library/metadata/{show_key}"))),
+                ("grandparentTitle", show.get("title").cloned().unwrap_or(Value::Null)),
+                ("grandparentGuid", show.get("guid").cloned().unwrap_or(Value::Null)),
+                ("grandparentThumb", show.get("thumb").cloned().unwrap_or(Value::Null)),
+                ("grandparentArt", show.get("art").cloned().unwrap_or(Value::Null)),
+                ("grandparentSlug", show.get("slug").cloned().unwrap_or(Value::Null)),
+            ] {
+                if value.is_null() {
+                    row.shift_remove(field);
+                } else {
+                    row.insert(field.to_string(), value);
+                }
+            }
+            row.shift_remove("_release_path");
+        }
+        if let (Some(path), Some(show)) = (release_path, self.catalog.get_mut(&show_key)) {
+            let locations = show
+                .as_object_mut()
+                .map(|object| object.entry("Location").or_insert_with(|| json!([])));
+            if let Some(Value::Array(rows)) = locations {
+                if !rows.iter().any(|row| row.get("path") == Some(&path)) {
+                    rows.push(json!({"path": path}));
+                }
+            }
+        }
+    }
+
+    /// Measured (4a/4b): a row a scan creates is announced `state 0` with an empty title,
+    /// then `state 1` created, analysing and thumbnailing, then `state 1` again; an
+    /// episode's first frame also names its season and show.
+    fn push_created_frames(&mut self, key: &str) {
+        let Some(row) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        let parents = (row.get("type").and_then(Value::as_str) == Some("episode")).then(|| {
+            (
+                row.get("parentRatingKey").map(string_value).unwrap_or_default(),
+                row.get("grandparentRatingKey").map(string_value).unwrap_or_default(),
+            )
+        });
+        let episode = parents.is_some();
+        self.push_timeline_entry_with(&row, 0, Some("created"), None, None, Some(""), parents);
+        let media_states: &[Option<&str>] = if episode {
+            &[None, Some("analyzing"), None]
+        } else {
+            &[None, Some("analyzing"), Some("thumbnailing"), None]
+        };
+        for media_state in media_states {
+            self.push_timeline_entry(&row, 1, Some("created"), *media_state, None, None);
+        }
+    }
+
+    /// Measured (4a): after the scan, a new row's metadata pass -- the `Updating
+    /// Metadata` activity around processing, matching, queued and loading frames.
+    fn created_metadata_frames(&mut self, key: &str) {
+        let Some(row) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        if !matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode")) {
+            return;
+        }
+        let mut activity = self.start_metadata_activity(&self.frame_title(&row));
+        activity.insert("progress".to_string(), json!(49));
+        self.notify_activity(&activity, "updated");
+        self.push_timeline_entry(&row, 1, Some("processing"), None, None, None);
+        self.push_timeline_entry(&row, 2, Some("matching"), None, None, None);
+        self.push_timeline_entry(&row, 5, None, None, None, None);
+        self.push_timeline_entry(&row, 3, Some("queued"), None, None, None);
+        self.push_timeline_entry(&row, 4, Some("loading"), None, None, None);
+        activity.insert("progress".to_string(), json!(100));
+        self.notify_activity(&activity, "ended");
+        self.push_timeline_entry(&row, 5, None, None, None, None);
+    }
+
+    /// Rows added before zurg had probed their file get their Media from the probe,
+    /// keeping their ids.
+    fn fill_probes(&mut self, probed: Vec<(String, Value)>) -> usize {
+        let mut filled = 0;
+        for (key, entry) in probed {
+            let Some(row) = self.catalog.get(&key).cloned() else {
+                continue;
+            };
+            let Some(old) = row.get("Media").and_then(Value::as_array).and_then(|media| media.first()).cloned() else {
+                continue;
+            };
+            let part = old.get("Part").and_then(Value::as_array).and_then(|parts| parts.first()).cloned().unwrap_or_default();
+            let file = part.get("file").and_then(Value::as_str).unwrap_or_default().to_string();
+            let media = mediainfo::build_media(
+                entry.get("media_info").unwrap_or(&Value::Null),
+                old.get("id").and_then(Value::as_i64).unwrap_or(0),
+                part.get("id").and_then(Value::as_i64).unwrap_or(0),
+                part.get("key").and_then(Value::as_str).unwrap_or_default(),
+                &file,
+                part.get("size").and_then(Value::as_i64).unwrap_or(0),
+                Some(&extension(&file)),
+            );
+            if let Some(object) = self.catalog.get_mut(&key).and_then(Value::as_object_mut) {
+                object.insert("duration".to_string(), media.get("duration").cloned().unwrap_or(json!(0)));
+                object.insert("Media".to_string(), json!([media]));
+                object.shift_remove("_probePending");
+            }
+            if let Some(row) = self.catalog.get(&key).cloned() {
+                self.push_timeline_entry(&row, 5, None, None, None, None);
+            }
+            filled += 1;
+        }
+        filled
+    }
+
+    /// Files a settled listing no longer holds go to the trash, and trashed files it
+    /// holds again come back. Answers (trashed or deleted, restored).
+    fn settle_missing(
+        &mut self,
+        plan: &Plan,
+        present: &BTreeMap<String, Found>,
+        settled: &[String],
+    ) -> (usize, usize) {
+        let empty = self.auto_empty_trash();
+        let mut gone = Vec::new();
+        let mut back = Vec::new();
+        for row in self.catalog.items() {
+            if string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) != plan.key
+                || !matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+            {
+                continue;
+            }
+            let files = row_files(row);
+            if files.is_empty() || !files.iter().all(|file| settled.iter().any(|folder| under(file, folder))) {
+                continue;
+            }
+            let Some(key) = key_of(row) else {
+                continue;
+            };
+            let here = files.iter().any(|file| present.contains_key(file));
+            match (here, row.get("deletedAt").is_some()) {
+                (false, false) => gone.push(key),
+                (true, true) => back.push(key),
+                _ => {}
+            }
+        }
+        let count = gone.len();
+        for key in gone {
+            if empty {
+                // Measured (5a): with `autoEmptyTrash` on, the row is deleted during the
+                // scan, one `state 9` frame and nothing else.
+                self.purge_row(&key);
+            } else {
+                self.trash_row(&key);
+            }
+        }
+        let restored = back.len();
+        for key in back {
+            self.untrash_row(&key);
+        }
+        (count, restored)
+    }
+
+    /// Measured (1, 2): a missing file soft-deletes its row -- `deletedAt` on the row and
+    /// its Media (never the Part), and on an episode's season and show too, counts
+    /// unchanged -- each announced as a `type -1` state 3 then state 5 pair.
+    fn trash_row(&mut self, key: &str) {
+        let stamp = now();
+        let mut chain = vec![key.to_string()];
+        if let Some(row) = self.catalog.get(key) {
+            if row.get("type").and_then(Value::as_str) == Some("episode") {
+                chain.extend(row.get("parentRatingKey").map(string_value));
+                chain.extend(row.get("grandparentRatingKey").map(string_value));
+            }
+        }
+        for (index, member) in chain.iter().enumerate() {
+            let Some(object) = self.catalog.get_mut(member).and_then(Value::as_object_mut) else {
+                continue;
+            };
+            object.insert("deletedAt".to_string(), json!(stamp));
+            if index == 0 {
+                for media in object.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
+                    if let Some(media) = media.as_object_mut() {
+                        media.insert("deletedAt".to_string(), json!(stamp));
+                    }
+                }
+            }
+            self.deletion_pair(member);
+        }
+        info!("SCAN trashed {key}");
+    }
+
+    /// Measured (6a2): the file back before the trash was emptied restores the SAME row
+    /// -- key, Media and guid -- with the same `type -1` pair. Its season and show leave
+    /// the trash once none of their episodes is in it (inferred: not measured).
+    fn untrash_row(&mut self, key: &str) {
+        let mut chain = vec![key.to_string()];
+        if let Some(row) = self.catalog.get(key) {
+            if row.get("type").and_then(Value::as_str) == Some("episode") {
+                chain.extend(row.get("parentRatingKey").map(string_value));
+                chain.extend(row.get("grandparentRatingKey").map(string_value));
+            }
+        }
+        for (index, member) in chain.iter().enumerate() {
+            if index > 0 && self.leaves(member).iter().any(|leaf| leaf.get("deletedAt").is_some() && key_of(leaf).as_deref() != Some(key)) {
+                continue;
+            }
+            let Some(object) = self.catalog.get_mut(member).and_then(Value::as_object_mut) else {
+                continue;
+            };
+            if object.shift_remove("deletedAt").is_none() {
+                continue;
+            }
+            for media in object.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
+                if let Some(media) = media.as_object_mut() {
+                    media.shift_remove("deletedAt");
+                }
+            }
+            self.deletion_pair(member);
+        }
+        info!("SCAN restored {key}");
+    }
+
+    fn deletion_pair(&mut self, key: &str) {
+        if let Some(row) = self.catalog.get(key).cloned() {
+            self.push_timeline_entry(&row, 3, None, None, Some(-1), None);
+            self.push_timeline_entry(&row, 5, None, None, Some(-1), None);
+        }
+    }
+
+    /// A trashed leaf deleted for good: the row goes (and an episode's season with its
+    /// last episode, as a DELETE takes it; a show with its last season, inferred), its key
+    /// retired, announced as the row's own type in `state 9`.
+    fn purge_row(&mut self, key: &str) {
+        let Some(row) = self.catalog.get(key).cloned() else {
+            return;
+        };
+        let parents = (row.get("type").and_then(Value::as_str) == Some("episode")).then(|| {
+            (
+                row.get("parentRatingKey").map(string_value).unwrap_or_default(),
+                row.get("grandparentRatingKey").map(string_value).unwrap_or_default(),
+            )
+        });
+        let mut doomed = vec![key.to_string()];
+        if let Some((season, show)) = &parents {
+            if self.children(season).len() <= 1 {
+                doomed.push(season.clone());
+                if self.children(show).len() <= 1 {
+                    doomed.push(show.clone());
+                }
+            }
+        }
+        for gone in &doomed {
+            if self.catalog.remove(gone).is_some() {
+                self.deleted.insert(gone.clone());
+                if let Ok(number) = gone.parse::<i64>() {
+                    self.retired_keys.push(number);
+                }
+            }
+        }
+        self.drop_from_queues(&doomed);
+        self.push_timeline_entry_with(&row, 9, Some("deleted"), None, None, None, parents);
+        info!("SCAN deleted {key}");
+    }
+
+    /// `PUT /library/sections/{id}/emptyTrash`: every trashed leaf deleted. Measured
+    /// (3a/3b): a show's season and show leave the trash first (their `type -1` pairs),
+    /// then each episode's `state 9` names its season and show.
+    pub(super) fn empty_section_trash(&mut self, section: &str) -> usize {
+        let trashed: Vec<Value> = self
+            .catalog
+            .items()
+            .iter()
+            .filter(|row| {
+                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
+                    && matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
+                    && row.get("deletedAt").is_some()
+            })
+            .cloned()
+            .collect();
+        for row in &trashed {
+            for parent in ["parentRatingKey", "grandparentRatingKey"] {
+                let Some(key) = row.get(parent).map(string_value) else {
+                    continue;
+                };
+                let cleared = self
+                    .catalog
+                    .get_mut(&key)
+                    .and_then(Value::as_object_mut)
+                    .and_then(|object| object.shift_remove("deletedAt"))
+                    .is_some();
+                if cleared {
+                    self.deletion_pair(&key);
+                }
+            }
+        }
+        for row in &trashed {
+            if let Some(key) = key_of(row) {
+                self.purge_row(&key);
+            }
+        }
+        if !trashed.is_empty() {
+            self.dirty = true;
+        }
+        trashed.len()
+    }
+}
+
+/// Every file a row's Parts read.
+fn row_files(row: &Value) -> Vec<String> {
+    row.get("Media")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .flat_map(|media| media.get("Part").and_then(Value::as_array).into_iter().flatten())
+        .filter_map(|part| part.get("file").and_then(Value::as_str).map(str::to_string))
+        .collect()
+}
+
+/// `build`'s temporary show and season keys replaced, in the key fields and in every
+/// `/library/metadata/<key>` path built from them.
+fn rekey(rows: &mut [Value], keys: &HashMap<String, String>) {
+    for row in rows {
+        let Some(object) = row.as_object_mut() else {
+            continue;
+        };
+        for field in ["ratingKey", "parentRatingKey", "grandparentRatingKey"] {
+            if let Some(new) = object.get(field).map(string_value).and_then(|old| keys.get(&old)) {
+                object.insert(field.to_string(), json!(new));
+            }
+        }
+        for value in object.values_mut() {
+            let Value::String(text) = value else {
+                continue;
+            };
+            let Some(rest) = text.strip_prefix("/library/metadata/") else {
+                continue;
+            };
+            let (head, tail) = rest.split_once('/').unwrap_or((rest, ""));
+            if let Some(new) = keys.get(head) {
+                *text = if tail.is_empty() {
+                    format!("/library/metadata/{new}")
+                } else {
+                    format!("/library/metadata/{new}/{tail}")
+                };
+            }
+        }
+    }
+}
+
+/// The load-time corrections every catalog row gets (`Runtime::load`), for rows a scan
+/// adds: tag ids, no show-level fields on an episode, no stored file-check pair.
+fn prepare_rows(rows: &mut [Value]) {
+    number_catalog_tags(rows);
+    for row in rows.iter_mut() {
+        let episode = row.get("type").and_then(Value::as_str) == Some("episode");
+        let Some(object) = row.as_object_mut() else {
+            continue;
+        };
+        if episode {
+            for field in ["Genre", "Country", "studio", "tagline", "originalTitle", "rating", "Label"] {
+                object.shift_remove(field);
+            }
+        }
+        for media in object.get_mut("Media").and_then(Value::as_array_mut).into_iter().flatten() {
+            for part in media.get_mut("Part").and_then(Value::as_array_mut).into_iter().flatten() {
+                if let Some(part) = part.as_object_mut() {
+                    part.shift_remove("accessible");
+                    part.shift_remove("exists");
+                }
+            }
+        }
     }
 }
 
@@ -113,5 +1174,15 @@ mod tests {
         assert!(!dir.join("plexsim.db.stale").exists());
         drop(runtime);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_release_folder_is_the_second_segment() {
+        assert_eq!(
+            release_of("/dav/shows/Show.S01.1080p/Season 1/Show.S01E02.mkv"),
+            ("shows/Show.S01.1080p".to_string(), "Show.S01.1080p".to_string())
+        );
+        assert!(is_sample("/x/Film.2020.Sample.mkv") && !is_sample("/x/Samples.of.Life.mkv"));
+        assert!(under("/mnt/zurg/movies/A/b.mkv", "/mnt/zurg/movies/") && !under("/mnt/zurg/moviesX/b.mkv", "/mnt/zurg/movies"));
     }
 }

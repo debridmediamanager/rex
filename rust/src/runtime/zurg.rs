@@ -34,6 +34,8 @@ pub(super) struct Listing {
 pub(super) enum ListError {
     /// zurg says the folder is not there: a release that was deleted or renamed.
     Gone,
+    /// zurg is still loading its library (503): ask again shortly. Never "all gone".
+    Loading,
     /// Anything else -- zurg still loading (503), a refused credential, the network.
     /// A scan that cannot list must change nothing.
     Failed(String),
@@ -114,10 +116,6 @@ impl Zurg {
         Some(Self::new(&base, &user, &password, mount))
     }
 
-    pub(super) fn mount(&self) -> &str {
-        &self.mount
-    }
-
     /// `<mount>/a/b` -> `/dav/a/b`, decoded; `None` for a path outside the mount.
     pub(super) fn dav_path(&self, file: &str) -> Option<String> {
         let rest = if self.mount == "/" {
@@ -188,6 +186,7 @@ impl Zurg {
         match status {
             207 => Ok(parse_multistatus(&String::from_utf8_lossy(&body), &folder)),
             404 => Err(ListError::Gone),
+            503 => Err(ListError::Loading),
             other => Err(ListError::Failed(format!("PROPFIND {folder} answered {other}"))),
         }
     }

@@ -609,9 +609,27 @@ impl Runtime {
                 return;
             }
         }
+        let force = query.get("force").map(String::as_str) == Some("1");
+        // With zurg, the scan is real: listed, fetched and applied off the request thread
+        // (`scan.rs`), whose frames follow as it runs. A real PMS answers the request at
+        // once and scans in the background too.
+        if let Some(queue) = &self.scans {
+            queue.push(scan::ScanJob {
+                section: section_id.to_string(),
+                path: query.get("path").filter(|value| !value.is_empty()).cloned(),
+                force,
+            });
+            info!(
+                "SECTION refresh {section_id} path={} -> queued",
+                query
+                    .get("path")
+                    .filter(|value| !value.is_empty())
+                    .map_or("None".to_string(), |path| crate::filters::py_repr(path))
+            );
+            return;
+        }
         self.notify_section_scan(section_id, section);
         let rows = self.section_rows(section_id);
-        let force = query.get("force").map(String::as_str) == Some("1");
         if force {
             for row in &rows {
                 if let Some(key) = key_of(row) {
