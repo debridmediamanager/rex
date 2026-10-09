@@ -11985,3 +11985,43 @@ implementation. Cycle 51 is therefore the required clean stopping cycle.
 Root's final uncontended mutable-surface run passed **1,756/1,756** checks with 14 explicit
 fixture/capability skips. An earlier green run was discarded because two worker-owned duplicate
 runs overlapped part of it; the authoritative pass ran alone on a pristine restarted fixture.
+
+#### A file that disappears, and the scan that finds it (2026-10-09, plexscratch 1.43.4)
+
+Measured for the zurg-fed scanner (`rust/src/runtime/scan.rs`), on plexscratch with files
+moved off its media folder and put back; every request, row and websocket frame is in
+`tests/fixtures/missing_file_scan_s43.json`. The copy's `autoEmptyTrash` was `true` (the PMS
+default); the steps that need it off set it off first.
+
+- **Off (soft delete).** A path scan of a movie whose file is gone keeps the row and answers
+  it 200: `deletedAt` (the scan time) lands on the row and on its `Media`, never on the
+  `Part`; `checkFiles=1` reports `accessible=false`/`exists=false`; `/all` still lists it, and
+  `/all?trash=1` lists it alone. The frames are one `type -1` pair, `state 3` then `state 5`,
+  titled with the row's frame title, between the scan's 99 and 100 steps. An episode's
+  `deletedAt` lands on its season and show too (each its own `type -1` pair, episode first),
+  while `leafCount`/`childCount` stay as they were; the show is NOT `trash=1`, the episode
+  is (`type=4&trash=1`).
+- **`PUT /library/sections/{id}/emptyTrash`.** A movie: one `state 9` `deleted` frame of
+  its own type, then 404. A show: the season's and the show's `type -1` pairs first (their
+  `deletedAt` cleared), then the episode's `state 9` carrying `parentItemID` and `rootItemID`;
+  the season and show lose the episode from their counts.
+- **The file back.** Before the trash is emptied, the scan restores the SAME row -- key,
+  Media and Part ids, guid -- with the same `type -1` pair. After it is emptied the file is
+  a new row on a new key (66, 67 and 68 on the copy), announced `state 0 created` with an empty title, then
+  `state 1 created`, `state 1` `analyzing`, `thumbnailing`, `state 1`; a movie's metadata
+  pass follows (`processing`, `2 matching`, `5`, `3 queued`, `4 loading`, `5`).
+- **On.** The row is deleted during the scan: one `state 9` frame of its own type and
+  nothing else, then 404. A new file again takes a new key.
+- **A library folder missing, unreadable (`chmod 000`) or empty** trashes NOTHING, with
+  `autoEmptyTrash` on or off: only the scan's own frames. The PMS log calls it "Taking 5 items
+  out of the map ... for being unavailable"; `checkFiles` reports every Part missing while
+  no row is marked.
+
+plexsim emulates all of it, and keeps the last rule for zurg's own failure modes too: a
+listing that fails, a 503 while zurg loads (retried), and an empty library folder change
+nothing. Inferred, not measured: a season and show leave the trash once none of their
+episodes is in it; with `autoEmptyTrash` on, a show goes with its last season (a season with its last episode is the DELETE route's measured cascade).
+Not reproduced: a new episode's metadata pass on the copy was its SEASON's refresh (every
+episode of the season framed again); plexsim frames the new episode alone, with the movie's
+sequence. Also unmeasured: what a scan creates for a brand-new show and season (plexsim
+announces them with the same created frames as a leaf).

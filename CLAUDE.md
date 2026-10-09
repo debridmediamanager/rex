@@ -1,8 +1,8 @@
 # plexsim
 
 A Plex Media Server that owns no files. It answers the PMS API well enough that
-the **official** Plex clients treat it as a real server, and streams a catalog
-backed by Real-Debrid links instead of local media.
+the **official** Plex clients treat it as a real server, and serves a library zurg
+holds -- scanned from zurg's WebDAV and streamed from it -- instead of local media.
 
 Not a Plex fork and not a client. It is the server side of the protocol,
 written from measurement against a real PMS.
@@ -48,12 +48,12 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
 | `mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
 | `decision.py` | A plain-form decision: the client's own profile file (`client_profiles.json`) against the item |
-| `debrid.py` | Real-Debrid unrestrict |
+| `zurg.py` | The oracle's byte source: a Part's file under `--zurg-mount` read from zurg's WebDAV (the native half, which also scans, is `runtime/zurg.rs`) |
 | `gdm.py` | Plex's LAN discovery protocol: the UDP half of being FOUND |
 | `gate.py` | Applies a client's direct-play gate to the catalog |
 | `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
-| `identify.py` | which title a Real-Debrid torrent is: an id in its name, its hash in DMM, then Plex's matcher and TMDB, with their agreement as the confidence |
-| `build_catalog.py` | Builds `catalog.json` from real RD content |
+| `identify.py` | which title a release is: an id in its name, a known IMDb id for its hash (zurg's), then Plex's matcher and TMDB, with their agreement as the confidence; `rust/src/identify.rs` is its port and must name as many of `tests/fixtures/identify/` right |
+| `build_catalog.py` | Writes a catalog: `--seed` an empty library at zurg's mount, `--convert` a JSON catalog into a database, `--relink` Plex's guids |
 | `claim.py`, `heartbeat.py` | plex.tv claim flow and registration upkeep |
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
@@ -91,7 +91,9 @@ Where things live in `rust/src/`:
 | `main.rs` | The CLI: the server flags (argparse's, refusals included) and the test-only adapters `test_native_phase2.py` drives |
 | `runtime.rs` | The request loop, the route table and most projections; `serve` starts GDM, the state saver and the plex.tv threads |
 | `runtime/wire.rs` | The response envelope: header order, Range/416, CORS, gzip, websocket handshake |
-| `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind Real-Debrid, CDN bytes, TMDB and artwork |
+| `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, TMDB, Plex's metadata agent and artwork |
+| `runtime/zurg.rs`, `runtime/scan.rs` | zurg's WebDAV (paths, bytes, listings, `/api/library/entry`), and the scanner: refreshes queued off the request thread, rows added, filled, trashed, keys minted once (`mint_key`) |
+| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and the port of `identify.py` a scan names releases with |
 | `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and Fix Match (`PLEXSIM_PLEXTV_URL` points plex.tv at a stub) |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
 | `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | The ports of the Python modules of the same name |
@@ -104,16 +106,41 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
-cp run.sh.example run.sh     # fill in RD_TOKEN, then ./run.sh
-cp catalog.example.json catalog.json
+python3 build_catalog.py --seed --name NAME --zurg-mount /mnt/zurg --out plexsim.db
+cp run.sh.example run.sh     # fill in ZURG_URL (+ZURG_USER/ZURG_PASSWORD), TMDB_KEY, PLEX_TOKEN
+./run.sh                     # or: rust/target/release/plexsim --catalog plexsim.db --zurg-mount /mnt/zurg
 ```
 
+zurg is the library and the only byte source; plexsim reads no media itself and has no
+provider code of its own. The environment: `ZURG_URL` (zurg's address; without it parts
+have no bytes -- a part read is the 502 an unreachable source is -- and nothing scans),
+`ZURG_USER`/`ZURG_PASSWORD` (zurg's basic auth, when its config sets a username),
+`TMDB_KEY` and `PLEX_TOKEN` (a scan identifies releases with both; Fix Match needs
+TMDB). `--zurg-mount` is zurg's `mount_path` (default `/mnt/zurg`): a Part's `file` is
+`<mount>/<directory>/<release>/<file>`, the same file is `/dav/<directory>/<release>/<file>`
+on zurg, and each library's `Location` is `<mount>/<directory>` -- set in the catalog's
+sections (`build_catalog.py --seed`), or through Add Library's `location`.
+
+Point zurg at the server in zurg's `config.yml`: `plex_server_url` and `plexsim_url`
+(this server's URL), `plex_token` (this server's `--token`, anything without one),
+`mount_path` (`--zurg-mount`), and `plex_settings_policy: off`. zurg then sends
+`GET /library/sections/{id}/refresh?path=<mount>/<directory>/<release>` for every
+release it adds, probes or drops, and asks `/activities` before each one (a running
+`library.update.section` is "busy"). The scanner (`runtime/scan.rs`) answers the request
+at once, lists the folder on zurg's WebDAV off the request thread, one scan at a time,
+adds new files from `/api/library/entry`, fills in streams once zurg has probed them,
+and trashes what is gone as measured on plexscratch (`tests/fixtures/missing_file_scan_s43.json`:
+soft delete, deleted at once under `autoEmptyTrash`, an unlistable or empty library folder
+trashes nothing, a 503 from a loading zurg is retried). Every library is scanned at start.
+A row's ratingKey is minted once (100000 and up) and never reused: zurg drops a release's
+IMDb id when the key it matched it to disappears.
+
 The native `--state` file is JSON and refuses the Python server's pickle, so a state
-file does not move between the two. Both servers refuse to start without `RD_TOKEN`,
-and `--announce-url` needs `PLEX_TOKEN`.
+file does not move between the two. `--announce-url` needs `PLEX_TOKEN`. The Python
+oracle reads parts from zurg the same way but does not scan.
 
 `catalog.json` and `run.sh` are gitignored: both carry account-scoped
-credentials. `catalog.example.json` keeps the shape with the links redacted.
+credentials. `catalog.example.json` keeps the shape.
 
 Under launchd, so it outlives the shell that starts it:
 
@@ -125,9 +152,10 @@ launchctl remove com.plexsim.dev
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
 Several servers, started and stopped on demand: `./manager.py serve`, then
-`./manager.py create NAME --port P [--catalog PATH]` (keys from `RD_TOKEN`/`TMDB_KEY`/
-`PLEX_TOKEN`/`PLEXSIM_TOKEN`/`DMM_API_KEY` in the environment) and `start|stop|list|logs NAME`;
-without a catalog, `build NAME --start` builds it from the whole library first. Its data
+`./manager.py create NAME --port P [--catalog PATH] [--zurg-mount M]` (keys from
+`ZURG_URL`/`ZURG_USER`/`ZURG_PASSWORD`/`TMDB_KEY`/`PLEX_TOKEN`/`PLEXSIM_TOKEN` in the
+environment) and `start|stop|list|logs NAME`; without a catalog, `build NAME --start` seeds
+an empty library at zurg's mount first. Its data
 lives in `managed/` (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
 starts its own manager on a temporary root.
 
@@ -145,7 +173,9 @@ restart being the undo button, so **a test instance runs with `--no-state`**:
 `tests/server_command.py` adds it to every server a suite starts, and a cycle tree's
 `server.py` shim sets an empty `PLEXSIM_STATE`, so only a leg that names `--state` keeps one. The file is tied to the
 catalog's digest; after a catalog rebuild only view state (by guid, then part file) and
-the server-level settings carry over, and the old file is kept as `<file>.stale`.
+the server-level settings carry over, and the old file is kept as `<file>.stale` --
+unless the saved rows include scanned ones (`_scanned`): a library zurg built is the
+state's own and is kept row by row whatever the catalog file says, its new rows joining.
 
 ## The reference harness
 
@@ -402,17 +432,20 @@ PLEXSIM_NATIVE_BIN=rust/target/release/plexsim python3 tests/test_native_phase2.
 python3 tests/test_tls.py                   # HTTPS and plain HTTP on one port
 python3 tests/test_prefix_registry.py       # 58 measured prefix shapes
 python3 tests/test_regional_prefs.py        # the regional prefs documents, cell by cell
-python3 tests/test_part_bytes.py            # part reads against a local provider stub
+python3 tests/test_part_bytes.py            # part reads against a local zurg stub
+python3 tests/test_native_zurg_scan.py      # scans against a local zurg stub: add, fill, trash, keys; with
+                                            # TMDB_KEY and PLEX_TOKEN also live identification of two real releases
 python3 tests/test_server_command.py        # the launcher's native default and python override
 cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests
 ```
 
-Credentials unlock the rest. With `TMDB_KEY` and a real `RD_TOKEN`, and a copy of
-`catalog_ui.json` whose `_debrid` links that account owns (made on the test host, never
-committed), the UI suite runs with **no skips**: 1,979/1,979 on both servers.
-Keyless it is 1,975/1,975 with exactly three skips (two Fix Match, Download).
-`test_all.py` and `conformance.py` need the live catalog and the same credentials.
-Real-Debrid is read-only in tests: unrestrict and read bytes, never add or delete.
+Credentials unlock the rest. With `TMDB_KEY`, and a copy of `catalog_ui.json` whose Part
+files a zurg serves (`ZURG_URL`, `--zurg-mount`; made on the test host, never committed),
+the UI suite runs with **no skips** (1,979/1,979 on both servers when it was RD-backed).
+Keyless and zurg-less it is 1,975/1,975 with exactly three skips (two Fix Match, Download):
+with no `ZURG_URL` a part read is the routed 502 its checks expect.
+`test_all.py` and `conformance.py` need a live catalog and the same credentials.
+A provider account behind zurg is read-only in tests: read bytes, never add or delete.
 
 Where to run them: service and end-to-end tests run on **zen** (the workspace rule),
 with the native binary cross-built on the Mac --
@@ -432,7 +465,7 @@ with `--no-state` — but run it against a test instance, started on the fixture
 checks are written against:
 
 ```bash
-RD_TOKEN=dummy rust/target/release/plexsim --port 32500 --catalog tests/catalog_ui.json --assert-claimed --no-state &
+rust/target/release/plexsim --port 32500 --catalog tests/catalog_ui.json --assert-claimed --no-state &
 python3 tests/test_ui_surface.py --base http://127.0.0.1:32500
 ```
 
@@ -483,5 +516,5 @@ the result before changing the emulation.
   anything.
 - Atomic commits, semantic single-line messages (`fix: emit totalSize on paged
   children`), authored as `Ben Adrian Sarmiento <me@bensarmiento.com>`.
-- Never commit a token, a Real-Debrid `/d/` link, a Plex token, or a tunnel
-  credential. The repo is private; that is not a reason to relax this.
+- Never commit a token, a provider download link, zurg's credentials, a Plex token, or
+  a tunnel credential. The repo is private; that is not a reason to relax this.

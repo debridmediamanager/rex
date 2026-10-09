@@ -6,8 +6,8 @@ and recorded measurements through **cycle 95** (reopen triggers re-checked
 implemented behavior and its prerequisites, not the current health or
 configuration of a deployed instance.
 
-plexsim presents a Plex library backed by Real-Debrid links and streams the
-original media without keeping complete media files locally. Its largest limit
+plexsim presents a Plex library that zurg serves and streams the original media
+from zurg's WebDAV without keeping complete media files locally. Its largest limit
 is **direct play only**. Library changes last across restarts: a state file
 beside the catalog is kept by default, and `--no-state` turns that off.
 
@@ -59,38 +59,44 @@ Sources: [server.py](server.py), [gdm.py](gdm.py), [claim.py](claim.py),
 
 ## Catalog creation and metadata
 
-- Build a catalog from restricted RD links, from specified RD torrent IDs, or from
-  the whole account (`build_catalog.py --library`).
-- Identify each torrent before probing it (`identify.py`): an IMDb/TMDB id written
-  in its name, its info hash in DMM (`DMM_API_KEY`, a sponsor key; DMM knew 50% of
-  a 3,347-torrent library by hash), then the cleaned name to Plex's own matcher and
-  TMDB. Where those two agree (86% of 200 labelled torrents) the answer was right
-  98% of the time; overall 193 of 200 were right, against 167 for the earlier
-  first-search-hit method. Each torrent's answer, its confidence (`exact`,
-  `agreed`, `single`, `none`) and any competing match go to `identify_report.json`
-  for review; nothing unmatched is guessed.
-- Resolve playable CDN URLs on demand and cache them with an expiry.
-- Probe remote media using `ffprobe` without storing the complete file locally.
+- Build the library from zurg (native server): a library's folders are folders under
+  zurg's mount, and `GET /library/sections/{id}/refresh[?path=]` -- which zurg sends
+  for every release it adds, changes or drops when its `plex_server_url` points here --
+  lists the folder on zurg's WebDAV off the request thread, one scan at a time, and
+  adds each new file from zurg's `/api/library/entry` (its release, IMDb id and stored
+  ffprobe). Every library is scanned again at start. A row's ratingKey is minted once
+  and never changes or comes back, across scans and restarts.
+- Identify each release (native `identify.rs`, the port of `identify.py`): the IMDb id
+  zurg found for it is exact; otherwise its cleaned name goes to Plex's own matcher and
+  TMDB. Where those two agree (86% of 200 labelled torrents) the answer was right 98% of
+  the time; overall 193 of 200 were right, against 167 for the earlier first-search-hit
+  method, and the Rust port names the same 193. A release no source names stays
+  unmatched (`local://`) for Fix Match; nothing is guessed.
+- Trash what zurg no longer has the way a real PMS does (measured on plexscratch):
+  `deletedAt` on the row and its Media, deleted at once when `autoEmptyTrash` is on,
+  restored on the same key when the file returns, gone at `emptyTrash`; a library
+  folder zurg cannot list, or lists empty, trashes nothing.
 - Derive real container, duration, bitrate, resolution, frame-rate, codec,
   audio-channel, language, and subtitle-stream information from the probe.
-- Recognize stacked multipart filenames and order their parts numerically.
-- Skip archive-backed content and files without a video stream during import.
+- Represent stacked multipart files where the catalog supplies them (the scanner
+  makes one row per file).
 - Build separate movie and television sections, with synthesized show and
   season parents, episode ordering, child counts, and leaf counts.
 - Represent multiple media versions and parts where supplied by the catalog.
 - Enrich titles, episode names, summaries, release information, ratings, genres,
   people, posters, and backgrounds using TMDB.
-- Obtain genuine Plex IDs from Plex's metadata provider when configured, including
-  relinking an existing catalog with `build_catalog.py --relink`.
+- Obtain genuine Plex IDs from Plex's metadata provider when configured (`PLEX_TOKEN`),
+  as a scan identifies each release, and relink an existing catalog with
+  `build_catalog.py --relink`.
 - Cache metadata locally and retain a stable server identity in the catalog.
 - Search match candidates and support Match, Fix Match, and Unmatch. Candidate
   searches and TMDB re-identification require a configured TMDB key.
 - Inspect likely direct-play compatibility using the `gate.py` helper; its
   client-class checks are advisory, not universal device certification.
 
-Sources: [build_catalog.py](build_catalog.py), [metadata.py](metadata.py),
-[mediainfo.py](mediainfo.py), [hierarchy.py](hierarchy.py), [debrid.py](debrid.py),
-[gate.py](gate.py).
+Sources: [scan.rs](rust/src/runtime/scan.rs), [zurg.rs](rust/src/runtime/zurg.rs),
+[identify.rs](rust/src/identify.rs), [metadata.py](metadata.py),
+[mediainfo.py](mediainfo.py), [hierarchy.py](hierarchy.py), [gate.py](gate.py).
 
 ## Browsing and recommendations
 
@@ -139,8 +145,8 @@ Sources: [filters.py](filters.py), [spellfix.py](spellfix.py),
 
 ## Playback, downloads, and queues
 
-- Direct-play original media by proxying RD CDN bytes through plexsim or
-  redirecting the client to the CDN.
+- Direct-play original media by proxying zurg's WebDAV bytes through plexsim, or
+  redirecting the client to the provider URL zurg's signed link names.
 - Byte-range requests for seeking and partial reads.
 - Original-file downloading.
 - Playback decisions based on client profiles and the selected media/streams.
@@ -160,7 +166,7 @@ bitrate, and selected tracks. There is no transcoding or remuxing fallback.
 Original-file downloads are separate from the incomplete mobile offline-download
 workflow. Subtitle selection does not imply subtitle extraction or delivery.
 
-Sources: [server.py](server.py), [decision.py](decision.py), [debrid.py](debrid.py),
+Sources: [server.py](server.py), [decision.py](decision.py), [zurg.py](zurg.py),
 [part-byte checks](tests/test_part_bytes.py), [playback checks](tests/test_all.py).
 
 ## Viewing state, history, and ratings
@@ -195,7 +201,7 @@ Sources: [library.py](library.py), [sessions.py](sessions.py),
 - Propagate relevant parent metadata, counts, and artwork to child rows.
 
 Deletion removes the row from the library (and, with `--state`, keeps it removed
-across restarts); it does not delete the RD content or rewrite `catalog.json`. Edit support follows the measured Plex
+across restarts); it does not delete anything from zurg or rewrite `catalog.json`. Edit support follows the measured Plex
 route and field rules: an accepted write is not a promise that every supplied
 field is stored.
 
@@ -273,8 +279,9 @@ Sources: [sessions.py](sessions.py), [server.py](server.py).
 - Expose update status and the measured check/apply responses.
 - Expose measured agent/provider/plugin descriptors and configuration surfaces.
 
-These controls have varying depth. Scans work over the existing catalog rather
-than discovering new RD content. Refresh/Analyze and many maintenance controls
+These controls have varying depth. With zurg configured a library scan is real
+(new files added, missing ones trashed); without it, scans work over the existing
+catalog. Refresh/Analyze and many maintenance controls
 reproduce client-visible state and notifications rather than implementing a
 full scanner, metadata-refresh pipeline, media-analysis backend, or backup system.
 Saving a preference for an absent subsystem does not enable that subsystem.
@@ -350,7 +357,10 @@ library changes stay in a copy of the previous database, kept as `<file>.stale`.
 unreadable file is kept as `<file>.corrupt` and the server starts fresh; the file
 admits only plain data, so it cannot name code to run.
 
-The catalog can be a database too. `build_catalog.py --out plexsim.db` writes one,
+A library a scan built is the state's own, and is kept row by row whatever the catalog
+file says: a changed catalog file then only adds its new rows.
+
+The catalog can be a database too. `build_catalog.py --seed --out plexsim.db` writes one,
 and `build_catalog.py --convert catalog.json --out plexsim.db` moves an existing JSON
 catalog into one. Run with `--catalog plexsim.db`: both servers read it, it serves
 exactly what its JSON source serves, and the native state then lives in the same
@@ -380,11 +390,11 @@ Sources: [store.rs](rust/src/store.rs), [catalogdb.py](catalogdb.py),
 
 | Capability | Requirement |
 |---|---|
-| Start the server and resolve RD content | `RD_TOKEN` and a suitable catalog |
+| Stream media and build the library from zurg | `ZURG_URL` (with `ZURG_USER`/`ZURG_PASSWORD` when zurg sets a username), `--zurg-mount` (zurg's `mount_path`), library `Location`s under it |
 | Start and stop servers on demand | `manager.py serve`; each server's keys, catalog and options in its configuration |
-| Probe media while building the catalog | `ffprobe` available to the builder |
-| TMDB enrichment and live match candidates | `TMDB_KEY` (or the builder's `--tmdb-key`) |
-| Genuine Plex metadata IDs for Android details | `PLEX_TOKEN` available to the catalog builder/relink step |
+| Media details of scanned files | zurg's stored ffprobe (zurg probes every new release once `plexsim_url` is set) |
+| TMDB enrichment and live match candidates | `TMDB_KEY` |
+| Genuine Plex metadata IDs for Android details | `PLEX_TOKEN` (scans, `build_catalog.py --relink`) |
 | Serve Plex Web | An extracted bundle at `--web-root` |
 | Enforce request authentication | `--token` or `PLEXSIM_TOKEN` |
 | Report claimed state for isolated tests | `--assert-claimed`; this does not perform a real claim |
@@ -393,10 +403,10 @@ Sources: [store.rs](rust/src/store.rs), [catalogdb.py](catalogdb.py),
 | Answer LAN discovery | `--gdm on`, or `auto` when serving on port 32400 |
 | Serve HTTPS | `--tls-cert` and the corresponding key via `--tls-key` or the certificate file |
 | Keep library changes across restarts | On by default (`plexsim.db` beside the catalog, or the catalog's own database); `--state FILE` or `PLEXSIM_STATE` to move it, `--no-state` to turn it off |
-| Keep the catalog in a database | `build_catalog.py --out plexsim.db`, or `--convert catalog.json --out plexsim.db`; then `--catalog plexsim.db` |
+| Keep the catalog in a database | `build_catalog.py --seed --out plexsim.db`, or `--convert catalog.json --out plexsim.db`; then `--catalog plexsim.db` |
 | Import owner cloud watch/rating state | Real claim, account consent, and `PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64` service-token setup |
 
-Plex and RD account credentials serve different purposes. Possessing a Plex
+Plex and zurg credentials serve different purposes. Possessing a Plex
 token for catalog identification does not by itself claim or publish the server.
 These are supported configurations, not assertions that the live instance has
 them enabled.
@@ -407,8 +417,8 @@ them enabled.
 |---|---|
 | Transcoding/remuxing | No video/audio conversion, bitrate reduction, subtitle burning, or transcoded streaming fallback |
 | Persistence | On by default; with `--no-state`, watch state, edits, lists, library changes, uploads, preferences, and statistics last until restart. With it on, a catalog rebuild keeps only view state and server-level settings. There is no PMS database, backup format, or export. Claim state and metadata caches have separate persistent files |
-| Acquisition | No built-in torrent search, magnet acquisition, continuous RD-library synchronization, or automatic discovery of new media |
-| Scanning/analysis | No complete filesystem scanner, media-analysis pipeline, generated thumbnails, intro/credits detection, or actual PMS database backups |
+| Acquisition | No built-in torrent search or magnet acquisition: new media arrives through zurg |
+| Scanning/analysis | Scans list zurg's WebDAV, not a filesystem; no media-analysis pipeline of its own (zurg's ffprobe), generated thumbnails, intro/credits detection, or actual PMS database backups |
 | Subtitle delivery | Embedded extraction is unimplemented; uploaded subtitles are served, embedded tracks are not |
 | Mobile offline downloads | Original-file downloading works; the mobile queue/add/media/decision workflow is incomplete |
 | Multi-user operation | No complete sharing, managed-user, permission-isolation, or independent per-user watch-state system |

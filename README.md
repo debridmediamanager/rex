@@ -5,8 +5,8 @@ A Plex Media Server that owns no files.
 plexsim answers the PMS API closely enough that the **official** Plex clients
 treat it as a real server — it appears in the account's server list, browses
 like a library, and direct-plays 1080p H.264 in Plex Web with zero dropped
-frames. The media is never on disk: every part read resolves a Real-Debrid link
-at request time.
+frames. The media is never on disk: the library is [zurg](https://github.com/debridmediamanager/zurg)'s,
+and every part read is a Range read of zurg's WebDAV.
 
 Think [remux](https://github.com/lostb1t/remux), but for Plex instead of
 Jellyfin.
@@ -24,9 +24,14 @@ Jellyfin.
 - **A real library shape.** Movies in a movie section; shows with seasons and
   episodes, synthesised parents, `childCount`/`leafCount`, On Deck, Extras and
   per-section preferences.
-- **Real identification.** TMDB gives episode titles, summaries, cast, posters
-  and art; `plex://show|season|episode|movie/<24hex>` guids are minted per item
-  with external ids on the show.
+- **A live library from zurg.** zurg asks plexsim to scan each release it adds,
+  changes or drops (the normal `/library/sections/{id}/refresh?path=`); plexsim lists
+  the folder on zurg's WebDAV, adds the new files with zurg's stored ffprobe, trashes
+  what is gone the way a real PMS does, and keeps every ratingKey for good.
+- **Real identification.** zurg's IMDb id for a release is exact; otherwise its name
+  goes to Plex's own matcher and TMDB, and their agreement is the confidence. TMDB
+  gives episode titles, summaries, cast, posters and art, and Plex's metadata agent
+  the real `plex://show|season|episode|movie/<24hex>` guids.
 - **The whole UI, not just browsing.** Every entry in an item's context menu —
   Mark as Played, Edit, Fix Match, Refresh, Analyze, Split, Merge, Download,
   Delete, Get Info, Add to Playlist, Add to Collection, Play Next — and every
@@ -45,8 +50,9 @@ Jellyfin.
 - **Survives a restart**: watch state, edits, playlists, collections, history,
   sections, preferences and uploads are saved as they change, a row at a time, to
   a SQLite database (`plexsim.db` beside the catalog, or `--state FILE`) and
-  restored at start. The catalog can live in the same database
-  (`build_catalog.py --convert catalog.json --out plexsim.db`, then
+  restored at start; a library zurg built is kept row by row, on the same keys,
+  whatever the catalog file says. The catalog can live in the same database
+  (`build_catalog.py --seed` or `--convert catalog.json`, `--out plexsim.db`, then
   `--catalog plexsim.db`). With `--no-state` a restart reloads the catalog.
 - **Published over a named Cloudflare tunnel**, so clients reach it without a
   port forward or a `*.plex.direct` certificate.
@@ -57,54 +63,62 @@ plexsim serves **anyone who can reach the port** unless you give it a token:
 
 ## Quick start
 
-plexsim is a native Rust server (`rust/`). Build it, then run it:
+plexsim is a native Rust server (`rust/`) in front of a zurg. Build it, write its
+catalog -- the server's identity and two libraries whose folders are zurg's -- and run it:
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
-cp catalog.example.json catalog.json     # or build one: python3 build_catalog.py --help
-cp run.sh.example run.sh                 # fill in RD_TOKEN
-./run.sh
+python3 build_catalog.py --seed --name den --zurg-mount /mnt/zurg --out plexsim.db
+#   a movie library at /mnt/zurg/movies and a show library at /mnt/zurg/shows
+#   (--movies/--shows name other zurg directories)
+export ZURG_URL=http://127.0.0.1:9999 ZURG_USER=... ZURG_PASSWORD=...   # zurg's username/password, if set
+export TMDB_KEY=... PLEX_TOKEN=...       # identification; without them new items stay unmatched
+rust/target/release/plexsim --catalog plexsim.db --zurg-mount /mnt/zurg --port 32400
 ```
 
-Then open `http://127.0.0.1:32400/web/index.html` if you are serving a web
-client bundle with `--web-root`, or point any Plex client at the host.
+`run.sh.example` is the same as a script. At start plexsim scans every library once;
+afterwards zurg tells it what changed. In zurg's `config.yml`:
 
-To build the catalog from your whole Real-Debrid account, identifying every torrent
-first (a written-in id, its hash in DMM, then Plex's matcher and TMDB):
-
-```bash
-RD_TOKEN=... TMDB_KEY=... PLEX_TOKEN=... DMM_API_KEY=... \
-    python3 build_catalog.py --library --out plexsim.db   # then --catalog plexsim.db
+```yaml
+mount_path: /mnt/zurg            # plexsim's --zurg-mount; zurg needs no real mount for plexsim
+plex_server_url: http://127.0.0.1:32400
+plex_token: anything             # plexsim's --token when it has one
+plexsim_url: http://127.0.0.1:32400   # zurg then probes every new release and rescans it once probed
+plex_settings_policy: off        # zurg leaves plexsim's preferences alone
 ```
 
-What each torrent was identified as, and how surely, is in `identify_report.json`.
+zurg finds a library by its location: a release in zurg's `movies` directory is scanned
+in the library whose `Location` is `<mount_path>/movies`, and zurg's matcher reads each
+item's Part `file` (`<mount_path>/<directory>/<release>/<file>`) and `imdb://` Guid back.
+Then open `http://127.0.0.1:32400/web/index.html` if you are serving a web client bundle
+with `--web-root`, or point any Plex client at the host.
 
 ### Running several servers: manager.py
 
 `manager.py` is a control service on top of the server. It runs **no** plexsim server
-until you start one: you create a server from a configuration (port, Real-Debrid key,
+until you start one: you create a server from a configuration (port, zurg, keys,
 catalog, options), start and stop it, and the manager supervises it -- an unexpected exit
 is restarted with a backoff, and one that keeps dying is marked failed. Whatever was
 running when the manager stopped is running again when it starts. Stdlib Python only.
 
 ```bash
 ./manager.py serve                       # API + page on http://127.0.0.1:32300; prints the admin token once
-export RD_TOKEN=...                      # keys come from the environment, never the command line
+export ZURG_URL=... ZURG_USER=... ZURG_PASSWORD=... TMDB_KEY=... PLEX_TOKEN=...
+                                         # keys come from the environment, never the command line
 ./manager.py create living-room --port 32400 --catalog "$PWD/catalog.json" --gdm on
 ./manager.py start living-room
 ./manager.py list                        # status | logs | stop | restart | delete [--purge] | build
 
-# or from its keys alone: the catalog is built from the whole Real-Debrid library
-export RD_TOKEN=... TMDB_KEY=... PLEX_TOKEN=... DMM_API_KEY=...
-./manager.py create den --port 32401 --gdm on
-./manager.py build den --start           # build_catalog.py --library, then start (restart if running)
+# or from its keys alone: an empty library at zurg's mount, filled by scanning zurg
+./manager.py create den --port 32401 --gdm on --zurg-mount /mnt/zurg
+./manager.py build den --start           # build_catalog.py --seed, then start (restart if running)
 ```
 
 Each server gets `managed/servers/<name>/`, whose `plexsim.db` holds its catalog (copied
 in; a JSON catalog is converted) and, on the native server, its state. Keys are stored in
 `managed/manager.db` (mode 600) and passed to each server through its environment; the
 API redacts them. `http://127.0.0.1:32300/` is a small page for the same operations (paste
-the admin token from `managed/admin.token`). `build NAME` runs `build_catalog.py --library`
+the admin token from `managed/admin.token`). `build NAME` runs `build_catalog.py --seed`
 into the server's database as a background job.
 
 Run the manager itself under the init system, so it outlives any shell. macOS (launchd,
@@ -165,6 +179,7 @@ python3 tests/test_ui_surface.py   # the context menu and every server page, end
 python3 tests/test_all.py          # play queue → decision → byte reads → frame decode
 python3 tests/conformance.py       # drives plexsim with python-plexapi
 python3 tests/test_persist.py      # --state survives restarts, crashes and catalog rebuilds
+python3 tests/test_native_zurg_scan.py   # scans against a local zurg stub: add, fill, trash, keys
 ```
 
 ## Documentation
