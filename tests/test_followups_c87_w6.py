@@ -33,7 +33,7 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 COMPOSITE = os.path.join(HERE, "fixtures", "c87_w6_empty_composite_s42.json")
 SYSTEM = os.path.join(HERE, "fixtures", "c87_w6_system_xml_accept.json")
-ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
+ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)

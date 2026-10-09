@@ -12,14 +12,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.environ.get("PLEXSIM_TEST_ROOT", os.path.dirname(HERE))
 sys.path.insert(0, ROOT)
 
-import build_catalog  # noqa: E402
 import server  # noqa: E402
 import xmlout  # noqa: E402
-
-
-class Resolver:
-    def resolve(self, link):
-        return link, 0
 
 
 def main():
@@ -33,7 +27,7 @@ def main():
     fixture = os.environ.get("PLEXSIM_CATALOG_FEATURES",
                              os.path.join(HERE, "catalog_features.json"))
     catalog = server.Catalog(fixture)
-    sim = server.PlexSim(catalog, Resolver(), assert_claimed=True)
+    sim = server.PlexSim(catalog, assert_claimed=True)
 
     def matches(query, tagged=False):
         typed, tags = sim.search_matches(query, 100, tagged_items=tagged)
@@ -280,7 +274,7 @@ def main():
     # rebuild from explicit optimization, the Butler task, and section-deletion
     # completion; ordinary title edits do not maintain it row by row.
     rebuild_catalog = server.Catalog(fixture)
-    rebuild_sim = server.PlexSim(rebuild_catalog, Resolver(), assert_claimed=True)
+    rebuild_sim = server.PlexSim(rebuild_catalog, assert_claimed=True)
 
     def rebuilt_movies(query):
         typed, _tags = rebuild_sim.search_matches(query, 100)
@@ -315,17 +309,14 @@ def main():
           and tudik_movies[0].get("reason") == "actor"
           and tudik_movies[0].get("reasonTitle") == "Alan Tudyk")
 
-    stacked = getattr(build_catalog, "stacked_name", lambda _name: None)
-    check("the builder recognises only the measured - cdN stack spelling",
-          stacked("Feature - cd2.mkv") == ("feature", 2, "Feature.mkv")
-          and stacked("Feature part2.mkv") is None)
     check("a stacked catalog Media carries the summed duration",
           catalog.items[101]["Media"][0]["duration"] == 333000
           and [p["duration"] for p in catalog.items[101]["Media"][0]["Part"]]
           == [111000, 222000])
-    check("each Part owns its own restricted link",
-          sim.resolve_part(1010)[0] == "fixture://stacked-cd1"
-          and sim.resolve_part(1011)[0] == "fixture://stacked-cd2")
+    zurg = server.Zurg("http://zurg.invalid", mount="/plexsim")
+    check("each Part reads its own file from zurg",
+          zurg.dav_path(sim.resolve_part(1010)[0]) == "/dav/1/Stacked Feature - cd1.mkv"
+          and zurg.dav_path(sim.resolve_part(1011)[0]) == "/dav/1/Stacked Feature - cd2.mkv")
 
     def decision(part_index, rating_key=101, extra=None):
         query = {
@@ -823,7 +814,7 @@ def main():
     # legacy limit/count parameters are present; the shared 12-row shelf cap does
     # not apply to this See All endpoint.
     cap_catalog = server.Catalog(fixture)
-    cap_sim = server.PlexSim(cap_catalog, Resolver(), assert_claimed=True)
+    cap_sim = server.PlexSim(cap_catalog, assert_claimed=True)
     for number in range(55):
         show_key = str(25000 + number)
         season_key = str(35000 + number)
@@ -872,7 +863,7 @@ def main():
     # add-history measurement on both writable copies: one new episode remains an
     # episode; adding a sibling under the same season replaces it with that season.
     roll_catalog = server.Catalog(fixture)
-    roll_sim = server.PlexSim(roll_catalog, Resolver(), assert_claimed=True)
+    roll_sim = server.PlexSim(roll_catalog, assert_claimed=True)
     roll_show = {
         "ratingKey": "24901", "key": "/library/metadata/24901",
         "guid": "local://24901", "type": "show", "title": "Rollup Show",
@@ -915,7 +906,7 @@ def main():
     # beside Threefold's played one -- so cycle 58's gate is the LIBRARY's play history, not
     # the show's. A show in a library with no session play keeps its scrobble mark.
     gate_catalog = server.Catalog(fixture)
-    gate_sim = server.PlexSim(gate_catalog, Resolver(), assert_claimed=True)
+    gate_sim = server.PlexSim(gate_catalog, assert_claimed=True)
     def gate_show(show_key, season_key, first_key, section, title):
         rows = [{"ratingKey": show_key, "key": "/library/metadata/%s" % show_key,
                  "type": "show", "title": title, "librarySectionID": section},
@@ -1024,7 +1015,7 @@ def main():
             self.touches += 1
 
     gdm_catalog = server.Catalog(fixture)
-    gdm_sim = server.PlexSim(gdm_catalog, Resolver(), assert_claimed=True)
+    gdm_sim = server.PlexSim(gdm_catalog, assert_claimed=True)
     gdm_stamp = _DiscoveryStamp()
     gdm_sim.discovery = gdm_stamp
     quiet_answers = [
@@ -1099,7 +1090,7 @@ def main():
     localiser = Localiser()
     for legacy in (False, True):
         label = "a catalog written before the rule" if legacy else "a fresh build"
-        specials_sim = server.PlexSim(specials_catalog(legacy), Resolver(), assert_claimed=True)
+        specials_sim = server.PlexSim(specials_catalog(legacy), assert_claimed=True)
         shows = {row.get("title"): row for row in specials_sim.catalog.items.values()
                  if row.get("type") == "show"}
         wrong_titles, wrong_counts = [], []

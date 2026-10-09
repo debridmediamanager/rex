@@ -64,7 +64,7 @@ def legacy_catalog():
 class Server:
     def __init__(self, catalog):
         self.port = free_port()
-        env = dict(os.environ, RD_TOKEN="dummy", PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
+        env = dict(os.environ, PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
         for name in ("TMDB_KEY", "PLEXSIM_STATE"):
             env.pop(name, None)
         self.proc = subprocess.Popen(

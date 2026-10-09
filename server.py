@@ -2,7 +2,7 @@
 """plexsim -- a Plex Media Server that owns no files.
 
 It answers the PMS REST surface real Plex clients call, and serves the bytes of
-its OWN catalog: every item's `Part` resolves to a debrid CDN URL at read time.
+its OWN catalog: every item's `Part` is a file zurg serves, read through its WebDAV.
 That is the half pd_inject never had -- pd_inject's library rows were download
 buttons that pushed a torrent into Real-Debrid and then refreshed a real Plex
 server, so nothing was ever streamed FROM it.
@@ -82,7 +82,7 @@ import sessions as sessions_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
 import spellfix as spellfix_module  # noqa: E402
 import gdm as gdm_module  # noqa: E402
-from debrid import Resolver, Unavailable as DebridUnavailable  # noqa: E402
+from zurg import Zurg  # noqa: E402
 from xmlout import ordered as ordered_keys, to_xml, to_system_xml  # noqa: E402
 
 logger = logging.getLogger("plexsim")
@@ -1582,9 +1582,8 @@ def hub_refusal(query):
 class Catalog:
     """The library plexsim serves, loaded from a JSON file.
 
-    A row is one playable item: its Plex metadata plus the restricted debrid
-    link each Part resolves to. Older catalogs may keep one row-level link;
-    Part-level links take precedence so a stacked item can resolve each file.
+    A row is one playable item: its Plex metadata plus, on each Part, the `file` zurg
+    serves its bytes as (zurg.py).
     `ratingKey` is assigned from the row order so the key space is stable
     across restarts for a fixed catalog.
     """
@@ -2448,9 +2447,9 @@ def _pref_parses(setting, value):
 def _public_row(row):
     """A catalog row as the API may expose it.
 
-    Every key beginning with `_` is internal -- the debrid link and the resolved
-    TMDB artwork URLs -- and must never reach a client. Stripping only `_debrid`
-    leaked `_poster_url` and `_art_url` into metadata responses.
+    Every key beginning with `_` is internal -- the resolved TMDB artwork URLs and
+    the scanner's bookkeeping -- and must never reach a client. Stripping only one
+    named field once leaked `_poster_url` and `_art_url` into metadata responses.
 
     The `Image` array is added here because BOTH the section listing and the
     item detail need it: a real PMS sends it on both, and the client reads it to
@@ -3759,7 +3758,7 @@ def _listed_collection(row):
     return {k: v for k, v in row.items() if k not in ("Label", "Field")}
 
 
-def _part_file_state(row, checked, resolver=None):
+def _part_file_state(row, checked, zurg=None):
     """Project `Part.accessible`/`exists` for a metadata response.
 
     Both reference versions omit the pair from listings and ordinary detail
@@ -3782,19 +3781,15 @@ def _part_file_state(row, checked, resolver=None):
                     # Cycle 46 finally drove this option against plexsim's own live
                     # byte path. All five stale catalog links answered a measured
                     # `unavailable_file`/404 while the metadata still claimed both
-                    # booleans were true. A successful unrestrict is the fileless
-                    # server's existence check; the provider's explicit unavailable
-                    # answer is the same false/false pair zen exposes for a missing
-                    # local file. Other provider/transport failures are not collapsed
-                    # into "missing": they remain request failures instead of a
-                    # fabricated state.
+                    # booleans were true. The byte source answering for the file is
+                    # the fileless server's existence check; its explicit "not found"
+                    # is the same false/false pair zen exposes for a missing local
+                    # file. Other failures are not collapsed into "missing": they
+                    # remain request failures instead of a fabricated state.
                     available = True
-                    link = part.get("_debrid")
-                    if resolver is not None and link:
-                        try:
-                            resolver.resolve(link)
-                        except DebridUnavailable:
-                            available = False
+                    dav = zurg.dav_path(part.get("file")) if zurg is not None else None
+                    if dav:
+                        available = zurg.exists(dav)
                     projected_part["accessible"] = available
                     projected_part["exists"] = available
                 parts.append(projected_part)
@@ -4014,11 +4009,11 @@ class PlexSim:
     # the life of the process -- see `shelf()`.
     shelf_seeds = {}
 
-    def __init__(self, catalog, resolver, *, part_mode="proxy", public_url=None,
+    def __init__(self, catalog, zurg=None, *, part_mode="proxy", public_url=None,
                  owner_username="plexsim", claim=None, web_root=None,
                  assert_claimed=False, owner_email=None, tmdb=None, token=None):
         self.catalog = catalog
-        self.resolver = resolver
+        self.zurg = zurg
         # Cycle 58: the saved legacy agent order per (primary agent, media class), as
         # `PUT /system/agents/{id}/config/{N}?order=` writes it.
         self.agent_orders = {}
@@ -5276,7 +5271,7 @@ class PlexSim:
         # so the completed case is the faithful one.
         if any(query.get(name) is not None and int(query[name]) == 1
                for name in ("checkFiles", "asyncCheckFiles", "checkFileAvailability")):
-            detail = _part_file_state(detail, checked=True, resolver=self.resolver)
+            detail = _part_file_state(detail, checked=True, zurg=self.zurg)
         if query.get("includePreferences") == "1":
             # The item's own settings tab. A movie has three, a show eleven and a
             # season three, all captured -- and the list is per TYPE, so serving
@@ -22313,7 +22308,7 @@ class PlexSim:
         return None
 
     def resolve_part(self, part_id):
-        """part id -> (restricted debrid link, container, file name, the Part).
+        """part id -> (the Part's file, container, file name, the Part).
 
         The file name is for the Download entry's `Content-Disposition`: a real
         PMS names the saved file after the media file, not after the URL's last
@@ -22326,7 +22321,7 @@ class PlexSim:
                         name = str(part.get("file") or "").rsplit("/", 1)[-1]
                         # The part itself comes back too, for the ETag and
                         # Last-Modified a real PMS puts on every byte response.
-                        return (part.get("_debrid") or row.get("_debrid"),
+                        return (part.get("file"),
                                 part.get("container"), name,
                                 dict(part, addedAt=row.get("addedAt")))
         return None, None, None, None
@@ -25817,13 +25812,13 @@ class Handler(BaseHTTPRequestHandler):
 
         This is the whole experiment.  A real PMS answers a Range GET here with
         206, Accept-Ranges and a true total size, and a client seeks by issuing
-        more Ranges; plexsim has to reproduce that against a debrid CDN it does
-        not own.
+        more Ranges; plexsim has to reproduce that against zurg, which owns the
+        bytes.
         """
         sim = self.server.sim
         part_id = segments[2] if len(segments) > 2 else ""
-        link, container, part_name, part_row = sim.resolve_part(part_id)
-        if not link:
+        file, container, part_name, part_row = sim.resolve_part(part_id)
+        if not file:
             self._send_error(404, "plexsim: no such part")
             return
 
@@ -25853,33 +25848,32 @@ class Handler(BaseHTTPRequestHandler):
             return
         download = bool(raw_download is not None and int(str(raw_download).lstrip("+")))
 
-        try:
-            upstream_url, _size = sim.resolver.resolve(link)
-        except DebridUnavailable as error:
-            # Cycle 44: the FILE is not there, which a real PMS answers with a plain
-            # 404 -- zen's part 23595 does, and its row reports `accessible=false`.
-            # plexsim answered 502 to this and to a network failure alike, so a client
-            # that would have drawn "this file is missing" got a server error instead.
-            logger.error("part %s is unavailable upstream: %s", part_id, error)
-            self._send_error(404, "plexsim: not found")
+        # The bytes are zurg's: the Part's file, under zurg's mount, is a WebDAV path. With no
+        # zurg at all the read is routed and its source unreachable -- the 502 a dead
+        # provider link was -- and a file outside zurg's mount is no part zurg can serve.
+        if sim.zurg is None:
+            logger.error("PART %s upstream failed: no ZURG_URL configured", part_id)
+            self._send_error(502, "plexsim: upstream failed")
             return
-        except Exception as error:
-            logger.error("unrestrict failed for part %s: %s", part_id, error)
-            self._send_error(502, "plexsim: debrid resolve failed")
+        dav = sim.zurg.dav_path(file)
+        if not dav:
+            self._send_error(404, "plexsim: no such part")
             return
 
         if sim.part_mode == "redirect":
-            logger.info("PART %s -> 302 CDN%s", part_id, " (download)" if download else "")
-            self.send_response(302)
-            self.send_header("Location", upstream_url)
-            self.send_header("Content-Length", "0")
-            self.end_headers()
-            return
+            upstream_url = sim.zurg.redirect_target(dav)
+            if upstream_url:
+                logger.info("PART %s -> 302 CDN%s", part_id, " (download)" if download else "")
+                self.send_response(302)
+                self.send_header("Location", upstream_url)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
 
-        self._proxy(upstream_url, container, part_id, method,
+        self._proxy(dav, container, part_id, method,
                     download=filename if download else None, part=part_row)
 
-    def _proxy(self, upstream_url, container, part_id, method, download=None,
+    def _proxy(self, dav, container, part_id, method, download=None,
                part=None):
         import hashlib
         request_range = self.headers.get("Range")
@@ -25893,7 +25887,7 @@ class Handler(BaseHTTPRequestHandler):
         if window is not None and window[0] == 416:
             self._send_error(416, "plexsim: range not satisfiable")
             return
-        headers = {"User-Agent": UPSTREAM_UA}
+        headers = {}
         content_range = None
         if window is not None:
             _code, content_range, first, last = window
@@ -25908,10 +25902,17 @@ class Handler(BaseHTTPRequestHandler):
             if request_range:
                 headers["Range"] = request_range
 
-        request = urllib.request.Request(upstream_url, headers=headers, method="GET")
         try:
-            upstream = urllib.request.urlopen(request, timeout=30)
+            upstream = self.server.sim.zurg.open(dav, headers)
         except urllib.error.HTTPError as error:
+            if error.code == 404:
+                # Cycle 44: the FILE is not there, which a real PMS answers with a plain
+                # 404 -- zen's part 23595 does, and its row reports `accessible=false`.
+                # plexsim answered 502 to this and to a network failure alike, so a
+                # client that would have drawn "this file is missing" got a server error.
+                logger.error("part %s is unavailable upstream: %s", part_id, dav)
+                self._send_error(404, "plexsim: not found")
+                return
             logger.error("PART %s upstream %s for range %s", part_id, error.code, request_range)
             self._send_error(error.code, "plexsim: upstream refused")
             return
@@ -26144,7 +26145,8 @@ def main():
         "--part-mode",
         choices=("proxy", "redirect"),
         default="proxy",
-        help="proxy streams bytes through plexsim; redirect 302s to the debrid CDN",
+        help="proxy streams bytes from zurg through plexsim; redirect 302s to the provider "
+             "URL zurg's signed link names",
     )
     parser.add_argument("--public-url", default=None)
     parser.add_argument(
@@ -26224,6 +26226,11 @@ def main():
         "--no-state", dest="state", action="store_const", const="",
         help="keep nothing across a restart: a restart reloads the catalog as it is "
              "on disk, which the test suites rely on. Also an empty $PLEXSIM_STATE")
+    parser.add_argument(
+        "--zurg-mount", default="/mnt/zurg",
+        help="zurg's mount_path: Part files and library locations live under it, and "
+             "the same files are /dav/... on zurg ($ZURG_URL, with "
+             "$ZURG_USER/$ZURG_PASSWORD). Default /mnt/zurg")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -26231,10 +26238,6 @@ def main():
         format="%(asctime)s %(levelname)-7s %(message)s",
         datefmt="%H:%M:%S",
     )
-
-    token = os.environ.get("RD_TOKEN")
-    if not token:
-        parser.error("RD_TOKEN must be set (the Real-Debrid API key)")
 
     catalog = Catalog(args.catalog)
     # Fix Match needs a live agent. The same key build_catalog.py uses; without
@@ -26254,9 +26257,12 @@ def main():
         name=catalog.friendly,
         version=SERVER_VERSION,
     )
+    zurg = Zurg.from_env(args.zurg_mount)
+    if zurg is None:
+        logger.info("no ZURG_URL: parts have no bytes to stream")
     sim = PlexSim(
         catalog,
-        Resolver(token),
+        zurg,
         part_mode=args.part_mode,
         public_url=args.public_url,
         owner_username=args.owner_username,

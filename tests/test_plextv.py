@@ -246,7 +246,7 @@ class Instance:
         command = server_command("--port", port, "--catalog", catalog, "--gdm", "off",
                                  "--announce-url", ANNOUNCE_URL, "--heartbeat-interval", 2,
                                  "--account-state-interval", 3600, *extra, root=ROOT)
-        env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
+        env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
                    PLEX_TOKEN=ACCOUNT_TOKEN,
                    PLEXSIM_PLEXTV_URL="http://127.0.0.1:%d" % stub_port,
                    PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64=base64.b64encode(SECRET).decode())

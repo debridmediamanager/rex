@@ -1,19 +1,18 @@
-//! The server's OUTBOUND HTTP: Real-Debrid's API, the CDN urls it unrestricts to,
-//! TMDB and remote artwork.
+//! The server's OUTBOUND HTTP: zurg (a Part's bytes, a library scan), the provider URL
+//! zurg redirects to, TMDB, Plex's metadata provider and remote artwork.
 //!
 //! The Python server reaches all of them through `urllib`, which speaks TLS against the
 //! system roots and follows redirects; the native runtime could only write a plain
-//! `http://` request by hand, so every one of them was unreachable with real
-//! credentials -- RD's API, its CDN and TMDB are all `https://`. Plain `http://` stays:
-//! `tests/test_part_bytes.py` stands its RD stub and CDN up on local plain ports and
-//! injects them through `RD_API`.
+//! `http://` request by hand, so every `https://` one was unreachable. Plain `http://`
+//! stays: zurg is usually on the same host, and `tests/test_part_bytes.py` stands its
+//! zurg stub up on a local plain port.
 
 use super::*;
 use rustls::pki_types::ServerName;
 use rustls::{ClientConfig, ClientConnection, RootCertStore};
 use std::net::ToSocketAddrs;
 use std::sync::OnceLock;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// `server.py`'s `UPSTREAM_UA`, sent on artwork and part reads.
 pub(super) const UPSTREAM_UA: &str = "plexsim/0.1";
@@ -352,6 +351,17 @@ pub(super) fn open(
     Err("too many upstream redirects".to_string())
 }
 
+/// One exchange, redirects NOT followed: what a server answers, `Location` and all.
+pub(super) fn open_once(
+    method: &str,
+    url: &str,
+    headers: &[(&str, String)],
+    timeout: Duration,
+) -> Result<Upstream, String> {
+    let target = parse_url(url).ok_or_else(|| format!("unsupported url {url:?}"))?;
+    exchange(method, &target, headers, b"", timeout)
+}
+
 /// `open` plus the whole body: `(status, headers, body)`.
 pub(super) fn fetch(
     method: &str,
@@ -379,128 +389,4 @@ pub(super) fn quote_plus(value: &str) -> String {
         }
     }
     out
-}
-
-/// A resolved CDN url, its size, and when it was resolved.
-type Resolved = (String, Instant, u64);
-
-/// `debrid.Resolver`: a restricted `/d/` link -> the playable CDN url, by POSTing
-/// `/unrestrict/link`, cached with a TTL because the CDN url expires.
-pub(super) struct Resolver {
-    api: String,
-    token: String,
-    ttl: Duration,
-    cache: Mutex<HashMap<String, Resolved>>,
-}
-
-impl std::fmt::Debug for Resolver {
-    // The token is an account credential; it never reaches a debug print.
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter
-            .debug_struct("Resolver")
-            .field("api", &self.api)
-            .finish()
-    }
-}
-
-/// Why a link did not resolve. `Unavailable` is Real-Debrid saying the FILE is not
-/// there -- a 404 or `unavailable_file` (error code 24) -- which a real PMS answers
-/// with a plain 404; `Failed` is every other failure, the 502 (cycle 44).
-/// An unrestrict that failed, with the text the oracle's exception carries into its
-/// log line: `Unavailable`'s argument, `HTTP Error 401: Unauthorized`, and so on.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum ResolveError {
-    Unavailable(String),
-    Failed(String),
-}
-
-impl Resolver {
-    /// Measured: an unrestricted RD CDN URL keeps serving well past an hour, but the
-    /// cost of re-resolving is one small POST, so the cache is deliberately short.
-    const TTL_SECONDS: u64 = 1800;
-
-    pub(super) fn new(api: String, token: String) -> Self {
-        Self {
-            api,
-            token,
-            ttl: Duration::from_secs(Self::TTL_SECONDS),
-            cache: Mutex::new(HashMap::new()),
-        }
-    }
-
-    pub(super) fn resolve(&self, link: &str) -> Result<(String, u64), ResolveError> {
-        if let Ok(cache) = self.cache.lock() {
-            if let Some((url, at, size)) = cache.get(link) {
-                if at.elapsed() < self.ttl {
-                    return Ok((url.clone(), *size));
-                }
-            }
-        }
-        let resolved_at = Instant::now();
-        let (url, size) = self.unrestrict(link)?;
-        if let Ok(mut cache) = self.cache.lock() {
-            cache.insert(link.to_string(), (url.clone(), resolved_at, size));
-        }
-        Ok((url, size))
-    }
-
-    pub(super) fn invalidate(&self, link: &str) {
-        if let Ok(mut cache) = self.cache.lock() {
-            cache.remove(link);
-        }
-    }
-
-    fn unrestrict(&self, link: &str) -> Result<(String, u64), ResolveError> {
-        let body = format!("link={}", quote_plus(link));
-        let mut headers = vec![(
-            "Content-Type",
-            "application/x-www-form-urlencoded".to_string(),
-        )];
-        if !self.token.is_empty() {
-            headers.push(("Authorization", format!("Bearer {}", self.token)));
-        }
-        let url = format!("{}/unrestrict/link", self.api.trim_end_matches('/'));
-        // `urllib.error.URLError`'s text for a transport failure.
-        let mut response = open("POST", &url, &headers, body.as_bytes(), Duration::from_secs(30))
-            .map_err(|error| ResolveError::Failed(format!("<urlopen error {error}>")))?;
-        let status = response.status;
-        let reason = response.reason.clone();
-        let payload = response
-            .read_body(64 * 1024 * 1024)
-            .map_err(|error| ResolveError::Failed(format!("<urlopen error {error}>")))?;
-        let payload = serde_json::from_slice::<Value>(&payload).unwrap_or(Value::Null);
-        if !(200..300).contains(&status) {
-            // Cycle 44: tell "this file is not there" apart from "the transport failed".
-            // Real-Debrid's `unavailable_file` (error_code 24) and a 404 from its API are
-            // the first; anything else keeps the 502, so a network blip is still
-            // distinguishable from a dead link.
-            let unavailable = status == 404
-                || payload.get("error_code").and_then(Value::as_i64) == Some(24)
-                || payload.get("error").and_then(Value::as_str) == Some("unavailable_file");
-            return Err(if unavailable {
-                ResolveError::Unavailable(
-                    payload
-                        .get("error")
-                        .and_then(Value::as_str)
-                        .filter(|error| !error.is_empty())
-                        .unwrap_or("unavailable_file")
-                        .to_string(),
-                )
-            } else {
-                ResolveError::Failed(format!("HTTP Error {status}: {reason}"))
-            });
-        }
-        // `payload["download"]` on a payload without it is a KeyError.
-        let url = payload
-            .get("download")
-            .and_then(Value::as_str)
-            .ok_or_else(|| ResolveError::Failed("'download'".to_string()))?
-            .to_string();
-        // `int(payload.get("filesize") or 0)`
-        let size = payload
-            .get("filesize")
-            .and_then(|value| value.as_u64().or_else(|| value.as_f64().map(|v| v as u64)))
-            .unwrap_or(0);
-        Ok((url, size))
-    }
 }

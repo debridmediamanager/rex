@@ -323,7 +323,7 @@ def test_transcoder_and_envelope(server):
 
 def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
-    env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
                PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
     for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
         env.pop(name, None)

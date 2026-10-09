@@ -146,27 +146,10 @@ def exact():
           and nothing["imdb"] is None)
 
 
-def dmm_client():
-    calls = []
-
-    def opener(batch):
-        calls.append(len(batch))
-        return {"identities": {h: {"imdbId": "tt0000001"} for h in batch if h.startswith("b")}}
-
-    dmm = identify.Dmm("key", None, opener=opener)
-    hashes = ["b%039d" % n for n in range(700)] + ["c" * 40, "not-a-hash"]
-    found = dmm.lookup(hashes)
-    check("DMM is asked in batches of 500 and answers only what it knows",
-          calls == [500, 201] and len(found) == 700 and "c" * 40 not in found, "calls %s found %d" % (calls, len(found)))
-    dmm.lookup(hashes)
-    check("a hash asked once is not asked again", calls == [500, 201], str(calls))
-
-
 if __name__ == "__main__":
     parsing()
     corpus()
     exact()
-    dmm_client()
     failed = results.count(False)
     print("\n%d/%d passed" % (len(results) - failed, len(results)))
     sys.exit(1 if failed else 0)

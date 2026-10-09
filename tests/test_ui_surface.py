@@ -1561,20 +1561,17 @@ def main():
             want_json=False)
         disposition = headers.get("Content-Disposition", "")
         if status in (404, 502):
-            # The bytes come from the provider, so this needs a catalog whose
-            # links the configured RD account owns. Verified by hand against a
-            # live link: 206, video/x-matroska, and
-            # `attachment; filename="For the Birds (2000).mkv"` plus the
-            # RFC 5987 form -- the shape measured on a real PMS.
+            # The bytes come from zurg, so this needs a catalog whose Part files zurg
+            # serves (`ZURG_URL`, `--zurg-mount`). Verified by hand against a live provider link:
+            # 206, video/x-matroska, and `attachment; filename="For the Birds (2000).mkv"`
+            # plus the RFC 5987 form -- the shape measured on a real PMS.
             #
-            # Cycle 44 split the two refusals: a provider that says the FILE is gone
-            # (`unavailable_file`, error_code 24) is now a **404**, which is what a real
-            # PMS answers for a part it cannot open (zen part 23595), and a transport
-            # failure stays the 502. With `RD_TOKEN=dummy` the API answers 401, so this
-            # skip still fires on the 502; with a real token and a dead link it fires on
-            # the 404.
+            # Cycle 44 split the two refusals: a file the source no longer has is a
+            # **404**, which is what a real PMS answers for a part it cannot open (zen
+            # part 23595), and a transport failure stays the 502. With no zurg the part
+            # has no bytes at all and this skip fires on the 404.
             skip("download serves an attachment named after the media file",
-                 "part unresolvable: catalog links are account-scoped "
+                 "part unreadable: the catalog's files are not on a zurg "
                  "(HTTP %s)" % status)
         else:
             check("download serves an attachment named after the media file",
@@ -3054,7 +3051,7 @@ def main():
         server_command("--port", gated_port, "--catalog", "tests/catalog_ui.json",
                        "--assert-claimed", "--token", "suite-gate-token", root=REPO_ROOT),
         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        env=dict(os.environ, RD_TOKEN="dummy"),
+        env=dict(os.environ),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     gated_base = "http://127.0.0.1:%d" % gated_port
     try:
@@ -14986,7 +14983,7 @@ def main():
         server_command("--port", web_port_c16y, "--catalog", "tests/catalog_ui.json",
                        "--assert-claimed", "--web-root", web_root_c16y, root=REPO_ROOT),
         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        env=dict(os.environ, RD_TOKEN="dummy"),
+        env=dict(os.environ),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _attempt in range(240):  # a minute, as the gated sub-server above
@@ -23390,7 +23387,7 @@ def main():
         server_command("--port", port_c29l, "--catalog", "tests/catalog_ui.json",
                        "--assert-claimed", "--web-root", root_c29l, root=tree_c29l),
         cwd=tree_c29l,
-        env=dict(os.environ, RD_TOKEN="dummy"),
+        env=dict(os.environ),
         stdout=subprocess_c29l.DEVNULL, stderr=subprocess_c29l.DEVNULL)
     try:
         for _attempt_c29l in range(240):  # a minute, as the gated sub-server

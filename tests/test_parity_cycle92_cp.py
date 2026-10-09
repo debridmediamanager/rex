@@ -74,7 +74,7 @@ class Instance:
                                  "--gdm", "off", "--assert-claimed", *args, root=ROOT)
         if not args:
             command.remove("--no-state")
-        env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
+        env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
                    PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
         for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
             env.pop(name, None)

@@ -137,12 +137,12 @@ class Manager:
 
 
 def config(name, port, **extra):
-    return dict({"name": name, "port": port, "catalog": CATALOG, "rd_token": "dummy-rd",
+    return dict({"name": name, "port": port, "catalog": CATALOG, "zurg_password": "dummy-zurg",
                  "gdm": "off", "assert_claimed": True}, **extra)
 
 
-# Stands in for build_catalog.py --library (which needs a Real-Debrid account and the
-# network): writes catalog_ui.json into --out the way the builder writes a database.
+# Stands in for build_catalog.py --seed: writes catalog_ui.json into --out the way the
+# builder writes a database, so the started server has rows to answer with.
 FAKE_BUILDER = """import sys, json
 sys.path.insert(0, %r)
 import catalogdb
@@ -181,10 +181,10 @@ def main():
               made)
         check("a created server does not listen", not answers(a))
         cfg = (made or {}).get("config") or {}
-        check("keys are redacted", cfg.get("rd_token") == "***" and cfg.get("token") == "***"
+        check("keys are redacted", cfg.get("zurg_password") == "***" and cfg.get("token") == "***"
               and cfg.get("tmdb_key") == "***", cfg)
         listed_text = json.dumps(manager.api("GET", "/servers")[1])
-        check("no key appears in the listing", "dummy-rd" not in listed_text
+        check("no key appears in the listing", "dummy-zurg" not in listed_text
               and "gate-secret" not in listed_text and "tmdb-secret" not in listed_text)
         check("the catalog is copied into the server's database",
               os.path.exists(os.path.join(root, "servers", "alpha", "plexsim.db")))
@@ -193,7 +193,6 @@ def main():
                 ("a duplicate port is a 409", config("other", a), 409),
                 ("a bad name is a 400", config("Bad Name", c), 400),
                 ("a missing catalog is a 400", config("gamma", c, catalog="/nonexistent.json"), 400),
-                ("a missing key is a 400", {"name": "gamma", "port": c, "catalog": CATALOG}, 400),
                 ("an unknown field is a 400", config("gamma", c, colour="red"), 400)):
             got = manager.api("POST", "/servers", body)
             check(label, got[0] == want, got)
@@ -256,11 +255,12 @@ def main():
         # -- a server from its keys alone: no catalog until it is built ----------
         e = free_port()
         status, keyed = manager.api("POST", "/servers", {
-            "name": "keyed", "port": e, "rd_token": "dummy-rd", "dmm_api_key": "dmm-secret",
-            "gdm": "off", "assert_claimed": True})
+            "name": "keyed", "port": e, "zurg_url": "http://127.0.0.1:9",
+            "zurg_password": "zurg-secret", "gdm": "off", "assert_claimed": True})
         check("a server can be created from its keys alone",
               status == 201 and keyed["status"] == "stopped"
-              and keyed["config"]["dmm_api_key"] == "***", keyed)
+              and keyed["config"]["zurg_password"] == "***"
+              and keyed["config"]["zurg_url"] == "http://127.0.0.1:9", keyed)
         status, refused = manager.api("POST", "/servers/keyed/start")
         check("it cannot start before its catalog is built",
               status == 409 and "build" in refused.get("error", "") and not answers(e), refused)
@@ -284,8 +284,8 @@ def main():
         status, job = manager.api("POST", "/servers/idle/build")
         done = wait_for(lambda: (lambda v: v["status"] in ("succeeded", "failed") and v)(
             manager.api("GET", "/servers/idle/build")[1]), 120)
-        # build_catalog.py --library with a dummy key cannot succeed; what is held here
-        # is the job: it runs, ends, and its log is kept.
+        # The real build_catalog.py --seed: what is held here is the job -- it runs, ends,
+        # and its log is kept.
         check("a build runs as a job with its own status and log",
               status == 202 and done and done["log"] and done["exit"] is not None, done)
         check("a PATCH while stopped changes the configuration",
@@ -337,9 +337,9 @@ def main():
                                  env=dict(os.environ, **(env or {})), timeout=120)
             return run.returncode, run.stdout + run.stderr
         code, text = cli("create", "cli", "--port", str(d), "--catalog", CATALOG, "--gdm", "off",
-                         "--assert-claimed", env={"RD_TOKEN": "cli-secret"})
-        check("cli create takes RD_TOKEN from the environment",
-              code == 0 and '"rd_token": "***"' in text and "cli-secret" not in text, text)
+                         "--assert-claimed", env={"ZURG_PASSWORD": "cli-secret"})
+        check("cli create takes ZURG_PASSWORD from the environment",
+              code == 0 and '"zurg_password": "***"' in text and "cli-secret" not in text, text)
         code, text = cli("start", "cli")
         check("cli start", code == 0 and wait_for(lambda: answers(d), 90), text)
         code, text = cli("list")

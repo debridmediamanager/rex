@@ -1,12 +1,12 @@
 #!/bin/zsh
-# Copy to run.sh (gitignored) and fill in the credential.
+# Copy to run.sh (gitignored) and fill in the credentials.
 #
-# RD_TOKEN is the Real-Debrid API key whose account owns the /d/ links in
-# catalog.json. Those links are account-scoped: another account answers
-# 404 unavailable_file for them, which surfaces as HTTP 502 on every part read.
+# zurg serves every Part's bytes: ZURG_URL is its address, with ZURG_USER and
+# ZURG_PASSWORD when its config sets a username, and --zurg-mount is its mount_path,
+# under which every Part's file lives.
 set -e
 cd "$(dirname "$0")"
-export RD_TOKEN=...
+export ZURG_URL=http://127.0.0.1:9999 ZURG_USER= ZURG_PASSWORD=
 #
 # On --port 32400 plexsim answers Plex's LAN discovery protocol (GDM) on udp/32410
 # and udp/32414 by default, which is what a real PMS does and what lets an official
@@ -28,6 +28,7 @@ export RD_TOKEN=...
 # The Python server (the measured oracle) still runs with: python3 server.py <flags>
 exec rust/target/release/plexsim \
   --port 32400 \
+  --zurg-mount /mnt/zurg \
   --part-mode proxy \
   --assert-claimed \
   --verbose

@@ -56,6 +56,7 @@ mod tmdb;
 mod transcoder;
 mod upstream;
 mod wire;
+mod zurg;
 use artwork::owns_artwork;
 use logging::{debug, error, info, warning};
 use resume::{
@@ -222,6 +223,9 @@ pub struct RuntimeOptions {
     pub heartbeat_interval: u64,
     pub account_state_interval: u64,
     pub plex_direct_host: Option<String>,
+    /// zurg's `mount_path`: a Part's `file` is under it, and the same file is
+    /// `/dav/<rest>` on zurg's WebDAV.
+    pub zurg_mount: String,
 }
 
 impl Default for RuntimeOptions {
@@ -247,6 +251,7 @@ impl Default for RuntimeOptions {
             heartbeat_interval: plextv::HEARTBEAT_INTERVAL,
             account_state_interval: plextv::ACCOUNT_STATE_INTERVAL,
             plex_direct_host: None,
+            zurg_mount: "/mnt/zurg".to_string(),
         }
     }
 }
@@ -440,8 +445,9 @@ pub struct Runtime {
     pub state_path: Option<PathBuf>,
     pub catalog_path: PathBuf,
     pub source_digest: String,
-    /// `debrid.Resolver`, shared with the part reads that stream outside the lock.
-    resolver: Arc<upstream::Resolver>,
+    /// zurg, when `ZURG_URL` names one: every Part's bytes, and the library scans.
+    /// Shared with the part reads that stream outside the lock.
+    zurg: Option<Arc<zurg::Zurg>>,
     /// `metadata.Tmdb`, only with `TMDB_KEY`: without it Fix Match has no candidates.
     tmdb: Option<tmdb::Tmdb>,
     /// Fix Match guid -> the TMDB `(kind, id)` that minted it, so `PUT .../match`
@@ -602,7 +608,6 @@ const HIDDEN_METADATA_PROVIDER: &str = r#"{"id":4,"identifier":"org.musicbrainz.
 
 impl Runtime {
     pub fn load(options: RuntimeOptions) -> Result<Self, String> {
-        let rd_token = std::env::var("RD_TOKEN").unwrap_or_default();
         // Fix Match needs a live agent, keyed like build_catalog.py; the response cache
         // lives beside the catalog.
         let tmdb = std::env::var("TMDB_KEY")
@@ -717,14 +722,7 @@ impl Runtime {
             state_path: options.state,
             catalog_path: options.catalog,
             source_digest,
-            // `os.environ.get("RD_API") or <default>`: an empty value is the default too.
-            resolver: Arc::new(upstream::Resolver::new(
-                std::env::var("RD_API")
-                    .ok()
-                    .filter(|api| !api.is_empty())
-                    .unwrap_or_else(|| "https://api.real-debrid.com/rest/1.0".to_string()),
-                rd_token,
-            )),
+            zurg: zurg::Zurg::from_env(&options.zurg_mount).map(Arc::new),
             // Fix Match needs a live agent; the cache lives beside the catalog.
             tmdb,
             match_candidates: HashMap::new(),
@@ -20605,19 +20603,14 @@ impl Runtime {
                 continue;
             };
             for part in parts {
-                // Cycle 46: a successful unrestrict is the fileless server's
-                // existence check and the provider's explicit "unavailable" the
-                // false/false pair; other failures are not collapsed into "missing".
-                let available = part
-                    .get("_debrid")
-                    .and_then(Value::as_str)
-                    .filter(|link| !link.is_empty())
-                    .map_or(true, |link| {
-                        !matches!(
-                            self.resolver.resolve(link),
-                            Err(upstream::ResolveError::Unavailable(_))
-                        )
-                    });
+                // Cycle 46: the byte source answering for the file is the fileless
+                // server's existence check, and its explicit "not found" the false/false
+                // pair a real PMS reports for a missing file; other failures are not
+                // collapsed into "missing".
+                let available = match (&self.zurg, part.get("file").and_then(Value::as_str)) {
+                    (Some(zurg), Some(file)) => zurg.dav_path(file).map_or(true, |dav| zurg.exists(&dav)),
+                    _ => true,
+                };
                 if let Some(object) = part.as_object_mut() {
                     object.insert("accessible".to_string(), json!(available));
                     object.insert("exists".to_string(), json!(available));
@@ -21912,18 +21905,6 @@ impl Runtime {
                 {
                     if candidate.get("id").and_then(Value::as_i64) == Some(part_id) {
                         let mut selected = candidate.clone();
-                        // Catalog normalization keeps the provider link on the
-                        // owning item, while measured part fixtures may keep it
-                        // directly on the Part object.  The stream route needs
-                        // one owned copy with either representation resolved;
-                        // never discard the row-level link when projecting it.
-                        if selected.get("_debrid").is_none() {
-                            if let Some(link) = row.get("_debrid") {
-                                if let Some(object) = selected.as_object_mut() {
-                                    object.insert("_debrid".to_string(), link.clone());
-                                }
-                            }
-                        }
                         // `resolve_part`: the part carries its ROW's addedAt, the stamp
                         // behind the byte response's ETag and Last-Modified.
                         if let Some(object) = selected.as_object_mut() {
@@ -21947,14 +21928,19 @@ impl Runtime {
         {
             return Response::error(400, "plexsim: bad request");
         }
-        let link = part
-            .get("_debrid")
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .to_string();
-        if link.is_empty() {
+        // The bytes are zurg's: the Part's file, under zurg's mount, is a WebDAV path. With
+        // no zurg at all the read is routed and its source unreachable -- the 502 a dead
+        // provider link was -- and a file outside zurg's mount is no part zurg can serve.
+        let Some(file) = part.get("file").and_then(Value::as_str).filter(|file| !file.is_empty()) else {
             return Response::error(404, "plexsim: no such part");
-        }
+        };
+        let Some(zurg) = self.zurg.clone() else {
+            error!("PART {} upstream failed: no ZURG_URL configured", segments.first().copied().unwrap_or(""));
+            return Response::error(502, "plexsim: upstream failed");
+        };
+        let Some(dav) = zurg.dav_path(file) else {
+            return Response::error(404, "plexsim: no such part");
+        };
         // The Download context-menu entry is the same Part read with `download=1`; the
         // only difference a real PMS makes is the disposition header, which is what
         // turns a play into a save. The name is the media FILE's, not the URL's.
@@ -21978,19 +21964,20 @@ impl Runtime {
             format!("part-{}", segments.first().copied().unwrap_or(""))
         };
         let part_id = segments.first().copied().unwrap_or("").to_string();
-        self.stream_part(&part, &part_id, &link, download.then_some(filename), request)
+        self.stream_part(&part, &part_id, zurg, dav, download.then_some(filename), request)
     }
 
     /// The part read's response head, and the plan `handle_connection` carries out once
-    /// the runtime lock is released: resolve the link (cached), open the CDN url with
-    /// the measured window, then stream exactly that many bytes. Resolving and opening
-    /// happen before any status is written, as `_serve_part`/`_proxy` do, so a dead link
-    /// is a 404, a failed resolve a 502 and a refusing CDN its own status.
+    /// the runtime lock is released: open the file on zurg with the measured window, then
+    /// stream exactly that many bytes. Opening happens before any status is written, as
+    /// `_serve_part`/`_proxy` do, so a file zurg no longer has is a 404, a refusal its own
+    /// status and a transport failure a 502.
     fn stream_part(
         &mut self,
         part: &Value,
         part_id: &str,
-        link: &str,
+        zurg: Arc<zurg::Zurg>,
+        dav: String,
         download: Option<String>,
         request: &Request,
     ) -> Response {
@@ -22074,8 +22061,8 @@ impl Runtime {
         // from the last one. Every CDN answers a media range with `Connection: close`.
         response.close = true;
         self.pending_part = Some(PartProxy {
-            resolver: Arc::clone(&self.resolver),
-            link: link.to_string(),
+            zurg,
+            dav,
             redirect: self.part_mode == "redirect",
             window,
             head: request.method == "HEAD",
@@ -23001,10 +22988,6 @@ fn resolve_state_path(options: &RuntimeOptions) -> Option<PathBuf> {
 
 pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     logging::set_verbose(options.verbose);
-    // `main()`: parts resolve through Real-Debrid, and an empty key is no key.
-    if std::env::var("RD_TOKEN").map_or(true, |token| token.is_empty()) {
-        return Err("RD_TOKEN must be set (the Real-Debrid API key)".to_string());
-    }
     let host = options.host.clone();
     let port = options.port;
     let gdm_mode = options.gdm.clone();
@@ -23022,6 +23005,9 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     }
     if std::env::var("TMDB_KEY").map_or(true, |key| key.is_empty()) {
         info!("no TMDB_KEY: Fix Match will report no candidates");
+    }
+    if std::env::var("ZURG_URL").map_or(true, |url| url.is_empty()) {
+        info!("no ZURG_URL: parts have no bytes to stream");
     }
     let tls_config = match options.tls_cert.as_deref() {
         Some(cert_path) => Some(Arc::new(load_tls_config(
@@ -26188,8 +26174,9 @@ enum PartWindow {
 /// A part read accepted by the router, finished by `handle_connection` without the lock.
 #[derive(Debug)]
 struct PartProxy {
-    resolver: Arc<upstream::Resolver>,
-    link: String,
+    zurg: Arc<zurg::Zurg>,
+    /// The file's decoded `/dav/...` path.
+    dav: String,
     redirect: bool,
     window: PartWindow,
     head: bool,
@@ -26227,7 +26214,7 @@ fn insert_after_accept_ranges(response: &mut Response, content_range: String) {
         .insert(at, ("Content-Range".to_string(), content_range));
 }
 
-/// Carry out a `PartProxy`: resolve, open the CDN url, write the head, stream the body.
+/// Carry out a `PartProxy`: open the file on zurg, write the head, stream the body.
 /// Answers whether the connection stays open (a part read never keeps it).
 fn serve_part_proxy<S: Write>(
     stream: &mut S,
@@ -26243,29 +26230,18 @@ fn serve_part_proxy<S: Write>(
         info!("{status} {} {} -- {sentence}", plan.method, plan.route);
         wire::write_enveloped(stream, &Response::error(status, sentence), envelope, keep)
     };
-    let url = match plan.resolver.resolve(&plan.link) {
-        Ok((url, _size)) => url,
-        // Cycle 44: the provider saying the FILE is gone is a plain 404, as a real PMS
-        // answers for a part it cannot open; any other resolve failure is the 502.
-        Err(upstream::ResolveError::Unavailable(detail)) => {
-            error!("part {part_id} is unavailable upstream: {detail}");
-            return refuse(stream, 404, "plexsim: not found");
-        }
-        Err(upstream::ResolveError::Failed(detail)) => {
-            error!("unrestrict failed for part {part_id}: {detail}");
-            return refuse(stream, 502, "plexsim: debrid resolve failed");
-        }
-    };
     if plan.redirect {
-        info!(
-            "PART {part_id} -> 302 CDN{}",
-            if plan.download { " (download)" } else { "" }
-        );
-        let mut redirect = Response::bytes(302, "");
-        redirect.headers.push(("Location".to_string(), url));
-        return wire::write_enveloped(stream, &redirect, envelope, keep);
+        if let Some(url) = plan.zurg.redirect_target(&plan.dav) {
+            info!(
+                "PART {part_id} -> 302 CDN{}",
+                if plan.download { " (download)" } else { "" }
+            );
+            let mut redirect = Response::bytes(302, "");
+            redirect.headers.push(("Location".to_string(), url));
+            return wire::write_enveloped(stream, &redirect, envelope, keep);
+        }
     }
-    let mut headers = vec![("User-Agent", upstream::UPSTREAM_UA.to_string())];
+    let mut headers: Vec<(&'static str, String)> = Vec::new();
     let want = match &plan.window {
         PartWindow::Unsatisfiable => {
             info!("416 {} {} -- plexsim: range not satisfiable", plan.method, plan.route);
@@ -26294,12 +26270,15 @@ fn serve_part_proxy<S: Write>(
             None
         }
     };
-    let mut upstream = match upstream::open("GET", &url, &headers, b"", std::time::Duration::from_secs(30)) {
+    let mut upstream = match plan.zurg.open(&plan.dav, &headers) {
         Ok(upstream) if upstream.status < 400 => upstream,
+        // Cycle 44: the source saying the FILE is gone is a plain 404, as a real PMS
+        // answers for a part it cannot open (zen part 23595).
+        Ok(refused) if refused.status == 404 => {
+            error!("part {part_id} is unavailable upstream: {}", plan.dav);
+            return refuse(stream, 404, "plexsim: not found");
+        }
         Ok(refused) => {
-            // The CDN refused a url the cache still holds: resolve afresh next time
-            // rather than replaying a dead url until the TTL runs out.
-            plan.resolver.invalidate(&plan.link);
             error!(
                 "PART {part_id} upstream {} for range {}",
                 refused.status,

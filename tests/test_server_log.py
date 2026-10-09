@@ -39,7 +39,8 @@ from server_command import server_command
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
+# zurg on a closed port: every part read is a transport failure, and its log lines are.
+ENV = dict(os.environ, ZURG_URL="http://127.0.0.1:9", PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for _name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
     ENV.pop(_name, None)
@@ -72,7 +73,8 @@ class Server:
         self.connections = 0
         self.process = subprocess.Popen(
             server_command("--port", self.port, "--catalog", "tests/catalog_ui.json",
-                           "--assert-claimed", "--gdm", "off", root=ROOT),
+                           "--assert-claimed", "--gdm", "off", "--zurg-mount", "/plexsim",
+                           root=ROOT),
             cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(120):
             try:
@@ -404,9 +406,9 @@ def main():
         if added:
             run("a library delete", "DELETE", "/library/sections/%s" % added[0],
                 [("INFO", E("SECTION delete %s (LogLib)" % added[0]))], status=200)
-        run("a part read Real-Debrid refuses", "GET", "/library/parts/%s/0/file.mkv" % part_id,
-            [("ERROR", E("unrestrict failed for part %s: HTTP Error 401: Unauthorized" % part_id)),
-             ("INFO", E("502 GET /library/parts/%s/0/file.mkv -- plexsim: debrid resolve failed"
+        run("a part read zurg cannot answer", "GET", "/library/parts/%s/0/file.mkv" % part_id,
+            [("ERROR", E("PART %s upstream failed: <urlopen error " % part_id) + ".*>"),
+             ("INFO", E("502 GET /library/parts/%s/0/file.mkv -- plexsim: upstream failed"
                         % part_id))], headers={"Range": "bytes=0-99"}, status=502)
         run("a remote artwork read", "GET", "/photo/:/transcode?width=100&height=100&url=%s"
             % urllib.parse.quote("http://127.0.0.1:9/x.jpg"),

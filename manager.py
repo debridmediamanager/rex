@@ -2,17 +2,17 @@
 """manager.py: start and stop plexsim servers from stored configurations.
 
 One long-lived process that, by default, runs no plexsim server at all. A server is
-created from a configuration (port, Real-Debrid key, catalog, options), kept stopped
+created from a configuration (port, zurg, catalog, options), kept stopped
 until it is started, and supervised once it is: an unexpected exit is restarted with a
 backoff, and a server that keeps dying is marked failed instead of looping. What was
 running when the manager stopped is running again when it starts, and nothing else.
 
     ./manager.py serve [--root managed] [--listen 127.0.0.1:32300] [--binary PATH]
-    ./manager.py create living-room --port 32400 --catalog catalog.json   # RD_TOKEN from env
+    ./manager.py create living-room --port 32400 --catalog catalog.json   # ZURG_* from env
     ./manager.py start living-room
     ./manager.py list | status NAME | logs NAME | stop NAME | restart NAME | delete NAME
-    ./manager.py create den --port 32401           # no catalog: built from the library
-    ./manager.py build den --start # build_catalog.py --library into its database, then start
+    ./manager.py create den --port 32401           # no catalog: seeded, then scanned from zurg
+    ./manager.py build den --start # build_catalog.py --seed into its database, then start
 
 Everything lives under the root (default `managed/` beside this file, mode 700):
 
@@ -30,11 +30,11 @@ The API (JSON, `Authorization: Bearer <admin token>` on every route but the page
     POST   /servers/<name>/start|stop|restart
     DELETE /servers/<name>[?purge=1]    stop and forget it; purge also removes its files
     GET    /servers/<name>/logs?lines=N
-    POST   /servers/<name>/build        run build_catalog.py --library for it
+    POST   /servers/<name>/build        run build_catalog.py --seed for it
     GET    /servers/<name>/build        that job's status and log tail
 
-Secrets reach a server through its environment (RD_TOKEN, TMDB_KEY, PLEX_TOKEN,
-PLEXSIM_TOKEN -- both servers read all four), never its command line, which `ps` shows.
+Secrets reach a server through its environment (ZURG_URL, ZURG_USER, ZURG_PASSWORD,
+TMDB_KEY, PLEX_TOKEN, PLEXSIM_TOKEN), never its command line, which `ps` shows.
 Stdlib only, like the server path.
 """
 
@@ -67,11 +67,11 @@ DEFAULT_LISTEN = "127.0.0.1:32300"
 DEFAULT_BINARY = os.path.join(HERE, "rust", "target", "release", "plexsim")
 
 NAME = re.compile(r"^[a-z0-9-]{1,40}$")
-SECRETS = ("rd_token", "tmdb_key", "plex_token", "token", "dmm_api_key")
-# What each secret is called in the server's (and its catalog build's) environment.
-# DMM_API_KEY is the build's alone: build_catalog.py identifies torrents by hash with it.
-SECRET_ENV = {"rd_token": "RD_TOKEN", "tmdb_key": "TMDB_KEY", "plex_token": "PLEX_TOKEN",
-              "token": "PLEXSIM_TOKEN", "dmm_api_key": "DMM_API_KEY"}
+SECRETS = ("zurg_password", "tmdb_key", "plex_token", "token")
+# What each environment field is called in the server's environment; the zurg URL and
+# user are not secret, but travel the same way.
+SECRET_ENV = {"zurg_url": "ZURG_URL", "zurg_user": "ZURG_USER", "zurg_password": "ZURG_PASSWORD",
+              "tmdb_key": "TMDB_KEY", "plex_token": "PLEX_TOKEN", "token": "PLEXSIM_TOKEN"}
 STOP_GRACE = 15          # seconds between SIGTERM and SIGKILL; the server saves on SIGTERM
 FAILURE_WINDOW = 600     # a server that fails this often within ten minutes ...
 FAILURE_LIMIT = 5        # ... is marked failed rather than restarted again
@@ -102,16 +102,16 @@ def validate(config, partial=False):
     """The configuration as stored, or Refused(400). `partial` checks a PATCH's fields."""
     if not isinstance(config, dict):
         raise Refused(400, "the configuration must be a JSON object")
-    known = {"name", "port", "rd_token", "catalog", "tmdb_key", "plex_token", "token", "dmm_api_key",
-             "friendly_name", "part_mode", "host", "gdm", "announce_url", "public_url",
+    known = {"name", "port", "catalog", "zurg_url", "zurg_user", "zurg_password", "zurg_mount",
+             "tmdb_key", "plex_token", "token", "friendly_name", "part_mode", "host", "gdm", "announce_url", "public_url",
              "web_root", "assert_claimed", "verbose", "extra_args", "restart"}
     unknown = sorted(set(config) - known)
     if unknown:
         raise Refused(400, "unknown field(s): %s" % ", ".join(unknown))
     out = dict(config)
     # No catalog is needed to create a server: one created from its keys alone gets its
-    # catalog from `build` (the whole Real-Debrid library) before it can start.
-    required = () if partial else ("name", "port", "rd_token")
+    # catalog from `build` (an empty library at zurg's mount) before it can start.
+    required = () if partial else ("name", "port")
     for field in required:
         if out.get(field) in (None, ""):
             raise Refused(400, "%s is required" % field)
@@ -130,8 +130,9 @@ def validate(config, partial=False):
         if not os.path.isfile(catalog):
             raise Refused(400, "catalog %s does not exist" % catalog)
         out["catalog"] = catalog
-    for field in ("rd_token", "tmdb_key", "plex_token", "token", "dmm_api_key", "friendly_name",
-                  "announce_url", "public_url", "web_root", "host"):
+    for field in ("zurg_url", "zurg_user", "zurg_password", "zurg_mount", "tmdb_key",
+                  "plex_token", "token", "friendly_name", "announce_url", "public_url",
+                  "web_root", "host"):
         if field in out and out[field] is not None and not isinstance(out[field], str):
             raise Refused(400, "%s must be a string" % field)
     choices = {"part_mode": ("proxy", "redirect"), "gdm": ("auto", "on", "off"),
@@ -376,7 +377,7 @@ class Manager:
                 "--catalog", self.catalog_path(name), "--part-mode", config["part_mode"],
                 "--gdm", config["gdm"]]
         for field, flag in (("announce_url", "--announce-url"), ("public_url", "--public-url"),
-                            ("web_root", "--web-root")):
+                            ("web_root", "--web-root"), ("zurg_mount", "--zurg-mount")):
             if config.get(field):
                 argv += [flag, config[field]]
         if config.get("assert_claimed"):
@@ -656,20 +657,21 @@ class Manager:
 
     # catalog builds
     def build(self, name, start=False):
-        """`build_catalog.py --library` into the server's database, as a job. `start`:
-        once it succeeds, start the server (or restart it, to serve the new catalog)."""
+        """`build_catalog.py --seed` into the server's database, as a job: an empty library
+        whose locations are zurg's folders, which the server fills by scanning zurg.
+        `start`: once it succeeds, start the server (or restart it)."""
         with self.lock:
             row = self.row(name)
             if name in self.builds:
                 raise Refused(409, "a build for %s is already running" % name)
             os.makedirs(self.directory(name), exist_ok=True)
             log = open(os.path.join(self.directory(name), "build.log"), "wb")
-            # PLEXSIM_MANAGER_BUILDER replaces the builder (tests/test_manager.py: a real
-            # library build needs a Real-Debrid account and the network).
+            # PLEXSIM_MANAGER_BUILDER replaces the builder (tests/test_manager.py).
             builder = os.environ.get("PLEXSIM_MANAGER_BUILDER") or os.path.join(HERE, "build_catalog.py")
-            argv = [sys.executable, builder, "--library", "--out", self.catalog_path(name)]
-            if row["config"].get("friendly_name"):
-                argv += ["--name", row["config"]["friendly_name"]]
+            argv = [sys.executable, builder, "--seed", "--out", self.catalog_path(name)]
+            for field, flag in (("friendly_name", "--name"), ("zurg_mount", "--zurg-mount")):
+                if row["config"].get(field):
+                    argv += [flag, row["config"][field]]
             try:
                 proc = subprocess.Popen(argv, cwd=HERE, env=self.environment(row["config"]),
                                         stdin=subprocess.DEVNULL, stdout=log,
@@ -709,12 +711,14 @@ pre{background:#f4f4f4;padding:8px;max-height:300px;overflow:auto}</style></head
 <h2>New server</h2>
 <form id=f onsubmit="create(event)">
 <input name=name placeholder="name" required> <input name=port type=number placeholder="port" required>
-<input name=catalog placeholder="catalog .json/.db (optional: else build from the library)" size=48><br>
-<input name=rd_token type=password placeholder="Real-Debrid key" required>
+<input name=catalog placeholder="catalog .json/.db (optional: else seed an empty library)" size=48><br>
+<input name=zurg_url placeholder="zurg URL, e.g. http://127.0.0.1:9999">
+<input name=zurg_user placeholder="zurg user (optional)">
+<input name=zurg_password type=password placeholder="zurg password (optional)">
+<input name=zurg_mount placeholder="zurg mount_path (default /mnt/zurg)"><br>
 <input name=tmdb_key type=password placeholder="TMDB key (optional)">
 <input name=plex_token type=password placeholder="Plex token (optional)">
-<input name=token type=password placeholder="server token (optional)">
-<input name=dmm_api_key type=password placeholder="DMM API key (optional)"><br>
+<input name=token type=password placeholder="server token (optional)"><br>
 <input name=friendly_name placeholder="friendly name (optional)">
 <select name=part_mode><option>proxy<option>redirect</select>
 <select name=gdm><option>auto<option>on<option>off</select>
@@ -735,12 +739,12 @@ ${['start','stop','restart'].map(a=>`<button onclick="act('${esc(s.name)}','${a}
 <button onclick="build('${esc(s.name)}')">build &amp; start</button> <button onclick="logs('${esc(s.name)}')">logs</button> <button onclick="del('${esc(s.name)}')">delete</button>`).join('')}
 catch(e){out.textContent=e.message}}
 async function act(n,a){try{await api('POST','/servers/'+n+'/'+a)}catch(e){out.textContent=e.message};load()}
-async function build(n){try{await api('POST','/servers/'+n+'/build',{start:true});out.textContent='building '+n+' from the library...'}catch(e){out.textContent=e.message}}
+async function build(n){try{await api('POST','/servers/'+n+'/build',{start:true});out.textContent='seeding '+n+'...'}catch(e){out.textContent=e.message}}
 async function logs(n){try{out.textContent=(await api('GET','/servers/'+n+'/logs?lines=200')).lines.join('\\n')}catch(e){out.textContent=e.message}}
 async function del(n){if(!confirm('Delete '+n+'? Its files are kept.'))return;try{await api('DELETE','/servers/'+n)}catch(e){out.textContent=e.message};load()}
 async function create(ev){ev.preventDefault();const d=Object.fromEntries(new FormData(ev.target));
-const c={name:d.name,port:+d.port,rd_token:d.rd_token,part_mode:d.part_mode,gdm:d.gdm,assert_claimed:!!d.assert_claimed};
-for(const k of ['catalog','tmdb_key','plex_token','token','dmm_api_key','friendly_name'])if(d[k])c[k]=d[k];
+const c={name:d.name,port:+d.port,part_mode:d.part_mode,gdm:d.gdm,assert_claimed:!!d.assert_claimed};
+for(const k of ['catalog','zurg_url','zurg_user','zurg_password','zurg_mount','tmdb_key','plex_token','token','friendly_name'])if(d[k])c[k]=d[k];
 try{await api('POST','/servers',c);ev.target.reset()}catch(e){out.textContent=e.message};load()}
 load();setInterval(load,3000);
 </script></body></html>"""
@@ -929,13 +933,11 @@ def client(args):
                   "part_mode": args.part_mode, "gdm": args.gdm, "host": args.host,
                   "restart": args.restart, "assert_claimed": args.assert_claimed,
                   "verbose": args.verbose, "extra_args": args.extra_arg or []}
-        for field, default_env in (("rd_token", "RD_TOKEN"), ("tmdb_key", "TMDB_KEY"),
-                                   ("plex_token", "PLEX_TOKEN"), ("token", "PLEXSIM_TOKEN"),
-                                   ("dmm_api_key", "DMM_API_KEY")):
+        for field, default_env in SECRET_ENV.items():
             value = secret(args, field, default_env)
             if value:
                 config[field] = value
-        for field in ("friendly_name", "announce_url", "public_url", "web_root"):
+        for field in ("friendly_name", "announce_url", "public_url", "web_root", "zurg_mount"):
             if getattr(args, field):
                 config[field] = getattr(args, field)
         print(json.dumps(call(args, "POST", "/servers", config), indent=1))
@@ -977,13 +979,12 @@ def main(argv=None):
     create.add_argument("name")
     create.add_argument("--port", type=int, required=True)
     create.add_argument("--catalog", help="a .json or .db catalog, copied into the server's directory;"
-                                          " without one, `build` the server's catalog from the library")
-    for field, default_env in (("rd_token", "RD_TOKEN"), ("tmdb_key", "TMDB_KEY"),
-                               ("plex_token", "PLEX_TOKEN"), ("token", "PLEXSIM_TOKEN"),
-                               ("dmm_api_key", "DMM_API_KEY")):
+                                          " without one, `build` seeds an empty library at zurg's mount")
+    for field, default_env in SECRET_ENV.items():
         create.add_argument("--%s-env" % field.replace("_", "-"), dest=field + "_env", metavar="VAR",
                             help="environment variable holding it (default %s)" % default_env)
     create.add_argument("--friendly-name")
+    create.add_argument("--zurg-mount", help="zurg's mount_path (the server's --zurg-mount)")
     create.add_argument("--part-mode", choices=("proxy", "redirect"), default="proxy")
     create.add_argument("--gdm", choices=("auto", "on", "off"), default="auto")
     create.add_argument("--host", default="0.0.0.0")

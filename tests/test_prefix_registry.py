@@ -62,7 +62,7 @@ def main():
         raise SystemExit("fixture denominator is not the executed 58-path list")
 
     port = free_port()
-    env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1")
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
     proc = subprocess.Popen(
         server_command("--port", port, "--catalog", os.path.join(HERE, "catalog_ui.json"),
                         "--gdm", "off", root=ROOT),

@@ -103,7 +103,7 @@ def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
     # The statistics buckets are CALENDAR buckets in the server's local time; a zone with
     # summer time is what tells a local January 1st from a UTC one.
-    env = dict(os.environ, RD_TOKEN="dummy", PLEXSIM_PLEXTV_URL="http://127.0.0.1:9",
+    env = dict(os.environ, PLEXSIM_PLEXTV_URL="http://127.0.0.1:9",
                PYTHONDONTWRITEBYTECODE="1", TZ=ZONE)
     for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
         env.pop(name, None)

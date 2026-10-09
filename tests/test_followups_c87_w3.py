@@ -58,7 +58,7 @@ PROVIDER_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_provider_ids_zen.json"
 WRITE_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_provider_writes_s42.json")
 RENAME_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_group_rename_s42.json")
 DELETE_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_deletes_s42.json")
-ENV = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1",
+ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
            PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
 for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)

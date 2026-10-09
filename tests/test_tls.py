@@ -106,7 +106,7 @@ def http_over(sock, path="/identity"):
 
 
 def serve(port, extra):
-    env = dict(os.environ, RD_TOKEN="dummy")
+    env = dict(os.environ)
     proc = subprocess.Popen(
         server_command("--port", port, "--catalog", os.path.join(HERE, "catalog_ui.json"),
                         *extra, root=ROOT),

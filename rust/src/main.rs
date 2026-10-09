@@ -34,6 +34,7 @@ const SERVER_OPTIONS: &[(&str, &str, bool)] = &[
     ("--account-state-interval", "ACCOUNT_STATE_INTERVAL", true),
     ("--state", "STATE", true),
     ("--no-state", "", false),
+    ("--zurg-mount", "ZURG_MOUNT", true),
 ];
 
 /// `parser.print_usage()`: argparse's wrapped usage block, with this binary's name.
@@ -64,7 +65,7 @@ fn server_usage() -> String {
 /// the oracle's own help text.
 fn server_help() -> String {
     let helps: HashMap<&str, &str> = [
-        ("--part-mode", "proxy streams bytes through plexsim; redirect 302s to the debrid CDN"),
+        ("--part-mode", "proxy streams bytes from zurg through plexsim; redirect 302s to the provider URL zurg's signed link names"),
         ("--token", "require this X-Plex-Token on every request except /identity and /web/* -- which is what a real PMS does. Default OFF, because the test suites and probes talk to plexsim without one; a real server always has a token, so leaving it off is a deliberate deviation."),
         ("--assert-claimed", "report claimed=1 without performing a real plex.tv claim exchange"),
         ("--web-root", "directory of the extracted Plex Web client, served at /web"),
@@ -79,6 +80,7 @@ fn server_help() -> String {
         ("--account-state-interval", "seconds between claimed-account watch/rating imports"),
         ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: plexsim.db beside the catalog, or the catalog itself when it is a database (state.pickle for the Python server), or $PLEXSIM_STATE"),
         ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $PLEXSIM_STATE"),
+        ("--zurg-mount", "zurg's mount_path: Part files and library locations live under it, and the same files are /dav/... on zurg ($ZURG_URL, with $ZURG_USER/$ZURG_PASSWORD). Default /mnt/zurg"),
     ]
     .into_iter()
     .collect();
@@ -235,6 +237,7 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
             "--account-state-interval" => options.account_state_interval = int(&value)?.try_into().map_err(|_| format!("argument {flag}: invalid int value: '{value}'"))?,
             "--state" => options.state = Some(PathBuf::from(value)),
             "--no-state" => options.state = Some(PathBuf::new()),
+            "--zurg-mount" => options.zurg_mount = value,
             _ => unreachable!("every SERVER_OPTIONS flag is matched"),
         }
         // argparse checks `choices` as it consumes the option, before any later `-h`.
@@ -288,13 +291,7 @@ fn run_server(args: &[String]) -> Result<(), String> {
             print!("{}", server_help());
             Ok(())
         }
-        ServerArgs::Serve(options) => runtime::serve(*options).map_err(|error| {
-            if error.starts_with("RD_TOKEN must be set") {
-                failed(error)
-            } else {
-                error
-            }
-        }),
+        ServerArgs::Serve(options) => runtime::serve(*options),
     }
 }
 

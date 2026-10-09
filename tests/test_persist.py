@@ -57,7 +57,7 @@ class Instance:
             command.remove("--no-state")
         if state:
             command += ["--state", state]
-        env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1")
+        env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
         env.pop("PLEXSIM_STATE", None)
         if env_state is not None:
             env["PLEXSIM_STATE"] = env_state

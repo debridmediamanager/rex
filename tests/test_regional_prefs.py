@@ -61,7 +61,7 @@ def main():
     base_by_id = {row["id"]: row for row in base}
     languages = ("pt-BR", "pt-PT", "hu-HU")
     port = free_port()
-    env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1")
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
     proc = subprocess.Popen(
         server_command("--port", port,
                         "--catalog", os.path.join(ROOT, "tests", "catalog_ui.json"),

@@ -69,7 +69,7 @@ def main():
     assert added[1] == ["21", "387", "388"] and added[2][:4] == ["21", "25", "26", "27"], added
     assert len(added[3]) == 9 and len(added[4]) == 18, added
     port = free_port()
-    env = dict(os.environ, RD_TOKEN="dummy", PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
+    env = dict(os.environ, PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
     env.pop("TMDB_KEY", None)
     env.pop("PLEXSIM_STATE", None)
     proc = subprocess.Popen(

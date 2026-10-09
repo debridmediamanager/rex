@@ -310,7 +310,7 @@ def run(server):
 
 def main():
     port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
-    env = dict(os.environ, RD_TOKEN="dummy", PLEXSIM_PLEXTV_URL="http://127.0.0.1:9",
+    env = dict(os.environ, PLEXSIM_PLEXTV_URL="http://127.0.0.1:9",
                PYTHONDONTWRITEBYTECODE="1")
     for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
         env.pop(name, None)

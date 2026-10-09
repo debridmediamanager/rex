@@ -1,4 +1,4 @@
-"""Which title a Real-Debrid torrent is, from the most exact evidence to the least.
+"""Which title a release is, from the most exact evidence to the least.
 
 Measured on the user's own library on 2026-10-06 (3,347 torrents; DMM's labels as the
 answer key, `tests/fixtures/identify/`), before any of this was written:
@@ -14,23 +14,19 @@ answer key, `tests/fixtures/identify/`), before any of this was written:
 * DMM already knows half the library by its info hash (1,687 of 3,347: zurg's own
   matches, and the pages users added each release from), which is exact.
 
-So, in order: an id written into the name, the hash in DMM, then the cleaned name to
-Plex's matcher and TMDB, with their agreement as the confidence. Nothing is guessed: a
-release no source names stays unidentified, for Fix Match.
+So, in order: an id written into the name, the hash's known IMDb id (zurg asks DMM and
+hands it over as the release's `imdb_id`), then the cleaned name to Plex's matcher and
+TMDB, with their agreement as the confidence. Nothing is guessed: a release no source
+names stays unidentified, for Fix Match. The native server's port is
+`rust/src/identify.rs`, held to this module's score on the same corpus.
 """
 
-import json
-import os
 import re
-import urllib.request
 
 import metadata as metadata_module
 
 # Confidence, most to least certain. `exact` came from an id, not a name.
 EXACT, AGREED, SINGLE, NONE = "exact", "agreed", "single", "none"
-
-DMM_IDENTIFY = "https://debridmediamanager.com/api/torrents/identify"
-DMM_BATCH = 500
 
 # Ids a release names outright: Radarr/Sonarr folder tags (`{imdb-tt4357198}`,
 # `[imdbid-tt…]`, `{tmdb-12345}`) and a bare IMDb id. Seen in the library as
@@ -106,54 +102,6 @@ def is_show(parsed):
     return parsed["episode"] is not None or parsed["season"] is not None or parsed["pack"]
 
 
-class Dmm:
-    """DMM's `POST /api/torrents/identify`: hash -> {imdbId, title, year}.
-
-    Needs a sponsor's DMM API key (`DMM_API_KEY`). Answers are cached on disk; a
-    failed call identifies nothing and the name-based steps carry on.
-    """
-
-    def __init__(self, api_key, cache_path=None, url=DMM_IDENTIFY, opener=None):
-        self._key = api_key
-        self._url = url
-        self._cache_path = cache_path
-        self._open = opener or self._urlopen
-        self._cache = {}
-        if cache_path and os.path.exists(cache_path):
-            try:
-                with open(cache_path) as handle:
-                    self._cache = json.load(handle)
-            except ValueError:
-                self._cache = {}
-
-    def _urlopen(self, hashes):
-        request = urllib.request.Request(
-            self._url, method="POST", data=json.dumps({"hashes": hashes}).encode(),
-            headers={"x-api-key": self._key, "Content-Type": "application/json",
-                     "Accept": "application/json", "User-Agent": "plexsim-build-catalog"})
-        with urllib.request.urlopen(request, timeout=60) as response:
-            return json.load(response)
-
-    def lookup(self, hashes):
-        """{hash: imdbId} for the hashes DMM knows."""
-        wanted = sorted({h.lower() for h in hashes if re.fullmatch(r"[0-9a-fA-F]{40}", h)})
-        missing = [h for h in wanted if h not in self._cache]
-        for start in range(0, len(missing), DMM_BATCH):
-            batch = missing[start:start + DMM_BATCH]
-            try:
-                answer = self._open(batch) or {}
-            except Exception as error:  # noqa: BLE001
-                print("  DMM identify failed (%s); matching by name" % error, flush=True)
-                break
-            identities = answer.get("identities") or {}
-            for h in batch:
-                self._cache[h] = (identities.get(h) or {}).get("imdbId")
-        if self._cache_path:
-            with open(self._cache_path, "w") as handle:
-                json.dump(self._cache, handle)
-        return {h: self._cache[h] for h in wanted if self._cache.get(h)}
-
-
 class Identity(dict):
     """kind ('movie'|'show'), imdb, tmdb, plex guid, confidence, source, and the
     parsed name. A dict so it can be written into the catalog as it is."""
@@ -161,8 +109,8 @@ class Identity(dict):
 
 class Identifier:
     """Runs the steps in order for one torrent. `plex` is a metadata.PlexProvider,
-    `tmdb` a metadata.Tmdb, `dmm` a Dmm with the library's hashes already looked up
-    (`known`); any of them may be None."""
+    `tmdb` a metadata.Tmdb, `known` the info hashes whose IMDb id is already known
+    ({hash: imdb}); any of them may be None."""
 
     def __init__(self, tmdb=None, plex=None, known=None):
         self.tmdb = tmdb

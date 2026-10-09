@@ -106,7 +106,7 @@ def main():
     assert all(read["768"]["updatedAt"] == before for read in merge["reads"]), merge["reads"]
 
     port = free_port()
-    env = dict(os.environ, RD_TOKEN="dummy", PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
+    env = dict(os.environ, PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
     env.pop("TMDB_KEY", None)
     env.pop("PLEXSIM_STATE", None)
     proc = subprocess.Popen(

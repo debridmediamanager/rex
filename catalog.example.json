@@ -6,13 +6,25 @@
       "key": "1",
       "type": "movie",
       "title": "Debrid Movies",
-      "uuid": "4d3316c14882aeacb807a385e2b089e2a47f563f"
+      "uuid": "4d3316c14882aeacb807a385e2b089e2a47f563f",
+      "Location": [
+        {
+          "id": 1,
+          "path": "/mnt/zurg/movies"
+        }
+      ]
     },
     {
       "key": "2",
       "type": "show",
       "title": "Debrid TV",
-      "uuid": "f4ff9b82807b7e5a1972f3b818062ffee2e373e8"
+      "uuid": "f4ff9b82807b7e5a1972f3b818062ffee2e373e8",
+      "Location": [
+        {
+          "id": 2,
+          "path": "/mnt/zurg/shows"
+        }
+      ]
     }
   ],
   "items": [
@@ -204,7 +216,7 @@
               "id": 10010,
               "key": "/library/parts/10010/1789180059/file.mkv",
               "duration": 1311769,
-              "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "file": "/mnt/zurg/shows/The.Simpsons.S19.1080p.AMZN.WEB-DL.DD+5.1.H.264-CtrlHD/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
               "size": 1546039833,
               "container": "mkv",
               "videoProfile": "high",
@@ -268,7 +280,6 @@
           ]
         }
       ],
-      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
       "originallyAvailableAt": "2007-12-16",
       "tagline": "Just a product of society that's lost its good manners.",
       "rating": 8.0,
@@ -508,7 +519,7 @@
               "id": 10050,
               "key": "/library/parts/10050/1789180063/file.mp4",
               "duration": 2588252,
-              "file": "/plexsim/1/Hells.Kitchen.S17E16.1080p.FAWE.WEB.DL.AAC2.0.H.264-FUZEER.mp4",
+              "file": "/mnt/zurg/shows/Hells.Kitchen.S17.1080p.FAWE.WEB-DL.AAC2.0.H.264-FUZEER/Hells.Kitchen.S17E16.1080p.FAWE.WEB.DL.AAC2.0.H.264-FUZEER.mp4",
               "size": 1874229686,
               "container": "mp4",
               "videoProfile": "main",
@@ -560,7 +571,6 @@
           ]
         }
       ],
-      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
       "originallyAvailableAt": "2018-02-02",
       "tagline": "He's no angel.",
       "rating": 6.8,
@@ -621,7 +631,7 @@
       "titleSort": "Tears of Steel",
       "originalTitle": "Tears of Steel.webm",
       "year": 2012,
-      "summary": "The film\u2019s premise is about a group of warriors and scientists, who gathered at the \u201cOude Kerk\u201d in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
+      "summary": "The film’s premise is about a group of warriors and scientists, who gathered at the “Oude Kerk” in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
       "duration": 734167,
       "addedAt": 1789180064,
       "updatedAt": 1789180064,
@@ -651,7 +661,7 @@
               "id": 10070,
               "key": "/library/parts/10070/1789180064/file.webm",
               "duration": 734167,
-              "file": "/plexsim/1/Tears of Steel.webm",
+              "file": "/mnt/zurg/movies/Tears of Steel (2012)/Tears of Steel.webm",
               "size": 571346576,
               "container": "webm",
               "videoProfile": "0",
@@ -698,7 +708,6 @@
           ]
         }
       ],
-      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
       "originallyAvailableAt": "2012-09-25",
       "rating": 5.7,
       "audienceRating": 5.7,
@@ -739,7 +748,7 @@
         },
         {
           "tag": "Rogier Schippers",
-          "role": "Kapit\u00e4n",
+          "role": "Kapitän",
           "thumb": "https://image.tmdb.org/t/p/w185/fUeXGTjkNZPwHK1JZwtiK6SUYmT.jpg"
         },
         {

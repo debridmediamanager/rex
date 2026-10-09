@@ -143,7 +143,7 @@ def start(catalog, tcp, gdm_ports, extra=()):
         server_command("--port", tcp, "--catalog", catalog, "--gdm", "auto",
                        "--assert-claimed", *extra, root=ROOT),
         cwd=ROOT,
-        env=dict(os.environ, RD_TOKEN="dummy",
+        env=dict(os.environ, 
                  PLEXSIM_GDM_PORTS=",".join(str(port) for port in gdm_ports)),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,

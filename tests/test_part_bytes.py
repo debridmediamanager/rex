@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """plexsim's MEDIA BYTE path against what a real PMS answers. No credential needed.
 
-For the whole programme the part path could not be checked: every Real-Debrid link in
+For the whole programme the part path could not be checked: every provider link in
 the checked-in fixture is account-scoped and dead, so `tests/test_all.py` reported
 `0/11 served` for fifteen cycles and every rule about a media body was measured on a
 REFERENCE and implemented on faith. Cycle 44 found thirteen of twenty `Range` cells
@@ -9,9 +9,10 @@ wrong on that path, including two that break every seek a real player makes.
 
 So this suite stands up the upstream instead of asking for one:
 
-    local CDN   -- a byte range server with ordinary CDN semantics
-    local RD    -- one route, `POST /unrestrict/link`, naming that CDN url
-    plexsim     -- started with RD_API pointed at the stub, on a generated catalog
+    local zurg  -- WebDAV file reads with ordinary byte-range semantics, behind basic
+                   auth, answering 404 for a file it no longer has
+    plexsim     -- started with ZURG_URL pointed at the stub, on a generated catalog
+                   whose Part files sit under `--zurg-mount`
 
 and then drives plexsim's real handler. The expectations are the values kids (1.43.4)
 and zen (1.42.2) answer for the same header against their own parts, recorded in
@@ -60,10 +61,39 @@ class _Quiet(http.server.BaseHTTPRequestHandler):
         pass
 
 
-class CDN(_Quiet):
-    """An ordinary byte-range origin: what RD's CDN is to plexsim."""
+UNAVAILABLE = {"on": False}
+AUTH = "Basic " + __import__("base64").b64encode(b"zurg-user:zurg-pass").decode()
+SEEN = {"paths": []}
+
+
+class Zurg(_Quiet):
+    """zurg's WebDAV file read: what plexsim streams a Part from."""
+
+    def _gate(self):
+        SEEN["paths"].append(self.path)
+        if self.headers.get("Authorization") != AUTH:
+            self.send_response(401)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return False
+        if UNAVAILABLE["on"] and "gone" in self.path:
+            # What zurg answers for a file that is no longer in the library.
+            self.send_response(404)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return False
+        return True
+
+    def do_HEAD(self):
+        if not self._gate():
+            return
+        self.send_response(200)
+        self.send_header("Content-Length", str(SIZE))
+        self.end_headers()
 
     def do_GET(self):
+        if not self._gate():
+            return
         spec = self.headers.get("Range")
         first, last = 0, SIZE - 1
         partial = False
@@ -93,33 +123,6 @@ class CDN(_Quiet):
         self.wfile.write(chunk)
 
 
-UNAVAILABLE = {"on": False}
-
-
-def make_rd(cdn_url):
-    class RD(_Quiet):
-        def do_POST(self):
-            length = int(self.headers.get("Content-Length") or 0)
-            self.rfile.read(length)
-            if UNAVAILABLE["on"]:
-                # What Real-Debrid answers for a link whose file is gone.
-                body = json.dumps({"error": "unavailable_file",
-                                   "error_code": 24}).encode()
-                self.send_response(404)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-                return
-            payload = json.dumps({"download": cdn_url, "filesize": SIZE}).encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(payload)))
-            self.end_headers()
-            self.wfile.write(payload)
-    return RD
-
-
 def serve(handler):
     port = free_port()
     httpd = socketserver.ThreadingTCPServer(("127.0.0.1", port), handler)
@@ -147,9 +150,7 @@ CATALOG = {
                    "Part": [{"id": 10, "container": "mp4", "size": SIZE,
                              "duration": 60000,
                              "key": "/library/parts/10/1700000000/file.mp4",
-                             "file": "/plexsim/1/byte movie.mp4",
-                             # Not a credential: the stub RD above answers any link.
-                             "_debrid": "https://real-debrid.com/d/PARTBYTESTEST",
+                             "file": "/zurg/movies/Byte Movie (2026) +1/byte movie.mp4",
                              "Stream": [
                                  {"id": 1001, "streamType": 1, "codec": "h264",
                                   "index": 0, "width": 1280, "height": 720},
@@ -157,8 +158,7 @@ CATALOG = {
                                   "index": 1, "channels": 2, "selected": True},
                              ]}]}],
     }, {
-        # A second row, so the unavailable-file check resolves a link the cache has
-        # never seen: `Resolver` memoises per link with a TTL the suite cannot reach.
+        # A second row: the file zurg stops serving.
         "ratingKey": "2", "key": "/library/metadata/2",
         "librarySectionID": 1, "librarySectionTitle": "Bytes",
         "librarySectionKey": "/library/sections/1",
@@ -172,8 +172,7 @@ CATALOG = {
                    "Part": [{"id": 20, "container": "mp4", "size": SIZE,
                              "duration": 60000,
                              "key": "/library/parts/20/1700000000/file.mp4",
-                             "file": "/plexsim/1/gone movie.mp4",
-                             "_debrid": "https://real-debrid.com/d/PARTBYTESGONE",
+                             "file": "/zurg/movies/Gone Movie (2026)/gone movie.mp4",
                              "Stream": [
                                  {"id": 2001, "streamType": 1, "codec": "h264",
                                   "index": 0, "width": 1280, "height": 720},
@@ -240,16 +239,16 @@ def raw(port, path, headers=(), method="GET"):
 
 
 def main():
-    cdn_port, _cdn = serve(CDN)
-    rd_port, _rd = serve(make_rd("http://127.0.0.1:%d/file.mp4" % cdn_port))
+    zurg_port, _zurg = serve(Zurg)
     catalog = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
     json.dump(CATALOG, catalog)
     catalog.close()
     port = free_port()
-    environment = dict(os.environ, RD_TOKEN="dummy",
-                       RD_API="http://127.0.0.1:%d" % rd_port)
+    environment = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port,
+                       ZURG_USER="zurg-user", ZURG_PASSWORD="zurg-pass")
     process = subprocess.Popen(
-        server_command("--port", port, "--catalog", catalog.name, "--assert-claimed", root=ROOT),
+        server_command("--port", port, "--catalog", catalog.name, "--assert-claimed",
+                       "--zurg-mount", "/zurg", root=ROOT),
         cwd=ROOT, env=environment,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -269,6 +268,9 @@ def main():
         status, _n, _v, body = raw(port, key)
         check("the local upstream serves the part at all",
               status == 200 and len(body) == SIZE, "%s %d bytes" % (status, len(body)))
+        check("the part is read from zurg's WebDAV path for its file, with zurg's credential",
+              "/dav/movies/Byte%20Movie%20%282026%29%20%2B1/byte%20movie.mp4" in SEEN["paths"],
+              SEEN["paths"][-3:])
 
         # -- the measured Range grammar, cell by cell ------------------------------
         wrong = []
@@ -411,7 +413,7 @@ def main():
                 headers={"Accept": "application/json"}), timeout=30) as response:
             unchecked = json.load(response)["MediaContainer"]["Metadata"][0]
         unchecked_part = unchecked["Media"][0]["Part"][0]
-        check("file-check options report a live and an unavailable provider link",
+        check("file-check options report a live and an unavailable file",
               set(live_states.values()) == {(True, True)}
               and set(dead_states.values()) == {(False, False)}
               and "accessible" not in unchecked_part and "exists" not in unchecked_part,
