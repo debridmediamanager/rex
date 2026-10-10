@@ -5,8 +5,9 @@ A Plex Media Server that owns no files.
 simplex answers the PMS API closely enough that the **official** Plex clients
 treat it as a real server — it appears in the account's server list, browses
 like a library, and direct-plays 1080p H.264 in Plex Web with zero dropped
-frames. The media is never on disk: the library is [zurg](https://github.com/debridmediamanager/zurg)'s,
-and every part read is a Range read of zurg's WebDAV.
+frames. The media is never on disk: the library is what a source such as
+[zurg](https://github.com/debridmediamanager/zurg) pushes to it, and every part read is a
+Range read of that source.
 
 Think [remux](https://github.com/lostb1t/remux), but for Plex instead of
 Jellyfin.
@@ -24,11 +25,13 @@ Jellyfin.
 - **A real library shape.** Movies in a movie section; shows with seasons and
   episodes, synthesised parents, `childCount`/`leafCount`, On Deck, Extras and
   per-section preferences.
-- **A live library from zurg.** zurg asks simplex to scan each release it adds,
-  changes or drops (the normal `/library/sections/{id}/refresh?path=`); simplex lists
-  the folder on zurg's WebDAV, adds the new files with zurg's stored ffprobe, trashes
-  what is gone the way a real PMS does, and keeps every ratingKey for good.
-- **Real identification.** zurg's IMDb id for a release is exact; otherwise its name
+- **A live library its sources push.** zurg (or any HTTP server that honours `Range`)
+  pushes the items it holds to simplex's feed API (`docs/feed-api.md`); simplex lists
+  and queries nothing. A new file becomes a row with the source's ffprobe, an
+  unprobed one waits until its probe arrives, a file that is gone is trashed the way a
+  real PMS trashes it, and every ratingKey is kept for good.
+- **Real identification.** A pushed IMDb id is exact (and a late one re-identifies the
+  row on its key); otherwise the release name
   goes to Plex's own matcher and TMDB, and their agreement is the confidence. TMDB
   gives episode titles, summaries, cast, posters and art, and Plex's metadata agent
   the real `plex://show|season|episode|movie/<24hex>` guids.
@@ -63,8 +66,8 @@ simplex serves **anyone who can reach the port** unless you give it a token:
 
 ## Quick start
 
-simplex is a native Rust server (`rust/`) in front of a zurg. Build it, write its
-catalog -- the server's identity and two libraries whose folders are zurg's -- and run it:
+simplex is a native Rust server (`rust/`) that zurg feeds. Build it, write its catalog --
+the server's identity and two libraries whose locations are zurg's -- and run it:
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
@@ -72,24 +75,28 @@ python3 build_catalog.py --seed --name den --zurg-mount /mnt/zurg --out simplex.
 #   a movie library at /mnt/zurg/movies and a show library at /mnt/zurg/shows
 #   (--movies/--shows name other zurg directories)
 export ZURG_URL=http://127.0.0.1:9999 ZURG_USER=... ZURG_PASSWORD=...   # zurg's username/password, if set
+export SIMPLEX_FEED_TOKEN=$(openssl rand -hex 24)   # what zurg pushes with
 export TMDB_KEY=... PLEX_TOKEN=...       # identification; without them new items stay unmatched
 rust/target/release/simplex --catalog simplex.db --zurg-mount /mnt/zurg --port 32400
 ```
 
-`run.sh.example` is the same as a script. At start simplex scans every library once;
-afterwards zurg tells it what changed. In zurg's `config.yml`:
+`ZURG_URL` makes zurg the source named `zurg`: a part's bytes are read from
+`$ZURG_URL/dav/...`. More sources, or one that is not zurg, go in a `--sources` file
+(`docs/feed-api.md`). `run.sh.example` is the same as a script. In zurg's `config.yml`:
 
 ```yaml
 mount_path: /mnt/zurg            # simplex's --zurg-mount; zurg needs no real mount for simplex
-plex_server_url: http://127.0.0.1:32400
+simplex_url: http://127.0.0.1:32400   # zurg probes every new release and identifies it before filing
+simplex_feed_token: <SIMPLEX_FEED_TOKEN>   # zurg pushes its library to simplex
+plex_server_url: http://127.0.0.1:32400   # optional: for zurg's matcher; zurg sends simplex no scans
 plex_token: anything             # simplex's --token when it has one
-simplex_url: http://127.0.0.1:32400   # zurg then probes every new release and rescans it once probed
 plex_settings_policy: off        # zurg leaves simplex's preferences alone
 ```
 
-zurg finds a library by its location: a release in zurg's `movies` directory is scanned
-in the library whose `Location` is `<mount_path>/movies`, and zurg's matcher reads each
-item's Part `file` (`<mount_path>/<directory>/<release>/<file>`) and `imdb://` Guid back.
+zurg pushes a full snapshot once its library has loaded and every few hours, and each
+change as it happens. An item lands in the library whose `Location` holds its file
+(`<mount_path>/<directory>/...`), and zurg's matcher reads each item's Part `file`
+(`<mount_path>/<directory>/<release>/<file>`) and `imdb://` Guid back.
 Then open `http://127.0.0.1:32400/web/index.html` if you are serving a web client bundle
 with `--web-root`, or point any Plex client at the host.
 
@@ -109,7 +116,8 @@ export ZURG_URL=... ZURG_USER=... ZURG_PASSWORD=... TMDB_KEY=... PLEX_TOKEN=...
 ./manager.py start living-room
 ./manager.py list                        # status | logs | stop | restart | delete [--purge] | build
 
-# or from its keys alone: an empty library at zurg's mount, filled by scanning zurg
+# or from its keys alone: an empty library at zurg's mount, for zurg to fill
+# (its feed: --extra-arg=--sources --extra-arg=FILE, docs/feed-api.md)
 ./manager.py create den --port 32401 --gdm on --zurg-mount /mnt/zurg
 ./manager.py build den --start           # build_catalog.py --seed, then start (restart if running)
 ```
@@ -179,7 +187,7 @@ python3 tests/test_ui_surface.py   # the context menu and every server page, end
 python3 tests/test_all.py          # play queue → decision → byte reads → frame decode
 python3 tests/conformance.py       # drives simplex with python-plexapi
 python3 tests/test_persist.py      # --state survives restarts, crashes and catalog rebuilds
-python3 tests/test_native_zurg_scan.py   # scans against a local zurg stub: add, fill, trash, keys
+python3 tests/test_feed.py         # the feed API against a stub source: upsert, hold, trash, snapshot, migration
 ```
 
 ## Documentation

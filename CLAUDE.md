@@ -1,8 +1,8 @@
 # simplex
 
 A Plex Media Server that owns no files. It answers the PMS API well enough that
-the **official** Plex clients treat it as a real server, and serves a library zurg
-holds -- scanned from zurg's WebDAV and streamed from it -- instead of local media.
+the **official** Plex clients treat it as a real server, and serves a library its
+sources push to it -- zurg's, streamed from zurg -- instead of local media.
 
 Not a Plex fork and not a client. It is the server side of the protocol,
 written from measurement against a real PMS.
@@ -48,7 +48,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
 | `mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
 | `decision.py` | A plain-form decision: the client's own profile file (`client_profiles.json`) against the item |
-| `zurg.py` | The oracle's byte source: a Part's file under `--zurg-mount` read from zurg's WebDAV (the native half, which also scans, is `runtime/zurg.rs`) |
+| `zurg.py` | The oracle's byte source: a Part's file under `--zurg-mount` read from zurg's WebDAV (the native server's sources are `runtime/source.rs`) |
 | `gdm.py` | Plex's LAN discovery protocol: the UDP half of being FOUND |
 | `gate.py` | Applies a client's direct-play gate to the catalog |
 | `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
@@ -92,8 +92,8 @@ Where things live in `rust/src/`:
 | `runtime.rs` | The request loop, the route table and most projections; `serve` starts GDM, the state saver and the plex.tv threads |
 | `runtime/wire.rs` | The response envelope: header order, Range/416, CORS, gzip, websocket handshake |
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, TMDB, Plex's metadata agent and artwork |
-| `runtime/zurg.rs`, `runtime/scan.rs` | zurg's WebDAV (paths, bytes, listings, `/api/library/entry`), and the scanner: refreshes queued off the request thread, rows added, filled, trashed, keys minted once (`mint_key`) |
-| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and the port of `identify.py` a scan names releases with |
+| `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (`--sources`, or `ZURG_URL`'s `zurg`: where a Part's bytes are, the feed token), the feed API sources push items to (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`) |
+| `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and the port of `identify.py` the feed names releases with |
 | `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and Fix Match (`SIMPLEX_PLEXTV_URL` points plex.tv at a stub) |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
 | `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | The ports of the Python modules of the same name |
@@ -107,39 +107,45 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
 python3 build_catalog.py --seed --name NAME --zurg-mount /mnt/zurg --out simplex.db
-cp run.sh.example run.sh     # fill in ZURG_URL (+ZURG_USER/ZURG_PASSWORD), TMDB_KEY, PLEX_TOKEN
+cp run.sh.example run.sh     # fill in ZURG_URL (+ZURG_USER/ZURG_PASSWORD), SIMPLEX_FEED_TOKEN, TMDB_KEY, PLEX_TOKEN
 ./run.sh                     # or: rust/target/release/simplex --catalog simplex.db --zurg-mount /mnt/zurg
 ```
 
-zurg is the library and the only byte source; simplex reads no media itself and has no
-provider code of its own. The environment: `ZURG_URL` (zurg's address; without it parts
-have no bytes -- a part read is the 502 an unreachable source is -- and nothing scans),
-`ZURG_USER`/`ZURG_PASSWORD` (zurg's basic auth, when its config sets a username),
-`TMDB_KEY` and `PLEX_TOKEN` (a scan identifies releases with both; Fix Match needs
-TMDB). `--zurg-mount` is zurg's `mount_path` (default `/mnt/zurg`): a Part's `file` is
-`<mount>/<directory>/<release>/<file>`, the same file is `/dav/<directory>/<release>/<file>`
-on zurg, and each library's `Location` is `<mount>/<directory>` -- set in the catalog's
-sections (`build_catalog.py --seed`), or through Add Library's `location`.
+Sources push the library; simplex reads no media itself, lists and queries nothing, and
+has no provider code of its own (`docs/feed-api.md`). The environment: `ZURG_URL`
+(zurg's address) makes zurg the source `zurg` -- a part's bytes are `$ZURG_URL/dav/...`,
+with `ZURG_USER`/`ZURG_PASSWORD` when zurg's config sets a username -- and
+`SIMPLEX_FEED_TOKEN` is the token zurg pushes with (without it the feed is off). Other
+or more sources go in a `--sources` file. With no source a part read is the 502 an
+unreachable source is. `TMDB_KEY` and `PLEX_TOKEN` identify what is pushed (Fix Match
+needs TMDB). `--zurg-mount` is zurg's `mount_path` (default `/mnt/zurg`): a Part's `file`
+is `<mount>/<directory>/<release>/<file>`, and each library's `Location` is
+`<mount>/<directory>` -- set in the catalog's sections (`build_catalog.py --seed`), or
+through Add Library's `location`.
 
-Point zurg at the server in zurg's `config.yml`: `plex_server_url` and `simplex_url`
-(this server's URL), `plex_token` (this server's `--token`; once claimed, a token plex.tv
-lists for it, such as the owner's account token; anything when neither gates),
-`mount_path` (`--zurg-mount`), and `plex_settings_policy: off`. zurg then sends
-`GET /library/sections/{id}/refresh?path=<mount>/<directory>/<release>` for every
-release it adds, probes or drops, and asks `/activities` before each one (a running
-`library.update.section` is "busy"). The scanner (`runtime/scan.rs`) answers the request
-at once, lists the folder on zurg's WebDAV off the request thread, one scan at a time,
-adds new files from `/api/library/entry`, fills in streams once zurg has probed them,
-and trashes what is gone as measured on plexscratch (`tests/fixtures/missing_file_scan_s43.json`:
-soft delete, deleted at once under `autoEmptyTrash`, an unlistable or empty library folder
-trashes nothing, a 503 from a loading zurg is retried). Every library is scanned at start.
-A row's ratingKey is minted once (100000 and up) and never reused: zurg drops a release's
-IMDb id when the key it matched it to disappears.
+Point zurg at the server in zurg's `config.yml`: `simplex_url` (this server's URL),
+`simplex_feed_token` (`$SIMPLEX_FEED_TOKEN`), `mount_path` (`--zurg-mount`), and, for
+zurg's matcher, `plex_server_url` (this server) with `plex_token` (this server's
+`--token`; once claimed, a token plex.tv lists for it, such as the owner's account token)
+and `plex_settings_policy: off`. zurg then pushes a snapshot of its library once it has
+loaded and every few hours, and every change as it happens: `POST`/`DELETE
+/simplex/feed/zurg/items`, `PUT /simplex/feed/zurg/snapshot` (`runtime/feed.rs`). An item
+with no `media_info` is held, not shown, until zurg probes it; a late IMDb id re-identifies
+its row on the same key; a file that is gone is trashed as measured on plexscratch
+(`tests/fixtures/missing_file_scan_s43.json`: soft delete, deleted at once under
+`autoEmptyTrash`, back on its key until `emptyTrash`); a snapshot that names nothing, or
+would remove more than half the source's items, removes nothing without `force`. A row's
+ratingKey is minted once (100000 and up) and never reused: zurg drops a release's IMDb id
+when the key it matched it to disappears. The first push of a file the old WebDAV scanner
+made a row for adopts that row and its key. `/library/sections/{id}/refresh` and
+`/activities` are what they are on a library with nothing to read; old zurg builds still
+send refreshes and change nothing.
 
 The native state file is a SQLite database and does not read the Python server's pickle,
 so a state file does not move between the two. `--announce-url` needs `PLEX_TOKEN`; a comma-separated
 list announces each URI as its own connection, as a PMS with several does. The Python
-oracle reads parts from zurg the same way but does not scan.
+oracle reads parts from zurg's WebDAV under `--zurg-mount` (`zurg.py`, `--part-mode
+redirect` included) and has no feed: the feed is simplex's own API, not PMS emulation.
 
 A real claim -- `POST /myplex/claim?token=` with a token from `plex.tv/api/claim/token.json`,
 once per machineIdentifier -- makes simplex register the way a real PMS does (findings, "The
@@ -189,8 +195,9 @@ restart being the undo button, so **a test instance runs with `--no-state`**:
 `server.py` shim sets an empty `SIMPLEX_STATE`, so only a leg that names `--state` keeps one. The file is tied to the
 catalog's digest; after a catalog rebuild only view state (by guid, then part file) and
 the server-level settings carry over, and the old file is kept as `<file>.stale` --
-unless the saved rows include scanned ones (`_scanned`): a library zurg built is the
+unless the saved rows include scanned ones (`_scanned`): a library a source pushed is the
 state's own and is kept row by row whatever the catalog file says, its new rows joining.
+Held items (`feedHeld`) are kept with it.
 
 ## The reference harness
 
@@ -448,8 +455,8 @@ python3 tests/test_tls.py                   # HTTPS and plain HTTP on one port
 python3 tests/test_prefix_registry.py       # 58 measured prefix shapes
 python3 tests/test_regional_prefs.py        # the regional prefs documents, cell by cell
 python3 tests/test_part_bytes.py            # part reads against a local zurg stub
-python3 tests/test_native_zurg_scan.py      # scans against a local zurg stub: add, fill, trash, keys; with
-                                            # TMDB_KEY and PLEX_TOKEN also live identification of two real releases
+python3 tests/test_feed.py                  # the feed API against a stub source: auth, upsert, late ids, held
+                                            # items, trash and return, snapshot reconcile and guards, migration
 python3 tests/test_server_command.py        # the launcher's native default and python override
 cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests
 ```

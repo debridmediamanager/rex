@@ -1,17 +1,20 @@
 #!/bin/zsh
 # Copy to run.sh (gitignored) and fill in the credentials.
 #
-# zurg is the library and serves every Part's bytes: ZURG_URL is its address, with
-# ZURG_USER and ZURG_PASSWORD when its config sets a username, and --zurg-mount is its
-# mount_path, under which every Part's file and every library's Location lives
-# (./build_catalog.py --seed writes such a catalog). Point zurg's plex_server_url and
-# simplex_url at this server (plex_token: its --token, or anything without one;
-# plex_settings_policy: off) and it asks for a scan of every release it adds or drops.
-# TMDB_KEY and PLEX_TOKEN identify what a scan finds; without them a new item keeps its
-# release name for a title, unmatched, for Fix Match.
+# zurg pushes the library and serves every Part's bytes: ZURG_URL is its address (bytes
+# at $ZURG_URL/dav), with ZURG_USER and ZURG_PASSWORD when its config sets a username,
+# SIMPLEX_FEED_TOKEN is what it pushes with, and --zurg-mount is its mount_path, under
+# which every Part's file and every library's Location lives (./build_catalog.py --seed
+# writes such a catalog). In zurg's config.yml: simplex_url (this server),
+# simplex_feed_token (the same token), and for zurg's matcher plex_server_url (this
+# server), plex_token (its --token, or anything without one), plex_settings_policy: off.
+# Other or more sources: --sources FILE (docs/feed-api.md). TMDB_KEY and PLEX_TOKEN
+# identify what is pushed; without them a new item keeps its release name for a title,
+# unmatched, for Fix Match.
 set -e
 cd "$(dirname "$0")"
 export ZURG_URL=http://127.0.0.1:9999 ZURG_USER= ZURG_PASSWORD=
+export SIMPLEX_FEED_TOKEN=...
 export TMDB_KEY=... PLEX_TOKEN=...
 #
 # On --port 32400 simplex answers Plex's LAN discovery protocol (GDM) on udp/32410

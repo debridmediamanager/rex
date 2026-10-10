@@ -7,8 +7,9 @@ bytes -- the path rclone's mount reads through, so archives, failover and every
 provider are zurg's code rather than a copy of it.
 
 `ZURG_URL` (with `ZURG_USER`/`ZURG_PASSWORD` when zurg asks for basic auth) and
-`--zurg-mount` (zurg's `mount_path`) configure it. The native server's half, which also
-scans, is `rust/src/runtime/zurg.rs`.
+`--zurg-mount` (zurg's `mount_path`) configure it. The native server reads the same
+bytes through its sources (`rust/src/runtime/source.rs`) and takes its library from
+what they push (`rust/src/runtime/feed.rs`); the oracle has no feed.
 """
 
 import base64

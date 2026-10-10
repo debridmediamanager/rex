@@ -2,15 +2,14 @@
 
 This is the feature inventory of the current movie/TV server, based on the code
 and recorded measurements through **cycle 95** (reopen triggers re-checked
-2026-10-06, none fired) and the zurg backend, scanner and plex.tv registration of
-2026-10-09 and 2026-10-10. It describes
+2026-10-06, none fired), the zurg backend and plex.tv registration of 2026-10-09 and
+2026-10-10, and the feed that replaced the scanner on 2026-10-10. It describes
 implemented behavior and its prerequisites, not the current health or
 configuration of a deployed instance.
 
-simplex presents a Plex library that zurg holds: it scans the library from zurg's
-WebDAV when zurg asks, and streams the original media from it without keeping
-complete media files locally. zurg is the only library and byte source; simplex has
-no provider code of its own. Its largest limit is **direct play only**. Library
+simplex presents a Plex library its sources push to it -- zurg's -- and streams the
+original media from them without keeping complete media files locally. simplex lists
+and queries no source and has no provider code of its own. Its largest limit is **direct play only**. Library
 changes last across restarts: a state file beside the catalog is kept by default,
 and `--no-state` turns that off.
 
@@ -33,10 +32,11 @@ axis.
 
 On 2026-10-09 zurg became the only library and byte source: native Real-Debrid
 support was removed, every part is read from zurg's WebDAV, and the native server
-scans its libraries from zurg when zurg asks (see
-[Catalog creation](#catalog-creation-and-metadata)). On 2026-10-10 a real claim
+scanned its libraries from zurg when zurg asked. On 2026-10-10 a real claim
 registered a test identity on plex.tv the way a real PMS registers, and app.plex.tv
-direct-played a movie from it over its announced connection.
+direct-played a movie from it over its announced connection. The same day the direction
+reversed: sources push their items to simplex's feed API and simplex scans nothing (see
+[Catalog creation](#catalog-creation-and-metadata) and [docs/feed-api.md](docs/feed-api.md)).
 
 ## Client access and discovery
 
@@ -46,7 +46,7 @@ direct-played a movie from it over its announced connection.
 - Support the measured native Plex for Android (2026.19.1) browsing, detail,
   playback-state, history, post-play, server-dashboard, history-filter and Top
   Played request flows, and keep its notification socket open. Its detail pages require genuine Plex
-  metadata IDs; a scan obtains them with `PLEX_TOKEN`, and `build_catalog.py --relink`
+  metadata IDs; the feed obtains them with `PLEX_TOKEN`, and `build_catalog.py --relink`
   for an existing catalog.
 - Support the tested `python-plexapi` read, write, and playback workflows.
 - Answer Plex LAN discovery through GDM on UDP ports 32410 and 32414.
@@ -88,23 +88,26 @@ Sources: [server.py](server.py), [gdm.py](gdm.py), [claim.py](claim.py),
 
 ## Catalog creation and metadata
 
-- Build the library from zurg (native server): a library's `Location`s are folders
-  under zurg's mount (`--zurg-mount`, zurg's `mount_path`), and
-  `GET /library/sections/{id}/refresh[?path=]` -- which zurg sends for every release it
-  adds, probes or drops when its `plex_server_url` points here -- is answered at once
-  and lists the folder on zurg's WebDAV off the request thread, one scan at a time. Each
-  new file is added from zurg's `/api/library/entry` (its release, hash, IMDb id and
-  stored ffprobe). A running scan is a `library.update.section` activity in
-  `/activities`, which zurg reads as "busy" before each refresh it sends. A 503 from a
-  zurg still loading its library is retried. Every library whose folders are under
-  zurg's mount is scanned again at start; any other library keeps the catalog-only
-  scan. `build_catalog.py --seed` writes the empty library to start from.
-- Mint each scanned row's ratingKey once, from 100000 up, and never change or reuse it
-  across scans and restarts (zurg drops a release's IMDb id when the key it matched it
-  to disappears).
-- Fill in a row's streams later: a file added before zurg had probed it gets its Media
-  from the probe when zurg rescans the release afterwards (zurg probes every new
-  release while its `simplex_url` is set).
+- Build the library from what its sources push (native server, [feed API](docs/feed-api.md)):
+  `POST`/`DELETE /simplex/feed/{source}/items` and `PUT /simplex/feed/{source}/snapshot`,
+  each admitted by the source's own feed token (never a Plex token) and applied before it
+  is answered, one at a time. An item lands in the library whose `Location` holds its
+  file (or the one it names); its Part `file` is what the source says clients see (zurg:
+  `<mount>/<directory>/<release>/<file>`, which zurg's matcher reads back). simplex lists,
+  scans and queries no source: `GET /library/sections/{id}/refresh` and `/activities`
+  answer as a library with nothing to read does, which old zurg builds still ask for.
+  `build_catalog.py --seed` writes the empty library to start from.
+- Mint each row's ratingKey once, from 100000 up, for its (source, id), and never change
+  or reuse it across pushes and restarts (zurg drops a release's IMDb id when the key it
+  matched it to disappears). The first push of a file the old WebDAV scanner made a row
+  for adopts that row, key and watch state included.
+- Hold an item whose `media_info` has not arrived: it is in no listing, hub, search or
+  count until a push brings its probe, and then arrives as newly added. Held items are
+  listed at `/simplex/feed/{source}/held` and kept across restarts. A row already shown
+  that was added before its probe (by the old scanner) gets its streams from the push.
+- Re-identify a row when a later push names it by an id it was not identified by (a late
+  IMDb id), on the same ratingKey with its watch state; an episode moves to the show its
+  new identity names.
 - Identify each release (native `identify.rs`, the port of `identify.py`), most exact
   evidence first: an id written into the name, then the IMDb id zurg hands over for the
   release's hash (exact), then its cleaned name to Plex's own matcher (`PLEX_TOKEN`) and
@@ -113,22 +116,23 @@ Sources: [server.py](server.py), [gdm.py](gdm.py), [claim.py](claim.py),
   169 of those (98%); overall 193 of 200 were right, against 167 for the earlier
   first-search-hit method, and the Rust port names the same 193. A release no source
   names stays unmatched (`local://`) for Fix Match; nothing is guessed.
-- Trash what zurg no longer has the way a real PMS does (measured on plexscratch):
-  `deletedAt` on the row and its Media, deleted at once when `autoEmptyTrash` is on,
-  restored on the same key when the same file returns before the trash is emptied,
-  gone at `emptyTrash`; a library folder zurg cannot list, or lists empty, trashes
-  nothing.
+- Trash what a source removes the way a real PMS trashes a missing file (measured on
+  plexscratch): `deletedAt` on the row and its Media, deleted at once when
+  `autoEmptyTrash` is on, restored on the same key when the same id returns before the
+  trash is emptied, gone at `emptyTrash`. A snapshot removes what it does not name, but
+  an empty one removes nothing (as an empty library folder trashes nothing) and one that
+  would remove more than half the source's items is refused without `force`.
 - Derive real container, duration, bitrate, resolution, frame-rate, codec,
-  audio-channel, language, and subtitle-stream information from zurg's stored probe.
-- Represent stacked multipart files where the catalog supplies them; the scanner makes
-  one row per file, so a `cd1`/`cd2` pair it finds is two rows.
+  audio-channel, language, and subtitle-stream information from the pushed ffprobe.
+- Represent stacked multipart files where the catalog supplies them; the feed makes
+  one row per item, so a `cd1`/`cd2` pair is two rows.
 - Build separate movie and television sections, with synthesized show and
   season parents, episode ordering, child counts, and leaf counts.
 - Represent multiple media versions and parts where supplied by the catalog.
 - Enrich titles, episode names, summaries, release information, ratings, genres,
   people, posters, and backgrounds using TMDB.
 - Obtain genuine Plex IDs from Plex's metadata provider when configured (`PLEX_TOKEN`),
-  as a scan identifies each release, and relink an existing catalog with
+  as the feed identifies each release, and relink an existing catalog with
   `build_catalog.py --relink`. `build_catalog.py --convert` moves a JSON catalog into
   a database.
 - Cache metadata locally and retain a stable server identity in the catalog.
@@ -137,9 +141,9 @@ Sources: [server.py](server.py), [gdm.py](gdm.py), [claim.py](claim.py),
 - Inspect likely direct-play compatibility using the `gate.py` helper; its
   client-class checks are advisory, not universal device certification.
 
-Sources: [scan.rs](rust/src/runtime/scan.rs), [zurg.rs](rust/src/runtime/zurg.rs),
+Sources: [feed.rs](rust/src/runtime/feed.rs), [scan.rs](rust/src/runtime/scan.rs), [source.rs](rust/src/runtime/source.rs),
 [identify.rs](rust/src/identify.rs), [identify.py](identify.py),
-[scan checks](tests/test_native_zurg_scan.py), [metadata.py](metadata.py),
+[feed checks](tests/test_feed.py), [metadata.py](metadata.py),
 [mediainfo.py](mediainfo.py), [hierarchy.py](hierarchy.py), [gate.py](gate.py).
 
 ## Browsing and recommendations
@@ -189,12 +193,13 @@ Sources: [filters.py](filters.py), [spellfix.py](spellfix.py),
 
 ## Playback, downloads, and queues
 
-- Direct-play original media from zurg: a Part's `file` (`<mount>/<directory>/<release>/<file>`)
-  is `/dav/<directory>/<release>/<file>` on zurg's WebDAV. `--part-mode proxy` (the
-  default) streams those bytes through simplex with the measured Range grammar and the
-  content type the file's extension names; `--part-mode redirect` sends the client to
-  the provider URL zurg's signed link answers with, and proxies a file that has none
-  (an archive member, a Usenet release).
+- Direct-play original media from its source: a pushed row's bytes are
+  `<source url>/<path>` (zurg: `$ZURG_URL/dav/<directory>/<release>/<file>`), and a
+  catalog row's Part `file` under a source's `mount` is read the same way. simplex streams
+  them with the measured Range grammar, the source's own credential and the content type
+  the file's extension names. `--part-mode redirect` is gone from the native server: it
+  sent clients to the provider URL zurg's signed link named, which a source that pushes
+  its items does not hand over (the Python oracle keeps it).
 - Byte-range requests for seeking and partial reads.
 - Original-file downloading.
 - Playback decisions based on client profiles and the selected media/streams.
@@ -206,10 +211,10 @@ Sources: [filters.py](filters.py), [spellfix.py](spellfix.py),
 - Queue `shuffle`/`repeat` as 0/1 integer flags; any other value is refused.
 - Queue selection, versioning, and update responses used by clients, and moving
   a queue to the client that reads it with `own=1`.
-- File checks (`checkFiles` and its two siblings) that ask zurg, and distinct answers
-  for a missing file versus a failure to reach it: zurg's 404 for the file is
-  `accessible=false`/`exists=false` and a 404 on the byte read, another status zurg
-  answers is passed on, and a transport failure is a 502. With no `ZURG_URL` every part
+- File checks (`checkFiles` and its two siblings) that ask the source, and distinct
+  answers for a missing file versus a failure to reach it: the source's 404 for the file
+  is `accessible=false`/`exists=false` and a 404 on the byte read, another status it
+  answers is passed on, and a transport failure is a 502. With no source every part
   read is that 502.
 
 Playback requires the client to support the original container, codecs,
@@ -330,9 +335,8 @@ Sources: [sessions.py](sessions.py), [server.py](server.py).
 - Expose update status and the measured check/apply responses.
 - Expose measured agent/provider/plugin descriptors and configuration surfaces.
 
-These controls have varying depth. On the native server with zurg configured, a scan
-of a library under zurg's mount is real (new files added, missing ones trashed); any
-other scan, and every scan on the Python oracle, works over the existing catalog.
+These controls have varying depth. A scan works over the existing rows on both servers:
+what a library holds comes from its sources' pushes, never from a scan.
 Refresh/Analyze and many maintenance controls
 reproduce client-visible state and notifications rather than implementing a
 full scanner, metadata-refresh pipeline, media-analysis backend, or backup system.
@@ -409,8 +413,9 @@ library changes stay in a copy of the previous database, kept as `<file>.stale`.
 unreadable file is kept as `<file>.corrupt` and the server starts fresh; the file
 admits only plain data, so it cannot name code to run.
 
-A library a scan built is the state's own, and is kept row by row whatever the catalog
-file says: a changed catalog file then only adds its new rows.
+A library its sources pushed is the state's own, and is kept row by row whatever the
+catalog file says: a changed catalog file then only adds its new rows. Held items are
+kept with it.
 
 The catalog can be a database too. `build_catalog.py --seed --out simplex.db` writes one,
 and `build_catalog.py --convert catalog.json --out simplex.db` moves an existing JSON
@@ -442,20 +447,20 @@ Sources: [store.rs](rust/src/store.rs), [catalogdb.py](catalogdb.py),
 
 | Capability | Requirement |
 |---|---|
-| Stream media | `ZURG_URL` (with `ZURG_USER`/`ZURG_PASSWORD` when zurg sets a username), `--zurg-mount` (zurg's `mount_path`, default `/mnt/zurg`) with every Part `file` under it |
-| Build the library from zurg | The native server, the same `ZURG_URL` and `--zurg-mount`, library `Location`s under the mount (`build_catalog.py --seed`), and zurg's `plex_server_url`, `simplex_url`, `plex_token` (this server's `--token`, or once claimed a token plex.tv lists for it) and `plex_settings_policy: off` |
+| Stream media | A source: `ZURG_URL` (with `ZURG_USER`/`ZURG_PASSWORD` when zurg sets a username; bytes at `$ZURG_URL/dav`) or a `--sources` file |
+| Build the library from zurg | The native server, the source `zurg` with a feed token (`SIMPLEX_FEED_TOKEN`, or `token` in `--sources`), library `Location`s under zurg's mount (`--zurg-mount`, `build_catalog.py --seed`), and zurg's `simplex_url` and `simplex_feed_token`; for zurg's matcher also `plex_server_url`, `plex_token` (this server's `--token`, or once claimed a token plex.tv lists for it) and `plex_settings_policy: off` |
 | Start and stop servers on demand | `manager.py serve`; each server's keys, catalog and options in its configuration |
-| Media details of scanned files | zurg's stored ffprobe (zurg probes every new release once `simplex_url` is set; never an archive member or a Usenet release) |
-| Identify scanned releases | zurg's IMDb id for the release, else `PLEX_TOKEN` (Plex's matcher) and `TMDB_KEY`; with neither key and no id a new item keeps its release name, unmatched |
+| Media details of pushed files | The source's ffprobe (zurg probes every new release once `simplex_url` is set; never an archive member or a Usenet release, which stay held) |
+| Identify pushed releases | The item's IMDb or TMDB id, else `PLEX_TOKEN` (Plex's matcher) and `TMDB_KEY`; with neither key and no id a new item keeps its release name, unmatched |
 | TMDB enrichment and live match candidates | `TMDB_KEY` |
-| Genuine Plex metadata IDs for Android details | `PLEX_TOKEN` (scans, `build_catalog.py --relink`) |
+| Genuine Plex metadata IDs for Android details | `PLEX_TOKEN` (the feed, `build_catalog.py --relink`) |
 | Serve Plex Web | An extracted bundle at `--web-root` |
 | Enforce request authentication | A real claim, or `--token`/`SIMPLEX_TOKEN` |
 | Report claimed state for isolated tests | `--assert-claimed`; this does not perform a real claim or raise the gate |
 | Claim the server and register it with plex.tv | `POST /myplex/claim?token=` with a claim token from `plex.tv/api/claim/token.json`, made before `--announce-url` is set |
 | Announce a public endpoint to plex.tv | `--announce-url` (comma-separated for several), `PLEX_TOKEN`, and a reachable configured endpoint |
-| Proxy or redirect media | `--part-mode proxy` (default) or `--part-mode redirect` |
-| The UI suite with no skips | `TMDB_KEY` (the two Fix Match checks), and a zurg serving `catalog_ui.json`'s Part files under `--zurg-mount` (Download) |
+| Proxy media | `--part-mode proxy`, the only mode on the native server |
+| The UI suite with no skips | `TMDB_KEY` (the two Fix Match checks), and a source serving `catalog_ui.json`'s Part files under its mount (`ZURG_URL`, `--zurg-mount`; Download) |
 | Answer LAN discovery | `--gdm on`, or `auto` when serving on port 32400 |
 | Serve HTTPS | `--tls-cert` and the corresponding key via `--tls-key` or the certificate file |
 | Keep library changes across restarts | On by default (`simplex.db` beside the catalog, or the catalog's own database); `--state FILE` or `SIMPLEX_STATE` to move it, `--no-state` to turn it off |
@@ -472,10 +477,10 @@ them enabled.
 | Area | Current boundary |
 |---|---|
 | Transcoding/remuxing | No video/audio conversion, bitrate reduction, subtitle burning, or transcoded streaming fallback. An item the client cannot direct play does not play at all; the client reports that the server "is not powerful enough to convert video" |
-| Media details | zurg never probes an archive member or a Usenet release, so their rows carry no codec, resolution or streams. simplex's decision still answers direct play for them, but a client's own gate reads those `Media` attributes before it asks, and an item it cannot pass hits the transcoding limit above |
+| Media details | zurg never probes an archive member or a Usenet release, so it pushes them with no `media_info` and simplex holds them, unshown, until a probe arrives. A row the old scanner added before its probe still carries no codec, resolution or streams until a push brings one |
 | Persistence | On by default; with `--no-state`, watch state, edits, lists, library changes, uploads, preferences, and statistics last until restart. With it on, a catalog rebuild keeps only view state and server-level settings. There is no PMS database, backup format, or export. Claim state and metadata caches have separate persistent files |
 | Acquisition | No built-in torrent search or magnet acquisition: new media arrives through zurg |
-| Scanning/analysis | Only the native server scans; the Python oracle reads parts from zurg but never scans. Scans list zurg's WebDAV, not a filesystem; no media-analysis pipeline of its own (zurg's ffprobe), generated thumbnails, intro/credits detection, or actual PMS database backups. A row is its file: a renamed release is trashed under its old key and added again on a new one, and its watch state, edits and list entries stay with the old row. The scanner does not stack `cd1`/`cd2` files into one Media |
+| Scanning/analysis | Neither server scans anything: the native server's library is what its sources push, and the Python oracle reads parts from zurg but has no feed. No media-analysis pipeline of its own (the source's ffprobe), generated thumbnails, intro/credits detection, or actual PMS database backups. A row is its (source, id): zurg's id is the file's path, so a renamed release is trashed under its old key and added again on a new one, and its watch state, edits and list entries stay with the old row. The feed does not stack `cd1`/`cd2` files into one Media |
 | plex.tv reachability | plex.tv's reachability verdict stays 0: it tests the server's public address and mapped port, which simplex does not report, not the announced connections. Clients still use an announced connection whatever the verdict. A restart that resubscribes within seconds of the old stream closing was listed absent for minutes; one that waited 16-20 s stayed present |
 | Claimed-server tokens | The transient tokens `/security/token` mints are not admitted back by a claimed server's gate; there is no allowed-networks fallback |
 | Subtitle delivery | Embedded extraction is unimplemented; uploaded subtitles are served, embedded tracks are not |
@@ -499,8 +504,10 @@ written and not a live deployment health check.
 
 | Check | Recorded result |
 |---|---|
-| UI surface (2026-10-10, zen, keyless and zurg-less) | 1,975/1,975 on both servers, 3 skips |
-| Acceptance (2026-10-10, zen, keyless and zurg-less) | Every suite passes on both servers: navigation 29/29, server log 74/74, `--state` persistence 27/27, parity persistence 55/55, plex.tv 65/65 against the local stub, part bytes 13/13, every parity and follow-up suite; native only, zurg scans 27/27 against the local zurg stub, the SQLite store 13/13, the phase-2 module comparison 379 checks; `cargo test` 44 |
+| UI surface (2026-10-10, zen, keyless and source-less, the feed build) | 1,975/1,975 on both servers, 3 skips |
+| Acceptance (2026-10-10, zen, keyless and source-less, the feed build) | Every suite passes on both servers: navigation 29/29, server log 74/74, `--state` persistence 27/27, parity persistence 55/55, plex.tv 65/65 against the local stub (the native batch run had one claim-log timing miss, 64/65; two re-runs of this build and of the pre-feed build were 65/65), part bytes 13/13, CLI 12/12, every parity and follow-up suite; native only: the feed 57/57 against a stub source, the SQLite store 13/13, the phase-2 module comparison 379 checks, manager 53/53, smoke 15/15, session reaper 5/5; `cargo test` 43. Concurrency is 47/49 on this build and on the pre-feed one alike: zen answers a quiet `/identity` in about 45 ms, past the suite's 5 ms median and 0.1 s for 50 reads |
+| Feed end to end (2026-10-10, zen, scratch zurg `feat/simplex-feed` on the RD test account, read-only) | The startup snapshot filled an empty library with 118 rows in 19 s; a widened directory filter pushed 3 items 3 s later, held until a probe; a probe showed one; a late IMDb id re-identified a row on its key; a Range read matched zurg's own bytes |
+| Migration dry run (2026-10-10, a read-only copy of `~/simplex-e2e`'s database) | zurg's first snapshot adopted all 118 scanned files: 184/184 rows kept their keys, nothing created or trashed |
 | UI surface (2026-09-30, parts still Real-Debrid links) | 1,979/1,979 with a TMDB key and a real RD token, no skips; 1,975/1,975 without them, 3 skips |
 | Navigation (cycle 95, live account catalog, real RD) | 25/25 on both servers |
 | python-plexapi conformance (cycle 95) | 38/38 on both servers |
