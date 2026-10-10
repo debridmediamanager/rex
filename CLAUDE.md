@@ -137,7 +137,8 @@ A row's ratingKey is minted once (100000 and up) and never reused: zurg drops a 
 IMDb id when the key it matched it to disappears.
 
 The native `--state` file is JSON and refuses the Python server's pickle, so a state
-file does not move between the two. `--announce-url` needs `PLEX_TOKEN`. The Python
+file does not move between the two. `--announce-url` needs `PLEX_TOKEN`; a comma-separated
+list announces each URI as its own connection, as a PMS with several does. The Python
 oracle reads parts from zurg the same way but does not scan.
 
 A real claim -- `POST /myplex/claim?token=` with a token from `plex.tv/api/claim/token.json`,

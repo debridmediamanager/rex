@@ -11827,6 +11827,19 @@ A restart that subscribed 16 s after the old process died (kill -9, then systemd
 `RestartSec`) and one that waited 20 s first both stayed present. Mechanism not established;
 the rig's unit waits 20 s before every start. A real PMS takes longer than that to come back.
 
+**A public connection does not make plex.tv's reachability 1 (2026-10-10).** plexsim-e2e
+announced `https://zen.tail-net.ts.net:8443` (Tailscale Funnel) beside its tailnet URI, and its
+resource listed both. The Funnel URL was public: from dmm-01, through Funnel's public ingress
+rather than the tailnet, a token-bearing part read answered 206 with the same bytes as the
+tailnet read, and tokenless reads answered 401. Two connectivity PUTs, one and two minutes after
+the public DNS record appeared, still answered `reachability 0` (in 3 s, then in under 1 s), and
+no request reached plexsim in either window, through Funnel or otherwise: plex.tv does not test
+the announced connections. The
+probe's verdict names `address="" port="0"`; a real PMS's reachability is its public address and
+the port it maps (zen's PMS logs a failed UPnP mapping), which plexsim does not report and which
+here is the home IP, not Funnel's. A client off the tailnet uses the announced connection
+whatever the verdict.
+
 **4. Sharing: one owner claims, everyone else is shared — and the owner's Plex
 Pass covers them all.**
 
