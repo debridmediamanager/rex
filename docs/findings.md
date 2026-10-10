@@ -11754,6 +11754,39 @@ and resubscribing 15 s after a drop. A claimed start does the same without the e
 heartbeat announcing with the server token. `tests/test_plextv.py` drives it against the
 recording.
 
+**plexsim-e2e on zen, registered with it the same day.** Claimed once (03:27:49 UTC, a fresh
+claim token through `POST /myplex/claim`). Its log ran `CLAIMED` → `servers.xml POST -> 422` →
+`pubsub subscribed` → `connectivity PUT -> 200 b''`, and `/api/servers/aebd…` went from 404 to
+200 (`createdAt="1791602869"`, the claim's second): the connectivity 404 of 2026-09-11 is gone.
+Restarted with `--announce-url https://zen.tail-net.ts.net:31400` (TLS on its own port, a
+Tailscale Let's Encrypt certificate), it was listed `presence=true`, owned, with an
+`accessToken` and that one connection, at all 47 polls from 03:29 to 04:17, past the
+40-minute lease; the heartbeat logged no failure, so the gzipped device answer now parses.
+Two differences from the probe, not chased: the first stream (right after the claim) never
+carried a `notifyConnectivity` verdict, the restart's did (`reachability 0`, 1 s after its
+PUT); and the record's `localAddresses` is empty where the probe's held its address.
+
+app.plex.tv on the Windows CDP browser browsed it and direct-played a movie over that
+connection (`location=wan`, ranged 206 part reads, 1920x1080, 36 s). What the client did on
+the way, read from Plex Web 4.162 and its console:
+
+- Chrome 154 refused every request from app.plex.tv to a private or CGNAT address -- fun's,
+  zen's and plexsim's alike -- with "Permission was denied for this request to access the
+  `local` address space", although the launcher still passes
+  `--disable-features=LocalNetworkAccessChecks,…`. `Browser.setPermission` granting
+  `local-network` to `https://app.plex.tv` on the page's `browserContextId` cleared it; the
+  same call without the context id changed nothing.
+- `isPrivate` is an IP test on a connection's `address`, so a hostname connection is never
+  private. With `publicAddressMatches` true (browser and server share the home IP)
+  `_isMatchingLocation` sorts such a connection after every private candidate -- it only
+  orders the test queue, it filters nothing -- so plexsim's was tested last, about a minute
+  in, behind fun's and zen's timing-out bridge addresses.
+- The real Play control is `button[data-testid="preplay-play"]`, with no `aria-label`.
+- After those runs fun's own device row read `productVersion="4.162.1" platform="Chrome"
+  device="Windows"` -- the browser's Plex Web identity -- where at 03:29 it read
+  `1.42.2.10156-f737b826c` / Linux; presence, connections and `lastSeenAt` were unchanged.
+  The browser is signed in with the token from fun's zurg config. Cause not established.
+
 **4. Sharing: one owner claims, everyone else is shared — and the owner's Plex
 Pass covers them all.**
 
