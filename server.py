@@ -26200,7 +26200,7 @@ def main():
     parser.add_argument(
         "--announce-url",
         default=None,
-        help="publicly reachable https URL to register with plex.tv, and keep registered",
+        help="publicly reachable https URL(s), comma-separated, to register with plex.tv, and keep registered",
     )
     parser.add_argument(
         "--device-id",

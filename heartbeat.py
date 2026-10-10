@@ -124,8 +124,11 @@ def announce(token, machine_identifier, url, *, name="plexsim",
 
     Returns the parsed Device element.
     """
+    # `url` is a comma-separated list: a server with several connections sends one
+    # `Connection[][uri]` pair each, in a row (zen's own PMS,
+    # tests/fixtures/pms_announce_connections_s1422.json).
     query = urllib.parse.urlencode([
-        ("Connection[][uri]", url),
+        *(("Connection[][uri]", uri) for uri in url.split(",") if uri),
         ("httpsEnabled", 1 if https_enabled else 0),
         ("httpsRequired", 0),
         ("dnsRebindingProtection", 0),

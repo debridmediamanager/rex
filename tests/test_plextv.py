@@ -69,6 +69,9 @@ with open(os.path.join(HERE, "fixtures", "plextv_registration_s1422.json")) as _
 # zen's own PMS re-reading it for an unknown token (the 6 s window is measured there).
 with open(os.path.join(HERE, "fixtures", "plextv_access_tokens_s1422.json")) as _handle:
     ACCESS = json.load(_handle)
+# zen's own PMS announcing its seventeen connections: one Connection[][uri] pair each, in a row.
+with open(os.path.join(HERE, "fixtures", "pms_announce_connections_s1422.json")) as _handle:
+    CONNECTIONS = json.load(_handle)
 MACHINE = "f1x7u4e0000000000000000000000000000000f1"
 FRIENDLY = "plexsim-ui-fixture"
 VERSION = "1.42.2.10156-plexsim"
@@ -84,6 +87,8 @@ OWNER = "stubowner"
 EMAIL = "owner@stub.invalid"
 ACCOUNT_ID = 42
 ANNOUNCE_URL = "https://plexsim.stub.invalid"
+# A second connection (a public one, as a Funnel hostname is), announced beside the first.
+ANNOUNCE_URLS = ANNOUNCE_URL + ",https://plexsim-public.stub.invalid:8443"
 SECRET = bytes(range(32))
 WATCHED_KEY, WATCHED_GUID = "1007", "plex://movie/520a1a3c2c634f2594808ee9"
 UNPLAYED_GUID = "plex://movie/520a1a3c2c634f2594808ee9-fixture1008"
@@ -339,12 +344,12 @@ LIVE = []
 
 
 class Instance:
-    def __init__(self, directory, port, stub_port, extra=()):
+    def __init__(self, directory, port, stub_port, extra=(), announce=ANNOUNCE_URL):
         LIVE.append(self)
         self.port = port
         catalog = os.path.join(directory, "catalog.json")
         command = server_command("--port", port, "--catalog", catalog, "--gdm", "off",
-                                 "--announce-url", ANNOUNCE_URL, "--heartbeat-interval", 2,
+                                 "--announce-url", announce, "--heartbeat-interval", 2,
                                  "--account-state-interval", 3600, *extra, root=ROOT)
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
                    PLEX_TOKEN=ACCOUNT_TOKEN,
@@ -738,7 +743,7 @@ def main():
               first_log[-3000:])
 
         # -- restart: the claim survives -------------------------------------------
-        second = Instance(directory, ports[1], ports[2], extra=("--verbose",))
+        second = Instance(directory, ports[1], ports[2], extra=("--verbose",), announce=ANNOUNCE_URLS)
         restarted = surfaces(second, ACCOUNT_TOKEN)
         check("after a restart /identity is still claimed",
               truthy(container(restarted["identity"][1]).get("claimed")), restarted["identity"])
@@ -760,6 +765,13 @@ def main():
         beats = stub.taken("servers.plex.tv", "/devices/.*", "PUT")
         check("a claimed startup announces with the server's own token",
               beats and dict(beats[0]["query"])["X-Plex-Token"] == SERVER_TOKEN,
+              beats and beats[0]["query"])
+        real = [k for k, _ in CONNECTIONS["query"]]
+        check("two --announce-url connections are two Connection[][uri] pairs, as a real PMS sends",
+              beats and beats[0]["query"] == [("Connection[][uri]", uri) for uri in ANNOUNCE_URLS.split(",")]
+              + [("httpsEnabled", "1"), ("httpsRequired", "0"), ("dnsRebindingProtection", "0"),
+                 ("X-Plex-Token", SERVER_TOKEN)]
+              and real[:17] == ["Connection[][uri]"] * 17 and real[17] == "httpsEnabled",
               beats and beats[0]["query"])
 
         # -- claimed: the token gate is up, as on a real PMS -------------------------

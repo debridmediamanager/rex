@@ -71,7 +71,7 @@ fn server_help() -> String {
         ("--web-root", "directory of the extracted Plex Web client, served at /web"),
         ("--owner-email", "owner email, which is what a real PMS reports as myPlexUsername"),
         ("--owner-username", "the Plex account that OWNS this server; shared users are not owners"),
-        ("--announce-url", "publicly reachable https URL to register with plex.tv, and keep registered"),
+        ("--announce-url", "publicly reachable https URL(s), comma-separated, to register with plex.tv, and keep registered"),
         ("--device-id", "machineIdentifier to announce on; defaults to the catalog's own"),
         ("--tls-cert", "PEM certificate chain to serve TLS with, on the same port as plain HTTP"),
         ("--tls-key", "PEM private key for --tls-cert (defaults to the certificate file itself)"),

@@ -953,15 +953,22 @@ pub(crate) fn start_registration(
 // -- heartbeat.py ------------------------------------------------------------------
 
 /// `heartbeat.announce`: one registration PUT, byte-shaped like a real PMS's
-/// (`tests/fixtures/outbound-announce.json`).
+/// (`tests/fixtures/outbound-announce.json`). `url` is a comma-separated list: a server
+/// with several connections sends one `Connection[][uri]` pair each, in a row
+/// (`tests/fixtures/pms_announce_connections_s1422.json`).
 fn announce(token: &str, machine: &str, url: &str, name: &str) -> Result<(), String> {
-    let query = urlencode(&[
-        ("Connection[][uri]", url.to_string()),
+    let mut pairs = url
+        .split(',')
+        .filter(|uri| !uri.is_empty())
+        .map(|uri| ("Connection[][uri]", uri.to_string()))
+        .collect::<Vec<_>>();
+    pairs.extend([
         ("httpsEnabled", "1".to_string()),
         ("httpsRequired", "0".to_string()),
         ("dnsRebindingProtection", "0".to_string()),
         ("X-Plex-Token", token.to_string()),
     ]);
+    let query = urlencode(&pairs);
     let version = super::VERSION.to_string();
     let headers = [
         ("User-Agent", format!("PlexMediaServer/{version}")),
