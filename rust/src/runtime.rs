@@ -17547,6 +17547,20 @@ impl Runtime {
         }) && query.get("type").map_or(true, |value| {
             value.is_empty() || value.trim_start_matches('+').parse::<i64>().ok() == Some(own_type)
         });
+        // The container window, taken before the projection (one row out per row in):
+        // `page_fields` slicing afterwards projected every row of the library to answer
+        // a page of 50 -- 9 s on fun's movies, and 30 s+ for a `Size=0` episode count.
+        let window = match (
+            query.get("X-Plex-Container-Start").and_then(|v| v.parse::<usize>().ok()),
+            query.get("X-Plex-Container-Size").and_then(|v| v.parse::<usize>().ok()),
+        ) {
+            (Some(start), Some(size)) => Some((start, size, rows.len())),
+            _ => None,
+        };
+        let rows: Vec<Value> = match window {
+            Some((start, size, _)) => rows.into_iter().skip(start).take(size).collect(),
+            None => rows,
+        };
         let rows = rows
             .iter()
             .map(|row| {
@@ -17702,7 +17716,10 @@ impl Runtime {
                 fields.insert("Meta".to_string(), meta);
             }
         }
-        page_fields(&mut fields, query);
+        if let Some((start, _, total)) = window {
+            fields.insert("offset".to_string(), json!(start));
+            fields.insert("totalSize".to_string(), json!(total));
+        }
         Response::json(200, self.container(fields, true))
     }
 
