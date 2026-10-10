@@ -16,7 +16,7 @@ const SERVER_OPTIONS: &[(&str, &str, bool)] = &[
     ("--catalog", "CATALOG", true),
     ("--port", "PORT", true),
     ("--host", "HOST", true),
-    ("--part-mode", "{proxy,redirect}", true),
+    ("--part-mode", "{proxy}", true),
     ("--public-url", "PUBLIC_URL", true),
     ("--token", "TOKEN", true),
     ("--verbose", "", false),
@@ -35,6 +35,7 @@ const SERVER_OPTIONS: &[(&str, &str, bool)] = &[
     ("--state", "STATE", true),
     ("--no-state", "", false),
     ("--zurg-mount", "ZURG_MOUNT", true),
+    ("--sources", "SOURCES", true),
 ];
 
 /// `parser.print_usage()`: argparse's wrapped usage block, with this binary's name.
@@ -65,7 +66,7 @@ fn server_usage() -> String {
 /// the oracle's own help text.
 fn server_help() -> String {
     let helps: HashMap<&str, &str> = [
-        ("--part-mode", "proxy streams bytes from zurg through simplex; redirect 302s to the provider URL zurg's signed link names"),
+        ("--part-mode", "proxy streams a part's bytes from its source through simplex (the only mode: redirect read zurg's signed links, which a source that pushes its items does not hand over)"),
         ("--token", "require this X-Plex-Token on every request except /identity and /web/* -- which is what a real PMS does. Default OFF, because the test suites and probes talk to simplex without one; a real server always has a token, so leaving it off is a deliberate deviation."),
         ("--assert-claimed", "report claimed=1 without performing a real plex.tv claim exchange"),
         ("--web-root", "directory of the extracted Plex Web client, served at /web"),
@@ -80,7 +81,8 @@ fn server_help() -> String {
         ("--account-state-interval", "seconds between claimed-account watch/rating imports"),
         ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: simplex.db beside the catalog, or the catalog itself when it is a database (state.pickle for the Python server), or $SIMPLEX_STATE"),
         ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $SIMPLEX_STATE"),
-        ("--zurg-mount", "zurg's mount_path: Part files and library locations live under it, and the same files are /dav/... on zurg ($ZURG_URL, with $ZURG_USER/$ZURG_PASSWORD). Default /mnt/zurg"),
+        ("--zurg-mount", "zurg's mount_path, the mount of the source $ZURG_URL defines (bytes at $ZURG_URL/dav, with $ZURG_USER/$ZURG_PASSWORD; feed token $SIMPLEX_FEED_TOKEN). Default /mnt/zurg"),
+        ("--sources", "JSON file of the sources that push items and serve their bytes (docs/feed-api.md). Default $SIMPLEX_SOURCES"),
     ]
     .into_iter()
     .collect();
@@ -238,11 +240,12 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
             "--state" => options.state = Some(PathBuf::from(value)),
             "--no-state" => options.state = Some(PathBuf::new()),
             "--zurg-mount" => options.zurg_mount = value,
+            "--sources" => options.sources = Some(PathBuf::from(value)),
             _ => unreachable!("every SERVER_OPTIONS flag is matched"),
         }
         // argparse checks `choices` as it consumes the option, before any later `-h`.
         for (name, current, choices) in [
-            ("--part-mode", &options.part_mode, &["proxy", "redirect"][..]),
+            ("--part-mode", &options.part_mode, &["proxy"][..]),
             ("--gdm", &options.gdm, &["auto", "on", "off"][..]),
         ] {
             if name == flag && !choices.contains(&current.as_str()) {

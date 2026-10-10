@@ -289,8 +289,7 @@ def main():
         check("a build runs as a job with its own status and log",
               status == 202 and done and done["log"] and done["exit"] is not None, done)
         check("a PATCH while stopped changes the configuration",
-              manager.api("PATCH", "/servers/idle", {"part_mode": "redirect"})[1]["config"]["part_mode"]
-              == "redirect")
+              manager.api("PATCH", "/servers/idle", {"gdm": "off"})[1]["config"]["gdm"] == "off")
 
         # -- the manager's own restart --------------------------------------------
         manager.stop()

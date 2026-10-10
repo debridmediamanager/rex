@@ -1,0 +1,492 @@
+{
+ "_about": "Rows the last WebDAV-scanning build (acaa3cc) made from zurg's two real entries (tests/fixtures/zurg/entries.json) and an unidentified, unprobed release, with the movie scrobbled once; dumped from its state database by probes/legacy_scan_fixture.py. The feed's migration test adopts them.",
+ "sections": [
+  {
+   "key": "1",
+   "type": "movie",
+   "title": "Movies",
+   "uuid": "0000000000000000000000000000000000000001",
+   "Location": [
+    {
+     "id": 1,
+     "path": "/zurg/movies"
+    }
+   ]
+  },
+  {
+   "key": "2",
+   "type": "show",
+   "title": "TV Shows",
+   "uuid": "0000000000000000000000000000000000000002",
+   "Location": [
+    {
+     "id": 2,
+     "path": "/zurg/shows"
+    }
+   ]
+  }
+ ],
+ "nextScanKey": 100005,
+ "items": [
+  {
+   "ratingKey": "100000",
+   "key": "/library/metadata/100000",
+   "guid": "plex://movie/5d7768279ab5440020ad6e0e",
+   "type": "movie",
+   "title": "Blame It on the Bellboy",
+   "summary": "A hotel mix-up.",
+   "duration": 4707078,
+   "addedAt": 1791643136,
+   "updatedAt": 1791643136,
+   "thumb": "/library/metadata/100000/thumb/1791643136",
+   "art": "/library/metadata/100000/art/1791643136",
+   "Media": [
+    {
+     "id": 10000000,
+     "duration": 4707078,
+     "bitrate": 13279,
+     "width": 1920,
+     "height": 1080,
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "eac3",
+     "videoCodec": "h264",
+     "videoResolution": "1080",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "audioProfile": null,
+     "Part": [
+      {
+       "id": 1000000,
+       "key": "/library/parts/1000000/1791643136/file.mkv",
+       "duration": 4707078,
+       "file": "/zurg/movies/Blame.It.on.the.Bellboy.1992.1080p.AMZN.WEB.DL.DD+5.1.H.264-alfaHD.mkv/Blame.It.on.the.Bellboy.1992.1080p.AMZN.WEB.DL.DD+5.1.H.264-alfaHD.mkv",
+       "size": 7813309501,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": null,
+       "Stream": [
+        {
+         "id": 100000001,
+         "streamType": 1,
+         "codec": "h264",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 1920,
+         "height": 1080,
+         "profile": "high",
+         "level": 40,
+         "refFrames": null,
+         "bitDepth": 8,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "codecID": null,
+         "colorPrimaries": null,
+         "colorTrc": null,
+         "colorSpace": "bt709",
+         "colorRange": "tv",
+         "frameRate": 23.976,
+         "scanType": "progressive",
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264)"
+        },
+        {
+         "id": 100000002,
+         "streamType": 2,
+         "codec": "eac3",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "selected": true,
+         "default": true,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "bitrate": 640,
+         "displayTitle": "English (EAC3 5.1)",
+         "extendedDisplayTitle": "English (EAC3 5.1)"
+        },
+        {
+         "id": 100000003,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 2,
+         "streamIdentifier": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (SRT)"
+        },
+        {
+         "id": 100000004,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 3,
+         "streamIdentifier": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "title": "SDH",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "SDH (English SRT)"
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false
+    }
+   ],
+   "_identity": "tmdb:31639",
+   "_release": "Blame.It.on.the.Bellboy.1992.1080p.AMZN.WEB.DL.DD+5.1.H.264-alfaHD.mkv",
+   "year": 1992,
+   "_hash": "f3c77ddb440caf514efa96316bac1100aab95066",
+   "originallyAvailableAt": "1992-03-06",
+   "Guid": [
+    {
+     "id": "imdb://tt0103827"
+    },
+    {
+     "id": "tmdb://31639"
+    }
+   ],
+   "_identify": {
+    "confidence": "exact",
+    "source": "dmm hash",
+    "imdb": "tt0103827",
+    "tmdb": 31639,
+    "plex": "plex://movie/5d7768279ab5440020ad6e0e",
+    "disputed": null
+   },
+   "librarySectionID": 1,
+   "librarySectionTitle": "Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "blame-it-on-the-bellboy",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "_scanned": true,
+   "viewCount": 1,
+   "lastViewedAt": 1791643141,
+   "_viewUpdatedAt": 1791643141
+  },
+  {
+   "ratingKey": "100001",
+   "key": "/library/metadata/100001",
+   "guid": "local://100001",
+   "type": "movie",
+   "title": "Qzxv Wmplk",
+   "summary": "",
+   "duration": 0,
+   "addedAt": 1791643137,
+   "updatedAt": 1791643137,
+   "thumb": "/library/metadata/100001/thumb/1791643137",
+   "art": "/library/metadata/100001/art/1791643137",
+   "Media": [
+    {
+     "id": 10000100,
+     "duration": 0,
+     "bitrate": null,
+     "width": null,
+     "height": null,
+     "aspectRatio": null,
+     "audioChannels": null,
+     "audioCodec": null,
+     "videoCodec": null,
+     "videoResolution": null,
+     "container": "",
+     "videoFrameRate": null,
+     "videoProfile": null,
+     "audioProfile": null,
+     "Part": [
+      {
+       "id": 1000010,
+       "key": "/library/parts/1000010/1791643137/file.mkv",
+       "duration": 0,
+       "file": "/zurg/movies/Qzxv.Wmplk.2024.1080p.WEB-DL/Qzxv.Wmplk.2024.1080p.WEB-DL.mkv",
+       "size": 12345,
+       "container": "",
+       "videoProfile": null,
+       "audioProfile": null,
+       "Stream": []
+      }
+     ],
+     "hasVoiceActivity": false
+    }
+   ],
+   "_identity": "title:qzxv wmplk",
+   "_release": "Qzxv.Wmplk.2024.1080p.WEB-DL",
+   "year": 2024,
+   "_probePending": true,
+   "_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "_identify": {
+    "confidence": "none",
+    "source": null,
+    "imdb": null,
+    "tmdb": null,
+    "plex": null,
+    "disputed": null
+   },
+   "librarySectionID": 1,
+   "librarySectionTitle": "Movies",
+   "librarySectionKey": "/library/sections/1",
+   "slug": "qzxv-wmplk",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "_scanned": true
+  },
+  {
+   "ratingKey": "100003",
+   "key": "/library/metadata/100003/children",
+   "guid": "plex://show/5d9c086c46115600200aa2fe",
+   "type": "show",
+   "title": "American Dad!",
+   "summary": "",
+   "year": 2005,
+   "thumb": "/library/metadata/100003/thumb/1791643137",
+   "art": "/library/metadata/100003/art/1791643137",
+   "librarySectionID": 2,
+   "librarySectionTitle": "TV Shows",
+   "librarySectionKey": "/library/sections/2",
+   "addedAt": 1791643137,
+   "updatedAt": 1791643137,
+   "childCount": 1,
+   "leafCount": 1,
+   "viewedLeafCount": 0,
+   "Guid": [
+    {
+     "id": "imdb://tt0397306"
+    },
+    {
+     "id": "tmdb://1433"
+    }
+   ],
+   "_poster_url": null,
+   "_art_url": null,
+   "Location": [
+    {
+     "path": "/zurg/shows/American.Dad!.S05E07.Phantom.of.the.Telethon.1080p.DSNP.WEB.DL.DDP5.1.H.264-AndreMor.mkv"
+    }
+   ],
+   "slug": "american-dad",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "index": 1,
+   "_identity": "tmdb:1433",
+   "_scanned": true
+  },
+  {
+   "ratingKey": "100004",
+   "key": "/library/metadata/100004/children",
+   "type": "season",
+   "guid": "plex://season/602e67d31d3358002c411c37",
+   "title": "Season 5",
+   "index": 5,
+   "parentIndex": 1,
+   "Guid": [
+    {
+     "id": "tmdb://3626"
+    }
+   ],
+   "summary": "",
+   "parentRatingKey": "100003",
+   "parentKey": "/library/metadata/100003",
+   "parentTitle": "American Dad!",
+   "parentThumb": "/library/metadata/100003/thumb/1791643137",
+   "parentGuid": "plex://show/5d9c086c46115600200aa2fe",
+   "thumb": "/library/metadata/100004/thumb/1791643137",
+   "art": "/library/metadata/100003/art/1791643137",
+   "librarySectionID": 2,
+   "librarySectionTitle": "TV Shows",
+   "librarySectionKey": "/library/sections/2",
+   "addedAt": 1791643137,
+   "updatedAt": 1791643137,
+   "leafCount": 1,
+   "viewedLeafCount": 0,
+   "parentStudio": null,
+   "parentYear": 2005,
+   "_poster_url": null,
+   "_art_url": null,
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "parentSlug": "american-dad",
+   "_scanned": true
+  },
+  {
+   "ratingKey": "100002",
+   "key": "/library/metadata/100002",
+   "guid": "plex://episode/5d9c0ab4705e7a001e6d4a2b",
+   "type": "episode",
+   "title": "Phantom of the Telethon",
+   "summary": "",
+   "duration": 1312256,
+   "addedAt": 1791643137,
+   "updatedAt": 1791643137,
+   "thumb": "/library/metadata/100002/thumb/1791643137",
+   "art": "/library/metadata/100003/art/1791643137",
+   "Media": [
+    {
+     "id": 10000200,
+     "duration": 1312256,
+     "bitrate": 1261,
+     "width": 1440,
+     "height": 1080,
+     "aspectRatio": 1.33,
+     "audioChannels": 6,
+     "audioCodec": "eac3",
+     "videoCodec": "h264",
+     "videoResolution": "1080",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "audioProfile": null,
+     "Part": [
+      {
+       "id": 1000020,
+       "key": "/library/parts/1000020/1791643137/file.mkv",
+       "duration": 1312256,
+       "file": "/zurg/shows/American.Dad!.S05E07.Phantom.of.the.Telethon.1080p.DSNP.WEB.DL.DDP5.1.H.264-AndreMor.mkv/American.Dad!.S05E07.Phantom.of.the.Telethon.1080p.DSNP.WEB.DL.DDP5.1.H.264-AndreMor.mkv",
+       "size": 206767252,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": null,
+       "Stream": [
+        {
+         "id": 100002001,
+         "streamType": 1,
+         "codec": "h264",
+         "index": 0,
+         "streamIdentifier": null,
+         "width": 1440,
+         "height": 1080,
+         "profile": "high",
+         "level": 40,
+         "refFrames": null,
+         "bitDepth": 8,
+         "chromaSubsampling": "4:2:0",
+         "chromaLocation": null,
+         "codedHeight": null,
+         "codedWidth": null,
+         "codecID": null,
+         "colorPrimaries": null,
+         "colorTrc": null,
+         "colorSpace": null,
+         "colorRange": null,
+         "frameRate": 23.976,
+         "scanType": "progressive",
+         "default": true,
+         "displayTitle": "1080p",
+         "extendedDisplayTitle": "1080p (H.264)"
+        },
+        {
+         "id": 100002002,
+         "streamType": 2,
+         "codec": "eac3",
+         "index": 1,
+         "streamIdentifier": null,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "bitDepth": null,
+         "selected": true,
+         "default": true,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "bitrate": 256,
+         "displayTitle": "English (EAC3 5.1)",
+         "extendedDisplayTitle": "English (EAC3 5.1)"
+        },
+        {
+         "id": 100002003,
+         "streamType": 3,
+         "canAutoSync": false,
+         "codec": "srt",
+         "index": 2,
+         "streamIdentifier": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "displayTitle": "English",
+         "extendedDisplayTitle": "English (SRT)"
+        }
+       ]
+      }
+     ],
+     "hasVoiceActivity": false
+    }
+   ],
+   "_identity": "tmdb:1433",
+   "_release": "American.Dad!.S05E07.Phantom.of.the.Telethon.1080p.DSNP.WEB.DL.DDP5.1.H.264-AndreMor.mkv",
+   "_hash": "d7fc07c1168cd0f906f206ed62600d0ee7b16137",
+   "year": 2009,
+   "originallyAvailableAt": "2009-11-15",
+   "index": 7,
+   "parentIndex": 5,
+   "grandparentTitle": "American Dad!",
+   "Guid": [
+    {
+     "id": "imdb://tt1508003"
+    },
+    {
+     "id": "tmdb://512000"
+    }
+   ],
+   "_identify": {
+    "confidence": "exact",
+    "source": "dmm hash",
+    "imdb": "tt0397306",
+    "tmdb": 1433,
+    "plex": "plex://show/5d9c086c46115600200aa2fe",
+    "disputed": null
+   },
+   "librarySectionID": 2,
+   "librarySectionTitle": "TV Shows",
+   "librarySectionKey": "/library/sections/2",
+   "parentRatingKey": "100004",
+   "parentKey": "/library/metadata/100004",
+   "parentTitle": "Season 5",
+   "parentThumb": "/library/metadata/100004/thumb/1791643137",
+   "grandparentRatingKey": "100003",
+   "grandparentKey": "/library/metadata/100003",
+   "grandparentThumb": "/library/metadata/100003/thumb/1791643137",
+   "grandparentArt": "/library/metadata/100003/art/1791643137",
+   "grandparentGuid": "plex://show/5d9c086c46115600200aa2fe",
+   "parentGuid": "plex://season/602e67d31d3358002c411c37",
+   "_poster_url": null,
+   "_art_url": null,
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "grandparentSlug": "american-dad",
+   "_scanned": true
+  }
+ ]
+}

@@ -135,7 +135,7 @@ def validate(config, partial=False):
                   "web_root", "host"):
         if field in out and out[field] is not None and not isinstance(out[field], str):
             raise Refused(400, "%s must be a string" % field)
-    choices = {"part_mode": ("proxy", "redirect"), "gdm": ("auto", "on", "off"),
+    choices = {"part_mode": ("proxy",), "gdm": ("auto", "on", "off"),
                "restart": ("no", "on-failure")}
     for field, allowed in choices.items():
         if field in out and out[field] not in allowed:
@@ -720,7 +720,7 @@ pre{background:#f4f4f4;padding:8px;max-height:300px;overflow:auto}</style></head
 <input name=plex_token type=password placeholder="Plex token (optional)">
 <input name=token type=password placeholder="server token (optional)"><br>
 <input name=friendly_name placeholder="friendly name (optional)">
-<select name=part_mode><option>proxy<option>redirect</select>
+<select name=part_mode><option>proxy</select>
 <select name=gdm><option>auto<option>on<option>off</select>
 <label><input name=assert_claimed type=checkbox> assert claimed</label>
 <button>Create</button></form>
@@ -985,7 +985,7 @@ def main(argv=None):
                             help="environment variable holding it (default %s)" % default_env)
     create.add_argument("--friendly-name")
     create.add_argument("--zurg-mount", help="zurg's mount_path (the server's --zurg-mount)")
-    create.add_argument("--part-mode", choices=("proxy", "redirect"), default="proxy")
+    create.add_argument("--part-mode", choices=("proxy",), default="proxy")
     create.add_argument("--gdm", choices=("auto", "on", "off"), default="auto")
     create.add_argument("--host", default="0.0.0.0")
     create.add_argument("--announce-url")

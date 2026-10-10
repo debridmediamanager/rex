@@ -1,0 +1,88 @@
+{
+ "_about": "TMDB's and Plex's answers for zurg's two real entries (tests/fixtures/zurg/entries.json), keyed as tmdb_cache.json and plex_cache.json key them (the ids are real; the payloads are the subset identification reads, written for rust/src/runtime/scan.rs's unit test). Written beside a test catalog, they identify both releases offline; a lookup they miss goes out with a fake key and is refused.",
+ "tmdb": {
+  "https://api.themoviedb.org/3/find/tt0103827?external_source=imdb_id&api_key=KEY": {
+   "movie_results": [
+    {
+     "id": 31639
+    }
+   ],
+   "tv_results": []
+  },
+  "https://api.themoviedb.org/3/movie/31639?append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates&api_key=KEY": {
+   "title": "Blame It on the Bellboy",
+   "release_date": "1992-03-06",
+   "overview": "A hotel mix-up.",
+   "external_ids": {
+    "imdb_id": "tt0103827"
+   }
+  },
+  "https://api.themoviedb.org/3/find/tt0397306?external_source=imdb_id&api_key=KEY": {
+   "movie_results": [],
+   "tv_results": [
+    {
+     "id": 1433
+    }
+   ]
+  },
+  "https://api.themoviedb.org/3/tv/1433?append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates&api_key=KEY": {
+   "name": "American Dad!",
+   "first_air_date": "2005-02-06",
+   "external_ids": {
+    "imdb_id": "tt0397306"
+   }
+  },
+  "https://api.themoviedb.org/3/tv/1433/season/5?api_key=KEY": {
+   "id": 3626,
+   "air_date": "2009-09-27"
+  },
+  "https://api.themoviedb.org/3/tv/1433/season/5/episode/7?append_to_response=external_ids&api_key=KEY": {
+   "id": 512000,
+   "name": "Phantom of the Telethon",
+   "air_date": "2009-11-15",
+   "external_ids": {
+    "imdb_id": "tt1508003"
+   }
+  }
+ },
+ "plex": {
+  "POST /library/metadata/matches {\"guid\": \"tmdb://31639\", \"type\": 1}": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "guid": "plex://movie/5d7768279ab5440020ad6e0e"
+     }
+    ]
+   }
+  },
+  "POST /library/metadata/matches {\"guid\": \"tmdb://1433\", \"type\": 2}": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "guid": "plex://show/5d9c086c46115600200aa2fe"
+     }
+    ]
+   }
+  },
+  "GET /library/metadata/5d9c086c46115600200aa2fe/children ": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "index": 5,
+      "guid": "plex://season/602e67d31d3358002c411c37"
+     }
+    ]
+   }
+  },
+  "GET /library/metadata/602e67d31d3358002c411c37/children ": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "index": 7,
+      "guid": "plex://episode/5d9c0ab4705e7a001e6d4a2b"
+     }
+    ]
+   }
+  }
+ }
+}

@@ -1,128 +1,51 @@
-//! The live library: what a scan of zurg adds to the running server, on keys that never
-//! change.
+//! The live library: rows a source's items become, on keys that never change.
 //!
-//! The catalog file used to be the whole library, loaded once at start. A library fed by
-//! zurg changes while the server runs: zurg's Plex integration (its `plex_server_url`
-//! pointed here) asks for `GET /library/sections/{id}/refresh?path=<mount>/<dir>/<release>`
-//! whenever a release arrives, changes or goes, and this module answers it the way a real
-//! PMS's scanner does -- off the request thread, one scan at a time. It lists the folder
-//! on zurg's WebDAV, adds each new file (zurg's `/api/library/entry` names the release,
-//! its IMDb id and the file's ffprobe), and trashes what is gone. zurg keeps the
-//! ratingKey it matched each release to and drops the release's IMDb id when that key
-//! disappears, so a row's key is minted once and kept across scans and restarts.
+//! The catalog file used to be the whole library, loaded once at start. A library a source
+//! feeds (`feed.rs`) changes while the server runs, and this module is what a real PMS's
+//! scanner does with what it finds: each new file becomes a row (identified, its Media
+//! from the source's ffprobe), an episode is placed under its show and season, a row
+//! added before its file was probed gets its streams later, and a file that is gone is
+//! trashed as measured on plexscratch (`tests/fixtures/missing_file_scan_s43.json`). zurg
+//! keeps the ratingKey it matched each release to and drops the release's IMDb id when
+//! that key disappears, so a row's key is minted once and kept across pushes and restarts.
 
-use super::zurg::{ListError, Zurg};
 use super::*;
 use crate::identify::{self, Identifier, PlexSource, TmdbSource};
 use crate::{hierarchy, mediainfo};
-use std::collections::{BTreeMap, VecDeque};
-use std::sync::Condvar;
 
 /// Where minted keys start: above the catalog's own ranges (movies and episodes 1000+,
 /// shows 20000+, seasons 30000+), playlists (40000+) and collections (50000+).
 const SCAN_KEY_BASE: i64 = 100_000;
 
-/// One refresh a client or zurg asked for: a library, the folder in it, and `force`.
-#[derive(Debug, Clone, PartialEq)]
-pub(super) struct ScanJob {
-    pub section: String,
-    pub path: Option<String>,
-    pub force: bool,
-}
-
-/// Scans waiting for the scanner thread, which runs them one at a time.
-pub(crate) struct ScanQueue {
-    jobs: Mutex<VecDeque<ScanJob>>,
-    wake: Condvar,
-}
-
-impl std::fmt::Debug for ScanQueue {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.debug_struct("ScanQueue").finish()
-    }
-}
-
-impl ScanQueue {
-    fn new() -> Self {
-        Self { jobs: Mutex::new(VecDeque::new()), wake: Condvar::new() }
-    }
-
-    /// Queue a scan; one already waiting for the same folder is not queued twice.
-    pub(super) fn push(&self, job: ScanJob) {
-        let mut jobs = self.jobs.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        if !jobs.contains(&job) {
-            jobs.push_back(job);
-            self.wake.notify_one();
-        }
-    }
-
-    fn pop(&self) -> ScanJob {
-        let mut jobs = self.jobs.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        loop {
-            if let Some(job) = jobs.pop_front() {
-                return job;
-            }
-            jobs = self.wake.wait(jobs).unwrap_or_else(|poisoned| poisoned.into_inner());
-        }
-    }
-}
-
-/// A media file a listing found.
+/// A media file to become a row: its Part `file` and size.
 #[derive(Debug, Clone)]
-struct Found {
-    dav: String,
-    file: String,
-    size: u64,
+pub(super) struct Found {
+    pub file: String,
+    pub size: u64,
 }
 
-/// What a scan knows before it lists anything, taken under the lock.
-struct Plan {
-    key: String,
-    kind: String,
-    title: String,
-    targets: Vec<Target>,
-    /// Every file the library's rows read, and the row reading it.
-    known: HashMap<String, Known>,
-    tmdb: Option<Arc<tmdb::Tmdb>>,
-    plex: Option<Arc<plexmeta::PlexMeta>>,
+/// The library rows are placed in, and the providers that identify them.
+pub(super) struct Library {
+    pub key: String,
+    pub kind: String,
+    pub title: String,
+    pub tmdb: Option<Arc<tmdb::Tmdb>>,
+    pub plex: Option<Arc<plexmeta::PlexMeta>>,
 }
 
-struct Target {
-    path: String,
-    dav: String,
-    /// A library's own folder, as opposed to one inside it.
-    root: bool,
-}
-
-#[derive(Debug, Clone)]
-struct Known {
-    key: String,
-    pending: bool,
-}
-
-/// A new file and what zurg says about its release, ready to become a row.
-struct Arrival {
-    found: Found,
-    /// The release folder's name and its path under the mount.
-    release: String,
-    release_path: String,
-    entry: Value,
+/// A new file and what its source says about its release, ready to become a row.
+pub(super) struct Arrival {
+    pub found: Found,
+    /// The release's name, and the folder its files sit in (a show's `Location`).
+    pub release: String,
+    pub release_path: String,
+    /// `hash`, `imdb_id`, `size` and `media_info`, as zurg's `/api/library/entry` named them.
+    pub entry: Value,
+    /// Fields the row carries for its source (`_source`, `_sid`, `_path`, `_ids`).
+    pub extra: Map<String, Value>,
     /// What identification gave this file's row: TMDB's fields (`metadata::enrich`),
     /// Plex's guids, and how sure (`identify.rs`).
-    meta: Option<Map<String, Value>>,
-}
-
-/// The release folder a file sits in: `/dav/<dir>/<release>/...` -> (`<dir>/<release>`,
-/// `<release>`). A file directly in a library's folder is its own release.
-fn release_of(dav: &str) -> (String, String) {
-    let rest = dav.strip_prefix("/dav/").unwrap_or(dav);
-    let parts: Vec<&str> = rest.split('/').collect();
-    if parts.len() >= 3 {
-        (format!("{}/{}", parts[0], parts[1]), parts[1].to_string())
-    } else {
-        let name = parts.last().copied().unwrap_or_default().to_string();
-        (rest.to_string(), name)
-    }
+    pub meta: Option<Map<String, Value>>,
 }
 
 fn extension(file: &str) -> String {
@@ -139,7 +62,7 @@ fn stem(file: &str) -> &str {
 
 /// Plex's scanners skip a release's sample clip; a separate row titled as the film
 /// would be the result here.
-fn is_sample(file: &str) -> bool {
+pub(super) fn is_sample(file: &str) -> bool {
     stem(file)
         .to_ascii_lowercase()
         .split(|c: char| !c.is_ascii_alphanumeric())
@@ -156,11 +79,11 @@ fn episode_of(release: &str, file_name: &str) -> Option<(i64, i64)> {
 }
 
 /// Identification, off the lock, once per release: who it is (`identify.rs` -- an IMDb
-/// id zurg found is exact; otherwise its name to Plex's matcher and TMDB, their agreement
+/// id the source pushed is exact; otherwise its name to Plex's matcher and TMDB, their agreement
 /// the confidence), then for each new file the fields TMDB gives its row and Plex's own
 /// guids for it. A release named as the other kind of title than its library's, or not
 /// at all, stays unmatched for Fix Match.
-fn name_release(plan: &Plan, arrivals: &mut [Arrival], files: usize) {
+pub(super) fn name_release(plan: &Library, arrivals: &mut [Arrival], files: usize) {
     let (tmdb, plex) = (plan.tmdb.as_deref(), plan.plex.as_deref());
     let Some(first) = arrivals.first() else {
         return;
@@ -179,13 +102,18 @@ fn name_release(plan: &Plan, arrivals: &mut [Arrival], files: usize) {
     if let Some(imdb) = first.entry.get("imdb_id").and_then(Value::as_str).filter(|id| !id.is_empty()) {
         known.insert(hash.clone(), imdb.to_string());
     }
+    let release = first.release.clone();
+    // A TMDB id with no IMDb id is read the way a `{tmdb-…}` folder tag is: exact.
+    let named = match first.entry.get("tmdb_id").and_then(Value::as_str) {
+        Some(id) if known.is_empty() && !id.is_empty() => format!("{release} {{tmdb-{id}}}"),
+        _ => release.clone(),
+    };
     let identifier = Identifier {
         tmdb: tmdb.map(|t| t as &dyn TmdbSource),
         plex: plex.map(|p| p as &dyn PlexSource),
         known,
     };
-    let release = first.release.clone();
-    let identity = identifier.identify_as(&release, Some(&hash), files, Some(&plan.kind));
+    let identity = identifier.identify_as(&named, Some(&hash), files, Some(&plan.kind));
     let report = json!({
         "confidence": identity.confidence, "source": identity.source, "imdb": identity.imdb,
         "tmdb": identity.tmdb, "plex": identity.plex,
@@ -194,7 +122,7 @@ fn name_release(plan: &Plan, arrivals: &mut [Arrival], files: usize) {
     let matched = identity.kind == plan.kind
         && (identity.tmdb.is_some() || identity.plex.is_some() || identity.imdb.is_some());
     info!(
-        "SCAN identified {release:?} -> {} {} ({})",
+        "FEED identified {release:?} -> {} {} ({})",
         identity.confidence,
         identity.imdb.as_deref().unwrap_or("?"),
         identity.source.as_deref().unwrap_or("-")
@@ -290,195 +218,9 @@ fn name_release(plan: &Plan, arrivals: &mut [Arrival], files: usize) {
     }
 }
 
-fn under(file: &str, folder: &str) -> bool {
+pub(super) fn under(file: &str, folder: &str) -> bool {
     let folder = folder.trim_end_matches('/');
     file == folder || file.starts_with(&format!("{folder}/"))
-}
-
-/// Start the scanner thread and queue each library's first scan: zurg tells the
-/// server what changes while it runs, and the start finds what changed while it did not.
-pub(super) fn start_scanner(shared: &SharedRuntime) {
-    let (zurg, queue) = {
-        let Ok(mut runtime) = shared.lock() else {
-            return;
-        };
-        let Some(zurg) = runtime.zurg.clone() else {
-            return;
-        };
-        let queue = Arc::new(ScanQueue::new());
-        runtime.scans = Some(Arc::clone(&queue));
-        let sections = runtime
-            .catalog
-            .sections
-            .iter()
-            .filter(|section| {
-                runtime
-                    .locations(section)
-                    .iter()
-                    .any(|path| zurg.dav_path(path).is_some())
-            })
-            .filter_map(|section| section.get("key").map(string_value))
-            .collect::<Vec<_>>();
-        for section in sections {
-            queue.push(ScanJob { section, path: None, force: false });
-        }
-        (zurg, queue)
-    };
-    let shared = Arc::clone(shared);
-    let _ = thread::Builder::new()
-        .name("scanner".to_string())
-        .spawn(move || {
-            logging::name_thread("scanner".to_string());
-            loop {
-                let job = queue.pop();
-                if !scan(&shared, &zurg, &job) {
-                    // zurg answers 503 while it loads its library: ask again shortly.
-                    thread::sleep(std::time::Duration::from_secs(5));
-                    queue.push(job);
-                }
-            }
-        });
-}
-
-fn lock(shared: &SharedRuntime) -> std::sync::MutexGuard<'_, Runtime> {
-    shared.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
-}
-
-/// One scan: list off the lock, fetch what is new off the lock, change the library
-/// under it. Answers false when zurg is still loading and the scan should be retried.
-fn scan(shared: &SharedRuntime, zurg: &Zurg, job: &ScanJob) -> bool {
-    let started = std::time::Instant::now();
-    let Some(plan) = lock(shared).scan_plan(zurg, job) else {
-        return true;
-    };
-    let mut present: BTreeMap<String, Found> = BTreeMap::new();
-    let mut settled: Vec<String> = Vec::new();
-    let mut failed = None;
-    for target in &plan.targets {
-        match zurg.walk(&target.dav, if target.root { 2 } else { 1 }) {
-            // Measured (plexscratch, `missing_file_scan_s43.json` 6b1-6b4): a library
-            // folder that is missing, unreadable or EMPTY trashes nothing, whatever
-            // `autoEmptyTrash` says. An empty listing is what a zurg still loading its
-            // library looks like through a mount, so it is never taken for "all gone".
-            Ok(files) if files.is_empty() && target.root => {}
-            Ok(files) => {
-                for (dav, size) in files {
-                    let file = zurg.file_path(&dav);
-                    present.insert(file.clone(), Found { dav, file, size });
-                }
-                settled.push(target.path.clone());
-            }
-            // A release folder zurg no longer has: everything in it is gone (6a).
-            Err(ListError::Gone) if !target.root => settled.push(target.path.clone()),
-            Err(ListError::Gone) => {}
-            Err(ListError::Loading) => {
-                info!("SCAN section {} waits: zurg is still loading its library", plan.key);
-                return false;
-            }
-            Err(ListError::Failed(error)) => {
-                failed = Some(error);
-                break;
-            }
-        }
-    }
-    let mut activity = lock(shared).scan_started(&plan.key, &plan.title);
-    if let Some(error) = failed {
-        error!("SCAN section {} cannot list zurg, nothing changed: {error}", plan.key);
-        present.clear();
-        settled.clear();
-    }
-    // Every release in the listing is a step of the scan's progress; only new files
-    // are fetched.
-    let mut releases: BTreeMap<String, (String, String, Vec<Found>, usize)> = BTreeMap::new();
-    for found in present.values() {
-        let (id, name) = release_of(&found.dav);
-        let entry = releases.entry(id).or_insert_with(|| {
-            let release_path = zurg.file_path(&format!(
-                "/dav/{}",
-                release_of(&found.dav).0
-            ));
-            (name, release_path, Vec::new(), 0)
-        });
-        entry.3 += 1;
-        if !plan.known.contains_key(&found.file) && !is_sample(&found.file) {
-            entry.2.push(found.clone());
-        }
-    }
-    let total = releases.len().max(1);
-    let mut arrivals = Vec::new();
-    let mut created = Vec::new();
-    let mut last = String::new();
-    for (index, (_, (name, release_path, files, count))) in releases.into_iter().enumerate() {
-        lock(shared).scan_progress(&mut activity, &plan.key, &name, (index * 99 / total) as i64);
-        let mut release = Vec::new();
-        for found in files {
-            match zurg.entry(&found.dav) {
-                Ok(entry) => release.push(Arrival {
-                    found,
-                    release: name.clone(),
-                    release_path: release_path.clone(),
-                    entry,
-                    meta: None,
-                }),
-                Err(error) => warning!("SCAN {} skipped: {error}", found.file),
-            }
-        }
-        name_release(&plan, &mut release, count);
-        if total > 1 {
-            // A whole library is added release by release, so a long first scan shows
-            // (and saves) what it has found so far.
-            created.extend(lock(shared).place_arrivals(&plan, release));
-        } else {
-            arrivals.extend(release);
-        }
-        last = name;
-    }
-    // A row added before zurg had probed its file gets its streams once it has.
-    let mut probed = Vec::new();
-    for (file, known) in &plan.known {
-        if known.pending {
-            if let Some(found) = present.get(file) {
-                if let Ok(entry) = zurg.entry(&found.dav) {
-                    if entry.get("media_info").is_some_and(Value::is_object) {
-                        probed.push((known.key.clone(), entry));
-                    }
-                }
-            }
-        }
-    }
-    let mut runtime = lock(shared);
-    activity.insert("subtitle".to_string(), json!(last));
-    runtime.scan_progress(&mut activity, &plan.key, &last, 99);
-    // Measured (4a): a folder scan announces its new row after the step at 99.
-    created.extend(runtime.place_arrivals(&plan, arrivals));
-    let filled = runtime.fill_probes(probed);
-    let (trashed, restored) = runtime.settle_missing(&plan, &present, &settled);
-    runtime.scan_finished(&mut activity, &plan.key);
-    for key in &created {
-        runtime.created_metadata_frames(key);
-    }
-    if job.force {
-        for row in runtime.section_rows(&plan.key) {
-            if let Some(key) = key_of(&row) {
-                runtime.push_refresh_events(&key);
-            }
-        }
-    }
-    if !created.is_empty() || filled > 0 || trashed > 0 || restored > 0 {
-        runtime.touch_gdm();
-        runtime.dirty = true;
-    }
-    info!(
-        "SCAN section {} path={} -> {} new, {} probed, {} gone, {} back, in {:.1}s",
-        plan.key,
-        job.path.as_deref().map_or("None".to_string(), crate::filters::py_repr),
-        created.len(),
-        filled,
-        trashed,
-        restored,
-        started.elapsed().as_secs_f64()
-    );
-    true
 }
 
 impl Runtime {
@@ -537,89 +279,26 @@ impl Runtime {
         }
     }
 
-    fn scan_plan(&self, zurg: &Zurg, job: &ScanJob) -> Option<Plan> {
-        let section = self.section(&job.section)?.clone();
-        let kind = section.get("type").and_then(Value::as_str).unwrap_or("movie").to_string();
-        if !matches!(kind.as_str(), "movie" | "show") {
-            return None;
-        }
-        let locations = self.locations(&section);
-        let wanted = job.path.as_deref().map(|path| path.trim_end_matches('/'));
-        let targets = match wanted {
-            Some(path) => vec![Target {
-                path: path.to_string(),
-                dav: zurg.dav_path(path).unwrap_or_default(),
-                root: locations.iter().any(|location| location.trim_end_matches('/') == path),
-            }],
-            None => locations
-                .iter()
-                .map(|location| Target {
-                    path: location.trim_end_matches('/').to_string(),
-                    dav: zurg.dav_path(location).unwrap_or_default(),
-                    root: true,
-                })
-                .collect(),
-        }
-        .into_iter()
-        .filter(|target| !target.dav.is_empty())
-        .collect();
-        let mut known = HashMap::new();
-        for row in self.catalog.items() {
-            if string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) != job.section
-                || !matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
-            {
-                continue;
-            }
-            let Some(key) = key_of(row) else {
-                continue;
-            };
-            for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
-                for part in media.get("Part").and_then(Value::as_array).into_iter().flatten() {
-                    if let Some(file) = part.get("file").and_then(Value::as_str) {
-                        known.insert(
-                            file.to_string(),
-                            Known {
-                                key: key.clone(),
-                                pending: row.get("_probePending").is_some_and(truthy),
-                            },
-                        );
-                    }
-                }
-            }
-        }
-        Some(Plan {
-            key: job.section.clone(),
-            kind,
-            title: string_value(section.get("title").unwrap_or(&Value::Null)),
-            targets,
-            known,
-            tmdb: self.tmdb.clone(),
-            plex: self.plex.clone(),
-        })
-    }
-
     /// The scan's opening frames, as `notify_section_scan` writes them.
-    fn scan_started(&mut self, section: &str, title: &str) -> Map<String, Value> {
+    pub(super) fn scan_started(&mut self, section: &str, title: &str) -> Map<String, Value> {
         let mut activity = butler::new_activity("library.update.section", "Scanning", false);
         self.notify_activity(&activity, "started");
         self.notify_status(&format!("Scanning the \"{title}\" section"), "");
         activity.insert("title".to_string(), json!(format!("Scanning {title}")));
         self.notify_activity(&activity, "updated");
         activity.insert("Context".to_string(), json!({"librarySectionID": section}));
-        self.scanning = Some((section.to_string(), activity.clone()));
         activity
     }
 
     /// Measured (6a2): a folder scan's steps name the release folder, at 0 then 99.
-    fn scan_progress(&mut self, activity: &mut Map<String, Value>, section: &str, subtitle: &str, progress: i64) {
+    pub(super) fn scan_progress(&mut self, activity: &mut Map<String, Value>, section: &str, subtitle: &str, progress: i64) {
         activity.insert("subtitle".to_string(), json!(subtitle));
         activity.insert("progress".to_string(), json!(progress));
         activity.insert("Context".to_string(), json!({"librarySectionID": section}));
         self.notify_activity(activity, "updated");
-        self.scanning = Some((section.to_string(), activity.clone()));
     }
 
-    fn scan_finished(&mut self, activity: &mut Map<String, Value>, section: &str) {
+    pub(super) fn scan_finished(&mut self, activity: &mut Map<String, Value>, section: &str) {
         activity.insert("progress".to_string(), json!(100));
         activity.insert("Context".to_string(), json!({"librarySectionID": section}));
         self.notify_activity(activity, "updated");
@@ -630,7 +309,6 @@ impl Runtime {
         );
         self.notify_activity(&outer, "started");
         self.notify_activity(activity, "ended");
-        self.scanning = None;
         self.notify_status(
             "Library scan complete",
             "Extra information may still be downloading from the Internet",
@@ -644,25 +322,29 @@ impl Runtime {
         self.notify_activity(&outer, "ended");
     }
 
-    /// New files become rows: keys minted, Media built from zurg's probe, episodes placed
-    /// under the show and season they belong to (existing ones kept, by identity).
+    /// New files become rows: keys minted, Media built from the source's probe, episodes
+    /// placed under the show and season they belong to (existing ones kept, by identity).
     /// Answers the keys of every row created, parents first.
-    fn place_arrivals(&mut self, plan: &Plan, arrivals: Vec<Arrival>) -> Vec<String> {
-        if arrivals.is_empty() {
-            return Vec::new();
-        }
+    pub(super) fn place_arrivals(&mut self, plan: &Library, arrivals: Vec<Arrival>) -> Vec<String> {
         let taken: HashSet<String> = self.catalog.items().iter().flat_map(row_files).collect();
         let mut leaves = Vec::new();
         for arrival in arrivals {
-            // A file another row already reads (a scan raced a rename back).
+            // A file another row already reads.
             if taken.contains(&arrival.found.file) {
                 continue;
             }
-            match self.leaf_for(plan, &arrival) {
+            match self.leaf_for(plan, &arrival, None) {
                 Some(leaf) => leaves.push(leaf),
-                None => warning!("SCAN {} has no episode number; not placed", arrival.found.file),
+                None => warning!("FEED {} has no episode number; not placed", arrival.found.file),
             }
         }
+        self.place_leaves(plan, leaves, &HashSet::new())
+    }
+
+    /// Leaf rows into the library: a show's episode under the show of its identity and the
+    /// season of its index, each found or made. `quiet` names leaves that are not new
+    /// (a re-identified row keeps its key): they get no creation frames.
+    pub(super) fn place_leaves(&mut self, plan: &Library, leaves: Vec<Value>, quiet: &HashSet<String>) -> Vec<String> {
         if leaves.is_empty() {
             return Vec::new();
         }
@@ -761,14 +443,15 @@ impl Runtime {
         for key in &episodes {
             self.inherit_parents(key);
         }
-        for key in &created {
+        for key in created.iter().filter(|key| !quiet.contains(*key)) {
             self.push_created_frames(key);
         }
         created
     }
 
-    /// The leaf row a new file becomes, keyed; `None` for a show's file with no episode.
-    fn leaf_for(&mut self, plan: &Plan, arrival: &Arrival) -> Option<Value> {
+    /// The leaf row a new file becomes, on `key` or a minted one; `None` for a show's file
+    /// with no episode.
+    pub(super) fn leaf_for(&mut self, plan: &Library, arrival: &Arrival, key: Option<String>) -> Option<Value> {
         let file_name = arrival.found.file.rsplit('/').next().unwrap_or_default().to_string();
         let release = identify::parse_name(&arrival.release);
         let (season, episode) = if plan.kind == "show" {
@@ -776,7 +459,7 @@ impl Runtime {
         } else {
             (0, 0)
         };
-        let key = self.mint_key();
+        let key = key.unwrap_or_else(|| self.mint_key());
         let rating = key.parse::<i64>().unwrap_or(0);
         let stamp = now();
         let extension = extension(&file_name);
@@ -827,7 +510,9 @@ impl Runtime {
         if let Some(hash) = arrival.entry.get("hash").and_then(Value::as_str) {
             leaf["_hash"] = json!(hash);
         }
-        let _ = &arrival.release_path;
+        for (field, value) in &arrival.extra {
+            leaf[field.as_str()] = value.clone();
+        }
         if plan.kind == "show" {
             leaf["_kind"] = json!("tv");
             leaf["_tmdb_id"] = leaf["_identity"].clone();
@@ -937,7 +622,7 @@ impl Runtime {
 
     /// Measured (4a): after the scan, a new row's metadata pass -- the `Updating
     /// Metadata` activity around processing, matching, queued and loading frames.
-    fn created_metadata_frames(&mut self, key: &str) {
+    pub(super) fn created_metadata_frames(&mut self, key: &str) {
         let Some(row) = self.catalog.get(key).cloned() else {
             return;
         };
@@ -957,11 +642,11 @@ impl Runtime {
         self.push_timeline_entry(&row, 5, None, None, None, None);
     }
 
-    /// Rows added before zurg had probed their file get their Media from the probe,
-    /// keeping their ids.
-    fn fill_probes(&mut self, probed: Vec<(String, Value)>) -> usize {
+    /// Rows added before their file was probed get their Media from the probe, keeping
+    /// their ids.
+    pub(super) fn fill_probes(&mut self, probed: Vec<(String, Value)>) -> usize {
         let mut filled = 0;
-        for (key, entry) in probed {
+        for (key, probe) in probed {
             let Some(row) = self.catalog.get(&key).cloned() else {
                 continue;
             };
@@ -971,7 +656,7 @@ impl Runtime {
             let part = old.get("Part").and_then(Value::as_array).and_then(|parts| parts.first()).cloned().unwrap_or_default();
             let file = part.get("file").and_then(Value::as_str).unwrap_or_default().to_string();
             let media = mediainfo::build_media(
-                entry.get("media_info").unwrap_or(&Value::Null),
+                &probe,
                 old.get("id").and_then(Value::as_i64).unwrap_or(0),
                 part.get("id").and_then(Value::as_i64).unwrap_or(0),
                 part.get("key").and_then(Value::as_str).unwrap_or_default(),
@@ -992,58 +677,26 @@ impl Runtime {
         filled
     }
 
-    /// Files a settled listing no longer holds go to the trash, and trashed files it
-    /// holds again come back. Answers (trashed or deleted, restored).
-    fn settle_missing(
-        &mut self,
-        plan: &Plan,
-        present: &BTreeMap<String, Found>,
-        settled: &[String],
-    ) -> (usize, usize) {
-        let empty = self.auto_empty_trash();
-        let mut gone = Vec::new();
-        let mut back = Vec::new();
-        for row in self.catalog.items() {
-            if string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) != plan.key
-                || !matches!(row.get("type").and_then(Value::as_str), Some("movie" | "episode"))
-            {
-                continue;
-            }
-            let files = row_files(row);
-            if files.is_empty() || !files.iter().all(|file| settled.iter().any(|folder| under(file, folder))) {
-                continue;
-            }
-            let Some(key) = key_of(row) else {
-                continue;
-            };
-            let here = files.iter().any(|file| present.contains_key(file));
-            match (here, row.get("deletedAt").is_some()) {
-                (false, false) => gone.push(key),
-                (true, true) => back.push(key),
-                _ => {}
-            }
+    /// A file the source no longer has: to the trash, or deleted at once under
+    /// `autoEmptyTrash` (measured, 5a: one `state 9` frame and nothing else). Answers
+    /// whether it was deleted rather than trashed; a row already in the trash is left.
+    pub(super) fn remove_missing(&mut self, key: &str) -> Option<bool> {
+        if self.catalog.get(key)?.get("deletedAt").is_some() {
+            return None;
         }
-        let count = gone.len();
-        for key in gone {
-            if empty {
-                // Measured (5a): with `autoEmptyTrash` on, the row is deleted during the
-                // scan, one `state 9` frame and nothing else.
-                self.purge_row(&key);
-            } else {
-                self.trash_row(&key);
-            }
+        if self.auto_empty_trash() {
+            self.purge_row(key);
+            Some(true)
+        } else {
+            self.trash_row(key);
+            Some(false)
         }
-        let restored = back.len();
-        for key in back {
-            self.untrash_row(&key);
-        }
-        (count, restored)
     }
 
     /// Measured (1, 2): a missing file soft-deletes its row -- `deletedAt` on the row and
     /// its Media (never the Part), and on an episode's season and show too, counts
     /// unchanged -- each announced as a `type -1` state 3 then state 5 pair.
-    fn trash_row(&mut self, key: &str) {
+    pub(super) fn trash_row(&mut self, key: &str) {
         let stamp = now();
         let mut chain = vec![key.to_string()];
         if let Some(row) = self.catalog.get(key) {
@@ -1066,13 +719,13 @@ impl Runtime {
             }
             self.deletion_pair(member);
         }
-        info!("SCAN trashed {key}");
+        info!("FEED trashed {key}");
     }
 
     /// Measured (6a2): the file back before the trash was emptied restores the SAME row
     /// -- key, Media and guid -- with the same `type -1` pair. Its season and show leave
     /// the trash once none of their episodes is in it (inferred: not measured).
-    fn untrash_row(&mut self, key: &str) {
+    pub(super) fn untrash_row(&mut self, key: &str) {
         let mut chain = vec![key.to_string()];
         if let Some(row) = self.catalog.get(key) {
             if row.get("type").and_then(Value::as_str) == Some("episode") {
@@ -1097,7 +750,7 @@ impl Runtime {
             }
             self.deletion_pair(member);
         }
-        info!("SCAN restored {key}");
+        info!("FEED restored {key}");
     }
 
     fn deletion_pair(&mut self, key: &str) {
@@ -1110,7 +763,7 @@ impl Runtime {
     /// A trashed leaf deleted for good: the row goes (and an episode's season with its
     /// last episode, as a DELETE takes it; a show with its last season, inferred), its key
     /// retired, announced as the row's own type in `state 9`.
-    fn purge_row(&mut self, key: &str) {
+    pub(super) fn purge_row(&mut self, key: &str) {
         let Some(row) = self.catalog.get(key).cloned() else {
             return;
         };
@@ -1139,7 +792,7 @@ impl Runtime {
         }
         self.drop_from_queues(&doomed);
         self.push_timeline_entry_with(&row, 9, Some("deleted"), None, None, None, parents);
-        info!("SCAN deleted {key}");
+        info!("FEED deleted {key}");
     }
 
     /// `PUT /library/sections/{id}/emptyTrash`: every trashed leaf deleted. Measured
@@ -1186,7 +839,7 @@ impl Runtime {
 }
 
 /// Every file a row's Parts read.
-fn row_files(row: &Value) -> Vec<String> {
+pub(super) fn row_files(row: &Value) -> Vec<String> {
     row.get("Media")
         .and_then(Value::as_array)
         .into_iter()
@@ -1379,19 +1032,18 @@ mod tests {
             let release = fixture["release"].as_str().unwrap().to_string();
             let file = format!("/zurg/x/{release}/{}", fixture["file"].as_str().unwrap());
             Arrival {
-                found: Found { dav: String::new(), file, size: 1 },
+                found: Found { file, size: 1 },
                 release: release.clone(),
                 release_path: format!("/zurg/x/{release}"),
                 entry: fixture["entry"].clone(),
+                extra: Map::new(),
                 meta: None,
             }
         };
-        let plan = |kind: &str| Plan {
+        let plan = |kind: &str| Library {
             key: "1".to_string(),
             kind: kind.to_string(),
             title: "x".to_string(),
-            targets: Vec::new(),
-            known: HashMap::new(),
             tmdb: Some(Arc::new(tmdb::Tmdb::new("testkey".to_string(), dir.join("tmdb_cache.json")))),
             plex: Some(Arc::new(plexmeta::PlexMeta::new("token".to_string(), dir.join("plex_cache.json")))),
         };
@@ -1420,11 +1072,7 @@ mod tests {
     }
 
     #[test]
-    fn a_release_folder_is_the_second_segment() {
-        assert_eq!(
-            release_of("/dav/shows/Show.S01.1080p/Season 1/Show.S01E02.mkv"),
-            ("shows/Show.S01.1080p".to_string(), "Show.S01.1080p".to_string())
-        );
+    fn samples_and_folders() {
         assert!(is_sample("/x/Film.2020.Sample.mkv") && !is_sample("/x/Samples.of.Life.mkv"));
         assert!(under("/mnt/zurg/movies/A/b.mkv", "/mnt/zurg/movies/") && !under("/mnt/zurg/moviesX/b.mkv", "/mnt/zurg/movies"));
     }

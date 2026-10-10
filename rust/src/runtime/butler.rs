@@ -610,28 +610,9 @@ impl Runtime {
             }
         }
         let force = query.get("force").map(String::as_str) == Some("1");
-        // A library whose folders are zurg's is really scanned: listed, fetched and applied
-        // off the request thread (`scan.rs`), whose frames follow as it runs. A real PMS
-        // answers the request at once and scans in the background too. Any other library
-        // has nothing to list and keeps the catalog's measured skeleton below.
-        let zurg_folders = self.zurg.as_ref().is_some_and(|zurg| {
-            self.locations(section).iter().any(|path| zurg.dav_path(path).is_some())
-        });
-        if let Some(queue) = self.scans.as_ref().filter(|_| zurg_folders) {
-            queue.push(scan::ScanJob {
-                section: section_id.to_string(),
-                path: query.get("path").filter(|value| !value.is_empty()).cloned(),
-                force,
-            });
-            info!(
-                "SECTION refresh {section_id} path={} -> queued",
-                query
-                    .get("path")
-                    .filter(|value| !value.is_empty())
-                    .map_or("None".to_string(), |path| crate::filters::py_repr(path))
-            );
-            return;
-        }
+        // A library has no folders simplex reads: its sources push what it holds
+        // (`feed.rs`), so a refresh -- old zurg builds still send one per release -- is
+        // the catalog's measured skeleton and changes nothing.
         self.notify_section_scan(section_id, section);
         let rows = self.section_rows(section_id);
         if force {

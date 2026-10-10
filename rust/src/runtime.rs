@@ -57,7 +57,8 @@ mod tmdb;
 mod transcoder;
 mod upstream;
 mod wire;
-mod zurg;
+mod feed;
+mod source;
 use artwork::owns_artwork;
 use logging::{debug, error, info, warning};
 use resume::{
@@ -224,9 +225,10 @@ pub struct RuntimeOptions {
     pub heartbeat_interval: u64,
     pub account_state_interval: u64,
     pub plex_direct_host: Option<String>,
-    /// zurg's `mount_path`: a Part's `file` is under it, and the same file is
-    /// `/dav/<rest>` on zurg's WebDAV.
+    /// zurg's `mount_path`: the mount of the source `ZURG_URL` defines (`source.rs`).
     pub zurg_mount: String,
+    /// `--sources`: the sources file (`docs/feed-api.md`).
+    pub sources: Option<PathBuf>,
 }
 
 impl Default for RuntimeOptions {
@@ -253,6 +255,7 @@ impl Default for RuntimeOptions {
             account_state_interval: plextv::ACCOUNT_STATE_INTERVAL,
             plex_direct_host: None,
             zurg_mount: "/mnt/zurg".to_string(),
+            sources: None,
         }
     }
 }
@@ -446,15 +449,11 @@ pub struct Runtime {
     pub state_path: Option<PathBuf>,
     pub catalog_path: PathBuf,
     pub source_digest: String,
-    /// zurg, when `ZURG_URL` names one: every Part's bytes, and the library scans.
+    /// Where Part bytes come from and who may push items (`source.rs`, `feed.rs`).
     /// Shared with the part reads that stream outside the lock.
-    zurg: Option<Arc<zurg::Zurg>>,
-    /// The scanner's queue, once `serve` started it (only with zurg).
-    scans: Option<Arc<scan::ScanQueue>>,
-    /// The library a scan is running in and its activity as it stands: what
-    /// `/activities` lists and `refreshing` reports. zurg asks `/activities` before every
-    /// scan it sends and waits while a `library.update.section` one runs.
-    scanning: Option<(String, Map<String, Value>)>,
+    sources: Vec<Arc<source::Source>>,
+    /// Pushed items with no `media_info` yet, by `<source>:<id>`: stored, never shown.
+    feed_held: std::collections::BTreeMap<String, Value>,
     /// `metadata.Tmdb`, only with `TMDB_KEY`: without it Fix Match has no candidates.
     tmdb: Option<Arc<tmdb::Tmdb>>,
     /// Plex's metadata agent, only with `PLEX_TOKEN`: what a scan matches a release with
@@ -641,6 +640,7 @@ impl Runtime {
                     .unwrap_or_else(|| PathBuf::from("."));
                 Arc::new(plexmeta::PlexMeta::new(token, directory.join("plex_cache.json")))
             });
+        let sources = source::load(options.sources.as_deref(), &options.zurg_mount)?;
         // A catalog `build_catalog.py` wrote into a database carries the digest of the
         // JSON it came from, so a state saved over that JSON is still this catalog's.
         let from_database = store::is_sqlite(&options.catalog);
@@ -742,9 +742,8 @@ impl Runtime {
             state_path: options.state,
             catalog_path: options.catalog,
             source_digest,
-            zurg: zurg::Zurg::from_env(&options.zurg_mount).map(Arc::new),
-            scans: None,
-            scanning: None,
+            sources,
+            feed_held: std::collections::BTreeMap::new(),
             // Fix Match needs a live agent; the cache lives beside the catalog.
             tmdb,
             plex,
@@ -1357,6 +1356,9 @@ impl Runtime {
             if let Some(next) = state.get("nextScanKey").and_then(Value::as_i64) {
                 self.next_scan_key = self.next_scan_key.max(next);
             }
+            if let Some(held) = state.get("feedHeld").and_then(Value::as_object) {
+                self.feed_held = held.iter().map(|(key, value)| (key.clone(), value.clone())).collect();
+            }
             if let Some(names) = state.get("collectionGuids").and_then(Value::as_object) {
                 self.collection_guids = names.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
             }
@@ -1714,6 +1716,7 @@ impl Runtime {
             ("historyCounter", json!(self.history_counter.get())),
             ("retiredKeys", json!(self.retired_keys)),
             ("nextScanKey", json!(self.next_scan_key)),
+            ("feedHeld", json!(self.feed_held)),
             ("collectionGuids", json!(self.collection_guids.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Map<String, Value>>())),
             ("hiddenContinue", json!(self.hidden_continue.iter().collect::<Vec<_>>())),
             ("viewedInSession", json!(self.viewed_in_session.iter().collect::<Vec<_>>())),
@@ -2891,7 +2894,7 @@ impl Runtime {
             "scannedAt": created,
             "contentChangedAt": section.get("contentChangedAt").cloned().unwrap_or(json!(rows.len())),
             "filters": true,
-            "refreshing": self.scanning.as_ref().is_some_and(|(scanned, _)| *scanned == key),
+            "refreshing": false,
             "allowSync": false,
             "content": true,
             "directory": true,
@@ -7968,14 +7971,9 @@ impl Runtime {
             ("GET" | "HEAD", "/status/sessions") => self.route_sessions(&query),
             // `server.py`: the running activities -- every native activity starts and
             // ends inside the request that ran it, so the list between requests is empty.
-            // A zurg scan runs off the request thread, and is listed while it does.
-            ("GET" | "HEAD", "/activities") => match &self.scanning {
-                Some((_, activity)) => Response::json(
-                    200,
-                    json!({"MediaContainer": {"size": 1, "Activity": [Value::Object(activity.clone())]}}),
-                ),
-                None => Response::json(200, json!({"MediaContainer": {"size": 0}})),
-            },
+            ("GET" | "HEAD", "/activities") => {
+                Response::json(200, json!({"MediaContainer": {"size": 0}}))
+            }
             ("GET" | "HEAD", "/status/sessions/background") => {
                 Response::json(200, json!({"MediaContainer": {"size": 0}}))
             }
@@ -20661,9 +20659,9 @@ impl Runtime {
                 // server's existence check, and its explicit "not found" the false/false
                 // pair a real PMS reports for a missing file; other failures are not
                 // collapsed into "missing".
-                let available = match (&self.zurg, part.get("file").and_then(Value::as_str)) {
-                    (Some(zurg), Some(file)) => zurg.dav_path(file).map_or(true, |dav| zurg.exists(&dav)),
-                    _ => true,
+                let available = match part.get("file").and_then(Value::as_str).and_then(|file| self.part_source(row, file)) {
+                    Some((source, path)) => source.exists(&path),
+                    None => true,
                 };
                 if let Some(object) = part.as_object_mut() {
                     object.insert("accessible".to_string(), json!(available));
@@ -21944,6 +21942,7 @@ impl Runtime {
             .and_then(|v| v.parse::<i64>().ok())
             .unwrap_or(0);
         let mut part = None;
+        let mut owner = Value::Null;
         for row in self.catalog.items() {
             for media in row
                 .get("Media")
@@ -21968,6 +21967,7 @@ impl Runtime {
                             );
                         }
                         part = Some(selected);
+                        owner = row.clone();
                     }
                 }
             }
@@ -21982,17 +21982,22 @@ impl Runtime {
         {
             return Response::error(400, "simplex: bad request");
         }
-        // The bytes are zurg's: the Part's file, under zurg's mount, is a WebDAV path. With
-        // no zurg at all the read is routed and its source unreachable -- the 502 a dead
-        // provider link was -- and a file outside zurg's mount is no part zurg can serve.
+        // The bytes are a source's (`source.rs`): a feed row names its source and path, a
+        // catalog row's file is under a source's mount. With no source at all the read is
+        // routed and its source unreachable -- the 502 a dead provider link was -- and a
+        // file under no source's mount is no part anything can serve.
         let Some(file) = part.get("file").and_then(Value::as_str).filter(|file| !file.is_empty()) else {
             return Response::error(404, "simplex: no such part");
         };
-        let Some(zurg) = self.zurg.clone() else {
-            error!("PART {} upstream failed: no ZURG_URL configured", segments.first().copied().unwrap_or(""));
-            return Response::error(502, "simplex: upstream failed");
-        };
-        let Some(dav) = zurg.dav_path(file) else {
+        let Some((source, path)) = self.part_source(&owner, file) else {
+            if self.sources.is_empty() || owner.get("_source").is_some() {
+                error!(
+                    "PART {} upstream failed: no source {} configured",
+                    segments.first().copied().unwrap_or(""),
+                    owner.get("_source").and_then(Value::as_str).unwrap_or("at all")
+                );
+                return Response::error(502, "simplex: upstream failed");
+            }
             return Response::error(404, "simplex: no such part");
         };
         // The Download context-menu entry is the same Part read with `download=1`; the
@@ -22018,20 +22023,34 @@ impl Runtime {
             format!("part-{}", segments.first().copied().unwrap_or(""))
         };
         let part_id = segments.first().copied().unwrap_or("").to_string();
-        self.stream_part(&part, &part_id, zurg, dav, download.then_some(filename), request)
+        self.stream_part(&part, &part_id, source, path, download.then_some(filename), request)
+    }
+
+    /// Where a Part's bytes are: the row's own source and path when the Part is the one
+    /// the feed made it with, else the source whose mount holds the file.
+    fn part_source(&self, row: &Value, file: &str) -> Option<(Arc<source::Source>, String)> {
+        let own = scan::row_files(row).into_iter().next().is_some_and(|first| first == file);
+        if let (true, Some(name)) = (own, row.get("_source").and_then(Value::as_str)) {
+            let path = row.get("_path").and_then(Value::as_str)?;
+            let source = self.sources.iter().find(|source| source.name == name)?;
+            return Some((Arc::clone(source), path.to_string()));
+        }
+        self.sources
+            .iter()
+            .find_map(|source| source.path_under_mount(file).map(|path| (Arc::clone(source), path)))
     }
 
     /// The part read's response head, and the plan `handle_connection` carries out once
-    /// the runtime lock is released: open the file on zurg with the measured window, then
-    /// stream exactly that many bytes. Opening happens before any status is written, as
-    /// `_serve_part`/`_proxy` do, so a file zurg no longer has is a 404, a refusal its own
-    /// status and a transport failure a 502.
+    /// the runtime lock is released: open the file on its source with the measured window,
+    /// then stream exactly that many bytes. Opening happens before any status is written,
+    /// as `_serve_part`/`_proxy` do, so a file the source no longer has is a 404, a refusal
+    /// its own status and a transport failure a 502.
     fn stream_part(
         &mut self,
         part: &Value,
         part_id: &str,
-        zurg: Arc<zurg::Zurg>,
-        dav: String,
+        source: Arc<source::Source>,
+        path: String,
         download: Option<String>,
         request: &Request,
     ) -> Response {
@@ -22039,7 +22058,7 @@ impl Runtime {
         let range = request.headers.get("range").cloned();
         // Cycle 44: the MEASURED grammar decides the window rather than the upstream's
         // own leniency; with no size in the catalog there is nothing to compute a window
-        // from, so the client's header passes through and zurg's answer is echoed.
+        // from, so the client's header passes through and the source's answer is echoed.
         let window = if size == 0 {
             PartWindow::Passthrough(range.clone())
         } else {
@@ -22115,16 +22134,14 @@ impl Runtime {
         // from the last one. Every CDN answers a media range with `Connection: close`.
         response.close = true;
         self.pending_part = Some(PartProxy {
-            zurg,
-            dav,
-            redirect: self.part_mode == "redirect",
+            source,
+            path,
             window,
             head: request.method == "HEAD",
             part_id: part_id.to_string(),
             method: request.method.clone(),
             route: request.target.split('?').next().unwrap_or_default().to_string(),
             range: range.clone(),
-            download: download.is_some(),
         });
         response
     }
@@ -23070,9 +23087,6 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     if std::env::var("TMDB_KEY").map_or(true, |key| key.is_empty()) {
         info!("no TMDB_KEY: Fix Match will report no candidates");
     }
-    if std::env::var("ZURG_URL").map_or(true, |url| url.is_empty()) {
-        info!("no ZURG_URL: parts have no bytes to stream");
-    }
     let tls_config = match options.tls_cert.as_deref() {
         Some(cert_path) => Some(Arc::new(load_tls_config(
             cert_path,
@@ -23086,8 +23100,17 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     if let Some(path) = &loaded.state_path {
         info!("state file {}: {}", path.display(), loaded.state_summary);
     }
+    if loaded.sources.is_empty() {
+        info!("no source (--sources or ZURG_URL): parts have no bytes to stream");
+    }
+    for source in &loaded.sources {
+        info!(
+            "source {}: feed {}",
+            source.name,
+            if source.token.is_some() { "on at /simplex/feed/" } else { "off (no token)" }
+        );
+    }
     let runtime = Arc::new(Mutex::new(loaded));
-    scan::start_scanner(&runtime);
     // `logger.addHandler(_Capture())`: Download Logs and the Console see what follows.
     logging::start_capture();
     if let Some(cert) = &tls_cert {
@@ -23140,7 +23163,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         // Measured behind a Cloudflare tunnel: a prefix Range reaches the origin as a
         // full fetch, so every play start drains the whole title from the provider.
         warning!(
-            "part-mode=proxy behind a public URL: a CDN may strip Range and turn every play start into a FULL-FILE fetch from the provider. Use --part-mode redirect unless you have verified Range passthrough."
+            "part-mode=proxy behind a public URL: a CDN may strip Range and turn every play start into a FULL-FILE fetch from the source. Verify Range passthrough."
         );
     }
     start_gdm(Arc::clone(&runtime), &gdm_mode, port);
@@ -23475,6 +23498,24 @@ fn handle_connection<S: Read + Write + PollRead>(
                     .is_some_and(|scheme_end| &request.target[..scheme_end] != "http")
         };
         let (request_path, request_query) = split_target(&request.target);
+        // The feed is simplex's own API, not an emulated PMS route: its source's token
+        // admits it, never the Plex gate (`feed.rs`, `docs/feed-api.md`).
+        if request_path.starts_with("/simplex/feed/") {
+            let keep = request.version == "HTTP/1.1"
+                && request
+                    .headers
+                    .get("connection")
+                    .is_none_or(|value| !value.eq_ignore_ascii_case("close"))
+                && !close_after_body;
+            let response = feed::handle(&runtime, &request, &request_path);
+            info!("FEED {} {request_path} -> {}", request.method, response.status);
+            write_response(&mut stream, &response, keep)?;
+            served_any = true;
+            if !keep {
+                return Ok(());
+            }
+            continue;
+        }
         let path_segments = request_path.split('/').collect::<Vec<_>>();
         let invalid_dot_path = path_segments.iter().enumerate().any(|(index, segment)| {
             segment.len() >= 2
@@ -26252,7 +26293,7 @@ fn download_disposition(filename: &str) -> String {
 /// How a part read's window was decided, carried out of the lock with the plan.
 #[derive(Debug, Clone)]
 enum PartWindow {
-    /// No size in the catalog: the client's own header goes to zurg.
+    /// No size in the catalog: the client's own header goes to the source.
     Passthrough(Option<String>),
     Unsatisfiable,
     Partial {
@@ -26266,10 +26307,9 @@ enum PartWindow {
 /// A part read accepted by the router, finished by `handle_connection` without the lock.
 #[derive(Debug)]
 struct PartProxy {
-    zurg: Arc<zurg::Zurg>,
-    /// The file's decoded `/dav/...` path.
-    dav: String,
-    redirect: bool,
+    source: Arc<source::Source>,
+    /// The file's path under the source's url, decoded.
+    path: String,
     window: PartWindow,
     head: bool,
     /// For the oracle's `PART` log lines: the part id, the request's method and route,
@@ -26278,7 +26318,6 @@ struct PartProxy {
     method: String,
     route: String,
     range: Option<String>,
-    download: bool,
 }
 
 /// `_serve_image`'s upstream half, outside the lock: the remote bytes and their type
@@ -26306,7 +26345,7 @@ fn insert_after_accept_ranges(response: &mut Response, content_range: String) {
         .insert(at, ("Content-Range".to_string(), content_range));
 }
 
-/// Carry out a `PartProxy`: open the file on zurg, write the head, stream the body.
+/// Carry out a `PartProxy`: open the file on its source, write the head, stream the body.
 /// Answers whether the connection stays open (a part read never keeps it).
 fn serve_part_proxy<S: Write>(
     stream: &mut S,
@@ -26322,17 +26361,6 @@ fn serve_part_proxy<S: Write>(
         info!("{status} {} {} -- {sentence}", plan.method, plan.route);
         wire::write_enveloped(stream, &Response::error(status, sentence), envelope, keep)
     };
-    if plan.redirect {
-        if let Some(url) = plan.zurg.redirect_target(&plan.dav) {
-            info!(
-                "PART {part_id} -> 302 CDN{}",
-                if plan.download { " (download)" } else { "" }
-            );
-            let mut redirect = Response::bytes(302, "");
-            redirect.headers.push(("Location".to_string(), url));
-            return wire::write_enveloped(stream, &redirect, envelope, keep);
-        }
-    }
     let mut headers: Vec<(&'static str, String)> = Vec::new();
     let want = match &plan.window {
         PartWindow::Unsatisfiable => {
@@ -26362,12 +26390,12 @@ fn serve_part_proxy<S: Write>(
             None
         }
     };
-    let mut upstream = match plan.zurg.open(&plan.dav, &headers) {
+    let mut upstream = match plan.source.open(&plan.path, &headers) {
         Ok(upstream) if upstream.status < 400 => upstream,
         // Cycle 44: the source saying the FILE is gone is a plain 404, as a real PMS
         // answers for a part it cannot open (zen part 23595).
         Ok(refused) if refused.status == 404 => {
-            error!("part {part_id} is unavailable upstream: {}", plan.dav);
+            error!("part {part_id} is unavailable upstream: {}", plan.path);
             return refuse(stream, 404, "simplex: not found");
         }
         Ok(refused) => {
