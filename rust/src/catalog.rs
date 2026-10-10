@@ -20,6 +20,10 @@ pub struct Catalog {
     items: Vec<Value>,
     pub by_id: HashMap<String, usize>,
     changes: Changes,
+    /// `children`'s rows by parent key, built on first use and dropped by every mutable
+    /// path. Without it a listing scanned all rows once per show and per season: 9 s for
+    /// a page of fun's 1,500 movies and over 30 s for its 13,500 episodes (2026-10-10).
+    children_index: std::sync::OnceLock<HashMap<String, Vec<usize>>>,
 }
 
 /// The rows changed since the last `take_changes`: by key, or all of them.
@@ -51,6 +55,7 @@ impl Catalog {
             items,
             by_id: HashMap::new(),
             changes: Changes { all: true, keys: HashSet::new() },
+            children_index: std::sync::OnceLock::new(),
         };
         catalog.rebuild_index();
         Ok(catalog)
@@ -72,6 +77,7 @@ impl Catalog {
     }
 
     pub fn rebuild_index(&mut self) {
+        self.children_index.take();
         self.by_id.clear();
         for (index, item) in self.items.iter().enumerate() {
             if let Some(key) = key_value(item) {
@@ -90,6 +96,7 @@ impl Catalog {
         if !self.changes.all {
             self.changes.keys.insert(rating_key.to_string());
         }
+        self.children_index.take();
         self.items.get_mut(index)
     }
 
@@ -100,6 +107,7 @@ impl Catalog {
     /// Every row, mutably: a save then looks at them all.
     pub fn items_mut(&mut self) -> &mut Vec<Value> {
         self.changes.all = true;
+        self.children_index.take();
         &mut self.items
     }
 
@@ -108,15 +116,23 @@ impl Catalog {
     }
 
     pub fn children(&self, parent_key: &str) -> Vec<Value> {
-        self.items
-            .iter()
-            .filter(|item| {
-                item.get("parentRatingKey").and_then(|value| match value {
-                    Value::String(value) => Some(value == parent_key),
-                    Value::Number(value) => Some(value.to_string() == parent_key),
-                    _ => None,
-                }) == Some(true)
-            })
+        let index = self.children_index.get_or_init(|| {
+            let mut index: HashMap<String, Vec<usize>> = HashMap::new();
+            for (position, item) in self.items.iter().enumerate() {
+                let parent = match item.get("parentRatingKey") {
+                    Some(Value::String(value)) => value.clone(),
+                    Some(Value::Number(value)) => value.to_string(),
+                    _ => continue,
+                };
+                index.entry(parent).or_default().push(position);
+            }
+            index
+        });
+        index
+            .get(parent_key)
+            .into_iter()
+            .flatten()
+            .filter_map(|position| self.items.get(*position))
             .cloned()
             .collect()
     }
@@ -125,6 +141,7 @@ impl Catalog {
     /// row (`store.rs` appends it) rather than looking at every row: a scan adds rows to a
     /// live library one release at a time.
     pub fn add(&mut self, item: Value) {
+        self.children_index.take();
         let key = key_value(&item);
         self.items.push(item);
         match key {
@@ -223,6 +240,64 @@ impl TryFrom<Value> for Catalog {
 
 #[cfg(test)]
 mod tests {
+    /// What a show listing asks for every show and every season (`leafCount`,
+    /// `childCount`), on fun's library as it stood on 2026-10-10: 361 shows, 698
+    /// seasons, 13,509 episodes and 1,565 movies.
+    #[test]
+    fn children_of_every_show_and_season_does_not_rescan_the_library_each_time() {
+        let shape: Vec<Vec<usize>> =
+            serde_json::from_str(include_str!("../tests/fixtures/fun_show_shape.json")).unwrap();
+        let mut items = Vec::new();
+        let mut next = 100_000u64;
+        let mut key = || {
+            next += 1;
+            next.to_string()
+        };
+        for _ in 0..1565 {
+            items.push(serde_json::json!({"ratingKey": key(), "type": "movie"}));
+        }
+        let mut parents = Vec::new();
+        for seasons in &shape {
+            let show = key();
+            items.push(serde_json::json!({"ratingKey": show, "type": "show"}));
+            parents.push((show.clone(), seasons.len()));
+            for (index, episodes) in seasons.iter().enumerate() {
+                let season = key();
+                items.push(serde_json::json!({"ratingKey": season, "type": "season",
+                                              "parentRatingKey": show, "index": index + 1}));
+                parents.push((season.clone(), *episodes));
+                for episode in 0..*episodes {
+                    // Numeric parents, as rows a feed placed sometimes carry.
+                    items.push(serde_json::json!({"ratingKey": key(), "type": "episode",
+                                                  "parentRatingKey": season.parse::<u64>().unwrap(),
+                                                  "index": episode + 1}));
+                }
+            }
+        }
+        let catalog = Catalog::from_value(serde_json::json!({"items": items})).unwrap();
+        let started = std::time::Instant::now();
+        for (parent, count) in &parents {
+            assert_eq!(catalog.children(parent).len(), *count, "children of {parent}");
+        }
+        let elapsed = started.elapsed();
+        assert!(elapsed < std::time::Duration::from_millis(500), "1,059 lookups took {elapsed:?}");
+    }
+
+    #[test]
+    fn children_follow_a_row_added_or_reparented_after_a_lookup() {
+        let mut catalog = Catalog::from_value(serde_json::json!({"items": [
+            {"ratingKey": "1", "type": "season"},
+            {"ratingKey": "2", "type": "episode", "parentRatingKey": "1"}]})).unwrap();
+        assert_eq!(catalog.children("1").len(), 1);
+        catalog.add(serde_json::json!({"ratingKey": "3", "type": "episode", "parentRatingKey": "1"}));
+        assert_eq!(catalog.children("1").len(), 2);
+        catalog.get_mut("2").unwrap()["parentRatingKey"] = serde_json::json!("9");
+        assert_eq!(catalog.children("1").len(), 1);
+        assert_eq!(catalog.children("9").len(), 1);
+        catalog.remove("3");
+        assert!(catalog.children("1").is_empty());
+    }
+
     use super::*;
     #[test]
     fn preserves_unknown_document_properties() {
