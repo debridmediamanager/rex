@@ -209,7 +209,7 @@ def main():
         actual_magic.hex() or "unknown container",
     )
 
-    # A seek is just another Range, and it is the read a debrid backend is most
+    # A seek is just another Range, and it is the read zurg's provider is most
     # likely to fail: the CDN has to honour a mid-file offset, not only a prefix.
     midpoint = part.size // 2
     started = time.time()

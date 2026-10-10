@@ -18,12 +18,13 @@ both:
 The part handler has two modes because which one clients accept is exactly the
 open question:
 
-  proxy     (default) stream the bytes through simplex, forwarding Range and
-            rewriting Content-Type -- RD's CDN answers
-            `application/force-download`, which is not a media type.
-  redirect  302 straight to the CDN.  Saves all the bandwidth; official clients
-            withhold the Plex token off-origin (plex-for-kodi's
-            `isRequestToServer`), and some may not follow it at all.
+  proxy     (default) stream zurg's bytes through simplex, applying the measured
+            Range grammar and the Content-Type the file's extension names.
+  redirect  302 to the provider URL zurg's signed link answers with, where zurg
+            has one (an archive member or a Usenet release has none, and is
+            proxied).  Saves the bandwidth; official clients withhold the Plex
+            token off-origin (plex-for-kodi's `isRequestToServer`), and some may
+            not follow it at all.
 """
 
 import argparse
@@ -225,8 +226,8 @@ FRAMEWORK_AGENT_ACTIONS = {
     "media/get": ("media_get", 4, ("mediaType", "guid", "url", "parentGUID"), True),
 }
 
-# Upstream reads are issued with a browser-ish UA; RD's CDN is fine with
-# anything, but a bare urllib default is the kind of thing a CDN rate-limits.
+# Upstream reads name simplex rather than urllib's default, the kind of User-Agent a
+# CDN's bot filter refuses (Cloudflare 403s `Python-urllib/*`; protocol-traps).
 UPSTREAM_UA = "simplex/0.1"
 
 # The account's Plex Pass entitlement list, as a real PMS on this same account
@@ -9065,7 +9066,7 @@ class SimPlex:
             # The Delete entry in an item's context menu is drawn only when the
             # server reports this (client module 92273's `showDelete`). simplex
             # owns no files, so its delete drops the ROW from the in-memory
-            # library and leaves the debrid content alone -- which is the only
+            # library and leaves zurg's content alone -- which is the only
             # honest local meaning of "delete" here, and a restart undoes it.
             allowMediaDeletion=True,
             allowSharing=True,
@@ -24349,7 +24350,7 @@ class Handler(BaseHTTPRequestHandler):
     # The two exceptions stay exceptions, both already measured: `GET /` answers the
     # 193-byte redirect document rather than the plain 401, and the `/system` subtree
     # answers an EMPTY body with no `Content-Type` at all. 502 and 503 are simplex's own
-    # (a dead Real-Debrid link, a terminated session) and no real PMS answers them, so
+    # (a part read zurg cannot answer, a terminated session) and no real PMS answers them, so
     # they take the template by the RULE rather than by a witness of their own.
     @staticmethod
     def _error_document(status):
@@ -25965,9 +25966,9 @@ class Handler(BaseHTTPRequestHandler):
             # the fixture's dead links meant every byte read was a 502 and a 502 IS
             # written by `_send`.
             self.send_header("X-Plex-Protocol", "1.0")
-            # RD's CDN answers `application/force-download`, which is not a media type;
-            # a client that sniffs it may refuse the stream, so the real type is
-            # substituted. Cycle 44, measured on zen: the key is the stored FILE's
+            # The upstream's own type is never passed on (RD's CDN, the source before
+            # zurg, answered `application/force-download`, which is not a media type);
+            # the real type is substituted. Cycle 44, measured on zen: the key is the stored FILE's
             # extension and NOT the Media's `container` -- zen part 7113 is a `mp4`
             # Media whose file is `.mkv` and it answers `video/x-matroska` -- the URL's
             # own extension is ignored (six spellings of the same part all answer the
@@ -26000,9 +26001,9 @@ class Handler(BaseHTTPRequestHandler):
                 # keeps `.`, `-`, `_` and `~`, so simplex's name came out with a bare dot.
                 #
                 # No suite check reaches this: the header is only sent on a part read
-                # that resolves, and the fixture's Real-Debrid links are dead (the
-                # suite already skips `download serves an attachment named after the
-                # media file` for the same reason). It was proved against kids' own
+                # that resolves, and the fixture's files are on no zurg unless the test
+                # host serves them (the suite skips `download serves an attachment named
+                # after the media file` otherwise). It was proved against kids' own
                 # `Content-Disposition` by escaping that server's filename with both
                 # forms and diffing the result.
                 self.send_header("Content-Disposition", _download_disposition(download))
@@ -26385,7 +26386,7 @@ def main():
         # with NO Range header at all, because Cloudflare collapses a prefix
         # range into a full origin fetch. simplex then serves the whole file and
         # the CDN pulls all of it -- so every playback start drains the entire
-        # title out of the debrid provider. Loud, because the cost is invisible
+        # title out of zurg and its provider. Loud, because the cost is invisible
         # until the bandwidth bill.
         logger.warning(
             "part-mode=proxy behind a public URL: a CDN may strip Range and turn "

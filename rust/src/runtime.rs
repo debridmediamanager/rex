@@ -18686,8 +18686,8 @@ impl Runtime {
                 return Response::error(404, "simplex: not found");
             }
             // Apply private-source transformations before projecting the row.
-            // `detail_row` deliberately strips `_debrid` and the artwork source
-            // URLs; doing these steps after projection makes `checkFiles` always
+            // `detail_row` deliberately strips every private `_` field and the artwork
+            // source URLs; doing these steps after projection makes `checkFiles` always
             // report false and `includeAlternates` silently omit the measured
             // alternate blocks even when the source data is present.
             // Cycles 19, 22, 29, 46: seven detail options carry the 0/1 grammar
@@ -21914,7 +21914,7 @@ impl Runtime {
         }
         // A terminated playback session is refused before the byte URL is
         // resolved.  PMS applies this gate to the complete `/parts/{id}/...`
-        // path, so a missing provider link still answers 503 for the next read.
+        // path, so a part zurg no longer serves still answers 503 for the next read.
         // `sessions.is_terminated`: keyed on the query's session identifier, and it stays
         // armed -- every later read of that session is refused too.
         if let Some(session_id) = query
@@ -22037,9 +22037,9 @@ impl Runtime {
     ) -> Response {
         let size = part.get("size").and_then(Value::as_u64).unwrap_or(0);
         let range = request.headers.get("range").cloned();
-        // Cycle 44: the MEASURED grammar decides the window rather than the CDN's own
-        // leniency; with no size in the catalog there is nothing to compute a window
-        // from, so the client's header passes through and the CDN's answer is echoed.
+        // Cycle 44: the MEASURED grammar decides the window rather than the upstream's
+        // own leniency; with no size in the catalog there is nothing to compute a window
+        // from, so the client's header passes through and zurg's answer is echoed.
         let window = if size == 0 {
             PartWindow::Passthrough(range.clone())
         } else {
@@ -22531,7 +22531,7 @@ fn error_document(status: u16) -> Vec<u8> {
         422 => "Unprocessable Entity",
         500 => "Internal Server Error",
         501 => "Not Implemented",
-        // `http.HTTPStatus(status).phrase`: a part whose provider link fails is a 502.
+        // `http.HTTPStatus(status).phrase`: a part read zurg cannot answer is a 502.
         502 => "Bad Gateway",
         503 => "Service Unavailable",
         504 => "Gateway Timeout",
@@ -26252,7 +26252,7 @@ fn download_disposition(filename: &str) -> String {
 /// How a part read's window was decided, carried out of the lock with the plan.
 #[derive(Debug, Clone)]
 enum PartWindow {
-    /// No size in the catalog: the client's own header goes to the CDN.
+    /// No size in the catalog: the client's own header goes to zurg.
     Passthrough(Option<String>),
     Unsatisfiable,
     Partial {

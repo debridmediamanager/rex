@@ -15,7 +15,7 @@ websocket CLOSE is echoed with 1000.
 
 Drives real server processes (`tests/server_command.py`), so it runs against the
 native binary by default and the Python oracle with `SIMPLEX_SERVER=python`. The
-part read reaches Real-Debrid with a dummy key and expects its 401.
+part read goes to a zurg on a closed port and expects the transport failure's 502.
 
     python3 tests/test_server_log.py
 """

@@ -30,9 +30,9 @@ than one movie and the show has two seasons and three episodes. Against a
 one-item catalog the Shuffle, Play Next, Merge and paging checks have nothing to
 compare and report SKIP instead of passing.
 
-Checks that need something this deployment does not have -- a resolvable debrid
-link for the Download entry, a TMDB key for Fix Match -- report SKIP with the
-reason rather than passing quietly.
+Checks that need something this deployment does not have -- a zurg serving the
+fixture's Part files for the Download entry, a TMDB key for Fix Match -- report SKIP
+with the reason rather than passing quietly.
 """
 
 import base64
@@ -1568,8 +1568,8 @@ def main():
             #
             # Cycle 44 split the two refusals: a file the source no longer has is a
             # **404**, which is what a real PMS answers for a part it cannot open (zen
-            # part 23595), and a transport failure stays the 502. With no zurg the part
-            # has no bytes at all and this skip fires on the 404.
+            # part 23595), and a transport failure stays the 502. With no `ZURG_URL` the
+            # part has no bytes at all and this skip fires on the 502.
             skip("download serves an attachment named after the media file",
                  "part unreadable: the catalog's files are not on a zurg "
                  "(HTTP %s)" % status)
@@ -23276,8 +23276,8 @@ def main():
             path_c29j = "%s%sdownload=%s" % (part_c29j, "&" if "?" in part_c29j else "?",
                                              quote(value_c29j))
             downloads_c29j[value_c29j] = request(base, "HEAD", path_c29j)[0]
-        # The fixture's Real-Debrid links are dead, so an ACCEPTED value answers the
-        # resolver's 502 and a refused one never reaches it: 400 is the whole signal.
+        # Without a zurg serving the fixture's files an ACCEPTED value answers the byte
+        # path's 404/502 and a refused one never reaches it: 400 is the whole signal.
         check("download= carries the 0/1 option grammar",
               all(downloads_c29j[value_c29j] != 400 for value_c29j in
                   ("0", "1", "00", "01", "+1", "+0"))

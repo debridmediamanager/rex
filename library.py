@@ -24,7 +24,7 @@ Everything here is in memory, and catalog.json is never rewritten. Without
 `--state` that makes a restart the undo button; with it, persist.py saves this
 state beside the catalog and a restart changes nothing. Either way a Delete in
 the Plex UI -- phrased "delete from your filesystem" -- only drops the row from
-the library: simplex owns no files, and the debrid content behind it is untouched.
+the library: simplex owns no files, and zurg's content behind it is untouched.
 
 Key spaces stay disjoint, the way the catalog's already are (leaves 1000+,
 shows 20000+, seasons 30000+), so a ratingKey identifies its own kind on sight:

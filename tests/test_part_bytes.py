@@ -390,7 +390,7 @@ def main():
         # byte path found five false positives: every stale private-catalog link said
         # accessible=true/exists=true and immediately answered unavailable_file/404.
         # Both references expose false/false for a missing file, and the live/dead
-        # pair below drives the actual Resolver rather than a catalog flag.
+        # pair below drives zurg's real answer rather than a catalog flag.
         def part_state(rating_key, option):
             with urllib.request.urlopen(urllib.request.Request(
                     "http://127.0.0.1:%d/library/metadata/%s?%s=1"

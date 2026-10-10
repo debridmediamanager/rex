@@ -60,7 +60,6 @@
               "videoProfile": "high",
               "exists": true,
               "accessible": true,
-              "_debrid": "fixture://stacked-cd1",
               "Stream": [
                 {"id": 101001, "streamType": 1, "default": true, "codec": "h264", "index": 0, "width": 1920, "height": 1080, "profile": "high", "level": 40, "bitDepth": 8, "frameRate": 24.0, "scanType": "progressive"},
                 {"id": 101002, "streamType": 2, "selected": true, "default": true, "codec": "aac", "index": 1, "channels": 2, "samplingRate": 48000}
@@ -76,7 +75,6 @@
               "videoProfile": "high",
               "exists": true,
               "accessible": true,
-              "_debrid": "fixture://stacked-cd2",
               "Stream": [
                 {"id": 101101, "streamType": 1, "default": true, "codec": "h264", "index": 0, "width": 1280, "height": 720, "profile": "high", "level": 40, "bitDepth": 8, "frameRate": 24.0, "scanType": "progressive"},
                 {"id": 101102, "streamType": 2, "selected": true, "default": true, "codec": "aac", "index": 1, "channels": 2, "samplingRate": 48000}
@@ -84,8 +82,7 @@
             }
           ]
         }
-      ],
-      "_debrid": "fixture://legacy-row-link"
+      ]
     },
     {
       "ratingKey": "102",
@@ -130,7 +127,6 @@
               "videoProfile": "main 10",
               "exists": true,
               "accessible": true,
-              "_debrid": "fixture://dovi-profile-5",
               "Stream": [
                 {"id": 102001, "streamType": 1, "default": true, "codec": "hevc", "index": 0, "width": 1920, "height": 1080, "profile": "main 10", "level": 120, "bitDepth": 10, "frameRate": 23.976, "scanType": "progressive", "DOVIPresent": true, "DOVIProfile": 5, "DOVIBLPresent": true, "DOVIELPresent": false, "DOVIRPUPresent": true},
                 {"id": 102002, "streamType": 2, "selected": true, "default": true, "codec": "eac3", "index": 1, "channels": 6, "samplingRate": 48000}
@@ -260,7 +256,6 @@
               "videoProfile": "high",
               "exists": true,
               "accessible": true,
-              "_debrid": "fixture://feature-trailer",
               "Stream": [
                 {"id": 201001, "streamType": 1, "default": true, "codec": "h264", "index": 0, "width": 1280, "height": 720, "profile": "high", "level": 40, "bitDepth": 8, "frameRate": 24.0, "scanType": "progressive"},
                 {"id": 201002, "streamType": 2, "selected": true, "default": true, "codec": "aac", "index": 1, "channels": 2, "samplingRate": 48000}

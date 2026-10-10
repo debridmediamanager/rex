@@ -283,7 +283,7 @@ class PlexProvider:
         `{"excludeElements": "Media", "type": 1, "title": "Big Buck Bunny", "year": 2008,
         "filename": "Big Buck Bunny (2008)/Big Buck Bunny (2008) - 1080p.mkv", "hash":
         ...}`, answered with one row whose `Guid` list carries `imdb://` and `tmdb://`.
-        The `hash` is the server's own file hash, which a debrid link has no bytes for;
+        The `hash` is the server's own file hash, which simplex, reading no file, cannot compute;
         without it 184 of 198 labelled movies still matched right (identify.py).
         Returns {guid, kind, title, year, imdb, tmdb} or None.
         """

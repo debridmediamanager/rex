@@ -228,7 +228,7 @@ impl Zurg {
 
     /// Where `--part-mode redirect` sends a client: zurg's signed `.strm` URL for the
     /// file needs no credential and answers with the provider's own download URL, so
-    /// the client is sent there, as it was sent to the debrid CDN before. `None` when zurg
+    /// the client is sent there and its bytes never pass through simplex. `None` when zurg
     /// streams the file itself (an archive member, a Usenet release): then simplex proxies.
     pub(super) fn redirect_target(&self, dav: &str) -> Option<String> {
         let signed = self.entry(dav).ok()?;
