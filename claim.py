@@ -18,6 +18,7 @@ out-of-band the way this spike did first.
 The resulting token is persisted so a restart does not un-claim the server.
 """
 
+import gzip
 import json
 import logging
 import os
@@ -48,6 +49,16 @@ def plextv_url(url):
     if not base:
         return url
     return base.rstrip("/") + "/" + url.split("://", 1)[1]
+
+
+def read_body(response):
+    """The body, inflated: plex.tv gzips its answer whenever a PMS's `Accept-Encoding:
+    gzip` asks for it (the device PUT and the claim exchange both, in
+    tests/fixtures/plextv_registration_s1422.json), and urllib does not undo that."""
+    body = response.read()
+    if (response.headers.get("Content-Encoding") or "").lower() == "gzip":
+        body = gzip.decompress(body)
+    return body
 
 
 class Claim:

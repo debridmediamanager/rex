@@ -23,7 +23,9 @@ outbound-announce.json` recorded from a real PMS; its answers carry exactly the
 attributes the oracle's modules read, in the element shapes `tests/test_accountstate.py`
 already feeds them. No recorded plex.tv answer BODY is checked in -- the harness
 recording keeps request bodies and statuses -- so the answers are the smallest documents
-the oracle accepts, not transcriptions of plex.tv.
+the oracle accepts, not transcriptions of plex.tv. Like plex.tv, the stub gzips an answer
+whenever the request asks for gzip (`tests/fixtures/plextv_registration_s1422.json`: the
+exchange and device-PUT answers came back `content-encoding: gzip`).
 
     python3 tests/test_plextv.py                      # the native server
     PLEXSIM_SERVER=python python3 tests/test_plextv.py   # the Python oracle
@@ -32,6 +34,7 @@ the oracle accepts, not transcriptions of plex.tv.
 server, stub); the default asks the OS for free ones.
 """
 import base64
+import gzip
 import http.client
 import io
 import json
@@ -165,6 +168,11 @@ class StubHandler(BaseHTTPRequestHandler):
         data = payload.encode("utf-8") if isinstance(payload, str) else payload
         self.send_response(status)
         self.send_header("Content-Type", kind)
+        # plex.tv gzips whenever a PMS's `Accept-Encoding: gzip` asks (the recording's
+        # exchange and device PUT answers both carry `content-encoding: gzip`).
+        if data and "gzip" in (self.headers.get("Accept-Encoding") or ""):
+            data = gzip.compress(data)
+            self.send_header("Content-Encoding", "gzip")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)

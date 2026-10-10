@@ -37,7 +37,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-from claim import plextv_url
+from claim import plextv_url, read_body
 
 logger = logging.getLogger("plexsim.heartbeat")
 
@@ -152,7 +152,7 @@ def announce(token, machine_identifier, url, *, name="plexsim",
         ]),
     )
     with urllib.request.urlopen(request, timeout=25) as response:
-        return ET.fromstring(response.read())
+        return ET.fromstring(read_body(response))
 
 
 def is_visible(token, name):

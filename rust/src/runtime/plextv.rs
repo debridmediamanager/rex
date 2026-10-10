@@ -125,7 +125,7 @@ fn urlopen(
     body: Option<&[u8]>,
     timeout: u64,
 ) -> Result<(u16, Vec<u8>), Failure> {
-    let (status, _, payload) = upstream::fetch(
+    let (status, response_headers, payload) = upstream::fetch(
         method,
         &plextv_url(url),
         headers,
@@ -136,7 +136,22 @@ fn urlopen(
     if status >= 400 {
         return Err(Failure::Http(status, payload));
     }
-    Ok((status, payload))
+    Ok((status, inflate(&response_headers, payload).map_err(Failure::Other)?))
+}
+
+/// `claim.read_body`: plex.tv gzips its answer whenever a PMS's `Accept-Encoding: gzip`
+/// asks for it (the device PUT and the claim exchange both, in the fixture).
+fn inflate(headers: &[(String, String)], payload: Vec<u8>) -> Result<Vec<u8>, String> {
+    let gzipped = headers.iter().any(|(name, value)| {
+        name.eq_ignore_ascii_case("content-encoding") && value.eq_ignore_ascii_case("gzip")
+    });
+    if !gzipped {
+        return Ok(payload);
+    }
+    let mut out = Vec::new();
+    std::io::Read::read_to_end(&mut flate2::read::GzDecoder::new(payload.as_slice()), &mut out)
+        .map_err(|error| error.to_string())?;
+    Ok(out)
 }
 
 /// `repr(bytes)`, which is what `"%s" % body` prints for a response body.
