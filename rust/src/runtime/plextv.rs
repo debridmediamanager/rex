@@ -11,7 +11,7 @@
 //! test identity claiming or announcing against the real one is what reset the
 //! account's tokens on 2026-09-11.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -36,6 +36,11 @@ const STATE_URL: &str = "https://scrobbles.plex.tv/state/%s";
 const SERVICES_URL: &str = "https://servers.plex.tv/api/v2/server/users/services";
 const SERVERS_URL: &str = "https://plex.tv/servers.xml";
 const PUBSUB_URL: &str = "https://pubsub.plex.tv/sub/eventsource/%s/%s";
+const ACCESS_TOKENS_URL: &str = "https://plex.tv/api/v2/server/access_tokens";
+/// `claim.ACCESS_REFRESH_WINDOW`: zen's 1.42.2 PMS re-reads the access-token list for an
+/// unknown token unless its last read finished about 6 s ago or less
+/// (tests/fixtures/plextv_access_tokens_s1422.json).
+const ACCESS_REFRESH_WINDOW: Duration = Duration::from_secs(6);
 /// `claim.PUBSUB_TIMEOUT` / `PUBSUB_RETRY` (the probe PMS, measured).
 const PUBSUB_TIMEOUT: u64 = 20;
 const PUBSUB_RETRY: u64 = 15;
@@ -714,6 +719,102 @@ pub(crate) fn announce_connectivity(
     }
 }
 
+/// `Claim.fetch_access_tokens`: every token plex.tv lets reach this server -- its own, the
+/// owner's devices' and shared users' -- one `<token>` row each; `tokenDisabled="1"` is not
+/// let in.
+fn fetch_access_tokens(claim: &Claim, unknown: Option<&str>) -> Result<HashSet<String>, String> {
+    let token = claim.token.clone().unwrap_or_default();
+    let mut pairs = vec![("auth_token", token.clone())];
+    if let Some(unknown) = unknown.filter(|unknown| !unknown.is_empty()) {
+        pairs.push(("unknownToken", unknown.to_string()));
+    }
+    let url = format!("{ACCESS_TOKENS_URL}?{}", urlencode(&pairs));
+    let mut headers = claim.pms_headers("PlexMediaServer", true);
+    headers.push(("X-Plex-Token", token));
+    let (_, body) =
+        urlopen("GET", &url, &headers, None, 30).map_err(|failure| failure.to_string())?;
+    Ok(parse_xml(&body)?
+        .all("token")
+        .into_iter()
+        .filter(|row| row.get("tokenDisabled") != Some("1"))
+        .filter_map(|row| row.get("token").filter(|token| !token.is_empty()))
+        .map(str::to_string)
+        .collect())
+}
+
+/// The tokens plex.tv lets reach this server, as last read (`Claim.access_tokens`), and when
+/// that read finished. In memory only: a claimed start reads the list again.
+#[derive(Debug, Default)]
+pub(crate) struct Access {
+    tokens: Mutex<HashSet<String>>,
+    /// Held for a whole read, so a request arriving meanwhile waits for its answer ("Auth:
+    /// tokens were just refreshed, caller should check again") instead of reading again.
+    read: Mutex<Option<std::time::Instant>>,
+}
+
+impl Access {
+    fn holds(&self, token: &str) -> bool {
+        self.tokens
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .contains(token)
+    }
+
+    /// `Claim.refresh_access_tokens`, with the read lock already held: a failed read keeps
+    /// the last list.
+    fn refresh(&self, claim: &SharedClaim, unknown: Option<&str>, read: &mut Option<std::time::Instant>) {
+        match fetch_access_tokens(&snapshot(claim), unknown) {
+            Ok(tokens) => {
+                info!("plex.tv lists {} access tokens", tokens.len());
+                *self
+                    .tokens
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner()) = tokens;
+            }
+            Err(message) => error!("access tokens read failed: {message}"),
+        }
+        *read = Some(std::time::Instant::now());
+    }
+
+    /// Whether `token` opens this claimed server, without asking plex.tv: its own token or
+    /// one in the list as last read. The request router asks this under the runtime lock.
+    pub(crate) fn knows(&self, claim: &SharedClaim, token: &str) -> bool {
+        let claimed = claim
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .token
+            .as_deref()
+            .filter(|own| !own.is_empty())
+            .map(|own| own == token);
+        !token.is_empty() && claimed.is_some_and(|own| own || self.holds(token))
+    }
+
+    /// `Claim.admits`: `knows`, after re-reading the list for an unknown token unless that
+    /// was done within ACCESS_REFRESH_WINDOW. Asks plex.tv, so it runs before the runtime
+    /// lock is taken.
+    pub(crate) fn admits(&self, claim: &SharedClaim, token: &str) -> bool {
+        let claimed = claim
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .claimed();
+        if token.is_empty() || !claimed {
+            return false;
+        }
+        if self.knows(claim, token) {
+            return true;
+        }
+        let mut read = self.read.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        if self.knows(claim, token) {
+            return true;
+        }
+        if read.is_some_and(|at| at.elapsed() < ACCESS_REFRESH_WINDOW) {
+            return false;
+        }
+        self.refresh(claim, Some(token), &mut read);
+        self.knows(claim, token)
+    }
+}
+
 /// `xml.sax.saxutils.escape` with `"` too, inside double quotes.
 fn xml_attr(value: &str) -> String {
     format!(
@@ -813,10 +914,21 @@ fn command(payload: &str) {
 /// `Claim.start_registration`: the SERVER record (`publish`), the device PUT after a claim
 /// when there is a URL to announce, and the pubsub stream, resubscribed `PUBSUB_RETRY`
 /// seconds after it drops. Nothing else is periodic (the probe, measured for an hour).
-pub(crate) fn start_registration(claim: SharedClaim, local_address: String, beat: Option<Beat>) {
+/// `access`: a claimed START reads the access-token list first, the recording's first call
+/// there; the claim itself did not.
+pub(crate) fn start_registration(
+    claim: SharedClaim,
+    local_address: String,
+    beat: Option<Beat>,
+    access: Option<Arc<Access>>,
+) {
     let _ = thread::Builder::new()
         .name("plexsim-registration".to_string())
         .spawn(move || {
+            if let Some(access) = &access {
+                let mut read = access.read.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+                access.refresh(&claim, None, &mut read);
+            }
             match publish(&claim, &local_address) {
                 Ok(status) => info!("servers.xml POST -> {status}"),
                 Err(message) => error!("registration failed: {message}"),
@@ -1541,6 +1653,8 @@ pub(crate) struct PlexTv {
     pub sync: Option<Arc<WatchStateSync>>,
     /// The announce heartbeat, when `--announce-url` runs one: a claim announces at once.
     pub beat: Mutex<Option<Beat>>,
+    /// The tokens a claimed server lets in besides its own (`Claim.admits`).
+    pub access: Arc<Access>,
 }
 
 impl PlexTv {
@@ -1554,6 +1668,7 @@ impl PlexTv {
             refresh: AccountRefresh::default(),
             sync,
             beat: Mutex::new(None),
+            access: Arc::default(),
         }
     }
 
@@ -1759,7 +1874,7 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .clone();
-    start_registration(Arc::clone(&plextv.claim), local_address, beat);
+    start_registration(Arc::clone(&plextv.claim), local_address, beat, None);
     plextv.start_account(runtime);
     let guard = runtime
         .lock()

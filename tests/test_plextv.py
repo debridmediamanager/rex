@@ -65,12 +65,21 @@ import test_accountstate  # noqa: E402  (its synthetic encrypted-service helpers
 CATALOG = os.path.join(HERE, "catalog_ui.json")
 with open(os.path.join(HERE, "fixtures", "plextv_registration_s1422.json")) as _handle:
     RECORDED = json.load(_handle)
+# plex.tv's list of the tokens a claimed server lets in, as it answered for plexsim-e2e, and
+# zen's own PMS re-reading it for an unknown token (the 6 s window is measured there).
+with open(os.path.join(HERE, "fixtures", "plextv_access_tokens_s1422.json")) as _handle:
+    ACCESS = json.load(_handle)
 MACHINE = "f1x7u4e0000000000000000000000000000000f1"
 FRIENDLY = "plexsim-ui-fixture"
 VERSION = "1.42.2.10156-plexsim"
 CLAIM_TOKEN = "claim-STUB-CLAIM-TOKEN"
 ACCOUNT_TOKEN = "ACCOUNT-TOKEN-STUB"
 SERVER_TOKEN = "SERVER-TOKEN-STUB"
+DEVICE_TOKEN = "DEVICE-TOKEN-STUB-3"        # another of the owner's devices, as plex.tv lists it
+DISABLED_TOKEN = "DISABLED-TOKEN-STUB"      # listed with tokenDisabled="1"
+UNLISTED_TOKEN = "UNLISTED-TOKEN-STUB"
+LATE_TOKEN = "LATE-TOKEN-STUB"              # listed only once the test adds it
+ACCESS_WINDOW = 6
 OWNER = "stubowner"
 EMAIL = "owner@stub.invalid"
 ACCOUNT_ID = 42
@@ -164,6 +173,7 @@ class Stub(ThreadingHTTPServer):
         self.lock = threading.Lock()
         self.records = []
         self.pages = 0
+        self.late_tokens = []
 
     def taken(self, host=None, path=None, method=None):
         with self.lock:
@@ -258,6 +268,18 @@ class StubHandler(BaseHTTPRequestHandler):
                               % (ACCOUNT_ID, OWNER, EMAIL, SERVER_TOKEN))
         if method == "PUT" and host == "plex.tv" and path == "/api/servers/%s/connectivity" % MACHINE:
             return 200, xml, ""
+        if (method, host, path) == ("GET", "plex.tv", "/api/v2/server/access_tokens"):
+            # The recorded answer with the stub's tokens in it, plus a disabled row and any
+            # token the test has started listing; anything but the server token is a 401.
+            if query.get("auth_token") != SERVER_TOKEN:
+                return ACCESS["bad_auth_answer"]["status"], xml, ACCESS["bad_auth_answer"]["body"]
+            body = ACCESS["response"]["body"].replace("SERVER-TOKEN", SERVER_TOKEN) \
+                .replace("ACCOUNT-TOKEN", ACCOUNT_TOKEN).replace("DEVICE-TOKEN-", "DEVICE-TOKEN-STUB-")
+            row = ('<token type="device" device="stub" token="%s" tokenDisabled="%s" owned="1" '
+                   'createdAt="2026-10-10 00:00:00 UTC"/>\n')
+            with self.server.lock:
+                extra = [row % (DISABLED_TOKEN, 1)] + [row % (t, 0) for t in self.server.late_tokens]
+            return ACCESS["response"]["status"], xml, body.replace("</tokens>", "".join(extra) + "</tokens>")
         if (method, host, path) == ("POST", "plex.tv", "/servers.xml"):
             # 422 every time, to a real PMS too -- and the server record is written anyway.
             return recorded("claim", "POST", "/servers.xml")["status"], xml, ""
@@ -343,12 +365,14 @@ class Instance:
                 time.sleep(0.1)
         raise SystemExit("plexsim did not start:\n" + self.output())
 
-    def request(self, method, path, raw=False):
+    def request(self, method, path, raw=False, token=None):
+        headers = {"Accept": "application/json", "X-Plex-Client-Identifier": "plextv-suite",
+                   "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"}
+        if token:
+            headers["X-Plex-Token"] = token
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=15)
         try:
-            conn.request(method, path, headers={
-                "Accept": "application/json", "X-Plex-Client-Identifier": "plextv-suite",
-                "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"})
+            conn.request(method, path, headers=headers)
             response = conn.getresponse()
             body = response.read()
         finally:
@@ -411,8 +435,8 @@ def wait_for(predicate, timeout):
     return predicate()
 
 
-def log_archive(instance):
-    status, body = instance.request("GET", "/diagnostics/logs", raw=True)
+def log_archive(instance, token=None):
+    status, body = instance.request("GET", "/diagnostics/logs", raw=True, token=token)
     try:
         archive = zipfile.ZipFile(io.BytesIO(body))
         return status, {name: archive.read(name).decode(errors="replace")
@@ -429,14 +453,16 @@ def logged(text, level, message, pattern=STDERR_LINE):
     return re.search(pattern % (re.escape(level), message), text, re.M) is not None
 
 
-def surfaces(instance):
+def surfaces(instance, token=None):
+    """A claimed server gates every one of these but /identity, so a client of it sends a
+    token plex.tv lists for it (the account's own, here)."""
     return {
-        "identity": instance.request("GET", "/identity"),
-        "root": instance.request("GET", "/"),
-        "account": instance.request("GET", "/myplex/account"),
-        "providers": instance.request("GET", "/media/providers"),
-        "prefs": instance.request("GET", "/:/prefs"),
-        "watched": instance.request("GET", "/library/metadata/%s" % WATCHED_KEY),
+        "identity": instance.request("GET", "/identity", token=token),
+        "root": instance.request("GET", "/", token=token),
+        "account": instance.request("GET", "/myplex/account", token=token),
+        "providers": instance.request("GET", "/media/providers", token=token),
+        "prefs": instance.request("GET", "/:/prefs", token=token),
+        "watched": instance.request("GET", "/library/metadata/%s" % WATCHED_KEY, token=token),
     }
 
 
@@ -596,7 +622,7 @@ def main():
               connectivity and (connectivity[0]["query"], sent(connectivity[0])))
         asked = connectivity and dict(connectivity[0]["query"])["asyncIdentifier"]
 
-        claim_now = surfaces(first)
+        claim_now = surfaces(first, ACCOUNT_TOKEN)
         check("claimed /identity reports claimed true at once",
               truthy(container(claim_now["identity"][1]).get("claimed")), claim_now["identity"])
         root = container(claim_now["root"][1])
@@ -626,7 +652,7 @@ def main():
               and sent(refreshed[0]) == IDENTITY + [("accept", "application/xml")],
               refreshed and users and (refreshed[0]["at"] - users[0]["at"], sent(refreshed[0])))
         time.sleep(0.5)
-        after = surfaces(first)
+        after = surfaces(first, ACCOUNT_TOKEN)
         check("ownerFeatures gain the account's feature UUIDs",
               container(after["root"][1]).get("ownerFeatures") == features,
               container(after["root"][1]).get("ownerFeatures"))
@@ -675,7 +701,7 @@ def main():
               and watched.get("userRating") == 8.0 and watched.get("lastRatedAt") == 1789591000,
               {k: watched.get(k) for k in ("viewCount", "lastViewedAt", "userRating", "lastRatedAt")})
         check("an import is not a play: no history row",
-              not (container(first.request("GET", "/status/sessions/history/all?type=0,1")[1])
+              not (container(first.request("GET", "/status/sessions/history/all?type=0,1", token=ACCOUNT_TOKEN)[1])
                    .get("Metadata")), "history")
 
         saved = read_json(claim_file)
@@ -713,7 +739,7 @@ def main():
 
         # -- restart: the claim survives -------------------------------------------
         second = Instance(directory, ports[1], ports[2], extra=("--verbose",))
-        restarted = surfaces(second)
+        restarted = surfaces(second, ACCOUNT_TOKEN)
         check("after a restart /identity is still claimed",
               truthy(container(restarted["identity"][1]).get("claimed")), restarted["identity"])
         check("after a restart / still names the owner and the account's features",
@@ -735,6 +761,62 @@ def main():
         check("a claimed startup announces with the server's own token",
               beats and dict(beats[0]["query"])["X-Plex-Token"] == SERVER_TOKEN,
               beats and beats[0]["query"])
+
+        # -- claimed: the token gate is up, as on a real PMS -------------------------
+        access_path = "/api/v2/server/access_tokens"
+        reads = lambda: stub.taken("plex.tv", access_path, "GET")
+        startup = [r for r in reads() if r["query"] == [("auth_token", SERVER_TOKEN)]]
+        publishes = stub.taken("plex.tv", "/servers.xml", "POST")
+        real = recorded("claimed_start", "GET", access_path)
+        check("a claimed startup reads plex.tv's access-token list first, as the recording did",
+              startup and publishes and startup[0]["at"] < publishes[0]["at"]
+              and [k for k, _ in real["query"]] == ["auth_token"]
+              and sent(startup[0]) == PMS_HEADERS + [("x-plex-token", SERVER_TOKEN)]
+              and names(startup[0]["headers"]) == names(real["req_headers"]),
+              [(r["query"], sent(r)) for r in reads()])
+        check("claimed: /identity still answers without a token",
+              second.request("GET", "/identity")[0] == 200)
+        for label, path in (("the library", "/library/sections"),
+                            ("an item", "/library/metadata/%s" % WATCHED_KEY),
+                            ("the account", "/myplex/account")):
+            status, body = second.request("GET", path, raw=True)
+            check("claimed: no token is the measured 401 on %s" % label,
+                  status == 401 and b"401 Unauthorized" in body, (status, body[:120]))
+        check("claimed: the server's own token opens it",
+              second.request("GET", "/library/sections", token=SERVER_TOKEN)[0] == 200)
+        check("claimed: a token plex.tv lists opens it, as a header or in the query",
+              second.request("GET", "/library/sections", token=ACCOUNT_TOKEN)[0] == 200
+              and second.request("GET", "/library/sections?X-Plex-Token=%s" % DEVICE_TOKEN)[0] == 200)
+        time.sleep(ACCESS_WINDOW + 0.5)
+        before = len(reads())
+        status = second.request("GET", "/library/sections", token=UNLISTED_TOKEN)[0]
+        asked = reads()[before:]
+        check("claimed: a token plex.tv does not list is a 401, after one re-read naming it",
+              status == 401 and len(asked) == 1
+              and asked[0]["query"] == [("auth_token", SERVER_TOKEN), ("unknownToken", UNLISTED_TOKEN)]
+              and [k for k, _ in ACCESS["request"]["query_on_unknown_token"]]
+              == ["auth_token", "unknownToken"]
+              and sent(asked[0]) == PMS_HEADERS + [("x-plex-token", SERVER_TOKEN)],
+              (status, [(r["query"], sent(r)) for r in asked]))
+        with stub.lock:
+            stub.late_tokens.append(LATE_TOKEN)
+        before = len(reads())
+        status = second.request("GET", "/library/sections", token=LATE_TOKEN)[0]
+        check("claimed: within the measured window an unknown token is refused without asking again",
+              status == 401 and len(reads()) == before, (status, len(reads()) - before))
+        time.sleep(ACCESS_WINDOW + 0.5)
+        status = second.request("GET", "/library/sections", token=LATE_TOKEN)[0]
+        check("claimed: a token plex.tv starts listing opens it at the next re-read",
+              status == 200 and len(reads()) == before + 1
+              and dict(reads()[-1]["query"]).get("unknownToken") == LATE_TOKEN,
+              (status, [r["query"] for r in reads()[before:]]))
+        check("claimed: a listed row with tokenDisabled=1 is refused",
+              second.request("GET", "/library/sections", token=DISABLED_TOKEN)[0] == 401)
+        delegation = "/security/token?type=delegation&scope=all"
+        check("claimed: /security/token is 403 to an unlisted token and answers a listed one",
+              second.request("GET", delegation, token=UNLISTED_TOKEN)[0] == 403
+              and second.request("GET", delegation, token=ACCOUNT_TOKEN)[0] == 200)
+
         refreshed = wait_for(lambda: stub.taken("servers.plex.tv", "/api/v2/features"), 20)
         users = stub.taken("servers.plex.tv", "/api/v2/user")
         check("a claimed startup refreshes the owner, then the features",
@@ -745,12 +827,13 @@ def main():
               pages and pages[0]["query"] == [("after", "opaque-cursor-1"), ("count", "100")],
               pages and pages[0]["query"])
         time.sleep(0.5)
-        status, files = log_archive(second)
+        status, files = log_archive(second, ACCOUNT_TOKEN)
         plexsim_log = files.get("plexsim.log", "")
         check("Download Logs hands back the startup lines, claimed",
               status == 200 and logged(plexsim_log, "INFO", r"claim state: CLAIMED by %s" % OWNER,
                                        ARCHIVE_LINE)
-              and logged(plexsim_log, "INFO", r"token gate: OFF -- .*", ARCHIVE_LINE),
+              and logged(plexsim_log, "INFO", r"token gate: ENFORCED -- claimed: the server's own "
+                                              r"token and the ones plex\.tv lists for it", ARCHIVE_LINE),
               (status, sorted(files), plexsim_log[-1500:]))
         check("Download Logs carries the request log",
               re.search(r"^GET /identity$", files.get("requests.log", ""), re.M) is not None,

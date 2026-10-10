@@ -39,6 +39,14 @@ FEATURES_URL = "https://servers.plex.tv/api/v2/features"
 ACCOUNT_URL = "https://servers.plex.tv/api/v2/user"
 SERVERS_URL = "https://plex.tv/servers.xml"
 PUBSUB_URL = "https://pubsub.plex.tv/sub/eventsource/%s/%s"
+ACCESS_TOKENS_URL = "https://plex.tv/api/v2/server/access_tokens"
+
+# Measured in zen's own 1.42.2 PMS log (tests/fixtures/plextv_access_tokens_s1422.json): a
+# request carrying a token the server does not hold makes it re-read the list plex.tv keeps of
+# every token allowed in -- `?auth_token=<server token>&unknownToken=<that token>` -- unless the
+# last read finished about 6 s ago or less ("Auth: tokens were refreshed recently enough"). All
+# 586 reads in four hours were prompted that way; none ran on a timer.
+ACCESS_REFRESH_WINDOW = 6
 
 # Measured on a real 1.42.2 PMS claimed on zen (tests/fixtures/plextv_registration_s1422.json):
 # its EventSourceClient gives up on a pubsub stream that says nothing for 20 s -- plex.tv
@@ -92,6 +100,11 @@ class Claim:
         # Opaque scrobble cursor. Its contents are owned by plex.tv; only exact
         # round-tripping matters.
         self.view_state_cursor = None
+        # The tokens plex.tv lets reach this server, as last read, and when that read
+        # finished. In memory only: a claimed start reads the list again.
+        self.access_tokens = frozenset()
+        self._access_read = None
+        self._access_lock = threading.Lock()
         self._load()
 
     # -- persistence -----------------------------------------------------
@@ -261,6 +274,49 @@ class Claim:
             self.view_state_cursor = cursor
             self._save()
 
+    def fetch_access_tokens(self, unknown=None):
+        """`GET /api/v2/server/access_tokens`: every token plex.tv lets reach this server --
+        its own, the owner's devices' and shared users' -- one `<token>` row each. A row with
+        `tokenDisabled="1"` is not let in."""
+        pairs = [("auth_token", self.token)]
+        if unknown:
+            pairs.append(("unknownToken", unknown))
+        headers = self.pms_headers()
+        headers["X-Plex-Token"] = self.token
+        url = ACCESS_TOKENS_URL + "?" + urllib.parse.urlencode(pairs)
+        request = urllib.request.Request(plextv_url(url), headers=headers)
+        with urllib.request.urlopen(request, timeout=30) as response:
+            root = ET.fromstring(read_body(response))
+        return frozenset(node.attrib["token"] for node in root.iter("token")
+                         if node.attrib.get("token") and node.attrib.get("tokenDisabled") != "1")
+
+    def refresh_access_tokens(self, unknown=None):
+        """Re-read the list; a failed read keeps the last one."""
+        try:
+            self.access_tokens = self.fetch_access_tokens(unknown)
+            logger.info("plex.tv lists %d access tokens", len(self.access_tokens))
+        except Exception as error:
+            logger.error("access tokens read failed: %s", error)
+        self._access_read = time.monotonic()
+
+    def admits(self, token):
+        """Whether `token` opens this claimed server: its own token, or one plex.tv lists for
+        it. An unknown one re-reads the list first unless that was done within
+        ACCESS_REFRESH_WINDOW; a request that arrives while a read is running waits for it
+        ("Auth: tokens were just refreshed, caller should check again")."""
+        if not self.token or not token:
+            return False
+        if token == self.token or token in self.access_tokens:
+            return True
+        with self._access_lock:
+            if token in self.access_tokens:
+                return True
+            if (self._access_read is not None
+                    and time.monotonic() - self._access_read < ACCESS_REFRESH_WINDOW):
+                return False
+            self.refresh_access_tokens(unknown=token)
+            return token in self.access_tokens
+
     def announce_connectivity(self, async_identifier):
         """`PUT /api/servers/{id}/connectivity` -- a real PMS asking plex.tv to test its
         reachability, under an asyncIdentifier of its own; plex.tv answers over pubsub
@@ -342,16 +398,20 @@ class Claim:
             # ponytail: only notifyConnectivity is measured; other commands are logged, not acted on.
             logger.info("pubsub: unhandled command %s", command)
 
-    def start_registration(self, local_address, announce=None, stop=None):
+    def start_registration(self, local_address, announce=None, stop=None, access=False):
         """What a claimed PMS keeps up with plex.tv, on a daemon thread: the SERVER record
         (`publish`), the device PUT when there is a URL to announce (after a claim; at
         start the heartbeat's first beat is that PUT), and the pubsub stream, resubscribed
         `PUBSUB_RETRY` seconds after it drops. Nothing else is periodic: in the hour after
         its restart the probe sent no further publish, device PUT or connectivity check,
-        and held one stream."""
+        and held one stream. `access`: a claimed START reads the access-token list first,
+        which is the recording's first call there; the claim itself did not."""
         stop = stop or threading.Event()
 
         def run():
+            if access:
+                with self._access_lock:
+                    self.refresh_access_tokens()
             try:
                 logger.info("servers.xml POST -> %s", self.publish(local_address))
             except Exception as error:

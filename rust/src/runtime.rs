@@ -8076,10 +8076,34 @@ impl Runtime {
         }
     }
 
+    /// `PlexSim.gated`: `--token`, or a REAL claim -- a claimed PMS always has its gate up;
+    /// the opt-in default only spares the unclaimed instances the suites and probes drive
+    /// (`--assert-claimed` is not a claim and leaves it down).
+    fn gated(&self) -> bool {
+        self.token.is_some()
+            || self
+                .plextv
+                .claim
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .claimed()
+    }
+
+    /// `PlexSim.token_admitted`: `--token`, or -- once claimed -- the server's own token or
+    /// one plex.tv lists for it. `handle_connection` has already re-read that list for an
+    /// unknown token (`Access::admits`) before taking the runtime lock.
+    /// ponytail: the transient tokens /security/token hands out are not admitted back; no
+    /// measurement of a real PMS accepting one yet.
+    fn token_admitted(&self, given: &str) -> bool {
+        !given.is_empty()
+            && (self.token.as_deref() == Some(given)
+                || self.plextv.access.knows(&self.plextv.claim, given))
+    }
+
     fn authorized(&self, path: &str, request: &Request, query: &HashMap<String, String>) -> bool {
-        let Some(expected) = self.token.as_deref() else {
+        if !self.gated() {
             return true;
-        };
+        }
         if path == "/identity"
             || path == "/web"
             || path.starts_with("/web/")
@@ -8092,13 +8116,7 @@ impl Runtime {
         {
             return true;
         }
-        let header = request.headers.get("x-plex-token");
-        let provided = header
-            .filter(|value| !value.is_empty())
-            .or_else(|| query.get("X-Plex-Token"));
-        provided
-            .map(|value| value.as_str() == expected)
-            .unwrap_or(false)
+        request_token(request, query).is_some_and(|value| self.token_admitted(value))
     }
 
     fn unauthorized_route(&self, path: &str, request: &Request) -> Response {
@@ -9801,12 +9819,12 @@ impl Runtime {
         {
             return Response::error(400, "plexsim: bad request");
         }
-        if let Some(expected) = self.token.as_deref() {
+        if self.gated() {
             let provided = request
                 .headers
                 .get("x-plex-token")
                 .or_else(|| query.get("X-Plex-Token"));
-            if provided.map(String::as_str) != Some(expected) {
+            if !provided.is_some_and(|value| self.token_admitted(value)) {
                 return Response::error(403, "plexsim: forbidden");
             }
         }
@@ -22853,6 +22871,16 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
     });
 }
 
+/// The token a request carries: a non-empty `X-Plex-Token` header, else the query's (its
+/// LAST occurrence, as `query` holds it).
+fn request_token<'a>(request: &'a Request, query: &'a HashMap<String, String>) -> Option<&'a String> {
+    request
+        .headers
+        .get("x-plex-token")
+        .filter(|value| !value.is_empty())
+        .or_else(|| query.get("X-Plex-Token"))
+}
+
 static TERMINATE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 extern "C" fn on_sigterm(_signal: libc::c_int) {
@@ -23098,6 +23126,8 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         "token gate: {}",
         if gated {
             "ENFORCED"
+        } else if claim.claimed() {
+            "ENFORCED -- claimed: the server's own token and the ones plex.tv lists for it"
         } else {
             "OFF -- every peer that can reach this port can read the library"
         }
@@ -23135,7 +23165,12 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
             .map_err(|_| "runtime lock poisoned".to_string())?
             .private_address
             .clone();
-        plextv::start_registration(Arc::clone(&plextv.claim), local_address, None);
+        plextv::start_registration(
+            Arc::clone(&plextv.claim),
+            local_address,
+            None,
+            Some(Arc::clone(&plextv.access)),
+        );
         plextv.start_account(&runtime);
         if plextv.sync.is_none() {
             warning!(
@@ -23469,6 +23504,15 @@ fn handle_connection<S: Read + Write + PollRead>(
             if let Some(value) = request.headers.get(header) {
                 query.insert(query_name.to_string(), value.clone());
             }
+        }
+        // A token a claimed server does not hold: re-read plex.tv's list first, as PMS's
+        // authentication filter does, and outside the runtime lock, since it asks plex.tv.
+        if let Some(token) = request_token(&request, &query) {
+            let plextv = runtime
+                .lock()
+                .map(|guard| Arc::clone(&guard.plextv))
+                .map_err(|_| "runtime lock poisoned".to_string())?;
+            plextv.access.admits(&plextv.claim, token);
         }
         if request_path == "/:/websockets/notifications"
             && request

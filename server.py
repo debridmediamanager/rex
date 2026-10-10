@@ -5856,6 +5856,22 @@ class PlexSim:
             return True
         return self.claim is not None and self.claim.claimed
 
+    def gated(self):
+        """Whether a token is required: `--token`, or a REAL claim. A claimed PMS always has
+        its gate up; the opt-in default only spares the unclaimed instances the suites and
+        probes drive (`--assert-claimed` is not a claim and leaves it down)."""
+        return bool(self.token) or (self.claim is not None and self.claim.claimed)
+
+    def token_admitted(self, given):
+        """`--token`, or -- once claimed -- the server's own token or one plex.tv lists for
+        this server (claim.Claim.admits, which re-reads that list for an unknown token as a
+        real PMS does). Anything else is refused like a missing token.
+        ponytail: the transient tokens /security/token hands out are not admitted back; no
+        measurement of a real PMS accepting one yet."""
+        if not given:
+            return False
+        return given == self.token or (self.claim is not None and self.claim.admits(given))
+
     def part_url(self, part_key):
         """Absolute URL for a Part, used where a container must carry one."""
         if self.public_url:
@@ -7153,9 +7169,9 @@ class PlexSim:
             # probes plexsim as a shared source.
             if query.get("type") != "delegation" or query.get("scope") != "all":
                 return ("error", 400, "plexsim: bad request")
-            if self.token:
+            if self.gated():
                 given = (headers or {}).get("X-Plex-Token") or query.get("X-Plex-Token")
-                if given != self.token:
+                if not self.token_admitted(given):
                     # Measured: 403 here, not the 401 every other path answers.
                     return ("error", 403, "plexsim: forbidden")
             return self.bare_container(size=0, token="transient-" + str(uuid.uuid4()))
@@ -24383,9 +24399,9 @@ class Handler(BaseHTTPRequestHandler):
         return 401, self.UNAUTHORISED_BODY
 
     def _authorised(self, path):
-        """Whether this request carries the server's token, if one is required."""
-        wanted = self.server.sim.token
-        if not wanted:
+        """Whether this request carries a token this server lets in, if one is required."""
+        sim = self.server.sim
+        if not sim.gated():
             return True
         route, raw_query = _target_parts(path)
         if route == "/identity" or _is_web_route(route):
@@ -24421,7 +24437,7 @@ class Handler(BaseHTTPRequestHandler):
         # token and this gate refuses it, as all four references do.
         given = self._header_value("X-Plex-Token") or urllib.parse.parse_qs(
             raw_query).get("X-Plex-Token", [""])[-1]
-        return given == wanted
+        return sim.token_admitted(given)
 
     # Cycle 15, swept by METHOD across 33 paths on the disposable copy -- the sweep
     # nobody could run before, because it needs writes. A READ-ONLY route answers
@@ -26352,6 +26368,8 @@ def main():
     # without its token, and a plexsim with no token is readable by any peer that
     # can reach the port -- library, preferences, sessions and media bytes alike.
     logger.info("token gate: %s", "ENFORCED" if args.token else
+                "ENFORCED -- claimed: the server's own token and the ones plex.tv lists for it"
+                if claim.claimed else
                 "OFF -- every peer that can reach this port can read the library")
     logger.info(
         "plexsim on http://%s:%d  machine=%s  items=%d  parts=%s",
@@ -26423,8 +26441,9 @@ def main():
         beat.start()
         sim.heartbeat = beat
     if claim.claimed:
-        # A claimed start: the heartbeat's first beat is the device PUT.
-        claim.start_registration(sim.private_address)
+        # A claimed start: the access-token list first, then the heartbeat's first beat is
+        # the device PUT.
+        claim.start_registration(sim.private_address, access=True)
 
     account_sync = None
     account_refresh = accountstate_module.AccountRefresh(claim)
