@@ -12212,3 +12212,59 @@ Not reproduced: a new episode's metadata pass on the copy was its SEASON's refre
 episode of the season framed again); simplex frames the new episode alone, with the movie's
 sequence. Also unmeasured: what a scan creates for a brand-new show and season (simplex
 announces them with the same created frames as a leaf).
+
+#### The feed: sources push, simplex scans nothing (2026-10-10)
+
+Why the direction reversed. The scanner above tied simplex to zurg's internals: it listed
+zurg's WebDAV (PROPFIND), asked zurg's `/api/library/entry` about each new file, and ran when
+zurg's Plex integration sent `/library/sections/{id}/refresh?path=` (gated on `/activities`).
+It also kept a release's name-based identification forever once its row existed, because a
+rescan fetches entries only for files it does not know. Reproduced on the last scanning build
+(acaa3cc) against a stub zurg: a movie scanned before zurg knew its IMDb id stayed
+`local://100000` after zurg learned `tt0103827` and asked for a rescan of the release.
+
+What replaced it (`docs/feed-api.md`, `rust/src/runtime/feed.rs`, `source.rs`): a source pushes
+items (`POST`/`DELETE /simplex/feed/{source}/items`, chunked `PUT .../snapshot`) with its own
+feed token, and simplex reads its bytes from `<source url>/<path>`. None of the feed is PMS
+emulation, so none of it was measured on a real PMS; what a row does when it is added or
+goes away still is:
+
+- Removal is the measured trash (`missing_file_scan_s43.json`): soft delete, `state 9` under
+  `autoEmptyTrash`, the same key back before `emptyTrash`. A feed batch that adds or removes
+  rows is framed with the measured scan activity (4a, 6a2); `/activities` is empty between
+  requests and `refresh` is the catalog skeleton, as on the oracle.
+- An empty snapshot removes nothing (6b3's empty library folder). Refusing a snapshot that
+  would remove more than half the source's items without `force` is a design choice against
+  a source answering while it loads, not a measurement.
+- An item with no `media_info` is held, unshown, and arrives as newly added once probed.
+  Chosen, not measured: a real PMS shows an unanalysed file at once.
+- A pushed id the row was not identified by re-identifies it on its key, keeping what a
+  person did to it. zurg's matcher keeps an episode's SHOW key (`GrandparentRatingKey`), so a
+  show all of whose episodes move to one new identity is re-identified in place; the first
+  build minted a new show key for that case (the live dry run below, before the fix: show
+  100110 became 100184).
+- The first push of a file the scanner made a row for adopts that row (by Part `file`); a
+  complete snapshot trashes the scanner's rows nobody adopted, as a whole-library scan did.
+- `--part-mode redirect` is gone from the native server: it read zurg's signed link from
+  `/api/library/entry`, which a pushed source does not hand over. The oracle keeps it.
+
+Measured on zen with zurg `feat/simplex-feed` (7b3d3e15) against the RD test account,
+read-only, in scratch directories:
+
+- Migration dry run on a read-only copy of `~/simplex-e2e`'s database (118 leaves, 184 rows,
+  97 with an IMDb id from the scan): zurg's first snapshot adopted all 118, created and
+  trashed nothing, and every one of the 184 keys stayed, episodes under the same season and
+  show keys. 8 rows were re-identified because zurg's id differed from the name match (7
+  `Mysterious Love` files in the movie library, now carrying `imdb://tt15174276`, and `Ek
+  Secret Crime`'s episode, whose show was re-identified in place). The last run, on the final
+  build after the fresh-library run below, also re-identified the Ibelin movie from the id
+  set by hand in the scratch zurg's data; the live zurg has none for it.
+- A fresh library: the startup snapshot created 118 rows in 19 s (58 movies, 31 shows, 60
+  episodes, as the live rig holds). Widening zurg's `movies` filter through
+  `POST /api/directories/movies` pushed 3 new items 3 s later, held for want of a probe;
+  zurg's `/manage/{hash}/mediainfo` on one pushed its probe and it became row 100184, first in
+  Recently Added; narrowing the filter again trashed it and released the other two. A late
+  IMDb id (`/manage/{hash}/imdbid`, `tt19811010`) re-identified row 100050 from
+  `local://100050` to `plex://movie/626907dd4eba3bfb08aac74d` with its watch state. A 64 KiB
+  Range read through simplex matched zurg's own `/dav` bytes (MD5
+  `95f9fa1e8a705a7d85dbbffcbca4760d`). zurg sent this simplex no refresh.
