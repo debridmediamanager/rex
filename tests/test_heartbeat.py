@@ -150,6 +150,8 @@ def main():
     # Cycle 46: the reference's public ownerFeatures is exactly the union of its
     # named defaults and the UUID attributes returned by this post-claim read.
     class Response:
+        headers = {}  # a real response's; claim.read_body reads Content-Encoding off it
+
         def __init__(self, body):
             self.body = body
 

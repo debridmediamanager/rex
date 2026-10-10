@@ -4030,6 +4030,8 @@ class PlexSim:
         # only when the measured scrobbling transport secret is configured.
         self.account_state = None
         self.account_refresh = None
+        # The announce heartbeat, when --announce-url runs one: a claim announces at once.
+        self.heartbeat = None
         # The GDM responder, when one is running: a FriendlyName write has to
         # re-stamp the advertisement, because the name is one of its fields.
         self.discovery = None
@@ -8790,10 +8792,12 @@ class PlexSim:
             logger.error("claim exchange failed: %s", error)
             return ("error", 500, "plexsim: claim exchange failed: %s" % error)
 
-        # A real PMS immediately reports its new state, and announces
-        # connectivity -- which is the call that needs a SERVER registry record.
-        status, body = self.claim.announce_connectivity()
-        logger.info("post-claim connectivity PUT -> %s %s", status, body)
+        # What the probe PMS did next (tests/fixtures/plextv_registration_s1422.json):
+        # POST /servers.xml, the device PUT, then the pubsub stream that makes it present.
+        # Its connectivity PUT (a reachability check) waited for that stream to open.
+        self.claim.start_registration(
+            self.private_address,
+            announce=self.heartbeat.beat if self.heartbeat is not None else None)
         if self.account_refresh is not None:
             self.account_refresh.start()
         if self.account_state is not None:
@@ -26414,8 +26418,13 @@ def main():
             args.announce_url,
             name=catalog.friendly,
             interval=args.heartbeat_interval,
+            claim=claim,
         )
         beat.start()
+        sim.heartbeat = beat
+    if claim.claimed:
+        # A claimed start: the heartbeat's first beat is the device PUT.
+        claim.start_registration(sim.private_address)
 
     account_sync = None
     account_refresh = accountstate_module.AccountRefresh(claim)

@@ -11746,6 +11746,14 @@ The claim, in order (02:21:29 UTC):
    `pubsub.plex.tv`), and the probe's own connections to the other owned servers'
    plex.direct URIs.
 
+What plexsim does now (`claim.py`, `runtime/plextv.rs`): the exchange with the measured
+headers, keeping the account id it answers; then `POST /servers.xml` (422 logged, not an
+error), the device PUT with the server's own token when `--announce-url` is set, and the
+pubsub stream, requesting the reachability check as it opens, logging plex.tv's verdict
+and resubscribing 15 s after a drop. A claimed start does the same without the exchange, its
+heartbeat announcing with the server token. `tests/test_plextv.py` drives it against the
+recording.
+
 **4. Sharing: one owner claims, everyone else is shared — and the owner's Plex
 Pass covers them all.**
 

@@ -183,8 +183,11 @@ class Heartbeat:
 
     def __init__(self, token, machine_identifier, url, *, name="plexsim",
                  interval=DEFAULT_INTERVAL, version=DEFAULT_VERSION,
-                 platform=DEFAULT_PLATFORM, platform_version=DEFAULT_PLATFORM_VERSION):
+                 platform=DEFAULT_PLATFORM, platform_version=DEFAULT_PLATFORM_VERSION,
+                 claim=None):
         self._token = token
+        # A claimed PMS announces with its own token, not the account's.
+        self._claim = claim
         self._machine = machine_identifier
         self._version = version
         self._platform = platform
@@ -209,12 +212,20 @@ class Heartbeat:
     def stop(self):
         self._stop.set()
 
+    def token(self):
+        return (self._claim.token if self._claim is not None and self._claim.token
+                else self._token)
+
+    def beat(self):
+        """One announce, with the server's token once it is claimed."""
+        announce(self.token(), self._machine, self._url, name=self._name,
+                 version=self._version, platform=self._platform,
+                 platform_version=self._platform_version)
+
     def _run(self):
         while not self._stop.is_set():
             try:
-                announce(self._token, self._machine, self._url, name=self._name,
-                         version=self._version, platform=self._platform,
-                         platform_version=self._platform_version)
+                self.beat()
                 self.last_ok = time.time()
                 self.failures = 0
                 # Verifying costs a second request but turns a silent

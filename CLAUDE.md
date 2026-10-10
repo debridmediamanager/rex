@@ -139,6 +139,16 @@ The native `--state` file is JSON and refuses the Python server's pickle, so a s
 file does not move between the two. `--announce-url` needs `PLEX_TOKEN`. The Python
 oracle reads parts from zurg the same way but does not scan.
 
+A real claim -- `POST /myplex/claim?token=` with a token from `plex.tv/api/claim/token.json`,
+once per machineIdentifier -- makes plexsim register the way a real PMS does (findings, "The
+experiment, run"): `POST /servers.xml` writes plex.tv's server record (422 is its normal
+answer), and the pubsub stream it then holds open is what clients read as `presence`. The
+claim is kept in `claim_state.json`, so a restart re-registers without claiming again.
+Start it without `--announce-url` for the claim and add it afterwards: the unclaimed
+heartbeat writes a device row with the account token first, and the 2026-09-11 spike's
+claim of an identity that already had such a row got the account token back, not a server
+token.
+
 `catalog.json` and `run.sh` are gitignored: both carry account-scoped
 credentials. `catalog.example.json` keeps the shape.
 

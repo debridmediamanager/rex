@@ -18,14 +18,18 @@ out-of-band the way this spike did first.
 The resulting token is persisted so a restart does not un-claim the server.
 """
 
+import collections
 import gzip
 import json
 import logging
 import os
 import threading
+import time
 import urllib.parse
+import uuid
 import urllib.request
 import xml.etree.ElementTree as ET
+from xml.sax.saxutils import escape
 
 logger = logging.getLogger("plexsim.claim")
 
@@ -33,6 +37,14 @@ EXCHANGE_URL = "https://plex.tv/api/claim/exchange"
 CONNECTIVITY_URL = "https://plex.tv/api/servers/%s/connectivity"
 FEATURES_URL = "https://servers.plex.tv/api/v2/features"
 ACCOUNT_URL = "https://servers.plex.tv/api/v2/user"
+SERVERS_URL = "https://plex.tv/servers.xml"
+PUBSUB_URL = "https://pubsub.plex.tv/sub/eventsource/%s/%s"
+
+# Measured on a real 1.42.2 PMS claimed on zen (tests/fixtures/plextv_registration_s1422.json):
+# its EventSourceClient gives up on a pubsub stream that says nothing for 20 s -- plex.tv
+# sends a `: -1` comment every 10 s -- and retries a dropped one after 15 s.
+PUBSUB_TIMEOUT = 20
+PUBSUB_RETRY = 15
 
 # Where the plex.tv family of hosts is reached. Unset -- the default -- is the real
 # service. Set, every plex.tv, servers.plex.tv and scrobbles.plex.tv URL is sent to
@@ -53,8 +65,8 @@ def plextv_url(url):
 
 def read_body(response):
     """The body, inflated: plex.tv gzips its answer whenever a PMS's `Accept-Encoding:
-    gzip` asks for it (the device PUT and the claim exchange both, in
-    tests/fixtures/plextv_registration_s1422.json), and urllib does not undo that."""
+    gzip` asks for it (the device PUT and the claim exchange both, in the fixture), and
+    urllib does not undo that."""
     body = response.read()
     if (response.headers.get("Content-Encoding") or "").lower() == "gzip":
         body = gzip.decompress(body)
@@ -139,12 +151,35 @@ class Claim:
             "Accept": "application/xml",
         }
 
+    def pms_headers(self, agent="PlexMediaServer", accept_encoding=True):
+        """What a real PMS sends on every claim and registration call, in its order
+        (tests/fixtures/plextv_registration_s1422.json): its user agent, `*/*`, gzip, then
+        the identity heartbeat.announce carries. The pubsub stream is the one request
+        that names `PlexMediaServer-EventSourceClient` and asks for no encoding."""
+        headers = collections.OrderedDict([("User-Agent", "%s/%s" % (agent, self.version)),
+                                           ("Accept", "*/*")])
+        if accept_encoding:
+            headers["Accept-Encoding"] = "gzip"
+        headers.update([
+            ("X-Plex-Client-Identifier", self.machine),
+            ("X-Plex-Version", self.version),
+            ("X-Plex-Provides", "server"),
+            ("X-Plex-Platform", "Linux"),
+            ("X-Plex-Product", "Plex Media Server"),
+            ("X-Plex-Platform-Version", "6.1"),
+            ("X-Plex-Device-Name", self.name),
+            ("X-Plex-Device", "PC"),
+            ("X-Plex-Model", "x86_64"),
+            ("X-Plex-Device-Vendor", "plexsim"),
+        ])
+        return headers
+
     def exchange(self, claim_token):
         """Redeem a `claim-…` token for this server's own plex.tv token."""
         url = EXCHANGE_URL + "?" + urllib.parse.urlencode({"token": claim_token})
-        request = urllib.request.Request(plextv_url(url), method="POST", headers=self._headers(), data=b"")
+        request = urllib.request.Request(plextv_url(url), method="POST", headers=self.pms_headers(), data=b"")
         with urllib.request.urlopen(request, timeout=30) as response:
-            body = response.read()
+            body = read_body(response)
 
         attrs = ET.fromstring(body).attrib
         token = attrs.get("authToken") or attrs.get("authenticationToken")
@@ -155,6 +190,9 @@ class Claim:
             self.token = token
             self.owner = attrs.get("username")
             self.email = attrs.get("email")
+            # The pubsub path names the account; the exchange answer already carries it.
+            if str(attrs.get("id") or "").isdigit():
+                self.account_id = int(attrs["id"])
             self._save()
 
         logger.info("CLAIMED by %s; server token stored", self.owner)
@@ -223,22 +261,113 @@ class Claim:
             self.view_state_cursor = cursor
             self._save()
 
-    def announce_connectivity(self):
-        """`PUT /api/servers/{id}/connectivity` -- what a real PMS calls to be
-        marked present. 404 here means plex.tv has no SERVER record for this
-        machineIdentifier, only a device record."""
+    def announce_connectivity(self, async_identifier):
+        """`PUT /api/servers/{id}/connectivity` -- a real PMS asking plex.tv to test its
+        reachability, under an asyncIdentifier of its own; plex.tv answers over pubsub
+        (`notifyConnectivity`, same id). 404 here means plex.tv has no SERVER record for
+        this machineIdentifier (see `publish`)."""
         if not self.token:
             return None, "not claimed"
 
-        import uuid
-
         query = urllib.parse.urlencode(
-            {"X-Plex-Token": self.token, "asyncIdentifier": str(uuid.uuid4())}
+            [("X-Plex-Token", self.token), ("asyncIdentifier", async_identifier)]
         )
         url = (CONNECTIVITY_URL % self.machine) + "?" + query
-        request = urllib.request.Request(plextv_url(url), method="PUT", headers=self._headers(), data=b"")
+        request = urllib.request.Request(plextv_url(url), method="PUT", headers=self.pms_headers(), data=b"")
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
-                return response.status, response.read()[:200]
+                return response.status, read_body(response)[:200]
         except urllib.error.HTTPError as error:
             return error.code, error.read()[:200]
+
+    def publish(self, local_address):
+        """`POST /servers.xml` -- what creates and then updates plex.tv's SERVER record
+        (`/api/servers/{machineIdentifier}`), which `connectivity` and the resource's
+        `accessToken` hang off. plex.tv answers it 422 every time, for a real PMS too, and
+        writes the record anyway: the probe's record was created at the second of its
+        first POST and updated at the second of each later one. Returns the status."""
+        attr = lambda value: '"%s"' % escape(value or "", {'"': "&quot;"})
+        body = ('<MediaContainer size="1">\n<Server relay="0" name=%s host="" '
+                'localAddresses=%s machineIdentifier=%s version=%s date="%d" />\n'
+                '</MediaContainer>\n' % (attr(self.name), attr(local_address), attr(self.machine),
+                                          attr(self.version), int(time.time() * 1000000)))
+        url = SERVERS_URL + "?" + urllib.parse.urlencode({"auth_token": self.token})
+        headers = self.pms_headers()
+        headers["Content-Type"] = "application/xml"
+        request = urllib.request.Request(plextv_url(url), method="POST", headers=headers,
+                                         data=body.encode("utf-8"))
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return response.status
+        except urllib.error.HTTPError as error:
+            return error.code
+
+    def subscribe(self, stop=None):
+        """One pubsub subscription, read until plex.tv or the network ends it.
+
+        `presence` is this stream: the probe went present while its subscription was
+        open and absent the moment it closed, with no connectivity PUT in between. Once
+        the stream answers, PMS logs "regained Internet connectivity" and 2 ms later
+        requests a reachability check (`announce_connectivity`); plex.tv's verdict comes
+        back on the stream 3 s later as `notifyConnectivity`."""
+        if self.account_id is None:
+            self.ensure_account_id()
+        query = urllib.parse.urlencode({"X-Plex-Token": self.token})
+        url = (PUBSUB_URL % (self.account_id, self.machine)) + "?" + query
+        request = urllib.request.Request(
+            plextv_url(url),
+            headers=self.pms_headers("PlexMediaServer-EventSourceClient", accept_encoding=False))
+        with urllib.request.urlopen(request, timeout=PUBSUB_TIMEOUT) as response:
+            logger.info("pubsub subscribed for %s", self.machine)
+            status, body = self.announce_connectivity(str(uuid.uuid4()))
+            logger.info("connectivity PUT -> %s %s", status, body)
+            for raw in response:
+                if stop is not None and stop.is_set():
+                    return
+                line = raw.decode("utf-8", "replace").rstrip("\r\n")
+                if line.startswith("data:"):
+                    self._command(line[5:].strip())
+
+    def _command(self, payload):
+        try:
+            message = ET.fromstring(payload).attrib
+        except ET.ParseError:
+            logger.warning("pubsub: unparsable message %r", payload[:200])
+            return
+        command = message.get("command")
+        if command == "notifyConnectivity":
+            logger.info("pubsub: reachability %s for asyncIdentifier %s",
+                        message.get("connectivity"), message.get("asyncIdentifier"))
+        else:
+            # ponytail: only notifyConnectivity is measured; other commands are logged, not acted on.
+            logger.info("pubsub: unhandled command %s", command)
+
+    def start_registration(self, local_address, announce=None, stop=None):
+        """What a claimed PMS keeps up with plex.tv, on a daemon thread: the SERVER record
+        (`publish`), the device PUT when there is a URL to announce (after a claim; at
+        start the heartbeat's first beat is that PUT), and the pubsub stream, resubscribed
+        `PUBSUB_RETRY` seconds after it drops. Nothing else is periodic: in the hour after
+        its restart the probe sent no further publish, device PUT or connectivity check,
+        and held one stream."""
+        stop = stop or threading.Event()
+
+        def run():
+            try:
+                logger.info("servers.xml POST -> %s", self.publish(local_address))
+            except Exception as error:
+                logger.error("registration failed: %s", error)
+            if announce is not None:
+                try:
+                    announce()
+                except Exception as error:
+                    logger.error("registration failed: %s", error)
+            while not stop.is_set():
+                try:
+                    self.subscribe(stop)
+                    logger.warning("pubsub stream ended; resubscribing in %ds", PUBSUB_RETRY)
+                except Exception as error:
+                    logger.error("pubsub failed: %s; resubscribing in %ds", error, PUBSUB_RETRY)
+                stop.wait(PUBSUB_RETRY)
+
+        threading.Thread(target=run, name="plexsim-registration", daemon=True).start()
+        return stop

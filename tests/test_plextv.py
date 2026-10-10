@@ -21,11 +21,11 @@ that identity's registration.
 The stub's request grammar is the one the modules send and `tests/fixtures/
 outbound-announce.json` recorded from a real PMS; its answers carry exactly the
 attributes the oracle's modules read, in the element shapes `tests/test_accountstate.py`
-already feeds them. No recorded plex.tv answer BODY is checked in -- the harness
-recording keeps request bodies and statuses -- so the answers are the smallest documents
-the oracle accepts, not transcriptions of plex.tv. Like plex.tv, the stub gzips an answer
-whenever the request asks for gzip (`tests/fixtures/plextv_registration_s1422.json`: the
-exchange and device-PUT answers came back `content-encoding: gzip`).
+already feeds them. The claim and registration half -- the exchange, `POST /servers.xml`,
+the pubsub stream and the connectivity PUT it prompts -- is checked against
+`tests/fixtures/plextv_registration_s1422.json`, a real 1.42.2 PMS claimed on zen with its
+plex.tv traffic recorded: the stub replays that recording's pubsub events and its 422, and
+gzips an answer whenever the request asks for gzip, as plex.tv did there.
 
     python3 tests/test_plextv.py                      # the native server
     PLEXSIM_SERVER=python python3 tests/test_plextv.py   # the Python oracle
@@ -63,6 +63,8 @@ sys.path.insert(0, HERE)
 import test_accountstate  # noqa: E402  (its synthetic encrypted-service helpers)
 
 CATALOG = os.path.join(HERE, "catalog_ui.json")
+with open(os.path.join(HERE, "fixtures", "plextv_registration_s1422.json")) as _handle:
+    RECORDED = json.load(_handle)
 MACHINE = "f1x7u4e0000000000000000000000000000000f1"
 FRIENDLY = "plexsim-ui-fixture"
 VERSION = "1.42.2.10156-plexsim"
@@ -96,6 +98,38 @@ IDENTITY = [
     ("x-plex-device-name", FRIENDLY),
     ("x-plex-provides", "server"),
 ]
+
+# What a real PMS sends on every claim and registration call, in its order, with
+# plexsim's own identity values (claim.Claim.pms_headers).
+PMS_HEADERS = [
+    ("user-agent", "PlexMediaServer/%s" % VERSION), ("accept", "*/*"),
+    ("accept-encoding", "gzip"), ("x-plex-client-identifier", MACHINE),
+    ("x-plex-version", VERSION), ("x-plex-provides", "server"), ("x-plex-platform", "Linux"),
+    ("x-plex-product", "Plex Media Server"), ("x-plex-platform-version", "6.1"),
+    ("x-plex-device-name", FRIENDLY), ("x-plex-device", "PC"), ("x-plex-model", "x86_64"),
+    ("x-plex-device-vendor", "plexsim"),
+]
+
+
+def recorded(section, method, path):
+    """The recording's first exchange for a call, its machineIdentifier generalised."""
+    for row in RECORDED[section]:
+        if row["method"] == method and re.fullmatch(path, row["path"]):
+            return row
+    raise KeyError((section, method, path))
+
+
+def names(headers, drop=("host", "content-length", "content-type", "connection")):
+    """Header names in order, without the transport ones (as `sent` drops them)."""
+    return [k.lower() for k, v in headers if k.lower() not in drop
+            and (k.lower(), v) != ("accept-encoding", "identity")
+            and not (k.lower() == "user-agent" and v.startswith("Python-urllib/"))]
+
+
+# plex.tv's reachability verdict, as recorded; the stub sends it under the asyncIdentifier
+# of the connectivity PUT that asked for it, which is the order the recording shows.
+VERDICT = next(e["data"] for e in RECORDED["pubsub"]["events"] if e["data"].startswith("data:"))
+UUID4 = r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 
 results = []
 
@@ -164,6 +198,8 @@ class StubHandler(BaseHTTPRequestHandler):
         }
         with self.server.lock:
             self.server.records.append(record)
+        if (self.command, host) == ("GET", "pubsub.plex.tv"):
+            return self.pubsub(path)
         status, kind, payload = self.answer(record)
         data = payload.encode("utf-8") if isinstance(payload, str) else payload
         self.send_response(status)
@@ -176,6 +212,37 @@ class StubHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
+
+    def pubsub(self, path):
+        """The recorded event stream: plex.tv's comment, then -- once the server has asked
+        for a reachability check -- its notifyConnectivity verdict under that request's
+        asyncIdentifier, then a keepalive, until the stub ends it (the server resubscribes)."""
+        if path != "/sub/eventsource/%d/%s" % (ACCOUNT_ID, MACHINE):
+            self.send_response(404)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        self.close_connection = True
+        self.send_response(200)
+        for name, value in RECORDED["pubsub"]["response"]["headers"]:
+            if name.lower() in ("content-type", "cache-control", "expires"):
+                self.send_header(name, value)
+        self.send_header("Connection", "close")
+        self.end_headers()
+        opened = time.time()
+        self.wfile.write(RECORDED["pubsub"]["events"][0]["data"].encode("utf-8"))
+        self.wfile.flush()
+        asked = None
+        while asked is None and time.time() - opened < 5:
+            time.sleep(0.1)
+            asked = next((r for r in self.server.taken("plex.tv", "/api/servers/.*/connectivity", "PUT")
+                          if r["at"] >= opened), None)
+        if asked is not None:
+            verdict = re.sub(r'asyncIdentifier="[^"]*"', 'asyncIdentifier="%s"'
+                             % dict(asked["query"]).get("asyncIdentifier"), VERDICT)
+            self.wfile.write(verdict.encode("utf-8") + b": -1\n")
+            self.wfile.flush()
+        time.sleep(3)
 
     do_GET = do_PUT = do_POST = do_DELETE = _handle
 
@@ -191,6 +258,9 @@ class StubHandler(BaseHTTPRequestHandler):
                               % (ACCOUNT_ID, OWNER, EMAIL, SERVER_TOKEN))
         if method == "PUT" and host == "plex.tv" and path == "/api/servers/%s/connectivity" % MACHINE:
             return 200, xml, ""
+        if (method, host, path) == ("POST", "plex.tv", "/servers.xml"):
+            # 422 every time, to a real PMS too -- and the server record is written anyway.
+            return recorded("claim", "POST", "/servers.xml")["status"], xml, ""
         if (method, host, path) == ("GET", "servers.plex.tv", "/api/v2/user"):
             return 200, xml, ('<?xml version="1.0" encoding="UTF-8"?>\n<user id="%d" '
                               'username="%s" email="%s"/>\n' % (ACCOUNT_ID, OWNER, EMAIL))
@@ -467,17 +537,64 @@ def main():
         check("the exchange POSTs the claim token with the server identity",
               exchange and exchange["query"] == [("token", CLAIM_TOKEN)]
               and exchange["body"] == b""
-              and sent(exchange) == IDENTITY + [("accept", "application/xml")],
+              and sent(exchange) == PMS_HEADERS
+              and names(exchange["headers"])
+              == names(recorded("claim", "POST", "/api/claim/exchange")["req_headers"]),
               exchange and (exchange["query"], sent(exchange)))
-        connectivity = stub.taken("plex.tv", "/api/servers/.*/connectivity", "PUT")
-        check("the claim is followed by the connectivity PUT with the SERVER token",
-              connectivity and connectivity[0]["path"] == "/api/servers/%s/connectivity" % MACHINE
+        # The registration a real PMS ran next: POST /servers.xml, the device PUT, the
+        # pubsub stream, and -- once that is open -- a reachability check.
+        connectivity = wait_for(lambda: stub.taken("plex.tv", "/api/servers/.*/connectivity", "PUT"), 10)
+        publishes = stub.taken("plex.tv", "/servers.xml", "POST")
+        publish = publishes[0] if publishes else None
+        real = recorded("claim", "POST", "/servers.xml")
+        body = publish and publish["body"].decode()
+        shape = lambda text: re.sub(r'="[^"]*"', '=""', text)
+        check("the claim POSTs /servers.xml with the server token, shaped as the recording",
+              publish and publish["query"] == [("auth_token", SERVER_TOKEN)]
+              and [k for k, _ in real["query"]] == ["auth_token"]
+              and sent(publish) == PMS_HEADERS + [("content-type", "application/xml")]
+              and names(publish["headers"], ("host", "content-length", "connection"))
+              == names(real["req_headers"], ("host", "content-length", "connection"))
+              and shape(body) == shape(real["req_body"])
+              and 'name="%s"' % FRIENDLY in body and 'machineIdentifier="%s"' % MACHINE in body
+              and 'version="%s"' % VERSION in body
+              and abs(int(re.search(r'date="(\d+)"', body).group(1)) / 1e6 - claimed_at) < 10,
+              publish and (publish["query"], sent(publish), body))
+        puts = [r for r in stub.taken("servers.plex.tv", "/devices/.*", "PUT")
+                if publish and 0 <= r["at"] - publish["at"] < 1.0
+                and dict(r["query"])["X-Plex-Token"] == SERVER_TOKEN]
+        check("the claim announces at once after it, with the server's own token", puts,
+              [(r["at"] - claimed_at, dict(r["query"])["X-Plex-Token"])
+               for r in stub.taken("servers.plex.tv", "/devices/.*", "PUT")])
+        subscriptions = stub.taken("pubsub.plex.tv", "/sub/eventsource/.*", "GET")
+        real = RECORDED["pubsub"]["request"]
+        check("then subscribes to pubsub as the recording did",
+              subscriptions and publish and subscriptions[0]["at"] > publish["at"]
+              and subscriptions[0]["path"] == "/sub/eventsource/%d/%s" % (ACCOUNT_ID, MACHINE)
+              and re.fullmatch(r"/sub/eventsource/\d+/[0-9a-f]{40}", real["path"])
+              and subscriptions[0]["query"] == [("X-Plex-Token", SERVER_TOKEN)]
+              and [k for k, _ in real["query"]] == ["X-Plex-Token"]
+              and names(subscriptions[0]["headers"]) == names(real["headers"])
+              and sent(subscriptions[0])[0] == ("user-agent",
+                                                "PlexMediaServer-EventSourceClient/%s" % VERSION),
+              subscriptions and (subscriptions[0]["path"], subscriptions[0]["query"],
+                                 sent(subscriptions[0])))
+        real = recorded("claimed_start", "PUT", r"/api/servers/[0-9a-f]+/connectivity")
+        check("once subscribed it asks plex.tv for a reachability check, as the recording did",
+              connectivity and subscriptions and connectivity[0]["at"] > subscriptions[0]["at"]
+              and connectivity[0]["at"] - subscriptions[0]["at"] < 2
+              and connectivity[0]["path"] == "/api/servers/%s/connectivity" % MACHINE
               and [k for k, _ in connectivity[0]["query"]] == ["X-Plex-Token", "asyncIdentifier"]
               and dict(connectivity[0]["query"])["X-Plex-Token"] == SERVER_TOKEN
-              and re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
-                               dict(connectivity[0]["query"])["asyncIdentifier"])
-              and sent(connectivity[0]) == IDENTITY + [("accept", "application/xml")],
+              and re.fullmatch(UUID4, dict(connectivity[0]["query"])["asyncIdentifier"])
+              and [k for k, _ in real["query"]] == ["X-Plex-Token", "asyncIdentifier"]
+              # the recorded PUT went out before plex.tv's verdict named its id
+              and RECORDED["pubsub"]["connectivity_put_after_s"]
+              < next(e["after_s"] for e in RECORDED["pubsub"]["events"] if e["data"].startswith("data:"))
+              and sent(connectivity[0]) == PMS_HEADERS
+              and names(connectivity[0]["headers"]) == names(real["req_headers"]),
               connectivity and (connectivity[0]["query"], sent(connectivity[0])))
+        asked = connectivity and dict(connectivity[0]["query"])["asyncIdentifier"]
 
         claim_now = surfaces(first)
         check("claimed /identity reports claimed true at once",
@@ -586,7 +703,11 @@ def main():
               first_log[-3000:])
         check("the claim is logged, and its connectivity PUT",
               logged(first_log, "INFO", r"CLAIMED by %s; server token stored" % OWNER)
-              and logged(first_log, "INFO", r"post-claim connectivity PUT -> 200 b''")
+              and logged(first_log, "INFO", r"servers\.xml POST -> 422")
+              and logged(first_log, "INFO", r"pubsub subscribed for %s" % MACHINE)
+              and logged(first_log, "INFO", r"connectivity PUT -> 200 b''")
+              and logged(first_log, "INFO", r"pubsub: reachability 0 for asyncIdentifier %s"
+                         % re.escape(str(asked)))
               and logged(first_log, "ERROR", r"claim exchange failed: .*"),
               first_log[-3000:])
 
@@ -604,6 +725,16 @@ def main():
               and restarted["account"][1]["MyPlex"].get("username") == EMAIL, restarted["account"])
         check("no second exchange: the stored server token is reused",
               not stub.taken("plex.tv", "/api/claim/exchange"), [r["path"] for r in stub.records])
+        answered = wait_for(lambda: stub.taken("plex.tv", "/api/servers/.*/connectivity", "PUT"), 10)
+        check("a claimed startup publishes, resubscribes and asks for a reachability check again",
+              stub.taken("plex.tv", "/servers.xml", "POST")
+              and stub.taken("pubsub.plex.tv", "/sub/eventsource/%d/%s" % (ACCOUNT_ID, MACHINE))
+              and answered and re.fullmatch(UUID4, dict(answered[0]["query"])["asyncIdentifier"]),
+              [(r["host"], r["path"]) for r in stub.records])
+        beats = stub.taken("servers.plex.tv", "/devices/.*", "PUT")
+        check("a claimed startup announces with the server's own token",
+              beats and dict(beats[0]["query"])["X-Plex-Token"] == SERVER_TOKEN,
+              beats and beats[0]["query"])
         refreshed = wait_for(lambda: stub.taken("servers.plex.tv", "/api/v2/features"), 20)
         users = stub.taken("servers.plex.tv", "/api/v2/user")
         check("a claimed startup refreshes the owner, then the features",

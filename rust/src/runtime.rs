@@ -23116,15 +23116,26 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     start_gdm(Arc::clone(&runtime), &gdm_mode, port);
     if let (Some(url), Some(token)) = (announce, plex_token) {
         // Cycle 44: announced on the server's own machineIdentifier.
-        plextv::start_heartbeat(
+        let beat = plextv::Beat {
             token,
-            device_id.unwrap_or_else(|| machine.clone()),
+            machine: device_id.unwrap_or_else(|| machine.clone()),
             url,
-            friendly,
-            heartbeat_interval,
-        );
+            name: friendly,
+        };
+        *plextv
+            .beat
+            .lock()
+            .map_err(|_| "beat lock poisoned".to_string())? = Some(beat.clone());
+        plextv::start_heartbeat(beat, Arc::clone(&plextv.claim), heartbeat_interval);
     }
     if claim.claimed() {
+        // A claimed start: the heartbeat's first beat is the device PUT.
+        let local_address = runtime
+            .lock()
+            .map_err(|_| "runtime lock poisoned".to_string())?
+            .private_address
+            .clone();
+        plextv::start_registration(Arc::clone(&plextv.claim), local_address, None);
         plextv.start_account(&runtime);
         if plextv.sync.is_none() {
             warning!(

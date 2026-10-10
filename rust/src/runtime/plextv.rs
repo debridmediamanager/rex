@@ -34,6 +34,11 @@ const RESOURCES_URL: &str =
 const CONSENT_URL: &str = "https://servers.plex.tv/api/v2/server/users/%s/view_state_sync";
 const STATE_URL: &str = "https://scrobbles.plex.tv/state/%s";
 const SERVICES_URL: &str = "https://servers.plex.tv/api/v2/server/users/services";
+const SERVERS_URL: &str = "https://plex.tv/servers.xml";
+const PUBSUB_URL: &str = "https://pubsub.plex.tv/sub/eventsource/%s/%s";
+/// `claim.PUBSUB_TIMEOUT` / `PUBSUB_RETRY` (the probe PMS, measured).
+const PUBSUB_TIMEOUT: u64 = 20;
+const PUBSUB_RETRY: u64 = 15;
 
 /// `heartbeat.DEFAULT_INTERVAL`: a registration lease is ~40 minutes (measured).
 pub(crate) const HEARTBEAT_INTERVAL: u64 = 600;
@@ -490,6 +495,31 @@ impl Claim {
         ]
     }
 
+    /// `Claim.pms_headers`: what a real PMS sends on every claim and registration call,
+    /// in its order (tests/fixtures/plextv_registration_s1422.json).
+    fn pms_headers(&self, agent: &str, accept_encoding: bool) -> Vec<(&'static str, String)> {
+        let mut headers = vec![
+            ("User-Agent", format!("{agent}/{}", self.version)),
+            ("Accept", "*/*".to_string()),
+        ];
+        if accept_encoding {
+            headers.push(("Accept-Encoding", "gzip".to_string()));
+        }
+        headers.extend([
+            ("X-Plex-Client-Identifier", self.machine.clone()),
+            ("X-Plex-Version", self.version.clone()),
+            ("X-Plex-Provides", "server".to_string()),
+            ("X-Plex-Platform", "Linux".to_string()),
+            ("X-Plex-Product", "Plex Media Server".to_string()),
+            ("X-Plex-Platform-Version", "6.1".to_string()),
+            ("X-Plex-Device-Name", self.name.clone()),
+            ("X-Plex-Device", "PC".to_string()),
+            ("X-Plex-Model", "x86_64".to_string()),
+            ("X-Plex-Device-Vendor", "plexsim".to_string()),
+        ]);
+        headers
+    }
+
     /// `owner_features`: the named defaults unioned with the account's UUIDs, sorted.
     pub(crate) fn owner_features(&self, named: &str) -> String {
         let mut values = named
@@ -538,8 +568,9 @@ pub(crate) fn exchange(claim: &SharedClaim, claim_token: &str) -> Result<(), Str
         "{EXCHANGE_URL}?{}",
         urlencode(&[("token", claim_token.to_string())])
     );
-    let (_, body) = urlopen("POST", &url, &current.headers(), Some(b""), 30)
-        .map_err(|failure| failure.to_string())?;
+    let headers = current.pms_headers("PlexMediaServer", true);
+    let (_, body) =
+        urlopen("POST", &url, &headers, Some(b""), 30).map_err(|failure| failure.to_string())?;
     let root = parse_xml(&body)?;
     let token = root
         .get("authToken")
@@ -555,6 +586,14 @@ pub(crate) fn exchange(claim: &SharedClaim, claim_token: &str) -> Result<(), Str
         state.token = Some(token);
         state.owner = root.get("username").map(str::to_string);
         state.email = root.get("email").map(str::to_string);
+        // The pubsub path names the account; the exchange answer already carries it.
+        if let Some(id) = root
+            .get("id")
+            .filter(|id| !id.is_empty() && id.bytes().all(|byte| byte.is_ascii_digit()))
+            .and_then(|id| id.parse::<i64>().ok())
+        {
+            state.account_id = Some(id);
+        }
         state.save();
         state.owner.clone()
     };
@@ -646,10 +685,14 @@ pub(super) fn uuid4() -> String {
     )
 }
 
-/// `announce_connectivity`: `PUT /api/servers/{id}/connectivity`, what a real PMS
-/// calls to be marked present. `(status, body[:200])`; an HTTP error is an answer, a
-/// transport failure is not.
-pub(crate) fn announce_connectivity(claim: &SharedClaim) -> Result<(String, String), String> {
+/// `announce_connectivity`: `PUT /api/servers/{id}/connectivity`, a real PMS asking plex.tv
+/// to test its reachability under an asyncIdentifier of its own; the verdict comes back
+/// over pubsub. `(status, body[:200])`; an HTTP error is an answer, a transport failure
+/// is not.
+pub(crate) fn announce_connectivity(
+    claim: &SharedClaim,
+    async_identifier: &str,
+) -> Result<(String, String), String> {
     let current = snapshot(claim);
     let Some(token) = current.token.clone().filter(|token| !token.is_empty()) else {
         return Ok(("None".to_string(), "not claimed".to_string()));
@@ -657,14 +700,142 @@ pub(crate) fn announce_connectivity(claim: &SharedClaim) -> Result<(String, Stri
     let url = format!(
         "{}?{}",
         CONNECTIVITY_URL.replace("%s", &current.machine),
-        urlencode(&[("X-Plex-Token", token), ("asyncIdentifier", uuid4())])
+        urlencode(&[
+            ("X-Plex-Token", token),
+            ("asyncIdentifier", async_identifier.to_string())
+        ])
     );
     let clip = |body: &[u8]| bytes_repr(&body[..body.len().min(200)]);
-    match urlopen("PUT", &url, &current.headers(), Some(b""), 30) {
+    let headers = current.pms_headers("PlexMediaServer", true);
+    match urlopen("PUT", &url, &headers, Some(b""), 30) {
         Ok((status, body)) => Ok((status.to_string(), clip(&body))),
         Err(Failure::Http(status, body)) => Ok((status.to_string(), clip(&body))),
         Err(Failure::Other(message)) => Err(message),
     }
+}
+
+/// `xml.sax.saxutils.escape` with `"` too, inside double quotes.
+fn xml_attr(value: &str) -> String {
+    format!(
+        "\"{}\"",
+        value
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('"', "&quot;")
+    )
+}
+
+/// `Claim.publish`: `POST /servers.xml`, which creates and then updates plex.tv's SERVER
+/// record. plex.tv answers it 422 every time, for a real PMS too, and writes the record
+/// anyway (docs/findings.md). The status, as a string.
+fn publish(claim: &SharedClaim, local_address: &str) -> Result<String, String> {
+    let current = snapshot(claim);
+    let micros = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_micros();
+    let body = format!(
+        "<MediaContainer size=\"1\">\n<Server relay=\"0\" name={} host=\"\" localAddresses={} machineIdentifier={} version={} date=\"{micros}\" />\n</MediaContainer>\n",
+        xml_attr(&current.name),
+        xml_attr(local_address),
+        xml_attr(&current.machine),
+        xml_attr(&current.version),
+    );
+    let url = format!(
+        "{SERVERS_URL}?{}",
+        urlencode(&[("auth_token", current.token.clone().unwrap_or_default())])
+    );
+    let mut headers = current.pms_headers("PlexMediaServer", true);
+    headers.push(("Content-Type", "application/xml".to_string()));
+    match urlopen("POST", &url, &headers, Some(body.as_bytes()), 30) {
+        Ok((status, _)) | Err(Failure::Http(status, _)) => Ok(status.to_string()),
+        Err(Failure::Other(message)) => Err(message),
+    }
+}
+
+/// `Claim.subscribe`: one pubsub subscription, read until plex.tv or the network ends
+/// it. `presence` is this stream (docs/findings.md).
+fn subscribe(claim: &SharedClaim) -> Result<(), String> {
+    let account_id = ensure_account_id(claim)?;
+    let current = snapshot(claim);
+    let url = format!(
+        "{}?{}",
+        PUBSUB_URL
+            .replacen("%s", &account_id.map_or_else(|| "None".to_string(), |id| id.to_string()), 1)
+            .replacen("%s", &current.machine, 1),
+        urlencode(&[("X-Plex-Token", current.token.clone().unwrap_or_default())])
+    );
+    let headers = current.pms_headers("PlexMediaServer-EventSourceClient", false);
+    let response = upstream::open(
+        "GET",
+        &plextv_url(&url),
+        &headers,
+        b"",
+        Duration::from_secs(PUBSUB_TIMEOUT),
+    )
+    .map_err(|error| format!("<urlopen error {error}>"))?;
+    if response.status >= 400 {
+        return Err(Failure::Http(response.status, Vec::new()).to_string());
+    }
+    info!("pubsub subscribed for {}", current.machine);
+    // Online: PMS requests a reachability check 2 ms later (`Claim.subscribe`).
+    let (status, body) = announce_connectivity(claim, &uuid4())?;
+    info!("connectivity PUT -> {status} {body}");
+    let mut lines = std::io::BufRead::lines(std::io::BufReader::new(response));
+    while let Some(line) = lines.next() {
+        let line = line.map_err(|error| error.to_string())?;
+        if let Some(payload) = line.strip_prefix("data:") {
+            command(payload.trim());
+        }
+    }
+    Ok(())
+}
+
+/// `Claim._command`: the one measured message is `notifyConnectivity`, plex.tv's verdict.
+fn command(payload: &str) {
+    let Ok(message) = parse_xml(payload.as_bytes()) else {
+        let clip: String = payload.chars().take(200).collect();
+        warning!("pubsub: unparsable message {clip:?}");
+        return;
+    };
+    match message.get("command") {
+        Some("notifyConnectivity") => info!(
+            "pubsub: reachability {} for asyncIdentifier {}",
+            message.get("connectivity").unwrap_or("None"),
+            message.get("asyncIdentifier").unwrap_or("None")
+        ),
+        // ponytail: only notifyConnectivity is measured; other commands are logged, not acted on.
+        other => info!("pubsub: unhandled command {}", other.unwrap_or("None")),
+    }
+}
+
+/// `Claim.start_registration`: the SERVER record (`publish`), the device PUT after a claim
+/// when there is a URL to announce, and the pubsub stream, resubscribed `PUBSUB_RETRY`
+/// seconds after it drops. Nothing else is periodic (the probe, measured for an hour).
+pub(crate) fn start_registration(claim: SharedClaim, local_address: String, beat: Option<Beat>) {
+    let _ = thread::Builder::new()
+        .name("plexsim-registration".to_string())
+        .spawn(move || {
+            match publish(&claim, &local_address) {
+                Ok(status) => info!("servers.xml POST -> {status}"),
+                Err(message) => error!("registration failed: {message}"),
+            }
+            if let Some(beat) = &beat {
+                if let Err(message) = beat.beat(&claim) {
+                    error!("registration failed: {message}");
+                }
+            }
+            loop {
+                match subscribe(&claim) {
+                    Ok(()) => warning!("pubsub stream ended; resubscribing in {PUBSUB_RETRY}s"),
+                    Err(message) => {
+                        error!("pubsub failed: {message}; resubscribing in {PUBSUB_RETRY}s")
+                    }
+                }
+                thread::sleep(Duration::from_secs(PUBSUB_RETRY));
+            }
+        });
 }
 
 // -- heartbeat.py ------------------------------------------------------------------
@@ -728,21 +899,43 @@ fn is_visible(token: &str, name: &str) -> Result<bool, String> {
     }))
 }
 
+/// `heartbeat.Heartbeat`'s target: the account token it was started with, which a
+/// claim's own token replaces (a claimed PMS announces with its own).
+#[derive(Debug, Clone)]
+pub(crate) struct Beat {
+    pub token: String,
+    pub machine: String,
+    pub url: String,
+    pub name: String,
+}
+
+impl Beat {
+    fn token(&self, claim: &SharedClaim) -> String {
+        snapshot(claim)
+            .token
+            .filter(|token| !token.is_empty())
+            .unwrap_or_else(|| self.token.clone())
+    }
+
+    /// `Heartbeat.beat`: one announce.
+    fn beat(&self, claim: &SharedClaim) -> Result<(), String> {
+        announce(&self.token(claim), &self.machine, &self.url, &self.name)
+    }
+}
+
 /// `heartbeat.Heartbeat.start`: re-announce on an interval, on its own thread.
-pub(crate) fn start_heartbeat(
-    token: String,
-    machine: String,
-    url: String,
-    name: String,
-    interval: u64,
-) {
-    let started = format!("heartbeat every {interval}s for machine {machine} -> {url}");
+pub(crate) fn start_heartbeat(beat: Beat, claim: SharedClaim, interval: u64) {
+    let started = format!(
+        "heartbeat every {interval}s for machine {} -> {}",
+        beat.machine, beat.url
+    );
     let _ = thread::Builder::new()
         .name("plexsim-heartbeat".to_string())
         .spawn(move || {
             let mut failures = 0_u64;
+            let (token, name) = (beat.token.clone(), beat.name.clone());
             loop {
-                let result = announce(&token, &machine, &url, &name).and_then(|_| {
+                let result = beat.beat(&claim).and_then(|_| {
                     failures = 0;
                     // Verifying costs a second request but turns a silent
                     // disappearance into a log line.
@@ -1346,6 +1539,8 @@ pub(crate) struct PlexTv {
     pub claim: SharedClaim,
     pub refresh: AccountRefresh,
     pub sync: Option<Arc<WatchStateSync>>,
+    /// The announce heartbeat, when `--announce-url` runs one: a claim announces at once.
+    pub beat: Mutex<Option<Beat>>,
 }
 
 impl PlexTv {
@@ -1358,6 +1553,7 @@ impl PlexTv {
             claim: Arc::new(Mutex::new(claim)),
             refresh: AccountRefresh::default(),
             sync,
+            beat: Mutex::new(None),
         }
     }
 
@@ -1540,7 +1736,7 @@ impl super::Runtime {
 
 /// The half of `do_claim` that talks to plex.tv, run by `handle_connection` after the
 /// router accepted the token and the runtime lock is released.
-pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, target: &str) -> super::Response {
+pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) -> super::Response {
     let plextv = {
         let guard = runtime
             .lock()
@@ -1551,17 +1747,19 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, target: &str) -
         error!("claim exchange failed: {message}");
         return super::Response::error(500, &format!("plexsim: claim exchange failed: {message}"));
     }
-    // A real PMS immediately announces connectivity -- the call that needs a SERVER
-    // registry record.
-    match announce_connectivity(&plextv.claim) {
-        Ok((status, body)) => info!("post-claim connectivity PUT -> {status} {body}"),
-        Err(message) => {
-            // `announce_connectivity` lets a transport failure raise, and the handler
-            // answers that with its 500 -- after the claim was stored.
-            error!("handler failed for POST {target}: {message}");
-            return super::Response::error(500, "plexsim: internal error");
-        }
-    }
+    // What the probe PMS did next: POST /servers.xml, the device PUT, then the pubsub
+    // stream that makes it present (`do_claim`).
+    let local_address = runtime
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .private_address
+        .clone();
+    let beat = plextv
+        .beat
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone();
+    start_registration(Arc::clone(&plextv.claim), local_address, beat);
     plextv.start_account(runtime);
     let guard = runtime
         .lock()
