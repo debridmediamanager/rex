@@ -1,9 +1,10 @@
 //! `metadata.Tmdb`: the live agent behind Fix Match, present only with `TMDB_KEY`.
 //!
-//! Responses are cached on disk in `tmdb_cache.json` beside the catalog, keyed by the
-//! request url with the key replaced by `KEY` -- the same file and the same keys the
-//! Python server reads and writes, so either server can pick up the other's cache.
+//! Responses are cached on disk beside the catalog, keyed by the request url with the key
+//! replaced by `KEY` -- the Python server's keys. The native server keeps them a row each
+//! in `tmdb_cache.db` (diskcache.rs), importing the oracle's `tmdb_cache.json` once.
 
+use super::diskcache::DiskCache;
 use super::upstream;
 use super::*;
 use std::time::Duration;
@@ -12,8 +13,9 @@ const API: &str = "https://api.themoviedb.org/3";
 
 pub(super) struct Tmdb {
     key: String,
+    api: String,
     cache_path: PathBuf,
-    cache: Mutex<Map<String, Value>>,
+    cache: DiskCache,
 }
 
 impl std::fmt::Debug for Tmdb {
@@ -39,22 +41,11 @@ fn python_str(value: &Value) -> String {
 
 impl Tmdb {
     pub(super) fn new(key: String, cache_path: PathBuf) -> Self {
-        // A cache that does not parse is started afresh, as `json.load`'s ValueError is.
-        let cache = fs::read(&cache_path)
-            .ok()
-            .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok())
-            .and_then(|value| value.as_object().cloned())
-            .unwrap_or_default();
         Self {
             key,
+            api: API.to_string(),
+            cache: DiskCache::open(&cache_path),
             cache_path,
-            cache: Mutex::new(cache),
-        }
-    }
-
-    fn save(&self, cache: &Map<String, Value>) {
-        if let Ok(text) = serde_json::to_vec(cache) {
-            let _ = fs::write(&self.cache_path, text);
         }
     }
 
@@ -73,9 +64,10 @@ impl Tmdb {
             .map(|(name, value)| format!("{name}={}", upstream::quote_plus(value)))
             .collect::<Vec<_>>();
         query.push(format!("api_key={}", upstream::quote_plus(&self.key)));
-        let url = format!("{API}/{}?{}", path.trim_start_matches('/'), query.join("&"));
-        let cache_key = url.replace(&self.key, "KEY");
-        if let Some(hit) = self.cache.lock().ok()?.get(&cache_key).cloned() {
+        let url = format!("{}/{}?{}", self.api, path.trim_start_matches('/'), query.join("&"));
+        // Keyed by the real API's url, whatever `api` points at.
+        let cache_key = format!("{API}{}", &url[self.api.len()..]).replace(&self.key, "KEY");
+        if let Some(hit) = self.cache.get(&cache_key) {
             return Some(hit);
         }
         let payload = match Self::get_url(&url) {
@@ -87,9 +79,7 @@ impl Tmdb {
             }
             Err(_) => return None,
         };
-        let mut cache = self.cache.lock().ok()?;
-        cache.insert(cache_key, payload.clone());
-        self.save(&cache);
+        self.cache.put(&cache_key, &payload);
         Some(payload)
     }
 
@@ -143,5 +133,64 @@ impl Tmdb {
 impl crate::identify::TmdbSource for Tmdb {
     fn get(&self, path: &str, params: &[(&str, String)]) -> Option<Value> {
         Tmdb::get(self, path, params)
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    /// Bytes this process has passed to write(2): `wchar` in /proc/self/io.
+    fn written() -> u64 {
+        let io = fs::read_to_string("/proc/self/io").unwrap();
+        io.lines().find_map(|line| line.strip_prefix("wchar: ")).unwrap().trim().parse().unwrap()
+    }
+
+    /// TMDB answering `body` to every request.
+    fn stub(body: String) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        thread::spawn(move || {
+            for mut stream in listener.incoming().flatten() {
+                let _ = stream.read(&mut [0u8; 8192]);
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+            }
+        });
+        format!("http://{address}")
+    }
+
+    #[test]
+    fn a_miss_writes_its_own_answer_not_the_whole_cache() {
+        // fun, 2026-10-10: 10,056 answers averaging 15 KB, and every miss rewrote all of them.
+        // 1,500 copies of one real answer make a 24 MB cache.
+        let raw = include_str!("../../tests/fixtures/tmdb_movie_details.json");
+        let (key, value) = serde_json::from_str::<Map<String, Value>>(raw).unwrap().into_iter().next().unwrap();
+        let legacy: Map<String, Value> = (0..1500)
+            .map(|n| (key.replace("/movie/15173?", &format!("/movie/{}?", 900_000 + n)), value.clone()))
+            .collect();
+        let dir = std::env::temp_dir().join(format!("simplex-tmdb-miss-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("tmdb_cache.json"), Value::Object(legacy).to_string()).unwrap();
+
+        let mut tmdb = Tmdb::new("testkey".to_string(), dir.join("tmdb_cache.json"));
+        tmdb.api = stub(value.to_string());
+        let before = written();
+        for id in 1..=5 {
+            assert!(tmdb.details("movie", &json!(id)).is_some());
+        }
+        let bytes = written() - before;
+        assert!(bytes < 4_000_000, "five misses wrote {bytes} bytes");
+
+        // Still answered after a restart, with TMDB gone.
+        let mut reopened = Tmdb::new("testkey".to_string(), dir.join("tmdb_cache.json"));
+        reopened.api = "http://127.0.0.1:9".to_string();
+        assert_eq!(reopened.details("movie", &json!(3)), Some(value));
     }
 }

@@ -4,9 +4,11 @@
 //! /library/metadata/matches` with the title, year and file name, or with an external id,
 //! and a matched show's and season's `children` for their `plex://` guids. Cycle 70: a
 //! row whose guid plex.tv does not know draws no detail page in the Android app.
-//! Answers are cached in `plex_cache.json` beside the catalog under the keys the Python
-//! module writes, so `build_catalog.py --relink` and this server share the file.
+//! Answers are cached beside the catalog under the keys the Python module writes: a row
+//! each in `plex_cache.db` (diskcache.rs), which imports `plex_cache.json` -- what
+//! `build_catalog.py --relink` writes -- once.
 
+use super::diskcache::DiskCache;
 use super::upstream;
 use super::*;
 use std::time::Duration;
@@ -16,7 +18,7 @@ const PROVIDER: &str = "https://metadata.provider.plex.tv";
 pub(crate) struct PlexMeta {
     token: String,
     cache_path: PathBuf,
-    cache: Mutex<Map<String, Value>>,
+    cache: DiskCache,
 }
 
 impl std::fmt::Debug for PlexMeta {
@@ -55,19 +57,14 @@ fn python_json(value: &Value) -> String {
 
 impl PlexMeta {
     pub(crate) fn new(token: String, cache_path: PathBuf) -> Self {
-        let cache = fs::read(&cache_path)
-            .ok()
-            .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok())
-            .and_then(|value| value.as_object().cloned())
-            .unwrap_or_default();
-        Self { token, cache_path, cache: Mutex::new(cache) }
+        Self { token, cache: DiskCache::open(&cache_path), cache_path }
     }
 }
 
 impl crate::identify::PlexSource for PlexMeta {
     fn call(&self, method: &str, path: &str, body: Option<&Value>) -> Option<Value> {
         let key = format!("{method} {path} {}", body.map(python_json).unwrap_or_default());
-        if let Some(hit) = self.cache.lock().ok()?.get(&key).cloned() {
+        if let Some(hit) = self.cache.get(&key) {
             return Some(hit);
         }
         let mut headers = vec![
@@ -96,11 +93,7 @@ impl crate::identify::PlexSource for PlexMeta {
             return None;
         }
         let answer = serde_json::from_slice::<Value>(&raw).ok()?;
-        let mut cache = self.cache.lock().ok()?;
-        cache.insert(key, answer.clone());
-        if let Ok(text) = serde_json::to_vec(&*cache) {
-            let _ = fs::write(&self.cache_path, text);
-        }
+        self.cache.put(&key, &answer);
         Some(answer)
     }
 }

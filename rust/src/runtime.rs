@@ -31,6 +31,7 @@ mod butler;
 mod children;
 mod collections;
 mod detail;
+mod diskcache;
 mod edit;
 mod frames;
 mod framework;
