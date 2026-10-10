@@ -474,6 +474,72 @@ impl Cache {
 }
 
 impl Cache {
+    /// An object field kept by its members' keys, so a save serialises only the members
+    /// `changed` names: the 28,859 held feed items on fun (2026-10-10) were serialised,
+    /// hashed and compared whole on every save, two seconds apart while any client polled.
+    /// A field the cache does not hold yet takes `diff`'s full pass over `all()`.
+    pub fn diff_members<'a>(
+        &mut self,
+        field: &str,
+        changed: &HashSet<String>,
+        get: impl Fn(&str) -> Option<&'a Value>,
+        all: impl FnOnce() -> Map<String, Value>,
+    ) -> Delta {
+        let known = self.docs.get(field).map(|(kind, _)| *kind) == Some(Kind::Object)
+            && self.collections.contains_key(field);
+        if !known {
+            let mut state = Map::new();
+            state.insert(field.to_string(), Value::Object(all()));
+            let others: Vec<String> = self.docs.keys().filter(|name| *name != field).cloned().collect();
+            let others: Vec<&str> = others.iter().map(String::as_str).collect();
+            return self.diff(&state, &others);
+        }
+        let name = format!("{STATE}{field}");
+        let mut delta = Delta::default();
+        let collection = self.collections.get_mut(field).expect("checked above");
+        // Every pass leaves `order` in position order, and a new member goes last.
+        let mut next = collection
+            .order
+            .last()
+            .and_then(|key| collection.rows.get(key))
+            .map_or(0.0, |(pos, _)| pos + 1.0);
+        let mut keys: Vec<&String> = changed.iter().collect();
+        keys.sort();
+        let mut gone = HashSet::new();
+        for key in keys {
+            match (collection.rows.get(key).copied(), get(key)) {
+                (Some((pos, hash)), Some(member)) => {
+                    let body = member.to_string();
+                    let new_hash = hash_text(&body);
+                    if new_hash != hash {
+                        collection.rows.insert(key.clone(), (pos, new_hash));
+                        delta.ops.push(Op::Put { coll: name.clone(), key: key.clone(), pos, body });
+                    }
+                }
+                // A member's position only orders the rows read back into a map.
+                (None, Some(member)) => {
+                    let body = member.to_string();
+                    collection.rows.insert(key.clone(), (next, hash_text(&body)));
+                    collection.order.push(key.clone());
+                    delta.ops.push(Op::Put { coll: name.clone(), key: key.clone(), pos: next, body });
+                    next += 1.0;
+                }
+                (Some(_), None) => {
+                    collection.rows.remove(key);
+                    gone.insert(key.clone());
+                    delta.ops.push(Op::Delete { coll: name.clone(), key: key.clone() });
+                }
+                (None, None) => {}
+            }
+        }
+        if !gone.is_empty() {
+            collection.order.retain(|key| !gone.contains(key));
+        }
+        delta
+    }
+}
+
+impl Cache {
     /// An array field kept by its rows' own keys (the catalog's `ratingKey`), so a save
     /// can serialise only the rows `changed` names: a row written, appended (`position`
     /// past every stored row) or removed. `changed: None` -- rows reordered or keyless --

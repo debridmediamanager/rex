@@ -937,6 +937,46 @@ mod tests {
 
     /// One test, because the store's write queue is process-wide.
     #[test]
+    fn a_snapshot_after_one_held_change_does_not_reserialise_every_held_item() {
+        // fun, 2026-10-10: 28,859 held items, every one serialised, hashed and compared
+        // on each save -- two seconds apart while any client polled -- under the runtime
+        // lock every request waits on. One real held record stands in for all of them.
+        let fixture: Value =
+            serde_json::from_str(include_str!("../../tests/fixtures/feed_held_record.json")).unwrap();
+        let record = fixture["record"].clone();
+        let dir = std::env::temp_dir().join(format!("simplex-held-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let catalog = dir.join("catalog.json");
+        fs::write(&catalog, seed("held").to_string()).unwrap();
+
+        let mut runtime = Runtime::load(options(&dir, &catalog)).unwrap();
+        for n in 0..28_859 {
+            runtime.hold(format!("rd:held/{n}"), record.clone());
+        }
+        runtime.save_state().unwrap();
+        let mut slowest = std::time::Duration::ZERO;
+        for n in 0..10 {
+            runtime.hold(format!("rd:new/{n}"), record.clone());
+            runtime.release(&format!("rd:held/{n}"));
+            let started = std::time::Instant::now();
+            let snapshot = runtime.snapshot_state().unwrap();
+            slowest = slowest.max(started.elapsed());
+            write_snapshot(&snapshot.expect("a held change is a change")).unwrap();
+        }
+        // The unfixed pass took 1.2 s here (a debug build); the keyed one about 11 ms.
+        assert!(slowest < std::time::Duration::from_millis(100), "a one-item snapshot took {slowest:?}");
+        drop(runtime);
+
+        let runtime = Runtime::load(options(&dir, &catalog)).unwrap();
+        assert_eq!(runtime.feed_held.len(), 28_859);
+        assert_eq!(runtime.feed_held.get("rd:new/9"), Some(&record));
+        assert!(!runtime.feed_held.contains_key("rd:held/0"));
+        drop(runtime);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn scanned_rows_keep_their_keys_and_state_across_restarts_and_catalog_edits() {
         let dir = std::env::temp_dir().join(format!("simplex-scan-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);

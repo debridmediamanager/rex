@@ -455,6 +455,8 @@ pub struct Runtime {
     sources: Vec<Arc<source::Source>>,
     /// Pushed items with no `media_info` yet, by `<source>:<id>`: stored, never shown.
     feed_held: std::collections::BTreeMap<String, Value>,
+    /// The `feed_held` keys written or removed since the last snapshot (`hold`, `release`).
+    feed_held_changed: HashSet<String>,
     /// `metadata.Tmdb`, only with `TMDB_KEY`: without it Fix Match has no candidates.
     tmdb: Option<Arc<tmdb::Tmdb>>,
     /// Plex's metadata agent, only with `PLEX_TOKEN`: what a scan matches a release with
@@ -745,6 +747,7 @@ impl Runtime {
             source_digest,
             sources,
             feed_held: std::collections::BTreeMap::new(),
+            feed_held_changed: HashSet::new(),
             // Fix Match needs a live agent; the cache lives beside the catalog.
             tmdb,
             plex,
@@ -1589,7 +1592,7 @@ impl Runtime {
         let mut state = self.state_document(false);
         self.dirty = false;
         // The vocabulary only when it was replaced since the last snapshot.
-        let mut separate = vec!["items"];
+        let mut separate = vec!["items", "feedHeld"];
         if self.spelling_serial == self.spelling_saved {
             separate.push("spelling");
         } else if let Some(object) = state.as_object_mut() {
@@ -1603,6 +1606,14 @@ impl Runtime {
             Some(document) => self.store_cache.diff(document, &separate),
             None => return Err("state is not a document".to_string()),
         };
+        let held_changes = std::mem::take(&mut self.feed_held_changed);
+        let held = &self.feed_held;
+        delta.extend(self.store_cache.diff_members(
+            "feedHeld",
+            &held_changes,
+            |key| held.get(key),
+            || held.iter().map(|(key, value)| (key.clone(), value.clone())).collect(),
+        ));
         // The catalog rows by key: only those written since the last snapshot are
         // serialised, unless rows were added, removed or reordered.
         let changes = self.catalog.take_changes();
@@ -1717,13 +1728,14 @@ impl Runtime {
             ("historyCounter", json!(self.history_counter.get())),
             ("retiredKeys", json!(self.retired_keys)),
             ("nextScanKey", json!(self.next_scan_key)),
-            ("feedHeld", json!(self.feed_held)),
+            // A snapshot diffs it by key instead (`diff_members`).
+            ("feedHeld", if full { json!(self.feed_held) } else { Value::Null }),
             ("collectionGuids", json!(self.collection_guids.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Map<String, Value>>())),
             ("hiddenContinue", json!(self.hidden_continue.iter().collect::<Vec<_>>())),
             ("viewedInSession", json!(self.viewed_in_session.iter().collect::<Vec<_>>())),
         ];
         if let Some(object) = state.as_object_mut() {
-            for (name, value) in extra {
+            for (name, value) in extra.into_iter().filter(|(name, value)| *name != "feedHeld" || !value.is_null()) {
                 object.insert(name.to_string(), value);
             }
         }

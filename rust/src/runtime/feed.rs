@@ -289,7 +289,7 @@ fn remove(shared: &SharedRuntime, source: &Source, ids: &[String], keys: &[Strin
     let mut sections = BTreeMap::new();
     let mut doomed = Vec::new();
     for id in ids {
-        if guard.feed_held.remove(&held_key(&source.name, id)).is_some() {
+        if guard.release(&held_key(&source.name, id)).is_some() {
             released += 1;
             guard.dirty = true;
             continue;
@@ -437,13 +437,13 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     if !guard.feed_held.contains_key(&held) {
                         info!("FEED {} held {}: no media_info yet", source.name, item.id);
                     }
-                    guard.feed_held.insert(held, record);
+                    guard.hold(held, record);
                     guard.dirty = true;
                 }
                 counts.held += 1;
             }
             Plan::Show => {
-                guard.feed_held.remove(&held);
+                guard.release(&held);
                 let Some(arrival) = arrivals.remove(&index) else {
                     continue;
                 };
@@ -451,7 +451,7 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                 libraries.entry(library.key.clone()).or_insert(library);
             }
             Plan::Row { key, adopt, reidentify } => {
-                guard.feed_held.remove(&held);
+                guard.release(&held);
                 if guard.catalog.get(&key).is_none() {
                     counts.unchanged += 1;
                     continue;
@@ -635,6 +635,20 @@ impl Runtime {
             })
             .collect();
         json!({"size": items.len(), "items": items})
+    }
+
+    /// Hold an item, recording its key for the next snapshot's keyed write.
+    pub(super) fn hold(&mut self, key: String, record: Value) {
+        self.feed_held_changed.insert(key.clone());
+        self.feed_held.insert(key, record);
+    }
+
+    pub(super) fn release(&mut self, key: &str) -> Option<Value> {
+        let released = self.feed_held.remove(key);
+        if released.is_some() {
+            self.feed_held_changed.insert(key.to_string());
+        }
+        released
     }
 
     fn feed_held_listing(&self, source: &Source) -> Value {
