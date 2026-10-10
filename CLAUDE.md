@@ -136,8 +136,8 @@ trashes nothing, a 503 from a loading zurg is retried). Every library is scanned
 A row's ratingKey is minted once (100000 and up) and never reused: zurg drops a release's
 IMDb id when the key it matched it to disappears.
 
-The native `--state` file is JSON and refuses the Python server's pickle, so a state
-file does not move between the two. `--announce-url` needs `PLEX_TOKEN`; a comma-separated
+The native state file is a SQLite database and does not read the Python server's pickle,
+so a state file does not move between the two. `--announce-url` needs `PLEX_TOKEN`; a comma-separated
 list announces each URI as its own connection, as a PMS with several does. The Python
 oracle reads parts from zurg the same way but does not scan.
 
@@ -399,7 +399,7 @@ answering at `http://100.101.10.1:32410`:
 The black-box suites start or target the native server by default
 (`tests/server_command.py` runs `rust/target/release/simplex`, so build it first);
 `SIMPLEX_SERVER=python` runs them against the Python oracle, and a fix is done when
-they pass on both. Neither needs network beyond RD and TMDB.
+they pass on both. Neither needs network beyond zurg and TMDB.
 
 ```bash
 python3 tests/test_navigation.py            # client request replay, shape conformance

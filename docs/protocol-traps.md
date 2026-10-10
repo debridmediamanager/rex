@@ -22,10 +22,9 @@ are changing; replay the client's exact request before altering behavior.
   manifest or B's nonexistent subtitle fixture. Cycle 81 repaired those inputs
   from measured captures and the isolated scratch PMS; check the request
   denominator and the source fixture before calling a leg clean.
-- **`catalog.json` links are account-scoped.** Real-Debrid `/d/` links resolve
-  only for the account that created them. A different key answers
-  `404 unavailable_file`, which surfaces as HTTP 502 on every part read and
-  looks like simplex is broken.
+- **Every part read failing is configuration first.** With no `ZURG_URL` every part read is
+  the routed 502, and a Part whose `file` is not under `--zurg-mount` is a 404 before zurg is
+  asked. Either looks like simplex is broken; check the environment and the mount first.
 - **Cloudflare strips `Range` on a prefix request.** `--part-mode proxy` then
   sees `range=-` and fetches the whole file per playback start. Use
   `--part-mode redirect` through the edge.
@@ -2002,7 +2001,7 @@ are changing; replay the client's exact request before altering behavior.
   `Content-Length: 999` and no bytes, with or without `Expect: 100-continue`; reading before routing
   turns a read-only request into a trivial server stall.
 - **A measured multipart filename is `Title - cdN.ext`.** One Media owns ordered Parts, its duration
-  is their sum, and every Part owns its debrid link. `partIndex=0/1` projects that Part,
+  is their sum, and every Part owns its own file on zurg. `partIndex=0/1` projects that Part,
   out-of-range is 400 and `-1` is the 4005 all-parts conversion refusal.
 - **A clip is not an ordinary library row.** It publishes no librarySection triple; the parent owns
   `primaryExtraKey` and inline `Extras`; item and section `/extras/all` use different projections;
@@ -2108,11 +2107,6 @@ are changing; replay the client's exact request before altering behavior.
   frozen listeners still on 32587/32588 despite a later clean-close record. List every
   `server.py --port` process, resolve cwd and command line, and kill only proved cycle-owned
   processes; checking the current cycle's expected ports cannot catch an older stray listener.
-- **A live catalog build needs both playable bytes and identity.** RD torrents whose display name
-  ends in a video extension can still unrestrict to a RAR; let `build_catalog.py` reject those.
-  Without a valid TMDB key, an SxxEyy filename remains a movie row because no measured external
-  identity exists from which to mint its show/season/episode guids. A byte test alone can therefore
-  pass while navigation correctly reports no shows.
 - **Container magic belongs to the selected Part, not to the test fixture's history.** The first
   live MP4 made `conformance.py` select the right Plex Web direct-play row and then fail its old
   unconditional Matroska assertion. MP4 carries `ftyp` at offset four; Matroska/WebM carries the
@@ -2182,12 +2176,12 @@ are changing; replay the client's exact request before altering behavior.
   in JSON `builtIn` is the STRING `"1"` on 1.42.2 and `order` is the FLOAT `1000.0` on both — the
   XML cannot tell either apart.
 - **A part whose FILE is gone is a plain 404**, not a 5xx: zen part 23595 (`accessible=false`,
-  `exists=false`) answers 404 to the byte read. simplex answered 502 to a dead link and to a
-  network failure alike. Real-Debrid's `unavailable_file`/error_code 24 is now the 404 and
-  everything else keeps the 502, so a transport failure is still diagnosable.
-- **`tests/test_part_bytes.py` stands up its own upstream** (a local CDN and a one-route
-  Real-Debrid stub behind `RD_API`) and drives the real handler, so the byte path is testable with
-  no credential at all. Use it rather than waiting for a live `/d/` link.
+  `exists=false`) answers 404 to the byte read. simplex once answered 502 to a missing file and to
+  a network failure alike. zurg's own 404 for the file is now the 404, another status zurg answers
+  is passed on, and a transport failure keeps the 502, so it is still diagnosable.
+- **`tests/test_part_bytes.py` stands up its own upstream** (a local zurg stub: WebDAV reads behind
+  basic auth, a 404 for a file it no longer has) and drives the real handler, so the byte path is
+  testable with no credential at all. Use it rather than waiting for a live zurg.
 
 
 - **`/library/sections/{id}/{name}/top` is a real leaf** -- PMS's own route table spells it
@@ -2261,11 +2255,12 @@ are changing; replay the client's exact request before altering behavior.
   while `/sync/items` and its siblings really are 404s. A "we do not implement this"
   short-circuit on a whole prefix makes one single-segment path answer differently from all the
   others.
-- **File-check options report what the PROVIDER says, not a catalog constant.** `checkFiles`,
-  `asyncCheckFiles` and `checkFileAvailability` share the same `+?0*[01]` grammar and resolver
-  result: a live part projects `accessible=true, exists=true`, `unavailable_file` projects both
-  false, and an unchecked row omits them. The byte path answers the same unavailable file 404;
-  a resolver/network failure remains 502.
+- **File-check options report what zurg says, not a catalog constant.** `checkFiles`,
+  `asyncCheckFiles` and `checkFileAvailability` share the same `+?0*[01]` grammar and the same
+  zurg answer: a part zurg serves projects `accessible=true, exists=true`, zurg's 404 for the file
+  projects both false, any other answer or a transport failure is not collapsed into "missing",
+  and an unchecked row omits them. The byte path answers the same missing file 404; a transport
+  failure remains 502.
 - **The broad option vocabulary was exhaustively swept: 116 names × 76 safe container families ×
   three servers.** The load-bearing propagation rules are that global `/hubs` passes
   `includeChildren`, `includeExtras`, `includeOnDeck`, `includeRelated` and
