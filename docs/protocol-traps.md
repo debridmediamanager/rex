@@ -238,6 +238,14 @@ are changing; replay the client's exact request before altering behavior.
   `PLEXSIM_TOKEN` and defaults OFF (the suites and probes carry no token); the
   startup line says which. `/security/token` is the one exception: its own 400 with
   no parameters and 403 with a bad token, never a 401.
+- **A CLAIMED server's gate is always up, and plex.tv decides who is in.** Besides its
+  own token it admits every token in `GET plex.tv/api/v2/server/access_tokens?auth_token=
+  <server token>` (the owner's devices, shared users; `tokenDisabled="1"` rows refused),
+  read at a claimed start and re-read for an unknown token -- with `&unknownToken=` --
+  unless the last read finished about 6 s ago (zen's PMS log,
+  `tests/fixtures/plextv_access_tokens_s1422.json`). Nothing re-reads it on a timer, so a
+  device that signs in later is let in by its first request. plexsim gates a real claim
+  this way on both servers; `--assert-claimed` is not a claim and stays open.
 - **`Cache-Control: no-cache` goes on EVERY response**, and a versioned artwork
   asset is `no-cache` too — caching it for a day makes a Change Artwork invisible to
   the browser. Only transcoder output caches (`max-age=259200`). A real PMS also

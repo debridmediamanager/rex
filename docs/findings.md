@@ -11787,6 +11787,46 @@ the way, read from Plex Web 4.162 and its console:
   `1.42.2.10156-f737b826c` / Linux; presence, connections and `lastSeenAt` were unchanged.
   The browser is signed in with the token from fun's zurg config. Cause not established.
 
+**The token gate a claimed server keeps (2026-10-10).** plexsim-e2e answered `GET
+/library/sections` 200 to no token and to a made-up one: plexsim's gate was opt-in (`--token`)
+and the rig ran without one, so every tailnet peer read the library and the bytes. A real PMS
+always gates once claimed, and plex.tv decides who is in. Read from zen's own 1.42.2 PMS log
+and asked of plex.tv for plexsim-e2e (`tests/fixtures/plextv_access_tokens_s1422.json`):
+
+- `GET plex.tv/api/v2/server/access_tokens?auth_token=<server token>` answers `<tokens>` with
+  one `<token type="device" device=… token=… tokenDisabled="0" owned="1" createdAt=…/>` per
+  token allowed in: the server's own first, then each of the owner's devices (20 rows for
+  plexa630; the account token in fun's zurg config is one, and so is the token of every client
+  seen on plexsim-e2e that day). It is the list PMS checks a request's token against.
+- A claimed start reads it first (the probe's `claimed_start`); the claim itself did not; nothing
+  reads it on a timer (the probe's hour, and four hours of zen's log).
+- A token PMS does not hold makes it re-read the list with `&unknownToken=<that token>`
+  ("Auth: Refreshing tokens inside the token-based authentication filter"), unless the last
+  read finished about 6 s ago ("tokens were refreshed recently enough": no re-read began sooner
+  than 5.68 s after the previous one finished, none was refused later than 5.86 s after). A
+  request arriving during a read waits for it ("tokens were just refreshed, caller should check
+  again"). 586 reads in four hours on zen, all prompted by one LAN client's stale token.
+- `unknownToken=` does not change the answer; a bad `auth_token` is a 401 `<errors>` document.
+- On zen the unknown token then falls through to "authenticating user as guest", because zen's
+  allowed network covers that client; off an allowed network it is cycle 30's 401.
+
+plexsim does the same on both servers (`claim.Claim.admits`, `plextv::Access`): a real claim
+raises the gate (`--assert-claimed` does not), the server's own token and every listed, enabled
+token are let in, a claimed start reads the list before `POST /servers.xml`, and an unknown token
+re-reads it -- in the native server before the runtime lock is taken, so a slow plex.tv holds
+up only that request. `tests/test_plextv.py` checks it against the stub; 10 of its checks fail
+against the unfixed servers, which answered 200 with no token. Not reproduced: PMS's `GET
+/api/v2/server/users` after each read (per-user restrictions; plexsim keeps no per-user state),
+the allowed-networks fallback, and admitting back the transient tokens `/security/token` mints.
+
+**A resubscribe within seconds of the old stream closing reads absent (2026-10-10).** On
+plexsim-e2e, `systemctl restart` (old process gone at 07:59:04, new stream subscribed at
+07:59:06) was listed `presence=true` until 07:59:38 and `false` from 07:59:43 for six minutes,
+with the new stream open (its socket established, no "stream ended" logged, keepalives read).
+A restart that subscribed 16 s after the old process died (kill -9, then systemd's 15 s
+`RestartSec`) and one that waited 20 s first both stayed present. Mechanism not established;
+the rig's unit waits 20 s before every start. A real PMS takes longer than that to come back.
+
 **4. Sharing: one owner claims, everyone else is shared — and the owner's Plex
 Pass covers them all.**
 
@@ -11799,9 +11839,9 @@ This resolves the multi-user question left open earlier: **a server owner's Plex
 Pass covers remote streaming for every user on that server**, so one lifetime
 pass on plexa630 covers all shared users and nobody needs a Remote Watch Pass.
 
-Limits that still bite: plexsim currently accepts any token and keeps no
-per-user state, so real sharing needs per-user token handling and per-user
-views; Plex Home caps at 15 managed users; and friend sharing requires each
+Limits that still bite: plexsim keeps no per-user state -- a claimed plexsim
+admits the tokens plex.tv lists for it, shared users' included (above), but
+serves every one of them as the owner -- so real sharing needs per-user views; Plex Home caps at 15 managed users; and friend sharing requires each
 invite to be accepted individually, so sharing to a large DMM user base is not
 viable by this route.
 

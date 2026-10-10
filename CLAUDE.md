@@ -122,7 +122,8 @@ on zurg, and each library's `Location` is `<mount>/<directory>` -- set in the ca
 sections (`build_catalog.py --seed`), or through Add Library's `location`.
 
 Point zurg at the server in zurg's `config.yml`: `plex_server_url` and `plexsim_url`
-(this server's URL), `plex_token` (this server's `--token`, anything without one),
+(this server's URL), `plex_token` (this server's `--token`; once claimed, a token plex.tv
+lists for it, such as the owner's account token; anything when neither gates),
 `mount_path` (`--zurg-mount`), and `plex_settings_policy: off`. zurg then sends
 `GET /library/sections/{id}/refresh?path=<mount>/<directory>/<release>` for every
 release it adds, probes or drops, and asks `/activities` before each one (a running
@@ -143,7 +144,10 @@ A real claim -- `POST /myplex/claim?token=` with a token from `plex.tv/api/claim
 once per machineIdentifier -- makes plexsim register the way a real PMS does (findings, "The
 experiment, run"): `POST /servers.xml` writes plex.tv's server record (422 is its normal
 answer), and the pubsub stream it then holds open is what clients read as `presence`. The
-claim is kept in `claim_state.json`, so a restart re-registers without claiming again.
+claim is kept in `claim_state.json`, so a restart re-registers without claiming again. A
+claimed server gates every request as a real PMS does: its own token and the tokens
+`plex.tv/api/v2/server/access_tokens` lists for it, re-read for an unknown token (findings,
+"The token gate a claimed server keeps").
 Start it without `--announce-url` for the claim and add it afterwards: the unclaimed
 heartbeat writes a device row with the account token first, and the 2026-09-11 spike's
 claim of an identity that already had such a row got the account token back, not a server
