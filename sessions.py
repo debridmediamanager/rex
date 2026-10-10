@@ -9,7 +9,7 @@ on its own puts nothing there. `state=stopped` removes the row at once, and with
 no further timelines a row disappeared between **60 and 80 seconds** after the
 last one.
 
-plexsim answered `/status/sessions` with `{size: 0}` for its whole life, so Now
+simplex answered `/status/sessions` with `{size: 0}` for its whole life, so Now
 Playing and the Dashboard were permanently empty and the Terminate button had
 nothing to act on, while the timeline it was already receiving carried everything
 needed to fill them.
@@ -129,7 +129,7 @@ def _private(address):
 class Sessions:
     """Live playback sessions, and the bytes this server has served."""
 
-    def __init__(self, owner="plexsim", ttl=SESSION_TTL):
+    def __init__(self, owner="simplex", ttl=SESSION_TTL):
         self.owner = owner
         self.ttl = ttl
         # The real scheduler is process-global. Advancing this phase only when the
@@ -170,7 +170,7 @@ class Sessions:
         # Cycle 49, measured on both writable copies: a request carrying a device name or
         # a platform and NO client identifier writes them onto the ANONYMOUS row -- the
         # one with `clientIdentifier=""` -- exactly as an identified one writes its own.
-        # plexsim skipped it, so that row stayed nameless whatever a client sent. (This
+        # simplex skipped it, so that row stayed nameless whatever a client sent. (This
         # is the same write that corrupted both references: a numeric `X-Plex-Platform`
         # stores as a number there and makes `/devices` a 500. Preserve that typed state;
         # the two affected list endpoints reproduce the measured refusal while the
@@ -189,7 +189,7 @@ class Sessions:
         independently (a client that sent only a platform has `name: ""`), and
         leaves them empty only for a client that sent neither -- which is all the
         earlier probe, sending no X-Plex headers, could see. `/devices` lists
-        EVERY device the server has seen, 40 on the reference, where plexsim
+        EVERY device the server has seen, 40 on the reference, where simplex
         listed one row describing itself.
         """
         return [self._device_row(identifier, key)
@@ -221,7 +221,7 @@ class Sessions:
             return query.get(name) or (headers.get(name) if headers else None)
 
         identifier = value("X-Plex-Client-Identifier") or ""
-        session_id = value("X-Plex-Session-Identifier") or identifier or "plexsim"
+        session_id = value("X-Plex-Session-Identifier") or identifier or "simplex"
         entry = self._sessions.get(session_id)
         if entry is None:
             self._next_key += 1
@@ -280,7 +280,7 @@ class Sessions:
         return entry
 
     # What a session row does NOT carry, measured on a writable copy of the reference
-    # against the same item's detail row: no `Guid` and no `Image`, where plexsim copied the
+    # against the same item's detail row: no `Guid` and no `Image`, where simplex copied the
     # detail row wholesale -- three `<Image>` children a real PMS never sends there.
     SESSION_ROW_DROPS = ("Guid", "Image")
 
@@ -363,7 +363,7 @@ class Sessions:
         """Rows for `/statistics/media`: a count and a duration per bucket.
 
         Keyed by the device that PLAYED, which is the client that sent the
-        timeline. plexsim wrote device 1 on every row, an id that no Device row in
+        timeline. simplex wrote device 1 on every row, an id that no Device row in
         the same container named.
         """
         if timespan is None:

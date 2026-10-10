@@ -9,8 +9,8 @@ check asserts the Python oracle's concrete value, which is what its handler's co
 records as measured on a real PMS -- not "equal to the other server".
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `PLEXSIM_SERVER=python`, another build with
-`PLEXSIM_SERVER=/path/to/plexsim`.
+default, the oracle with `SIMPLEX_SERVER=python`, another build with
+`SIMPLEX_SERVER=/path/to/simplex`.
 
     python3 tests/test_parity_server.py
 """
@@ -280,33 +280,33 @@ def run_dispatcher(s):
 
 
 def run_browse(s):
-    # -- /services/browse walks the /plexsim tree with keys and titles ----------------
+    # -- /services/browse walks the /simplex tree with keys and titles ----------------
     status, _, doc = s.json("GET", "/services/browse")
-    check("/services/browse lists / and /plexsim with keys and titles",
+    check("/services/browse lists / and /simplex with keys and titles",
           doc == {"MediaContainer": {"size": 2, "Path": [
               {"key": "/services/browse/Lw==", "title": "/", "path": "/"},
-              {"key": "/services/browse/L3BsZXhzaW0=", "title": "plexsim",
-               "path": "/plexsim"}]}}, doc)
-    status, _, doc = s.json("GET", "/services/browse/L3BsZXhzaW0=?includeFiles=1")
-    check("/plexsim lists one directory per section and no files",
+              {"key": "/services/browse/L3NpbXBsZXg=", "title": "simplex",
+               "path": "/simplex"}]}}, doc)
+    status, _, doc = s.json("GET", "/services/browse/L3NpbXBsZXg=?includeFiles=1")
+    check("/simplex lists one directory per section and no files",
           doc == {"MediaContainer": {"size": 2, "Path": [
-              {"key": "/services/browse/L3BsZXhzaW0vMQ==", "title": "1", "path": "/plexsim/1"},
-              {"key": "/services/browse/L3BsZXhzaW0vMg==", "title": "2",
-               "path": "/plexsim/2"}]}}, doc)
-    status, _, doc = s.json("GET", "/services/browse/L3BsZXhzaW0vMQ==?includeFiles=0")
+              {"key": "/services/browse/L3NpbXBsZXgvMQ==", "title": "1", "path": "/simplex/1"},
+              {"key": "/services/browse/L3NpbXBsZXgvMg==", "title": "2",
+               "path": "/simplex/2"}]}}, doc)
+    status, _, doc = s.json("GET", "/services/browse/L3NpbXBsZXgvMQ==?includeFiles=0")
     check("includeFiles=0 on a leaf directory is {size: 0}",
           doc == {"MediaContainer": {"size": 0}}, doc)
-    status, _, doc = s.json("GET", "/services/browse/L3BsZXhzaW0vMQ==?includeFiles=1")
+    status, _, doc = s.json("GET", "/services/browse/L3NpbXBsZXgvMQ==?includeFiles=1")
     files = container(doc).get("File") or []
     check("includeFiles=1 lists each distinct file of that directory once, keyed",
           container(doc).get("size") == len(files) == 5
           and len({row.get("path") for row in files}) == 5
-          and all(row.get("path", "").startswith("/plexsim/1/") and row.get("key")
+          and all(row.get("path", "").startswith("/simplex/1/") and row.get("key")
                   and row.get("title") == row["path"].rsplit("/", 1)[-1] for row in files)
           and "Path" not in container(doc), doc)
     titles = [row.get("title", "").lower() for row in files]
     check("and sorts them by lower-cased name", titles == sorted(titles), titles)
-    status, _, _ = s.json("GET", "/services/browse/L3BsZXhzaW0?includeFiles=1")
+    status, _, _ = s.json("GET", "/services/browse/L3NpbXBsZXg?includeFiles=1")
     check("unpadded base64 is a 400", status == 400, status)
 
 
@@ -383,10 +383,10 @@ def run_resources(s):
 def run_misc(s):
     # -- Download Logs names its attachment ---------------------------------------------
     status, heads, body = s.raw("GET", "/diagnostics/logs")
-    check("/diagnostics/logs is a zip named plexsim-logs.zip",
+    check("/diagnostics/logs is a zip named simplex-logs.zip",
           status == 200 and body[:2] == b"PK"
           and heads.get("content-type") == "application/zip"
-          and heads.get("content-disposition") == 'attachment; filename="plexsim-logs.zip"',
+          and heads.get("content-disposition") == 'attachment; filename="simplex-logs.zip"',
           (status, heads))
     # -- the system plug-in's /root redirect ------------------------------------------
     status, heads, _ = s.raw("GET", "/:/plugins/com.plexapp.system/root")
@@ -478,10 +478,10 @@ def run_writes(s):
 
 
 def main():
-    port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
+    port = int(os.environ.get("SIMPLEX_TEST_PORT") or free_port())
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-               PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
-    for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+               SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
+    for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
         env.pop(name, None)
     log = tempfile.TemporaryFile()
     proc = subprocess.Popen(

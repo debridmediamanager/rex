@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""plexsim -- a Plex Media Server that owns no files.
+"""simplex -- a Plex Media Server that owns no files.
 
 It answers the PMS REST surface real Plex clients call, and serves the bytes of
 its OWN catalog: every item's `Part` is a file zurg serves, read through its WebDAV.
@@ -7,7 +7,7 @@ That is the half pd_inject never had -- pd_inject's library rows were download
 buttons that pushed a torrent into Real-Debrid and then refreshed a real Plex
 server, so nothing was ever streamed FROM it.
 
-Two things decide whether a client plays an item, and plexsim has to satisfy
+Two things decide whether a client plays an item, and simplex has to satisfy
 both:
 
   1. The client's own gate, run on the `Media` attributes before the server is
@@ -18,7 +18,7 @@ both:
 The part handler has two modes because which one clients accept is exactly the
 open question:
 
-  proxy     (default) stream the bytes through plexsim, forwarding Range and
+  proxy     (default) stream the bytes through simplex, forwarding Range and
             rewriting Content-Type -- RD's CDN answers
             `application/force-download`, which is not a media type.
   redirect  302 straight to the CDN.  Saves all the bandwidth; official clients
@@ -62,7 +62,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 # the count at 100 of them.
 #
 # Python's own reader raises at `_MAXHEADERS` counting the blank terminator line, so 100
-# is one too few: plexsim refused a request a real PMS answers. One more lets the
+# is one too few: simplex refused a request a real PMS answers. One more lets the
 # hundredth through and leaves the hundred-and-first to `parse_request`'s own check.
 http.client._MAXHEADERS = 101
 
@@ -85,15 +85,15 @@ import gdm as gdm_module  # noqa: E402
 from zurg import Zurg  # noqa: E402
 from xmlout import ordered as ordered_keys, to_xml, to_system_xml  # noqa: E402
 
-logger = logging.getLogger("plexsim")
+logger = logging.getLogger("simplex")
 
 # Version matters: plex-for-kodi derives `supportsFeature('streamingBrain')`
 # purely from the advertised server version (>= 1.2.0) and skips server
 # decisions entirely below it, so under-reporting changes client behaviour.
-SERVER_VERSION = "1.42.2.10156-plexsim"
+SERVER_VERSION = "1.42.2.10156-simplex"
 
 # Cycle 40 re-measured this legacy plug-in failure on kids and zen, including
-# its fixed XML body.  plexsim reports zen's 1.42.2 build, whose bundled
+# its fixed XML body.  simplex reports zen's 1.42.2 build, whose bundled
 # Framework path and line number are part of the 464-byte traceback.
 URL_LOOKUP_ERROR = (
     b"<?xml version='1.0' encoding='utf-8'?>\n"
@@ -155,7 +155,7 @@ def framework_exactly(name, count):
 # and zen (1.42.2), which answer these byte for byte. Each is a framework route whose
 # Python function needs arguments the URL does not supply, so a bare GET is the
 # framework's own traceback with a 500 -- the shape cycle 40 shipped for
-# `/system/services/url/lookup` and cycle 52 for the four agent actions. plexsim 404'd the
+# `/system/services/url/lookup` and cycle 52 for the four agent actions. simplex 404'd the
 # first three and answered its own 109-byte HTML 500 to the two attribution leaves.
 FRAMEWORK_BARE_ERRORS = {
     "/system/services/search": ("cs_search", 3, "least"),
@@ -167,7 +167,7 @@ FRAMEWORK_BARE_ERRORS = {
 
 # `peerservice.py` registers `("channels", "plugins")` x five directory names, and with no
 # channel installed every one is the framework's EMPTY container -- 130 bytes, self-closed,
-# the single-quoted declaration. plexsim 404'd all ten.
+# the single-quoted declaration. simplex 404'd all ten.
 FRAMEWORK_PEER_DIRECTORIES = ("all", "music", "video", "photos", "applications")
 # Cycle 53: the five framework routes whose `Cache-Control` comes second. Measured on four
 # servers; `/system/channels/{name}` and `/system/plugins/{name}` are matched by prefix
@@ -227,20 +227,20 @@ FRAMEWORK_AGENT_ACTIONS = {
 
 # Upstream reads are issued with a browser-ish UA; RD's CDN is fine with
 # anything, but a bare urllib default is the kind of thing a CDN rate-limits.
-UPSTREAM_UA = "plexsim/0.1"
+UPSTREAM_UA = "simplex/0.1"
 
 # The account's Plex Pass entitlement list, as a real PMS on this same account
 # reports it. Kept in a sidecar file rather than inline: it is ~200 opaque uuids
-# and belongs to the account, not to plexsim's logic.
+# and belongs to the account, not to simplex's logic.
 # Filter/sort descriptors for a movie section, taken from a real PMS and
-# retargeted onto plexsim's section 1. The web client requests the section
+# retargeted onto simplex's section 1. The web client requests the section
 # listing with `includeMeta=1` and uses this to build the grid; without it the
 # client fetched /library/sections/1/all four times and rendered no items.
 # Per-library-type preference sets, captured from a real PMS. `flattenSeasons`
 # lives here, and a show library that reports NO settings gives the client
-# nothing to read for it -- plexsim returned an empty Setting list.
+# nothing to read for it -- simplex returned an empty Setting list.
 # Server-wide preferences. A real PMS answers /:/prefs with ~175 settings;
-# plexsim answered with an empty list, the same gap as the section prefs.
+# simplex answered with an empty list, the same gap as the section prefs.
 _SERVER_PREFS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server_prefs.json")
 try:
     with open(_SERVER_PREFS_PATH) as _handle:
@@ -272,7 +272,7 @@ for _alias, _target in (_regional_server_prefs_doc.get("aliases") or {}).items()
 # retained read-only database copy.  All library-owned strings come from catalog
 # rows; these 28 distinct optimize/show-ordering values are the only server-owned
 # remainder. Keep the captured version-specific vocabulary beside the other flat
-# PMS fixtures rather than baking one library's derived 71,124 tokens into plexsim.
+# PMS fixtures rather than baking one library's derived 71,124 tokens into simplex.
 _SPELLFIX_STATIC_TAGS_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "spellfix_static_tags.json")
 try:
@@ -369,7 +369,7 @@ except (OSError, ValueError):
     SECTION_PREFS = {}
 
 # The Add Library dialog's form, per library type and agent. See the file's own
-# provenance note: a real PMS shapes the list by BOTH, and plexsim 400'd it.
+# provenance note: a real PMS shapes the list by BOTH, and simplex 400'd it.
 _SECTION_PREFS_NEW_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                        "section_prefs_new.json")
 try:
@@ -386,7 +386,7 @@ except (OSError, ValueError):
 # The Field list is per VERSION as well as the Filter list, and both fixtures
 # were captured off kids (1.43.4): the six media-codec axes (hdr10plus, atmos,
 # videoCodec, audioCodec, subtitleCodec, audioLayout) are 1.43.4's. On zen --
-# 1.42.2, the build plexsim reports -- they are UNKNOWN fields, so a listing
+# 1.42.2, the build simplex reports -- they are UNKNOWN fields, so a listing
 # filtered on one answers EVERY row and /query/parse reports an Error rather
 # than a Rule. Stripping them from the fixtures also takes them out of
 # FILTER_FIELD_TYPES below, which is what makes the engine treat them as the
@@ -415,7 +415,7 @@ except (OSError, ValueError):
 # reference by diffing the plain and advanced documents. The client sends the flag on
 # the grid listing and on its FilterCollection, and reads the Sort list straight into
 # the sort menu -- so ignoring the flag cost a movie library six sort options and a
-# show library's episode view eight, plus the Duplicates filter on both. plexsim's
+# show library's episode view eight, plus the Duplicates filter on both. simplex's
 # Meta was identical with and without it.
 # The ORDER of a type's sorts once the advanced ones are in, captured from the
 # reference's Meta with includeAdvanced=1. They are interleaved, not appended.
@@ -534,10 +534,10 @@ for _meta in SECTION_META.values():
             FIELD_TITLES.setdefault((_scope, _bare), _field.get("title") or "")
 # Measured: `index` filters an episode or season listing (`type=4&index=2` is every
 # episode 2, `season.index=2` every episode of season 2) although no captured Meta
-# lists it as a field -- so plexsim ignored it and answered every row.
+# lists it as a field -- so simplex ignored it and answered every row.
 # Cycle 14: a MOVIE row has an index too, and it is 1 on every one of them --
 # `index=1` and `index>>=0` answer all 5 on kids and all 3887 on zen, while `index=0`,
-# `index=2` and `index>>=1` answer none. plexsim's movie rows carry no index at all,
+# `index=2` and `index>>=1` answer none. simplex's movie rows carry no index at all,
 # so all three answered zero rows where a real PMS answers the whole library.
 FILTER_FIELD_TYPES.setdefault("index", "integer")
 # And `id` filters every listing although no Meta advertises it: `/query/parse` echoes
@@ -547,7 +547,7 @@ FILTER_FIELD_TYPES.setdefault("id", "id")
 # advertises them: `viewedOrInProgressLeafCount=0` is 499 of zen's 507 shows and `=1`
 # is 4, `viewedLeafCount>>0` is the 8 with a watched episode, `unviewedLeafCount>>0`
 # is 505. `leafCount` and `childCount` are NOT fields -- both answer the whole library
-# -- so they stay unknown, which is what plexsim already did with all five.
+# -- so they stay unknown, which is what simplex already did with all five.
 for _bare in ("viewedLeafCount", "viewedOrInProgressLeafCount", "unviewedLeafCount"):
     FILTER_FIELD_TYPES.setdefault(_bare, "integer")
 # Likewise `titleSort`, `summary` and `tagline` filter on a real PMS (`titleSort=sintel`
@@ -560,7 +560,7 @@ for _bare in ("titleSort", "summary", "tagline"):
 # unknown field answers every row, and on zen `updatedAt>>=1780000000` is 3861 of
 # 3887, `mediaCount>>=1` is 214, `originalTitle>>=M` is 393 and `createdAt>>=1786000000`
 # is 2437. `/query/parse` echoes each as a Rule with an EMPTY `fieldTitle`, the shape
-# cycle 11 recorded for `id`. plexsim reported them as an unknown FIELD and answered
+# cycle 11 recorded for `id`. simplex reported them as an unknown FIELD and answered
 # the whole library, so each was a filter that silently did nothing.
 for _bare in ("viewOffset", "skipCount", "ratingCount", "absoluteIndex"):
     FILTER_FIELD_TYPES.setdefault(_bare, "integer")
@@ -572,7 +572,7 @@ FILTER_FIELD_TYPES.setdefault("originalTitle", "string")
 # `tagId=1033` is the 152 movies `genre=1033` is, a director's, a country's and an
 # actor's id match exactly their own filter's rows, a show genre's too -- an unknown id
 # matches nothing, and `abc` or an empty value is a 500. A real PMS writes it into the
-# collection Related shelf's `key`, so plexsim, which ignored it, sent that shelf's See
+# collection Related shelf's `key`, so simplex, which ignored it, sent that shelf's See
 # All to the whole library. Only `=` is modelled: `tagId!=1033` answers 3,084 of 3,887,
 # which is neither the complement (3,735) nor anything else measured here.
 FILTER_FIELD_TYPES.setdefault("tagId", "tagId")
@@ -584,7 +584,7 @@ FILTER_FIELD_TYPES.setdefault("tagId", "tagId")
 # (`audienceRating>>=9` is 107 of zen's 3887 and `rating>>=9` is 142, `<<=1` is 0 for
 # both). `file=` is a case-insensitive SUBSTRING of the Part's path: `unn` finds Big
 # Buck Bunny, `.mkv` is 3811 of 3887, an empty value is every row and `zzz` is none --
-# which is the `string` type's bare `=` exactly. plexsim ignored all four, and an
+# which is the `string` type's bare `=` exactly. simplex ignored all four, and an
 # ignored filter is worse than a refused one: it answered every row to
 # `audienceRating>>=9` AND to `audienceRating<<=1`.
 # Cycle 20, measured on kids (1.43.4) and zen (1.42.2): `type` is a real numeric
@@ -604,11 +604,11 @@ FILTER_FIELD_TYPES.setdefault("file", "string")
 # `guid=1` empties a show's `/children` and `/grandchildren`, every tag axis,
 # `/search`, `/autocomplete`, `/unwatched`, `/recentlyViewedShows` and the TV shelf of a
 # hub page, and a COMMA is the grammar's OR (`guid=<a>,<b>` is those two rows on the grid
-# and on the axes alike). plexsim ran a private prefix pass on two paths, which read the
+# and on the axes alike). simplex ran a private prefix pass on two paths, which read the
 # comma as part of the guid. The prefix is case-sensitive; see filters.compare.
 FILTER_FIELD_TYPES["guid"] = "string"
 # And `parentIndex` is a 500 on a listing on BOTH references -- on a movie library, on
-# a show library and at type=4 alike -- where plexsim filtered on it happily. It is the
+# a show library and at type=4 alike -- where simplex filtered on it happily. It is the
 # one column of this family that refuses rather than filters.
 REFUSED_FILTER_FIELDS = {"parentIndex"}
 
@@ -618,10 +618,10 @@ SECTION_TYPE_NUMBERS = {"movie": "1", "show": "2", "artist": "8", "photo": "13"}
 
 # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `/query/parse` knows fields a
 # LISTING does not filter on. All eight of these come back as a `Rule` with an EMPTY
-# `fieldTitle` -- the shape cycle 11 recorded for `id` -- where plexsim answered an
+# `fieldTitle` -- the shape cycle 11 recorded for `id` -- where simplex answered an
 # `Error`, which is what the smart-list builder draws as "that field does not exist".
 # `parentIndex` is a 500 on a listing and still a Rule here, and `guid` is the sharpest
-# of them: plexsim's listing has filtered on `guid=` since cycle 8 while its own
+# of them: simplex's listing has filtered on `guid=` since cycle 8 while its own
 # `/query/parse` called the field unknown, so the server contradicted itself.
 PARSE_ONLY_FIELD_TYPES = {"parentIndex": "integer", "guid": "string",
                           "slug": "string", "extraType": "integer"}
@@ -652,7 +652,7 @@ REFUSED_FILTER_FIELDS.add("extraType")
 # resources_changed_at, user_fields}`, `media_items.{begins_at, ends_at,
 # media_analysis_version, source}`, `metadata_item_settings.last_skipped_at` and
 # `library_sections.agent`, camel-cased -- the same family as the nine cycle 20 found and
-# the four cycle 26 found. plexsim knew none of them, and an unknown field answers EVERY
+# the four cycle 26 found. simplex knew none of them, and an unknown field answers EVERY
 # row, which is the worst outcome: a smart list built on one silently selected the whole
 # library and `/query/parse` told the builder the field did not exist.
 #
@@ -674,12 +674,12 @@ REFUSED_FILTER_FIELDS.add("userFields")
 # sort=viewUpdatedAt:desc` -- and measured on zen (1.42.2), kids (1.43.4) and
 # plexscratch42: it is the time the row's per-user view state was last WRITTEN, a DATE
 # column (a word, a fraction and an empty value are 500s, `-5y` and an ISO date parse)
-# whose null matches nothing, and a real sort key. It is never on a row. plexsim knew
+# whose null matches nothing, and a real sort key. It is never on a row. simplex knew
 # none of it: the filter answered every row and the sort a 500.
 FILTER_FIELD_TYPES["viewUpdatedAt"] = "date"
 # Cycle 54, from the binary's parameter names and measured on zen (1.42.2) and kids (1.43.4):
 # the photo CLUSTER columns parse as integers and match no row of a video library under any
-# operator, and `trash` is an integer column whose value plexsim, holding no trashed row,
+# operator, and `trash` is an integer column whose value simplex, holding no trashed row,
 # answers as 0 everywhere -- kids' own answer.
 for _column in ("cluster", "clusterStartsAt", "clusterZoomLevel", "clustering"):
     FILTER_FIELD_TYPES.setdefault(_column, "integer")
@@ -708,7 +708,7 @@ for _column in ("mediaVideoCodec", "mediaAudioCodec", "mediaContainer"):
 
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
-# are not the same three -- plexsim invented a single `episodeSort` row.
+# are not the same three -- simplex invented a single `episodeSort` row.
 _ITEM_PREFS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "item_prefs.json")
 try:
     with open(_ITEM_PREFS_PATH) as _handle:
@@ -728,7 +728,7 @@ except OSError:
     # reads `ownerFeatures` in 28 places in its bundle -- so they are the default here
     # and the ids, which are account-scoped plex.tv content, are deliberately not
     # invented. `owner_features.txt` stays the local override, gitignored for the same
-    # reason `catalog.json` is. plexsim's three-name default advertised an account with
+    # reason `catalog.json` is. simplex's three-name default advertised an account with
     # no Collections, no Trailers, no Webhooks and no Session Kick.
     OWNER_FEATURES = (
         "adaptive_bitrate,camera_upload,collections,content_filter,"
@@ -738,11 +738,11 @@ except OSError:
         "radio,server-manager,session_bandwidth_restrictions,session_kick,shared-radio,"
         "sync,trailers,tuner-sharing,type-first,unsupportedtuners,webhooks")
 
-# `/media/grabbers`, verbatim off the reference. plexsim answered an empty
+# `/media/grabbers`, verbatim off the reference. simplex answered an empty
 # container, which tells the Live TV setup page the server supports no tuner
 # protocols at all rather than that it has no tuners.
 # What the Edit Library dialog is allowed to name. Measured: a real PMS answers
-# 400 for an agent, scanner or language it does not have, where plexsim accepted
+# 400 for an agent, scanner or language it does not have, where simplex accepted
 # anything with a 200 -- so a typo in the dialog looked saved and silently was not.
 # `/:/resources/*` is PMS's whole `Resources/Graphics` tree, and it is **70 names**, not
 # the seven cycle 29 measured from a ten-name sample. Read out of the reference image
@@ -759,9 +759,9 @@ except OSError:
 #   * `?width=`/`?height=` are ignored.
 #
 # `library-art.png` and `playlist.png` stay 404s: they are not in the tree, although
-# plexsim's own `/library` container advertises the first exactly as a real PMS's does.
+# simplex's own `/library` container advertises the first exactly as a real PMS's does.
 #
-# plexsim answers the right NAME SET, the right media type and the right GEOMETRY, and
+# simplex answers the right NAME SET, the right media type and the right GEOMETRY, and
 # generates the pixels -- its placeholder tile in the file's own container and size. The
 # two files that are not images (`favicon.ico`, which is NOT the 5,430-byte one at the top
 # level, and the stray `sugar.cmake` the build leaves behind) are carried verbatim, being
@@ -779,7 +779,7 @@ RESOURCE_DIRECTORIES = {""} | {name.rsplit("/", 1)[0]
 # (1.43.4, 7), which agree on every cell: thirteen genre names carry a FIXED colour, and
 # every other genre takes the next colour of a seven-entry cycle walked in TAG-ID order
 # among the unknown ones -- 19 of 19 on zen and 3 of 3 on kids. The colour is not derived
-# from the artwork; plexsim's own comment assumed it was and it emitted no `blendColor` at
+# from the artwork; simplex's own comment assumed it was and it emitted no `blendColor` at
 # all, so a client drew the tile untinted.
 CATEGORY_COLOURS = {
     "action": "2B717E", "animation": "347431", "comedy": "51284C", "crime": "33486E",
@@ -834,12 +834,12 @@ MEDIA_GRABBERS = [
 # because a real PMS answers `application/octet-stream` for it.
 #
 # Cycle 54 widened it past the six extensions zen's library happens to hold. One small
-# file per container was made on plexscratch42 (1.42.2, the build plexsim reports) and
+# file per container was made on plexscratch42 (1.42.2, the build simplex reports) and
 # its part read: `.ts` is `video/MP2T` -- in that capitalisation, the binary's own string
 # -- `.m4v` `video/mp4`, `.mpg` and `.mpeg` `video/mpeg`, `.flv` `video/x-flv`, `.wmv`
 # `video/x-ms-wmv`, `.asf` `video/x-ms-asf` and `.divx` `video/x-msvideo` (an AVI by
 # another name), while `.mts`, `.m2ts`, `.ogv` and `.3gp` stay `application/octet-stream`.
-# The six zen witnesses agree with the copy. plexsim sent octet-stream for all eight, and
+# The six zen witnesses agree with the copy. simplex sent octet-stream for all eight, and
 # its `mpegts` key was a container name that no file extension ever matches.
 CONTENT_TYPES = {
     "mkv": "video/x-matroska",
@@ -867,7 +867,7 @@ LEAF_COUNT_FILTERS = ("viewedLeafCount", "unviewedLeafCount", "viewedOrInProgres
 
 # The item leaves that read their second path segment as an artwork VERSION and answer
 # 200 for any value (cycle 29 for the version rule; cycle 45 for the SET). Every other
-# item leaf 404s an extra segment. `squareArt` is 1.43.4-only and plexsim keeps 404ing
+# item leaf 404s an extra segment. `squareArt` is 1.43.4-only and simplex keeps 404ing
 # it, so it is deliberately absent.
 ARTWORK_LEAVES = ("thumb", "art", "poster", "banner", "theme", "clearLogo")
 
@@ -932,7 +932,7 @@ TYPE_BLIND_AXES = ("narrator",)
 
 # Cycle 44, measured on zen and plexscratch42 (both 1.42.2) against kids (1.43.4), on a
 # movie library and a show library alike: `videoCodec`, `audioCodec`, `subtitleCodec` and
-# `audioLayout` are secondary axes 1.43.4 ANSWERS and 1.42.2 404s. plexsim reports 1.42.2
+# `audioLayout` are secondary axes 1.43.4 ANSWERS and 1.42.2 404s. simplex reports 1.42.2
 # and answered all four. `CLAUDE.md` already records the same six-name split for the
 # FILTER lists and the `Meta` descriptor; the AXES split with them, which nothing had
 # checked. `resolution`, `audioLanguage` and `subtitleLanguage` are 200 on both versions.
@@ -970,7 +970,7 @@ SECONDARY_TITLES = {
 }
 
 # `/library/sections/{id}/sorts`, copied from a real PMS movie section. The
-# element name is `Directory`, not `Sort` -- plexsim answered with `Sort` and a
+# element name is `Directory`, not `Sort` -- simplex answered with `Sort` and a
 # two-entry list, which is not what the legacy sort bar reads.
 SECTION_SORTS = [
     {"default": "asc", "defaultDirection": "asc", "descKey": "titleSort:desc",
@@ -999,14 +999,14 @@ SECTION_SORTS = [
 # filters to `type=4` and a show library the 28 movie ones to `type=1`, identically,
 # and only the DEFAULT follows the library. `type=3` and every type with no list are
 # an empty 200, a non-number is a 400, and `includeAdvanced=1` appends the Duplicates
-# filter to types 1 and 4 only. plexsim served the library's own list to every type
+# filter to types 1 and 4 only. simplex served the library's own list to every type
 # and never sent Duplicates, so an episode view's filter bar offered show filters.
 # The key suffixes (`?type=2` on most show keys, but not on `country`, `unmatched`
 # or `editionTitle`) are measured and not derivable.
 #
 # Seven of these axes 404 on the reference itself (`hdr`, `dovi`, `hdr10plus`,
 # `atmos`, `inProgress`, `unmatched`, `unwatchedLeaves`). They are advertised
-# anyway, because that is what a real PMS advertises -- plexsim's unknown-leaf
+# anyway, because that is what a real PMS advertises -- simplex's unknown-leaf
 # 404 reproduces the rest of it for free.
 _SECTION_FILTERS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                      "section_filters.json")
@@ -1100,7 +1100,7 @@ PLAYLIST_META = {"Type": [{
 # `/hubs/home/continueWatching` carry a one-row `Meta` of their own under
 # `includeMeta=1` -- the leaf's own key, `type: "mixed"`, its title and `active: true`,
 # with no `FieldType` block. Found by sweeping the option name space built from the PMS
-# binary's and the client bundle's own words; plexsim answered a `Meta` on the
+# binary's and the client bundle's own words; simplex answered a `Meta` on the
 # `recentlyAdded` sibling alone.
 HOME_LEAF_META = {
     "/hubs/home/onDeck": {"Type": [{"key": "/hubs/home/onDeck", "type": "mixed",
@@ -1136,13 +1136,13 @@ COLLECTION_META_SORT = {
 # answers a one-row container, `/playlists?type=42` the list behind it, and `/playQueues/1`
 # is permanently that queue. The `clientIdentifier` is the SAME CONSTANT on all three
 # servers -- it is PMS's, not the install's -- and the guid carries it too. Every one of
-# them was missing or refused on plexsim, and the client's own
+# them was missing or refused on simplex, and the client's own
 # `initializeConversionView` needs all three before it will draw: it renders
 # "The conversion queue is unavailable." otherwise, behind a `backgroundProcessing=true`
-# plexsim advertises on `/`.
+# simplex advertises on `/`.
 BACKGROUND_CLIENT = "55d3184c-28b9-43ce-842c-b7b03ca00e0f"
 BACKGROUND_TITLE = "Background Processing List"
-# Its ratingKey is per-install on a real PMS; plexsim mints one outside every
+# Its ratingKey is per-install on a real PMS; simplex mints one outside every
 # other id space it uses.
 PLAYLIST_BASE_BACKGROUND = 39999
 
@@ -1160,7 +1160,7 @@ PLAYLIST_SORTS = [
     # Cycle 49 REFUTES cycle 15's "the two lists really are different". Re-measured on
     # zen (1.42.2), kids (1.43.4) and both unclaimed copies, in six parameter spellings:
     # `/playlists/sorts` ends with `mediaCount` "Item Count", exactly as the `Meta` that
-    # `/playlists?includeMeta=1` carries does. plexsim's two surfaces disagreed with each
+    # `/playlists?includeMeta=1` carries does. simplex's two surfaces disagreed with each
     # other, and the Playlists page's sort menu -- built from this URL -- offered a
     # "Date Modified" that sorts on a key the playlist listing does not advertise.
     {"defaultDirection": "desc", "descKey": "mediaCount:desc", "key": "mediaCount",
@@ -1169,7 +1169,7 @@ PLAYLIST_SORTS = [
 
 # `/system/agents` -- the modern agents a real PMS lists, each with the Language
 # list the Edit Library dialog fills its dropdown from and the `default` flag it
-# preselects by. plexsim sent one `en-US` row with no `default`, so the dropdown
+# preselects by. simplex sent one `en-US` row with no `default`, so the dropdown
 # had one language and nothing selected. Which agents each library type offers is
 # measured too. See system_agents.json for what is left out and why.
 _SYSTEM_AGENTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -1259,7 +1259,7 @@ for _source in list((TRANSLATIONS.get("enumValues") or {})):
 #
 # The two policy documents order their headers like artwork (type first) and the favicon
 # like a `/web` asset (length before type) -- the same two-order split cycle 33 measured
-# for the image pair. plexsim answered the dispatcher's empty container to all three.
+# for the image pair. simplex answered the dispatcher's empty container to all three.
 STATIC_RESOURCES = {
     "/crossdomain.xml": "text/xml",
     "/clientaccesspolicy.xml": "text/xml",
@@ -1286,7 +1286,7 @@ for _resource in STATIC_RESOURCES:
 #
 # The four bundles that are not running (`framework`, `mediaflags`, `system.scanners`,
 # `plugins.webclient`) answer the framework's 109-byte 500 to every one of them, which is
-# the branch plexsim already has. The pixels of a bundle's images are plexsim's
+# the branch simplex already has. The pixels of a bundle's images are simplex's
 # placeholder at the file's real geometry, as `/:/resources` and the media flags are.
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "plugin_bundles.json"), encoding="utf-8") as _handle:
@@ -1316,7 +1316,7 @@ PLUGIN_ROOT_ERROR = (
     "</Response>\n").encode("utf-8")
 
 # Cycle 53: each legacy agent's ATTRIBUTION -- the line and the logo the Settings > Agents
-# page draws beside it. `chunk-1439-*.js` in the bundle plexsim itself serves renders
+# page draws beside it. `chunk-1439-*.js` in the bundle simplex itself serves renders
 # `new Gb.A({url: "/system/agents/attribution/image?identifier=" + this.model.id,
 # className: "agent-icon", width: 100, height: 100})` for every listed agent, and
 # `main-8792-*.js` reads the text from `/system/agents/attribution?identifier=`.
@@ -1325,7 +1325,7 @@ PLUGIN_ROOT_ERROR = (
 # text and eight an image, `org.musicbrainz.agents.music` answers an EMPTY text and no
 # image, and every other identifier -- including all four modern agents -- is a 404 on
 # both leaves. The values are each bundle's `PlexAgentAttributionText` and
-# `Contents/Resources/attribution.png`; the image's pixels are plexsim's placeholder at
+# `Contents/Resources/attribution.png`; the image's pixels are simplex's placeholder at
 # the file's real geometry, as the rest of this cycle's bundled artwork is.
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "attributions.json"), encoding="utf-8") as _handle:
@@ -1339,13 +1339,13 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 # the identical attributes, so a settings page that reads `/system/agents` sees 15 rows on
 # a real 1.42.2 server and saw four here.
 #
-# Captured from plexscratch42 -- 1.42.2, the build plexsim reports. Two version and
+# Captured from plexscratch42 -- 1.42.2, the build simplex reports. Two version and
 # server differences are deliberate: 1.43.4 adds an `id` to every legacy row (`-1` for a
-# non-primary and a negative code for a primary), which plexsim does not report; and the
+# non-primary and a negative code for a primary), which simplex does not report; and the
 # ORDER of `lastfm` and `plexthememusic` is the server's own plug-in load order, where
 # three of the four instruments agree and zen alone differs.
 #
-# What plexsim still does not claim is the WORK: identifying with a legacy agent, its
+# What simplex still does not claim is the WORK: identifying with a legacy agent, its
 # contributor chain, and its per-agent preference pane beyond the document cycle 52 ships.
 #
 # Cycle 87: the capture was read out of the XML, so `hasPrefs`, `primary` and a bare-form
@@ -1365,7 +1365,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 # `com.plexapp.agents.imdb` as well, which is that one server's own plug-in state.)
 #
 # HANDOVER §8 inherited "legacy agents and the `/:/plugins` listing" from cycles 1-6 as a
-# deliberate bound on the grounds that plexsim hosts no plug-ins. The listing is not
+# deliberate bound on the grounds that simplex hosts no plug-ins. The listing is not
 # hosting: it is a fixed table in the image, like `Resources/Profiles`, which cycle 31
 # already read out and shipped.
 PLUGIN_LIST = (
@@ -1381,14 +1381,14 @@ PLUGIN_LIST = (
 # the framework's writer, with its single-quoted declaration and two-space indent. Four of
 # the seventeen answer the framework's 500 instead (`null` here): the framework itself,
 # the media flags resource, the scanners and the web client. `/:/plugins/{id}/prefs` is
-# what the Console's plug-in pane and `prefsKey` open, and plexsim -- which advertises
+# what the Console's plug-in pane and `prefsKey` open, and simplex -- which advertises
 # `prefsKey="/:/plugins/com.plexapp.system/prefs"` itself -- 404'd every one of them.
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "plugin_prefs.json"), encoding="utf-8") as _handle:
     PLUGIN_PREFS = json.load(_handle)
 
 
-# Cycle 53: the media FLAG images. Every container plexsim answers carries
+# Cycle 53: the media FLAG images. Every container simplex answers carries
 # `mediaTagPrefix="/system/bundle/media/flags/"`, and every one of those paths was a 404
 # here -- so a client that follows the prefix a row gave it (the resolution badge, the
 # audio-codec icon, the content-rating shield, the studio logo) got nothing from a server
@@ -1409,7 +1409,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 #     -- `studio/Disney` and `studio/Walt Disney Pictures` are the same logo, `audioCodec/
 #     dca` is the DTS one and `ac3` the Dolby Digital one.
 #
-# The pixels are plexsim's own placeholder at the file's real geometry, the convention
+# The pixels are simplex's own placeholder at the file's real geometry, the convention
 # cycle 52 set for `/:/resources`; `blank.png` is 82 bytes and is carried verbatim.
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "media_flags.json"), encoding="utf-8") as _handle:
@@ -1494,9 +1494,9 @@ SINGLE_SEGMENT_WRITERS = {("POST", "/playlists"), ("POST", "/playQueues"),
                           ("POST", "/butler"), ("DELETE", "/butler"),
                           ("POST", "/log"), ("PUT", "/log"), ("DELETE", "/log"),
                           ("PATCH", "/log"), ("OPTIONS", "/log"),
-                          # plexsim's own download queue, which the reference copy
+                          # simplex's own download queue, which the reference copy
                           # 404s in every form (an unclaimed server has none), so its
-                          # verbs cannot be measured there and stay plexsim's.
+                          # verbs cannot be measured there and stay simplex's.
                           ("POST", "/downloadQueue"), ("PUT", "/downloadQueue"),
                           ("DELETE", "/downloadQueue")}
 
@@ -1506,7 +1506,7 @@ SINGLE_SEGMENT_WRITERS = {("POST", "/playlists"), ("POST", "/playQueues"),
 # the `/:/` timeline writers' no-parameter 400s, the bundled image, `/log/networked`'s
 # empty 200 -- and EVERY other one is the ordinary 404, the GET-only read routes
 # (`/hubs/home/onDeck`, `/accounts/{id}`, `/myplex/account`, `/livetv/*`, the
-# statistics and session paths, ...) included. plexsim routed OPTIONS like any verb
+# statistics and session paths, ...) included. simplex routed OPTIONS like any verb
 # everywhere, so those answered their whole GET body, a 400 of their own, or -- on
 # `/:/eventsource/notifications` -- an event stream that never ends. `/system`,
 # `/:/plugins`, `/library/metadata/{id}/match` and `/:/viewChange` keep their own
@@ -1526,7 +1526,7 @@ def plugin_container(route):
     """The dispatcher's answer for one single-segment path."""
     if route == "/security":
         # Measured on both references: a real (empty, paged) container with no
-        # `content` at all -- the one place plexsim let the dispatcher leak.
+        # `content` at all -- the one place simplex let the dispatcher leak.
         return {"size": 0}
     rows = plugin_rows(route)
     if not rows:
@@ -1553,12 +1553,12 @@ def plugin_container(route):
 # (`unwatched=0`, `viewCount>>=1`, `file!=a` alike). An EMPTY value is a clean 200, and
 # an unknown field is a 200. A MOVIE library's `/hubs/sections/{id}` answers 200 to all
 # fifteen, and every other hub path (`/hubs/home/recentlyAdded`, `/hubs/promoted`,
-# `/hubs/search`, `/hubs/metadata/{id}/related`) answers 200 too. plexsim answered 200
+# `/hubs/search`, `/hubs/metadata/{id}/related`) answers 200 too. simplex answered 200
 # everywhere. Five runs per case on each server; deterministic.
 #
 # The server-wide `/hubs` half cannot be attributed further than this: both references
 # hold a show library, so "always" and "because a show library exists" are the same
-# measurement there. plexsim refuses on the same terms.
+# measurement there. simplex refuses on the same terms.
 HUB_REFUSED_FIELDS = ("duration", "lastViewedAt", "lastRatedAt", "viewCount", "skipCount",
                       "viewOffset", "userRating", "unwatched", "resolution", "hdr",
                       "mediaSize", "file", "parentIndex", "slug", "group")
@@ -1575,12 +1575,12 @@ def hub_refusal(query):
     """A 500 if this hub request names one of the fifteen with a value."""
     for key, value in query.items():
         if key.rstrip("<>=!") in HUB_REFUSED_FIELDS and str(value or "").strip():
-            return ("error", 500, "plexsim: cannot filter a hub on %s" % key)
+            return ("error", 500, "simplex: cannot filter a hub on %s" % key)
     return None
 
 
 class Catalog:
-    """The library plexsim serves, loaded from a JSON file.
+    """The library simplex serves, loaded from a JSON file.
 
     A row is one playable item: its Plex metadata plus, on each Part, the `file` zurg
     serves its bytes as (zurg.py).
@@ -1597,7 +1597,7 @@ class Catalog:
                 document = json.load(handle)
 
         self.machine = document["machineIdentifier"]
-        self.friendly = document.get("friendlyName", "plexsim")
+        self.friendly = document.get("friendlyName", "simplex")
         self.sections = document["sections"]
         self.items = {}
         self._by_section = {}
@@ -1660,7 +1660,7 @@ class Catalog:
         self._retitle_streams()
         # Measured: a show's LISTING row carries `duration` (a typical episode's) and
         # `originallyAvailableAt` (its first air date) exactly as its detail does;
-        # plexsim computed them for the detail page only.
+        # simplex computed them for the detail page only.
         for row in list(self.items.values()):
             if row.get("type") != "show":
                 continue
@@ -1687,7 +1687,7 @@ class Catalog:
 
     # Tag ids are how the whole filter surface is addressed: a real PMS's
     # secondary axes key their entries by tag id (`/all?genre=24`), not by the
-    # tag's text. TMDB gives plexsim tag names and nothing else, so the ids are
+    # tag's text. TMDB gives simplex tag names and nothing else, so the ids are
     # minted here -- deterministically from the text, so they survive a restart
     # and a catalog rebuild, and so the `filter` string on each tag agrees.
     TAG_FIELDS = ("Genre", "Collection", "Director", "Writer", "Producer", "Role",
@@ -1703,7 +1703,7 @@ class Catalog:
 
     # Fields that belong to a SHOW and not to its episodes. Measured on both the
     # 1.43.4 reference and production fun: a real episode row carries no Genre,
-    # no studio, no tagline and no Country. plexsim's episodes inherited all of
+    # no studio, no tagline and no Country. simplex's episodes inherited all of
     # them from the enriched file row, so an episode page advertised its show's
     # genres where a real one shows none.
     SHOW_ONLY_FIELDS = ("Genre", "Country", "studio", "tagline", "originalTitle",
@@ -1724,7 +1724,7 @@ class Catalog:
         Cycle 15, measured on the copy: the LIBRARY-level `flattenSeasons` and
         `episodeSort` produce exactly the row effects the item path produces, and
         the show's OWN setting stays at `-1` while they do. So the item value is a
-        tri-state and `-1` means INHERIT -- not "off", which is how plexsim read it.
+        tri-state and `-1` means INHERIT -- not "off", which is how simplex read it.
         """
         self.section_show_prefs[(str(section_id), name)] = str(value)
         for row in self.section_items(section_id):
@@ -1742,7 +1742,7 @@ class Catalog:
             section 0, item  1 -> the effect is ON   (the item overrides, upwards)
             section 0, item -1 -> the effect is OFF
 
-        plexsim read only the item's `_prefs`, defaulting to `-1`, so a library-wide
+        simplex read only the item's `_prefs`, defaulting to `-1`, so a library-wide
         write -- which is where the Plex UI actually puts these two -- moved the
         setting list and nothing else. `ITEM_PREFS` supplies the value an item that
         has never been written advertises.
@@ -1808,7 +1808,7 @@ class Catalog:
         still answers the show, and a scrobble of S1E1 still gives season 7
         `viewCount: 1`, `lastViewedAt` and `viewedLeafCount: 1` -- while every episode
         ROW, on the detail, the listings, the subsets, search, the hubs, On Deck and a
-        play queue, says `skipParent` and names no season. plexsim took the two keys
+        play queue, says `skipParent` and names no season. simplex took the two keys
         off the STORED row, so each reader that finds a season's episodes by
         `parentRatingKey` lost them: those four, and the unmatch cascade. The stored
         row now keeps its season and carries the private `_skipParent`, which
@@ -1923,7 +1923,7 @@ class Catalog:
         base = self.KEY_BASES.get(row_type, 1000)
         used = [k for k in self.items if base <= k < base + 10000]
         # Measured on a writable copy of the reference: a split's new row takes a key
-        # NEVER used before (67 after 57), not the one a merge just freed. plexsim reused
+        # NEVER used before (67 after 57), not the one a merge just freed. simplex reused
         # the highest free key, so a split after a merge put the new row on the absorbed
         # row's old key -- one a client's cache still holds for the absorbed row.
         retired = [k for k in getattr(self, "_retired", ()) if base <= k < base + 10000]
@@ -1961,7 +1961,7 @@ class Catalog:
         return removed
 
     def add_section(self, title, section_type, uuid_value):
-        """"Add Library" in the UI. plexsim has no filesystem to scan, so the
+        """"Add Library" in the UI. simplex has no filesystem to scan, so the
         section starts empty -- which is what a real PMS gives you for an empty
         folder too, rather than an error."""
         keys = [int(s["key"]) for s in self.sections if str(s["key"]).isdigit()]
@@ -1989,11 +1989,11 @@ class Catalog:
         `tears`, `of` and `steel` all find "Tears of Steel" and `uck` does NOT
         find "Big Buck Bunny" -- so a match is a prefix of some WORD in the
         title, not a substring of it. A single character matches nothing at all,
-        whatever it is (`t` answers seventeen empty hubs). plexsim used a plain
+        whatever it is (`t` answers seventeen empty hubs). simplex used a plain
         substring test, so `uck` matched and `t` returned the whole library.
 
         This is the normal pass. Cycle 37 measured the separate SQLite spellfix1
-        fallback, which `PlexSim.search_matches` runs only when this pass has no
+        fallback, which `SimPlex.search_matches` runs only when this pass has no
         movie/show/list/tag hit.
         """
         # Cycle 14, on zen: the word matcher folds combining marks on BOTH sides.
@@ -2003,7 +2003,7 @@ class Catalog:
         # section's substring box does NOT: there `Amelie` finds nothing and only
         # the accented spelling hits, so that one is left alone below.
         #
-        # plexsim split on [^0-9a-z], which makes an accented letter a SEPARATOR:
+        # simplex split on [^0-9a-z], which makes an accented letter a SEPARATOR:
         # "Amelie" became the two words "am" and "lie", so the quick search never
         # found the row by its own name and did find it under a fragment of one.
         #
@@ -2012,7 +2012,7 @@ class Catalog:
         # alike -- and it is the TITLE TABLE, not a decomposition: every one of the 100
         # characters `hierarchy._TITLE_FOLD` names matched at a word score, and none of the
         # 400-odd letters only NFD reaches did (`Sint\u0119l`, `\u0106osmos`, `\u0218teel`
-        # all fall to the 0.33 fuzzy band, which plexsim does not emulate). plexsim folded
+        # all fall to the 0.33 fuzzy band, which simplex does not emulate). simplex folded
         # by NFD, so it answered those as word hits.
         #
         # The CASE half is not modelled exactly, and is recorded as open (HANDOVER 3.3): a
@@ -2030,7 +2030,7 @@ class Catalog:
             # single-character query matches a title EQUAL to it and nothing else.
             # `query=X` answers the movie 'X' at 0.93076 and `A` answers 'A' at 0.91089,
             # while `I` and `9` -- characters no zen title is -- answer nothing at all, so
-            # it is equality and not the one-character prefix cycle 12 refuted. plexsim had
+            # it is equality and not the one-character prefix cycle 12 refuted. simplex had
             # a two-character floor and answered nothing to any of them.
             return [row for row in self.items.values()
                     if row.get("type") in ("movie", "show", "season", "episode")
@@ -2046,7 +2046,7 @@ class Catalog:
             # 'Control-Alt-Delete' at a word score (0.31, fuzzy) while `Control-Alt` does
             # at 0.51.
             #
-            # plexsim split the title on `[^0-9a-z]+`, which makes an apostrophe and a
+            # simplex split the title on `[^0-9a-z]+`, which makes an apostrophe and a
             # hyphen SEPARATORS: a needle of `don't` could never match ('don', 't'), while
             # `Air` found "L'air Perdu" and `Am` found "Boss Ma'am" -- 44 rows zen does not
             # answer at all, across 24 queries. A title with an apostrophe could not be
@@ -2062,7 +2062,7 @@ class Catalog:
             # `Steel Tears`, `Bunny Big`, `Lake Fear` -- the row still comes back but in
             # the 0.33 fuzzy band, so the ORDER decides the score rather than membership.
             #
-            # plexsim required the joined phrase as a prefix, so `Tears Steel` answered
+            # simplex required the joined phrase as a prefix, so `Tears Steel` answered
             # NO HUBS AT ALL and 230 of zen's rows scoring 0.5 or better across 119 of
             # 1,237 generated queries were missed. That is Plex Web's global search box:
             # typing two words of a title that are not adjacent found nothing.
@@ -2083,7 +2083,7 @@ class Catalog:
             # `Justice of` answer "Riders of Justice" at 0.33 on zen -- the row comes back
             # whenever every term is a word-prefix of SOME title word, in any order, and
             # the reversed query lands in the fuzzy band rather than being dropped. Cycle
-            # 31 measured that sentence and built only the in-order half, so plexsim
+            # 31 measured that sentence and built only the in-order half, so simplex
             # answered NO HUBS AT ALL to a query whose words a person typed out of order.
             #
             # A failed normal word-order test can still be an ordinary all-prefix hit.
@@ -2231,7 +2231,7 @@ def accept_wants_xml(header):
     or `application/xml` range counts; a `q` parameter ranks the two and a tie goes
     to the one listed first; ANY other parameter disqualifies the range, so
     `application/json; charset=utf-8` is answered in XML, as is `Application/JSON`.
-    With neither, the answer is XML. plexsim answered JSON whenever the substring
+    With neither, the answer is XML. simplex answered JSON whenever the substring
     appeared, so `application/xml, application/json` came back as JSON.
     """
     best = None
@@ -2257,7 +2257,7 @@ def accept_wants_xml(header):
             if weight < 0 or len(parts) > 2:
                 # `q=-1` and a second parameter of any kind both weigh 0 -- and 0 is
                 # not a refusal: `application/json;q=0` alone is answered in JSON on
-                # both references, where plexsim dropped the range and answered XML.
+                # both references, where simplex dropped the range and answered XML.
                 weight = 0.0
         rank = (weight, -position)
         if best is None or rank > best[0]:
@@ -2280,7 +2280,7 @@ def _include_int(value):
     Cycle 22, measured on zen and kids: `includeExtras`, `includeRelated`,
     `includeChildren` and `includeOnDeck` strip leading zeros -- `01` and `001`
     turn them on -- while `2`, `true` and `1.0` do not, and
-    `includePreferences` compares the string and takes `1` alone. plexsim tested
+    `includePreferences` compares the string and takes `1` alone. simplex tested
     `== "1"` for all five, so the zero-padded form silently dropped the block.
 
     Cycle 29 adds the SIGN: a properly encoded `+1` (`%2B1`) turns the block on, on
@@ -2315,7 +2315,7 @@ def _drop_private(node):
 # `MediaType`. Every other repeated child on every other path is a proper array
 # (`Setting`, `Agent`, `Genre`, `Media`, `Role`, `Image`, `Action`, `Directory`,
 # `Feature`, `Pivot`). A JSON parser keeps the LAST of the repeated keys, so a
-# client sees ONE language per agent where plexsim showed it forty-five.
+# client sees ONE language per agent where simplex showed it forty-five.
 REPEATED_JSON_KEYS = ("Language", "MediaType")
 
 
@@ -2329,7 +2329,7 @@ def plex_json(value):
     every other C0 control as `\\u00XX` with UPPER-CASE hex (`\\u001F`). The notification
     channels write their frames the same way.
 
-    plexsim wrote Python's default -- `", "` and `": "`, and an ASCII-only body in which
+    simplex wrote Python's default -- `", "` and `": "`, and an ASCII-only body in which
     `\u00e9` was six bytes -- so a zen detail row came out 11% larger than the reference's
     and its `X-Plex-Content-Original-Length` named a size no real PMS sends.
     """
@@ -2378,7 +2378,7 @@ def json_body(container, elements=None):
 
     Measured across ~110 endpoints of the reference: not one `null` and not one
     `[]`. The XML writer already dropped `None`, so XML clients never saw the
-    difference, but plexsim's JSON carried `audioProfile: null`, `refFrames: null`,
+    difference, but simplex's JSON carried `audioProfile: null`, `refFrames: null`,
     `Label: []` and a `Metadata: []` on every empty hub -- the shape a typed client
     decoding a missing key happily chokes on as a null. An empty OBJECT is kept:
     `Related: {}` is exactly what the reference sends for an item with no hubs.
@@ -2400,7 +2400,7 @@ def json_body(container, elements=None):
 # stream type, and every number in it is a STRING (`"bitDepth": "8"`,
 # `"frameRate": "24.000"`, `"samplingRate": "44100"`) except `id`, `index`, `type`
 # and an audio stream's `channels`. The MediaPart beside it has no `container`.
-# plexsim copied the detail Stream across, numbers and detail-only fields included.
+# simplex copied the detail Stream across, numbers and detail-only fields included.
 TREE_STREAM_FIELDS = {
     1: ("id", "index", "type", "codec", "language", "bitDepth", "chromaLocation",
         "chromaSubsampling", "codedHeight", "codedWidth", "frameRate",
@@ -2471,7 +2471,7 @@ def _public_row(row):
     if out.get("type") == "episode" and out.get("grandparentThumb"):
         # Measured on both servers, detail and listing alike: an episode's
         # coverPoster is its SHOW's poster and its own 16:9 still is `snapshot`.
-        # plexsim labelled the still as the poster.
+        # simplex labelled the still as the poster.
         images.append({"alt": title, "type": "coverPoster", "url": out["grandparentThumb"]})
         if out.get("thumb"):
             images.append({"alt": title, "type": "snapshot", "url": out["thumb"]})
@@ -2536,7 +2536,7 @@ def _option_on(query, name):
     `/library/sections`, `includeDetails=01` on a section, `includeAdvanced=01` on `/sorts`
     and `/filters`, `includePreferences`/`includeStorage=01` on `/media/providers`,
     `includeStorage=+1` on a grid, `includeLibraryPlaylists=+1` on a section's hubs and
-    `asyncCheckFiles=01` on an item each change the answer exactly as `1` does. plexsim
+    `asyncCheckFiles=01` on an item each change the answer exactly as `1` does. simplex
     compared the raw string with `"1"` at every one of those readers.
     """
     value = (query or {}).get(name)
@@ -2604,10 +2604,10 @@ def _history_time_filter(query, date):
             try:
                 moment = filters_module.as_epoch(value)
             except filters_module.FilterError:
-                return ("error", 500, "plexsim: internal error")
+                return ("error", 500, "simplex: internal error")
         else:
             if not (value.lstrip("-").isdigit() and value.lstrip("-")):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             moment = int(value)
         tests.append((test, moment))
     return lambda viewed: all(test(viewed, moment) for test, moment in tests)
@@ -2646,7 +2646,7 @@ def _playlist_meta(query, listing_all):
     `type` -- alphabetical, URL-encoded (`video,audio` is `video%2Caudio`) -- and nothing
     else. On `/playlists/all`, the path Plex Web's library Playlists page loads, NO Type and
     NO Sort is active, so the page draws no sort bar; on `/playlists` the Type is active and
-    the active Sort is the requested one (Name ascending by default). plexsim sent a
+    the active Sort is the requested one (Name ascending by default). simplex sent a
     constant: `/playlists`, active, Name ascending.
     """
     meta = json.loads(json.dumps(PLAYLIST_META))
@@ -2754,7 +2754,7 @@ LOCAL_CLIENT_PROFILES = ("Android", "iOS", "Universal Mobile", "Universal TV",
 # Swept by opening one session per name on the writable copy and reading the Player back;
 # the 55 not listed here report themselves. Single-witness by construction: neither
 # read-only reference can be given a playback session, and the copy is 1.43.4 where
-# plexsim reports 1.42.2, so a profile Plex renamed between the two would show here.
+# simplex reports 1.42.2, so a profile Plex renamed between the two would show here.
 PROFILE_NAMES = {
     "Chrome": "Web", "Internet Explorer": "Web", "Opera": "Web", "Safari": "Web",
     "Unknown Browser": "Web", "Vivaldi": "Web",
@@ -2851,7 +2851,7 @@ def _decision_streams(streams):
     English and four other PGS subtitles -- with three Streams: the FIRST video, the
     selected audio and the selected subtitle. plexscratch42 (1.42.2) answers a row whose
     two srt subtitles are both unselected with video and audio only, under every
-    `subtitles` value. plexsim listed every stream of the file, so a client reading the
+    `subtitles` value. simplex listed every stream of the file, so a client reading the
     decision saw subtitles the server never chose as part of the play. An audio list with
     no selected track was not measured, so it is left whole.
     """
@@ -2904,8 +2904,8 @@ def _with_client_titles(node, product, external="External"):
     return node if copy is None else copy
 
 
-# Per-request state a PlexSim handler needs and `query` must not carry -- see
-# `PlexSim.handle`. One `ThreadingHTTPServer` thread per request, so a thread-local is
+# Per-request state a SimPlex handler needs and `query` must not carry -- see
+# `SimPlex.handle`. One `ThreadingHTTPServer` thread per request, so a thread-local is
 # exactly the scope of a request.
 _REQUEST = threading.local()
 
@@ -2945,7 +2945,7 @@ for _entries in TRANSLATIONS.values():
 def _accept_language_order(value):
     """An `Accept-Language` list, best first, or None if the header is malformed.
 
-    Cycle 45, measured on kids and zen over 28 header values, identical on both. plexsim
+    Cycle 45, measured on kids and zen over 28 header values, identical on both. simplex
     read the FIRST member and threw the rest away, so `de;q=0.1, fr;q=0.9` answered
     German where a real PMS answers French and `de;q=0` answered German where a real PMS
     falls back to English.
@@ -2999,7 +2999,7 @@ def request_language(query, headers, regional=False):
     sent, either may be a regional form (`de-DE` works like `de`), the query string
     carries `X-Plex-Language` as well as the header, and a language the server does not
     have falls back to English. Module level because the Stream pass runs inside
-    `PlexSim.handle`, which holds the headers but is not the HTTP handler.
+    `SimPlex.handle`, which holds the headers but is not the HTTP handler.
     """
     headers = headers or {}
     query = query or {}
@@ -3007,7 +3007,7 @@ def request_language(query, headers, regional=False):
     if not wanted:
         # Cycle 45: `X-Plex-Accept-Language` is a THIRD input, header AND query, ranked
         # BETWEEN the two -- `X-Plex-Language` > `X-Plex-Accept-Language` >
-        # `Accept-Language`, measured on both references. plexsim ignored it entirely, so
+        # `Accept-Language`, measured on both references. simplex ignored it entirely, so
         # a client that sends only that header was answered in English.
         for source in (headers.get("X-Plex-Accept-Language"),
                        query.get("X-Plex-Accept-Language"),
@@ -3023,14 +3023,14 @@ def request_language(query, headers, regional=False):
                 # the list beats it. Chrome's Catalan header `ca-ES,ca;q=0.9,en-US;q=0.8,
                 # en;q=0.7` is English, `ca,fr;q=0.9` French and `ca,es;q=0.9` Spanish;
                 # `ca` alone, `ca,nn` and `ca,zh-TW` stay Spanish, and `nn,ca` Norwegian.
-                # plexsim took the first tag it could map, so a Catalan browser's Activity
+                # simplex took the first tag it could map, so a Catalan browser's Activity
                 # menu and Alerts were Spanish where a real PMS draws English.
                 fallback = None
                 for tag in order:
                     # Cycle 66, measured on zen and plexscratch42 (the socket and
                     # `/:/prefs`): the Traditional-Chinese tags are tags the server does
                     # NOT have -- `zh-TW` alone is English and `zh-TW,de;q=0.9` German --
-                    # where plexsim read their primary subtag as Simplified Chinese. A
+                    # where simplex read their primary subtag as Simplified Chinese. A
                     # Safari in Taiwan or Hong Kong sends one of them alone on the socket.
                     # Cycle 67, measured on plexscratch42 and zen: the rule is the SCRIPT and
                     # region, not three spellings -- `zh-Hant-TW`, `zh-Hant-HK` and `zh-MO`
@@ -3070,7 +3070,7 @@ def request_language(query, headers, regional=False):
         # and `-de-` are German, ` fr` French, `-pt-BR` Portuguese -- and anything that
         # then names no language, or is led by another character, is ENGLISH: `-`, `-1`,
         # `-xx`, `--de`, `-zz-de` and `.fr`. A bare unknown value (`xx`) keeps the
-        # no-language default. plexsim read every separator-led value as that default.
+        # no-language default. simplex read every separator-led value as that default.
         rest = text[1:] if text[0] in "-_ " else ""
         primary = rest.replace("_", "-").lower().split("-")[0]
         return primary if primary in TRANSLATED_LANGUAGES else "en"
@@ -3165,7 +3165,7 @@ except (OSError, ValueError, KeyError):
 # Cycle 87, measured on plexscratch42 in every language Plex Web sends: three of an Add
 # Library refusal's eleven lines are in the server's gettext catalogue and follow the
 # request's language like an activity string does (`hu-HU` reads `hu_HU`); the other eight
-# stay English everywhere. plexsim wrote all eleven in English.
+# stay English everywhere. simplex wrote all eleven in English.
 try:
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "refusal_strings.json"), encoding="utf-8") as _handle:
@@ -3261,7 +3261,7 @@ def _with_stream_language(node, language):
     names = LANGUAGE_NAMES.get(language) or {}
     # Cycle 60, measured on zen in 28 languages AND under `en` -- which Plex Web and
     # python-plexapi both send: the name follows the stream's TAG, `fr` answering `French`
-    # under `en` and `Französisch` under `de`, where plexsim keyed a map on the stored
+    # under `en` and `Französisch` under `de`, where simplex keyed a map on the stored
     # (native) name that had no English entry. The words the titles are composed from
     # (`Unknown`, `Forced`, `SDH`) are localised with it.
     by_tag = ITEM_LANGUAGE_NAMES.get(language) or {}
@@ -3362,7 +3362,7 @@ def _progress_time(value):
     Cycle 21, measured on plexscratch value by value: a NEGATIVE value and a leading
     `+` are both 200s -- `-1` and `-500000` store nothing, `+120000` stores 120000 --
     while `abc`, an empty value, `1.5`, `0x10`, `1e6` and a leading space are 500s.
-    plexsim read the value with `isdigit()`, so the two shapes a real PMS accepts were
+    simplex read the value with `isdigit()`, so the two shapes a real PMS accepts were
     refused with a 500.
     """
     if re.fullmatch(r"[+-]?\d+", str(value or "")) is None:
@@ -3376,7 +3376,7 @@ def _escaped_pref(value):
     Cycle 17, measured on plexscratch: `:` and `|` -- the two delimiters of an
     `enumValues` string -- are stored percent-escaped in LOWERCASE hex. Every other
     character round-trips, `/` and a space included. The server is protecting its own
-    encoding; plexsim stored all three verbatim.
+    encoding; simplex stored all three verbatim.
 
     Cycle 21, re-measured on plexscratch over eight values: the value is percent-
     decoded a SECOND time before that. A wire `%2541` arrives here as `%41` and is
@@ -3384,7 +3384,7 @@ def _escaped_pref(value):
     escaping is known to cover `%` as well; `%25E2%2582%25AC` comes out `\u20ac`. A
     second decode that FAILS -- `a%b`, where `%b` is not an escape -- stores the empty
     string, and that is the whole of cycle 17's "a value carrying `%` is stored
-    EMPTY": plexsim emptied every value containing one, so a ratings source written
+    EMPTY": simplex emptied every value containing one, so a ratings source written
     with a percent escape was lost rather than decoded.
     """
     text = str(value)
@@ -3422,7 +3422,7 @@ def _image_type(body):
 
 # `excludeElements=` names these and a real PMS keeps them anyway. Cycle 19, measured
 # on kids (4 `Image` and 1 `UltraBlurColors` before and after) and zen (2 and 1): both
-# behave exactly like an unknown name, which is a no-op on both servers. plexsim removed
+# behave exactly like an unknown name, which is a no-op on both servers. simplex removed
 # them, so a client naming `Image` in a bandwidth-trimming list lost the artwork rows
 # and the tile colour wash a real PMS still sends.
 #
@@ -3446,7 +3446,7 @@ def _drop_parts(row):
 
     Cycle 70, measured on zen (1.42.2): this holds on a LISTING row -- a section's
     `/all`, every hub, `recentlyAdded` -- and on a detail's nested Related rows exactly
-    as cycle 22 measured it on the detail row itself. plexsim applied it only there, and
+    as cycle 22 measured it on the detail row itself. simplex applied it only there, and
     Plex for Android names `Part` on every library hubs request (js:1518625), so it was
     sent the Part tree of every shelf row with no count in its place.
     """
@@ -3474,7 +3474,7 @@ def _exclude_fields(container, spec):
 
     Measured: the named fields go from EVERY row -- section listings, `/children`,
     `/allLeaves`, hubs, search -- and from the container itself (a show's
-    `/children?excludeFields=summary` loses the container's summary too). plexsim
+    `/children?excludeFields=summary` loses the container's summary too). simplex
     applied it to detail reads only, and the client sends `excludeFields=summary` on
     every library hubs request. Rows are copied, never trimmed in place.
     """
@@ -3489,7 +3489,7 @@ def _exclude_fields(container, spec):
         `id` off `Media`, `Part`, `Stream`, `Genre` and `Guid`; `file` off `Part`;
         `url` off `Image`; `value` off `Rating`; `index` and `codec` off `Stream`;
         `tag` off `Genre` and `Role`; `type` off `Image` and `Rating`; `duration` off
-        `Media` and `Part`. plexsim trimmed the row and the container alone, so a
+        `Media` and `Part`. simplex trimmed the row and the container alone, so a
         client asking not to be sent `file` still got the full filesystem path and one
         trimming `id` to shrink a grid got none of the saving."""
         if isinstance(value, dict):
@@ -3544,7 +3544,7 @@ def _all_title(section):
     A MOVIE library composes it from its own title ("All Zen Movies"); a SHOW library
     answers the constant "All Shows" whatever it is called ("Bench TV" answers it too).
     Both the `/all` container's `title2` and the `all` pivot row follow this rule, and
-    plexsim had each half wrong in the opposite place.
+    simplex had each half wrong in the opposite place.
     """
     if section.get("type") == "show":
         return "All Shows"
@@ -3620,7 +3620,7 @@ def _listing_guids(row):
     unmatched row carries NO `Guid` key on any of them, even where its DETAIL still
     answers the imdb/tmdb/tvdb list the unmatch kept (movie 1, episode 9). A matched
     row keeps its list, and one with no external ids gets a one-entry list naming its
-    own guid. plexsim gated `local://` alone and only where no list was stored, so an
+    own guid. simplex gated `local://` alone and only where no list was stored, so an
     unmatched movie kept its old ids in every listing and `/hubs` named `local://` rows.
     """
     if _unmatched(row):
@@ -3628,7 +3628,7 @@ def _listing_guids(row):
     if (row or {}).get("type") == "collection":
         # Cycle 88, measured on plexscratch42: a collection row carries no `Guid` under
         # `includeGuids=1` -- `all?type=18` and section `/collections` alike -- where
-        # plexsim gave it the one-entry list a guid-only row gets.
+        # simplex gave it the one-entry list a guid-only row gets.
         return None
     guid = (row or {}).get("guid")
     return (row or {}).get("Guid") or ([{"id": guid}] if guid else None)
@@ -3645,13 +3645,13 @@ def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     or shelf row's tags are `{tag}` and nothing else (no id, filter, role or thumb),
     a Part carries no `Stream` list, and there is no `Rating`, `Location`, `Field`
     or `Producer`. A SECTION listing's rows also leave the librarySection fields to
-    the container, where a hub's rows keep them. plexsim sent the full detail row
+    the container, where a hub's rows keep them. simplex sent the full detail row
     everywhere. The catalog's own lists are shared, so this copies what it trims.
     """
     # Cycle 49 added `Label`, `Style`, `Similar` and `Mood` to the dropped set. Measured
     # on both writable copies on a movie made to carry every tag family at once: the
     # reference's grid row is `Genre Country Collection Director` where its detail row is
-    # `Genre Country Style Collection Director Producer Label Similar`. plexsim passed all
+    # `Genre Country Style Collection Director Producer Label Similar`. simplex passed all
     # four through -- `Label` text-only through GRID_TAGS, the other three with their full
     # `id`/`filter`, which the light projection never carries.
     out = {k: v for k, v in row.items()
@@ -3665,7 +3665,7 @@ def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     # `Media Image UltraBlurColors Guid Genre Country Director Writer Role` on every
     # row of `?type=1&includeGuids=1` on both servers -- where a detail row answers
     # `Media Image UltraBlurColors Genre Country Guid Rating Director Writer Role
-    # Producer`. plexsim used one table for both. Only the builder knows which
+    # Producer`. simplex used one table for both. Only the builder knows which
     # projection a row is, so it says so here; `_drop_private` takes the marker off
     # again on the way out, as it does for `_poster_url`.
     out["_light"] = True
@@ -3721,7 +3721,7 @@ def _top_row(row, plays, accounts):
     section listing row (tests/fixtures/c94_d_library_all_top.json): the top row is the LIGHT
     listing row plus the librarySection triple, `globalViewCount` and `userCount` straight
     after `updatedAt` (`deletedAt` where there is one) and a `User` list last. So no `Guid`,
-    `Rating` or `Location`, which plexsim sent because it answered the detail projection. A
+    `Rating` or `Location`, which simplex sent because it answered the detail projection. A
     show or season row drops the listing's per-user aggregate, and a season row carries
     `leafCount`/`viewedLeafCount`, which its listing row does not, just before `addedAt`.
     """
@@ -3778,7 +3778,7 @@ def _part_file_state(row, checked, zurg=None):
                 projected_part = {key: value for key, value in part.items()
                                   if key not in ("accessible", "exists")}
                 if checked:
-                    # Cycle 46 finally drove this option against plexsim's own live
+                    # Cycle 46 finally drove this option against simplex's own live
                     # byte path. All five stale catalog links answered a measured
                     # `unavailable_file`/404 while the metadata still claimed both
                     # booleans were true. The byte source answering for the file is
@@ -3806,7 +3806,7 @@ def _part_file_state(row, checked, zurg=None):
 
 # A baseline JPEG of one solid colour, stdlib only -- the companion to `_png`.
 # Cycle 52: nine of the 70 bundled resources are `.jpg` and a real PMS answers
-# `image/jpeg` for them. plexsim sent PNG bytes under that media type for the three it
+# `image/jpeg` for them. simplex sent PNG bytes under that media type for the three it
 # knew about, which is a container a strict decoder is entitled to refuse. Every MCU here
 # is DC-only with an immediate EOB, so the encoder is a few dozen lines and the output
 # decodes cleanly (verified with ffmpeg at three geometries).
@@ -3895,7 +3895,7 @@ def _png(width, height, rgb):
     """A solid-colour PNG, built without a third-party imaging library.
 
     Clients render an empty poster tile when art 404s; a real image keeps the
-    grid honest about which rows exist while plexsim has no artwork source.
+    grid honest about which rows exist while simplex has no artwork source.
     """
     width = max(1, min(int(width), 2000))
     height = max(1, min(int(height), 2000))
@@ -4004,13 +4004,13 @@ def int32_segment(value):
     return "negative" if number < 0 else "ok"
 
 
-class PlexSim:
+class SimPlex:
     # Cycle 30: one seed per (random shelf, `count=`), minted on first use and held for
     # the life of the process -- see `shelf()`.
     shelf_seeds = {}
 
     def __init__(self, catalog, zurg=None, *, part_mode="proxy", public_url=None,
-                 owner_username="plexsim", claim=None, web_root=None,
+                 owner_username="simplex", claim=None, web_root=None,
                  assert_claimed=False, owner_email=None, tmdb=None, token=None):
         self.catalog = catalog
         self.zurg = zurg
@@ -4021,7 +4021,7 @@ class PlexSim:
         self.public_url = public_url
         # A server is claimed BY ONE OWNER account; every other user reaches it
         # through that owner's sharing, not through a second claim. This is the
-        # owner plexsim reports, and it must match the account whose device list
+        # owner simplex reports, and it must match the account whose device list
         # carries the registration.
         self.owner_username = owner_username
         # Holds the server's own plex.tv token once a client claims it.
@@ -4059,11 +4059,11 @@ class PlexSim:
         # its version increments on every mutation, and the client throws the
         # whole response away when the selected id is not the one it holds.
         # When this process came up: the background-processing list's `addedAt` on a real
-        # PMS is when that server made it, so plexsim's is when this one started.
+        # PMS is when that server made it, so simplex's is when this one started.
         self.started_at = int(time.time())
         self.play_queues = {}
         # Cycle 50: id 1 is PMS's own background-processing queue on every reference, so a
-        # user queue never gets it. plexsim handed 1 to the first queue a client made.
+        # user queue never gets it. simplex handed 1 to the first queue a client made.
         self.next_play_queue = 2
         self.next_play_queue_item = 1
         # Cycle 40, recovered from Plex Web 4.160 and measured on both disposable
@@ -4117,7 +4117,7 @@ class PlexSim:
                                              resolve=self._items_for_uri,
                                              resolve_collection=self._smart_collection_rows)
         # Preferences the client has written back through PUT /:/prefs. A real
-        # PMS persists these; plexsim keeps them for the life of the process, and
+        # PMS persists these; simplex keeps them for the life of the process, and
         # across restarts with `--state`.
         self.pref_overrides = {}
         # The resource graph's series, and the last (wall clock, cpu seconds) pair
@@ -4145,7 +4145,7 @@ class PlexSim:
         self.log_sinks = []
         # TMDB, when a key is configured: Fix Match searches it live. Without
         # one the match dialog honestly reports no candidates rather than
-        # offering a list plexsim cannot act on.
+        # offering a list simplex cannot act on.
         self.tmdb = tmdb
         # guid -> (kind, tmdb id) for candidates handed out by /matches, so the
         # match the user picks resolves back to the record it came from.
@@ -4153,7 +4153,7 @@ class PlexSim:
         # Open notification sockets. A real PMS pushes library and task events
         # down this channel and clients redraw from them instead of polling; the
         # four types it actually sends were measured on the reference (see
-        # docs/findings.md), and plexsim pushed none of them.
+        # docs/findings.md), and simplex pushed none of them.
         self.sockets = []
         # Live playback sessions and the byte counters behind the Dashboard. A
         # session is created by /:/timeline, not by anyone reading bytes.
@@ -4210,7 +4210,7 @@ class PlexSim:
         Measured by running two sockets side by side: `filters=` is an exact
         whitelist of type names, and `log` is OPT-IN ONLY -- a socket with no
         filters receives everything EXCEPT log frames, and `?filters=log` receives
-        386 log frames and nothing else. plexsim fanned every event to every sink,
+        386 log frames and nothing else. simplex fanned every event to every sink,
         so a socket opened for the Console's log pane got playing and activity
         frames and never a log line.
         """
@@ -4245,7 +4245,7 @@ class PlexSim:
                 continue
             # Cycle 30, measured on the copy: ONE consumer that stops reading must not
             # reach the request path. A socket opened and never read from, plus repeated
-            # `PUT .../analyze` on plexsim: writes 1-103 took 0.001 s each, write 104 took
+            # `PUT .../analyze` on simplex: writes 1-103 took 0.001 s each, write 104 took
             # 5.2 s and write 105 **20.0 s**, and a SECOND client's unrelated title edit
             # timed out after 30 s while `/identity` still answered in a millisecond.
             # Closing the dead socket drained 9,462 backlogged frames at once and writes
@@ -4253,7 +4253,7 @@ class PlexSim:
             # volume -- 4.5 MB of frames at a dead socket -- with every request between
             # 0.019 and 0.031 s, and it stopped queueing at ~415 KB.
             #
-            # So the reference BOUNDS the per-socket backlog and plexsim blocked in the
+            # So the reference BOUNDS the per-socket backlog and simplex blocked in the
             # request thread: `notify()` fanned out synchronously and each sink did a
             # blocking `wfile.write()` under its own lock, with no queue, no drop and no
             # timeout. A phone that sleeps, a throttled tab or a Wi-Fi drop with no RST
@@ -4261,7 +4261,7 @@ class PlexSim:
             # scan, a playlist save -- and stopped the frames other clients were waiting
             # on with them.
             #
-            # plexsim DROPS where the reference buffers, which is the honest half of the
+            # simplex DROPS where the reference buffers, which is the honest half of the
             # rule it can implement: the sink is given a two-second budget and a consumer
             # that cannot take a frame in that time loses the channel rather than the
             # server losing its writers. A client that has stopped reading is not going to
@@ -4343,7 +4343,7 @@ class PlexSim:
     # Cycle 19, measured on plexscratch behind a control write: a library EDIT scans
     # only when the form carries `language` or `scanner`. `agent` alone, `agent` with
     # `name`, and `agent` with a `prefs[...]` are 200s with ZERO frames; adding either of
-    # those two makes it 20. plexsim scanned on every accepted edit, so renaming a
+    # those two makes it 20. simplex scanned on every accepted edit, so renaming a
     # library or toggling one Advanced preference lit the Dashboard with a full scan and
     # re-framed every row where a real PMS is silent.
     SCAN_TRIGGERING_EDIT_FIELDS = ("language", "scanner")
@@ -4355,7 +4355,7 @@ class PlexSim:
         section, the activity is retitled `Scanning <library>` and steps through the
         items -- a `progress` frame and an `updated` frame each, the subtitle the item's
         `title (year)`, the percentage `round(n * 99 / count)` -- to 100, then it ends
-        and a status says the scan is complete. plexsim started and ended a metadata
+        and a status says the scan is complete. simplex started and ended a metadata
         activity per row instead, which no scan on a real server does.
         """
         title = section.get("title") or ""
@@ -4368,7 +4368,7 @@ class PlexSim:
         self.notify_activity(activity, "updated")
         # Measured on a writable copy of the reference: a MOVIE library steps per movie,
         # and a SHOW library per SEASON -- the progress line is `Scanning <show>/Season 02`
-        # and the activity's subtitle `<show> - Season 02`, deepest season first. plexsim
+        # and the activity's subtitle `<show> - Season 02`, deepest season first. simplex
         # stepped a show library by show, so a scan of a library of long shows reported one
         # step per series.
         steps = []
@@ -4382,7 +4382,7 @@ class PlexSim:
                 # library's scan names the SHOW itself in a `progress` row BEFORE its
                 # seasons -- `Scanning Firefly (2002)`, then `.../Season 02`, `.../Season
                 # 01` -- and that first row has no matching activity update of its own.
-                # plexsim emitted only the per-season rows, so the Dashboard never named
+                # simplex emitted only the per-season rows, so the Dashboard never named
                 # the series being scanned.
                 steps.append((label, None))
                 seasons = sorted(self.catalog.children(row["ratingKey"]),
@@ -4402,7 +4402,7 @@ class PlexSim:
             number += 1
             # The Context names the library the activity belongs to -- measured on every
             # `updated` frame of a scan, and the client keys the Libraries page's progress
-            # bar on it. plexsim sent none, so a scan showed no progress against a library.
+            # bar on it. simplex sent none, so a scan showed no progress against a library.
             activity.update(subtitle=subtitle,
                             progress=int(round(number * 99.0 / len(counted))),
                             Context={"librarySectionID": str(section_id)})
@@ -4423,11 +4423,11 @@ class PlexSim:
         # pair of `provider.subscriptions.process` activities. The outer one starts
         # between the section activity's last `updated` and its `ended`; the inner one
         # runs after the completion status; then the inner ends and the outer ends. Four
-        # frames plexsim pushed none of, and the Activity pane draws a row for each.
+        # frames simplex pushed none of, and the Activity pane draws a row for each.
         # Cycle 19: this activity -- and only this one -- is `cancellable: true` on the
         # reference. Measured across four started/ended pairs on plexscratch while every
         # `library.update.section` and `library.update.item.metadata` beside them is
-        # false. plexsim sent false, so the Dashboard drew no Cancel control for the one
+        # false. simplex sent false, so the Dashboard drew no Cancel control for the one
         # activity that has one.
         outer = {"uuid": str(uuid.uuid4()), "type": "provider.subscriptions.process",
                  "cancellable": True, "userID": 1, "title": "Processing subscriptions",
@@ -4549,7 +4549,7 @@ class PlexSim:
         title them with the year (`Elephants Dream (2006)`, `Firefly (2002)`, and an
         emptied title still gets it: ` (2010)`), while a SEASON's say `Firefly S01` and
         an EPISODE's `Firefly S01 E07` -- from the SHOW's title and the current indexes,
-        where plexsim sent the row's own title. Cycle 17: the ACTIVITY subtitle takes
+        where simplex sent the row's own title. Cycle 17: the ACTIVITY subtitle takes
         the same string, which `_frame_title` did not.
         """
         title = row.get("title") or ""
@@ -4573,7 +4573,7 @@ class PlexSim:
         activity started, activity updated, timeline(3, processing),
         timeline(4, loading), activity ended, timeline(5, no metadataState).
 
-        plexsim pushed the first activity frame and ONE timeline(3, queued) and
+        simplex pushed the first activity frame and ONE timeline(3, queued) and
         stopped. So state 5 never arrived, the client never dispatched
         `metadataProcessed` and never refetched the row it had just refreshed --
         Refresh Metadata did nothing on screen until a reload -- and because
@@ -4602,10 +4602,10 @@ class PlexSim:
             self.notify_timeline(row, self.TIMELINE_DONE, None)
         self.notify_timeline(row, self.TIMELINE_QUEUED, "queued")
         # Measured on the copy, and what the docstring above already said: the `updated`
-        # frame comes SECOND, before `processing`. plexsim emitted it inside
+        # frame comes SECOND, before `processing`. simplex emitted it inside
         # finish_activity, after `loading` -- the rule was recorded right and implemented
         # as something else. The subtitle is the row's `title (year)`, as the scan
-        # activity's is; plexsim sent the bare title.
+        # activity's is; simplex sent the bare title.
         activity = self.library.add_activity(self.frame_title(row), progress=-1)
         activity["progress"] = 49
         self.library.notify_activity(activity, "updated")
@@ -4631,7 +4631,7 @@ class PlexSim:
         subtitle and the PREVIOUS progress (-1 for the first), and its own step lands at its
         END, between the last episode's second `loading` and that episode's bare 5; the last
         season's step is followed at once by `ended` 100, before the last episode's, the
-        season's and the show's 5s. plexsim stepped each season at its start and closed with
+        season's and the show's 5s. simplex stepped each season at its start and closed with
         an invented `updated 49`. The media pass is state-dependent work (none ran on the
         warm copy) and keeps cycle 10's place after the season's episodes.
         """
@@ -4739,8 +4739,8 @@ class PlexSim:
         Cycle 15, measured on the copy: it is neither create-specific nor periodic.
         It arrived +7.1 s after an analyze and +63.1 s after a library create here,
         and cycle 14 saw it +2.4 s after a season split and +1.2 s after a collection
-        add. plexsim never sent it, so a client watching the queue never learned it
-        had been rebuilt. The DELAY is not reproduced -- plexsim pushes its frames
+        add. simplex never sent it, so a client watching the queue never learned it
+        had been rebuilt. The DELAY is not reproduced -- simplex pushes its frames
         synchronously -- and that is recorded rather than guessed at.
         """
         self.notify("backgroundProcessingQueue",
@@ -4760,7 +4760,7 @@ class PlexSim:
         Firefly's two seasons, frame-identical (`tests/fixtures/season_cascade_order_s43.json`):
         the season's `queued` frame comes BEFORE `activity started`, as cycle 15 wrote it
         down, and the activity ENDS between the last episode's second `loading` and that
-        episode's bare 5 -- the show cascade's end, one level down. plexsim started the
+        episode's bare 5 -- the show cascade's end, one level down. simplex started the
         activity first and ended it after every episode. (The copy's seasons are
         `local://`, and their refreshes open with a `matching`/5 pair that a refresh of
         its matched show does not; a catalog season is matched, so that pair stays out.)
@@ -4789,7 +4789,7 @@ class PlexSim:
         self.notify_timeline(season, self.TIMELINE_DONE, None)
 
     def notify_edited(self, row, metadata_state="loading"):
-        """The two frames an EDIT pushes: state 3, then done. plexsim pushed none,
+        """The two frames an EDIT pushes: state 3, then done. simplex pushed none,
         so an edit made here was invisible to every other open client. Measured:
         the first frame says `loading` for an edit to the item's own path and
         `queued` for one saved through `/library/sections/{id}/all`."""
@@ -4801,7 +4801,7 @@ class PlexSim:
         the reference: a rename or a summary edit -- through `/playlists/{id}`,
         `/library/collections/{id}` or `/library/metadata/{id}` -- pushes state 3
         `loading` then 5 for the list itself, type 15 with sectionID -1 for a playlist
-        and type 18 with its library for a collection. plexsim pushed nothing, so a
+        and type 18 with its library for a collection. simplex pushed nothing, so a
         list renamed in one client kept its old name in every other."""
         self.notify_edited({"ratingKey": target["ratingKey"], "type": kind,
                             "title": target.get("title") or "",
@@ -4869,7 +4869,7 @@ class PlexSim:
         agent has no chain -- an empty container -- except that at mediaType 8 and 9 it is
         a `KeyError` (the music classes look the agent's version up) and at 20 every
         identifier is an `AttributeError`, the model having no personal-media class.
-        plexsim answered an empty container to every GET and 404'd every PUT, so the page
+        simplex answered an empty container to every GET and 404'd every PUT, so the page
         showed no agents to order and nothing it saved stuck.
         """
         try:
@@ -4945,7 +4945,7 @@ class PlexSim:
         /media/providers on a real PMS has no `identifier`, `mediaTagPrefix`,
         `mediaTagVersion` or `allowSync`, and no `claimed` either -- claim state
         lives on /identity and /myplex/account. Sending extras is not harmless:
-        it is how plexsim ended up asserting `claimed` in a place a real server
+        it is how simplex ended up asserting `claimed` in a place a real server
         never does.
         """
         return {"MediaContainer": self._prune(dict(fields))}
@@ -5015,11 +5015,11 @@ class PlexSim:
         """The blocks a show OR a season carries when the client asks for them.
 
         Measured: a SEASON detail carries `OnDeck`, `Extras` and `Preferences`
-        just as a show does -- plexsim answered them for shows only, so a season
+        just as a show does -- simplex answered them for shows only, so a season
         page had no episode to offer and an empty settings tab. And the
         Preferences lists differ: eleven settings on a show, three on a season
         (audio language, subtitle language, subtitle mode), against the one
-        `episodeSort` row plexsim used to invent.
+        `episodeSort` row simplex used to invent.
         """
         leaves = self.catalog.leaves(row["ratingKey"])
 
@@ -5107,7 +5107,7 @@ class PlexSim:
         `en:English|bg:...|cs:...|da:...` against episodes carrying an English audio
         track and fifteen subtitle languages; its show 11113 leads `pa:...|en:English`
         for a Punjabi audio track and an English subtitle; kids' Firefly leads
-        `en:English` alone. plexsim served `item_prefs.json`'s captured list to every
+        `en:English` alone. simplex served `item_prefs.json`'s captured list to every
         item, so a show's own languages could not be chosen in its Preferences pane.
 
         The generic tail is the captured list from its first REGIONAL entry (`ca-ES`)
@@ -5160,7 +5160,7 @@ class PlexSim:
             # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): a SHOW and
             # nothing else. Neither reference inlines a season's episodes, and
             # neither is silent for want of them -- kids' season 7 holds three and
-            # zen's season 17201 holds twenty-two. plexsim inlined them, so a season
+            # zen's season 17201 holds twenty-two. simplex inlined them, so a season
             # page was handed an episode list it had not asked for and then fetched
             # the same list again from /children.
             children = self.catalog.children(row["ratingKey"])
@@ -5168,7 +5168,7 @@ class PlexSim:
                 # Cycle 16, measured on kids and zen: an INLINED child row
                 # carries no `librarySectionID`, `librarySectionKey` or
                 # `librarySectionTitle`, where the same row fetched through
-                # `/children` carries all three. plexsim kept them on both.
+                # `/children` carries all three. simplex kept them on both.
                 inlined = [{key: value for key, value in _full(child).items()
                             if not key.startswith("librarySection")}
                            for child in children]
@@ -5176,14 +5176,14 @@ class PlexSim:
         if _include_int(query.get("includeRelated")):
             # Measured on the reference: the item's related hubs as
             # `{"Hub": [...]}`, and an empty OBJECT -- not an absent block -- for an
-            # item with none. plexsim always sent the empty object, even where the
+            # item with none. simplex always sent the empty object, even where the
             # hubs endpoint had a shelf for the same item.
             # Cycle 15, measured on zen (kids holds no related items at all, so it
             # cannot witness this): the INLINE block caps at FIVE rows per hub and
             # says `more: true`, where the standalone `/hubs/metadata/{id}/related`
             # answers six for the same row. `includeRelatedCount=N` sets that cap --
             # `=1` gives one and `=3` gives three -- and does nothing on its own.
-            # plexsim honoured `count=` on the standalone path and ignored this
+            # simplex honoured `count=` on the standalone path and ignored this
             # spelling, so a real catalog's preplay page carried every related row.
             hubs = self.related_hubs(row, query)
             # Cycle 22, measured on zen and kids: `=0` EMPTIES the hub -- size 0, no
@@ -5200,7 +5200,7 @@ class PlexSim:
             detail["Related"] = {"Hub": trimmed} if trimmed else {}
         # Cycle 22, measured on zen and kids: the option reaches the rows INSIDE the
         # inline `Related` and `Extras` blocks too -- with `excludeElements=Media` a
-        # nested related row loses its Media and gains `mediaCount`. plexsim trimmed
+        # nested related row loses its Media and gains `mediaCount`. simplex trimmed
         # the top-level row alone, so the one request whose whole point is to make the
         # preplay page smaller still carried five related rows in full.
         nested_excluded = _excluded(query)
@@ -5224,7 +5224,7 @@ class PlexSim:
         if "Part" in excluded and "Media" not in excluded:
             # Cycle 22, measured on zen and kids: naming `Part` removes the Parts AND
             # their Streams, and the Media gains a trailing `partCount` -- the same
-            # substitution `Media` makes one level up. plexsim ignored the name.
+            # substitution `Media` makes one level up. simplex ignored the name.
             detail["Media"] = [dict((k, v) for k, v in media.items() if k != "Part")
                                for media in detail.get("Media") or []]
             for media in detail["Media"]:
@@ -5237,10 +5237,10 @@ class PlexSim:
             detail["mediaCountOptimized"] = 0
         # `checkFiles=1` adds `accessible` and `exists` to every Part on a detail
         # read; an absent option, `checkFiles=0`, and a section listing omit both.
-        # Cycle 41 re-measured that shape on kids and zen and removed plexsim's old
+        # Cycle 41 re-measured that shape on kids and zen and removed simplex's old
         # third-party-client waiver, which exposed the fields unconditionally.
         #
-        # Cycle 19: the option is VALIDATED, and plexsim accepted anything.
+        # Cycle 19: the option is VALIDATED, and simplex accepted anything.
         # Measured on kids (1.43.4) and zen (1.42.2), identically: `0` and `1` are 200
         # and so is `01`, while `abc`, an empty value, `2`, `true`, `-1`, `1.5`, ` 1`
         # and `1 ` are all 400. So the value must parse as a bare decimal whole number
@@ -5250,7 +5250,7 @@ class PlexSim:
         # Cycle 22, measured over ten values on each of six options: FIVE more carry
         # exactly this grammar -- `skipRefresh`, `asyncCheckFiles`,
         # `asyncAugmentMetadata`, `asyncRefreshLocalMediaAgent` and
-        # `asyncRefreshAnalysis`. plexsim validated `checkFiles` alone and took
+        # `asyncRefreshAnalysis`. simplex validated `checkFiles` alone and took
         # anything for the other five. A 60-name sweep of the detail read found these
         # six and no others: every `include*` name is a 200 for any value.
         # Cycle 46 adds `checkFileAvailability`, found by sweeping the option name
@@ -5269,7 +5269,7 @@ class PlexSim:
         # official client sends on every preplay page load, and on kids it answers the
         # pair on every read. On 1.42.2 the check is scheduled rather than blocking, so a
         # live server answers it once the check has run (zen: 9 of 16) and a fresh
-        # isolated copy never does; plexsim has no async check and hard-codes the values,
+        # isolated copy never does; simplex has no async check and hard-codes the values,
         # so the completed case is the faithful one.
         if any(query.get(name) is not None and int(query[name]) == 1
                for name in ("checkFiles", "asyncCheckFiles", "checkFileAvailability")):
@@ -5288,7 +5288,7 @@ class PlexSim:
             # `languageOverride` and `useOriginalTitle` (zen's six `local://` shows
             # advertise eight where every matched one advertises the full list); a
             # MOVIE loses the whole block rather than its rows; a season keeps its
-            # three. plexsim left them all in place, so the settings tab of an
+            # three. simplex left them all in place, so the settings tab of an
             # unmatched item offered agent options with no agent behind them.
             if str(row.get("guid") or "").startswith(("local://", "tv.plex.agents.none://",
                                                       "none://")):
@@ -5328,7 +5328,7 @@ class PlexSim:
         The parent's own identity is repeated on the CONTAINER, not just on the
         rows -- `parentTitle`, `parentIndex`, `parentYear`, `thumb`, `art`,
         `viewMode` and, for an episode list, the whole `grandparent*` set. No
-        `theme`: plexsim has no theme audio, and a real show without one carries no
+        `theme`: simplex has no theme audio, and a real show without one carries no
         `theme`, `parentTheme` or `grandparentTheme` anywhere (measured on fun) --
         advertising a URL that 404s made every page with theme music on ask for it. The desktop client rendered an empty season list
         while these were missing, even though the rows themselves were correct.
@@ -5351,7 +5351,7 @@ class PlexSim:
         # a leaf never changes once the leaf exists. The episode's detail row, the
         # season's `/children`, the section grid, `recentlyAdded`, `newest`,
         # `/library/all` and the hubs all carry the show's CURRENT stamp (641 of 641 on
-        # zen's grid), which is what plexsim answered everywhere.
+        # zen's grid), which is what simplex answered everywhere.
         restamp_borrowed = leaf == "allLeaves" and parent.get("type") == "show"
 
         fields = {
@@ -5363,7 +5363,7 @@ class PlexSim:
             "key": str(parent.get("ratingKey")),
             "nocache": True,
             # Cycle 50: a MOVIE's own `/allLeaves` is `viewGroup="movie"` and
-            # `viewMode=65592` on kids and zen alike -- plexsim answered the SEASON pair,
+            # `viewMode=65592` on kids and zen alike -- simplex answered the SEASON pair,
             # which is the same inversion that caused the founding Seasons bug, on the one
             # row type nobody had asked for its leaves.
             "viewGroup": ("movie" if is_movie_leaves
@@ -5378,7 +5378,7 @@ class PlexSim:
             "title1": parent.get("librarySectionTitle"),
             "summary": parent.get("summary") or "",
             # Measured on both servers: every child list says it can sync -- a show's
-            # seasons, a season's episodes, allLeaves -- where plexsim said it could not.
+            # seasons, a season's episodes, allLeaves -- where simplex said it could not.
             "allowSync": True,
         }
 
@@ -5446,7 +5446,7 @@ class PlexSim:
         if leaf == "allLeaves" and parent.get("type") == "episode":
             # Measured on both servers: an episode's allLeaves is presented as its
             # SEASON's -- title1 the season, title2 the episode, an empty
-            # grandparentTitle, and the episode layout -- where plexsim sent the library
+            # grandparentTitle, and the episode layout -- where simplex sent the library
             # title and the season layout.
             fields.update(title1=parent.get("parentTitle"), grandparentTitle="")
         if leaf == "allLeaves":
@@ -5463,7 +5463,7 @@ class PlexSim:
         page, paged, start, total = self.page_window(rows, query or {})
         if paged:
             # Measured: a PAGED row is the same light projection as an unpaged one.
-            # plexsim served the full row here, so every row of the page the client
+            # simplex served the full row here, so every row of the page the client
             # actually asks for carried the librarySection fields a child row never
             # does.
             fields["Metadata"] = [_grid_row(r, keep_section=False, keep_guid=True)
@@ -5490,7 +5490,7 @@ class PlexSim:
             # Measured: the container's `size` counts the "All episodes" Directory
             # row as well as the seasons, which is what `excludeAllLeaves=1` takes
             # back off it; `totalSize` does not. In XML the row comes FIRST, before
-            # the seasons, and plexsim sent it last.
+            # the seasons, and simplex sent it last.
             fields["size"] = len(fields.get("Metadata") or []) + len(extra["Directory"])
             fields = dict([("Directory", fields.pop("Directory"))] + list(fields.items()))
 
@@ -5502,7 +5502,7 @@ class PlexSim:
         Measured on both servers: a show's are its episodes, a season's its
         episodes, an episode's itself, and a movie's an empty 200. The client builds
         this path itself -- a hub row with `skipChildren` has its `/children` key
-        rewritten to `/grandchildren` -- and plexsim 404'd it. The container is not
+        rewritten to `/grandchildren` -- and simplex 404'd it. The container is not
         the allLeaves one: no parent identity, no librarySection fields and no
         allowSync, just the library's title and art and a `viewGroup` naming the
         LIBRARY's type, so an episode list says `show`.
@@ -5529,7 +5529,7 @@ class PlexSim:
         if query.get("sort"):
             rows, unsupported = self._sorted(rows, query["sort"])
             if unsupported:
-                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+                return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
         page, paged, start, total = self.page_window(rows, query)
         fields = {
             "art": "/:/resources/show-fanart.jpg" if is_show else "/:/resources/movie-fanart.jpg",
@@ -5580,7 +5580,7 @@ class PlexSim:
                 size=len(rows), identifier="com.plexapp.plugins.library.shared",
                 Type=rows)
         if len(segments) > 3:
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         rows = [self.section_directory(s, shared=True) for s in self.catalog.sections]
         if query.get("includePreferences") == "1":
             # The Shared libraries view exposes the same per-section settings as
@@ -5599,7 +5599,7 @@ class PlexSim:
             # `abc` are each refused on both references; `0`, `-1`, `18` and `1,2` are
             # each an empty 200.
             if not all(part.strip("-").isdigit() for part in str(wanted).split(",")):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             rows = []
         spec = query.get("sort")
         # An EMPTY `sort=` is NOT "the default order" by measurement: it CRASHES a real
@@ -5610,7 +5610,7 @@ class PlexSim:
             key, _colon, _modifiers = str(spec).split(",")[0].partition(":")
             if key not in ("titleSort", "taggingCreatedAt"):
                 # An unknown sort KEY is a 500 here, the refusal a listing already gives.
-                return ("error", 500, "plexsim: unsupported sort key %s" % key)
+                return ("error", 500, "simplex: unsupported sort key %s" % key)
             # An unknown MODIFIER is ignored, as everywhere else on the surface.
             descending = "desc" in str(_modifiers).split(":")
             if key == "titleSort":
@@ -5687,20 +5687,20 @@ class PlexSim:
             "allowSync": False,
             "content": True,
             "directory": True,
-            # Cycle 58: the Visibility setting, which plexsim stored and reported as 0.
+            # Cycle 58: the Visibility setting, which simplex stored and reported as 0.
             "hidden": self.section_visibility(key),
         }
         # The id is the section's own key, because "Folder Location" filters by
         # this id (`?location=1`) and a shared id would make every section's
         # folder filter answer for section 1.
         row["Location"] = [dict(location) for location in section.get("Location") or []] \
-            or [{"id": int(key) if str(key).isdigit() else 1, "path": "/plexsim/%s" % key}]
+            or [{"id": int(key) if str(key).isdigit() else 1, "path": "/simplex/%s" % key}]
         if shared:
             # Measured: the shared view carries empty art/thumb -- and cycle 45, reading
             # the JSON key order (which IS the XML order): they LEAD the row, `art`
             # first and `thumb` directly after `key`. The same read shows the shared
             # projection carries NO `allowSync`, `filters` or `refreshing`, which the
-            # `/library/sections` form does; plexsim sent all three.
+            # `/library/sections` form does; simplex sent all three.
             row["art"] = ""
             row["thumb"] = ""
             for absent in ("allowSync", "filters", "refreshing"):
@@ -5756,7 +5756,7 @@ class PlexSim:
         Cycle 19, measured on kids (1.43.4) and zen (1.42.2), identically: the flag
         follows the REQUEST, not the library. `/library/sections/2/all?includeMeta=1`
         marks `show`, `&type=3` marks `season`, `&type=4` marks `episode`, and
-        `?includeDetails=1` marks NONE of the three. plexsim served the flags the
+        `?includeDetails=1` marks NONE of the three. simplex served the flags the
         captured fixture stores, so the library's tab bar -- which Plex Web lights from
         exactly this attribute -- kept Shows lit while the user was on Seasons or
         Episodes.
@@ -5766,7 +5766,7 @@ class PlexSim:
             # Cycle 23, measured on kids and zen over seven library/type pairs and four
             # `sort=` spellings: the active SORT is marked only inside the Type that
             # matches the asked type -- a movie library asked `type=2` marks NOTHING --
-            # and which one is marked follows the `sort=` parameter. plexsim served the
+            # and which one is marked follows the `sort=` parameter. simplex served the
             # flags the captured fixture stores, so a Seasons or Episodes grid lit
             # "Title" while its rows were in broadcast order. This is a different
             # attribute from the `Type` row's own `active` above, which cycle 19 fixed.
@@ -5797,7 +5797,7 @@ class PlexSim:
         a rewrite of the whole document rather than of the three fields that
         happen to be at the top.
 
-        `advanced` is the client's `includeAdvanced=1`, which plexsim ignored: a real
+        `advanced` is the client's `includeAdvanced=1`, which simplex ignored: a real
         PMS then adds six Sort entries to a movie library, four to a show, three to a
         season and eight to an episode view, plus the `Duplicates` filter. The client
         reads that Sort list straight into its sort menu, so ignoring the flag cost
@@ -5844,7 +5844,7 @@ class PlexSim:
         return document
 
     def _claimed(self):
-        # `assert_claimed` reports a claim plexsim does not hold. It is honest
+        # `assert_claimed` reports a claim simplex does not hold. It is honest
         # about what it is: a simulator telling the client not to nag. The
         # alternative is POST /api/claim/exchange, and doing that repeatedly
         # with fabricated server identities is what triggered an account-wide
@@ -5928,7 +5928,7 @@ class PlexSim:
             # A leading empty segment is a 404 like any other (`//identity`,
             # measured) -- and it has to be caught before urlparse, which reads
             # `//identity` as a HOST named identity with an empty path.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         route, raw_query = _target_parts(path)
         if not _is_web_route(route):
             # Cycle 50 measured the exceptions to the empty-segment rule on kids, zen
@@ -5952,21 +5952,21 @@ class PlexSim:
             if route == "/:/plugins/":
                 # The single trailing slash is the inverse exception: all four
                 # references 404 it although the bare path is the plug-in listing.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if double_trailing:
                 route = route[:-1]
             # Measured: every other EMPTY interior segment (`//identity`,
-            # `/library//sections`) is a 404, where plexsim dropped it and served the
+            # `/library//sections`) is a 404, where simplex dropped it and served the
             # page; one TRAILING slash is normally harmless (`/library/sections/` is
-            # the listing, which plexsim 404'd).
+            # the listing, which simplex 404'd).
             if "//" in route:
                 # Cycle 53: under `/system` the empty segment is still the FRAMEWORK's
                 # 404 -- empty body, no `Content-Type` -- on kids, zen and both copies,
-                # where plexsim dropped the segment and left the `/system` envelope
+                # where simplex dropped the segment and left the `/system` envelope
                 # before the envelope's own refusal could apply.
                 if route.startswith("/system/"):
                     return ("bare", 404)
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if len(route) > 1 and route.endswith("/"):
                 route = route[:-1]
             # Cycle 36, measured on kids and zen over six path families -- a section
@@ -5978,7 +5978,7 @@ class PlexSim:
             # digit are 404s on both references. It is the general case of the `+?0*[01]`
             # grammar cycle 29 measured for a 0/1 option VALUE.
             #
-            # plexsim compared the segment as a STRING (`str(section["key"]) ==
+            # simplex compared the segment as a STRING (`str(section["key"]) ==
             # str(section_id)`, `items.get(int(x)) if str(x).isdigit()`), so a zero-padded
             # or plus-signed id -- what a URL built by concatenation, or a client that pads,
             # produces -- was a 404 from a server that holds the row. Normalised here,
@@ -6003,21 +6003,21 @@ class PlexSim:
                 # indexes`, `/abc` and `/12345678901` all serve the bytes -- and the digit
                 # rule only decides the changestamp when a filename follows it.
                 # `/indexes/sd` and `/a/b` stay 404s because their first segment is not a
-                # changestamp. plexsim applied the digit rule to a single extra segment
+                # changestamp. simplex applied the digit rule to a single extra segment
                 # too, so the part key with the filename suffix a client builds from
                 # `Part.file` was refused.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if len(pieces) > 5 and pieces[1:2] == ["library"] \
                     and pieces[2] == "sections" and pieces[4] == "composite" \
                     and not pieces[5].isdigit():
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if any(_PADDED_ID_SEGMENT.match(piece) for piece in pieces):
                 route = "/".join(
                     str(int(piece)) if _PADDED_ID_SEGMENT.match(piece) else piece
                     for piece in pieces)
             # Measured: a query parameter with no `=` at all -- `?includeGuids`,
             # `?foo`, even `?&` -- is a 400 on every path, `/identity` included.
-            # plexsim read a bare `includeGuids` as true.
+            # simplex read a bare `includeGuids` as true.
             if raw_query and any("=" not in piece for piece in raw_query.split("&")):
                 # Cycle 30, measured on kids and zen 3/3 on each of seven paths: this
                 # 400 CLOSES the connection, and it is the ONLY handler-level refusal on
@@ -6025,9 +6025,9 @@ class PlexSim:
                 # six leaves, `checkFiles=2`, the transcoder's missing dimension,
                 # `limit=abc` on four paths, `timespan=abc`, `accountID=abc`) all keep it
                 # alive on both references, as does a 404 for an empty path segment.
-                # plexsim kept this one alive: a harness that sends a malformed pair and
+                # simplex kept this one alive: a harness that sends a malformed pair and
                 # reuses the socket passes here and hangs against a real PMS.
-                return ("error", 400, "plexsim: bad request", {"close": True})
+                return ("error", 400, "simplex: bad request", {"close": True})
         # Both shapes are needed. The dict is what every endpoint reads, but a
         # filter query is ORDERED and may repeat a key -- `?genre=6&genre=23` is
         # an intersection and `push`/`pop` are positional -- so the pairs are
@@ -6036,7 +6036,7 @@ class PlexSim:
         query = {k: v for k, v in pairs}
         query["_pairs"] = pairs
         # The resolved language, for the handlers that need it. `_localise` reads the
-        # headers itself, but it runs in the HTTP handler; a PlexSim handler shaping a
+        # headers itself, but it runs in the HTTP handler; a SimPlex handler shaping a
         # response BY language -- `/system/agents`' per-language `Language` list -- has
         # only `query` and this.
         #
@@ -6051,7 +6051,7 @@ class PlexSim:
         # Container paging arrives as query parameters from the Backbone paths and
         # as HTTP HEADERS from the React ones (`fetchRange` sets
         # `headers:{"X-Plex-Container-Start":…,"X-Plex-Container-Size":…}`). A real
-        # PMS honours either, and a mix of the two. plexsim read only the query
+        # PMS honours either, and a mix of the two. simplex read only the query
         # string, so every windowed grid request got the whole library and no
         # `totalSize` -- the same shape of bug as the missing Seasons block, one
         # transport over. Normalised here so every listing sees one form.
@@ -6064,7 +6064,7 @@ class PlexSim:
             # header `Start=1&Size=1` answers offset 1 size 1, a header
             # naming only the size takes the size from the header and the
             # offset from the query, and a header `Start=abc` beside a
-            # valid query is a 500. plexsim only read a header the query
+            # valid query is a 500. simplex only read a header the query
             # had not named, so a client sending both got the query's page.
             if headers.get(name) is not None:
                 query[name] = headers.get(name)
@@ -6078,7 +6078,7 @@ class PlexSim:
                 or route.rstrip("/") in OPTIONS_ROUTED):
             # A bare OPTIONS reaches only the handlers that take any verb; see
             # `OPTIONS_ROUTED`.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
 
         # Cycle 18, measured on plexscratch over four `/system` paths and six verbs: the
         # `/system` subtree is a DIFFERENT SERVER with an envelope of its own. `PATCH`
@@ -6086,13 +6086,13 @@ class PlexSim:
         # recorded "a real PMS never answers 405", which is the library server's rule --
         # a bare `OPTIONS` is a 200 with an empty body, and every other unimplemented
         # verb, and an unknown path under it, is a 404 with an EMPTY body and no
-        # `Content-Type` at all. plexsim answered its own text/plain 404 to all of them.
+        # `Content-Type` at all. simplex answered its own text/plain 404 to all of them.
         if segments[:2] == ["system", "proxy"]:
             # Cycle 22, measured on kids, zen and plexscratch: `/system/proxy` is the
             # one path in this subtree that does NOT take cycle 18's envelope. Every
             # verb, GET included, answers its own 400 -- not the empty-bodied 404 the
             # rest of `/system` answers, and not the 405 a PATCH gets there.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if segments[:1] == ["system"]:
             if method == "PATCH":
                 return ("text", 405, "<html><head><title>405: Method Not Allowed</title>"
@@ -6105,7 +6105,7 @@ class PlexSim:
             if method in ("POST", "PUT", "DELETE") and not (
                     method == "PUT" and len(segments) == 5
                     and segments[1] == "agents" and segments[3] == "config"):
-                # The same envelope: an empty body, not plexsim's text/plain refusal --
+                # The same envelope: an empty body, not simplex's text/plain refusal --
                 # and it has to come BEFORE the `/system` routes, which answered their
                 # own GET to a PUT. Cycle 58: the one framework WRITER under it is the
                 # legacy agent order's PUT.
@@ -6118,15 +6118,15 @@ class PlexSim:
         if method == "PATCH" and (route in ("/library/sections", "/status/sessions",
                                             "/media/providers")
                                   or segments[:1] in (["playQueues"], ["accounts"])):
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if method == "POST" and segments[:1] == ["accounts"] and len(segments) == 2:
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
 
         if method in ("GET", "HEAD"):
             # Cycle 55, measured on zen and kids: `type=` is read as a NUMBER on every
             # read path -- `type=01` and `type=+1` answer exactly what `type=1` does on
             # the genre axis, the grid, `/filters` and Home's Recently Added -- where
-            # plexsim compared the string and answered a different body. Normalised
+            # simplex compared the string and answered a different body. Normalised
             # once here, after the refusals that read the raw value have their own copy
             # in `_pairs`.
             if _int_param(query.get("type", ""), None):
@@ -6148,11 +6148,11 @@ class PlexSim:
         if segments[:1] == ["search"] and len(segments) == 1 \
                 and method not in ("GET", "HEAD"):
             # Cycle 22, measured on kids, zen and plexscratch: `/search` is a real
-            # ROUTED endpoint and refuses its writers with a 400, where plexsim fell
+            # ROUTED endpoint and refuses its writers with a 400, where simplex fell
             # through to the plug-in dispatcher below and answered a listing -- which
             # reads to a client as an accepted write. It has to come BEFORE that
             # fallthrough, which is what makes every other single segment answer.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if route.startswith("/:/plugins/") and method not in ("GET", "HEAD"):
             # Cycle 52, swept over seven verbs on kids and zen: `/:/plugins/{hosted id}`
             # and everything under it carry the plug-in framework's envelope, exactly as
@@ -6171,7 +6171,7 @@ class PlexSim:
 
         # Cycle 23, measured on plexscratch over 138 path templates x 7 verbs: three
         # more read-only routes answer 404 to every verb but GET and HEAD, where
-        # plexsim answered each one's own GET to all five others. Cycle 19 recorded the
+        # simplex answered each one's own GET to all five others. Cycle 19 recorded the
         # rule; these three never had it applied, so a client reading a 200 from
         # `DELETE /hubs/sections/1` was told the write was accepted.
         if method not in ("GET", "HEAD") and (
@@ -6179,7 +6179,7 @@ class PlexSim:
                 or (segments[:2] == ["hubs", "sections"] and len(segments) == 3)
                 or (segments[:2] == ["library", "metadata"] and len(segments) == 4
                     and segments[3] == "children")):
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
 
         # Measured: an id of 2^31 or more is a 400 on the families that parse theirs
         # as a 32-bit integer, where metadata and sections answer 404; and a play
@@ -6190,11 +6190,11 @@ class PlexSim:
             if segments[:len(prefix)] == prefix and len(segments) > len(prefix):
                 ident = segments[len(prefix)]
                 if ident.isdigit() and int(ident) >= 2 ** 31:
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
         # Cycle 36: the four paths whose id is an int32 column, guarded in one place
         # rather than at each handler -- see `int32_segment`. The order matters: a value
         # that does not fit is a 400 BEFORE the path's own refusal, and a negative one
-        # inside the range is a 404 after it. plexsim had the bound on `/devices` and
+        # inside the range is a 404 after it. simplex had the bound on `/devices` and
         # `/playQueues` only, and on `/playQueues` it read a small negative as malformed.
         bounded = None
         if segments[:1] in (["playQueues"], ["devices"], ["accounts"]) and len(segments) > 1:
@@ -6204,11 +6204,11 @@ class PlexSim:
         if bounded is not None:
             verdict = int32_segment(bounded)
             if verdict == "range":
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if verdict == "negative":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
         if segments[:1] == ["playQueues"] and len(segments) > 1 and not segments[1].isdigit():
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
 
         # A Part read is not a container response; it returns a streaming
         # sentinel the handler turns into a body. Only for the READ verbs: the
@@ -6216,12 +6216,12 @@ class PlexSim:
         if route.startswith("/library/parts/") and method in ("GET", "HEAD"):
             # Measured: only `/library/parts/{id}/{version}/{file}` is the media. A
             # non-numeric version, anything deeper, and the BIF thumbnail index
-            # (`/indexes/sd/{offset}`) are 404s -- plexsim handed all of them to the
+            # (`/indexes/sd/{offset}`) are 404s -- simplex handed all of them to the
             # part reader, so a client asking for preview thumbnails was sent the
             # whole video. A wrong numeric version or file name still serves, and so
             # do the bare part and a part with no file name.
             if len(segments) > 5 or (len(segments) == 5 and not segments[3].isdigit()):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return ("stream", segments, query)
 
         stale = self._stale_framework_cookie(route, headers)
@@ -6238,7 +6238,7 @@ class PlexSim:
                 # else on the surface carries `text/html` and a body. Cycle 18 recorded
                 # the empty body for the non-GET verbs and implemented it as an empty
                 # `text/html`, and the GET was never covered, so it still carried
-                # plexsim's own 18-byte text/plain refusal.
+                # simplex's own 18-byte text/plain refusal.
                 result = ("bare", result[1])
             if isinstance(result, dict) and method in ("GET", "HEAD") \
                     and self._expands_full_rows(segments, query):
@@ -6247,7 +6247,7 @@ class PlexSim:
                     # the Common row takes `Extras` and `Related` ONLY -- the
                     # parent blocks `Children` and `OnDeck` and the item's `Preferences`
                     # are absent even on a show, where the hub page's full row takes all
-                    # five. plexsim handed the Common row every block.
+                    # five. simplex handed the Common row every block.
                     self.expand_full_rows(result, {
                         name: value for name, value in query.items()
                         if name in ("includeExtras", "includeRelated",
@@ -6306,7 +6306,7 @@ class PlexSim:
             # the library unfiltered is the trap -- the caller cannot tell its
             # filter did nothing.
             logger.warning("REFUSED %s: %s", route, refused.detail)
-            return ("error", refused.status, "plexsim: %s" % refused.detail)
+            return ("error", refused.status, "simplex: %s" % refused.detail)
 
     def metadata_provider_rows(self, *, group):
         """The rows of `/media/providers/metadata` or of its `/group` form.
@@ -6316,8 +6316,8 @@ class PlexSim:
         could show -- the XML is `builtIn="1"` and `order="1000"` on both, so it cannot:
 
         * `builtIn` is the **string `"1"`** on 1.42.2 and the boolean `true` on 1.43.4.
-          plexsim reports 1.42.2 and sent `true`. The seventh per-version shape.
-        * `order` is the **float `1000.0`** on BOTH versions; plexsim sent the integer
+          simplex reports 1.42.2 and sent `true`. The seventh per-version shape.
+        * `order` is the **float `1000.0`** on BOTH versions; simplex sent the integer
           `1000`. Same family as `durationTotal`/`storageTotal` being JSON strings.
         """
         providers = self.metadata_agent_providers()
@@ -6361,10 +6361,10 @@ class PlexSim:
     # not 4, while `/system/agents` numbers the same agent 4. Provider 4 is the
     # MusicBrainz intermediary every server creates and the listing never shows; it
     # answers only its per-id GET. A fresh install agreeing makes it a rule, not one
-    # database's history. plexsim derived both ids from the agent's position.
+    # database's history. simplex derived both ids from the agent's position.
     METADATA_PROVIDER_IDS = {"tv.plex.agents.movie": 1, "tv.plex.agents.series": 2,
                              "tv.plex.agents.music": 3, "tv.plex.agents.none": 5}
-    # zen's row (the version plexsim reports, and the server whose Plex Music row this
+    # zen's row (the version simplex reports, and the server whose Plex Music row this
     # table already follows). kids and the fresh install carry `uri: ""` and
     # `online: false` on it -- and on Plex Music too: that pair is the music provider's
     # reachability, state rather than shape.
@@ -6382,7 +6382,7 @@ class PlexSim:
             serves = sorted(int(number) for number, names in AGENT_MEDIA_TYPES.items()
                             if agent["identifier"] in names)
             providers.append({
-                "id": PlexSim.METADATA_PROVIDER_IDS[agent["identifier"]],
+                "id": SimPlex.METADATA_PROVIDER_IDS[agent["identifier"]],
                 "identifier": agent["identifier"],
                 "title": agent.get("name") or agent["identifier"],
                 # Measured: every modern provider but Personal Media names the
@@ -6396,7 +6396,7 @@ class PlexSim:
         return providers
 
     # Cycle 52: the transcoder answers what the DIRECT path answers. Rather than model
-    # that with a second table that would drift, ask plexsim's own router -- which is the
+    # that with a second table that would drift, ask simplex's own router -- which is the
     # only thing that knows -- and read the kind it returns. `_inner_refuses` carries the
     # two-way split back: a non-200 is a 404 here and a 200 that is not an image is a 500.
     _inner_refuses = False
@@ -6462,7 +6462,7 @@ class PlexSim:
         if route == "/media/providers/metadata/group" and method == "POST":
             # Cycle 40: Plex Web 4.160 exposes Add Agent as soon as both metadata
             # provider tables load.  Both disposable PMS versions accept this exact
-            # query-only POST and answer the newly created group; plexsim inherited
+            # query-only POST and answer the newly created group; simplex inherited
             # Cycle 31's broad 400, which was measured only on the provider listing.
             title = query.get("title")
             primary = query.get("primaryIdentifier")
@@ -6470,7 +6470,7 @@ class PlexSim:
             provider = next((row for row in providers
                              if row["identifier"] == primary), None)
             if title is None or provider is None:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             with self.lock:
                 group_id = self.next_metadata_provider_group
                 self.next_metadata_provider_group += 1
@@ -6515,27 +6515,27 @@ class PlexSim:
                 # takes the rename verb -- `PUT /group/3?title=Plex%20Music`, its own
                 # title, answers the row -- and its items path refuses Personal Media as
                 # a custom group's does (`PUT /group/3/items/5?after=-1` is a 400).
-                # Plex Web hides both behind `builtIn`; plexsim 404'd them. A DIFFERENT
+                # Plex Web hides both behind `builtIn`; simplex 404'd them. A DIFFERENT
                 # title is a real rename: `?title=Plex%20Music%20W3` answers the row with
                 # it and the group listing and `/group/3` keep it until the next rename
                 # (the provider row's own title does not change).
                 if len(segments) == 5:
                     if query.get("title") is None:
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                     with self.lock:
                         self.builtin_group_titles[group_id] = query["title"]
                     built_in = [dict(built_in[0], title=query["title"])]
                     return self.bare_container(size=1, MetadataAgentProviderGroup=built_in)
                 if len(segments) == 7 and segments[5] == "items" and segments[6].isdigit():
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
             with self.lock:
                 group = self.metadata_provider_groups.get(group_id)
                 if group is None:
-                    return ("error", 404, "plexsim: not found")
+                    return ("error", 404, "simplex: not found")
                 if len(segments) == 5 and method == "PUT":
                     title = query.get("title")
                     if title is None:
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                     group["title"] = title
                     answer = self.metadata_agent_provider_group(group)
                     return self.bare_container(size=1,
@@ -6550,16 +6550,16 @@ class PlexSim:
                     # refuse it as an incompatible secondary and, since no membership
                     # was created, answer 404 to the paired DELETE.
                     if method == "PUT":
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                     if method == "DELETE":
-                        return ("error", 404, "plexsim: not found")
-            return ("error", 404, "plexsim: not found")
+                        return ("error", 404, "simplex: not found")
+            return ("error", 404, "simplex: not found")
 
         # Cycle 44, found by sweeping the PMS path literals out of Plex Desktop's own
         # bundle: the per-id GETs are real. `/media/providers/metadata/{id}` and
         # `/media/providers/metadata/group/{id}` answer the same row the bare table
         # carries, as a one-row container; an id the server does not hold is a 404 and a
-        # NON-NUMERIC one is a **400** on both references. plexsim 404'd all of it, and
+        # NON-NUMERIC one is a **400** on both references. simplex 404'd all of it, and
         # these are exactly the two shapes the Settings -> Agents pane's own bundle
         # builds (`/media/providers/metadata/${e.id}`, `/media/providers/metadata/group/
         # ${l}`) once the tables have loaded.
@@ -6567,10 +6567,10 @@ class PlexSim:
                 and len(segments) in (4, 5)
                 and not (len(segments) == 4 and segments[3] == "group")):
             if len(segments) == 5 and segments[3] != "group":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             wanted = segments[4] if len(segments) == 5 else segments[3]
             if not wanted.isdigit():
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             rows = self.metadata_provider_rows(group=len(segments) == 5)
             if len(segments) == 4:
                 # Cycle 87: the unlisted intermediary answers its own id.
@@ -6580,42 +6580,42 @@ class PlexSim:
                    else "MetadataAgentProvider")
             picked = [row for row in rows if str(row.get("id")) == wanted]
             if not picked:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if len(segments) == 4 and method == "POST":
                 # Cycle 87, plexscratch42: a provider id takes no POST.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if len(segments) == 4 and method == "DELETE":
                 # Cycle 87, plexscratch42: a BUILT-IN provider cannot be deleted --
                 # `DELETE /media/providers/metadata/3` is a 400 and changes nothing, before
-                # and after its group is deleted. plexsim holds no other kind.
-                return ("error", 400, "plexsim: bad request")
+                # and after its group is deleted. simplex holds no other kind.
+                return ("error", 400, "simplex: bad request")
             if len(segments) == 4 and method == "PUT":
                 # Cycle 87, measured on plexscratch42 (fresh 1.42.2) against built-in
                 # provider 1, nothing changing: no `uri` or an empty one is a 400, and a
                 # `uri` PMS cannot reach is a 500 -- it fetches the provider to adopt it.
-                # plexsim hosts no external provider, so every `uri` is unreachable.
+                # simplex hosts no external provider, so every `uri` is unreachable.
                 return ("error", 500 if query.get("uri") else 400,
-                        "plexsim: bad request" if not query.get("uri")
-                        else "plexsim: internal server error")
+                        "simplex: bad request" if not query.get("uri")
+                        else "simplex: internal server error")
             return self.bare_container(size=1, **{key: picked})
 
         if route == "/media/providers/metadata/group" and method in ("PUT", "DELETE"):
             # Measured on plexscratch (1.43.4, 2026-09-30): the group LISTING is a writer
             # path, and PUT and DELETE there are its 400 with or without a `title=` -- a
-            # group is edited and removed by id. plexsim answered both with the listing.
-            return ("error", 400, "plexsim: bad request")
+            # group is edited and removed by id. simplex answered both with the listing.
+            return ("error", 400, "simplex: bad request")
         if route in ("/media/providers/metadata", "/media/providers/metadata/group"):
             if method == "POST":
                 # Cycle 31 measured this on the PROVIDER listing. Creating one needs
-                # an external provider object, a capability plexsim does not host.
-                return ("error", 400, "plexsim: bad request")
+                # an external provider object, a capability simplex does not host.
+                return ("error", 400, "simplex: bad request")
             # Cycle 27, recorded through a real client: the Settings -> Metadata Agents
             # pane reads these two immediately before `/system/agents?mediaType=`, and
             # both are populated 200s on kids (7 and 6 rows) and zen (4 and 4) where
-            # plexsim had never routed either. They are the MODERN agent-provider
+            # simplex had never routed either. They are the MODERN agent-provider
             # tables -- a different surface from `/system/agents`, whose legacy
             # `com.plexapp.agents.*` half is deliberately not implemented -- so the
-            # rows are the four modern agents plexsim already holds, in zen's shape:
+            # rows are the four modern agents simplex already holds, in zen's shape:
             # one `MetadataType` child per media type the provider serves, and a group
             # row per provider naming it by `primaryIdentifier`.
             rows = self.metadata_provider_rows(group=route.endswith("/group"))
@@ -6626,7 +6626,7 @@ class PlexSim:
                 # the no-op agent alone. An empty value is every provider.
                 wanted = str(query["metadataTypes"]).split(",")
                 if not all(_int_param(one) for one in wanted):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 wanted = {int(one) for one in wanted}
                 rows = [row for row in rows
                         if wanted <= {int(t.get("type") or 0)
@@ -6639,11 +6639,11 @@ class PlexSim:
         if route == "/media/providers":
             # Measured: a real PMS routes per (method, path) and NOT uniformly --
             # /identity and /hubs answer any verb, while these three refuse, each
-            # with its own status. plexsim answered the GET body to every verb.
+            # with its own status. simplex answered the GET body to every verb.
             if method == "POST":
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if method in ("PUT", "DELETE"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.media_providers(query, headers)
 
         # The claim flow: a client hands the server a short-lived claim token
@@ -6654,11 +6654,11 @@ class PlexSim:
             # and confirmed for GET and HEAD on kids and zen: only POST is routed here.
             # Every other verb is a 404 -- PATCH and an unknown method reaching the
             # version-wide 500 above -- exactly as the neighbouring
-            # `/myplex/refreshReachability` 404s everything but its PUT. plexsim routed
+            # `/myplex/refreshReachability` 404s everything but its PUT. simplex routed
             # the handler for every method, so a GET answered the handler's own 400 and
             # told a client the endpoint was there.
             if method != "POST":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.do_claim(query)
         if route == "/myplex/account":
             return self.myplex_account()
@@ -6667,7 +6667,7 @@ class PlexSim:
             # (measured) and accepts the PUT, so answering the GET would be
             # inventing a capability.
             if method != "PUT":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return ("empty", 200)
 
         # -- server preferences ------------------------------------------
@@ -6680,13 +6680,13 @@ class PlexSim:
             # One setting by id -- how Home reads MergedRecentlyAdded. Measured on both
             # servers: a one-row container whose Setting has an EMPTY label and summary
             # and no enumValues; no `id` is a 400, and an unknown, empty or
-            # comma-joined id a 404. plexsim 404'd the path.
+            # comma-joined id a 404. simplex 404'd the path.
             if "id" not in query:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             setting = next((s for s in self.server_prefs() if s.get("id") == query["id"]),
                            None)
             if setting is None:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             setting = {k: v for k, v in setting.items() if k != "enumValues"}
             setting.update(label="", summary="")
             return self.bare_container(size=1, Setting=[setting])
@@ -6694,15 +6694,15 @@ class PlexSim:
             if method == "PUT":
                 return self.set_prefs(query)
             if method not in ("GET", "HEAD"):
-                # Measured: a POST here is a 404 -- plexsim answered the whole
+                # Measured: a POST here is a 404 -- simplex answered the whole
                 # Setting list to any verb, so a client that posted by mistake got
                 # a success and the settings page never showed an error.
                 #
                 # Cycle 19: the HEAD is a 200 on kids (42,920 bytes), zen (43,488) and
-                # plexscratch (33,909) alike, and plexsim 404'd it -- the one
+                # plexscratch (33,909) alike, and simplex 404'd it -- the one
                 # disagreement in a HEAD sweep over sixty paths and four servers, and a
                 # breach of its own rule that a read-only route answers GET and HEAD.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             settings = self.server_prefs()
             return self.bare_container(size=len(settings), Setting=settings)
 
@@ -6724,7 +6724,7 @@ class PlexSim:
             # other framework container -- a full window answers `totalSize="0"` as the
             # first attribute and both `X-Plex-Container-*` headers (Start echoed even past
             # the end), and a partial, invalid or zero-size window is the unpaged document.
-            # plexsim served the 130-byte document whatever was asked.
+            # simplex served the 130-byte document whatever was asked.
             return ("framework-xml", FRAMEWORK_EMPTY_CONTAINER)
         if route == "/system/notify/serverUpdated":
             # Cycle 53: a 200 with an EMPTY body and `text/plain` -- and the framework
@@ -6746,7 +6746,7 @@ class PlexSim:
             # `/system/agents/zzz` included, is a 404 with an EMPTY body, which is the
             # `/system` subtree's shape.
             #
-            # plexsim answered the AGENT CATALOGUE to `/system/agents/media/get` and to
+            # simplex answered the AGENT CATALOGUE to `/system/agents/media/get` and to
             # `/system/agents/media/zzz`, 404'd `search` and `update`, and sent its own
             # text/html 500 where the framework sends its traceback.
             #
@@ -6778,60 +6778,60 @@ class PlexSim:
             # Same measurement: empty for a modern primary agent, and a 500 when the
             # two parameters the plug-in framework needs are missing.
             if not query.get("mediaType") or not query.get("primaryAgent"):
-                return ("error", 500, "plexsim: internal error")
+                return ("error", 500, "simplex: internal error")
             return self.bare_container(noHistory=0, replaceParent=0, size=0,
                                        identifier="com.plexapp.system")
         if route in ("/system/agents/attribution", "/system/agents/attribution/image") \
                 and query.get("identifier"):
             # Measured: a MODERN agent has no attribution, text or image, and says so
             # with a 404; with no identifier at all it is the framework's own traceback
-            # (above). plexsim answered the JSON agent list to both, which the Agents page
+            # (above). simplex answered the JSON agent list to both, which the Agents page
             # fed to an <img>.
             entry = AGENT_ATTRIBUTIONS.get(query["identifier"]) or {}
             if route.endswith("/image"):
                 size = entry.get("image")
                 if size is None:
-                    return ("error", 404, "plexsim: not found")
+                    return ("error", 404, "simplex: not found")
                 return ("asset", entry.get("imageType") or "image/png",
                         _png(size[0], size[1], (32, 34, 38)), False)
             if "text" not in entry:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return ("framework-plain", 200, entry["text"].encode("utf-8"),
                     entry.get("textType") or "text/plain")
         if segments[:2] == ["system", "agents"] and len(segments) == 3:
             # Measured on both servers: one agent by identifier -- a real one or
-            # `nosuch.agent` -- is a 404 with an empty body. plexsim answered the whole
+            # `nosuch.agent` -- is a 404 with an empty body. simplex answered the whole
             # agent list to it, which reads as "this identifier names six agents".
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if (segments[:2] == ["system", "agents"] and len(segments) == 4
                 and segments[3] == "config"):
             # Cycle 50: configuration is indexed. Omitting that index is a 404 on all
             # four references, not the agent catalogue.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if route.startswith("/system/agents/") or route == "/system/agents/":
             # Cycle 52: every other name under `/system/agents` -- `/media`, `/zzz`,
             # `/media/zzz` -- is a 404 with an EMPTY body on both references, where
-            # plexsim answered the whole agent catalogue to anything it did not route.
+            # simplex answered the whole agent catalogue to anything it did not route.
             return ("bare", 404)
         if route == "/system/agents":
             return self.system_agents(query)
         if segments[:2] == ["system", "scanners"]:
             if len(segments) == 2:
                 # Measured: the bare collection is a 404 -- scanners are listed
-                # per section. plexsim answered the movie list to it.
-                return ("error", 404, "plexsim: not found")
+                # per section. simplex answered the movie list to it.
+                return ("error", 404, "simplex: not found")
             return self.system_scanners(segments[2])
         if segments[:3] == ["system", "library", "sections"]:
             # The system view of the libraries, which the Agents page reads to know which
             # sections an agent can be configured for.
             #
             # Cycle 53, measured on kids (1.43.4) and zen (1.42.2): thirteen attributes,
-            # and plexsim emitted four of them plus an `agent` NO reference sends. The
+            # and simplex emitted four of them plus an `agent` NO reference sends. The
             # `key` is the URL-safe base64 of `http://{host}:{port}/library/sections/{id}`
             # with `=` written as `_`; `unique` marks a title that occurs once; the rows
             # are sorted by the title folded to lower case; and the container carries the
-            # framework's `noHistory`/`replaceParent` pair, which plexsim left off.
-            # An extra segment is a 404 on both references, where plexsim answered the
+            # framework's `noHistory`/`replaceParent` pair, which simplex left off.
+            # An extra segment is a 404 on both references, where simplex answered the
             # whole listing again -- the class cycle 52 closed for streams, accounts and
             # devices.
             if len(segments) > 3:
@@ -6870,7 +6870,7 @@ class PlexSim:
         if route.startswith("/system/appstore"):
             # Measured: a real PMS 404s the appstore paths -- the channel store
             # is gone, and the client's Plugins page copes with that.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if route.startswith("/:/plugins"):
             # The Plugins page. Cycle 52, measured on kids (1.43.4), zen (1.42.2) and both
             # disposable copies, which answer the identical seventeen rows in the identical
@@ -6887,13 +6887,13 @@ class PlexSim:
             # empty-bodied 404, and only `/prefs` answers a document.
             pieces = route.split("/")[3:]
             if not pieces or pieces[0] not in PLUGIN_LIST:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             bundle = PLUGIN_BUNDLES.get(pieces[0]) or {}
             if not bundle and len(pieces) > 1:
                 # A bundle the server hosts but does NOT run -- the framework, the media
                 # flags, the scanners and the web client -- answers the framework's
                 # 109-byte 500 to every sub-path, not only to `prefs`.
-                return ("error", 500, "plexsim: plug-in has no preferences")
+                return ("error", 500, "simplex: plug-in has no preferences")
             if pieces[1:] == ["messaging", "wait"] and bundle:
                 return ("framework-plain", 200, PLUGIN_WAIT, "text/plain")
             if pieces[1:] == ["prefs", "set"] and bundle:
@@ -6916,7 +6916,7 @@ class PlexSim:
                 if document is None:
                     # The framework's own failure for the four bundles that have no
                     # preference document: a 500 with the standard page and NO cookie.
-                    return ("error", 500, "plexsim: plug-in has no preferences")
+                    return ("error", 500, "simplex: plug-in has no preferences")
                 return ("framework-xml", document.encode("utf-8"))
             # A bare identifier, and any other path under one, is a 404 with an EMPTY
             # body -- no `Content-Type` at all -- which is the framework's shape (cycle
@@ -6927,14 +6927,14 @@ class PlexSim:
             # required arguments, not an empty PMS API collection.  Both target
             # versions return the framework's XML traceback even when JSON was
             # requested.  The body differs only in the build-specific bundle hash
-            # and runtime line; use the 1.42.2 form that plexsim advertises.
+            # and runtime line; use the 1.42.2 form that simplex advertises.
             #
             # Cycle 87: that traceback is the BARE request only. With a `url` argument --
             # empty, `x`, a relative path, an http URL, a YouTube link -- the function runs,
             # no URL service claims it, and plexscratch42, kids and zen all answer a 404
             # with an EMPTY body and no `Content-Type` (cookie kept), under every Accept,
             # gzip offer, paging and HEAD. A query without `url` (`foo=1`, `URL=x`) is
-            # still the traceback. plexsim answered the traceback to all of them.
+            # still the traceback. simplex answered the traceback to all of them.
             if "url" in query:
                 return ("bare", 404)
             return ("plugin-xml", 500, URL_LOOKUP_ERROR)
@@ -6943,38 +6943,38 @@ class PlexSim:
             # Cycle 52, measured on kids and zen: the augmentation id is PARSED before the
             # row is looked up, so a value that is not a number is a **400** and a number
             # the server does not hold is the ordinary 404 -- the shape `/devices`,
-            # `/accounts`, `/playQueues` and `/system/scanners` already have. plexsim
+            # `/accounts`, `/playQueues` and `/system/scanners` already have. simplex
             # answered 404 to both, so a client could not tell a malformed id from a
             # missing augmentation.
             if len(segments) > 3 and not segments[3].isdigit():
-                return ("error", 400, "plexsim: bad request")
-            return ("error", 404, "plexsim: not found")
+                return ("error", 400, "simplex: bad request")
+            return ("error", 404, "simplex: not found")
         if segments[:1] == ["accounts"]:
             if len(segments) > 2:
                 # Cycle 52, measured on kids and zen: an extra segment after the account
                 # id is a 404 -- `/accounts/1/history` and `/accounts/1/zzz` alike.
-                # plexsim's handler read `segments[1]` and ignored the rest, so both
+                # simplex's handler read `segments[1]` and ignored the rest, so both
                 # answered the account row, which reads as "this endpoint exists".
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if method == "DELETE":
                 # Cycle 19: a 404 for a known id and an unknown one alike, measured on
-                # plexscratch. plexsim answered the accounts LISTING to `DELETE
+                # plexscratch. simplex answered the accounts LISTING to `DELETE
                 # /accounts/1` -- a container where a real PMS refuses, which is the
                 # shape a client reads as a successful write.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.accounts(segments[1] if len(segments) > 1 else None)
         if segments[:1] == ["devices"]:
             if len(segments) > 2:
-                # Cycle 52: and the same on `/devices/{id}/zzz`, where plexsim answered
+                # Cycle 52: and the same on `/devices/{id}/zzz`, where simplex answered
                 # the WHOLE device list.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if method == "DELETE":
                 # Cycle 19, measured on plexscratch: `DELETE /devices/{id}` is a 404 for
                 # an id the server's own `/devices` lists (62 rows there) AND for one it
                 # does not, and the list is unchanged either way -- a device is
-                # unregistered through plex.tv, not through the server. plexsim answered
+                # unregistered through plex.tv, not through the server. simplex answered
                 # an empty 200, which a client reads as "removed".
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if method == "POST" and len(segments) == 1:
                 # Measured: the legacy plug-in dispatcher answers this one.
                 return self.bare_container(size=0, content="plugins")
@@ -6984,13 +6984,13 @@ class PlexSim:
                 # `/butler` does -- measured on plexscratch.
                 return self.bare_container(size=0, content="plugins")
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if len(segments) == 2:
                 # `/devices/{id}`: one row, and a 404 for an id the server never
                 # assigned -- including a non-number.
                 device = self.sessions.device(segments[1])
                 if device is None:
-                    return ("error", 404, "plexsim: not found")
+                    return ("error", 404, "simplex: not found")
                 return self.bare_container(size=1, identifier="com.plexapp.system.devices",
                                            Device=[device])
             return self.devices()
@@ -6998,7 +6998,7 @@ class PlexSim:
             # Cycle 28, measured on kids (1.43.4) and zen (1.42.2), identically: this is
             # NOT the hosted-client list -- it is the server's CLIENT PROFILE catalogue,
             # one `Profile` row per file in its `Resources/Profiles` directory, which is
-            # the same 78 names plexsim already holds for `Player.profile`. The Optimize
+            # the same 78 names simplex already holds for `Player.profile`. The Optimize
             # dialog's target list reads it as `/clients/profiles?type=42`.
             #
             #   bare, `type=0`, `type=00`  -> all 78
@@ -7007,20 +7007,20 @@ class PlexSim:
             #       Windows, Xbox One -- and the selected one carries `selected="1"`
             #   everything else, an empty value included -> 400
             #
-            # An extra segment is a 404 and a trailing slash is a 200. plexsim answered
+            # An extra segment is a 404 and a trailing slash is a 200. simplex answered
             # an empty container to all of them, on the reading that it hosts no client;
             # that is true of `/clients` and not of this.
             if len(segments) > 2:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             wanted = query.get("type")
             if wanted is not None and not (wanted.isdigit() and int(wanted) in (0, 42)):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             names = (LOCAL_CLIENT_PROFILES if wanted and int(wanted) == 42
                      else CLIENT_PROFILE_ORDER)
             rows = [{"title": name} for name in names]
             return self.bare_container(size=len(rows), Profile=rows)
         if route == "/clients":
-            # No Plex client is ever *hosted* by plexsim, so this is empty for
+            # No Plex client is ever *hosted* by simplex, so this is empty for
             # the same reason a headless PMS's is.
             return self.bare_container(size=0)
 
@@ -7028,12 +7028,12 @@ class PlexSim:
             if len(segments) > 2:
                 # Cycle 26, measured on kids and zen: an extra segment after the leaf is
                 # a 404 -- `/statistics/bandwidth/zzz`, `/statistics/media/zzz` and
-                # `/statistics/resources/zzz` all refuse. plexsim read `segments[1]` and
+                # `/statistics/resources/zzz` all refuse. simplex read `segments[1]` and
                 # ignored everything after it, so `/statistics/bandwidth/zzz` answered
                 # the whole series. A 200 tells a client the endpoint exists, which is
                 # fix 4's failure mode and the same shape cycle 25 found behind
                 # `/library/sections/{id}/recentlyReleased`.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if len(segments) == 1:
                 # Cycle 18: the BARE path is the plug-in dispatcher's empty 200 on both
                 # references, not the 404 the unknown-leaf branch answered.
@@ -7044,20 +7044,20 @@ class PlexSim:
             return self.updater_status()
         if route in ("/updater/check", "/updater/apply"):
             # Measured: only the PUT of `check` exists. A GET of either is a 404,
-            # and a PUT of `apply` with nothing downloaded is a 400 -- plexsim
+            # and a PUT of `apply` with nothing downloaded is a 400 -- simplex
             # answered an empty 200 to all four, which reads as "the update is
             # being installed".
             if method != "PUT":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if route == "/updater/apply":
                 logger.warning("UPDATER apply requested -- nothing downloaded")
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             # Cycle 19, measured on plexscratch behind a control write, 2 of 2 runs: the
             # check pushes ONE frame -- a NotificationContainer of type
-            # `update.statechange` carrying an `AutoUpdateNotification` row. plexsim
+            # `update.statechange` carrying an `AutoUpdateNotification` row. simplex
             # pushed none, so Settings > General > Check for Updates never resolved.
             # The copy is isolated from plex.tv, so its `state` is `error`; the frame
-            # TYPE and the row NAME are not that limit, and plexsim -- which has no
+            # TYPE and the row NAME are not that limit, and simplex -- which has no
             # update channel either -- answers the same state honestly.
             self.notify("update.statechange", "AutoUpdateNotification",
                         [{"key": "", "version": "", "state": "error"}])
@@ -7067,19 +7067,19 @@ class PlexSim:
             if method == "DELETE" and len(segments) > 1:
                 # Measured: cancelling an activity that is not running is a 404.
                 if not self.library.cancel_activity(segments[1]):
-                    return ("error", 404, "plexsim: no such activity")
+                    return ("error", 404, "simplex: no such activity")
                 return ("empty", 200)
             if method == "PUT" and len(segments) > 1:
                 # Cycle 19, measured on plexscratch: a PUT to an activity is a 400 --
                 # for a well-formed uuid, `?cancel=1`, a word and a number alike --
-                # where the DELETE of the same path is a 404. plexsim 404'd both, so a
+                # where the DELETE of the same path is a 404. simplex 404'd both, so a
                 # client's cancel could not tell a malformed request from a finished
                 # activity.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if len(segments) > 1:
                 # Measured: an activity has no read of its own -- `GET /activities/{id}`
-                # is a 404, for a live uuid on fun as well. plexsim answered the list.
-                return ("error", 404, "plexsim: not found")
+                # is a 404, for a live uuid on fun as well. simplex answered the list.
+                return ("error", 404, "simplex: not found")
             # Cycle 65, measured on plexscratch42 while an item refresh ran: the list is
             # localised the way the socket is -- en `Refreshing`, de `Aktualisieren …`.
             language = getattr(_REQUEST, "language", None)
@@ -7089,7 +7089,7 @@ class PlexSim:
 
         if segments == ["status", "sessions", "history"]:
             # Measured: only `/all` and a historyKey exist; the bare path is a 404.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if segments[:3] == ["status", "sessions", "history"] and len(segments) == 4:
             if method == "DELETE":
                 return self.delete_history(segments[3])
@@ -7097,7 +7097,7 @@ class PlexSim:
                 return self.history(query)
             if segments[3].isdigit() and method in ("GET", "HEAD"):
                 # Measured on both servers: one history row by its key -- the same row
-                # history/all lists, alone in a container carrying only `size`. plexsim
+                # history/all lists, alone in a container carrying only `size`. simplex
                 # listed `/status/sessions/history/1` in history/all and 404'd that key.
                 wanted = "/status/sessions/history/%s" % int(segments[3])
                 found = [self._history_row(r) for r in self.library.history()
@@ -7105,21 +7105,21 @@ class PlexSim:
                 if found:
                     return self.bare_container(size=1, Metadata=found[:1])
             # Measured: only `all` and a numeric historyKey exist here.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if route == "/status/sessions/terminate":
             # Measured: keyed on `Session.id` (not sessionKey), 400 without one,
             # 404 for an id that is not live, and the kill itself is delivered
             # through that session's NEXT timeline rather than in this response.
             session_id = query.get("sessionId")
             if not session_id:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if not self.sessions.terminate(session_id, query.get("reason")):
-                return ("error", 404, "plexsim: no such session")
+                return ("error", 404, "simplex: no such session")
             logger.info("TERMINATE %s: %s", session_id, query.get("reason"))
             return ("empty", 200)
         if route == "/status/sessions/background":
             return self.bare_container(size=0)
-        # Cycle 26, measured on kids and zen: this is not a PREFIX. Six paths plexsim
+        # Cycle 26, measured on kids and zen: this is not a PREFIX. Six paths simplex
         # answered 200 -- `/status/sessionsfoo`, `/status/sessions/zzz`,
         # `/status/sessions/1`, `/status/sessions/background/zzz`,
         # `/status/sessions/history/all/zzz` and `/status/sessions/history/all/1/2` --
@@ -7129,9 +7129,9 @@ class PlexSim:
         # are routed above this line, so an exact match is all that reaches here.
         if route == "/status/sessions":
             if method in ("POST", "PUT", "DELETE"):
-                # Measured: all three are 404 here. plexsim answered the session
+                # Measured: all three are 404 here. simplex answered the session
                 # listing to any verb.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             rows = self.session_rows()
             page, paged, start, total = self.page_window(rows, query)
             fields = {"size": len(page)}
@@ -7144,67 +7144,67 @@ class PlexSim:
         if segments[:2] == ["transcode", "sessions"]:
             if len(segments) > 2:
                 # Measured: an id that is not a live transcode session is a 404,
-                # for GET and DELETE alike. plexsim never opens one, so that is
+                # for GET and DELETE alike. simplex never opens one, so that is
                 # every id.
-                return ("error", 404, "plexsim: no such transcode session")
+                return ("error", 404, "simplex: no such transcode session")
             if method not in ("GET", "HEAD"):
-                # Measured: DELETE and POST on the bare collection are 404s. plexsim
+                # Measured: DELETE and POST on the bare collection are 404s. simplex
                 # answered 200 to both.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.bare_container(size=0)
 
         if route == "/security/token":
             # The client asks for a delegation token before handing a URL to
-            # another device. plexsim has no second party to delegate to, but the
+            # another device. simplex has no second party to delegate to, but the
             # shape is what the caller reads. Measured: a request with no `type`
             # and no `scope` is a 400, and each call answers a DIFFERENT token --
-            # plexsim answered a constant, so two devices shared one credential.
+            # simplex answered a constant, so two devices shared one credential.
             # Cycle 45, measured on kids and zen: the VALUES are validated too, and
             # case-SENSITIVELY. Exactly `type=delegation` and `scope=all` answer a
             # token; `Delegation`, `All`, `transient`, `sync`, `zzz` and
             # `scope=server` are each a 400, as is a repeated parameter whose LAST
             # occurrence is wrong (the last one wins, as everywhere else on the
-            # surface). plexsim checked only that the names were present and minted a
+            # surface). simplex checked only that the names were present and minted a
             # token for anything -- and a real PMS asks this exact question when it
-            # probes plexsim as a shared source.
+            # probes simplex as a shared source.
             if query.get("type") != "delegation" or query.get("scope") != "all":
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if self.gated():
                 given = (headers or {}).get("X-Plex-Token") or query.get("X-Plex-Token")
                 if not self.token_admitted(given):
                     # Measured: 403 here, not the 401 every other path answers.
-                    return ("error", 403, "plexsim: forbidden")
+                    return ("error", 403, "simplex: forbidden")
             return self.bare_container(size=0, token="transient-" + str(uuid.uuid4()))
         if segments[:1] == ["downloadQueue"]:
             return self.download_queue(method, segments, query, headers)
         if route == "/channels":
             # Measured 200 on both servers with exactly these two rows. The channel
             # APPSTORE paths do 404 (which CLAUDE.md already records) -- bare
-            # /channels does not, and plexsim 404'd it.
+            # /channels does not, and simplex 404'd it.
             return self.bare_container(size=2, Directory=[
                 {"key": "all", "title": "All"},
                 {"key": "recentlyViewed", "title": "Recently Viewed"}])
         if route == "/channels/recentlyViewed":
             # Measured on both servers: the plug-in dispatcher's empty answer, the
-            # same as /channels/all. plexsim 404'd it.
+            # same as /channels/all. simplex 404'd it.
             return self.bare_container(size=0, content="plugins")
         if route == "/neighborhood/devices" and method in ("GET", "HEAD"):
             # The DLNA devices this server can see. Measured: an empty container on
-            # the reference, and fun lists the renderers on its LAN. plexsim sees
+            # the reference, and fun lists the renderers on its LAN. simplex sees
             # none, and 404'd the Settings page's read.
             return self.bare_container(size=0)
         if route == "/services/defaultLibraries" and method in ("GET", "HEAD"):
             # Measured on both servers: a 400 with and without a language, which the
             # first-run setup reads as "no suggested libraries".
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if route == "/channels/all":
             # Measured 200 on the reference with nothing but `size` and
-            # `content="plugins"`; plexsim 404'd it.
+            # `content="plugins"`; simplex 404'd it.
             return self.bare_container(size=0, content="plugins")
         if route == "/services/browse" or route.startswith("/services/browse/"):
             return self.browse(route, query)
         if route == "/media/grabbers":
-            # Measured: four grabbers, verbatim. plexsim answered an empty
+            # Measured: four grabbers, verbatim. simplex answered an empty
             # container, which tells the Live TV setup page the server has no
             # tuner protocols at all rather than no tuners.
             return self.bare_container(size=len(MEDIA_GRABBERS),
@@ -7213,7 +7213,7 @@ class PlexSim:
                 and segments[1] in ("grabbers", "subscriptions")
                 and len(segments) > 2):
             # Measured: every child of these two is a 404 -- a named grabber, a
-            # grabber's devices, one subscription. plexsim answered empty
+            # grabber's devices, one subscription. simplex answered empty
             # containers, so the Live TV pages drew controls for things that do
             # not exist. The two collection roots themselves are real.
             # `/media/grabbers/devices` is the tuner-device list and is real (an
@@ -7224,48 +7224,48 @@ class PlexSim:
                 return self.bare_container(size=0)
             if segments[1] == "subscriptions" and segments[2] == "template" \
                     and len(segments) == 3 and method in ("GET", "HEAD"):
-                # Measured on both servers: a 400 for any guid, where plexsim 404'd.
-                return ("error", 400, "plexsim: bad request")
+                # Measured on both servers: a 400 for any guid, where simplex 404'd.
+                return ("error", 400, "simplex: bad request")
             if not (segments[1] == "subscriptions" and segments[2] == "scheduled"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
         if route == "/security/resources":
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
 
         if route in ("/logs", "/diagnostics"):
             # Not the zip -- measured: a container with a `content` string, and
-            # `/diagnostics` answers the same. plexsim 404'd the latter.
+            # `/diagnostics` answers the same. simplex 404'd the latter.
             return self.bare_container(size=0, content="plugins")
         if route == "/log/networked":
             # The networked-logging endpoint a companion client posts to. Measured
-            # 200 with an empty body on both verbs; plexsim 404'd it.
+            # 200 with an empty body on both verbs; simplex 404'd it.
             return ("empty", 200)
         if segments[:1] == ["resources"] and len(segments) == 2:
             # Cycle 22, measured on kids, zen and plexscratch: `/resources/{anything}`
             # is a real 200 answering an empty container -- `1`, `99999` and `abc`
-            # alike -- and on plexscratch every verb answers the same. plexsim 404'd
+            # alike -- and on plexscratch every verb answers the same. simplex 404'd
             # it, so a client probing a resource id read "no such server" where a real
             # PMS says "nothing here".
             return self.bare_container(size=0)
         if segments[:1] == ["search"] and len(segments) == 2 \
                 and segments[1] == "voice" and not query.get("query"):
             # Measured on all three: `/search/voice` with no parameters is a 400, and a
-            # 404 once a `query=` is given -- so the path exists and validates. plexsim
+            # 404 once a `query=` is given -- so the path exists and validates. simplex
             # 404'd it unconditionally.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if route == "/resources":
             # Measured: an empty container, not a 404. It is the device-resource
-            # list a companion client reads, and plexsim has no devices of its own.
+            # list a companion client reads, and simplex has no devices of its own.
             return self.bare_container(size=0)
         if route == "/log":
             # The web client posts its OWN errors here. Answering with a
             # container is wrong (a real PMS answers empty), and dropping them
             # means the client's logging silently goes nowhere -- so they land in
-            # plexsim's log, where Download Logs will hand them back.
+            # simplex's log, where Download Logs will hand them back.
             # Measured: `level` must be an integer AND `message` must be present,
             # on every verb -- either alone, or a non-numeric level, is a 400.
             level = query.get("level") or ""
             if not level.lstrip("-").isdigit() or "message" not in query:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             logger.info("CLIENT LOG [%s] %s: %s", level, query.get("source") or "client",
                         (query.get("message") or "")[:400])
             return ("empty", 200)
@@ -7294,28 +7294,28 @@ class PlexSim:
             # references: this one is a 200 on kids and zen alike, an empty
             # `com.plexapp.system` container carrying `mediaTagPrefix` and a `prefsKey`
             # -- the only container attribute either reference emits anywhere that
-            # plexsim never did. It is unpaged even with both paging headers. plexsim
+            # simplex never did. It is unpaged even with both paging headers. simplex
             # 404'd it: the mirror image of the three endpoints cycle 14's path census
-            # found plexsim had INVENTED.
+            # found simplex had INVENTED.
             return self.bare_container(
                 size=0, identifier="com.plexapp.system",
                 mediaTagPrefix="/system/bundle/media/flags/",
                 prefsKey="/:/plugins/com.plexapp.system/prefs")
         if route == "/system/proxy":
             # A real PMS refuses this without the headers its own clients send.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if route == "/servers":
             # Cycle 49: this list is what the server has DISCOVERED, and its own row
             # carries its own real address and its own real port. zen answers
             # `192.168.88.244` and kids `172.31.7.2` -- each server's own interface
-            # address, not loopback -- and both name the port they listen on. plexsim
+            # address, not loopback -- and both name the port they listen on. simplex
             # hard-coded `127.0.0.1` and the constant 32400, so a companion client that
             # reads /servers to find this server was sent to its own loopback on a port
-            # plexsim may not even be on. (`private_address` was declared and never
+            # simplex may not even be on. (`private_address` was declared and never
             # assigned for the whole life of the field.)
             # ... and the rest of the list is what GDM found. zen answered THREE rows
-            # while a plexsim was on its wire -- itself, the other server, and plexsim --
-            # and two once plexsim stopped. The self row comes first and the discovered
+            # while a simplex was on its wire -- itself, the other server, and simplex --
+            # and two once simplex stopped. The self row comes first and the discovered
             # ones follow in the order they were first seen.
             rows = [{
                 "name": catalog.friendly,
@@ -7341,63 +7341,63 @@ class PlexSim:
                 and segments[3] == "refresh" and "force" in query \
                 and not str(query["force"]).lstrip("-").isdigit():
             # Cycle 17, measured on plexscratch: the flag is PARSED -- `abc`, `1.5` and
-            # an empty value are 400s where `0` and `1` are 200s. plexsim took anything
+            # an empty value are 400s where `0` and `1` are 200s. simplex took anything
             # and ran the scan, so a malformed flag triggered a refresh.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if segments[:2] == ["library", "metadata"] and len(segments) == 4 \
                 and segments[3] == "match":
             # Cycle 17, measured on plexscratch: `/match` answers EVERY verb with its
             # own no-parameters refusal -- a GET and a DELETE there are 400, not 404.
-            # plexsim 404'd both, so the client's own "is this matchable?" read looked
+            # simplex 404'd both, so the client's own "is this matchable?" read looked
             # like an endpoint that does not exist.
             #
             # Cycle 25: "every verb" was recorded and implemented as two of them. Kids
             # answers 400 to GET, HEAD, PUT, POST, DELETE, PATCH and a bare OPTIONS
-            # alike -- re-measured over all seven -- where plexsim still 404'd HEAD,
+            # alike -- re-measured over all seven -- where simplex still 404'd HEAD,
             # PATCH and OPTIONS. Class C exactly: the rule in the comment above was
             # right and the list beside it was a subset. The PUT and POST forms fall
             # through to `item_action`, which carries the same refusal with its own
             # parameter checks in front of it.
             if method not in ("PUT", "POST"):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
         if segments[:1] == ["player"]:
             # Player commands go to a PLAYER, not to a server: a real PMS answers
-            # 400 for every one of them. plexsim answered 200 with a container,
+            # 400 for every one of them. simplex answered 200 with a container,
             # which tells a companion client the command was accepted.
             #
             # Cycle 59, measured on zen, kids and both copies: WITH an
             # `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
             # `PlexClient.sendCommand()` -- the server looks for that player to proxy to
             # and answers 404, for an unknown id, a listed device and an empty value
-            # alike. plexsim answered 400, so a controller catching `NotFound` took the
+            # alike. simplex answered 400, so a controller catching `NotFound` took the
             # wrong branch.
             if headers is not None and headers.get("X-Plex-Target-Client-Identifier") is not None:
-                return ("error", 404, "plexsim: no such player")
-            return ("error", 400, "plexsim: bad request")
+                return ("error", 404, "simplex: no such player")
+            return ("error", 400, "simplex: bad request")
         if route in ("/livetv/epg/lineup", "/livetv/epg/channelmap",
                      "/livetv/epg/lineupchannels"):
             # Measured on two servers with NO tuner: these three are 400, not the
-            # blanket empty container plexsim answered for the whole /livetv tree.
+            # blanket empty container simplex answered for the whole /livetv tree.
             # (`/livetv/epg/countries` and `/languages` are real there -- 97 and 594
-            # rows -- and plexsim answers them empty, which is honest for a server
+            # rows -- and simplex answers them empty, which is honest for a server
             # with no EPG provider and is recorded as a deviation rather than faked.)
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if route == "/livetv/epg/channels":
             # Measured on both servers with no tuner: a 400, like the lineup reads.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if (route in ("/livetv/epg", "/livetv/epg/guide", "/livetv/epg/search",
                       "/livetv/recordings")
                 or (segments[:2] in (["livetv", "dvrs"], ["livetv", "sessions"])
                     and len(segments) > 2)):
             # Measured on both servers: the guide, EPG search, recordings, a named DVR
-            # and a named live session (and everything under them) are 404s. plexsim's
+            # and a named live session (and everything under them) are 404s. simplex's
             # blanket empty container told a client each of these existed and was
             # empty; the two collection roots below are the real empty ones.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if route == "/livetv":
             # Cycle 17, measured read-only on kids (1.43.4) and zen (1.42.2), which
             # agree exactly: the bare path is the plug-in dispatcher's own THREE-row
-            # container, and it says so with `content="plugins"`. plexsim routed the
+            # container, and it says so with `content="plugins"`. simplex routed the
             # whole tree to a bare empty container, so the one path that does answer
             # said the server had no Live TV surface rather than no tuner.
             # Cycle 18: `/media`, `/services`, `/status` and `/statistics` are the same
@@ -7410,7 +7410,7 @@ class PlexSim:
             # this is the shape a real PMS uses when it has no DVR configured.
             return self.bare_container(size=0)
         if route.startswith("/library/platforms") or route.startswith("/hubs/sections/home"):
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
 
         if route == "/diagnostics/logs":
             return ("zip", self.log_archive())
@@ -7418,18 +7418,18 @@ class PlexSim:
             # `diagnostics` deliberately does not advertise "databases" -- see
             # media_providers() -- so the UI never draws this button. Answer
             # honestly if something asks anyway.
-            return ("error", 404, "plexsim: no database")
+            return ("error", 404, "simplex: no database")
 
         # -- library -----------------------------------------------------
         if route == "/library/sections/all" and method in ("GET", "HEAD"):
             # Measured on both servers: the same document as /library/sections, row for
             # row. The community OpenAPI description names this path `getSections`, so
-            # every SDK generated from it asks here -- and plexsim 404'd it.
+            # every SDK generated from it asks here -- and simplex 404'd it.
             route = "/library/sections"
         if route == "/library/sections":
             if method in ("PUT", "DELETE"):
                 # Measured: 404 for both, where a POST with a bad form is a 400.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if method == "POST":
                 return self.create_section(query, headers)
             rows = [self.section_directory(s) for s in catalog.sections]
@@ -7438,7 +7438,7 @@ class PlexSim:
                 # the same list /library/sections/{id}/prefs answers -- except that a
                 # show library's `episodeSort` is the per-SHOW variant, with "Library
                 # default" in its enum. The setup flow reads `Preferences.Setting` off
-                # every row to find hidden libraries, and plexsim ignored the flag, so
+                # every row to find hidden libraries, and simplex ignored the flag, so
                 # that read threw and the flow treated no library as hidden.
                 for section, row in zip(catalog.sections, rows):
                     row["Preferences"] = {
@@ -7485,17 +7485,17 @@ class PlexSim:
             # the two writable copies 404 it (they are unclaimed and isolated from
             # plex.tv, the same shape as `/livetv`'s 403 there).
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.library_shared(segments, query)
 
         if route == "/library/optimize":
             # "Optimize Database". GET is a 404 on a real PMS: PUT only.
             if method != "PUT":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             # Measured on the copy, frame for frame: Optimize Database runs a
             # `general.db.optimize` activity -- started at 0 with an EMPTY subtitle, then
             # updated at 0, 10, 40 and 60 with the subtitle `Optimizing Database`, then
-            # ended at 100. plexsim answered the empty 200 and pushed nothing, so the
+            # ended at 100. simplex answered the empty 200 and pushed nothing, so the
             # Settings page's progress bar never moved and the Activity pane stayed blank.
             self.notify_activity_run("general.db.optimize", "Optimizing database",
                                      [(0, "Optimizing Database"), (10, "Optimizing Database"),
@@ -7505,8 +7505,8 @@ class PlexSim:
             return ("empty", 200)
         if route == "/library/clean/bundles":
             if method != "PUT":
-                return ("error", 404, "plexsim: not found")
-            # Measured on a writable copy of the reference, frame for frame. plexsim has
+                return ("error", 404, "simplex: not found")
+            # Measured on a writable copy of the reference, frame for frame. simplex has
             # no bundles, so both counts are 0.
             self.notify_activity_run("general.bundle.clean", "Cleaning bundles", [
                 (0, "Analyzing metadata bundles"), (25, "Deleting 0 metadata bundles"),
@@ -7523,7 +7523,7 @@ class PlexSim:
         if route == "/library/matches":
             return self.library_matches(query)
         if route == "/library/people":
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if (segments[:2] == ["library", "people"] and method in ("GET", "HEAD")
                 and (len(segments) == 3 or (len(segments) == 4 and segments[3] == "media"))):
             return self.person(segments[2], len(segments) == 4, query)
@@ -7556,12 +7556,12 @@ class PlexSim:
                     return self.new_section_prefs(query)
                 if segments[2] == "prefs":
                     # `/library/sections/prefs?type=movie` and friends: a 400.
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if segments[2:] == ["all", "refresh"]:
                     return self.library_section(segments, query, method)
                 # Measured: any other non-numeric section id -- `abc`, `-1`, `1.5` --
-                # is a 404, not the 400 plexsim answered.
-                return ("error", 404, "plexsim: not found")
+                # is a 404, not the 400 simplex answered.
+                return ("error", 404, "simplex: not found")
             return self.library_section(segments, query, method)
 
         if segments[:2] == ["library", "metadata"] and len(segments) >= 3:
@@ -7570,7 +7570,7 @@ class PlexSim:
         if route == "/library/onDeck":
             # Measured: this is the server-wide Continue Watching list -- every row
             # carries a `viewOffset` and a `lastViewedAt`, and it is EMPTY on a
-            # server with nothing in progress. plexsim answered the first twelve
+            # server with nothing in progress. simplex answered the first twelve
             # catalog rows with no view state at all, which is what every non-web
             # client's On Deck reads (plexapi, Kodi/PKC, the legacy apps).
             rows = []
@@ -7594,7 +7594,7 @@ class PlexSim:
                 # only zen can show it. See HANDOVER 3.3.
                 # Cycle 28 read `librarySectionKey` off zen's one on-deck row and kept
                 # it here. Cycle 30 built the instrument that question needed -- a FRESH
-                # 1.42.2 copy, the build plexsim reports, writable and isolated
+                # 1.42.2 copy, the build simplex reports, writable and isolated
                 # (`plexscratch42`, HANDOVER 4) -- and it says otherwise: on a MOVIE and
                 # on an EPISODE alike this row carries `allowSync`, `librarySectionID`,
                 # `librarySectionTitle` and `librarySectionUUID` and **no
@@ -7615,14 +7615,14 @@ class PlexSim:
                 # `/library/recentlyAdded`'s do -- and `allowSync` on the ROW is the
                 # signal `xmlout._LIBRARY_SECTION_LEAD` keys that lead on, so without
                 # it the four came out mid-row. Cycle 19 recorded the rule for both
-                # paths and plexsim carried it on one.
+                # paths and simplex carried it on one.
                 entry["allowSync"] = True
                 entry["librarySectionUUID"] = (catalog.section(row.get("librarySectionID"))
                                                or {}).get("uuid")
                 rows.append(entry)
             # Measured on both lists: `mixedParents`, because the rows come from
             # more than one library -- and on both servers both lists PAGE, with the
-            # headers or the query parameters, where plexsim answered every row.
+            # headers or the query parameters, where simplex answered every row.
             page, paged, start, total = self.page_window(rows, query)
             fields = {"offset": start, "totalSize": total} if paged else {}
             return self.container(Metadata=page, mixedParents=True, **fields)
@@ -7630,7 +7630,7 @@ class PlexSim:
             # Measured on both servers: a new episode is listed as its SEASON, never on
             # its own, and the season row's `addedAt` is its EARLIEST episode's -- the
             # reference's Season 1 says 1789187076, its first episode's, where the
-            # season's own row says 1789187257. plexsim listed each episode beside its
+            # season's own row says 1789187257. simplex listed each episode beside its
             # season, dated by the season. The list stops at 50 (fun's totalSize) and
             # pages.
             seasons = {}
@@ -7651,7 +7651,7 @@ class PlexSim:
             # rows before the cap -- kids 7 -> 6, zen still 50 because the 51st moves up.
             if "unwatched" in query:
                 if not _bool_option(query["unwatched"]):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if int(str(query["unwatched"]).lstrip("+")) == 1:
                     dated = [pair for pair in dated if not _watched_leaf(pair[1])]
             # Measured on both servers: these rows are the light projection (text
@@ -7664,7 +7664,7 @@ class PlexSim:
             # `limit=0` answers ZERO rows here (a section listing answers one), a
             # NEGATIVE one lifts the 50-row cap instead of meaning "every row", and an
             # unparseable one (`abc`, `1.5`, empty) is IGNORED where a section listing
-            # is a 500. plexsim ignored the parameter entirely.
+            # is a 500. simplex ignored the parameter entirely.
             cap = 50
             raw = str(query.get("limit") or "")
             if raw.lstrip("-").isdigit():
@@ -7681,7 +7681,7 @@ class PlexSim:
                     # the surface -- carries `parentSummary`, the show's own summary. An
                     # empty one is omitted like every other empty string (4 zen rows
                     # whose show has none carry no field at all). The client prints it
-                    # under the season tile, where plexsim left it blank.
+                    # under the season tile, where simplex left it blank.
                     parent = self.catalog.items.get(int(row["parentRatingKey"])) \
                         if str(row.get("parentRatingKey") or "").isdigit() else None
                     if parent and parent.get("summary"):
@@ -7693,7 +7693,7 @@ class PlexSim:
                 entry["addedAt"] = added
                 rows.append(entry)
             # Cycle 46: the `includeGuids` gate both references apply here, which
-            # plexsim ran on every other listing and not on this one.
+            # simplex ran on every other listing and not on this one.
             rows = self._guid_gate(rows, query)
             page, paged, start, total = self.page_window(rows, query)
             fields = {"offset": start, "totalSize": total} if paged else {}
@@ -7701,15 +7701,15 @@ class PlexSim:
 
         if route == "/library/all" and method not in ("GET", "HEAD"):
             # Measured: `/library/all` is read-only -- a PUT there is a 404, where
-            # plexsim answered the listing to what looks like an edit.
-            return ("error", 404, "plexsim: not found")
+            # simplex answered the listing to what looks like an edit.
+            return ("error", 404, "simplex: not found")
         if route == "/library/all":
             # Cycle 83, measured on kids (1.43.4) and zen (1.42.2): this query reads each
             # parameter ONCE, its LAST occurrence -- `guid=<a>&guid=<b>` is the <b> row,
             # `year=2010&type=1&year=2008` the 2008 movie, `type=2&type=1` the movies,
             # and a bad value before a good one is never parsed (`type=abc&type=1` is a
             # 200, `type=1&type=abc` the 400). A section listing ANDs a repeated key
-            # instead (both guids: no row). plexsim ran the grid's conjunction here.
+            # instead (both guids: no row). simplex ran the grid's conjunction here.
             last = {name: index for index, (name, _value)
                     in enumerate(query.get("_pairs") or [])}
             query = dict(query)
@@ -7718,7 +7718,7 @@ class PlexSim:
             # Measured: a real query endpoint, not a dump. `type=` selects the rows,
             # filters and `sort=` apply as on a section, the default order is the
             # ratingKey, and a row carries its Media only when a `type` was given.
-            # plexsim ignored every parameter and answered all its rows every time,
+            # simplex ignored every parameter and answered all its rows every time,
             # which is what python-plexapi's `library.search(libtype=)` read.
             # Measured on both servers: `/library/all` refuses an unparseable
             # `type=` with 400 where a section listing answers 500, and both answer
@@ -7733,7 +7733,7 @@ class PlexSim:
                 # Cycle 14, measured on the copy: `/library/all?type=18` lists every
                 # collection the SERVER holds, across libraries, in title order -- the
                 # same rows the section form answers, each carrying its tag id as
-                # `index` and its own `librarySectionID`. plexsim answered `size 0`,
+                # `index` and its own `librarySectionID`. simplex answered `size 0`,
                 # because its collections are not rows in `catalog.items` and this
                 # handler only ever looked there.
                 rows = []
@@ -7764,17 +7764,17 @@ class PlexSim:
             if not kinds and scoped_guid:
                 source = [r for r in source if r.get("type") == "show"]
             if kinds == {"2"} and scoped_season_index:
-                return ("error", 500, "plexsim: invalid scoped conjunction")
+                return ("error", 500, "simplex: invalid scoped conjunction")
             if not kinds:
                 # Cycle 25, measured on plexscratch: the UNTYPED query lists collections
                 # as well, byte for byte the row `?type=18` answers, sorted into the rest
                 # by ratingKey -- a create takes the list from 14 rows to 15 and a delete
                 # takes it back. The section form lists them on neither server, so the
-                # gap is this query alone. plexsim's collections are not rows in
+                # gap is this query alone. simplex's collections are not rows in
                 # `catalog.items` and this handler only ever looked there, so any client
                 # or script enumerating the server through `/library/all` never saw one.
                 # Cycle 50: clips are the opposite exception.  kids' untyped list has
-                # fourteen metadata rows and omits its IVA clip; plexsim included it
+                # fourteen metadata rows and omits its IVA clip; simplex included it
                 # because the raw catalog source was used before adding collections.
                 source = [row for row in source if row.get("type") != "clip"]
                 for section in catalog.sections:
@@ -7783,7 +7783,7 @@ class PlexSim:
             # `/library/all?type=N` uses that type's own default listing order --
             # `?type=1` on kids is 1, 18, 17, 3, 4 (titleSort) where untyped is 1, 3, 4,
             # 6, 7 (ratingKey), and zen's `?type=1` is its section grid's order over
-            # 3,887 rows. plexsim answered ratingKey to both.
+            # 3,887 rows. simplex answered ratingKey to both.
             source = sorted(source, key=lambda r: int(r["ratingKey"]))
             if kinds and not query.get("sort"):
                 source, _ = self._sorted(source, "titleSort")
@@ -7798,7 +7798,7 @@ class PlexSim:
                 # title) and zen (14,434 -> 4, 90, 8,358), which agree: `group=` is
                 # honoured HERE as well, and an unknown or empty field is a 500 exactly
                 # as it is on a section listing. kids' `group=type` answers one row per
-                # type, `movie show season episode`. plexsim's `grouped()` was right and
+                # type, `movie show season episode`. simplex's `grouped()` was right and
                 # this handler never called it, so the cross-library Group control did
                 # nothing and an ungroupable field answered every row.
                 source = self.grouped(source, query.get("group"))
@@ -7807,7 +7807,7 @@ class PlexSim:
             if query.get("sort"):
                 source, unsupported = self._sorted(source, query["sort"])
                 if unsupported:
-                    return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+                    return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
             rows = []
             for row in self._limited(source, query):
                 if row.get("type") == "collection" or "collectionSort" in row:
@@ -7848,14 +7848,14 @@ class PlexSim:
             # PARSE is a 400 (`abc`, an empty one, `1.5`). A type this server holds no
             # rows of is an empty 200, which is the same shape a section listing gives.
             #
-            # plexsim refused everything but 1, 2 and 4 -- and the web client asks for
+            # simplex refused everything but 1, 2 and 4 -- and the web client asks for
             # movie, show and ARTIST inside one `all([...])` under a single try/catch,
             # so the `type=8` refusal rejected the whole batch and the Dashboard's
             # entire Top Played panel failed, movies and TV with it, on a server that
             # has no music library to answer for in the first place.
             raw = query.get("type")
             if raw is None or not str(raw).lstrip("+-").isdigit():
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             wanted = {"1": "movie", "2": "show", "3": "season",
                       "4": "episode"}.get(str(int(raw)))
             # Cycle 54, measured on kids and zen: the Dashboard builds this with
@@ -7873,7 +7873,7 @@ class PlexSim:
                     # `+1` is section 1 and `1.5` a 200 that matches nothing -- and only a
                     # value that is not one (`abc`, `1x`, empty) is the 500.
                     if not re.fullmatch(r"[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)", value):
-                        return ("error", 500, "plexsim: internal error")
+                        return ("error", 500, "simplex: internal error")
                     ids[name] = float(value)
             plays, viewers, seen_at = {}, {}, {}
             for entry in (self.library.history() if wanted else ()):
@@ -7885,7 +7885,7 @@ class PlexSim:
                     # Cycle 58, measured on zen: a play is counted on the episode's SEASON
                     # at `type=3` and its SHOW at `type=2` -- zen's one show answers
                     # `globalViewCount: 73`, the sum of its episodes' history rows -- and
-                    # the Dashboard's Top Played TV column asks for `type=2`. plexsim
+                    # the Dashboard's Top Played TV column asks for `type=2`. simplex
                     # matched the history row's own type, so no show ever had a play and
                     # the TV column was empty on every server.
                     # Under `flattenSeasons=1` the stored episode keeps its season
@@ -7917,7 +7917,7 @@ class PlexSim:
             # `globalViewCount` comes from: 12, 11, 9, 9, 7, 7, 7, 7 against 12, 11, 9,
             # 9, 7, 7, 7, 7 history rows. kids agrees on its three movies.
             #
-            # plexsim sorted on `(-plays, ratingKey)`, so the Dashboard's Top Played
+            # simplex sorted on `(-plays, ratingKey)`, so the Dashboard's Top Played
             # shelf put the least recently watched of a tied group first.
             ordered = sorted(plays, key=lambda k: (-plays[k], -seen_at.get(k, 0), k))
             limit = int(query.get("limit", 12) or 12)
@@ -7927,16 +7927,16 @@ class PlexSim:
             return self.container(Metadata=rows)
 
         if segments[:2] == ["library", "streams"]:
-            # Sidecar subtitle extraction. plexsim never repackages, so every
+            # Sidecar subtitle extraction. simplex never repackages, so every
             # subtitle stays embedded in the part and there is nothing to serve.
             # Measured: a real PMS answers 501 here for a stream it cannot
             # extract, which is what "not implemented" honestly means -- but only
             # for a stream it HAS. An unknown or non-numeric id, and the bare path,
-            # are 404s, and a PUT to an unknown one is a 400. plexsim 501'd them all.
+            # are 404s, and a PUT to an unknown one is a 400. simplex 501'd them all.
             stream_id = segments[2] if len(segments) > 2 else ""
             # Measured on both servers: `/library/streams/{id}.srt` and `.vtt` -- the
             # sidecar extraction by extension -- are the same 501 as the bare stream for
-            # a stream the server has, and a 404 for one it does not. plexsim read the
+            # a stream the server has, and a 404 for one it does not. simplex read the
             # extension as part of the id and 404'd every one.
             if stream_id.endswith((".srt", ".vtt")) and len(segments) == 3:
                 stream_id = stream_id.rsplit(".", 1)[0]
@@ -7947,37 +7947,37 @@ class PlexSim:
             if not known:
                 # Measured on the copy: a PUT to an id it does not have is a 400, and so
                 # is a DELETE of a NON-NUMERIC one -- `DELETE /library/streams/abc` is a
-                # 400 where `DELETE /library/streams/999999` is a 404. plexsim answered
+                # 400 where `DELETE /library/streams/999999` is a 404. simplex answered
                 # 404 to both, so a malformed id and a missing one were indistinguishable.
                 if len(segments) == 3 and (method == "PUT"
                                            or (method == "DELETE" and not stream_id.isdigit())):
-                    return ("error", 400, "plexsim: bad request")
-                return ("error", 404, "plexsim: not found")
+                    return ("error", 400, "simplex: bad request")
+                return ("error", 404, "simplex: not found")
             if len(segments) > 3:
                 # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), three repeats
                 # each: ANY extra segment after the stream id is a 404 --
                 # `/library/streams/{id}/colors`, `/zzz` and `/loudness/1` alike -- where
                 # the two analysis leaves are the 404 cycle 16 already measured and the
-                # stream itself stays the 501. plexsim fell through to that 501 for every
+                # stream itself stays the 501. simplex fell through to that 501 for every
                 # name it did not know, so a client probing a sub-path was told the
                 # endpoint exists and is unimplemented rather than that it is not there.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if method == "PUT" and len(segments) == 3:
                 # Measured on a writable copy of the reference: a PUT to a stream it HAS
                 # is 200 with an empty body -- and stores nothing, the track's title is
-                # unchanged afterwards, with or without parameters. plexsim answered the
+                # unchanged afterwards, with or without parameters. simplex answered the
                 # 501 the GET answers, so python-plexapi's stream edit read a refusal
                 # where a real PMS reads an acceptance.
                 return ("empty", 200)
             if method == "POST" and len(segments) == 3:
                 # Measured on the copy: a POST to a stream it HAS is a 404 -- there is no
-                # such verb on the path -- where plexsim answered its 501.
-                return ("error", 404, "plexsim: not found")
+                # such verb on the path -- where simplex answered its 501.
+                return ("error", 404, "simplex: not found")
             if method == "DELETE" and len(segments) == 3:
                 # And a DELETE removes an uploaded SIDECAR (200) while refusing an
-                # embedded track with 403 -- it is part of the file. plexsim 501'd both.
+                # embedded track with 403 -- it is part of the file. simplex 501'd both.
                 if int(stream_id) not in self.uploaded_subtitles:
-                    return ("error", 403, "plexsim: the stream is embedded in the part")
+                    return ("error", 403, "simplex: the stream is embedded in the part")
                 self.library.delete_stream(int(stream_id))
                 self.uploaded_subtitles.pop(int(stream_id), None)
                 return ("empty", 200)
@@ -7987,45 +7987,45 @@ class PlexSim:
                 # bare, with `autoAdjustSubtitle=0|1`, `format=srt` or as `.srt` -- as
                 # `text/html`. Plex for Android loads exactly that URL when it
                 # plays an item whose selected subtitle is a sidecar (its StreamSelector's
-                # `selectExternalStream`); plexsim answered the embedded track's 501.
+                # `selectExternalStream`); simplex answered the embedded track's 501.
                 return ("sidecar", self.uploaded_subtitles[int(stream_id)])
-            return ("error", 501, "plexsim: streams are embedded in the part")
+            return ("error", 501, "simplex: streams are embedded in the part")
 
         if segments[:2] == ["library", "parts"] and method in ("PUT", "POST"):
             # Audio/subtitle track selection from the player or the Get Info
             # dialog: PUT /library/parts/{partID}?subtitleStreamID=&allParts=1.
             # Measured on a writable copy of the reference: the same endpoint answers a
-            # POST identically, where plexsim 404'd it.
+            # POST identically, where simplex 404'd it.
             #
             # Cycle 44: only the TWO-segment form. The three-segment MEDIA path
             # (`/library/parts/{id}/{version}/file.ext`) is a 404 to POST and to PUT on
             # both writable copies, on 1.42.2 and 1.43.4 alike, while its GET and HEAD
-            # serve bytes. plexsim had no length check, so a client that built the write
+            # serve bytes. simplex had no length check, so a client that built the write
             # from the Part's own `key` -- which IS the three-segment path -- selected a
-            # track on plexsim and got a 404 from a real PMS. It was not an empty
+            # track on simplex and got a 404 from a real PMS. It was not an empty
             # acceptance either: the selection really moved.
             if len(segments) > 3:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.select_stream(segments[2] if len(segments) > 2 else "", query)
 
         if segments[:2] == ["hubs", "sections"] and len(segments) == 4 \
                 and segments[3] == "newReleases":
             # Cycle 45: `{size: 0, allowSync: false, identifier}` and nothing more, on
-            # kids, zen and both writable copies. plexsim 404'd it.
+            # kids, zen and both writable copies. simplex 404'd it.
             return self.bare_container(size=0, allowSync=False,
                                        identifier="com.plexapp.plugins.library")
         if route == "/:/viewChange":
             # Cycle 45: a routed state-write leaf that answers its own 400 to EVERY verb,
-            # with any parameters, the way `/match` does. plexsim 404'd it, which tells a
+            # with any parameters, the way `/match` does. simplex 404'd it, which tells a
             # client the endpoint is not there.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if route == "/services/codecs":
             # Cycle 45: a **403** on kids and zen -- not a 404 and not the plug-in
             # dispatcher's listing. Both unclaimed copies 404 it, so it tracks claimed
-            # state, and plexsim reports `claimed="1"`.
-            return ("error", 403, "plexsim: forbidden")
+            # state, and simplex reports `claimed="1"`.
+            return ("error", 403, "simplex: forbidden")
         if route == "/library/search":
-            # `universalsearch`, which plexsim advertised in /media/providers and
+            # `universalsearch`, which simplex advertised in /media/providers and
             # answered with an empty container -- on the note that "a real PMS
             # answers the bare query with an empty container". Measured: a real PMS
             # answers a bare query with a 400 and a real one with SearchResult rows.
@@ -8036,7 +8036,7 @@ class PlexSim:
             # What it does to the result is not one rule -- `count=2` answers 10 rows on
             # zen and `-1` lifts a cap -- and is not modelled.
             if "count" in query and not _int_param(query["count"]):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             return self.legacy_search(query)
 
         # -- hubs --------------------------------------------------------
@@ -8046,7 +8046,7 @@ class PlexSim:
                 return refusal
             return self.hubs(query)
         if route == "/hubs/metadata":
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if segments[:2] == ["hubs", "metadata"] and len(segments) == 3:
             return self.item_music_hubs(segments[2])
         if segments[:2] == ["hubs", "metadata"] and len(segments) == 4:
@@ -8065,14 +8065,14 @@ class PlexSim:
             raw = query.get("contentDirectoryID")
             # Cycle 55: `+1` is a positive integer too (200 on zen and kids), and an EMPTY
             # value is accepted -- a 200 on both references, on both paths, where
-            # plexsim 404'd it.
+            # simplex 404'd it.
             if raw not in (None, "") and not any(
                     _int_param(part, None) and int(part) > 0 for part in str(raw).split(",")):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
         if route == "/hubs/continueWatching":
             # Measured: this hub's own identifier is `continueWatching` (not the
             # home screen's `home.continue`), its key is its OWN items endpoint,
-            # and its style is `hero`. plexsim answered a bare hub whose key was
+            # and its style is `hero`. simplex answered a bare hub whose key was
             # /library/all, so the shelf had nowhere to expand to.
             # Cycle 57: the rows are `merged_continue_watching()`, not `resuming()`.
             rows = [self._with_included_at(_listing_row(r))
@@ -8138,7 +8138,7 @@ class PlexSim:
             if route == "/hubs/home/recentlyAdded":
                 # Measured: this endpoint keys on `type`, NOT on `sectionID` --
                 # `?sectionID=1` alone is empty and `?type=2` alone answers for
-                # every show library. plexsim had it the other way round, so the
+                # every show library. simplex had it the other way round, so the
                 # TV shelf's "see all" opened an empty page.
                 if str(query.get("type") or "") == "2":
                     # Cycle 54: the TV list refuses the per-user keys as the hub pages do.
@@ -8152,10 +8152,10 @@ class PlexSim:
                     # anything else, and at 1 the list of PERSONAL media -- which this
                     # server holds none of.
                     if not _bool_option(query["personal"]):
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                     # Cycle 55, measured on zen (50 rows either way) and kids (1): the TV
                     # list at `type=2` is UNCHANGED by `personal=1`; only the movie list
-                    # (and the always-empty `type=4`) empties. plexsim emptied every type.
+                    # (and the always-empty `type=4`) empties. simplex emptied every type.
                     if int(str(query["personal"]).lstrip("+")) == 1 \
                             and str(query.get("type") or "") != "2":
                         rows = [] if rows is not None else rows
@@ -8182,7 +8182,7 @@ class PlexSim:
                 # disposable PMS versions. This TYPE is a listing capped at 50, not a
                 # twelve-row shelf: a 100-row container window answers size/totalSize
                 # 50, offset 0 and offset 50 answers size 0. `limit=` and `count=` are
-                # ignored but make the same paging fields explicit. plexsim applied
+                # ignored but make the same paging fields explicit. simplex applied
                 # HUB_COUNT before the generic pager, permanently hiding rows 13-50.
                 projected = [_listing_row(r) if r.get("type") == "show"
                              else _grid_row(
@@ -8206,18 +8206,18 @@ class PlexSim:
                     answer["MediaContainer"]["Meta"] = meta
                 return answer
             # Measured: a home hub a real PMS does not have is a 404, not the
-            # empty container plexsim answered -- which a client reads as "this
+            # empty container simplex answered -- which a client reads as "this
             # shelf exists and is empty".
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 4
                 and segments[3] == "manage"):
             # Manage Recommendations: which of the library's hubs exist and where
             # each is promoted. Measured: a bare container of `Hub` rows, eight for a
             # movie library and nine for a show library, the same on both servers.
-            # plexsim 404'd it, which python-plexapi's `managedHubs()` raises on.
+            # simplex 404'd it, which python-plexapi's `managedHubs()` raises on.
             section = catalog.section(segments[2])
             if section is None or method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if "metadataItemId" in query:
                 # Measured on both servers: naming an item -- even with an empty id --
                 # is a 400 on a read.
@@ -8228,10 +8228,10 @@ class PlexSim:
                 # empty value, a word, `1.5`, ` 1` and `2147483648`.
                 raw_item = str(query.get("metadataItemId") or "")
                 if not _int_param(raw_item):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if int(raw_item) != -1:
                     if catalog.items.get(int(raw_item)) is not None:
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                     return self.bare_container(size=0)
             kind = "show" if section.get("type") == "show" else "movie"
             rows = [{"identifier": identifier, "title": title,
@@ -8243,8 +8243,8 @@ class PlexSim:
             return self.bare_container(size=len(rows), Hub=rows)
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 4
                 and segments[3] == "popular"):
-            # Cycle 52, measured on zen (1.42.2 -- the build plexsim reports) and kids
-            # (1.43.4): a real route that plexsim 404'd. Its rows are the library's
+            # Cycle 52, measured on zen (1.42.2 -- the build simplex reports) and kids
+            # (1.43.4): a real route that simplex 404'd. Its rows are the library's
             # SEASONS that have been watched -- a season row with `viewCount` above zero
             # -- most-watched first, and its container carries `allowSync` and the
             # librarySection triple with a NUMERIC id. zen's show library answers one
@@ -8253,15 +8253,15 @@ class PlexSim:
             #
             # kids answers a 500 for a MOVIE library where zen answers the empty
             # container; the driver is not identified (not history, not watch state, not
-            # the version, not the claim), so plexsim takes zen's, being the version it
+            # the version, not the claim), so simplex takes zen's, being the version it
             # reports. `/popular/zzz` and a section the server does not hold are 404s.
             # Cycle 54, measured on kids and zen: `monthsAgo` is a whole number of any
             # size, and a 400 otherwise -- checked BEFORE the section is looked up.
             if "monthsAgo" in query and not _int_param(query["monthsAgo"], bits=None):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             section = catalog.section(segments[2])
             if section is None or method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             # Cycle 55 REFUTED cycle 52's "a season row with `viewCount` above zero":
             # from `group by parent_id order by count(*) desc limit` and measured on
             # plexscratch42, the rank is the season's HISTORY rows, and a season whose
@@ -8287,9 +8287,9 @@ class PlexSim:
         if segments[:2] == ["hubs", "sections"] and len(segments) == 4 and segments[3] == "extras":
             # Measured on both servers: an empty hub list -- `size 0`, `allowSync` and the
             # identifier, nothing else -- for a movie library, a show library and a section id
-            # the server does not have alike. plexsim 404'd it.
+            # the server does not have alike. simplex 404'd it.
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.bare_container(size=0, allowSync=True,
                                        identifier="com.plexapp.plugins.library")
         if segments[:2] == ["hubs", "sections"] and len(segments) == 3:
@@ -8305,14 +8305,14 @@ class PlexSim:
             # and its Continue Watching see-all leaf 404 a section id the server does
             # not hold -- `999`, `0`, `-1`, `1.5`, `abc` and a twenty-digit number all
             # answer the 85-byte Not Found document -- while `01` and `+1` answer the
-            # real library, which is this cycle's path-segment id rule. plexsim ignored
+            # real library, which is this cycle's path-segment id rule. simplex ignored
             # the id entirely and built a full Recommended page for any of them, which
             # is fix 4's trap: a client asking for a library that is gone reads a valid
             # empty page as "this library exists and has nothing in it". Every other
             # section leaf has answered 404 since cycle 15; these two were missed
             # because neither reads the section row before it builds its answer.
             if self.catalog.section(segments[2]) is None:
-                return ("error", 404, "plexsim: no such section")
+                return ("error", 404, "simplex: no such section")
             if (self.catalog.section(segments[2]) or {}).get("type") == "show":
                 refusal = hub_refusal(query)
                 if refusal:
@@ -8335,7 +8335,7 @@ class PlexSim:
             # Cycle 21, measured byte for byte on kids and zen: its container is
             # `{size, allowSync: true, identifier}` and NOTHING else -- no
             # `mediaTagPrefix` and no `mediaTagVersion`, on an empty container as on a
-            # populated one. plexsim answered `allowSync: false` and both tag keys,
+            # populated one. simplex answered `allowSync: false` and both tag keys,
             # which is cycle 15's rule ("every hub path says allowSync true except
             # postplay") satisfied everywhere but here.
             # Cycle 25 measured that `removeFromContinueWatching` does not reach this
@@ -8354,7 +8354,7 @@ class PlexSim:
             if section is None:
                 # Cycle 36: the see-all leaf 404s an unknown section like the shelf it
                 # sits behind -- measured on both references, and they always agree.
-                return ("error", 404, "plexsim: no such section")
+                return ("error", 404, "simplex: no such section")
             rows = [_listing_row(r) for r in self.section_continue_watching(section)]
             return self.bare_container(size=len(rows), allowSync=True,
                                        identifier="com.plexapp.plugins.library",
@@ -8372,7 +8372,7 @@ class PlexSim:
             wanted_section = str(query.get("sectionId") or "")
             if _int_param(wanted_section) and int(wanted_section) >= 0 \
                     and self.catalog.section(str(int(wanted_section))) is None:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             return self.search(query)
         if route == "/hubs/search/voice":
             return self.voice_search(query)
@@ -8387,14 +8387,14 @@ class PlexSim:
             # `00042`, `%2B42`) answers the BACKGROUND PROCESSING queue, `0` answers an
             # empty container, every other value -- and an empty one -- is a 400, no
             # `type` at all is an empty container, and a repeated parameter takes the
-            # LAST occurrence. plexsim inverted three of those cells: it 400'd `42` and
+            # LAST occurrence. simplex inverted three of those cells: it 400'd `42` and
             # `0` and answered 200 to the empty value.
             if "type" not in query:
                 return self.bare_container(size=0)
             wanted = str(query.get("type") or "")
             digits = wanted[1:] if wanted.startswith("+") else wanted
             if not digits.isdigit():
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             number = int(digits)
             if number == 42:
                 return self.bare_container(size=1, PlayQueue=[{
@@ -8403,7 +8403,7 @@ class PlexSim:
                 }])
             if number == 0:
                 return self.bare_container(size=0)
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if segments[:1] == ["playQueues"] and len(segments) == 2 and method in ("GET", "HEAD") \
                 and segments[1] == "1" and "1" not in self.play_queues:
             # Cycle 50: queue 1 is PMS's own background-processing queue, permanently,
@@ -8429,13 +8429,13 @@ class PlexSim:
             # four prefixes are ROUTED -- a bare
             # `/audio/:/transcode/universal/decision` is the decision's own
             # no-parameters 400 on both references, exactly as the video form is, where
-            # plexsim 404'd the whole prefix. plexsim has no encoder, so what it answers
+            # simplex 404'd the whole prefix. simplex has no encoder, so what it answers
             # past that refusal is its own (HANDOVER 8); the refusal is the measured part.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if route == "/video/:/transcode/universal/decision":
             return self.decision(query, headers)
         if route.startswith("/video/:/transcode/universal/start"):
-            # plexsim has no encoder. A 404 here is the honest answer and it is
+            # simplex has no encoder. A 404 here is the honest answer and it is
             # also the signal that the client's own gate rejected direct play --
             # but only for a request that names something playable. Measured: the
             # start family validates exactly as the decision does, and a request
@@ -8451,46 +8451,46 @@ class PlexSim:
                 # key /library/metadata/18". The gate runs BEFORE the encoder question:
                 # it is a 400 on every protocol and every leaf of the start family, and
                 # a transcode decision for that session turns the same HLS request into
-                # a 200. plexsim already kept the set; it just never consulted it here.
+                # a 200. simplex already kept the set; it just never consulted it here.
                 #
-                # What plexsim answers ONCE a decision exists is its own 404 -- it has
+                # What simplex answers ONCE a decision exists is its own 404 -- it has
                 # no encoder -- which is not the reference's answer and is not meant to
                 # be. Recorded rather than modelled, because the reference's own answer
                 # there depends on what it can convert: a DASH `start.mpd` is a 404 on
                 # the copy where the same session's `start.m3u8` is a 200.
-                return ("error", 400, "plexsim: no decision for this session")
+                return ("error", 400, "simplex: no decision for this session")
             logger.warning("TRANSCODE REQUESTED -- client refused direct play: %s", query.get("path"))
-            return ("error", 404, "plexsim: no transcoder")
+            return ("error", 404, "simplex: no transcoder")
         if route == "/subtitles/:/transcode/universal/start":
             # The URL Plex Web uses for a <track> src when it CAN direct play --
-            # which is plexsim's only path. Measured 400 on both reference servers,
-            # including for a real embedded SRT; plexsim let it fall into the
+            # which is simplex's only path. Measured 400 on both reference servers,
+            # including for a real embedded SRT; simplex let it fall into the
             # catch-all 404, which is a different answer for the same condition.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if route == "/video/:/transcode/universal/subtitles":
             # Measured: a real PMS answers 400 here for an unknown session, where
             # the rest of the universal/* family answers 404.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if route in ("/video/:/transcode/universal/ping",
                      "/video/:/transcode/universal/stop") and "session" not in query:
             # Measured: with NO `session` parameter these are 400s; an unknown one is a
             # 404. Cycle 44: an EMPTY `session=` is the unknown case, not the missing one
             # -- 404 on plexscratch (1.43.4) and plexscratch42 (1.42.2) alike, where
-            # `session=%20`, `session=0` and `session=zzzz` already were. plexsim read a
+            # `session=%20`, `session=0` and `session=zzzz` already were. simplex read a
             # falsy value as "no session given" and answered its 400. The neighbouring
             # `start.m3u8?session=` and `decision?session=` ARE 400s on all three, so the
             # split is per leaf and not a general rule about an empty value.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if route.startswith("/video/:/transcode/universal/"):
             # /ping, /stop, /session: all of it belongs to a transcode session,
-            # and plexsim never opens one.
-            return ("error", 404, "plexsim: no transcoder")
+            # and simplex never opens one.
+            return ("error", 404, "simplex: no transcoder")
         if route in ("/service/ultrablur/colors", "/services/ultrablur/colors") \
                 and method in ("GET", "HEAD"):
             # Cycle 70: the native Plex for Android app asks `{server}/service/ultrablur/
             # colors?url={thumb}` (the SINGULAR spelling, js:831397) for the backdrop tint of
             # any item that arrives without `UltraBlurColors` -- its post-play screen did,
-            # and plexsim 404'd it. zen (1.42.2) answers both spellings, and the url is
+            # and simplex 404'd it. zen (1.42.2) answers both spellings, and the url is
             # resolved exactly as `/photo/:/transcode` resolves it: no `url` a 400; an empty,
             # relative or unknown one, or a row's missing field, a 404; a server path that
             # answers but is not an image (`/identity`, a detail row) a 500; any image it
@@ -8498,11 +8498,11 @@ class PlexSim:
             # the four corner colours; a repeated `url` is the LAST one. The colours are a
             # function of the image's PIXELS (an item's own `UltraBlurColors` matches the
             # answer only when it was taken from the same image: 2 of 5 zen movies), and
-            # plexsim's server path has no image decoder (cycle 9), so the VALUES are the
+            # simplex's server path has no image decoder (cycle 9), so the VALUES are the
             # row's own palette -- a recorded content bound; the status, the shape and the
             # resolution are measured.
             if "url" not in query:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             fetched = self._route(method, "/photo/:/transcode", ["photo", ":", "transcode"],
                                   {"url": query["url"], "width": "64", "height": "64"},
                                   body, headers, address)
@@ -8519,17 +8519,17 @@ class PlexSim:
         if route == "/photo/:/transcode":
             # Measured: both dimensions are MANDATORY and a real PMS 400s the request
             # without them, 400s a non-numeric one, and 404s a `url` naming a row it
-            # does not have. plexsim answered a 200 grey tile to all four, so a client
+            # does not have. simplex answered a 200 grey tile to all four, so a client
             # that would have drawn its own title-card placeholder drew -- and could
-            # cache -- plexsim's instead.
+            # cache -- simplex's instead.
             for name in ("width", "height"):
                 if not query.get(name):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if not _photo_int(query[name]):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
             # Cycle 27, swept over eleven values of each of seven parameters on kids
             # (1.43.4) and zen (1.42.2), which agree on all 77: five more parameters are
-            # VALIDATED here and plexsim took anything for all five.
+            # VALIDATED here and simplex took anything for all five.
             #
             #   minSize, upscale  a BOOLEAN -- `0`, `1`, `01` and `+1` pass and `2`,
             #                     `-1`, `100`, `1.5`, an empty value, `abc` and a
@@ -8542,17 +8542,17 @@ class PlexSim:
             # PMS answers for a width or height that scales the image to nothing
             # (`width=1&height=100` on a 1000x1500 poster is a 500 where `width=2` is a
             # 200, and `height=-1` is a 200 where `width=-1` is a 500). Those depend on
-            # the image's own aspect ratio and on a resizer plexsim does not have.
+            # the image's own aspect ratio and on a resizer simplex does not have.
             for name in ("opacity", "quality", "blur", "minSize", "upscale"):
                 if name not in query:
                     continue
                 value = str(query[name])
                 if not _photo_int(value):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if name in ("minSize", "upscale") and not _bool_option(value):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if name == "blur" and int(value) < 0:
-                    return ("error", 500, "plexsim: server error")
+                    return ("error", 500, "simplex: server error")
             # Cycle 29, measured on kids and zen over fifteen `url=` shapes, which agree
             # on every one this implements. The DIMENSIONS are validated first -- `url=`
             # empty with `width=abc` is a 400 -- and only then the url:
@@ -8566,24 +8566,24 @@ class PlexSim:
             #   a url with a SCHEME or no leading `/`   404 (`file://`, `upload://`,
             #                                           `media://`, `library/metadata/...`)
             #
-            # plexsim resolved the url through one regex and fell through to a GENERATED
+            # simplex resolved the url through one regex and fell through to a GENERATED
             # grey tile for everything else -- a 200 carrying `max-age=259200`, so a
             # browser kept the grey square for three days. That is CLAUDE.md's own trap
             # read from the other side: cycle 14 closed the unknown-row door and left five
-            # others open, and any client composing a url plexsim's regex misses (a
+            # others open, and any client composing a url simplex's regex misses (a
             # relative path, a `file://`, an API caller's guess) cached a grey tile where a
             # real PMS refuses and the client draws its own placeholder.
             if "url" not in query:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             parsed = urllib.parse.urlparse(urllib.parse.unquote(query["url"]))
             inner = parsed.path
             if parsed.scheme not in ("http", "https"):
                 if parsed.scheme or not inner.startswith("/"):
-                    return ("error", 404, "plexsim: not found")
+                    return ("error", 404, "simplex: not found")
                 # Cycle 50: a real PMS also transcodes its OWN BUNDLED ASSETS.
                 # `url=/:/resources/movie.png` is a 200 image on kids, zen and
                 # plexscratch42 and `/:/resources/nope.png` their ordinary 404, where
-                # plexsim answered 500 to both -- and plexsim uses exactly those assets as
+                # simplex answered 500 to both -- and simplex uses exactly those assets as
                 # the placeholder `thumb` on its own rows, so every placeholder tile Plex
                 # Web asked for through the transcoder was a 500.
                 if inner.startswith("/:/resources/"):
@@ -8596,7 +8596,7 @@ class PlexSim:
                                   or self.library.playlist(owner.group(1))) \
                         if row is None else None
                     if row is None and collection is None:
-                        return ("error", 404, "plexsim: no such item")
+                        return ("error", 404, "simplex: no such item")
                     field = {"poster": "thumb", "background": "art"}.get(
                         owner.group(2), owner.group(2))
                     if collection is not None:
@@ -8605,14 +8605,14 @@ class PlexSim:
                         # anything it does not own is the direct path's 404.
                         if field != "thumb" or not str(collection.get("thumb") or "") \
                                 .startswith("/library/metadata/%s/" % owner.group(1)):
-                            return ("error", 404, "plexsim: not found")
+                            return ("error", 404, "simplex: not found")
                     elif not self._owns(row, field):
                         # The transcoder does not re-resolve: it answers what the direct
                         # path answers, and a row that BORROWS this field 404s there
-                        # (cycle 26). plexsim resolved through `artwork_for`, which falls
+                        # (cycle 26). simplex resolved through `artwork_for`, which falls
                         # back to the parent's image, so the transcoder served a picture
                         # the direct path refuses.
-                        return ("error", 404, "plexsim: not found")
+                        return ("error", 404, "simplex: not found")
                 # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), which agree on
                 # every cell: the transcoder FETCHES the path, and its answer is decided
                 # by that fetch. A url the server answers with anything but 200 is a
@@ -8621,17 +8621,17 @@ class PlexSim:
                 # and only a 200 whose bytes are not an image is the 500. So the section
                 # COMPOSITE, which both references serve as a jpeg, transcodes to a 200.
                 #
-                # plexsim matched one regex of four artwork names and answered 500 to
+                # simplex matched one regex of four artwork names and answered 500 to
                 # everything else, its OWN section composite included: Plex Web builds a
                 # library card from `composite` and routes it through the transcoder when
-                # the provider advertises `imagetranscoder`, which plexsim does -- so
+                # the provider advertises `imagetranscoder`, which simplex does -- so
                 # every library tile the client asked for that way was a 500 where the
                 # direct path is a 200 image. And a 404 is what lets a client draw its own
                 # placeholder, where a 500 is an error it logs and retries.
                 elif not self._transcodable(
                         inner, dict(urllib.parse.parse_qsl(parsed.query)), headers, address):
-                    return ("error", 404, "plexsim: not found") \
-                        if self._inner_refuses else ("error", 500, "plexsim: server error")
+                    return ("error", 404, "simplex: not found") \
+                        if self._inner_refuses else ("error", 500, "simplex: server error")
                 else:
                     # And the bytes are the DIRECT path's own. `resolve_artwork` only
                     # knows item artwork urls, so a section composite fell through to the
@@ -8653,13 +8653,13 @@ class PlexSim:
                 # whose bytes sniff as no image (served `image/jpeg` directly all the same)
                 # was handed back through the transcoder as a 200 carrying three days of
                 # `max-age`, where the native server already answered the measured 500.
-                return ("error", 500, "plexsim: server error")
+                return ("error", 500, "simplex: server error")
             if resolved:
                 return ("image", self._at_width(resolved, query.get("width")))
             return ("png", query)
         if route.startswith("/:/resources/"):
             # Cycle 52: the whole `Resources/Graphics` tree, 70 names on both versions.
-            # A name it does not have is still a 404 -- plexsim generated a tile for ANY
+            # A name it does not have is still a 404 -- simplex generated a tile for ANY
             # name once, so a typo'd art path silently drew -- and a DIRECTORY is the
             # empty octet-stream 200 `/web/` answers.
             return self.bundled_resource(route[len("/:/resources/"):])
@@ -8667,7 +8667,7 @@ class PlexSim:
         # client talks to the server it was loaded FROM -- window.location's
         # origin -- rather than discovering servers through plex.tv. That
         # sidesteps the resource `accessToken` entirely, which is the one thing
-        # blocking app.plex.tv from connecting to plexsim.
+        # blocking app.plex.tv from connecting to simplex.
         if route in STATIC_RESOURCES and method in ("GET", "HEAD"):
             # Cycle 52: GET and HEAD answer the file; every other verb falls through to
             # the single-segment dispatcher below, which is what both references do.
@@ -8684,12 +8684,12 @@ class PlexSim:
             # sends neither. Every verb but GET and HEAD falls through to the legacy
             # dispatcher's empty listing, and with no token the path is one of the 401s.
             #
-            # plexsim answered the dispatcher's `content="plugins"` container -- the wrong
+            # simplex answered the dispatcher's `content="plugins"` container -- the wrong
             # media type and the wrong shape for a path a real PMS routes. What is NOT
             # emulated, and stays recorded in HANDOVER 8 after cycle 50's 78-snapshot
             # matrix: PMS's fixed acceptor POOL (its `??? - Uninitialized` rows), the
             # ordinals, and the hexadecimal request allocator, none of which a server with
-            # a thread per connection has. These are plexsim's own live connections in the
+            # a thread per connection has. These are simplex's own live connections in the
             # measured grammar.
             return ("plain", self.connection_lines())
         if route in ("/dlna", "/dlna/"):
@@ -8698,7 +8698,7 @@ class PlexSim:
             # rows with two differences -- the `key` is the full `/library/sections/{id}`
             # path rather than the bare id, and `allowSync`, `filters` and `refreshing`
             # are dropped -- and the list ends with a `/channels/all` "Channels" row. The
-            # container carries nothing but its `size`. plexsim answered the plug-in
+            # container carries nothing but its `size`. simplex answered the plug-in
             # dispatcher's empty container. (`/dlna/x` is a 404 on both; the bare path
             # and its trailing slash are the same document.)
             rows = []
@@ -8712,12 +8712,12 @@ class PlexSim:
             return self.bare_container(size=len(rows), Directory=rows)
         if route in ("/manage", "/manage/") or route == "/web" or route == "/web/":
             # Cycle 49: `/manage` is the same 302 as `/web` on both references, byte for
-            # byte -- the short URL a person types to reach the web client. plexsim
+            # byte -- the short URL a person types to reach the web client. simplex
             # answered the plug-in dispatcher's empty container there.
             # Cycle 16, measured on kids and zen: the Location is ABSOLUTE and
             # built from the request's own `Host` header -- `Host:
             # example.com:1234` gives `http://example.com:1234/web/index.html`
-            # and an empty Host gives `http:///web/index.html`. plexsim sent a
+            # and an empty Host gives `http:///web/index.html`. simplex sent a
             # RELATIVE Location, which is legal and is not what a real PMS
             # sends.
             return ("redirect", "http://%s/web/index.html"
@@ -8725,7 +8725,7 @@ class PlexSim:
         if route.startswith("/web/"):
             return ("static", route[len("/web/"):])
         # The web app opens this as soon as it connects. A real PMS pushes
-        # library/playback events down it; plexsim has none to push, but the
+        # library/playback events down it; simplex has none to push, but the
         # channel has to exist and stay open or the client keeps reconnecting.
         if route == "/:/eventsource/notifications":
             return ("sse",)
@@ -8752,17 +8752,17 @@ class PlexSim:
         if route == "/actions/removeFromContinueWatching":
             return self.remove_from_continue_watching(query, method)
 
-        # -- live TV / DVR / sync: plexsim has no tuner and no encoder ----
+        # -- live TV / DVR / sync: simplex has no tuner and no encoder ----
         if segments[:1] == ["media"] and segments[1:2] in (["subscriptions"], ["grabbers"]):
             return self.bare_container(size=0)
         if segments[:1] == ["sync"] and len(segments) > 1:
             # Cycle 45, measured on both references: the DEEPER sync paths are 404s
             # (`/sync/items`, `/sync/transcodeQueue`, `/sync/zzz`), but the BARE `/sync`
             # -- and `/sync/` -- is the legacy plug-in dispatcher's `{size: 0,
-            # content: "plugins"}` 200, like every other single-segment path. plexsim
+            # content: "plugins"}` 200, like every other single-segment path. simplex
             # short-circuited the whole prefix to a 404 and so answered a single-segment
             # path differently from every other one on the surface.
-            return ("error", 404, "plexsim: no sync")
+            return ("error", 404, "simplex: no sync")
 
         if len(segments) == 1:
             # Measured on both reference servers: an unknown SINGLE-segment path
@@ -8772,7 +8772,7 @@ class PlexSim:
             # bundle -- are 200 there and were 404 here.
             # Cycle 15, measured on the copy: it answers EVERY method, not just
             # GET -- `PUT /prefs`, `POST /setting`, `DELETE /users` and `/devices.xml`
-            # are all 200 with `content="plugins"`. plexsim served the GET alone.
+            # are all 200 with `content="plugins"`. simplex served the GET alone.
             logger.info("PLUGIN PATH %s %s -- legacy dispatcher", method, route)
             return self.bare_container(**plugin_container(route))
 
@@ -8787,7 +8787,7 @@ class PlexSim:
         # is to route them, which is what tests/test_ui_surface.py holds the line
         # on. So: log it loudly, and answer honestly.
         logger.warning("UNKNOWN %s %s", method, route)
-        return ("error", 404, "plexsim: not found")
+        return ("error", 404, "simplex: not found")
 
     # -- endpoint bodies -------------------------------------------------
 
@@ -8799,14 +8799,14 @@ class PlexSim:
         """
         token = query.get("token", "")
         if not token:
-            return ("error", 400, "plexsim: missing claim token")
+            return ("error", 400, "simplex: missing claim token")
         if self.claim is None:
-            return ("error", 500, "plexsim: claim support not configured")
+            return ("error", 500, "simplex: claim support not configured")
         try:
             self.claim.exchange(token)
         except Exception as error:
             logger.error("claim exchange failed: %s", error)
-            return ("error", 500, "plexsim: claim exchange failed: %s" % error)
+            return ("error", 500, "simplex: claim exchange failed: %s" % error)
 
         # What the probe PMS did next (tests/fixtures/plextv_registration_s1422.json):
         # POST /servers.xml, the device PUT, then the pubsub stream that makes it present.
@@ -8831,7 +8831,7 @@ class PlexSim:
                 # `authToken="<its PlexOnlineToken>"`; kids (1.43.4, claimed) does not,
                 # and kids also answers an empty public/private address pair -- so the
                 # whole plex.tv mapping block is absent there and version is confounded
-                # with mapping state. The omission is now a DELIBERATE deviation: plexsim's
+                # with mapping state. The omission is now a DELIBERATE deviation: simplex's
                 # token gate defaults OFF, so publishing the claim token here would hand it
                 # to every peer that can reach the port. fun and zen both report the
                 # owner's EMAIL here.
@@ -8844,12 +8844,12 @@ class PlexSim:
                 # Cycle 49: the pair moves TOGETHER. zen answers
                 # `privateAddress="192.168.88.244" privatePort="32400"` and kids, whose
                 # plex.tv mapping carries no local connection, answers `""` and **0** --
-                # never a port beside an empty address, which is the combination plexsim
+                # never a port beside an empty address, which is the combination simplex
                 # was the only server to produce.
                 "privateAddress": self.private_address or "",
                 "privatePort": (self.private_port or 32400) if self.private_address else 0,
                 # Cycle 45: this is the SAME STRING as `/`'s `ownerFeatures`,
-                # byte for byte on both references. plexsim sent the bare `pass` here
+                # byte for byte on both references. simplex sent the bare `pass` here
                 # and a three-name list there, so its own two answers disagreed.
                 "subscriptionFeatures": self.owner_features(),
                 "subscriptionActive": claimed,
@@ -8888,14 +8888,14 @@ class PlexSim:
         spelling, header or query; `roku`, iOS, tvOS, Chrome, Windows and the rest
         change nothing, and `GET /` is unaffected -- strips `id` AND the whole
         `Pivot` list from every library `Directory` here, leaving the other nine
-        attributes alone. plexsim sent the same rows to every client, so a Roku is
+        attributes alone. simplex sent the same rows to every client, so a Roku is
         handed pivots a real server withholds from it.
 
         Cycle 66, measured on kids, zen and plexscratch42 over 260 cells: that strip is
         for an OLD Roku only. With `X-Plex-Version` at 6.4.2 or above -- every Plex for
         Roku shipped since 2020; the recorded identity sends 9.7.1 -- the rows keep
         both. Cycle 16 measured the platform header alone, the one shape no shipping
-        Roku sends, so plexsim stripped the tabs from every real Roku.
+        Roku sends, so simplex stripped the tabs from every real Roku.
         """
         container = self.bare_container(size=1,
                                         MediaProvider=self.media_provider_rows(),
@@ -8906,7 +8906,7 @@ class PlexSim:
             # Preferences=1` answers -- the per-SHOW `episodeSort` variant with `Library
             # default` in its enum included. It is the FIRST child of the library
             # `Directory`, before `Pivot`, and the `Home` row (which names no library)
-            # gets none. plexsim handled the option at three other sites and ignored it
+            # gets none. simplex handled the option at three other sites and ignored it
             # here, so a client that bootstraps library preferences from the provider
             # document in one round trip saw libraries with no preferences at all.
             by_key = {"/library/sections/%s" % section["key"]: section
@@ -8945,7 +8945,7 @@ class PlexSim:
                         # Cycle 56, measured on kids, zen and plexscratch42: a SHOW
                         # library's totals are its EPISODES' (kids' TV Shows 60186 ms,
                         # 37683488 bytes), so a top-level row that owns no Media is read
-                        # through its leaves. plexsim skipped it and answered 0, which is
+                        # through its leaves. simplex skipped it and answered 0, which is
                         # what python-plexapi's `totalDuration`/`totalStorage` then report.
                         owners = []
                         for item in self.catalog.section_items(section["key"]):
@@ -8997,7 +8997,7 @@ class PlexSim:
     def server_root(self):
         """`GET /` -- the server-info document, which is NOT `/identity`.
 
-        plexsim answered `/` with the five-field identity document. Measured, a
+        simplex answered `/` with the five-field identity document. Measured, a
         real PMS answers the whole capability blob -- the same ~50 scalars as
         /media/providers -- plus 25 `Directory` rows naming its top-level
         endpoints. python-plexapi's `PlexServer()` loads every attribute it has
@@ -9005,7 +9005,7 @@ class PlexSim:
         """
         # Cycle 50: `library`, `livetv` and `media` carry `count="3"` and the other 22
         # carry 1 -- on kids, zen, plexscratch and plexscratch42, both versions and both
-        # claim states. plexsim's own comment said "the count is 1 on every one", which is
+        # claim states. simplex's own comment said "the count is 1 on every one", which is
         # a constant nobody had checked against the three that are not. python-plexapi
         # loads every attribute it has from this document.
         rows = [{"count": 3 if name in ("library", "livetv", "media") else 1,
@@ -9023,14 +9023,14 @@ class PlexSim:
         """The capability scalars `/` and `/media/providers` both carry.
 
         Taken from a real claimed PMS 1.43.4's own /media/providers, which carries
-        30 attributes plexsim was missing -- including apiVersion and the myPlex*
+        30 attributes simplex was missing -- including apiVersion and the myPlex*
         claim-state pair. THIS, not /identity, is where a client reads whether the
         server is signed in; the web app re-requested that endpoint 43 times while
         they were absent, treating an incomplete provider as not-yet-ready. And
         measured since: `GET /` carries the same set, which is where
         python-plexapi reads every attribute it has.
 
-        The transcoder capability flags stay false: plexsim has no encoder, and
+        The transcoder capability flags stay false: simplex has no encoder, and
         advertising one invites a transcode request it cannot serve.
         """
         return dict(
@@ -9056,14 +9056,14 @@ class PlexSim:
             sync=True,
             readOnlyLibraries=False,
             # Present and false, not absent: the client's Sync & Download menu
-            # entry reads `server.allowSync`, and plexsim has no encoder to
+            # entry reads `server.allowSync`, and simplex has no encoder to
             # convert anything for a device.
             allowSync=False,
             pushNotifications=False,
             allowCameraUpload=False,
             allowChannelAccess=True,
             # The Delete entry in an item's context menu is drawn only when the
-            # server reports this (client module 92273's `showDelete`). plexsim
+            # server reports this (client module 92273's `showDelete`). simplex
             # owns no files, so its delete drops the ROW from the in-memory
             # library and leaves the debrid content alone -- which is the only
             # honest local meaning of "delete" here, and a restart undoes it.
@@ -9072,17 +9072,17 @@ class PlexSim:
             allowTuners=False,
             # Cycle 49: `livetv` is a CONSTANT 7 on all four references -- zen and kids
             # (claimed) and both unclaimed copies -- none of which has a tuner. It is not
-            # a capability readout, and plexsim's 0 is a value no real PMS emits.
+            # a capability readout, and simplex's 0 is a value no real PMS emits.
             livetv=7,
             # ...where `offlineTranscode` really is state: 1 on both claimed references
             # and ABSENT on both unclaimed copies. 0 is the third answer, which nothing
-            # answers. plexsim omits it, which is the shape of the server that cannot do
+            # answers. simplex omits it, which is the shape of the server that cannot do
             # it -- and it is the same capability `allowSync=False` above already
             # withholds, so emitting a 1 beside that would contradict it.
             offlineTranscode=None,
             streamingBrainVersion=2,
             streamingBrainABRVersion=3,
-            # A real PMS says "logs,databases,streaminglogs"; plexsim has no
+            # A real PMS says "logs,databases,streaminglogs"; simplex has no
             # database, and this string is exactly what the Troubleshooting page
             # reads to decide which Download buttons to draw.
             diagnostics="logs,streaminglogs",
@@ -9097,7 +9097,7 @@ class PlexSim:
             # Cycle 49: three CONSTANT strings, byte-identical on all four servers --
             # zen (1.42.2 claimed), kids (1.43.4 claimed) and both unclaimed copies --
             # and they are the ladder the client's own Quality menu is built from: the
-            # three lists are parallel, index by index. plexsim advertised none of them,
+            # three lists are parallel, index by index. simplex advertised none of them,
             # so the picker had no ladder to draw. They are a capability TABLE, not a
             # function of the transcoder's state, which is why they are sent beside
             # `transcoderVideo=False`. (`transcoderVideoRemuxOnly`, which zen also
@@ -9165,7 +9165,7 @@ class PlexSim:
                             "symbol": "stack",
                         },
                     ] if self.library.collections(key) else []) + [
-                        # The Categories tab. plexsim can answer it now that the
+                        # The Categories tab. simplex can answer it now that the
                         # secondary axes are real, and a real PMS advertises it
                         # as the third pivot on every content directory.
                         {
@@ -9236,11 +9236,11 @@ class PlexSim:
                     # Cycle 50: `video,audio,photo` on kids and zen alike, both of which
                     # hold only movie and show libraries -- it is the PROVIDER's declared
                     # capability set, not a function of what the libraries contain.
-                    # plexsim derived it from its own library types and answered `video`.
+                    # simplex derived it from its own library types and answered `video`.
                     "types": "video,audio,photo",
                     # `download` here is what draws the Download entry in the
                     # item context menu (client module 92273: `showDownload`
-                    # reads `provider.protocols.download`). plexsim can serve
+                    # reads `provider.protocols.download`). simplex can serve
                     # it -- the same Part read with `download=1` -- so omitting
                     # it hid a feature that works.
                     "protocols": "stream,download",
@@ -9252,7 +9252,7 @@ class PlexSim:
         section_id = segments[2]
         if section_id == "all" and list(segments[3:]) == ["refresh"] and method in ("GET", "POST"):
             # Measured on a writable copy of the reference: this scans EVERY library, one
-            # after another. plexsim 404'd it as an unknown section.
+            # after another. simplex 404'd it as an unknown section.
             for directory in list(self.catalog.sections):
                 self.library_section(["library", "sections", str(directory["key"]), "refresh"],
                                      query, method)
@@ -9261,7 +9261,7 @@ class PlexSim:
             # Cycle 59, measured on plexscratch42 and plexscratch: the library-wide cancel
             # -- python-plexapi's `Library.cancelUpdate()` -- is a 200 with an empty body,
             # idle or mid-scan, and pushes ONE status frame, "Library scan canceled"; a
-            # SECTION's cancel pushes none. plexsim routed the section form only and
+            # SECTION's cancel pushes none. simplex routed the section form only and
             # 404'd this one as an unknown section.
             for directory in list(self.catalog.sections):
                 self.refreshing.discard(str(directory["key"]))
@@ -9271,23 +9271,23 @@ class PlexSim:
         section = self.catalog.section(section_id)
         if section is None:
             # Measured: every leaf of a section the server does not have is a 404.
-            # plexsim answered a complete, valid 200 -- an empty library with a
+            # simplex answered a complete, valid 200 -- an empty library with a
             # working 28-row filter bar and a 19-row settings pane -- so a deleted
             # library or a stale bookmark rendered as a real one. Fix 4's trap from
             # the inside.
-            return ("error", 404, "plexsim: no such section")
+            return ("error", 404, "simplex: no such section")
         if len(segments) == 3:
             if method not in ("GET", "HEAD", "PUT", "DELETE"):
                 # Measured: a POST to a section is a 404; only the edit (PUT) and the
                 # delete exist beside the read.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if method == "DELETE":
                 # Manage > Libraries > Delete Library. Drops the section and
                 # every row in it, in memory: catalog.json is untouched.
                 doomed = [str(r.get("ratingKey"))
                           for r in self.catalog.section_items(section_id)]
                 if self.catalog.remove_section(section_id) is None:
-                    return ("error", 404, "plexsim: no such section")
+                    return ("error", 404, "simplex: no such section")
                 # Measured on a writable copy of the reference, frame for frame.
                 #
                 # Cycle 18, re-measured with a control write first (a title edit, which
@@ -9296,8 +9296,8 @@ class PlexSim:
                 # "deleted"`, an EMPTY title and `sectionID` the NEGATIVE section id --
                 # between the 10% and 40% activity updates. A nine-row library produced
                 # 14 of them there, keyed on the server's own internal metadata ids
-                # rather than the ratingKeys, which plexsim cannot reproduce; it frames
-                # the rows it actually removes. plexsim pushed the activity and none of
+                # rather than the ratingKeys, which simplex cannot reproduce; it frames
+                # the rows it actually removes. simplex pushed the activity and none of
                 # the timeline, so a client holding a row from the deleted library was
                 # never told it had gone -- which is the failure the whole notification
                 # lifecycle exists for.
@@ -9323,7 +9323,7 @@ class PlexSim:
                 # orphaned `type: 12` rows, not a per-row announcement -- which is why two
                 # controls produced none.
                 #
-                # plexsim sent one entry per TOP-LEVEL row (a show, never its episodes),
+                # simplex sent one entry per TOP-LEVEL row (a show, never its episodes),
                 # so on a zen-sized library it would hand every client a ~1 MB frame of
                 # 3,887 `type 12` deletes keyed on movie ratingKeys. A single item's
                 # delete frame is real and unchanged: `notify_deleted` carries the row's
@@ -9347,43 +9347,43 @@ class PlexSim:
                 # The Edit Library dialog sends the WHOLE form, and a real PMS
                 # validates it: measured 400 for a `name` alone, for a form with no
                 # `agent` or no `scanner`, and for an unknown agent, scanner or
-                # language. plexsim accepted every one of those with a 200, so a
+                # language. simplex accepted every one of those with a 200, so a
                 # typo in the dialog looked like it had been saved.
                 # Re-measured on the copy, correcting the reading above: what an edit
                 # needs is an `agent`, not a `name` and not a `scanner`. The client's own
                 # library-UPGRADE form sends `agent` and `scanner` and nothing else, and
                 # `agent` alone is a 200 too; `name` alone, `scanner` alone, `language`
-                # alone and an empty form are all 400. plexsim demanded `name`, so the
+                # alone and an empty form are all 400. simplex demanded `name`, so the
                 # upgrade form -- the one whose failure the bundle reports as "There was
                 # a problem upgrading the library" -- was refused every time.
                 if not query.get("agent"):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if query["agent"] not in KNOWN_AGENTS:
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 # Cycle 19, measured on plexscratch: a `type` that names a DIFFERENT
                 # type from the library's own is a 400 (`type=2` on a movie library),
                 # while the library's own type -- as a word, as its number, empty, or
-                # absent -- is a 200. plexsim answered 200 and wrote nothing, so a form
+                # absent -- is a 200. simplex answered 200 and wrote nothing, so a form
                 # that a real PMS refuses looked like it had been saved.
                 asked = str(query.get("type") or "")
                 if asked:
                     named = self.META_TYPE_NAMES.get(int(asked)) if asked.isdigit() else asked
                     if named != section.get("type"):
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                 if query.get("scanner") and query["scanner"] not in KNOWN_SCANNERS:
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if (query.get("language")
                         and str(query["language"]).lower() not in KNOWN_LANGUAGES):
                     # The set is stored lowercased, and the create path already compares
                     # that way: `EN-US` is a 201 on the reference, so the edit must not
                     # refuse `en-GB` on a case mismatch of its own making.
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if query.get("name"):
                     section["title"] = query["name"]
                 # Measured on a writable copy of the reference: the edit APPLIES the rest
                 # of the form -- `language=de-DE` reads back on the section and
                 # `prefs[enableBIFGeneration]=0` in its settings -- and runs a scan.
-                # plexsim renamed the library and dropped the rest.
+                # simplex renamed the library and dropped the rest.
                 if query.get("language"):
                     section["language"] = query["language"]
                 prefs = {match.group(1): value for name, value in query.items()
@@ -9395,7 +9395,7 @@ class PlexSim:
                 # alone, `agent` with `name`, and `agent` with a `prefs[...]` are 200s
                 # with ZERO frames; either of those two makes it 20. Cycle 9 measured
                 # "an edit applies the whole form and scans" with a form that carried a
-                # `language`, which is the half that scans. plexsim scanned on every
+                # `language`, which is the half that scans. simplex scanned on every
                 # accepted edit, so renaming a library or toggling one Advanced
                 # preference lit the Dashboard with a full scan and re-framed every row.
                 if any(query.get(field) for field in self.SCAN_TRIGGERING_EDIT_FIELDS):
@@ -9411,18 +9411,18 @@ class PlexSim:
         leaf = segments[3]
 
         # Measured across 21 section leaves: a real PMS 404s every verb a leaf does
-        # not implement, and it never answers 405 anywhere. plexsim answered the
+        # not implement, and it never answers 405 anywhere. simplex answered the
         # GET body to any verb -- so `DELETE /library/sections/1/all` came back 200
         # with the grid, which tells a client the delete was accepted.
         allowed = SECTION_LEAF_VERBS.get(leaf, {"GET", "HEAD"})
         if method not in allowed:
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
 
         # Cycle 16, swept across kids and zen, both library types: a leaf's EXTRA path
         # segment is never the leaf again. On a leaf with no bucket it is a flat 404
         # -- /all/zzz, /onDeck/zzz, /sorts/zzz, /studio/<a real studio key>,
         # /audioLanguage/en, /location/1 and fourteen more -- and on a leaf WITH one a
-        # second extra segment (`/genre/24/more`) is a 404 too. plexsim routed on
+        # second extra segment (`/genre/24/more`) is a 404 too. simplex routed on
         # `segments[3]` and dropped the rest of the path, so all of them answered the
         # leaf: the A-Z rail, the genre list and the sort list came back where the
         # client had asked for a page of films, which is fix 4's trap one level down --
@@ -9445,7 +9445,7 @@ class PlexSim:
             # `allowSync`, no `title2`, no `content`, no `viewGroup`. Any other value, an
             # empty one and a number are 404s, so it is that four-name set exactly.
             if segments[4] not in ("genre", "mood", "style", "decade"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             is_show_stations = section.get("type") == "show"
             return self.bare_container(
                 size=0,
@@ -9460,7 +9460,7 @@ class PlexSim:
         if len(segments) > 4 and leaf not in ("query", "indexes", "firstCharacter",
                                              "extras", "composite", "stations"):
             if len(segments) > 5:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.axis_bucket(section_id, section, leaf, segments[4], query)
 
         # -- the write half of Manage > Libraries -------------------------
@@ -9468,9 +9468,9 @@ class PlexSim:
             if method == "PUT":
                 # Measured: a PUT here is a 404 -- the scan is a GET (or a POST),
                 # and the cancel is a DELETE.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             # "Scan Library Files" / "Refresh All Metadata"; DELETE is the
-            # Cancel Scan button. plexsim's rows come from the catalog, so a
+            # Cancel Scan button. simplex's rows come from the catalog, so a
             # scan re-versions artwork and reports an activity per item, which
             # is what the Libraries page and the Dashboard read.
             if method == "DELETE":
@@ -9483,18 +9483,18 @@ class PlexSim:
             # everything (5 progress rows on its five-movie library, 20 frames); a
             # parent of it, a child of it and a path the library does not hold scan
             # NOTHING -- 0 progress rows, 9 frames, the activity running 0 -> 100 with
-            # an empty subtitle. plexsim ignored the parameter, so "Scan Library Files"
+            # an empty subtitle. simplex ignored the parameter, so "Scan Library Files"
             # on one folder rescanned and re-framed the whole library.
             # Cycle 36, re-measured on plexscratch (1.43.4) and plexscratch42 (1.42.2)
             # with a listener open, and it CORRECTS cycle 19 twice.
             #
             # The section's OWN Location scans everything -- 3 `progress` rows and the
-            # full 16-frame skeleton, byte for byte the no-path scan -- and plexsim
+            # full 16-frame skeleton, byte for byte the no-path scan -- and simplex
             # scanned NOTHING for it, because the catalog's section dict carries no
             # `Location` at all: the list is synthesised when the section is published,
             # so the comparison here was always against an empty list and every `?path=`
             # took the no-folder branch. A client's "Scan" on the library's own folder
-            # therefore did nothing on plexsim and rescanned everything on a real PMS.
+            # therefore did nothing on simplex and rescanned everything on a real PMS.
             #
             # And a CHILD of it SCANS too (17 frames, the same 3 progress rows), where
             # cycle 19 recorded that it scans nothing. That measurement was taken on a
@@ -9504,7 +9504,7 @@ class PlexSim:
             # nothing, which is the half of cycle 19 that survives.
             paths = [str(location.get("path") or "")
                      for location in section.get("Location") or []] \
-                or ["/plexsim/%s" % section_id]
+                or ["/simplex/%s" % section_id]
             wanted = query.get("path")
             if wanted and not any(wanted == path or wanted.startswith(path.rstrip("/") + "/")
                                   for path in paths):
@@ -9517,7 +9517,7 @@ class PlexSim:
                 # Measured on the copy: "Refresh All Metadata" runs the WHOLE scan
                 # sequence first -- the same `library.update.section` activity, its
                 # per-item progress, the subscriptions pair and the completion status --
-                # and only then refreshes each item. plexsim pushed a bare status frame
+                # and only then refreshes each item. simplex pushed a bare status frame
                 # and went straight to the per-item half, so the Libraries page showed no
                 # scan and no progress for the one operation that takes longest.
                 self.notify_section_scan(section_id, section)
@@ -9536,17 +9536,17 @@ class PlexSim:
             if method != "PUT":
                 # Measured: a real PMS 404s this rather than answering 405, which is
                 # a status it never sends.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if leaf == "analyze":
                 # Measured on a writable copy of the reference: an analyze pushes, for
                 # each movie in title order, a state-5 frame with `mediaState:
-                # analyzing`, one with `thumbnailing`, and a plain state 5. plexsim
+                # analyzing`, one with `thumbnailing`, and a plain state 5. simplex
                 # pushed nothing.
                 # Cycle 21, re-measured on plexscratch three times with an idle-socket
                 # control between the runs: it is the LEAVES that are framed, so a SHOW
                 # library pushes three frames per EPISODE -- eighteen for its six --
                 # exactly as the item-analyze path does and with no activity of its own.
-                # plexsim framed only rows whose own `type` is `movie`, so a show
+                # simplex framed only rows whose own `type` is `movie`, so a show
                 # library's Analyze pushed nothing at all.
                 leaves = []
                 for row in sorted(self.catalog.section_items(section_id),
@@ -9558,13 +9558,13 @@ class PlexSim:
                 for row in leaves:
                     for media_state in ("analyzing", "thumbnailing", None):
                         self.notify_timeline(row, self.TIMELINE_DONE, None, media_state=media_state)
-            logger.info("SECTION %s %s -- nothing to %s, plexsim owns no files",
+            logger.info("SECTION %s %s -- nothing to %s, simplex owns no files",
                         leaf, section_id, leaf)
             return ("empty", 200)
         if leaf == "indexes":
-            # Delete Preview Thumbnails. plexsim generates none.
+            # Delete Preview Thumbnails. simplex generates none.
             if method != "DELETE":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             # Cycle 21, measured on plexscratch five times: the delete MOVES the
             # section's own `updatedAt` while leaving every row's `updatedAt` and
             # `scannedAt` alone, and it still answers 200/empty with zero frames. It is
@@ -9584,10 +9584,10 @@ class PlexSim:
                 writes = [(name, value) for name, value in query.items()
                           if not name.startswith("X-Plex-") and name != "_pairs"]
                 # Measured: an unknown setting is a 400 and NOTHING in the request
-                # is applied, even the known settings beside it. plexsim skipped the
+                # is applied, even the known settings beside it. simplex skipped the
                 # unknown one and answered 200.
                 if any(name not in known for name, _ in writes):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 for name, value in writes:
                     kind = known[name].get("type")
                     if kind == "int":
@@ -9618,7 +9618,7 @@ class PlexSim:
                 if writes:
                     # Cycle 17, measured on plexscratch: the write moves the SECTION's
                     # own `updatedAt` -- and nothing else's. Clients cache a library
-                    # keyed on that stamp, so on plexsim a settings change never
+                    # keyed on that stamp, so on simplex a settings change never
                     # invalidated the cache. The write itself is unchanged: 200 with an
                     # empty body and zero frames.
                     section["updatedAt"] = int(time.time())
@@ -9659,16 +9659,16 @@ class PlexSim:
         if leaf == "all":
             if method == "PUT":
                 # THE Edit dialog's save path (`MultiMetadataModel.saveUrl`), and
-                # plexsim answered the listing to it -- so every Save applied
+                # simplex answered the listing to it -- so every Save applied
                 # nothing and the dialog reported success, because the status was
                 # 200. Measured: `id=` scopes it to those rows, and with no `id`
                 # the whole FILTERED set is edited; no `type` is a 400, and the
                 # container paging parameters are ignored on a write.
                 if not query.get("type"):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 # Cycle 16, measured on plexscratch: the `type=` here has to
                 # PARSE as well -- `type=abc` is a 400 and edits nothing, where
-                # plexsim answered 200 having edited nothing, which reads to
+                # simplex answered 200 having edited nothing, which reads to
                 # the client as a save that worked.
                 self._parsed_type(query, 400, 400)
                 for name, _ in query.get("_pairs") or []:
@@ -9678,16 +9678,16 @@ class PlexSim:
                         continue
                     # Measured: a TYPE-SCOPED filter (`show.title=`, `movie.year>>=`,
                     # even the asked type's own) is a 400 on this path, where an
-                    # unscoped one scopes the edit. plexsim applied it and edited.
+                    # unscoped one scopes the edit. simplex applied it and edited.
                     # Cycle 22: `split_key` no longer raises -- a name that keeps a
                     # comparison character is an unknown FIELD, and an unknown field
                     # on this path is not a scoped one, so it falls through.
                     field, _ = filters_module.split_key(name)
                     if filters_module.split_scope(field)[0]:
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                 if str(query.get("type")) == "18":
                     # Measured on a writable copy of the reference: `type=18` edits the
-                    # COLLECTIONS `id=` names. plexsim found no row of that type and
+                    # COLLECTIONS `id=` names. simplex found no row of that type and
                     # edited nothing.
                     edits = {k: v for k, v in query.items() if k not in ("type", "id")}
                     edits["_pairs"] = [(k, v) for k, v in query.get("_pairs") or []
@@ -9700,7 +9700,7 @@ class PlexSim:
                     # ignoring case, the collection's own old tag included -- is a 409 that
                     # changes nothing, while its own current title in any case, an unused
                     # collection's title and a genre's name are 200s. python-plexapi's
-                    # `editTitle()` and the Edit dialog save here; plexsim renamed, and left
+                    # `editTitle()` and the Edit dialog save here; simplex renamed, and left
                     # a member carrying two tags of the same name.
                     wanted_title = edits.get("title.value", edits.get("title"))
                     if wanted_title:
@@ -9721,13 +9721,13 @@ class PlexSim:
                                 stored.get("_names") or ()) if stored is not None else set()
                             if stored is not None and wanted_title.lower() in taken \
                                     and wanted_title.lower() not in own:
-                                return ("error", 409, "plexsim: a collection has that name")
+                                return ("error", 409, "simplex: a collection has that name")
                     for key in (query.get("id") or "").split(","):
                         if key.strip().isdigit() and self.library.collection(key.strip()):
                             # Cycle 15, measured on the copy: the SECTION path renames
                             # the members' `Collection` TAG as well, where the item
                             # path (cycle 9) leaves it alone. The Edit Collection
-                            # dialog saves through here, so on plexsim every member's
+                            # dialog saves through here, so on simplex every member's
                             # page kept the old name for ever.
                             self.library.rename_collection_tag(
                                 self.library.collection(key.strip()),
@@ -9738,7 +9738,7 @@ class PlexSim:
                             # carrying the row's title from BEFORE the write, then
                             # `state 5` with the new one -- where the item and metadata
                             # spellings of the same edit send `loading` with the new
-                            # title in both. plexsim routed the section save straight
+                            # title in both. simplex routed the section save straight
                             # through the item writer, so it sent the item path's pair
                             # from the section path.
                             stored = self.library.collection(key.strip())
@@ -9758,7 +9758,7 @@ class PlexSim:
                 # `?id=1&id=3&summary.value=x` is a 200 and neither row moves, where the
                 # comma list `?id=1,3` edits both and a single `id=1` edits one. It is
                 # the rule repeated parameters follow everywhere else on this server
-                # (they AND, and a row has one id); plexsim took the LAST one, so the
+                # (they AND, and a row has one id); simplex took the LAST one, so the
                 # same request edited a row at random.
                 named = [value for name, value in query.get("_pairs") or []
                          if name == "id"]
@@ -9770,7 +9770,7 @@ class PlexSim:
                     # Measured: `id=` names rows of the asked TYPE in THIS library. A
                     # movie id under `type=2`, or on another library's path, is edited
                     # nowhere -- still a 200 -- and `id=<movie>,<show>` with `type=1`
-                    # edits only the movie. plexsim edited every id it had.
+                    # edits only the movie. simplex edited every id it had.
                     rows = [self.catalog.items[k] for k in keys
                             if k in self.catalog.items
                             and self.catalog.items[k].get("type") == wanted
@@ -9790,11 +9790,11 @@ class PlexSim:
             # above already allowed it; this inner gate was a second, stricter copy that
             # forgot HEAD. It was the ONE disagreement in a 76-path GET/HEAD sweep.
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if query.get("type") is not None \
                     and not _int_param(str(query.get("type")).strip()):
                 # Cycle 20: an unparseable `type=` is a 400 on both references.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             return self.common_fields(section_id, section, query)
         if leaf in self.SUBSET_TITLES:
             return self.section_subset(section_id, section, leaf, query)
@@ -9817,7 +9817,7 @@ class PlexSim:
             # `type=2`/`4` on a show one its shows and episodes), and the grammar is
             # validated exactly as the grid's is -- an unknown `sort` key, an
             # unparseable `type` and an unparseable `limit` are each a 500, while
-            # `subtype`, `smart` and an empty `sort` are accepted and ignored. plexsim
+            # `subtype`, `smart` and an empty `sort` are accepted and ignored. simplex
             # answered `size 0` and a 200 to every one of those.
             if query.get("type") is not None:
                 typed = self._parsed_type(query)
@@ -9832,13 +9832,13 @@ class PlexSim:
             # unknown sort key and an unparseable limit are each a 500 here too.
             rows, unsupported = self._sorted(rows, query.get("sort") or "titleSort")
             if unsupported:
-                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+                return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
             rows = self._limited(rows, query)
             if query.get("includeMeta") == "1":
                 # Cycle 46, measured on kids and zen: this listing carries the FULL
                 # section descriptor -- one `Type` row for the collection view with a
                 # single `titleSort` Sort whose `firstCharacterKey` is scoped
-                # `?type=18`, plus the section's own eight `FieldType` rows. plexsim
+                # `?type=18`, plus the section's own eight `FieldType` rows. simplex
                 # answered no `Meta` at all, so the Collections tab had no sort menu and
                 # no filter operators to build one from.
                 descriptor = self.section_meta(section_id, section.get("type") or "movie")
@@ -9861,9 +9861,9 @@ class PlexSim:
             # a POST to `/query/parse` is a 404, and so is any section id the
             # server does not have.
             if len(segments) != 5 or segments[4] != "parse" or method != "GET":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if not section:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.query_parse(section, query)
 
         # -- the filter and sort descriptors the legacy UI reads -----------
@@ -9873,11 +9873,11 @@ class PlexSim:
             # library answers the 7 episode sorts to `type=4` and the artist sorts to
             # `type=8`; a show library the 9 movie sorts to `type=1`; types 9, 10, 13, 18
             # and 20 have lists of their own, every other number is empty and a
-            # non-number a 400. plexsim read the library's own Meta, so a movie library
+            # non-number a 400. simplex read the library's own Meta, so a movie library
             # had no sorts for any type but its own and answered the movie list to
             # `type=8`. The lists are `section_sorts.json`, captured from the reference.
             # Cycle 20: an EMPTY `type=` is a 400 here too, on both references --
-            # plexsim read it as "no type" and answered the library's own list.
+            # simplex read it as "no type" and answered the library's own list.
             raw = query.get("type")
             if raw is None:
                 wanted = str(TYPE_NUMBERS.get(self.section_kind(section), 1))
@@ -9886,7 +9886,7 @@ class PlexSim:
                 # movie list), measured on zen and kids.
                 wanted = str(int(raw))
             else:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             variant = "advanced" if _option_on(query, "includeAdvanced") else "plain"
             sorts = json.loads(json.dumps(SECTION_SORTS[variant].get(wanted) or [])
                                .replace("{section}", str(section_id)))
@@ -9906,7 +9906,7 @@ class PlexSim:
                                             Directory=sorts)
         if leaf == "filters":
             # Cycle 20: an EMPTY `type=` is a 400 here too, on both references --
-            # plexsim read it as "no type" and answered the library's own list.
+            # simplex read it as "no type" and answered the library's own list.
             raw = query.get("type")
             if raw is None:
                 wanted = str(TYPE_NUMBERS.get(self.section_kind(section), 1))
@@ -9915,7 +9915,7 @@ class PlexSim:
                 # movie list), measured on zen and kids.
                 wanted = str(int(raw))
             else:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             entries = list(SECTION_FILTERS["plain"].get(wanted) or [])
             if _option_on(query, "includeAdvanced"):
                 entries += SECTION_FILTERS["advanced"].get(wanted) or []
@@ -9932,7 +9932,7 @@ class PlexSim:
             # reverses them. The match is on the ROW's own sort title, which is why a
             # season list's `A` bucket says 64 in the axis and answers 0 rows here.
             #
-            # plexsim routed on `segments[3]` alone, so the extra segment was dropped
+            # simplex routed on `segments[3]` alone, so the extra segment was dropped
             # and every bucket answered the AXIS again: clicking a letter in the A-Z
             # rail redrew the rail.
             wanted = urllib.parse.unquote(segments[4])
@@ -9945,7 +9945,7 @@ class PlexSim:
             rows, _ = self.apply_filters(rows, query, section)
             rows, unsupported = self._sorted(rows, query.get("sort") or "titleSort")
             if unsupported:
-                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+                return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
             # `limit=` is parsed but does nothing here, the way it does nothing on
             # /children: zen's `B` bucket answers all 161 rows to `limit=2`.
             extra = {"nocache": True} if section.get("type") == "show" else {}
@@ -9956,7 +9956,7 @@ class PlexSim:
             # Measured on zen's show library: this axis IS scoped by `?type=`, and its
             # counts follow -- 13 `#` and 40 `A` for the shows at type 2, 13 and 64 for
             # the seasons at type 3, 185 and 207 for the episodes at type 4, and empty
-            # for a type the library holds no rows of. plexsim counted the whole
+            # for a type the library holds no rows of. simplex counted the whole
             # section whatever the type said, so a show library's letter bar reported
             # show counts on an episode grid.
             self._parsed_type(query, 500)
@@ -9971,7 +9971,7 @@ class PlexSim:
                 # reproduces the axis on 28 of 28 buckets at type=3 AND at type=4;
                 # bucketing them by their own titles reproduces 0 of 28. kids says
                 # `F:2` for its two "Season 1"/"Season 2" rows and `F:6` for six
-                # episodes with real titles of their own. plexsim counted each row's
+                # episodes with real titles of their own. simplex counted each row's
                 # own title, so a season grid's A-Z rail read "S" and an episode
                 # grid's indexed episode titles -- neither of which is what the
                 # client's letter bar is for, and neither of which agrees with the
@@ -10059,13 +10059,13 @@ class PlexSim:
             # Measured on both servers: an axis over the rows refuses a `type=` it
             # cannot parse, exactly as a listing does -- 500 everywhere, and 400 on
             # `year` alone, which is the same split `/library/all` has against a
-            # section listing. plexsim answered 200 to all of them.
+            # section listing. simplex answered 200 to all of them.
             refusal = 400 if leaf == "year" else 500
             self._parsed_type(query, refusal, refusal)
             return self.secondary_directory(section_id, section, leaf, query)
         if leaf in SECONDARY_MEDIA_1_43:
-            # 1.43.4 only -- see SECONDARY_MEDIA_1_43. plexsim reports 1.42.2.
-            return ("error", 404, "plexsim: not found")
+            # 1.43.4 only -- see SECONDARY_MEDIA_1_43. simplex reports 1.42.2.
+            return ("error", 404, "simplex: not found")
         if leaf in SECONDARY_MEDIA:
             # And the MEDIA axes ignore `type=` completely -- the same list for every
             # value including `abc`, on a movie library and a show library alike --
@@ -10079,7 +10079,7 @@ class PlexSim:
             # whatever ratings the library actually holds -- so it is a scale and not
             # a value list. Like a media axis it carries no `fastKey` and its title is
             # a LABEL; the key is the rating on Plex's 0-10 scale, and `-1` is the
-            # "Not rated" bucket. plexsim 404'd it, so the Ratings entry in the filter
+            # "Not rated" bucket. simplex 404'd it, so the Ratings entry in the filter
             # bar opened nothing.
             return self.secondary_container(
                 section_id, section, SECONDARY_TITLES["userRating"],
@@ -10129,7 +10129,7 @@ class PlexSim:
             # Cycle 83, measured on zen (tests/fixtures/unwatched_zen.json): a SHOW is on
             # this list by its LEAVES -- 507 of 509, the six partly watched shows in and
             # the two fully watched ones out, exactly `unwatchedLeaves=1` -- and cycle 71
-            # saw both copies keep a show whose own `viewCount` is above 0. plexsim read
+            # saw both copies keep a show whose own `viewCount` is above 0. simplex read
             # the row's own counter, so one scrobbled episode took the show off the list.
             rows = [] if asked != str(own) else [
                 r for r in self.typed_rows(section_id, query) if self._has_unwatched(r)]
@@ -10140,15 +10140,15 @@ class PlexSim:
             # Tears of Steel` -- ratingKeys 1, 17, 3, 4) and on zen, whose `/unwatched`
             # page is byte-identical in order to `/library/sections/1/all` over 3,887
             # rows: this subset is ordered like every other listing, by `titleSort`.
-            # plexsim answered it in catalog order.
+            # simplex answered it in catalog order.
             # Cycle 55, measured on zen (`sort=titleSort:desc` and `sort=year:desc` answer
             # `17360, 2161, 380...`, the unsorted page) and kids (`1, 17, 3, 4` to every
             # sort): the leaf VALIDATES `sort=` -- an unknown key is a 500 -- and then
-            # IGNORES it. plexsim reversed the list for `titleSort:desc`.
+            # IGNORES it. simplex reversed the list for `titleSort:desc`.
             rows, _ = self._sorted(rows, "titleSort")
             # Cycle 16, measured on kids and zen: like every other container a SHOW
             # library answers, this one carries `nocache`; a movie library's does not.
-            # plexsim already had the rule on /all and the five subsets and had missed
+            # simplex already had the rule on /all and the five subsets and had missed
             # it here alone.
             extra = {"nocache": True} if section.get("type") == "show" else {}
             if section.get("type") == "show" and asked != str(own):
@@ -10160,7 +10160,7 @@ class PlexSim:
             # Cycle 50: a row that has children carries the SUBSET's own filter in its
             # `key` here -- kids answers `/library/metadata/6/children?unwatched=1` and
             # zen the same on all three of its rows, where the section GRID answers the
-            # bare path on both. The client follows `key` verbatim, so plexsim's bare path
+            # bare path on both. The client follows `key` verbatim, so simplex's bare path
             # opened a show from the Unplayed list showing every child rather than the
             # unwatched ones.
             listed = []
@@ -10170,7 +10170,7 @@ class PlexSim:
                     projected["key"] = projected["key"] + "?unwatched=1"
                 listed.append(projected)
             # Cycle 55, measured on zen and kids: `includeGuids=1` puts `Guid` on these
-            # rows as on every other listing. plexsim handed the container no query, so
+            # rows as on every other listing. simplex handed the container no query, so
             # the gate stripped it.
             return self.listing_container(
                 section_id, section, listed, query=query,
@@ -10179,18 +10179,18 @@ class PlexSim:
             # Measured again, more carefully than the first time: only the form
             # with NO `type` is a 400. With a type this is a real listing, whose
             # title2 is "Search for '<query>'" -- it is the in-library search box,
-            # and plexsim refused every form of it.
+            # and simplex refused every form of it.
             #
             # Cycle 20: and the type has to PARSE. `?type=abc`, `?type=1.5` and a
             # single space are each a 400 on both references, here and on `/common`,
-            # where plexsim answered a listing.
+            # where simplex answered a listing.
             if not str(query.get("type") or "").strip().lstrip("-").isdigit():
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             # Cycle 87, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2),
             # `tests/fixtures/section_search_collections.json`: `type=18` searches the
             # library's COLLECTIONS -- empty and populated alike, by the same title
             # substring -- in a container whose viewGroup is `collection` and which has
-            # no viewMode. plexsim answered `type=18` from the item rows, so it found
+            # no viewMode. simplex answered `type=18` from the item rows, so it found
             # no collection at all, empty or not.
             collections = str(query.get("type") or "").strip() == "18" and len(
                 {value for name, value in query.get("_pairs") or [] if name == "type"}) <= 1
@@ -10198,7 +10198,7 @@ class PlexSim:
                 else self.typed_rows(section_id, query)
             # Cycle 87, measured on kids and both copies: the query is used VERBATIM --
             # `query=TeArS` is titled `Search for 'TeArS'` (and matches case-blind), and
-            # `query=%20TEARS%20` is titled with its spaces and finds nothing. plexsim
+            # `query=%20TEARS%20` is titled with its spaces and finds nothing. simplex
             # stripped and lowercased it for both.
             raw = query.get("query") or ""
             text = raw.lower()
@@ -10206,7 +10206,7 @@ class PlexSim:
                 # Measured: this is a SUBSTRING match on the title, not the word-
                 # prefix matcher /hubs/search uses, and ONE character is enough --
                 # `?query=ear` finds "Tears of Steel" and `?query=a` finds three
-                # rows. plexsim routed it through the hub matcher, so the in-library
+                # rows. simplex routed it through the hub matcher, so the in-library
                 # search box found nothing that did not start a word.
                 # Cycle 18: a GENERATED title is not in the search index either --
                 # measured on plexscratch, where the reference's `Season 2` and its
@@ -10218,7 +10218,7 @@ class PlexSim:
                 # rows carrying those original titles are there to be found, and the
                 # title-only model scores 1,244 of 1,244 generated queries on both of
                 # zen's libraries where the title-or-original model misses 102 of them.
-                # plexsim listed the extra rows, so the in-library box found foreign films
+                # simplex listed the extra rows, so the in-library box found foreign films
                 # by a name a real PMS does not index here -- the HUB search is the
                 # endpoint that reads the original title.
                 rows = [r for r in rows
@@ -10231,7 +10231,7 @@ class PlexSim:
             # Cycle 15, measured on kids and zen: this row is the LIGHT grid
             # projection, like every other listing's -- no `Guid`, no `Rating`, no
             # tag ids and no `Stream`. Both references answer a search row that is
-            # identical to their grid row for the same item. plexsim sent the detail
+            # identical to their grid row for the same item. simplex sent the detail
             # row here and only here, so the one listing a user reaches by typing
             # was the fattest response the server had.
             # Cycle 18, measured on kids (1.43.4) and zen (1.42.2) over two movie
@@ -10240,7 +10240,7 @@ class PlexSim:
             # `viewMode` 65593 -- the season layout, the inversion behind the Seasons
             # bug -- `type=4` answers `viewGroup="episode"` and `mixedParents: 1`, and
             # a MOVIE library answers both to the same parameters. The section GRID is
-            # the other way round and keeps the library's own type, which plexsim had
+            # the other way round and keeps the library's own type, which simplex had
             # right; only `/search` retypes. `/library/sections/{id}` advertises
             # `search?type=2` and `search?type=4` as its own rows, so this is the path
             # the library search menu takes.
@@ -10262,7 +10262,7 @@ class PlexSim:
                 section_id, section, "Search for '%s'" % raw,
                 # Cycle 20: and a grid row carries no librarySection fields -- they
                 # are the container's. Neither reference sends one here, on either
-                # library type; plexsim kept the triple on this path alone.
+                # library type; simplex kept the triple on this path alone.
                 Metadata=[_grid_row(guided, keep_section=False, keep_guid=True)
                           for guided in self._guid_gate(
                               [_listing_row(r) for r in rows], query)],
@@ -10276,10 +10276,10 @@ class PlexSim:
             # and without `?width&height`, on a movie library and a show library alike
             # -- only `/composite/{version}` answers, and no `/library/sections` row
             # carries a `composite` attribute for a client to build the bare form
-            # from. plexsim answered image bytes to either, inventing a path the way
+            # from. simplex answered image bytes to either, inventing a path the way
             # `/recentlyReleased` was invented.
             if len(segments) < 5:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             # The all-digits half of the version rule is enforced on the RAW segment in
             # the handler, before the padded-id normalisation; what is left here is the
             # int32 bound, which the references answer with a 400 rather than a 404 --
@@ -10287,16 +10287,16 @@ class PlexSim:
             # and `/system/scanners`, and this is its fifth path.
             version = segments[4]
             if version.isdigit() and int(version) >= 2 ** 31:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if not self.catalog.section_items(section_id):
                 # Cycle 87, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4)
                 # for an EMPTY movie, show and music library: the versioned composite is
                 # the ordinary 404 -- with and without Plex Web's `width`, `height`,
                 # `rows`, `cols`, `border`, `media` and `repeat`, under every Accept --
                 # and so is `/photo/:/transcode` of it. A library with members is a jpeg
-                # (kids). There is nothing to build a mosaic from, and plexsim drew a
+                # (kids). There is nothing to build a mosaic from, and simplex drew a
                 # generated tile for it.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             art = self.composite_for("section", section_id)
             if art:
                 return ("image", self._at_width(art, query.get("width")))
@@ -10304,7 +10304,7 @@ class PlexSim:
 
         # A leaf a real PMS does not have is a 404 there, not an empty container.
         logger.warning("UNKNOWN section leaf %s on section %s", leaf, section_id)
-        return ("error", 404, "plexsim: not found")
+        return ("error", 404, "simplex: not found")
 
     def media_flag(self, relative):
         """`/system/bundle/media/flags/{type}/{value}` -- one of PMS's own flag images."""
@@ -10331,7 +10331,7 @@ class PlexSim:
         """`/:/resources/<relative>` -- one of PMS's own 70 bundled files.
 
         The name set, the media type and the geometry are measured; the pixels are
-        plexsim's own placeholder in the file's container, which is the deviation
+        simplex's own placeholder in the file's container, which is the deviation
         HANDOVER 8 records.
         """
         relative = relative.rstrip("/") if relative.endswith("/") else relative
@@ -10339,7 +10339,7 @@ class PlexSim:
             return ("asset", "application/octet-stream", b"")
         asset = RESOURCE_ASSETS.get(relative)
         if asset is None:
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if "body" in asset:
             return ("asset", asset["type"], base64.b64decode(asset["body"]))
         payload = (_jpeg if asset["type"] == "image/jpeg" else _png)(
@@ -10347,7 +10347,7 @@ class PlexSim:
         return ("asset", asset["type"], payload)
 
     def connection_lines(self):
-        """`/connections` -- plexsim's own live connections, in PMS's line grammar."""
+        """`/connections` -- simplex's own live connections, in PMS's line grammar."""
         with self.lock:
             rows = sorted(self.connections.values(), key=lambda row: row["slot"])
         lines = []
@@ -10372,7 +10372,7 @@ class PlexSim:
         `/hubs/home/continueWatching`, `/hubs/sections/{id}/continueWatching/items`,
         `/library/onDeck` and `/hubs/home/onDeck` carry none. In all five witnesses it
         equals `lastViewedAt`; what makes the two differ is not measurable here, so
-        plexsim stamps the same value and records that.
+        simplex stamps the same value and records that.
 
         Plex Web's continue-watching reducer reads `includedAt ?? lastViewedAt`, so the
         shelf fell back to the view time instead of the hub's own inclusion stamp.
@@ -10416,7 +10416,7 @@ class PlexSim:
     # DIRECTOR tag id answers ITS two rows under every one of them too. The lookup is on
     # the server's global tag TABLE and the name in front of it is decoration. Only
     # `studio` and `platform` are not bucket names at all (404 for any id, on both).
-    # plexsim resolved the id against the NAME's own column, so nine names worked for
+    # simplex resolved the id against the NAME's own column, so nine names worked for
     # their own tags and the other ten 404'd everything.
     AXIS_BUCKETS = {"genre": "tag", "director": "tag", "writer": "tag",
                     "producer": "tag", "actor": "tag", "country": "tag",
@@ -10430,7 +10430,7 @@ class PlexSim:
                     # Cycle 44: `/rating` is the same six-bucket axis over the CRITIC
                     # rating -- a 200 on both references and both library types, and
                     # the one of the pair a MOVIE library ADVERTISES in its own pivot
-                    # list. plexsim advertised it and 404'd it.
+                    # list. simplex advertised it and 404'd it.
                     "userRating": "userRating", "rating": "userRating"}
 
     # Which column each star axis buckets on. Measured cycle 44: `/rating` reads the
@@ -10506,7 +10506,7 @@ class PlexSim:
                  # the one axis that is in neither vocabulary
                  or leaf == "firstCharacter")
         if not known or leaf in self.SECTION_TOP_REFUSED:
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         rows = []
         number = self.SECTION_TOP_TAGS.get(leaf)
         if number is not None:
@@ -10563,20 +10563,20 @@ class PlexSim:
         The `guid` is `library://` + the SHA-1 of the request path, so it is a pure
         function of (item, version) and identical on two servers of two versions. The
         `ratingKey` is the server's own next id, which nothing on the wire derives, so
-        plexsim allocates its own and keeps the row BESIDE the catalog rather than in
+        simplex allocates its own and keeps the row BESIDE the catalog rather than in
         it: the reference's minted row carries no `librarySectionID` and is invisible in
         every listing including `/library/all`, so a row in `catalog.items` would be a
         `type: "track"` row leaking into the tag tables, the spelling index and
         `/library/all` -- the pollution this endpoint is infamous for, reproduced.
 
-        plexsim holds no theme audio (no row names a `theme`), so it always answers the
+        simplex holds no theme audio (no row names a `theme`), so it always answers the
         bare form; a real PMS adds the theme's `duration` and `Media` when the item has
         one at that version.
         """
         path = "/library/metadata/%s/theme/%s/metadata" % (row["ratingKey"], version)
         minted = self.theme_rows.get(path)
         if minted is None:
-            # The reference's ids are its own sequence. plexsim allocates above every
+            # The reference's ids are its own sequence. simplex allocates above every
             # key it holds, once per path, so the row is idempotent the way the
             # reference's is -- the same request twice answers the same ratingKey and
             # another version answers a new one.
@@ -10611,7 +10611,7 @@ class PlexSim:
         """
         kind = self.AXIS_BUCKETS.get(leaf)
         if kind is None:
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         wanted = urllib.parse.unquote(key)
         rows = self.typed_rows(section_id, query)
         if kind == "tag":
@@ -10625,7 +10625,7 @@ class PlexSim:
                           for tag in row.get(column) or []
                           if str(tag.get("id")) == wanted), None)
             if title is None:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             rows = [r for r in rows
                     if any(str(t.get("id")) == wanted
                            for column in columns for t in r.get(column) or [])]
@@ -10634,7 +10634,7 @@ class PlexSim:
             # `rating` shares `userRating`'s bucket KIND, so the column comes from the
             # leaf rather than from the kind.
             if not wanted.isdigit():
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             number = int(wanted)
             if kind == "year":
                 rows = [r for r in rows if str(r.get("year") or "") == wanted]
@@ -10672,7 +10672,7 @@ class PlexSim:
         rows, _ = self.apply_filters(rows, query, section)
         rows, unsupported = self._sorted(rows, query.get("sort") or "titleSort")
         if unsupported:
-            return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+            return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
         extra = {"nocache": True} if section.get("type") == "show" else {}
         return self.listing_container(section_id, section,
                                       [_listing_row(r) for r in rows], query=query,
@@ -10723,7 +10723,7 @@ class PlexSim:
         """
         if len({value for name, value in query.get("_pairs") or [] if name == "type"}) > 1:
             # Measured: repeated parameters AND, and a row has one type, so
-            # `?type=2&type=1` selects nothing. plexsim let the last one win.
+            # `?type=2&type=1` selects nothing. simplex let the last one win.
             return []
         wanted = {"1": "movie", "2": "show", "3": "season",
                   "4": "episode"}.get(str(query.get("type") or ""))
@@ -10731,7 +10731,7 @@ class PlexSim:
             if query.get("type"):
                 # Measured on both servers: a type NUMBER the library holds no rows
                 # of -- 8, 9, 10, 12, 13, 19, 99, -1 -- answers an empty listing, not
-                # the library. plexsim fell back to every row in the section, so a
+                # the library. simplex fell back to every row in the section, so a
                 # client asking a movie library for its tracks was handed its movies.
                 return []
             return self.catalog.section_items(section_id)
@@ -10744,7 +10744,7 @@ class PlexSim:
         return rows
 
     # `GET /library/sections/{id}` -- the PIVOT list, captured per library type.
-    # plexsim answered two rows ("All", "Recently Added"); a real PMS answers 20 for
+    # simplex answered two rows ("All", "Recently Added"); a real PMS answers 20 for
     # a movie library and 16 for a show one, each with the title the sidebar prints,
     # `secondary` on the axes and `search`/`prompt` on the search entries.
     SECTION_PIVOTS = {
@@ -10820,7 +10820,7 @@ class PlexSim:
 
         `includeDetails=1` adds the `Type` blocks and the `FieldType` operator
         lists, and the client reads `Type[].Field[type=="tag"]` out of it to decide
-        which tag fields the Edit dialog offers. plexsim answered two Directory rows
+        which tag fields the Edit dialog offers. simplex answered two Directory rows
         and no Type at all, so the dialog's Tags pane was empty -- no genre, no
         collection, no label, no people.
         """
@@ -10837,7 +10837,7 @@ class PlexSim:
             # Cycle 19: this form honours `includeAdvanced=1` like every other. Both
             # references answer 9 Sorts and 22 filters (zen; kids 28) to a movie
             # library's bare `?includeDetails=1` and 15 and 23 once the flag is set --
-            # 17 and 32 on a show library's three Type rows. plexsim passed
+            # 17 and 32 on a show library's three Type rows. simplex passed
             # `advanced=True` unconditionally, so the six advanced sorts and the
             # Duplicates filter, which a real PMS hides behind the client's own
             # toggle, were permanently in the Sort menu.
@@ -10846,7 +10846,7 @@ class PlexSim:
             # Cycle 16, measured on kids and zen: under `includeDetails` a
             # `Sort` carries no `active`/`activeDirection` and a `Filter` no
             # `advanced`, while the `includeMeta=1` form carries all three.
-            # plexsim sent the includeMeta shape to both, so the Edit Library
+            # simplex sent the includeMeta shape to both, so the Edit Library
             # dialog's descriptor claimed a sort was selected when the client
             # had asked for none.
             meta = json.loads(json.dumps(meta))
@@ -10859,7 +10859,7 @@ class PlexSim:
                 # `includeAdvanced=1` this form DOES carry the Duplicates row, and it is
                 # the ONE Filter row here that keeps `advanced="1"` -- every other row
                 # carries no flag at all, which is cycle 16's rule and still holds. Cycle
-                # 23 read "carries no `advanced`" as "carries no ROW", and plexsim then
+                # 23 read "carries no `advanced`" as "carries no ROW", and simplex then
                 # stripped the row from the descriptor the Edit Library dialog reads.
                 for entry in described.get("Filter") or []:
                     if entry.get("filter") != "duplicate":
@@ -10870,7 +10870,7 @@ class PlexSim:
                 # movie library and three (`show`, `season`, `episode`) on a show one,
                 # every one of them `active="0"`. The `folder` row is real under
                 # `includeMeta=1` on a LISTING, where all three servers agree; it is
-                # this form that omits it. plexsim's spurious row put a Folders entry
+                # this form that omits it. simplex's spurious row put a Folders entry
                 # wherever the client reads the type list off the section detail.
                 self._meta_active(meta, None)
                 meta["Type"] = [entry for entry in meta["Type"]
@@ -10886,7 +10886,7 @@ class PlexSim:
         # Cycle 27: those 29 rows are ONE paged sequence, not three lists paged in
         # parallel. kids and zen both answer `size=20 totalSize=29 offset=0` to a
         # 20-row window and hand back the `Type` and the eight `FieldType` rows as rows
-        # 20-28 at `Start=20`. plexsim's generic pager takes `totalSize` from the
+        # 20-28 at `Start=20`. simplex's generic pager takes `totalSize` from the
         # LONGEST list, so it reported `totalSize=20` beside a `size` of 29 and answered
         # nothing at all past the twentieth row. The marker says "window these keys as
         # one sequence"; `_page_container` reads it and `_drop_private` takes it off.
@@ -10906,7 +10906,7 @@ class PlexSim:
         and `type=99` are 200 with no rows -- an unknown number selects nothing, a
         non-number is a refusal. `/library/all` refuses the same values with 400 and
         keeps 500 for the empty one, which is why the status is a parameter here.
-        plexsim answered the whole unfiltered grid to all three.
+        simplex answered the whole unfiltered grid to all three.
         """
         raw = query.get("type")
         if raw is None:
@@ -10939,13 +10939,13 @@ class PlexSim:
             # LISTING and takes the grammar -- `type=18&title=aard` answers one row of
             # the two, `id=` one, `sort=addedAt:desc` reorders, `duplicate=1` none --
             # and the default order is `titleSort` like every other listing
-            # (`Aardvark` before `C14 Trio`). plexsim answered the whole collection
+            # (`Aardvark` before `C14 Trio`). simplex answered the whole collection
             # list to every one of them.
             rows = self.library.collections(section_id)
             rows, _ = self.apply_filters(rows, query, section)
             rows, unsupported = self._sorted(rows, query.get("sort") or "titleSort")
             if unsupported:
-                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+                return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
             rows = self._limited(rows, query)
             return self.listing_container(section_id, section, rows, query=query)
         self._parsed_type(query)
@@ -10956,7 +10956,7 @@ class PlexSim:
         # ascending (falling back to the title where no sort title is stored), not
         # the catalog's own order -- fun's show grid opens on `【OSHI NO KO】, 13
         # Reasons Why, 30 Rock, 86 EIGHTY-SIX, The 100` because The 100's titleSort
-        # is "100". plexsim answered catalog order, so an edited Sort Title never
+        # is "100". simplex answered catalog order, so an edited Sort Title never
         # moved a row and the grid's own default disagreed with its sort control.
         # Measured on both references: `parentIndex` is a 500 on a listing rather than a
         # filter, whatever operator key follows it. The operator lives in the KEY, so
@@ -10971,7 +10971,7 @@ class PlexSim:
         # `type=3` and `type=4` grids default to the SHOW's order -- the show's sort
         # title, then `parentIndex`, then `index` -- not to a flat `titleSort`.
         # `typed_rows` already builds them in that order, so the default here is to
-        # leave it alone; an explicit `sort=` still applies. plexsim re-sorted them by
+        # leave it alone; an explicit `sort=` still applies. simplex re-sorted them by
         # title, so a show library's Episodes tab opened on an alphabetical jumble
         # across every show. `docs/findings.md` asserted this for `/allLeaves` AND the
         # section listing; only the allLeaves half was ever implemented.
@@ -10991,7 +10991,7 @@ class PlexSim:
             # than ignoring it. Silently returning the list unsorted is the worse
             # answer -- the caller cannot tell its sort did nothing.
             logger.warning("UNSUPPORTED sort key %r", unsupported)
-            return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+            return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
         if "group" in query:
             source = self.grouped(source, query.get("group"))
         source = self._limited(source, query)
@@ -11048,7 +11048,7 @@ class PlexSim:
     def section_subset(self, section_id, section, leaf, query):
         """`/library/sections/{id}/{onDeck,recentlyAdded,newest,recentlyViewed,...}`.
 
-        Measured on both servers, and plexsim had all of it wrong: it answered each
+        Measured on both servers, and simplex had all of it wrong: it answered each
         subset as the library's "All" grid of top-level rows, and 404'd
         recentlyViewedShows, which the pivot bar offers.
 
@@ -11105,7 +11105,7 @@ class PlexSim:
             # Cycle 20, measured on kids and zen: this one is a typed QUERY. `?type=3`
             # answers the library's seasons and `?type=4` its episodes -- zen 741 and
             # 9,287 -- while `type=1` and `type=10` answer none and the container keeps
-            # `viewGroup="show"` throughout. plexsim ignored the parameter and always
+            # `viewGroup="show"` throughout. simplex ignored the parameter and always
             # answered the top-level rows.
             asked = str((query or {}).get("type") or ("2" if is_show else "1"))
             rows, _ = self._sorted(self.typed_rows(section_id, {"type": asked}), "titleSort")
@@ -11186,7 +11186,7 @@ class PlexSim:
             # is a DEFAULT window -- the first 25 rows at `offset` 0 with the full
             # `totalSize`, and a lone Start is ignored. Once a Size is sent the shared
             # rule applies, so a lone `Size=3` is all 509 rows with neither field, where
-            # plexsim still claimed `offset` 0 and a total.
+            # simplex still claimed `offset` 0 and a total.
             extra["offset"] = 0
             extra["totalSize"] = len(rows)
             rows = rows[:25]
@@ -11206,7 +11206,7 @@ class PlexSim:
 
         Measured on both servers: one `<Photo>` row per movie or show with a backdrop in
         the named libraries, in a different order on every request, at most 100, in a
-        container carrying only `size`; no `sections` is `size 0`. plexsim 404'd it.
+        container carrying only `size`; no `sections` is `size 0`. simplex 404'd it.
         """
         wanted = [s for s in (query.get("sections") or "").split(",") if s]
         rows = [r for section_id in wanted for r in self.catalog.section_items(section_id)
@@ -11220,7 +11220,7 @@ class PlexSim:
 
         Measured on both servers: the same `<Photo>` rows as randomArtwork, one per movie
         or show with a backdrop, in ratingKey order, in the library's container (with
-        `nocache` and viewGroup `episode` on a show library). plexsim 404'd it.
+        `nocache` and viewGroup `episode` on a show library). simplex 404'd it.
         """
         is_show = section.get("type") == "show"
         rows = sorted([r for r in self.catalog.section_items(section_id)
@@ -11251,11 +11251,11 @@ class PlexSim:
         Measured on both servers: `/extras` is the library's container naming a single `all`
         view ("All Movies", "All TV Shows"), and `/extras/all` lists the library's trailers
         and other clips in the same container -- `size 0` and no rows for a library with none,
-        which is every plexsim library. Anything deeper is a 404, and a show library's
-        container carries `nocache`. plexsim 404'd both.
+        which is every simplex library. Anything deeper is a 404, and a show library's
+        container carries `nocache`. simplex 404'd both.
         """
         if rest not in ([], ["all"]):
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if rest == ["all"] and query:
             # Cycle 29, measured on kids (1 extra) and zen (3,580), which agree on every
             # value: this leaf runs the LISTING query, and it refuses what a listing
@@ -11267,7 +11267,7 @@ class PlexSim:
             # column's. `extraType=`, `title=`, `audioLanguage=` and a good `limit` are
             # 200s.
             #
-            # plexsim built this leaf in cycle 15 as a fixed empty container -- true of
+            # simplex built this leaf in cycle 15 as a fixed empty container -- true of
             # its own libraries, which hold no clips -- so it took no `query` argument at
             # all and answered `200 size 0` to every malformed request. A client whose
             # Extras view sends a bad parameter reads that as "this library has no
@@ -11277,24 +11277,24 @@ class PlexSim:
                 return refusal
             raw_limit = query.get("limit")
             if raw_limit is not None and not str(raw_limit).lstrip("-").isdigit():
-                return ("error", 500, "plexsim: server error")
+                return ("error", 500, "simplex: server error")
             if query.get("sort"):
                 _unused, unsupported = self._sorted([], query["sort"])
                 if unsupported:
                     return ("error", 500,
-                            "plexsim: unsupported sort key %s" % unsupported)
+                            "simplex: unsupported sort key %s" % unsupported)
             typed = self._parsed_type(query)
             if isinstance(typed, tuple):
                 return typed
             if query.get("group") is not None:
-                return ("error", 500, "plexsim: server error")
+                return ("error", 500, "simplex: server error")
             raw_parent = query.get("parent")
             if raw_parent is not None and not str(raw_parent).lstrip("-").isdigit():
-                return ("error", 500, "plexsim: server error")
+                return ("error", 500, "simplex: server error")
             for name, _value in query.get("_pairs") or []:
                 if name.rstrip("<>=!").strip() in ("duration", "resolution", "mediaSize",
                                                    "file"):
-                    return ("error", 500, "plexsim: server error")
+                    return ("error", 500, "simplex: server error")
         is_show = section.get("type") == "show"
         fields = {
             "art": _section_art(section),
@@ -11323,7 +11323,7 @@ class PlexSim:
         rows, _tree = self.apply_filters(rows, query or {}, section, allow=("extraType",))
         rows, unsupported = self._sorted(rows, (query or {}).get("sort") or "index")
         if unsupported:
-            return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+            return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
         rows = self._limited(rows, query or {})
         page, paged, start, total = self.page_window(rows, query or {})
         fields["size"] = len(page)
@@ -11338,7 +11338,7 @@ class PlexSim:
         return self.bare_container(**fields)
 
     def section_leaf(self, section_id, section, leaf, query):
-        """Six section leaves the community OpenAPI description names, all 404 on plexsim.
+        """Six section leaves the community OpenAPI description names, all 404 on simplex.
 
         Measured on both servers, on a movie and a show library alike:
 
@@ -11363,14 +11363,14 @@ class PlexSim:
             "title1": section.get("title"),
         }
         if leaf == "nearest":
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if leaf == "computePath":
             start, end = query.get("startID") or "", query.get("endID") or ""
             if not start or not end:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if not (start.isdigit() and end.isdigit() and int(start) in self.catalog.items
                     and int(end) in self.catalog.items):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             fields.pop("allowSync")
             return self.bare_container(size=0, **fields)
         if _nocache_library(section):
@@ -11380,7 +11380,7 @@ class PlexSim:
             # Measured on kids (1.43.4) and zen (1.42.2): a section's `allLeaves` is a
             # full QUERY surface, exactly like `/all` -- filters, `sort=`, `limit=` and
             # `type=` all apply, an unknown sort key and an unparseable type are 500s,
-            # and a type the leaves are not selects nothing. plexsim answered the whole
+            # and a type the leaves are not selects nothing. simplex answered the whole
             # leaf list to every one of them, so the filter bar and the sort menu over
             # an "All episodes" view silently did nothing: a 200 that looks like it
             # worked, which is fix 4's failure mode from the inside.
@@ -11395,16 +11395,16 @@ class PlexSim:
             if query.get("sort"):
                 rows, unsupported = self._sorted(rows, query["sort"])
                 if unsupported:
-                    return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+                    return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
             elif not is_show:
                 rows, _ = self._sorted(rows, "titleSort")
             if "group" in query:
                 # Cycle 14: `group=` is the last part of the grammar this surface was
                 # missing. `/library/sections/2/allLeaves?group=index` is 3 of kids'
                 # 6 episodes and 1144 of zen's 9287 -- the same number as
-                # `type=4&group=index` on the grid. plexsim ignored it and answered
+                # `type=4&group=index` on the grid. simplex ignored it and answered
                 # every leaf. (An ITEM's `/allLeaves?group=` is ignored on both
-                # references and on plexsim, so only the SECTION form takes it.)
+                # references and on simplex, so only the SECTION form takes it.)
                 rows = self.grouped(rows, query.get("group"))
             rows = self._limited(rows, query)
             shown = self._excluded_elements(
@@ -11447,7 +11447,7 @@ class PlexSim:
     def autocomplete(self, section_id, section, query):
         """The Edit dialog's suggestions: `?type=N&<field>.query=<text>&limit=10`.
 
-        Measured on both servers; plexsim 404'd every form of it.
+        Measured on both servers; simplex 404'd every form of it.
 
         - `type` is required, exactly ONE field may be asked (a repeat of the same
           field keeps its last value, two different fields are a 400), and an empty
@@ -11466,26 +11466,26 @@ class PlexSim:
           hold.
         """
         if not query.get("type"):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         asked = [(name[:-len(".query")], value)
                  for name, value in query.get("_pairs") or [] if name.endswith(".query")]
         if len({field for field, _ in asked}) != 1:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         field, wanted = asked[-1]
         if not wanted:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         limit = None
         if "limit" in query:
             try:
                 limit = int(query["limit"])
             except ValueError:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             limit = None if limit < 0 else max(limit, 1)
         if field in self.AUTOCOMPLETE_REFUSED:
-            return ("error", 500, "plexsim: internal error")
+            return ("error", 500, "simplex: internal error")
         if field not in self.AUTOCOMPLETE_TAGS and field not in self.AUTOCOMPLETE_TEXT \
                 and field not in self.AUTOCOMPLETE_EMPTY:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         kind = {"1": "movie", "2": "show", "4": "episode"}.get(query["type"])
         rows = self.typed_rows(section_id, {"type": query["type"]}) if kind else []
         # Cycle 54, measured on kids and zen: the suggestions come from the rows the
@@ -11544,14 +11544,14 @@ class PlexSim:
         Firefly's episodes by their s01eNN names, not their titles. The container is
         the secondary one plus the librarySection triple and `allowSync`, and it pages.
 
-        plexsim listed one directory per ITEM, titled after the item, and ignored
+        simplex listed one directory per ITEM, titled after the item, and ignored
         `parent`, so every folder opened the same list again and the view never
-        reached an item. Its catalogs keep every file flat under `/plexsim/<n>`, so
+        reached an item. Its catalogs keep every file flat under `/simplex/<n>`, so
         the tree is built from each Part's path relative to the library's Location --
         a file outside it sits at the top -- with directory ids numbered in path order.
         """
         is_show = section.get("type") == "show"
-        root = "/plexsim/%s/" % section_id
+        root = "/simplex/%s/" % section_id
         placed = []
         for row in self.typed_rows(section_id, {"type": "4" if is_show else "1"}):
             files = [part.get("file") for media in row.get("Media") or []
@@ -11614,7 +11614,7 @@ class PlexSim:
     # Cycle 29, measured on kids (whose 14 rows come back
     # `movie x5, show, season x2, episode x6` ascending and exactly reversed descending)
     # and on zen's 14,434: `sort=type` orders by the type NUMBER -- movie 1, show 2,
-    # season 3, episode 4 -- not by the type's NAME. plexsim had `type` in `TEXT_SORTS`,
+    # season 3, episode 4 -- not by the type's NAME. simplex had `type` in `TEXT_SORTS`,
     # which lower-cases it, so its order was alphabetical: `episode, movie, season, show`.
     # Cycle 14 added the key as "a real ordering" without checking the ordering.
     TYPE_SORT_NUMBERS = {"movie": 1, "show": 2, "season": 3, "episode": 4, "trailer": 5,
@@ -11628,7 +11628,7 @@ class PlexSim:
                      "updatedAt", "lastRatedAt", "ratingCount",
                      # The keys `includeAdvanced=1` advertises. Three of them --
                      # userRating, contentRating, mediaBitrate -- answered 500 on
-                     # plexsim while its own Meta was about to offer them, which is
+                     # simplex while its own Meta was about to offer them, which is
                      # an advertised control that breaks the grid when used.
                      "userRating", "mediaBitrate",
                      # Cycle 53, measured twice on each reference: seven of the ten
@@ -11643,14 +11643,14 @@ class PlexSim:
                      # `/sorts?includeAdvanced=1` advertises only fifteen, and none of
                      # these is among them. They are real orderings, checked against
                      # the rows zen returns -- `sort=createdAt` comes back in addedAt
-                     # order, `sort=mediaSize` smallest file first. plexsim answered
+                     # order, `sort=mediaSize` smallest file first. simplex answered
                      # 500, which is a blank page for python-plexapi and for any
                      # stored smart-list URI naming one.
                      "contentRatingAge", "skipCount", "absoluteIndex", "mediaSize",
                      "createdAt", "viewedLeafCount")
 
     # ...and `leafCount` is the other direction: BOTH references answer 500 to it,
-    # along with `childCount`, `slug`, `key` and any unknown key, while plexsim sorted
+    # along with `childCount`, `slug`, `key` and any unknown key, while simplex sorted
     # by it happily. A sort a real PMS refuses has to be refused, so it is gone from
     # the list above.
 
@@ -11739,7 +11739,7 @@ class PlexSim:
                               r.get("_viewUpdatedAt") or 0)
         if key == "mediaCount":
             # Cycle 20: a real ordering on both references, at every row type -- zen's
-            # `sort=mediaCount:desc` opens on the movie with 59 versions. plexsim
+            # `sort=mediaCount:desc` opens on the movie with 59 versions. simplex
             # answered the 500 it answers an unknown key.
             return lambda r: (True, len(r.get("Media") or []))
         if key in self.NUMERIC_SORTS:
@@ -11755,7 +11755,7 @@ class PlexSim:
         `show.titleSort` orders by the SHOW's sort title and `season.index` by the
         season's number. An unknown prefix (`bogus.titleSort`), the row's own type,
         or a scope below the row reads the row itself; an unknown FIELD after any
-        prefix is still a 500. `id` is the ratingKey. plexsim 500'd every prefixed
+        prefix is still a 500. `id` is the ratingKey. simplex 500'd every prefixed
         key -- including the episode sort its own Meta advertises -- so every
         python-plexapi `all(sort=)`, `search(sort=)` and `recentlyAdded()` raised.
         """
@@ -11798,7 +11798,7 @@ class PlexSim:
         Measured on the reference: `sort=year:desc,titleSort:asc` orders by year
         and breaks ties on title, and `sort=random:<seed>` gives a stable order
         that DIFFERS per seed -- which is how a client pages through a shuffled
-        library without repeating or skipping rows. plexsim honoured neither: it
+        library without repeating or skipping rows. simplex honoured neither: it
         split the whole spec on the first colon, so a secondary key was silently
         dropped and `titleSort:asc,year:desc` even came out descending, because
         the spec as a whole ended in `:desc`.
@@ -11816,7 +11816,7 @@ class PlexSim:
         # Measured: the secondary key is ALWAYS titleSort ascending, whatever the
         # primary is and whichever direction it runs -- fun's `sort=year` breaks its
         # 1915 ties alphabetically, and `sort=rating:desc` with no ratings comes out
-        # in title order rather than in catalog order. plexsim left ties in whatever
+        # in title order rather than in catalog order. simplex left ties in whatever
         # order the rows arrived in, so a tied page was unstable between requests.
         if [key for key, _desc, _seed in terms] != ["titleSort"] \
                 and not any(key.rpartition(".")[2] == "random" for key, _d, _s in terms):
@@ -11834,12 +11834,12 @@ class PlexSim:
         for key, descending, seed in reversed(terms):
             # Measured on both servers: `movie.random` and `show.random` (with a
             # direction or a seed) sort like `random`; python-plexapi always sends the
-            # prefixed form, and plexsim 500'd it.
+            # prefixed form, and simplex 500'd it.
             if key.rpartition(".")[2] == "random":
                 # Cycle 73, three reads each on zen, kids and plexscratch: a bare
                 # `sort=random` (Plex Web's "Randomly", which sends no seed) is a fresh
                 # order on EVERY request, `random:desc` too. Only a seed holds one.
-                # plexsim hashed a fixed "0" seed, so the grid never reshuffled.
+                # simplex hashed a fixed "0" seed, so the grid never reshuffled.
                 # Cycle 90: and the order is UNIFORM -- kids' five movies gave 44
                 # distinct orders in 60 reads (tests/fixtures/c90_n_unseeded_random_
                 # orders.json). A fresh salt under CRC-32 is not: CRC is affine, so a
@@ -11868,7 +11868,7 @@ class PlexSim:
     # `userRating` are 500 too, which no rule about the schema predicts, so the
     # set is the measurement rather than a rule.
     # Re-measured on kids (1.43.4) and zen (1.42.2) across all 27 candidates: `type`,
-    # `guid` and `id` group too, and plexsim answered 500 to all three. They are the
+    # `guid` and `id` group too, and simplex answered 500 to all three. They are the
     # row's own identity columns, which is consistent with the rest of the set; the
     # earlier probe simply did not try them. `id` became a FILTER field in cycle 11 and
     # was still not a group field.
@@ -11945,7 +11945,7 @@ class PlexSim:
         return key.rpartition(".")[2] == "random" or self._scoped_sort_key(key) is not None
 
     # How each advertised filter field is read off a row. The keys here are the
-    # `Field` entries of the captured Meta, so plexsim filters on exactly what it
+    # `Field` entries of the captured Meta, so simplex filters on exactly what it
     # tells the client it can filter on -- and a field it cannot answer from its
     # own rows is honestly absent rather than guessed at.
     TAG_FILTER_FIELDS = {"genre": "Genre", "collection": "Collection",
@@ -11973,7 +11973,7 @@ class PlexSim:
         episode of season 2, and a scope BELOW the row matches when any descendant
         does -- `type=2&episode.title=Train` is the show with that episode,
         `type=3&episode.title=Train` its season. An unknown scope, or the row's own
-        type, is the row itself. plexsim read the row's OWN field whatever the
+        type, is the row itself. simplex read the row's OWN field whatever the
         prefix said, so every Show-scoped filter on an episode grid tested the
         episode.
         """
@@ -12015,7 +12015,7 @@ class PlexSim:
         `type=4&group=show.title` collapses kids' six episodes to 1 and zen's 9287
         to 505 (its show count) where `group=title` gives 4 and 4443;
         `group=season.index` gives 2 and 58 where `group=index` gives 3 and 1144.
-        plexsim stripped the prefix and read the field off the episode, so every
+        simplex stripped the prefix and read the field off the episode, so every
         prefixed group and every prefixed value read was the unprefixed one.
         """
         scope, _, field = field.rpartition(".")
@@ -12148,7 +12148,7 @@ class PlexSim:
         if field == "viewedLeafCount":
             # Measured on zen: `viewedLeafCount>>0` on its show library returns exactly
             # the eight shows whose row carries a non-zero count, and `=0` the other
-            # 499. plexsim had no such field, so both answered the whole library.
+            # 499. simplex had no such field, so both answered the whole library.
             return row.get("viewedLeafCount") or 0
         if field == "viewedOrInProgressLeafCount":
             # The key of a real PMS's own "Start Watching" shelf. Measured on zen it
@@ -12168,7 +12168,7 @@ class PlexSim:
         # that have a value: 522 between them, so the two OVERLAP and it cannot be a
         # single column on the show row. `mediaSize` behaves the same way, and the
         # resolution axis is the filter a client actually offers on a TV library.
-        # plexsim read `Media[0]` of the row itself, so every media filter on a show or
+        # simplex read `Media[0]` of the row itself, so every media filter on a show or
         # season grid answered nothing at all.
         media_rows = row.get("Media") or []
         if field in ("audioLanguage", "subtitleLanguage") and not media_rows:
@@ -12177,7 +12177,7 @@ class PlexSim:
             # `type=2&audioLanguage=en` and `type=3&subtitleLanguage=en` while the same
             # probe at type=4 returns a real subset, so a parent row has no such column
             # -- unlike `duration`, `resolution` and `mediaSize`, which cycle 19
-            # measured reading the leaves. plexsim applied the fallback here too, so
+            # measured reading the leaves. simplex applied the fallback here too, so
             # the Audio Language filter on a TV library selected every show.
             return []
         if not media_rows and row.get("type") in ("show", "season"):
@@ -12196,7 +12196,7 @@ class PlexSim:
         if field == "duration":
             # ...and `duration` is one of them: zen answers `duration=5700000` with 0
             # rows although a movie's own `duration` column is exactly that, because the
-            # filter reads the MEDIA. On plexsim's own catalog the two are equal for a
+            # filter reads the MEDIA. On simplex's own catalog the two are equal for a
             # movie, so this only changes a show or a season -- but it is the column the
             # reference reads, and saying so is the point.
             return [m.get("duration") for m in media_rows] or row.get("duration")
@@ -12204,7 +12204,7 @@ class PlexSim:
             # Cycle 19: `resolution=` matches ANY of the row's Media, not the first.
             # Measured on zen's multi-version movies -- 4093 The Breadwinner carries a
             # `4k` and a `1080` and answers BOTH `resolution=4k` and `resolution=1080`;
-            # 401 The Devil's Mouth answers `1080` and `720` the same way. plexsim read
+            # 401 The Devil's Mouth answers `1080` and `720` the same way. simplex read
             # `Media[0]`, so a row's second version was invisible to the filter.
             return [m.get("videoResolution") for m in media_rows]
         if field in ("videoCodec", "audioCodec", "container"):
@@ -12219,7 +12219,7 @@ class PlexSim:
         if field == "location":
             # "Folder Location" compares a section LOCATION ID, not a path:
             # measured, `?location=1` returns the whole of section 1 and
-            # `?location=/data/movies` is a 500. Every plexsim section has one
+            # `?location=/data/movies` is a 500. Every simplex section has one
             # location whose id is the section's own key.
             return row.get("librarySectionID")
         if field in ("subtitleCodec",):
@@ -12249,17 +12249,17 @@ class PlexSim:
             return len(row.get("Media") or [])
         if field == "createdAt":
             # ...and `createdAt` is a real date column on both references -- every row
-            # of every library answers `createdAt>=2000-01-01` -- which plexsim read
+            # of every library answers `createdAt>=2000-01-01` -- which simplex read
             # off an attribute no row has. It tracks `addedAt` almost exactly on zen
             # (2,437 rows above one epoch against `addedAt`'s 2,436), and `addedAt` is
-            # the only creation time plexsim holds, so it is read here and said so.
+            # the only creation time simplex holds, so it is read here and said so.
             return row.get("addedAt")
         if field == "duplicate":
             # Measured on zen, which has 214 duplicated movies of 3887 and 504 episodes
             # of 9287: the Duplicates filter is "more than one Media on the row", and for
             # a SHOW or SEASON -- neither of which has Media of its own -- it is "a leaf
             # under it has more than one" (44 shows and 74 seasons there, each sampled
-            # one holding a multi-Media episode). plexsim returned 0 here, so a filter
+            # one holding a multi-Media episode). simplex returned 0 here, so a filter
             # its own `includeAdvanced` Meta advertises could never select anything.
             if len(row.get("Media") or []) > 1:
                 return 1
@@ -12276,7 +12276,7 @@ class PlexSim:
                         for leaf in self.catalog.leaves(row.get("ratingKey")) or []] or 0
             return 0
         if field in ("hdr", "dovi", "hdr10plus", "atmos", "trash"):
-            # plexsim's probe data carries no HDR or Atmos flag and it keeps no
+            # simplex's probe data carries no HDR or Atmos flag and it keeps no
             # trash, so these are honestly false rather than guessed.
             return 0
         return row.get(field)
@@ -12288,7 +12288,7 @@ class PlexSim:
         Cycle 45, measured on kids and zen over fourteen cells and library-independent:
         `type=2` refuses on a section listing and on `/library/all` alike; `type=3`
         refuses on `/library/all` and ANSWERS on a section listing; an untyped
-        `/library/all` answers and really filters, and so does every other type. plexsim
+        `/library/all` answers and really filters, and so does every other type. simplex
         raised the refusal per ROW -- "this row is a show" -- so an untyped
         `/library/all`, which contains shows, was a 500 where a real PMS answers.
 
@@ -12305,7 +12305,7 @@ class PlexSim:
             kind = str(default_type or "").strip()
         refused = {"2", "3"} if whole_library else {"2"}
         if kind in refused:
-            return ("error", 500, "plexsim: cannot filter on file at type=%s" % kind)
+            return ("error", 500, "simplex: cannot filter on file at type=%s" % kind)
         return None
 
     @staticmethod
@@ -12316,7 +12316,7 @@ class PlexSim:
         SECTION listing on both library types -- measured on kids and zen.
         """
         if any(key.rstrip("<>=!") == "unmatched" for key in query):
-            return ("error", 500, "plexsim: cannot filter the whole library on unmatched")
+            return ("error", 500, "simplex: cannot filter the whole library on unmatched")
         return None
 
     # Cycle 55, measured on zen (1.42.2) and kids (1.43.4), identical: every one of these
@@ -12325,7 +12325,7 @@ class PlexSim:
     # `limit=2147483648` -- while answering exactly the same body to a GOOD one
     # (`/genre?sort=titleSort:desc`, `?group=title`, `?limit=1` and `?sourceType=2` leave
     # the axis as it was). The axes answer secondary rows no query reaches, so the values
-    # are validated and then thrown away. plexsim read none of them and answered 200.
+    # are validated and then thrown away. simplex read none of them and answered 200.
     # `userRating`, `rating`, `location`, `categories`, `folder` and the subsets
     # (`recentlyAdded`, `newest`, `recentlyViewed`) answer 200 to all four on both
     # references and are deliberately absent.
@@ -12355,16 +12355,16 @@ class PlexSim:
         if sort and query.get("sort"):
             _unused, unsupported = self._sorted([], query["sort"])
             if unsupported:
-                return ("error", status, "plexsim: unsupported sort key %s" % unsupported)
+                return ("error", status, "simplex: unsupported sort key %s" % unsupported)
         if group and "group" in query and not self._group_parses(query["group"]):
-            return ("error", status, "plexsim: cannot group by %r" % query["group"])
+            return ("error", status, "simplex: cannot group by %r" % query["group"])
         if source and "sourceType" in query:
             try:
                 filters_module.source_order(query["sourceType"])
             except filters_module.FilterError:
-                return ("error", status, "plexsim: bad sourceType")
+                return ("error", status, "simplex: bad sourceType")
         if limit and "limit" in query and not _int_param(query["limit"]):
-            return ("error", status, "plexsim: bad limit")
+            return ("error", status, "simplex: bad limit")
         return None
 
     def structural_refusal(self, segments, query):
@@ -12386,7 +12386,7 @@ class PlexSim:
                 # (`type=abc`, `limit=2147483648`), on zen and kids alike.
                 if "type" in query and not _int_param(query["type"]) \
                         or "limit" in query and not _int_param(query["limit"]):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 return self._structural_parse_refusal(query, limit=False)
             if leaf == "common" and len(segments) == 4 \
                     or segments[3:] == ["extras", "all"]:
@@ -12400,24 +12400,24 @@ class PlexSim:
             if (leaf in ("collections", "search") and len(segments) == 4
                     or segments[3:] == ["extras", "all"]) \
                     and "index" in query and not _int_param(query["index"], None):
-                return ("error", 500, "plexsim: bad index")
+                return ("error", 500, "simplex: bad index")
             if leaf == "recentlyViewedShows" and len(segments) == 4 \
                     and "limit" in query and not _int_param(query["limit"]):
-                return ("error", 500, "plexsim: bad limit")
+                return ("error", 500, "simplex: bad limit")
         if segments == ["playlists"] and "index" in query \
                 and not _int_param(query["index"], None):
-            return ("error", 500, "plexsim: bad index")
+            return ("error", 500, "simplex: bad index")
         if segments == ["playlists", "all"] and "limit" in query \
                 and not _int_param(query["limit"]):
-            return ("error", 500, "plexsim: bad limit")
+            return ("error", 500, "simplex: bad limit")
         if segments == ["library", "all", "top"] and ("group" in query or "sort" in query):
             # Cycle 55, measured on zen and kids: Top Played refuses ANY `group=` or
             # `sort=` -- `group=title`, `sort=titleSort`, an empty `group=` -- with a 400,
             # and an item's `/users/top` refuses the same two with a 404.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if segments[:2] == ["library", "metadata"] and segments[3:] == ["users", "top"] \
                 and len(segments) == 5 and ("group" in query or "sort" in query):
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         hub_page = (segments in (["hubs"], ["hubs", "promoted"])
                     or segments[:2] == ["hubs", "sections"] and len(segments) == 3
                     and (self.catalog.section(segments[2]) or {}).get("type") == "show")
@@ -12433,13 +12433,13 @@ class PlexSim:
                 if refusal:
                     return refusal
             if segments == ["hubs", "promoted"] and str(query.get("group") or ""):
-                return ("error", 500, "plexsim: cannot group a hub")
+                return ("error", 500, "simplex: cannot group a hub")
         if segments == ["hubs", "home", "recentlyAdded"] \
                 and _int_param(query.get("type", "")) and int(query["type"]) == 2:
             # ...and the TV Recently Added list parses both with the empty value
             # included: `group=` and `sourceType=abc` are 500s on zen and kids alike.
             if "group" in query:
-                return ("error", 500, "plexsim: cannot group a hub")
+                return ("error", 500, "simplex: cannot group a hub")
             refusal = self._structural_parse_refusal(query, sort=False, group=False,
                                                      limit=False)
             if refusal:
@@ -12447,23 +12447,23 @@ class PlexSim:
         if segments == ["library", "all", "top"] and "limit" in query \
                 and not _int_param(query["limit"]):
             # Cycle 55: an EMPTY `limit=` is a 500 here as well as `abc`.
-            return ("error", 500, "plexsim: bad limit")
+            return ("error", 500, "simplex: bad limit")
         if segments == ["library", "onDeck"] and "type" in query \
                 and not _int_param(query["type"]):
             # Cycle 55: `type=abc` and an empty `type=` are 400s on zen and kids.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if segments[:2] == ["library", "metadata"] and len(segments) == 5 \
                 and segments[3:] == ["users", "top"] and "limit" in query \
                 and not _int_param(query["limit"]):
-            return ("error", 500, "plexsim: bad limit")
+            return ("error", 500, "simplex: bad limit")
         if segments[:2] == ["library", "metadata"] and len(segments) == 4 \
                 and segments[3] == "nearest" and "limit" in query:
             # Cycle 55, measured on zen and kids: `limit=abc` is a 400 and `limit=-1` a
             # 500, where `limit=0` is the ordinary empty 200.
             if not _int_param(query["limit"]):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if int(query["limit"]) < 0:
-                return ("error", 500, "plexsim: bad limit")
+                return ("error", 500, "simplex: bad limit")
         if segments[:2] == ["library", "metadata"] and len(segments) == 4 \
                 and segments[3] in ("children", "grandchildren") \
                 and segments[2].isdigit():
@@ -12474,7 +12474,7 @@ class PlexSim:
                 # `type=` are 500s on kids and zen).
                 if segments[3] == "grandchildren" and "type" in query \
                         and not _int_param(query["type"]):
-                    return ("error", 500, "plexsim: bad type")
+                    return ("error", 500, "simplex: bad type")
                 return self._structural_parse_refusal(query)
         if segments[:2] == ["library", "people"] and segments[3:] == ["media"] \
                 and len(segments) == 4:
@@ -12501,18 +12501,18 @@ class PlexSim:
                         if key.rstrip("<>=!") in REFUSED_FILTER_FIELDS
                         and key.rstrip("<>=!") not in allow), None)
         if refused:
-            return ("error", 500, "plexsim: cannot filter on %s" % refused)
+            return ("error", 500, "simplex: cannot filter on %s" % refused)
         for key, value in query.items():
             if key.rstrip("<>=!") == "resolution" \
                     and str(value).strip() not in filters_module.RESOLUTIONS:
-                return ("error", 500, "plexsim: unknown resolution %r" % value)
+                return ("error", 500, "simplex: unknown resolution %r" % value)
         if "sourceType" in query:
             # Cycle 20: it filters nothing, but its VALUE is parsed -- an empty one,
             # `1.5` and `abc` are 500s on both references wherever a listing reads it.
             try:
                 filters_module.source_order(query["sourceType"])
             except filters_module.FilterError as error:
-                return ("error", error.status, "plexsim: %s" % error.detail)
+                return ("error", error.status, "simplex: %s" % error.detail)
         return None
 
     def apply_filters(self, rows, query, section=None, parse_only=(), allow=()):
@@ -12521,7 +12521,7 @@ class PlexSim:
         The advertised field map is global rather than per-section: measured, a
         real PMS parses `show.title` against a MOVIE library, and it is the show
         library's own prefixed keys (`show.genre`) that the client sends back --
-        which plexsim looked up after stripping the prefix, in a map keyed by the
+        which simplex looked up after stripping the prefix, in a map keyed by the
         prefixed names, so no filter on a show grid ever constrained anything.
         """
         # Cycle 83, measured on kids (1.43.4) and zen (1.42.2), which agree: the columns
@@ -12530,7 +12530,7 @@ class PlexSim:
         # `art=1`, `extraType=1`, `parentIndex=1`, `slug=1` and `userFields=1` are 500s on
         # a show's `/children` and `/grandchildren`, every tag axis, `/common`, `/search`,
         # `/autocomplete`, `/unwatched`, `/firstCharacter` and `/recentlyViewedShows`,
-        # where plexsim answered those paths' rows unfiltered. So the refusal belongs to
+        # where simplex answered those paths' rows unfiltered. So the refusal belongs to
         # the grammar, here, and each path's own guard is only an earlier copy of it.
         refused = next((key for key in query if key != "_pairs"
                         and key.rstrip("<>=!") in REFUSED_FILTER_FIELDS
@@ -12588,7 +12588,7 @@ class PlexSim:
             # Measured: an unknown NUMBER is echoed back untouched (`type=99`).
             type_number = int(raw)
         else:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         implicit = IMPLICIT_SCOPE.get(type_number, "")
 
         errors = []
@@ -12625,7 +12625,7 @@ class PlexSim:
         exactly its six episodes' durations and part sizes), a movie its own, and
         `?type=3` or `?type=4` on the same library carries neither, as do allLeaves,
         `/library/all`, `/newest`, `/children` and a detail read. It is what the
-        library's storage column prints, and plexsim sent neither, so the column was
+        library's storage column prints, and simplex sent neither, so the column was
         empty on a server that has both numbers on the row already.
         """
         leaves = [row] if row.get("Media") else self.catalog.leaves(row.get("ratingKey"))
@@ -12633,7 +12633,7 @@ class PlexSim:
         storage = sum(int(part.get("size") or 0) for leaf in leaves
                       for media in leaf.get("Media") or [] for part in media.get("Part") or [])
         # Cycle 27, re-measured on kids (`"10031"`, `"6273654"`) and zen
-        # (`"1440171"`, `"573936917"`): both are JSON STRINGS, where plexsim sent
+        # (`"1440171"`, `"573936917"`): both are JSON STRINGS, where simplex sent
         # integers. The XML is identical either way, so it took a JSON read of the same
         # path on both references to see it -- and a client whose model declares them
         # `String` rejects the whole section grid row when `includeStorage=1` is on.
@@ -12648,7 +12648,7 @@ class PlexSim:
         Media substitutes the counts -- `mediaCount` (0 on a show) and
         `mediaCountOptimized` 0. Re-measured in cycle 11 on kids (1.43.4) and zen
         (1.42.2): it applies to the section `allLeaves`, to `/library/people/{id}/media`
-        and to `/hubs/items` as well, which plexsim answered with their Media intact --
+        and to `/hubs/items` as well, which simplex answered with their Media intact --
         so a client that asked for the cheap list to lay a page out was handed the
         expensive one and no count to draw the badge from.
         """
@@ -12679,7 +12679,7 @@ class PlexSim:
         `limit=0` answers ONE row and a negative one every row. `limit=abc` is a 500,
         the refusal a bad filter value gets. Measured as ignored on `/newest`,
         `/recentlyAdded` and `/children`, so it belongs to the query grammar rather
-        than to every listing: plexsim read it only in `/query/parse`, so a capped
+        than to every listing: simplex read it only in `/query/parse`, so a capped
         smart list's own preview -- the listing the client builds from the stored
         query -- was the whole section.
         """
@@ -12688,7 +12688,7 @@ class PlexSim:
         # Cycle 55, measured on zen and kids: the value is a SIGNED 32-BIT integer with an
         # optional sign and nothing else -- `limit=+1` is one row, `2147483647` the whole
         # grid, and `2147483648`, `-2147483649`, `1.5`, ` 1` and an empty value are 500s.
-        # plexsim read it as any number and capped a grid at `1.5`.
+        # simplex read it as any number and capped a grid at `1.5`.
         if not _int_param(query["limit"]):
             raise filters_module.FilterError(500, "bad limit %r" % query["limit"])
         count = int(query["limit"])
@@ -12715,7 +12715,7 @@ class PlexSim:
         """Strip `Guid` from listing rows unless the client asked for it.
 
         Measured: a DETAIL read always carries the `Guid` list, and a LISTING
-        carries it only under `includeGuids=1`. plexsim sent it everywhere, which
+        carries it only under `includeGuids=1`. simplex sent it everywhere, which
         is a superset rather than a break -- but it is not what a real PMS sends,
         and the grid payload is the one place the difference is measurable.
         """
@@ -12752,7 +12752,7 @@ class PlexSim:
             # Shows"/"Bench TV") and in both places the string appears: a MOVIE library
             # COMPOSES this from its own title -- zen answers "All Zen Movies" -- and a
             # SHOW library answers the constant "All Shows" whatever it is called.
-            # plexsim composed for both, so a show library read "All Debrid TV" where a
+            # simplex composed for both, so a show library read "All Debrid TV" where a
             # real server says "All Shows". Not localised: zen answers the same string
             # in de and fr.
             "title2": _all_title(section),
@@ -12763,7 +12763,7 @@ class PlexSim:
             "art": _section_art(section),
             "thumb": _section_thumb(section),
             # Measured on kids (1.43.4) and zen (1.42.2): the section GRID says
-            # `allowSync: true`, and so do the hub containers. plexsim said false here
+            # `allowSync: true`, and so do the hub containers. simplex said false here
             # while already saying true on /newest, /recentlyAdded, /onDeck, /folder,
             # /children and a detail row -- so the single most-requested container on
             # the surface disagreed with every other one, and it is an attribute
@@ -12789,7 +12789,7 @@ class PlexSim:
         `updateQueueSize`, whose rows are the items the server recently finished
         (state 5: the row without its tags, plus `state`) and removed (state 9: a
         stub with an empty title and summary). fun, with nothing recent, answers
-        `size 0` and `latestEntryTime 0`. plexsim 404'd it, which python-plexapi's
+        `size 0` and `latestEntryTime 0`. simplex 404'd it, which python-plexapi's
         `section.timeline()` raises on.
         """
         rows = []
@@ -12831,7 +12831,7 @@ class PlexSim:
         `/library/sections/prefs?type=8&agent=tv.plex.agents.music` row for row and
         value for value (nine rows there; the claimed references' form has thirteen,
         the four more being the claim-gated Sonic Analysis, shared-content, lyrics and
-        concerts rows). plexsim answered an empty list, so the Edit Library dialog's
+        concerts rows). simplex answered an empty list, so the Edit Library dialog's
         Advanced tab had nothing to show and python-plexapi's `settings()` was [].
         """
         if self.section_kind(section) == "artist":
@@ -12888,7 +12888,7 @@ class PlexSim:
         itself -- measured: `?genre=24` but `?contentRating=PG`. Getting that
         backwards makes every entry open an empty list.
 
-        Three smaller measurements, each of which plexsim had wrong: only a
+        Three smaller measurements, each of which simplex had wrong: only a
         `genre` entry carries a `type`, a person entry carries the tag's `thumb`,
         and the two field axes encode differently -- a `contentRating` entry
         single-encodes its key and its fastKey alike, while a `studio` entry
@@ -12910,7 +12910,7 @@ class PlexSim:
             rows = []
         if leaf == "label":
             # Cycle 15, measured on the copy: a label written onto a COLLECTION is in
-            # this axis too, under a bare call and under every `type=`. plexsim built
+            # this axis too, under a bare call and under every `type=`. simplex built
             # the axis from library ITEMS alone, so a label used to organise
             # collections could not be filtered on at all.
             rows = list(rows) + list(self.library.collections(section_id))
@@ -12920,7 +12920,7 @@ class PlexSim:
             # library's `director`, `writer` and `producer` axes are built from the
             # EPISODES. A show ROW carries no `Director`, `Writer` or `Producer` at all --
             # only `Role`, which is why `/actor` was the one person axis that worked -- so
-            # plexsim answered an empty container and a TV library's Director, Writer and
+            # simplex answered an empty container and a TV library's Director, Writer and
             # Producer pickers were all empty while the filters behind them worked. Same
             # rule as cycle 20's media axes, on the person axes.
             rows = [item for row in rows
@@ -12961,7 +12961,7 @@ class PlexSim:
                     # while a director, writer or producer with no portrait simply carries
                     # none -- so the placeholder belongs to the actor axis alone. A tag
                     # the agent never fetched a portrait for stamps `t=-1`, which is what
-                    # both writable copies answer for an actor added by hand; plexsim has
+                    # both writable copies answer for an actor added by hand; simplex has
                     # no per-tag fetch time, so that is the honest stamp for every one.
                     # Without it Plex Web's Cast grid draws a broken image where a real
                     # PMS draws its silhouette.
@@ -12994,7 +12994,7 @@ class PlexSim:
             # Measured on both servers: the contentRating axis -- and only that axis --
             # ends with a `None` bucket, after the alphabetical entries, whose fastKey
             # is `?contentRating=None`. It selects exactly the rows with no rating, and
-            # plexsim offered no way to reach them from the filter bar at all.
+            # simplex offered no way to reach them from the filter bar at all.
             entries.append({"fastKey": "/library/sections/%s/all?contentRating=None" % section_id,
                             "key": "None", "title": "None"})
         container = self.secondary_container(section_id, section,
@@ -13012,7 +13012,7 @@ class PlexSim:
         and a language code prints as the language's own name.
 
         These four (`videoCodec`, `audioCodec`, `subtitleCodec`, `audioLayout`)
-        404 on production's older PMS and answer on the lab's 1.43.4. plexsim
+        404 on production's older PMS and answer on the lab's 1.43.4. simplex
         follows the lab, which is the designated reference.
         """
         seen = {}
@@ -13030,7 +13030,7 @@ class PlexSim:
                 # built from the LEAVES. Both answer a populated `/resolution` and
                 # `/audioLanguage` (zen 6 and 46 entries over 507 shows) although no
                 # show row carries Media, and it is the same any-leaf reading cycle 19
-                # measured for the media FILTERS. plexsim read the top-level rows only,
+                # measured for the media FILTERS. simplex read the top-level rows only,
                 # so a TV library's Resolution and Audio Language menus were empty
                 # while the filters behind them worked.
                 media_rows = [m for leaf in self.catalog.leaves(row.get("ratingKey")) or []
@@ -13094,48 +13094,48 @@ class PlexSim:
         collection = self.library.collection(rating_key)
         playlist = self.library.playlist(rating_key)
         if collection is None and playlist is None:
-            return ("error", 404, "plexsim: no such item")
+            return ("error", 404, "simplex: no such item")
         target_row = collection if collection is not None else playlist
         if method not in ("GET", "HEAD", "PUT", "DELETE") and not (
                 method == "POST" and len(segments) == 4
                 and segments[3] in ("posters", "arts")):
             # Cycle 21, measured on plexscratch: `POST`, `PATCH` and a bare `OPTIONS`
-            # are 404s on a collection's and a playlist's metadata path too. plexsim
+            # are 404s on a collection's and a playlist's metadata path too. simplex
             # fell through to the GET branch and answered the row. Cycle 36 carves out
             # the one POST both copies accept: the artwork UPLOAD below.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if len(segments) == 4 and segments[3] == "prefs":
             # Measured: the per-item prefs are WRITE-only here (the GET is a 404),
             # and `collectionSort`/`collectionMode` land on the collection row as
             # STRING attributes. `collectionSort.value=` on this path is a 400 --
             # prefs are not fields.
             if method != "PUT":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if collection is None:
                 # Cycle 21, measured on plexscratch: a PLAYLIST answers this path with
                 # the item prefs writer's own 400 for a name it does not know, the way
-                # every other row type does; plexsim 404'd it, because the branch
+                # every other row type does; simplex 404'd it, because the branch
                 # resolved a collection and nothing else.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if collection.get("smart") and "collectionSort" in query:
                 # Cycle 15, measured on the copy: a SMART collection refuses
                 # `collectionSort` with a 400 -- for `0` as well as `1` -- and the row
                 # never gains the field, while `collectionMode` is a 200. It has no
                 # collection ORDER at all: its Preferences block carries
                 # `collectionFilterBasedOnUser` in that slot instead.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             # Cycle 59, measured on plexscratch42 and plexscratch: a SMART collection's
             # `collectionFilterBasedOnUser` -- the setting its Preferences block carries in
             # `collectionSort`'s slot, and python-plexapi's `filterUserUpdate()` -- is a 200
             # that stores the value AS SENT (`abc` included) and puts it on the row; an
             # empty one drops the attribute and reads back empty. A plain collection
-            # refuses it with a 400. plexsim refused it everywhere.
+            # refuses it with a 400. simplex refused it everywhere.
             accepted = ("collectionSort", "collectionMode") + (
                 ("collectionFilterBasedOnUser",) if collection.get("smart") else ())
             written = [name for name in query
                        if not name.startswith("X-Plex-") and name != "_pairs"]
             if any(name not in accepted for name in written):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             self.library.inherit_collection_prefs(collection, written)
             for name, value in query.items():
                 if name.startswith("X-Plex-") or name == "_pairs":
@@ -13152,17 +13152,17 @@ class PlexSim:
         if len(segments) == 4 and segments[3] in ("thumbs", "banners"):
             # Cycle 16, measured on plexscratch: a list answers these two the way an
             # ITEM does -- 200 with an empty candidate container carrying the
-            # identifier and the media-tag pair. plexsim 404'd both, so a client
+            # identifier and the media-tag pair. simplex 404'd both, so a client
             # probing a list's artwork candidates read "no such endpoint" where a real
             # PMS says "none yet".
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.tag_container(size=0, _xml={"Metadata": "Photo"})
         if len(segments) == 4 and segments[3] == "tree":
             # Cycle 16: a list has a `/tree` too, and it is a single `MetadataItem`
-            # naming the list itself. plexsim 404'd it.
+            # naming the list itself. simplex 404'd it.
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.bare_container(
                 size=1, MetadataItem=[{"id": int(rating_key)
                                        if str(rating_key).isdigit() else rating_key}])
@@ -13170,24 +13170,24 @@ class PlexSim:
             # Measured on a writable copy of the reference: a playlist's and a collection's
             # artwork list lives under /library/metadata/{ratingKey} like an item's, and
             # holds one `default://` row -- the composite, at the poster size the dialog
-            # draws. plexsim 404'd it, so the Poster pane of a list's Edit dialog was empty.
+            # draws. simplex 404'd it, so the Poster pane of a list's Edit dialog was empty.
             if method == "POST":
                 # Cycle 36, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2),
                 # which agree: a playlist and a collection take an artwork UPLOAD on this
                 # path exactly as an item does -- an EMPTY 200, the candidate list growing
                 # from one `default://` row to two, the uploaded image SELECTED, and ONE
                 # timeline frame carrying the LIST's own type (15 with `sectionID "-1"` for
-                # a playlist, 18 for a collection). plexsim answered 404, so Change Poster
+                # a playlist, 18 for a collection). simplex answered 404, so Change Poster
                 # -> Upload on a list page failed outright while the same dialog's PICK
                 # beside it worked -- cycle 21 landed the pick and never sent bytes.
                 if not body:
                     # Cycle 29's rule, and it holds here: an empty body is a 406.
-                    return ("error", 406, "plexsim: not acceptable")
+                    return ("error", 406, "simplex: not acceptable")
                 return self.upload_artwork(
                     collection if collection is not None else playlist,
                     segments[3], body)
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             target = collection if collection is not None else playlist
             row = (self.library._collection_row(collection) if collection is not None
                    else self.library._playlist_row(target))
@@ -13202,7 +13202,7 @@ class PlexSim:
                 # an EMPTY playlist carries neither `composite` nor `thumb` on its row --
                 # correctly, both references' empty playlists carry neither -- and a real
                 # PMS still names `/playlists/{id}/composite/{updatedAt}` on the candidate
-                # here. plexsim built the key by string concatenation from those two
+                # here. simplex built the key by string concatenation from those two
                 # fields, so a just-created playlist answered `key="?width=400&height=600"`
                 # -- a relative url that resolves to the page the client is on, so Change
                 # Poster showed the app's own HTML as the candidate image and picking it
@@ -13217,7 +13217,7 @@ class PlexSim:
                 # Cycle 88, measured on plexscratch42 (1.42.2) on a collection and a
                 # playlist: a list lists its UPLOADS first, as an item lists them --
                 # `key`/`thumb` the server path `/library/metadata/{id}/file?url=upload%3A...`
-                # -- and the composite last, each with an explicit `selected`. plexsim put
+                # -- and the composite last, each with an explicit `selected`. simplex put
                 # the composite first and the bare `upload://` uri in all three, a broken
                 # tile in Change Poster.
                 entries = [{"key": _candidate_path(target["ratingKey"], key),
@@ -13237,7 +13237,7 @@ class PlexSim:
                     size=len(entries), Metadata=entries, _xml={"Metadata": "Photo"})
             if segments[3] == "posters":
                 # Cycle 15, measured on the copy: `/arts` is EMPTY on a collection --
-                # plexsim handed back the POSTER there, so Change Background offered
+                # simplex handed back the POSTER there, so Change Background offered
                 # the poster. And the `default://` row carries no `provider`: the
                 # agent rows do, so the omission belongs to this row alone.
                 entries = [{"key": "%s?width=400&height=600" % composite,
@@ -13261,11 +13261,11 @@ class PlexSim:
             # title), `title1` (the library), the librarySection triple, `nocache`,
             # `viewGroup` the member type and `viewMode` 65592 -- while
             # `/library/collections/{id}/children` beside it answers the BARE
-            # `{size: N}` container. plexsim 404'd the metadata form, which is the one
+            # `{size: N}` container. simplex 404'd the metadata form, which is the one
             # the client builds from a collection row's own `key`, so a collection page
             # opened empty.
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             rows = self.library.collection_children(collection)
             section = self.catalog.section(collection.get("librarySectionID")) or {}
             body = self.secondary_container(
@@ -13282,7 +13282,7 @@ class PlexSim:
             # row, like every other listing -- no `Guid`, no `Rating`, no `Stream`, tags
             # text-only -- and they leave the librarySection triple to the CONTAINER,
             # which also says `allowSync: true` and carries no `thumb` of its own.
-            # plexsim sent the full detail row with the triple on each of them, said
+            # simplex sent the full detail row with the triple on each of them, said
             # `allowSync: false` and added a `thumb`: a client reading the library off
             # the container got nothing, a mobile client was told the collection cannot
             # be synced, and every member shipped its whole stream table.
@@ -13305,7 +13305,7 @@ class PlexSim:
             # Cycle 52, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a
             # fresh collection and a fresh playlist: both answer the same empty candidate
             # container an ITEM answers (198 bytes, `Photo` rows for clear logos and
-            # `Track` for themes), where plexsim 404'd them -- which is what
+            # `Track` for themes), where simplex 404'd them -- which is what
             # python-plexapi's `logos()` and `themes()` raise on, the failure cycle 6
             # fixed for items and left on the two list types.
             return self.tag_container(
@@ -13315,19 +13315,19 @@ class PlexSim:
             # Cycle 88, measured on plexscratch42: an uploaded candidate's `key`/`thumb`
             # (`/library/metadata/{id}/file?url=upload%3A...`) serves the upload, as an
             # item's does; one this collection was never given is a 404, and no `url` the
-            # item path's 400. plexsim 404'd it, so the Change Poster tile was broken.
+            # item path's 400. simplex 404'd it, so the Change Poster tile was broken.
             if not query.get("url"):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             wanted = urllib.parse.unquote(query["url"].replace("%2E", "."))
             if wanted in ((target_row.get("_uploads") or {}).get("thumb") or []) \
                     and wanted in self.uploads:
                 return ("image", wanted)
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if len(segments) == 5 and segments[3] in ("poster", "art", "thumb") \
                 and method in ("GET", "HEAD"):
             # Cycle 88, measured on plexscratch42: a list's VERSIONED artwork path
             # -- the `thumb` an upload gives it, and any other version -- is the same
-            # image as the bare one. plexsim 404'd it, so the poster a client drew from
+            # image as the bare one. simplex 404'd it, so the poster a client drew from
             # the row's own `thumb` never loaded.
             segments = segments[:4]
         if len(segments) == 4 and segments[3] in ("poster", "art", "thumb") \
@@ -13337,13 +13337,13 @@ class PlexSim:
             # `/library/collections/{id}/composite/{v}` in its `thumb` and a playlist
             # carries no `thumb` at all, so `/library/metadata/{rk}/{thumb,art,poster}` is
             # a 404 on both versions until something is uploaded -- after which `thumb`
-            # and `poster` are the image and `art` stays a 404. plexsim served its
+            # and `poster` are the image and `art` stays a 404. simplex served its
             # generated grey tile to all three on a brand-new list, with no
             # `X-Plex-Local-Asset`, so a list page drew a placeholder the server declared
             # real -- and cached -- instead of letting the client draw its own.
             stored = str(target_row.get("art" if segments[3] == "art" else "thumb") or "")
             if not stored.startswith("/library/metadata/%s/" % target_row.get("ratingKey")):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
         if len(segments) == 4 and segments[3] in ("analyze", "match", "extras", "related",
                                                   "allLeaves", "grandchildren",
                                                   "refresh", "unmatch",
@@ -13354,7 +13354,7 @@ class PlexSim:
             # collection and a 400 on a playlist; `/allLeaves` and `/grandchildren` are
             # real secondary containers on a collection and 404s on a playlist;
             # `/related` is empty on both but carries the librarySection triple and
-            # `allowSync` only on a collection. plexsim 404'd all of them, so Change
+            # `allowSync` only on a collection. simplex 404'd all of them, so Change
             # Poster and Clear Artwork on a collection page did nothing at all.
             leaf = segments[3]
             if leaf in ("poster", "art", "thumb"):
@@ -13364,21 +13364,21 @@ class PlexSim:
                     return self.set_artwork(target_row, leaf + "s", query)
                 if method == "DELETE":
                     # Cycle 31: a 404 on 1.42.2, like the item path below.
-                    return ("error", 404, "plexsim: not found")
+                    return ("error", 404, "simplex: not found")
                 # Cycle 88, measured on plexscratch42: `thumb` is the POSTER's image too
                 # (the uploaded bytes, `X-Plex-Local-Asset`); the responder read `art` for
                 # it and served a list's grey placeholder.
                 return ("image-key", target_row, "poster" if leaf == "thumb" else leaf)
             if method not in ("GET", "HEAD", "PUT"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if leaf == "match":
                 # The same no-parameters 400 the item path answers to every verb.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if leaf == "extras":
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if leaf == "analyze":
                 if playlist is not None:
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 # Cycle 23, measured on plexscratch: a collection's analyze is the
                 # activity PAIR and nothing else -- its members are never framed, which
                 # is the opposite of the per-leaf rule an item's analyze follows.
@@ -13391,7 +13391,7 @@ class PlexSim:
                 return ("empty", 200)
             if leaf in ("refresh", "unmatch"):
                 # Cycle 23, measured on plexscratch twice over: both are a 200 with a
-                # real frame sequence, where plexsim 404'd them -- so the Refresh
+                # real frame sequence, where simplex 404'd them -- so the Refresh
                 # Metadata and Fix Match entries `/media/providers` advertises on a
                 # collection page did nothing at all. A collection's refresh is GATED
                 # on its guid: three frames while it carries an agent guid, and the
@@ -13437,7 +13437,7 @@ class PlexSim:
                     #
                     # Cycle 26: this line has always been here and NEVER REACHED A READ.
                     # `_collection_row` rebuilds the public row on every read and
-                    # re-mints `collection://plexsim-{rk}`, so the write landed in a
+                    # re-mints `collection://simplex-{rk}`, so the write landed in a
                     # projection that is thrown away -- the frames were right and the
                     # row a client reads never changed. Textbook class C: the rule was
                     # recorded, the line implementing it existed, and it wrote into a
@@ -13476,11 +13476,11 @@ class PlexSim:
                     mediaTagVersion=1655122614)
             if collection is None:
                 # A playlist has no leaf view of its own: both are 404s.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             # Cycle 41, re-measured on fresh MOVIE and SHOW collections on both
             # disposable PMS versions: these are real secondary containers, but
             # neither is a member view. Both stay empty even when `/children`
-            # returns the collection's rows. plexsim copied those members here.
+            # returns the collection's rows. simplex copied those members here.
             members = []
             section = self.catalog.section(collection["librarySectionID"]) or {}
             fields = dict(
@@ -13506,12 +13506,12 @@ class PlexSim:
                 fields.pop("allowSync", None)
             return self.bare_container(**fields)
         if len(segments) != 3:
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if method == "DELETE" and playlist is not None and collection is None:
             # Cycle 18, measured on plexscratch: `DELETE /library/metadata/{playlist}`
             # answers 200 with an EMPTY body and deletes NOTHING -- the row is still
             # there afterwards, while `DELETE /playlists/{id}` on the same copy is a 204
-            # that really removes it. plexsim answered the playlist ROW here, which is
+            # that really removes it. simplex answered the playlist ROW here, which is
             # the shape CLAUDE.md's "a mutating endpoint answers 200 with an EMPTY body"
             # is about, one path further on.
             return ("empty", 200)
@@ -13522,14 +13522,14 @@ class PlexSim:
             # a 400 (`sortTitle`, `ratingKey`, `childCount`, `composite`, `bogusXY`),
             # an unparseable number a 500 (`year`, `index`, `absoluteIndex`, `rating`,
             # `audienceRating`), and `title`, `summary` and `userRating` are the 200s.
-            # plexsim skipped the validation for these two row types and answered 200
+            # simplex skipped the validation for these two row types and answered 200
             # to every name -- the one place it contradicted itself, since the same
             # field was a 400 on a movie. The grammar is applied to a COPY so the
             # list-specific writers below stay in charge of what is stored.
             try:
                 self.library.edit(dict(target), query, pairs=query.get("_pairs"))
             except library_module.EditError as error:
-                return ("error", error.status, "plexsim: %s" % error.detail)
+                return ("error", error.status, "simplex: %s" % error.detail)
             title = query.get("title.value")
             if title is None:
                 title = query.get("title")
@@ -13579,7 +13579,7 @@ class PlexSim:
         if collection is not None:
             # Measured on fun: a collection read through /library/metadata carries
             # the library container any item's detail does -- allowSync, the
-            # identifier, the section triple and the media-tag pair. plexsim sent a
+            # identifier, the section triple and the media-tag pair. simplex sent a
             # bare one, so a client could resolve neither the section nor a tag.
             section = self.catalog.section(collection["librarySectionID"]) or {}
             section_key = collection["librarySectionID"]
@@ -13626,7 +13626,7 @@ class PlexSim:
         The client's Edit dialog saves through `PUT /library/sections/{id}/all`,
         and a batch edit through a comma-joined key list, so the same parameter
         handling has to serve three paths. Every one of them answered the LISTING
-        on plexsim, with a 200 -- so the dialog reported success and applied
+        on simplex, with a 200 -- so the dialog reported success and applied
         nothing, which is the quietest failure on the whole surface.
         """
         try:
@@ -13636,7 +13636,7 @@ class PlexSim:
                 # `state 5` carries the new one, where the ITEM path sends the
                 # new title in both. Visible only on a TITLE edit of a SHOW --
                 # an episode's frame title is derived from its show, so it
-                # cannot show the difference -- and plexsim sent the new title
+                # cannot show the difference -- and simplex sent the new title
                 # in both. The snapshot has to be taken before the edit runs.
                 was = [dict(row) for row in rows]
                 for row in rows:
@@ -13661,7 +13661,7 @@ class PlexSim:
                     self.notify_edited(row, metadata_state)
         except library_module.EditError as refused:
             logger.warning("EDIT REFUSED: %s", refused.detail)
-            return ("error", refused.status, "plexsim: %s" % refused.detail)
+            return ("error", refused.status, "simplex: %s" % refused.detail)
         logger.info("EDIT %s <- %s",
                     ",".join(str(r.get("ratingKey")) for r in rows),
                     ",".join(k for k in query if not k.startswith("X-Plex-")
@@ -13677,7 +13677,7 @@ class PlexSim:
     def common_fields(self, section_id, section, query):
         """`GET /library/sections/{id}/common` -- what the Edit dialog READS.
 
-        plexsim 404'd it, and the dialog's populate() rejects on that, so Edit
+        simplex 404'd it, and the dialog's populate() rejects on that, so Edit
         answered "There was an error editing this item" before the user could type.
 
         Measured: a `Common` row (JSON `Metadata` with `type: "common"`) holding the
@@ -13687,7 +13687,7 @@ class PlexSim:
         "(mixed)" rather than overwrite it.
         """
         if not query.get("type"):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         wanted = {"1": "movie", "2": "show", "3": "season", "4": "episode"}.get(query["type"])
         if "id" in query:
             keys = [int(k) for k in (query.get("id") or "").split(",")
@@ -13702,7 +13702,7 @@ class PlexSim:
             # Measured: with no `id` the dialog is editing EVERYTHING the filter
             # selects -- the select-all edit, whose save already edits the whole
             # filtered set -- and the common fields are computed over all of it.
-            # plexsim computed them over no rows and answered an empty Common.
+            # simplex computed them over no rows and answered an empty Common.
             rows = self.typed_rows(section_id, query)
             rows, _ = self.apply_filters(rows, query, section)
             rows = [r for r in rows if r.get("type") == wanted]
@@ -13743,7 +13743,7 @@ class PlexSim:
             # Re-measured: only a MIXED titleSort is reported as "". A single season
             # answers its own sort title (`Season 1`) and a single episode the sort form
             # of its title (`The Train Job` -> `Train Job`), derived where the row stores
-            # none. plexsim hardcoded "" for every season and episode, so the Edit
+            # none. simplex hardcoded "" for every season and episode, so the Edit
             # dialog's Sort Title box came up blank on both and a save could overwrite it.
             common["titleSort"] = ""
         if wanted == "episode" and rows:
@@ -13810,7 +13810,7 @@ class PlexSim:
 
         # A comma-joined key list is a real client pattern (plezy batches, and the
         # web client's own per-grid userState probe). Measured: a LEAF on a
-        # comma-joined list is a 404 -- plexsim returned before it looked at the
+        # comma-joined list is a 404 -- simplex returned before it looked at the
         # leaf at all, so `/library/metadata/a,b/userState` answered full metadata
         # rows with no UserState in them, which the client reads as state it has.
         if "," in raw_key:
@@ -13820,22 +13820,22 @@ class PlexSim:
                 # more it is a 404.
                 numeric = [part for part in raw_key.split(",") if part.isdigit()]
                 if len(numeric) != 1:
-                    return ("error", 404, "plexsim: not found")
+                    return ("error", 404, "simplex: not found")
                 return self.library_metadata(segments[:2] + [numeric[0]] + segments[3:],  # noqa: E501
                                              query, method)
             if method not in ("GET", "HEAD", "PUT"):
                 # Measured on plexscratch (1.43.4, 2026-09-30): a key LIST takes the one
                 # item's verbs, and `POST /library/metadata/1,3` and a bare OPTIONS are
-                # the same 404 `POST /library/metadata/1` is. plexsim answered the
+                # the same 404 `POST /library/metadata/1` is. simplex answered the
                 # listing. Cycle 83, measured on plexscratch42 (1.42.2) over two rows of a
                 # throwaway library: `DELETE /library/metadata/743,744` is the 85-byte
-                # 404 and deletes neither row; plexsim answered the multi-id READ with a
+                # 404 and deletes neither row; simplex answered the multi-id READ with a
                 # 200, which a caller takes as a delete that happened.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             keys = [int(p) for p in raw_key.split(",")
                     if p.isdigit() and int(p) in self.catalog.items]
             if method == "PUT":
-                # Measured: a batch EDIT. plexsim answered the listing here, so a
+                # Measured: a batch EDIT. simplex answered the listing here, so a
                 # multi-select edit applied to nothing and reported success.
                 return self.apply_edit([self.catalog.items[k] for k in keys], query)
             fields = {}
@@ -13852,7 +13852,7 @@ class PlexSim:
                                   **fields)
         if not raw_key.isdigit():
             # Measured: a non-numeric ratingKey is a 404, not an empty container.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
 
         if not raw_key.isdigit():
             return self.container()
@@ -13863,14 +13863,14 @@ class PlexSim:
             # A collection and a playlist are metadata items in their own right, and
             # the client edits both through this path -- its own saveUrl falls back
             # to `/library/metadata/{key}` for a playlist on a server without the
-            # true-playlists feature. plexsim kept them outside the catalog, so both
+            # true-playlists feature. simplex kept them outside the catalog, so both
             # answered 404 and neither could be renamed from its own page.
             minted = self.theme_rows.get(raw_key)
             if minted is not None:
                 # Cycle 45: a row the theme metadata leaf minted is readable at its own
                 # key on both copies, and only as a bare read.
                 if len(segments) > 3 or method not in ("GET", "HEAD"):
-                    return ("error", 404, "plexsim: not found")
+                    return ("error", 404, "simplex: not found")
                 return self.container(size=1, Metadata=[dict(minted)])
             return self.library_list_item(rating_key, segments, query, method, body)
 
@@ -13879,7 +13879,7 @@ class PlexSim:
                     and not _int_param(query["augmentCount"]):
                 # Cycle 54, measured on kids and zen: an int32, and a 400 otherwise --
                 # after the row is looked up, since an unknown id is still a 404.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if method == "PUT":
                 # The Edit dialog, and "Add to Collection": the client PUTs
                 # `<field>.value`, `<field>.locked` and `<tag>[N].tag.tag` to
@@ -13887,9 +13887,9 @@ class PlexSim:
                 return self.apply_edit([row], query)
             if method == "DELETE":
                 if query.get("proxy") == "1":
-                    # Delete Version. plexsim has no optimized versions, and a
+                    # Delete Version. simplex has no optimized versions, and a
                     # real PMS answers 400 when there are none to delete.
-                    return ("error", 400, "plexsim: no optimized versions")
+                    return ("error", 400, "simplex: no optimized versions")
                 doomed = self.subtree_keys(rating_key)
                 # Cycle 87: the delete REWRITES every playlist's and collection's item
                 # list (read, filter, assign), so it is a list write and runs inside the
@@ -13905,8 +13905,8 @@ class PlexSim:
                 return ("empty", 200)
             if method not in ("GET", "HEAD"):
                 # Measured on a writable copy of the reference: a POST to an item is a
-                # 404 -- edits are PUTs -- where plexsim answered the detail row.
-                return ("error", 404, "plexsim: not found")
+                # 404 -- edits are PUTs -- where simplex answered the detail row.
+                return ("error", 404, "simplex: not found")
             section_id = row.get("librarySectionID") or row.get("_librarySectionID")
             section = self.catalog.section(section_id) or {}
             detail = _full(row)
@@ -13964,7 +13964,7 @@ class PlexSim:
         # segment, and so does any other word after a theme version.
         if leaf == "theme" and len(segments) == 6 and segments[5] == "metadata":
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.theme_metadata(row, segments[4])
         # Cycle 45, swept over 53 leaf names x four second segments on both references:
         # an item leaf with an EXTRA path segment is a **404**, and there are exactly two
@@ -13974,46 +13974,46 @@ class PlexSim:
         # recorded; and `/extras/all` is a real leaf of its own. Everything else --
         # `/children/1`, `/allLeaves/all`, `/tree/zzz`, `/related/1`, `/posters/all`,
         # `/similar/1`, `/matches/zzz` and thirteen more -- is a 404 on kids and zen
-        # alike. plexsim answered the LEAF AGAIN for sixteen of them and its own 400 for
+        # alike. simplex answered the LEAF AGAIN for sixteen of them and its own 400 for
         # four, which is fix 4's trap: a client reads a 200 as "this endpoint exists".
         # 64 of the 212 swept cells were wrong.
         if len(segments) > 4 and [part for part in segments[4:] if part] \
                 and leaf not in ARTWORK_LEAVES \
                 and segments[3:] not in ITEM_TWO_SEGMENT_LEAVES:
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         # Cycle 45, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): the
         # SINGULAR artwork leaf is routed for six names and answers its own 400 with no
         # parameters -- `poster`, `art`, `thumb`, `banner`, `theme`, `clearLogo` -- while
         # `logo`, `squarePoster` and `squareArt` are 404s (`squareArt` is a 400 on 1.43.4
-        # alone, the version split already recorded). plexsim routed two, answered 200 to
+        # alone, the version split already recorded). simplex routed two, answered 200 to
         # a `thumb` write that stores nothing, and 404'd the other four.
         if method == "PUT" and len(segments) == 4 \
                 and leaf in ("poster", "art", "thumb", "banner", "theme", "clearLogo") \
                 and not query.get("url"):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if leaf == "theme" and [p for p in segments[5:] if p]:
             # Only `/metadata` above; every other second segment after a theme version
             # is a 404, like the other artwork leaves'.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if leaf in ("thumb", "art", "poster") and [p for p in segments[5:] if p]:
             # Cycle 21, measured on kids and zen over four row types: an EXTRA segment
             # after the version is a 404 -- `/thumb/{v}/x` and `/thumb/{v}/1/2` both, on
             # `thumb`, `art` and `poster`. A single trailing slash stays a 200 (the
             # recorded "one trailing slash is harmless"), which is why an empty piece is
-            # filtered out, and so does a bad version. plexsim served the image for
+            # filtered out, and so does a bad version. simplex served the image for
             # anything that merely STARTED like an artwork path, which is the inverse of
             # the `/photo/:/transcode` rule: a 404 lets the client draw its own
             # placeholder where a 200 gets cached.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if leaf == "children" and row.get("type") in ("movie", "episode", "clip", "track"):
             # Measured: `/children` of an item that cannot have any -- a movie, an
             # episode -- is a 400, where its `/allLeaves` is still a 200.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if leaf in ("allLeaves", "grandchildren") and row.get("type") == "clip":
             # Cycle 83, measured on kids' clip 5 (a movie's trailer): its `/allLeaves` and
             # `/grandchildren` are the 85-byte 404 -- not the empty 200 a movie's and an
             # episode's answer -- paged or not, beside `/children`'s 400.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if leaf == "file" and method in ("GET", "HEAD"):
             # Measured on both servers: the item's file endpoint without its `url` is a
             # 400. Cycle 17: WITH a `url` naming one of this row's own candidates it
@@ -14021,14 +14021,14 @@ class PlexSim:
             # `key`/`thumb` a real PMS puts on a local candidate usable as an img src.
             # A url the row has no candidate for stays a 404.
             if not query.get("url"):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             wanted = urllib.parse.unquote(query["url"].replace("%2E", "."))
             if wanted in self.uploads:
                 return ("image", wanted)
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if leaf == "grandchildren":
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.grandchildren(row, query)
         if leaf in ("children", "allLeaves"):
             if leaf == "children":
@@ -14038,7 +14038,7 @@ class PlexSim:
                     # season's `/children` NEWEST FIRST (`10, 8` where the default is
                     # `8, 10`), and `0`/`-1` put it back. `/allLeaves` and the section
                     # listing keep broadcast order either way, so this is the season
-                    # page's own order and not a catalog-wide sort. plexsim stored the
+                    # page's own order and not a catalog-wide sort. simplex stored the
                     # setting and never read it.
                     #
                     # Cycle 15: the value is the EFFECTIVE one. Written at the
@@ -14053,7 +14053,7 @@ class PlexSim:
             elif row.get("type") in ("season", "episode"):
                 # Measured on both servers: `/allLeaves` below the SHOW is empty -- a
                 # season's is `size 0` with its episode-list container, not the season's
-                # episodes, and an episode's is empty too. plexsim returned the season's
+                # episodes, and an episode's is empty too. simplex returned the season's
                 # episodes, so a client walking allLeaves counted them twice.
                 rows = []
             else:
@@ -14064,7 +14064,7 @@ class PlexSim:
                 # filters are still ignored here.
                 if "unwatched" in query:
                     if not _bool_option(query["unwatched"]):
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                     if int(str(query["unwatched"]).lstrip("+")) == 1:
                         rows = [r for r in rows if not _watched_leaf(r)]
             if leaf == "children" and row.get("type") in ("season", "show"):
@@ -14093,7 +14093,7 @@ class PlexSim:
                 if query.get("sort"):
                     rows, unsupported = self._sorted(rows, query["sort"])
                     if unsupported:
-                        return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+                        return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
             extra = {}
             page, paged, start, _ = self.page_window(rows, query)
             # Re-measured on zen against a 24-season show, which is the first show this
@@ -14105,7 +14105,7 @@ class PlexSim:
             # past the first there IS a one-row page.
             # Cycle 54: and it is the ANSWER's row count, paged or not -- a filter that
             # leaves one season, or a show that has only one, carries no "All episodes"
-            # row on kids or zen. plexsim added it to every unpaged list.
+            # row on kids or zen. simplex added it to every unpaged list.
             short_page = len(page) < 2
             if (leaf == "children" and row.get("type") == "show"
                     and query.get("excludeAllLeaves") != "1" and rows
@@ -14140,25 +14140,25 @@ class PlexSim:
             return self.matches(row, query)
         if leaf in ("art", "poster", "thumb") and method not in ("GET", "HEAD", "PUT",
                                                                  "DELETE", "PATCH"):
-            # Cycle 52, measured on plexscratch42 (1.42.2 -- the build plexsim reports)
+            # Cycle 52, measured on plexscratch42 (1.42.2 -- the build simplex reports)
             # and plexscratch (1.43.4) on a row that OWNS its poster, three repeats each:
             # the artwork READ leaves take GET, HEAD, PUT (the write, a 400 with no
             # parameters) and DELETE (a 404 on 1.42.2) and answer the ordinary 85-byte
-            # 404 to POST and to a bare OPTIONS. plexsim had no verb gate here at all, so
+            # 404 to POST and to a bare OPTIONS. simplex had no verb gate here at all, so
             # `POST /library/metadata/{id}/thumb` and a bare `OPTIONS` both answered the
             # whole JPEG -- the same class cycle 15 closed for twenty read-only routes and
             # cycle 31 for ten more, and the shape python-plexapi's capability probes send.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if leaf in ("art", "poster", "thumb") and method == "PUT" and len(segments) >= 5:
             # And the VERSIONED path is not the write: `PUT /thumb/{v}` is a 404 on both
             # versions where the bare `PUT /thumb` is the artwork pick's own 400.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if leaf in ("art", "poster", "thumb") and method in ("GET", "HEAD") \
                 and not self._owns_artwork(row, leaf):
             # Cycle 21: the guard is the READ's. Measured on plexscratch, a WRITE to a
             # row that owns nothing is a 200 -- a poster PUT after a poster DELETE
             # re-mints the path, and a DELETE on a fresh collection with no artwork at
-            # all is a 200 too. plexsim applied the ownership rule to every verb, so
+            # all is a 200 too. simplex applied the ownership rule to every verb, so
             # Clear Artwork followed by Change Poster was a dead end: the row could
             # never regain a poster and the grid drew the placeholder for good.
             #
@@ -14168,20 +14168,20 @@ class PlexSim:
             # 404s where zen's season 11114, which has one of its own, answers 200,
             # and every episode borrows. The row's own stored path names its owner, so
             # comparing the two IS the rule, and it needs no per-type list.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if leaf == "thumb" and method == "DELETE":
             # Cycle 17, re-measured on plexscratch: the singular `/thumb` CLEARS the
             # poster exactly as `/poster` does -- cycle 16 recorded the rule for all
-            # three names and plexsim implemented two of them, so this one fell through
+            # three names and simplex implemented two of them, so this one fell through
             # to the image read and answered the PNG bytes to a DELETE. A GET of the
             # same path is still the image.
             leaf = "poster"
         if leaf in ("poster", "art"):
-            # The SINGULAR path is the write, and plexsim had it as the image read.
+            # The SINGULAR path is the write, and simplex had it as the image read.
             # The client's own Change Poster / Change Background builds
             # `/library/metadata/{id}/` + ("poster"|"art") with type PUT, and then
             # does `model.set("thumb", response)` -- so the response BODY is the new
-            # artwork path, not a container and not empty. plexsim answered the
+            # artwork path, not a container and not empty. simplex answered the
             # PLURAL path for the write and served image bytes from the singular one,
             # which meant Change Poster did nothing AND set the tile's img src to a
             # blob of PNG.
@@ -14195,12 +14195,12 @@ class PlexSim:
                 # `selected` in the candidate list afterwards. The bare GET of the
                 # deleted path is then a 404.
                 #
-                # plexsim answered the image BYTES to the DELETE and changed nothing:
+                # simplex answered the image BYTES to the DELETE and changed nothing:
                 # Remove Poster did nothing, and since Change Poster assigns the
                 # response BODY onto the row, clearing the artwork set the tile's img
                 # src to a blob of JPEG.
                 # Cycle 31, measured on plexscratch42 -- a fresh 1.42.2 install, the
-                # build plexsim reports -- against plexscratch (1.43.4), on a row that
+                # build simplex reports -- against plexscratch (1.43.4), on a row that
                 # owns and serves the image on both: `DELETE /library/metadata/{id}/
                 # {poster,thumb,art,banner,theme}` is a **404 on 1.42.2, all five**, where
                 # 1.43.4 answers each with an empty 200 and clears the field. The 404 body
@@ -14214,37 +14214,37 @@ class PlexSim:
                 # which is 1.43.4. The cleared-artwork state itself is still reachable on
                 # 1.42.2 -- an EMPTY `thumb.value=` removes the column on both versions
                 # (cycle 31) -- so every cycle-29 derivation rule keeps its route.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return ("image-key", row, leaf)
         if leaf in ("posters", "arts"):
             if method == "PUT":
                 # Measured: the plural path is a 404 for a write.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if method == "POST":
                 # Cycle 15, measured on the copy: an empty body is a 406, not the
-                # 400 plexsim answered.
+                # 400 simplex answered.
                 if not body:
-                    return ("error", 406, "plexsim: not acceptable")
+                    return ("error", 406, "simplex: not acceptable")
                 return self.upload_artwork(row, leaf, body)
             return self.artwork_list(row, leaf)
         if leaf in ("thumbs", "banners", "themes", "clearLogos") and method == "POST":
             # Cycle 15, measured on the copy: every artwork candidate list answers a
-            # POST the same way an upload with no bytes does -- a 406. plexsim
+            # POST the same way an upload with no bytes does -- a 406. simplex
             # answered 404 for two of them and the candidate LISTING for the other
             # two, and a 200 listing reads to a client as an accepted upload.
             if not body:
-                return ("error", 406, "plexsim: not acceptable")
+                return ("error", 406, "simplex: not acceptable")
             return self.upload_artwork(row, leaf, body)
         if leaf in ("banners", "thumbs"):
             # Cycle 14: two more artwork candidate lists, 200 on kids (1.43.4) AND zen
-            # (1.42.2) where plexsim answered 404. `banners` is empty on both servers;
+            # (1.42.2) where simplex answered 404. `banners` is empty on both servers;
             # `thumbs` lists the video thumbnails out of the media BUNDLE (3 on kids, 1
-            # on zen), which plexsim has none of -- so an empty list of the same shape
+            # on zen), which simplex has none of -- so an empty list of the same shape
             # is the honest answer, the way `arts` already answers for a season.
             # `/squareArts` is NOT here on purpose: it is 200 on kids and 404 on zen,
-            # so it is 1.43.4-only and plexsim reports 1.42.2.
+            # so it is 1.43.4-only and simplex reports 1.42.2.
             if method not in ("GET", "HEAD"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.tag_container(size=0, _xml={"Metadata": "Photo"})
         if leaf == "tree":
             # Measured: an EPISODE's tree is rooted at its SHOW, and a season's at
@@ -14259,22 +14259,22 @@ class PlexSim:
         if leaf == "media" and len(segments) > 4:
             if method != "DELETE":
                 # Measured: a 404. A real PMS never answers 405 anywhere.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if not self.library.delete_media(row, segments[4]):
-                return ("error", 404, "plexsim: no such media")
+                return ("error", 404, "simplex: no such media")
             return ("empty", 200)
 
         if leaf == "prefs":
             # Per-item settings: a show's episode sorting, from its Edit dialog.
             # Measured: the GET is a 404 and only the PUT exists.
             if method != "PUT":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             # Cycle 36, measured on plexscratch42 over two `local://` shows and on
             # plexscratch's matched Firefly as a control, both versions agreeing: the
             # writer's setting list is the ROW's advertised one, not its TYPE's. An
             # unmatched show's `Preferences` block carries eight settings where a matched
             # one carries ten, and `useOriginalTitle=1` and `languageOverride=en` are
-            # each a **400** there while the matched show answers 200 to both. plexsim
+            # each a **400** there while the matched show answers 200 to both. simplex
             # already dropped the pair from the READ (cycle 16) and kept accepting the
             # WRITE, so the Advanced tab of an unmatched show saved settings it does not
             # show and a real PMS refuses.
@@ -14291,10 +14291,10 @@ class PlexSim:
                       if not name.startswith("X-Plex-") and name != "_pairs"]
             # Measured: a setting the item's TYPE does not have is a 400 and nothing
             # in the request is applied -- an episode has none, so any write to one
-            # is refused. plexsim stored every key it was sent, including its own
+            # is refused. simplex stored every key it was sent, including its own
             # parser's `_pairs` list, and both then rendered onto the metadata row.
             if any(name not in settings for name, _ in writes):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             stored = row.setdefault("_prefs", {})
             for name, value in writes:
                 # Measured: an EMPTY value clears the setting (the row attribute
@@ -14315,7 +14315,7 @@ class PlexSim:
                 # eight seconds on the same socket, which answered a title edit beside
                 # them with the usual `state 3` / `state 5` pair.
                 #
-                # plexsim pushed the cascade for EVERY prefs write -- telling every
+                # simplex pushed the cascade for EVERY prefs write -- telling every
                 # client the whole tree had been re-read whenever a display flag moved --
                 # and changed no row at all. The first version of this fix then swung
                 # the other way and silenced `showOrdering` too; the suite's own
@@ -14329,12 +14329,12 @@ class PlexSim:
                         # a value the setting does not name alike) and pushes NO frames,
                         # while the value is STORED: the row reads it back afterwards.
                         # So it is not a validation refusal that writes nothing -- the
-                        # write lands and the cascade behind it is what fails. plexsim
+                        # write lands and the cascade behind it is what fails. simplex
                         # answered 200 and pushed its whole cascade, telling every client
                         # the tree had been re-read.
                         self.catalog.apply_show_prefs(row)
                         logger.info("ITEM PREF showOrdering on an unmatched show -- 500")
-                        return ("error", 500, "plexsim: internal error")
+                        return ("error", 500, "simplex: internal error")
                     self.notify_show_cascade(row)
                 self.catalog.apply_show_prefs(row)
             return ("empty", 200)
@@ -14342,42 +14342,42 @@ class PlexSim:
             if method == "POST":
                 return self.upload_subtitle(row, query, body)
             # The Search Subtitles dialog. A real PMS answers with `Stream` rows
-            # from its subtitle agent; plexsim has no subtitle source, so the
+            # from its subtitle agent; simplex has no subtitle source, so the
             # honest answer is that shape with nothing in it rather than a
             # different shape or a refusal the dialog reads as an error.
             # Measured: `language` is required (400 without it) and must be a real
             # two-letter language, any case and with or without a region -- `en`,
             # `EN`, `en-US` and `de` search, where `xx`, `eng` and an empty value are
-            # 500s. plexsim answered the empty container to all of them.
+            # 500s. simplex answered the empty container to all of them.
             language = query.get("language")
             if language is None:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if language.split("-")[0].lower() not in SUBTITLE_LANGUAGES:
-                return ("error", 500, "plexsim: internal error")
+                return ("error", 500, "simplex: internal error")
             return self.tag_container(size=0, Stream=[])
         if leaf in ("markers", "banner", "chapterImages", "indexes"):
-            # All 404 on a real PMS for a row like plexsim's: no intro markers,
+            # All 404 on a real PMS for a row like simplex's: no intro markers,
             # no banner artwork, no chapter thumbnails, no preview index.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if leaf == "extras":
             if len(segments) == 5 and segments[4] == "all":
                 # Cycle 19: the ITEM path has the same `/all` form the SECTION path
                 # does. Both references answer `/library/metadata/{id}/extras/all` with
                 # the container `/extras` gives -- kids an empty one, zen a three-clip
-                # one -- and plexsim 404'd the segment, which a client walking to the
+                # one -- and simplex 404'd the segment, which a client walking to the
                 # paged form of a preplay Extras shelf reads as "this item is gone".
                 pass
             elif len(segments) > 4:
                 # Measured on both servers: `/extras/{n}` is a 404, even for an extra the
-                # item has. plexsim answered the extras container at any depth.
-                return ("error", 404, "plexsim: not found")
+                # item has. simplex answered the extras container at any depth.
+                return ("error", 404, "simplex: not found")
             if method == "POST":
                 # Cycle 16, measured on the copy: a POST here is a 400 whatever the
                 # body -- it is the one candidate list that refuses with a 400 where
                 # the artwork and subtitle lists answer 406. Cycle 15 recorded it and
                 # left the code answering the GET listing, which reads to a client as
                 # an accepted upload.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             rows = [_full(extra) for extra in self.catalog.extras(row["ratingKey"])]
             return self.tag_container(size=len(rows), allowSync=False,
                                       Metadata=rows or None)
@@ -14405,25 +14405,25 @@ class PlexSim:
             # movie or a show it answers a tag container whose rows are the agent's
             # similar titles that are IN the library -- 2 to 4 rows on the lab, and
             # zero for one of the five movies, so an empty answer is correct too.
-            # plexsim answered an unconditional empty, which made the Related shelf
+            # simplex answered an unconditional empty, which made the Related shelf
             # never appear; the rows come from `similar_rows()` now.
             if row.get("type") in ("season", "episode"):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if "count" in query and not _int_param(query["count"]):
                 # Cycle 54, measured on kids and zen: `count` is an int32 here.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             rows = [_listing_row(r) for r in self.similar_rows(row)]
             return self.tag_container(size=len(rows), Metadata=rows)
         if leaf == "nearest":
             # Measured: an empty library container for every item the reference
             # holds -- movie, show, season and episode alike, whatever `sort` says --
-            # and a 404 only for an id it does not. plexsim 404'd it for all of them.
+            # and a 404 only for an id it does not. simplex 404'd it for all of them.
             # Cycle 54, measured on kids and zen: `excludeParentID` is an int32 and
             # `maxDistance` a float, and each refuses what it cannot parse with a 400.
             if "excludeParentID" in query and not _int_param(query["excludeParentID"]):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if "maxDistance" in query and not _float_param(query["maxDistance"]):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             return self.tag_container(size=0)
         if leaf == "users" and len(segments) == 5 and segments[4] == "top":
             # "Top users" of an item: one Account row per account that has
@@ -14431,7 +14431,7 @@ class PlexSim:
             # with views (0 of them is `size: 0`, not a zero row), and a SEASON is a
             # 500 on the reference.
             if row.get("type") == "season":
-                return ("error", 500, "plexsim: internal error")
+                return ("error", 500, "simplex: internal error")
             views = self.library.global_views(row)
             # Cycle 54, measured on kids and zen: the viewedAt keys filter the history
             # counted here too (a bad value is a 500); `accountID` does not.
@@ -14447,12 +14447,12 @@ class PlexSim:
         if leaf == "userState":
             # A real PMS 404s this (verified against fun). Answering with an
             # empty MediaContainer instead tells the client there IS state.
-            return ("error", 404, "plexsim: no user state")
+            return ("error", 404, "simplex: no user state")
         if leaf in ("clearLogos", "themes"):
             # Measured: both are candidate lists in the tag container -- `Photo`
             # rows for clear logos, `Track` rows for theme music -- and EMPTY for an
             # item with none (every season and episode, a movie with no theme).
-            # plexsim has neither, so both are empty; it 404'd them, which
+            # simplex has neither, so both are empty; it 404'd them, which
             # python-plexapi's `logos()` and `themes()` raise on.
             # Cycle 59: an UPLOAD is a candidate here, selected while the row carries it.
             field = "clearLogo" if leaf == "clearLogos" else "theme"
@@ -14466,7 +14466,7 @@ class PlexSim:
                 size=len(entries), Metadata=entries,
                 _xml={"Metadata": "Photo" if leaf == "clearLogos" else "Track"})
         if leaf in ("theme", "clearLogo"):
-            # No theme audio of plexsim's own; an UPLOADED theme or logo is served from
+            # No theme audio of simplex's own; an UPLOADED theme or logo is served from
             # the row that owns it (cycle 59), and anything else is the 404 it was.
             owned = row.get("_clearLogo") if leaf == "clearLogo" else self._owns(row, "theme")
             # Cycle 60, measured on plexscratch42: only a READ serves it. A DELETE stays the
@@ -14474,19 +14474,19 @@ class PlexSim:
             if owned and row.get("_%s_url" % leaf) in self.uploads \
                     and method in ("GET", "HEAD"):
                 return ("image", row["_%s_url" % leaf])
-            return ("error", 404, "plexsim: no %s" % leaf)
+            return ("error", 404, "simplex: no %s" % leaf)
         if leaf in ("thumb", "art", "poster"):
             # Cycle 14: `background` and `composite` used to be served here too, and
             # both are a **404** on kids and zen alike, on a movie, a show, a season
             # and an episode, bare and versioned -- while `thumb`, `art` and `poster`
             # are the 200s they always were. A `composite` is real on a PLAYLIST and a
-            # COLLECTION, which is where plexsim's own rows point and which is handled
+            # COLLECTION, which is where simplex's own rows point and which is handled
             # elsewhere; on a library ITEM there is no such thing, and `background` is
             # not a path at all -- it is the `type` of an `Image` element.
             #
             # The same sweep that found `/recentlyReleased`: fetch every leaf from both
-            # references and from plexsim, and report only where the references agree
-            # and plexsim does not.
+            # references and from simplex, and report only where the references agree
+            # and simplex does not.
             # Cycle 15: once the field has been DELETED the path is a 404 on the
             # copy, not a placeholder -- and a 404 lets the client draw its own
             # placeholder where a grey 200 tile gets cached.
@@ -14496,10 +14496,10 @@ class PlexSim:
             # own key is a 404 there too, and the stamp in the URL belongs to the
             # owner's path rather than to this row.
             if owner is not None and not self._owns_artwork(owner, leaf):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if owner is not None and owner.get("thumb" if leaf in ("thumb", "poster")
                                                else "art") is None:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             resolved = self.artwork_for(rating_key, leaf)
             if resolved:
                 return ("image", self._at_width(resolved, query.get("width")))
@@ -14507,7 +14507,7 @@ class PlexSim:
         # Includes `/move`, which a real PMS 404s on an item: ordering is done
         # through the collection or playlist that holds it, not through the item.
         logger.warning("UNKNOWN item leaf %s on %s", leaf, rating_key)
-        return ("error", 404, "plexsim: not found")
+        return ("error", 404, "simplex: not found")
 
     @staticmethod
     def page_window(rows, query):
@@ -14515,14 +14515,14 @@ class PlexSim:
 
         A real PMS pages only when `X-Plex-Container-Start` **and**
         `X-Plex-Container-Size` are both present: one alone is ignored entirely,
-        with no slice, no `offset` and no `totalSize`. plexsim tested them with
+        with no slice, no `offset` and no `totalSize`. simplex tested them with
         OR, so a lone `Size=1` returned one row and claimed a total, and a lone
         `Start=1` silently dropped the first row. A negative size drops paging
-        altogether on a real server -- in plexsim it was a Python slice, so
+        altogether on a real server -- in simplex it was a Python slice, so
         `Size=-1` quietly served every row but the last.
         """
         query = query or {}
-        window = PlexSim.paging_values(query)
+        window = SimPlex.paging_values(query)
         if window is None:
             return list(rows), False, 0, len(rows)
         start, size = window
@@ -14595,7 +14595,7 @@ class PlexSim:
         `/hubs/metadata/{id}/postplay`, which says false -- so the default flips and
         postplay passes it explicitly. (`/hubs/search` and `/hubs/items` carry no
         `allowSync` at all and are built by a different container, which is why they
-        are unaffected.) plexsim defaulted to false and had three call sites putting
+        are unaffected.) simplex defaulted to false and had three call sites putting
         it back, so eight of the ten hub paths said the opposite of a real PMS.
         """
         body = {"size": 0, "allowSync": True, "identifier": "com.plexapp.plugins.library"}
@@ -14617,7 +14617,7 @@ class PlexSim:
         body.update(fields)
         return {"MediaContainer": self._prune(body)}
 
-    # A shelf's default row cap. Re-measured on zen, the 1.42.2 build plexsim
+    # A shelf's default row cap. Re-measured on zen, the 1.42.2 build simplex
     # reports, against a 3887-movie and 507-show library: with no `count=` a SHELF
     # carries at most SIX rows and says `more: true` -- on the library tab, on /hubs
     # and on the related shelf alike -- and an explicit `count=` is honoured exactly,
@@ -14638,7 +14638,7 @@ class PlexSim:
 
         Measured on the reference: `?count=2` caps every shelf at two rows AND
         sets `more: true` on the ones that had more, which is how the client knows
-        to draw the "see all" chevron. plexsim hard-coded `more: false` and ignored
+        to draw the "see all" chevron. simplex hard-coded `more: false` and ignored
         `count` entirely, so a shelf was either complete or looked complete. The
         client asks for `count+1` for exactly this reason -- it wants to know
         whether the row after the last visible one exists.
@@ -14648,13 +14648,13 @@ class PlexSim:
         # Cycle 55, measured on zen and kids on the related hub: `count` is a SIGNED
         # 32-BIT integer with an optional sign and nothing else -- `+1` and `01` are one
         # row, while ` 1`, `1 `, `abc`, `1.5`, `2147483648` and `-2147483649` fall back to
-        # the default. plexsim stripped the value, so ` 1` was one row, and refused `+1`.
+        # the default. simplex stripped the value, so ` 1` was one row, and refused `+1`.
         if count is not None and _int_param(count):
             # Cycle 28, measured on zen and kids over the negative edge of a ten-row
             # shelf: `count=-1` answers ONE row with `more: false`, and `-2`, `-5` and
             # `-100` answer NONE with `more: false` -- where `count=0` answers none with
             # `more: TRUE`. So a negative count is `len(rows) + count` clamped at zero,
-            # and it always reports the shelf as exhausted. plexsim clamped every
+            # and it always reports the shelf as exhausted. simplex clamped every
             # negative value to zero and kept `more: true`.
             #
             # No client sends a negative count (Plex Web sends 12), so this changes
@@ -14684,7 +14684,7 @@ class PlexSim:
 
     def home_hub(self, identifier, title, key, rows, query, kind="mixed",
                  style="shelf", **extra):
-        """One Home-screen shelf, with the five fields plexsim never sent.
+        """One Home-screen shelf, with the five fields simplex never sent.
 
         Measured on the reference: every shelf carries `key` (where "see all"
         goes), `context` (`hub.<identifier>`, which is what the client keys its
@@ -14693,7 +14693,7 @@ class PlexSim:
         listing: it is `/library/metadata/<comma-joined ratingKeys>` naming the
         rows THIS shelf holds, present only when there are any.
 
-        plexsim sent `hubIdentifier`, `title`, `type`, `size`, `more` and a
+        simplex sent `hubIdentifier`, `title`, `type`, `size`, `more` and a
         `hubKey` of `/library/all` for everything, so every shelf expanded to the
         whole library and none of them had a context to lay out by.
         """
@@ -14717,7 +14717,7 @@ class PlexSim:
 
         Measured: `contentDirectoryID=N` selects ONE library's Recently Added
         shelf, and the call is repeated per pinned library rather than made once.
-        plexsim ignored it and answered every library's shelf every time, so Home
+        simplex ignored it and answered every library's shelf every time, so Home
         drew each library's rows under every library's heading.
 
         `excludeContinueWatching=1` drops that shelf, and the bare call (no
@@ -14737,7 +14737,7 @@ class PlexSim:
                 [_listing_row(r) for r in self.on_home(self.continue_watching())
                  if r.get("type") == "episode"], query, kind="episode", promoted=True))
         # Cycle 28: a COMMA LIST selects several libraries here, which is the form the
-        # web client's Home saga sends (it joins an array of pinned ids). plexsim
+        # web client's Home saga sends (it joins an array of pinned ids). simplex
         # compared the whole string with one section key, so `contentDirectoryID=1,2`
         # answered no library shelf at all.
         wanted = self.content_directories(query)
@@ -14746,7 +14746,7 @@ class PlexSim:
         # pinned library of each type carries a Recently Added shelf, it merges every
         # pinned library of that type, and its key repeats the pinned list as sent. A
         # library not pinned, a later one of the same type and an EMPTY pinned list get
-        # no shelf. plexsim drew one shelf per library, so two pinned TV libraries gave
+        # no shelf. simplex drew one shelf per library, so two pinned TV libraries gave
         # Home two "Recently Added TV" shelves, each See All naming one library.
         pinned = None
         if "pinnedContentDirectoryID" in query:
@@ -14787,14 +14787,14 @@ class PlexSim:
                                                   section["key"])
             shelf_title = "Recently Added in %s" % (section.get("title") or "")
             if pinned is not None:
-                # Measured on zen, the 1.42.2 build plexsim reports: when the client
+                # Measured on zen, the 1.42.2 build simplex reports: when the client
                 # sends `pinnedContentDirectoryID` beside `contentDirectoryID` -- and
                 # Plex Web always does, its Promoted fetch builds both -- this shelf
                 # comes back under a different identifier, title and key entirely:
                 # `home.movies.recent.1` / "Recently Added Movies" keyed on
                 # `/hubs/home/recentlyAdded?type=1&pinnedContentDirectoryID=1`, and
                 # `home.television.recent.2` / "Recently Added TV" for a show library.
-                # kids (1.43.4) ignores the parameter, so this follows zen. plexsim
+                # kids (1.43.4) ignores the parameter, so this follows zen. simplex
                 # answered the bare shape to both.
                 identifier = "home.%s.recent.%s" % ("television" if is_show else "movies",
                                                     section["key"])
@@ -14807,9 +14807,9 @@ class PlexSim:
                 # `music.recent.added.<id>`, "Recently Added in <library>", typed
                 # `album` and keyed on the library's own albums by date added. The copy
                 # ignores `pinnedContentDirectoryID` for every library (zen does not);
-                # under it plexsim follows zen's swap onto the Home shelf's own
+                # under it simplex follows zen's swap onto the Home shelf's own
                 # identity, which `/hubs` measures for music as `home.music.recent`,
-                # "Recently Added Music", `type=8`. plexsim holds no music rows.
+                # "Recently Added Music", `type=8`. simplex holds no music rows.
                 rows, kind = [], "album"
                 identifier = "music.recent.added.%s" % section["key"]
                 key = "/library/sections/%s/all?type=9&sort=addedAt:desc" % section["key"]
@@ -14848,7 +14848,7 @@ class PlexSim:
         then release date descending, capped at 200. Adding a fourth genre, a seventh role
         or the country breaks the zen fit; dropping the third genre breaks it too. The
         roles' cap could be 4 to 6 (zen's roles 5 and 6 occur once); 4 is the fitted value.
-        plexsim took any single shared genre, ordered by addedAt, and stopped at 12.
+        simplex took any single shared genre, ordered by addedAt, and stopped at 12.
         """
         def names(tags, limit=None):
             return {str(t.get("tag") or "").lower() for t in (tags or [])[:limit]
@@ -14887,12 +14887,12 @@ class PlexSim:
         Measured on both servers, for a movie, a show and an episode alike: the four
         ARTIST shelves (Most Played, Most Popular Tracks, Albums, Music Videos), every
         one empty, keyed to this item in its own library as if it were an artist. An
-        unknown id is a 404. plexsim 404'd the path, which the community OpenAPI
+        unknown id is a 404. simplex 404'd the path, which the community OpenAPI
         description names `getMetadataHubs`.
         """
         row = self.catalog.items.get(int(rating_key)) if str(rating_key).isdigit() else None
         if row is None:
-            return ("error", 404, "plexsim: no such item")
+            return ("error", 404, "simplex: no such item")
         hubs = [{"key": template % (row.get("librarySectionID"), row.get("ratingKey")),
                  "title": title, "type": kind, "hubIdentifier": identifier,
                  "context": "hub.%s" % identifier, "size": 0, "more": False, "style": "shelf"}
@@ -14907,12 +14907,12 @@ class PlexSim:
         `count` caps them -- in a container of `size`, `allowSync` true and identifier;
         the rows name their library as the shelf's do. A missing or unknown identifier
         is a 404, and so, measured, are `tv.inprogress.{id}` and `home.playlists`, which
-        the hub lists do carry. plexsim 404'd every identifier.
+        the hub lists do carry. simplex 404'd every identifier.
         """
         identifier = query.get("identifier") or ""
         count = query.get("count") or "100000"
         if not identifier or identifier.startswith("tv.inprogress.") or identifier == "home.playlists":
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         built = None
         head, _, tail = identifier.rpartition(".")
         if identifier.startswith(("movie.", "tv.")) and tail.isdigit() \
@@ -14929,7 +14929,7 @@ class PlexSim:
             if isinstance(built, dict) else []
         hub = next((h for h in hubs if h.get("hubIdentifier") == identifier), None)
         if hub is None:
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         rows = self._excluded_elements(hub.get("Metadata") or [], query)
         return self.hub_container(size=len(rows), allowSync=True, Metadata=rows)
 
@@ -14938,7 +14938,7 @@ class PlexSim:
 
         The client rewrites `/library/metadata/{id}` to `/hubs/metadata/{id}` and
         appends the leaf, so these are not the same endpoints as
-        `/library/metadata/{id}/related`. plexsim routed neither, and a 404 is
+        `/library/metadata/{id}/related`. simplex routed neither, and a 404 is
         what the preplay page reads as "no related items" -- silently.
 
         Measured: `related` carries the librarySection triple, `postplay` carries
@@ -14951,7 +14951,7 @@ class PlexSim:
         true, which is why it is the one that has to say so here.
         """
         if leaf not in ("related", "postplay"):
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         row = self.catalog.items.get(int(rating_key)) if str(rating_key).isdigit() \
             else None
         if row is None:
@@ -14965,12 +14965,12 @@ class PlexSim:
                 # postplay` is a 404 too. So the two spellings of "related" differ on
                 # more than the path, and the difference is which one looks the row up.
                 #
-                # plexsim 404'd it. The preplay page builds this URL itself from a row
+                # simplex 404'd it. The preplay page builds this URL itself from a row
                 # it is already holding, so the two answers look alike to a client that
                 # has one -- but python-plexapi and any caller walking ids sees an
                 # endpoint that does not exist rather than a shelf with nothing on it.
                 return self.hub_container()
-            return ("error", 404, "plexsim: no such item")
+            return ("error", 404, "simplex: no such item")
         hubs = self.related_hubs(row, query, collections=leaf == "related")
         if leaf == "postplay":
             # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): an
@@ -14980,7 +14980,7 @@ class PlexSim:
             # show) and is not the episode itself. A pristine show's first-episode On Deck
             # does not count, and it goes again when the view state is undone. Plex for
             # Android reads it after every decision (js:2175089) for its Up Next card and
-            # auto-advance; plexsim answered an empty container, so an episode ended with
+            # auto-advance; simplex answered an empty container, so an episode ended with
             # no next one offered.
             if row.get("type") == "episode":
                 pick = next((candidate for candidate in self.continue_watching()
@@ -15060,7 +15060,7 @@ class PlexSim:
 
         Measured: `/hubs/metadata/{id}/related`, `/library/metadata/{id}/related`
         and a detail read's `includeRelated=1` all carry the SAME `movie.similar`
-        hub; the latter two carried nothing on plexsim.
+        hub; the latter two carried nothing on simplex.
         """
         if collections:
             shelf = self.collection_related_hub(row, query)
@@ -15103,7 +15103,7 @@ class PlexSim:
         sent, zen's `/hubs/sections/2` answers Related 4, Extras 4, Preferences 2, OnDeck
         2 and Children 1, the TV Recently Added list 4/4/3/3/1, `/hubs/metadata/{id}/
         related` Related, Extras and Preferences on 4 rows, and `/common?id=` Related and
-        Extras on its one row; `/hubs/promoted` and `/similar` carry them too. plexsim
+        Extras on its one row; `/hubs/promoted` and `/similar` carry them too. simplex
         applied them on `/hubs` alone. A LIGHT row never takes them. The options are
         handed on one at a time, so a nested Related block is not expanded again.
         """
@@ -15155,7 +15155,7 @@ class PlexSim:
         `0`, `00`, `2`, `10`, `1.5`, `true`, ` 1`, `abc` and an empty value do not. It
         drops BOTH `home.continue` and `home.ondeck`, on `/hubs/promoted` and on the
         bare `/hubs` alike, and no other `exclude<Name>=1` spelling does anything.
-        plexsim compared the raw string with `"1"` (so `01` missed), dropped only
+        simplex compared the raw string with `"1"` (so `01` missed), dropped only
         `home.continue`, and ignored the parameter entirely on `/hubs`.
         """
         raw = str(query.get("excludeContinueWatching") or "")
@@ -15195,7 +15195,7 @@ class PlexSim:
         Deck, Recently Added, the merged `/hubs/continueWatching` -- and drop it from
         `/library/recentlyAdded` and `/library/onDeck`, while `/hubs` KEEPS the shelf
         (empty) and the library's own page, its section hubs and its own On Deck are
-        unchanged. plexsim stored the setting and filtered nothing, so a hidden library
+        unchanged. simplex stored the setting and filtered nothing, so a hidden library
         stayed on Home.
         """
         return [r for r in rows if self.section_visibility(r.get("librarySectionID")) < 1]
@@ -15282,7 +15282,7 @@ class PlexSim:
         OPPOSITE aggregation from `/library/recentlyAdded`, where cycle 25's "dated by
         the earliest episode" holds and is re-confirmed here.
         //
-        plexsim filtered `type == "show"`, so it could only ever emit shows: a new
+        simplex filtered `type == "show"`, so it could only ever emit shows: a new
         episode or a new season of an existing show was invisible on Home, and the shelf
         only changed when a whole show was added.
 
@@ -15363,7 +15363,7 @@ class PlexSim:
         """`/hubs` -- the global shelves, which python-plexapi's `library.hubs()`
         reads and the web client asks for by identifier.
 
-        plexsim answered three shelves of its own devising: a Continue Watching
+        simplex answered three shelves of its own devising: a Continue Watching
         typed `movie` whose hubKey was /library/all, and one "Recently Added in
         <library>" per section, typed `movie` even for the TV library -- none with
         a key, context, style or promoted flag. `identifier=` names the shelves the
@@ -15378,7 +15378,7 @@ class PlexSim:
         # changes nothing. `abc`, `-1`, `1.5` and `01` are all accepted and select no
         # library, so every shelf comes back empty rather than refused.
         #
-        # plexsim ignored it, which is not academic: Plex Web's Home saga builds every
+        # simplex ignored it, which is not academic: Plex Web's Home saga builds every
         # hubs request with `{contentDirectoryID: pinned.join(","), ...}`, so an
         # unpinned library's Continue Watching and On Deck rows leaked onto Home and a
         # library filter did nothing at all. CLAUDE.md said the parameter scopes
@@ -15486,7 +15486,7 @@ class PlexSim:
 
         Five shelves, measured hub for hub against the reference: identifier,
         title, type, style, context, the `promoted` flag on Recently Added and
-        the `key` each shelf's "see all" link follows. plexsim answered with one
+        the `key` each shelf's "see all" link follows. simplex answered with one
         shelf, so the tab existed and was nearly empty; every row here comes out
         of its own catalog.
         """
@@ -15510,7 +15510,7 @@ class PlexSim:
         # the head of its OWN `key` listing, in that listing's order -- 29 of 32
         # non-empty shelves matched byte for byte at `count=40`, the three that did not
         # being the random ones. This shelf's key is
-        # `?sort=lastViewedAt:desc&unwatched=0&viewOffset=0`, and plexsim honoured
+        # `?sort=lastViewedAt:desc&unwatched=0&viewOffset=0`, and simplex honoured
         # neither clause: a row in progress sat on the Recommended tab's Recently
         # Watched shelf and then vanished when the user clicked its own See All chevron.
         watched = sorted([r for r in (episodes if is_show else items)
@@ -15520,7 +15520,7 @@ class PlexSim:
                          key=lambda r: -(r.get("lastViewedAt") or 0))
         # Measured: the movie shelf's own key filters `originallyAvailableAt>=-1y`
         # and the shelf honours it -- the reference's is EMPTY for films from 2006
-        # to 2015, where plexsim listed all of them. The TV shelf's key has no
+        # to 2015, where simplex listed all of them. The TV shelf's key has no
         # window and neither does its shelf.
         year_ago = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 365 * 86400))
         released = sorted(episodes if is_show else
@@ -15554,7 +15554,7 @@ class PlexSim:
         top_rated = _rated([r for r in shows_here
                             if (r.get("leafCount") or 0) > (r.get("viewedLeafCount") or 0)])
         # Rediscover, by its measured key: SHOWS watched between five years and six
-        # weeks ago that still have unwatched episodes. plexsim filled this show
+        # weeks ago that still have unwatched episodes. simplex filled this show
         # shelf with recently watched EPISODE rows.
         now = time.time()
         rediscover = [r for r in items
@@ -15566,7 +15566,7 @@ class PlexSim:
         def shelf(identifier, shelf_title, rows, kind, key, context, **extra):
             # Measured: a library shelf carries no librarySection fields of its own
             # (the container has them), and `hubKey` names the shelf's own rows as
-            # `/library/metadata/<keys>` -- absent on an empty shelf. plexsim sent
+            # `/library/metadata/<keys>` -- absent on an empty shelf. simplex sent
             # the section pair on every shelf and made `hubKey` a copy of `key`.
             #
             # Cycle 28, measured on zen: a shelf that advertises `random="1"` really is
@@ -15577,7 +15577,7 @@ class PlexSim:
             # its key, in that listing's order: 29 of 32 non-empty shelves matched byte
             # for byte at `count=40`, and the three that did not are these.
             #
-            # plexsim advertised the flag and answered the deterministic sorted head,
+            # simplex advertised the flag and answered the deterministic sorted head,
             # identically on every request, so "Top Unwatched" would show the same six
             # titles for ever. Its own catalog is too small for that to be visible --
             # a sample of a two-row set is the set -- which is why the rule is zen's.
@@ -15630,7 +15630,7 @@ class PlexSim:
                       added, "mixed",
                       "/hubs/home/recentlyAdded?type=2&sectionID=%s" % section_id,
                       "hub.tv.recentlyadded", promoted=True),
-                # Measured on zen, which is the 1.42.2 build plexsim reports: a show
+                # Measured on zen, which is the 1.42.2 build simplex reports: a show
                 # library carries "Start Watching" here -- the shows with no episode
                 # watched or in progress -- and "Top Rated TV" after Rediscover. kids
                 # (1.43.4) builds neither although its own library qualifies for both,
@@ -15686,7 +15686,7 @@ class PlexSim:
         if library_playlists:
             # Measured: `includeLibraryPlaylists=1` -- which the client's own hub
             # request always sends -- adds a Recent Playlists shelf right after the
-            # library's Recently Added. plexsim ignored the parameter, so the tab
+            # library's Recently Added. simplex ignored the parameter, so the tab
             # could never show one. Only its empty form was measurable (no playlists
             # on either server); what fills it is not recorded, so it stays empty.
             position = next((index + 1 for index, hub in enumerate(hubs)
@@ -15721,7 +15721,7 @@ class PlexSim:
     def music_section_hubs(self, section_id, section, count, library_playlists, query):
         """`/hubs/sections/{id}` for a music library.
 
-        plexsim holds no music, so every shelf is the EMPTY one a real PMS answers for an
+        simplex holds no music, so every shelf is the EMPTY one a real PMS answers for an
         empty library -- `size` 0, `more` false, no `hubKey`. It answered a MOVIE
         library's six shelves instead, so python-plexapi's `stations()` found no
         Stations hub and returned None where a real server gives [].
@@ -15730,7 +15730,7 @@ class PlexSim:
         minutes: "Haven't played in ..." picks its period from the five values the
         copies were seen to use, and "Artists on Tour" a `taggingCreatedAt` cutoff
         within the last day. What drives the draw is not measured; as with the sampled
-        shelves above, plexsim draws once per process and holds it.
+        shelves above, simplex draws once per process and holds it.
         """
         title = section.get("title") or ""
         seed = self.shelf_seeds.get(("music.random", "")) 
@@ -15809,11 +15809,11 @@ class PlexSim:
     # and with its titles. Every one is present on every search, EMPTY ones
     # included -- the client lays the results page out from this list, so a server
     # that omits the empty hubs is handing it a different page. Note "Shows", not
-    # "TV Shows", which is what plexsim called it.
+    # "TV Shows", which is what simplex called it.
     # Re-measured on kids (1.43.4) and zen (1.42.2) with four queries that match
     # NOTHING -- the only way to see the base order, because a query with fuzzy hits
     # promotes the hubs that scored. Both servers give this order exactly. The two
-    # plexsim had wrong were the first one: `movie` is fifth, not first, and
+    # simplex had wrong were the first one: `movie` is fifth, not first, and
     # `collection` is fourteenth, between genre and playlist, not seventh.
     SEARCH_HUBS = [
         ("show", "Shows"), ("artist", "Artists"), ("album", "Albums"),
@@ -15843,7 +15843,7 @@ class PlexSim:
     # `tagType` of 4, 5, 6 or 7); and `otherVideos` the movie library's TAG rows without
     # its movies -- an Other Videos library is a type-1 library too, so the tag half
     # follows `librarySectionType` where the metadata half follows the library's own
-    # kind. `music` and `photos` name libraries plexsim cannot hold.
+    # kind. `music` and `photos` name libraries simplex cannot hold.
     #
     # It belongs to this endpoint alone: `/hubs/search` answers the same seventeen hubs
     # to every value, `movies` and `zzz` included.
@@ -15870,7 +15870,7 @@ class PlexSim:
     # Cycle 36, read off 17 rows on kids and zen and held out over the grid: the base of
     # the ladder is the ROW TYPE's. A movie and a show are 0.93/0.73/0.53/0.33, an
     # EPISODE is 0.02 lower throughout -- 0.91/0.71/0.51/0.31 -- and a tag row has its
-    # own 0.92/0.52/0.32 (see `_tag_result`). plexsim scored every type at the movie's
+    # own 0.92/0.52/0.32 (see `_tag_result`). simplex scored every type at the movie's
     # base, so its episodes tied with, and could out-rank, a movie of the same match
     # quality; the client promotes a hub on the score, so that inverts the page a real
     # PMS draws. And it had no prefix tier at all, which is the way search is actually
@@ -15892,7 +15892,7 @@ class PlexSim:
         of Steel" 5.5 at `0.x3055`, zen's "Amelie" 9.5 at `0.93095`, zen's episode
         "Riders on the Storm" 9.1 at `0.71091`, zen's "One Piece 0978" with no rating
         at `0.33000` -- and held out by the hunt over 11,076 scored (query, row) pairs,
-        of which 11,075 decompose exactly this way. plexsim printed the bare tier
+        of which 11,075 decompose exactly this way. simplex printed the bare tier
         everywhere, so every row inside a tier TIED and the search page fell back to
         insertion order instead of the best-rated hit first. `rating` (the critic
         score) is not it: zen's "Riders of Justice" carries 9.6 there and 8.9 in
@@ -16077,7 +16077,7 @@ class PlexSim:
     # 0.52 where a movie whose first word matched would be 0.73. A tag carries no
     # `audienceRating`, so every tag score ends `000`.
     #
-    # plexsim hard-coded 0.52 on a collection row and 0.32 on every other tag row, so a
+    # simplex hard-coded 0.52 on a collection row and 0.32 on every other tag row, so a
     # genre typed in full came back two steps below where a real PMS puts it -- under
     # every item hit on the page. And its tag MATCHER compared the whole query against
     # one word, so a multi-word tag name could not be found by typing it: `Science
@@ -16110,7 +16110,7 @@ class PlexSim:
 
         Measured: `/hubs/search` sends it as a STRING with five decimals
         ("0.73055") and `/library/search` sends the same number as a FLOAT. The
-        value itself is Plex's own relevance, which plexsim cannot reproduce, so it
+        value itself is Plex's own relevance, which simplex cannot reproduce, so it
         ranks by match quality and prints it the same way.
         """
         return "%.5f" % max(0.0, min(1.0, rank))
@@ -16121,7 +16121,7 @@ class PlexSim:
         Cycle 25, measured on plexscratch: the shelf really is populated, and its rows
         are the `/playlists` listing rows sorted `lastViewedAt:desc` -- which is what
         its own `key` says. Its `hubKey` is `/library/metadata/<comma-joined ratingKeys>`,
-        the same rule every other shelf follows. plexsim hardcoded the rows to `[]` with
+        the same rule every other shelf follows. simplex hardcoded the rows to `[]` with
         a comment saying the reference had "no playlist history", which was true of the
         reference when it was measured and is not a rule: Home's Playlists shelf was
         permanently empty however many playlists anyone made.
@@ -16159,7 +16159,7 @@ class PlexSim:
         playlist_rows = []
         # Cycle 25, measured on plexscratch: a PLAYLIST is found by both search
         # endpoints, by the same word-prefix match on its title, and the hit is the
-        # `/playlists` listing row. plexsim searched `catalog.items` alone, where its
+        # `/playlists` listing row. simplex searched `catalog.items` alone, where its
         # playlists are not rows, so a playlist could never be found by search at all.
         # (A COLLECTION is already found as a `tagType: 2` tag row and is a different
         # shape -- cycle 22 measured that, and it is unchanged here.)
@@ -16318,7 +16318,7 @@ class PlexSim:
         Cycle 58, measured on plexscratch42 (1.42.2): `hidden=2` ("Exclude from home screen
         and global search") takes a library's rows out of `/hubs/search` and
         `/library/search`, while `hidden=1` leaves both alone and the legacy `/search`
-        and the library's own search box answer as before. plexsim searched it anyway.
+        and the library's own search box answer as before. simplex searched it anyway.
         """
         hidden = {str(section["key"]) for section in self.catalog.sections
                   if self.section_visibility(section["key"]) >= 2}
@@ -16369,7 +16369,7 @@ class PlexSim:
             seen = {}
             # Cycle 57, measured on plexscratch42 and plexscratch, identical: a collection
             # row is on the TAG ladder (`tag_tier`) -- the full name 0.92, a word-by-word
-            # prefix from the first word 0.52, a later word 0.32. plexsim matched one word
+            # prefix from the first word 0.52, a later word 0.32. simplex matched one word
             # against the whole query, so a multi-word name was never found by its own name,
             # and it scored every hit 0.52.
             terms = [term for term in hierarchy_module.fold_query(str(needle or "")).split()
@@ -16391,53 +16391,53 @@ class PlexSim:
     def search(self, query):
         """`/hubs/search` -- the search page, which is seventeen hubs every time.
 
-        plexsim answered only the hubs that had rows, so the results page was laid
+        simplex answered only the hubs that had rows, so the results page was laid
         out from a list that changed per query. It also matched by substring and
         sent no `score`, which is what the client sorts by.
         """
         text = query.get("query")
         if not text:
             # Measured: a missing or empty query is a 400, not an empty result.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `contentDirectoryID`
         # SCOPES this endpoint to one library and VALIDATES its value -- `abc`, `99`,
         # `1.5` and `-1` are all 404s, an EMPTY value is a 200 that scopes nothing,
         # and a real section id keeps that library's hubs alone. It belongs to
         # `/hubs/search` only: `/hubs`, `/hubs/promoted` and `/hubs/sections/{id}`
-        # ignore it on both references. plexsim ignored it everywhere, so "search in
+        # ignore it on both references. simplex ignored it everywhere, so "search in
         # this library" answered the whole server and a bad id read as "no results".
         wanted_section = query.get("contentDirectoryID")
         if wanted_section:
             # Cycle 55, measured on zen and kids: the id is a NUMBER here -- `+1` and
-            # `01` scope the search to section 1 (17 hubs, 200) where plexsim 404'd both.
+            # `01` scope the search to section 1 (17 hubs, 200) where simplex 404'd both.
             if _int_param(wanted_section, None):
                 wanted_section = str(int(wanted_section))
             if self.catalog.section(wanted_section) is None \
                     or self.section_visibility(wanted_section) >= 2:
                 # Cycle 58, plexscratch42: a library excluded from global search is a
                 # section this endpoint does not know.
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
         else:
             wanted_section = None
         # Measured on kids (1.43.4) and zen (1.42.2): the DEFAULT cap is 3 PER HUB, not
         # 30. A zen search answering 6 movies, 26 directors, 11 episodes and 50 actors
         # under `limit=50` answers three of each with no limit at all, and `more` stays
-        # false either way. plexsim's 30 handed the type-ahead path -- and every client
+        # false either way. simplex's 30 handed the type-ahead path -- and every client
         # that omits `limit` -- a results page many times the size a real PMS sends,
         # which changes how the search page lays its shelves out.
         # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), identical on both:
         # this endpoint refuses in TWO ways. A value it cannot parse -- `abc`, an
         # empty one, `1.5` -- is a **400**; one that parses but is not a positive
-        # count -- `-1`, `0` -- is a **500**; `01` is fine. plexsim had the two
+        # count -- `-1`, `0` -- is a **500**; `01` is fine. simplex had the two
         # statuses the wrong way round and let an empty value through.
         if "limit" in query:
             raw_limit = str(query.get("limit") or "")
             if not _int_param(raw_limit, None):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if int(raw_limit) <= 0 or not _int_param(raw_limit, 64):
                 # Cycle 55, measured on zen and kids: a count past the signed 64-bit
                 # range (`9223372036854775808`) is the same 500 as a non-positive one.
-                return ("error", 500, "plexsim: internal error")
+                return ("error", 500, "simplex: internal error")
         limit = int(query.get("limit", 3) or 3)
         typed, tags = self.searchable(*self.search_matches(text, limit, tagged_items=True))
         if wanted_section is not None:
@@ -16448,7 +16448,7 @@ class PlexSim:
             # both at `=2`; and a playlist goes with its MEMBERS' library, a playlist of
             # Firefly episodes being the show library's.
             #
-            # plexsim compared the tag ENTRIES -- `{tag, rows, row}` triples that carry
+            # simplex compared the tag ENTRIES -- `{tag, rows, row}` triples that carry
             # no `librarySectionID` at all -- so a scoped search answered NO tag rows on
             # either library, while its collections were not scoped at all and every one
             # survived a scope to the other library.
@@ -16528,7 +16528,7 @@ class PlexSim:
                 hub["Metadata"] = rows
             if kind == "collection":
                 # Cycle 15, measured on the copy: a collection is found HERE, as a
-                # `tag` row with `tagType: 2` and the collection's own guid. plexsim's
+                # `tag` row with `tagType: 2` and the collection's own guid. simplex's
                 # collection hub was empty for every query, so the search box never
                 # found a collection at all.
                 found = self.collection_matches(needle, wanted_section)
@@ -16615,7 +16615,7 @@ class PlexSim:
             "tag": tag.get("tag"),
             # Plex's own tagType codes, re-measured on kids (1.43.4) and zen (1.42.2):
             # an ACTOR row is 6 and a DIRECTOR row is 4 -- they are different tag types,
-            # not one "person" type. plexsim called both 4, while `/library/people/{id}`
+            # not one "person" type. simplex called both 4, while `/library/people/{id}`
             # already answered 6 for the same person, so the server contradicted itself
             # and a client keying artwork or a filter off the search row's tagType built
             # the wrong link.
@@ -16627,7 +16627,7 @@ class PlexSim:
         # the three. A `Genre` row carries none, as it carries none on a detail row.
         #
         # The client builds every person link from that value -- cycle 27's finding, one
-        # surface further out: plexsim minted the key, answered
+        # surface further out: simplex minted the key, answered
         # `/library/people/{key}` and then left it off the search hit, so clicking an
         # actor found by the search box went to `/library/people/undefined`.
         if tag.get("tagKey"):
@@ -16647,7 +16647,7 @@ class PlexSim:
         flat form's tag row is the `/hubs/search` row WITHOUT `reason`, `reasonID`,
         `reasonTitle` and its own `score` -- there the score lives on the `SearchResult`
         wrapper alone, as a NUMBER, where the hubs row carries it inside as a string.
-        plexsim sent the hubs row verbatim, so every flat tag hit carried four
+        simplex sent the hubs row verbatim, so every flat tag hit carried four
         attributes a real PMS does not and told the client the tag had matched
         "because" its section.
         """
@@ -16663,7 +16663,7 @@ class PlexSim:
 
         Measured on both servers: the light projection -- text tags, no Guid, Rating
         or Streams -- naming its library by TITLE only, except a show, which keeps the
-        id and key beside the title, and its Location. plexsim sent the full row with
+        id and key beside the title, and its Location. simplex sent the full row with
         the id and key on every hit.
         """
         shown = _grid_row(_listing_row(row), keep_location=row.get("type") == "show")
@@ -16677,7 +16677,7 @@ class PlexSim:
     def library_search(self, query):
         """`/library/search` -- the same matches as a flat `SearchResult` list.
 
-        Advertised by plexsim's own /media/providers as `universalsearch` and
+        Advertised by simplex's own /media/providers as `universalsearch` and
         answered with an empty container, which is the exact failure this project
         is about. Measured: one `SearchResult` per hit, each holding a `score` (a
         FLOAT here, where /hubs/search sends the same number as a string) and
@@ -16685,7 +16685,7 @@ class PlexSim:
         """
         text = query.get("query")
         if text is None:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if text == "":
             # Cycle 55, measured on zen and kids: an EMPTY `query=` is an empty 200 --
             # `size 0` and nothing else -- and only a MISSING one is the 400.
@@ -16693,22 +16693,22 @@ class PlexSim:
         # Cycle 28, measured on kids and zen, identically: `limit=` here caps the WHOLE
         # result list and not each hub -- `limit=3` answers three rows of the ten a bare
         # zen query answers, and kids' `firefly` answers the show and two of its three
-        # episodes. plexsim capped each hub's own list, so `limit=3` on a query matching
+        # episodes. simplex capped each hub's own list, so `limit=3` on a query matching
         # two kinds answered six.
         #
         # And it refuses in TWO ways, as `/hubs/search?limit=` does: a value it cannot
         # parse -- `abc`, an empty one, `1.5` -- is a **400**, and one that parses but is
-        # not a positive count -- `0`, `-1` -- is a **500**; `01` is fine. plexsim
+        # not a positive count -- `0`, `-1` -- is a **500**; `01` is fine. simplex
         # answered 500, 200, 500, 200 and 200 to those five.
         raw_limit = query.get("limit")
         if raw_limit is not None:
             if not _int_param(raw_limit, None):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if int(raw_limit) <= 0 or not _int_param(raw_limit, 64):
                 # Cycle 55, measured on zen and kids: past the signed 64-bit range is a
                 # 500 too. (kids also 500s `2147483647` and `9223372036854775807` and
                 # answers `2147483648`; no rule explains those, so they are not built.)
-                return ("error", 500, "plexsim: internal error")
+                return ("error", 500, "simplex: internal error")
         limit = int(raw_limit) if raw_limit is not None else 10
         # The filter runs BEFORE the cap: zen's `searchTypes=tv&limit=100` answers 100
         # rows of the type it names where the bare form's 100 are mostly movies.
@@ -16779,13 +16779,13 @@ class PlexSim:
         Measured, and both refusals are different: no `query` parameter at all is
         a 400 and an EMPTY one is a 404. The container's `size` counts the Provider
         rows as well as the results (1 row + 4 providers = 5), each row carries
-        `personal` and `sourceTitle` naming this server, and plexsim 404'd the
+        `personal` and `sourceTitle` naming this server, and simplex 404'd the
         whole endpoint.
         """
         if "query" not in query:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if not query.get("query"):
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         # Cycle 41, measured on kids (1.43.4) and zen (1.42.2): unlike the two
         # modern search endpoints, legacy `/search` ignores `limit` completely.
         # `1`, `50`, `0`, `-1`, `abc` and an empty value all return the same
@@ -16798,7 +16798,7 @@ class PlexSim:
             for row in typed.get(kind, []):
                 # Cycle 23, measured on kids and zen with the same row read twice per
                 # server: a `/search` row is byte-identical to that row's GRID row,
-                # prefixed with six attributes and nothing else. plexsim answered the
+                # prefixed with six attributes and nothing else. simplex answered the
                 # DETAIL row -- `Guid`, `Rating` and tag ids -- led by `ratingKey`,
                 # which on a real library is several times the bytes per hit, and it
                 # sent neither `allowSync` nor the `librarySectionUUID` a client keys
@@ -16827,16 +16827,16 @@ class PlexSim:
 
         Measured: one hub per TYPE, titled with the bare type name, identified
         `results.search.<n>` with context `hub.results.search`, and both the hub
-        and every row carry a `distance`. plexsim 404'd it.
+        and every row carry a `distance`. simplex 404'd it.
         """
         text = query.get("query")
         if not text:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         limit = int(query.get("limit", 30) or 30)
         typed, _tags = self.search_matches(text, limit)
         # Measured on both servers: `type=N` keeps only that type's hub (`type=4` is the
         # episode hub alone, and a type with no hub -- 5, 8, 18 -- answers none), and a
-        # hub's identifier is `results.search.<type number>`, not its position. plexsim
+        # hub's identifier is `results.search.<type number>`, not its position. simplex
         # ignored `type` and numbered hubs 1, 2, ... so a show hub came out as the movie
         # identifier.
         wanted_type = query.get("type")
@@ -16848,7 +16848,7 @@ class PlexSim:
             number = TYPE_NUMBERS.get(kind)
             if wanted_type is not None and str(number) != wanted_type:
                 continue
-            # The reference's distance is its own fuzzy-match cost; plexsim reports
+            # The reference's distance is its own fuzzy-match cost; simplex reports
             # the query's length, which is what an exact word-prefix hit costs it.
             distance = len(text.strip())
             entries = []
@@ -16870,7 +16870,7 @@ class PlexSim:
 
         Measured on the copy: `server://<other machine>/com.plexapp.plugins.library/...`
         adds nothing at all, where a uri with the same machine and a different PROVIDER
-        segment is added normally. plexsim read the ratingKey out of any uri shaped like
+        segment is added normally. simplex read the ratingKey out of any uri shaped like
         one and added the item whoever it belonged to.
         """
         if not str(uri).startswith("server://"):
@@ -16894,7 +16894,7 @@ class PlexSim:
         # `server://<machine>/...` or a stored `library://` resolves to NOTHING.
         # A foreign machine, a scheme-less `/library/metadata/1` and a key the
         # library does not hold all build an EMPTY list -- `leafCount: 0`, no
-        # `composite`, no `duration`. plexsim read the ratingKey out of any uri
+        # `composite`, no `duration`. simplex read the ratingKey out of any uri
         # shaped like one, so a uri naming another server's item silently
         # queued its own, and the client's own `leafCountRequested` said 1.
         if uri and not str(uri).startswith(("server://", "library://")):
@@ -16973,7 +16973,7 @@ class PlexSim:
                 500, "unsupported sort key %s" % unsupported)
         # `limit` is part of the query a smart list stores, measured on a writable copy
         # of the reference: a list saved with `sort=titleSort:desc&limit=2` reads back
-        # two rows and its `leafCount` follows. plexsim applied the filter and the sort
+        # two rows and its `leafCount` follows. simplex applied the filter and the sort
         # and ignored the limit, so every capped smart list was the whole section.
         if str(inner.get("limit") or "").isdigit() and int(inner["limit"]) > 0:
             rows = rows[:int(inner["limit"])]
@@ -16994,7 +16994,7 @@ class PlexSim:
         value are each a 400 (None here), `02` and `+2` are 2 -- and it NAMES THE
         MEMBERS' TYPE whatever the uri holds. With no `type`, or a negative one, the
         collection takes its LIBRARY's type: `show` in a show library, with or without
-        a uri. plexsim read the subtype off the first row the uri resolved to and fell
+        a uri. simplex read the subtype off the first row the uri resolved to and fell
         back to `movie`, so an empty collection in a show library was a movie one.
         """
         if raw is not None and not re.fullmatch(r"[+-]?[0-9]+", raw):
@@ -17023,7 +17023,7 @@ class PlexSim:
         `type=4` its twelve episodes, and the uri's own `type=` is ignored -- `type=2`
         over `all?type=4` is still the two shows -- while its filters apply
         (`all?title=Twofold` holds one show, `type=4` over `all?show.title=Twofold`
-        three episodes). plexsim resolved the uri the way a play queue does, which
+        three episodes). simplex resolved the uri the way a play queue does, which
         expands every show into episodes, so a show collection built from its library
         held eight episodes and called itself an episode collection.
 
@@ -17052,7 +17052,7 @@ class PlexSim:
 
         Measured: a queue over a show holds its SIX EPISODES, a queue over a season
         holds that season's three, and a queue over a show library's section holds
-        every leaf -- never the parent row. plexsim enqueued the parent, which has
+        every leaf -- never the parent row. simplex enqueued the parent, which has
         no Media at all, so Play, Play All and Shuffle on every show page, season
         page and TV library handed the player a row it could not play and the web
         client said "An error occurred loading items to play".
@@ -17074,7 +17074,7 @@ class PlexSim:
         Measured: `server://<machine>/com.plexapp.plugins.library/library/metadata/1`
         comes back as `library://x/item/%2Flibrary%2Fmetadata%2F1`, and anything
         that names a LIST -- a section, a collection's children, a comma-joined key
-        set -- comes back as `library://x/directory/<the same encoding>`. plexsim
+        set -- comes back as `library://x/directory/<the same encoding>`. simplex
         echoed the raw `server://` URI, so a client that re-read the queue got a
         source it had not sent and could not match.
         """
@@ -17101,22 +17101,22 @@ class PlexSim:
         """`POST /playQueues` -- every client builds a queue before playing.
 
         `shuffle=1` is the Shuffle context-menu entry. Measured refusals: a POST
-        with no `uri` AND no `playlistID`, or with no `type`, is a 400 -- plexsim
+        with no `uri` AND no `playlistID`, or with no `type`, is a 400 -- simplex
         answered 200 with an empty queue, which the client plays as nothing.
         """
         uri = query.get("uri", "")
         playlist_id = query.get("playlistID")
         if not query.get("type"):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if not uri and not playlist_id:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         # Cycle 79, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which
         # agree cell for cell (tests/fixtures/playqueue_flags.json): `shuffle` and
         # `repeat` are INTEGER flags -- an optional `+` and digits whose value is 0 or 1,
         # so `01` and `+1` shuffle -- and anything else is a 400: `True`, `2`, `-1`, `1.0`,
         # an empty value. `continuous` takes anything. python-plexapi 4.17.2 sends
         # `shuffle=True&repeat=True` for `PlayQueue.create(shuffle=1, repeat=1)`, which a
-        # real PMS refuses; plexsim compared against "1", so it answered 200 with an
+        # real PMS refuses; simplex compared against "1", so it answered 200 with an
         # UNSHUFFLED queue, and `01` did not shuffle either.
         flags = {}
         for name in ("shuffle", "repeat"):
@@ -17124,7 +17124,7 @@ class PlexSim:
             if value is None:
                 continue
             if not re.fullmatch(r"\+?[0-9]+", value) or int(value) > 1:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             flags[name] = int(value)
         shuffle = flags.get("shuffle") == 1
         playlist = self.library.playlist(playlist_id) if playlist_id else None
@@ -17132,7 +17132,7 @@ class PlexSim:
         foreign = bool(named) and named.group(1) != self.catalog.machine
         # Cycle 16, measured on plexscratch: a uri naming a PLAYLIST's items builds
         # a playlist queue, the same shape `playlistID=` builds -- the playlist id and
-        # title, and no `playQueueSourceURI`. plexsim recognised only `playlistID=`,
+        # title, and no `playQueueSourceURI`. simplex recognised only `playlistID=`,
         # so the form the client actually sends named a source URI and no playlist.
         if playlist is None and "/playlists/" in (uri or ""):
             named = (uri or "").split("/playlists/", 1)[1].split("/")[0]
@@ -17141,7 +17141,7 @@ class PlexSim:
                 foreign = False
         if foreign and playlist is None:
             # Measured on a writable copy of the reference: a uri naming ANOTHER server
-            # builds an EMPTY queue that echoes the uri verbatim. plexsim resolved the
+            # builds an EMPTY queue that echoes the uri verbatim. simplex resolved the
             # path against its own library and queued its own item.
             rows = []
         elif playlist is not None:
@@ -17154,7 +17154,7 @@ class PlexSim:
         natural = [int(row["ratingKey"]) for row in rows]
         if shuffle:
             # Cycle 16, measured on plexscratch: three consecutive shuffled queues over
-            # the same show come back in three DIFFERENT orders. plexsim reversed the
+            # the same show come back in three DIFFERENT orders. simplex reversed the
             # queue instead, so Shuffle played a show's episodes backwards -- and
             # backwards the same way every time, which is the one thing shuffle must
             # not be. A test asserts that the order CHANGES, not which order it is.
@@ -17167,7 +17167,7 @@ class PlexSim:
             if client:
                 # Measured on a writable copy of the reference: a client's new queue
                 # RETIRES its older ones -- reading one afterwards is a 404 -- while a
-                # queue from another client leaves them alone. plexsim kept every queue.
+                # queue from another client leaves them alone. simplex kept every queue.
                 for old in [key for key, known in self.play_queues.items()
                             if known.get("client") == client]:
                     del self.play_queues[old]
@@ -17179,7 +17179,7 @@ class PlexSim:
             if wanted.isdigit():
                 # Measured on a writable copy of the reference: `key=` names the item the
                 # queue starts ON -- a queue over a whole library with
-                # `key=/library/metadata/3` selects that movie, where plexsim selected
+                # `key=/library/metadata/3` selects that movie, where simplex selected
                 # the first row and the player started the wrong film.
                 selected = next((e["id"] for e in items if str(e["ratingKey"]) == wanted), selected)
             self.play_queues[queue_id] = {
@@ -17199,7 +17199,7 @@ class PlexSim:
             # Cycle 32, measured on both writable copies: two concurrent
             # `POST /playQueues` carrying the SAME `X-Plex-Client-Identifier` are two
             # 200s on a real PMS -- 0 refusals in 110 pairs across both versions -- where
-            # plexsim answered **404 "no such play queue" to a CREATE** in 9 of 60 pairs.
+            # simplex answered **404 "no such play queue" to a CREATE** in 9 of 60 pairs.
             #
             # The retire-and-insert above runs under the lock and the response was built
             # after releasing it, so a sibling create from the same client could retire
@@ -17221,16 +17221,16 @@ class PlexSim:
 
     def get_play_queue(self, queue_id, query=None, headers=None):
         if not str(queue_id).isdigit() or int(queue_id) not in self.play_queues:
-            # Measured: an unknown queue is a 404, where plexsim invented an
+            # Measured: an unknown queue is a 404, where simplex invented an
             # empty one -- which a client reads as "the queue is still there".
-            return ("error", 404, "plexsim: no such play queue")
+            return ("error", 404, "simplex: no such play queue")
         query = query or {}
         client = (query.get("X-Plex-Client-Identifier")
                   or (headers or {}).get("X-Plex-Client-Identifier") or "")
         with self.lock:
             queue = self.play_queues.get(int(queue_id))
             if queue is None:
-                return ("error", 404, "plexsim: no such play queue")
+                return ("error", 404, "simplex: no such play queue")
             if query.get("own") == "1" and client and queue.get("client") != client:
                 # Cycle 76, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4):
                 # a read with `own=1` from a client that does not own the queue TAKES it
@@ -17238,7 +17238,7 @@ class PlexSim:
                 # follows the new owner: the taker's other queue is retired at once, the
                 # taker's next new queue retires this one, and the creator's does not.
                 # Plex Web hands a player the queue's key with `own:1` when it plays on
-                # another device; plexsim kept the creator as owner, so the browser's next
+                # another device; simplex kept the creator as owner, so the browser's next
                 # queue retired the one the other player was still playing.
                 for old in [key for key, known in self.play_queues.items()
                             if known.get("client") == client and key != int(queue_id)]:
@@ -17253,7 +17253,7 @@ class PlexSim:
         Two things here decide whether the client keeps the answer at all. Its
         play-queue fetch DISCARDS the whole response when the returned
         `playQueueSelectedItemID` is not the one it already holds, and it refreshes
-        only when `playQueueVersion` changed. plexsim recomputed the item ids from
+        only when `playQueueVersion` changed. simplex recomputed the item ids from
         their POSITION and hardcoded the version at 1, so every id moved whenever
         anything was inserted and the version never moved at all: once the player
         was past the first item, every refresh, Add to Queue and Play Next response
@@ -17273,7 +17273,7 @@ class PlexSim:
         with held:
             queue = self.play_queues.get(queue_id)
             if queue is None:
-                return ("error", 404, "plexsim: no such play queue")
+                return ("error", 404, "simplex: no such play queue")
             items = list(queue["items"])
             source = queue["source"]
             shuffled = bool(queue["shuffled"])
@@ -17288,7 +17288,7 @@ class PlexSim:
         # row, `playQueueSelectedItemOffset` is the selection's index among ALL of them, and
         # `playQueueSelectedMetadataItemID` is absent once the selected row's item is gone;
         # a queue left with no live row still names its selection. A window slices the
-        # whole queue before the dead rows drop. plexsim counted and indexed only the live
+        # whole queue before the dead rows drop. simplex counted and indexed only the live
         # rows and dropped the selection from a queue with none; Plex Web sizes its queue
         # as max(playQueueTotalCount, rows).
         rows = []
@@ -17304,13 +17304,13 @@ class PlexSim:
         offset = selected_at
         # `window`/`center`: the client asks for a slice AROUND the current item
         # rather than the whole queue, and `playQueueTotalCount` still reports the
-        # whole thing. plexsim ignored both and sent every row every time.
+        # whole thing. simplex ignored both and sent every row every time.
         window = query.get("window")
         centre = query.get("center")
         # Cycle 87, plexscratch42 (1.42.2): a `center=` that names no row of the queue -- an
         # id that was removed, or one it never held -- lists NO rows, the selection and the
         # counts reported as ever; so does `window=0`, around a centre or the selection alike.
-        # plexsim fell back to the selection for the first and listed the centre alone for
+        # simplex fell back to the selection for the first and listed the centre alone for
         # the second.
         listed_nothing = str(window).isdigit() and int(window) == 0
         if str(centre).isdigit():
@@ -17326,7 +17326,7 @@ class PlexSim:
             # it, the queue has NO selection -- `playQueueTotalCount` still counts the
             # rows, `playQueueSelectedItemOffset` is 0, there is no selected item id, and
             # the window around the (absent) selection is empty: `size 0`, no rows. A
-            # `center=` naming a row lists it again. plexsim selected the head.
+            # `center=` naming a row lists it again. simplex selected the head.
             rows = []
         # Cycle 16, re-measured on plexscratch: the two flags window the queue with NO
         # `window=` at all -- `window` is the RADIUS and is unlimited when absent, so
@@ -17336,9 +17336,9 @@ class PlexSim:
         # only ever WITH `window=1`, which is why the no-window half was missing.
         for name in ("includeBefore", "includeAfter"):
             if name in query and str(query[name]) not in ("0", "1"):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
         if query.get("includeBefore") == "0" and query.get("includeAfter") == "0":
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if str(window).isdigit() or "includeBefore" in query or "includeAfter" in query:
             span = int(window) if str(window).isdigit() else len(rows)
             low = max(0, offset - span)
@@ -17369,7 +17369,7 @@ class PlexSim:
         if deselected and total:
             # Cycle 87, plexscratch42 (1.42.2): a queue with NO selection reports offset 0 to
             # every read, a `center=` naming a live row included -- the window lists the rows
-            # around that row and the offset does not follow it. plexsim reported the
+            # around that row and the offset does not follow it. simplex reported the
             # centre's place in the slice.
             fields["playQueueSelectedItemOffset"] = 0
             fields["playQueueTotalCount"] = total
@@ -17378,7 +17378,7 @@ class PlexSim:
             # `center` choose which rows are listed and never move the reported selection.
             # `playQueueSelectedItemOffset` stays the selection's index in the whole queue
             # (not its place in the slice, not the centre's) and
-            # `playQueueSelectedMetadataItemID` names the SELECTED row. plexsim rebased the
+            # `playQueueSelectedMetadataItemID` names the SELECTED row. simplex rebased the
             # offset into the window and read the metadata id at that rebased position --
             # python-plexapi's `PlayQueue.get` reads with `window=50`.
             chosen = selected if selected is not None else items[0]["id"]
@@ -17410,7 +17410,7 @@ class PlexSim:
         direct play a real PMS sends ONLY the `mde*` pair, and the general,
         directPlay and transcode triples appear only when direct play is REFUSED
         (`directPlay=0` answers `directPlayDecisionCode: 3000` with
-        `generalDecisionCode`/`transcodeDecisionCode: 1001`). plexsim sent all
+        `generalDecisionCode`/`transcodeDecisionCode: 1001`). simplex sent all
         three 1000s on every request, which tells a client that a transcode
         decision was made when none was.
 
@@ -17452,7 +17452,7 @@ class PlexSim:
             # file the reference ships in `Resources/Profiles/` -- against the Media it
             # was asked about. See `decision.py` for the rules and how they were scored.
             #
-            # Cycle 26 recorded WHICH products direct play and plexsim hard-coded two of
+            # Cycle 26 recorded WHICH products direct play and simplex hard-coded two of
             # them, but 44 of the 78 profiles direct play a real row, so every other
             # non-MDE client -- Samsung, tvOS, iOS, Windows, PlayStation, the DLNA
             # renderers, python-plexapi -- was told nothing could play. And the reverse:
@@ -17467,7 +17467,7 @@ class PlexSim:
             if outcome == "refuse":
                 # Xbox 360's one video target is an asf with no protocol, and both
                 # references answer a 400 for every row it cannot direct play.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if outcome == "directplay":
                 # Measured on kids and zen: the directPlay/general PAIR -- both 1000,
                 # both "Direct play OK." -- with NO transcode codes, and the same
@@ -17490,7 +17490,7 @@ class PlexSim:
         elif query.get("directPlay") == "0":
             refusal = "App cannot direct play this item. Direct play is disabled."
         if refusal is not None:
-            # Direct play refused -- and plexsim cannot convert, so this is the measured
+            # Direct play refused -- and simplex cannot convert, so this is the measured
             # "neither" answer, not the "Conversion OK" a PMS with an encoder gives a
             # profile with a matching transcode target. A real PMS answers exactly this
             # for a client whose profile has no conversion target (`Generic`, `Sonos`):
@@ -17503,7 +17503,7 @@ class PlexSim:
             # refuses on the SOURCE rather than for want of a profile --
             # `transcodeDecisionCode 2003`, "File is unplayable. DoVi (Profile 5) color
             # space is not supported." The 4005 sentence is the answer for a client with
-            # no target at all (`Generic`, `Sonos`), and plexsim sent it to both.
+            # no target at all (`Generic`, `Sonos`), and simplex sent it to both.
             #
             # The predicate lives in `decision.py` beside the veto itself, so the two
             # cannot drift: it spares the one profile whose target names the source's own
@@ -17560,7 +17560,7 @@ class PlexSim:
             return query.get(name) or (headers or {}).get(name)
 
         return (value("X-Plex-Session-Identifier")
-                or value("X-Plex-Client-Identifier") or "plexsim")
+                or value("X-Plex-Client-Identifier") or "simplex")
 
     def _decision_target(self, query, headers=None):
         """The row a decision or a transcode start is FOR, or the 400 refusing it.
@@ -17569,7 +17569,7 @@ class PlexSim:
         that is not `/library/metadata/{id}` of a playable row (an unknown id, a
         show, a season, `/children`, a section); an OUT-OF-RANGE `mediaIndex`; and a
         request whose profile, platform and device all name no client profile.
-        plexsim answered "Direct play OK." to every one of them, for things it
+        simplex answered "Direct play OK." to every one of them, for things it
         cannot play and for nothing at all.
 
         Cycle 26, re-measured on kids and zen and CORRECTING the sentence this
@@ -17578,9 +17578,9 @@ class PlexSim:
         `mediaIndex` half survives on their single-Media rows:
 
           * a MISSING, non-numeric, negative or empty `mediaIndex` is a 200 on both
-            references -- it falls back to media 0 -- where plexsim refused it. That
+            references -- it falls back to media 0 -- where simplex refused it. That
             is not academic: python-plexapi's `getStreamURL` and several TV apps omit
-            the parameter, and against plexsim their decision was a hard 400 before
+            the parameter, and against simplex their decision was a hard 400 before
             any profile question was asked.
           * `partIndex` is never refused on either reference, at any value. Stated
             plainly: neither reference holds a MULTI-PART Media, so the old reading
@@ -17599,17 +17599,17 @@ class PlexSim:
 
         if not any(param(name) in CLIENT_PROFILES for name in
                    ("X-Plex-Client-Profile-Name", "X-Plex-Platform", "X-Plex-Device")):
-            return None, ("error", 400, "plexsim: bad request")
+            return None, ("error", 400, "simplex: bad request")
         match = re.search(r"/library/metadata/(\d+)/?(?:\?|$)", query.get("path") or "")
         row = self.catalog.items.get(int(match.group(1))) if match else None
         media = (row or {}).get("Media") or []
         if not media:
-            return None, ("error", 400, "plexsim: bad request")
+            return None, ("error", 400, "simplex: bad request")
         index = str(query.get("mediaIndex") or "")
         if len(media) > 1 and not index.isdigit():
-            return None, ("error", 400, "plexsim: bad request")
+            return None, ("error", 400, "simplex: bad request")
         if index.isdigit() and int(index) >= len(media):
-            return None, ("error", 400, "plexsim: bad request")
+            return None, ("error", 400, "simplex: bad request")
         chosen = media[int(index) if index.isdigit() else 0]
         parts = chosen.get("Part") or []
         raw_part = str(query.get("partIndex") or "")
@@ -17620,7 +17620,7 @@ class PlexSim:
         # and selects Part 0, which preserves cycle 26's two-reference result.
         if len(parts) > 1 and raw_part not in ("", "-1") \
                 and raw_part.isdigit() and int(raw_part) >= len(parts):
-            return None, ("error", 400, "plexsim: bad request")
+            return None, ("error", 400, "simplex: bad request")
         return row, None
 
     def _decision_row(self, row, query):
@@ -17640,7 +17640,7 @@ class PlexSim:
         # episodes: a decision row KEEPS `summary`, whatever the row type. The rule this
         # replaces was fitted to movie 1, the one row on the copy whose summary is the
         # EMPTY STRING -- so the attribute was absent there for a different reason
-        # entirely, and plexsim dropped it from every movie. Class B: data too thin to
+        # entirely, and simplex dropped it from every movie. Class B: data too thin to
         # show the rule, refuted by four rows that can disagree and do.
         # Cycle 26: an unparseable, negative or empty `mediaIndex` falls back to
         # media 0 on both references (and used to be a 400 here, so this path never
@@ -17651,7 +17651,7 @@ class PlexSim:
         # Cycle 26, measured on zen's rk=401, which carries fifteen Media on its library
         # row: a decision answers exactly ONE -- the `mediaIndex` asked for, or media 0
         # when the value does not parse -- and an index naming a version the profile
-        # refuses answers the row with an EMPTY Media list. plexsim echoed every version
+        # refuses answers the row with an EMPTY Media list. simplex echoed every version
         # with `selected` on the chosen one, so a client counting the Media on a decision
         # saw the whole edition list and could pick one the server never decided for.
         #
@@ -17686,7 +17686,7 @@ class PlexSim:
                 # Plex for Android's exact shapes: `subtitles=none` marks it
                 # `decision: ignore` with NO location, `subtitles=sidecar` sends it as
                 # `location: sidecar-subs`. (burn, auto, empty or absent are 400s there
-                # with a subtitle selected; plexsim keeps answering those -- a bound.)
+                # with a subtitle selected; simplex keeps answering those -- a bound.)
                 mode = query.get("subtitles")
                 for stream in streams:
                     if stream.get("streamType") != 3:
@@ -17748,7 +17748,7 @@ class PlexSim:
         plugins}`; `POST /downloadQueue` answers a `DownloadQueue` row for the
         calling client -- the SAME queue on a second POST from that client -- and
         `/downloadQueue/{id}` reads it back, with `/items` an empty container. An
-        unknown id is a 404, and so is a DELETE of a queue that exists. plexsim
+        unknown id is a 404, and so is a DELETE of a queue that exists. simplex
         404'd all of it while listing `downloadQueue` among its root endpoints.
         What adding an item does was not measured, so it is not answered.
         """
@@ -17766,20 +17766,20 @@ class PlexSim:
         queue = next((q for q in self.download_queues.values()
                       if str(q["id"]) == segments[1]), None)
         if queue is None or method not in ("GET", "HEAD"):
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if len(segments) == 2:
             return self.bare_container(size=1, DownloadQueue=[dict(queue)])
         if len(segments) == 3 and segments[2] == "items":
             return self.bare_container(size=0)
-        return ("error", 404, "plexsim: not found")
+        return ("error", 404, "simplex: not found")
 
     def timeline(self, query, headers=None, address=None):
         """`/:/timeline` -- the player's progress report, and what CREATES a session.
 
-        Two things measured here that plexsim had wrong. First, this endpoint is
+        Two things measured here that simplex had wrong. First, this endpoint is
         what puts a row in /status/sessions: a bare timeline with no play queue,
         no decision and no byte read is enough, and `state=stopped` removes the
-        row. plexsim only stored a viewOffset, so Now Playing was always empty.
+        row. simplex only stored a viewOffset, so Now Playing was always empty.
 
         Second, the response is NOT an echo of the state sent. A real PMS answers
         `{size, playbackState, skipCount, viewCount, viewOffset}` where
@@ -17792,13 +17792,13 @@ class PlexSim:
         if not query.get("state"):
             # Measured: `state` is the ONE required parameter -- a timeline without
             # it is a 400 even with a ratingKey and a key, and `state` alone with
-            # nothing else is a 200. plexsim defaulted it to `stopped`.
-            return ("error", 400, "plexsim: bad request")
+            # nothing else is a 200. simplex defaulted it to `stopped`.
+            return ("error", 400, "simplex: bad request")
         state = query.get("state")
         if state not in self.TIMELINE_STATES:
             # Measured: `state` is a CLOSED set and anything else is a 400.
-            # plexsim treated an unknown state as live and opened a session.
-            return ("error", 400, "plexsim: bad request")
+            # simplex treated an unknown state as live and opened a session.
+            return ("error", 400, "simplex: bad request")
         offset = query.get("time")
         duration = query.get("duration")
         if (offset is not None and not str(offset).isdigit()) \
@@ -17807,12 +17807,12 @@ class PlexSim:
                     and int(offset) > int(duration)):
             # Measured on a writable copy of the reference: a negative or unparseable
             # `time` or `duration`, and a `time` past the `duration` sent with it, are
-            # each a 400. plexsim answered 200 -- and a time past the duration
+            # each a 400. simplex answered 200 -- and a time past the duration
             # completed the play and wrote a history row.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         offset_ms = int(offset) if str(offset).isdigit() else 0
         # Measured: `duration=0` is a 200 that stores nothing -- a real PMS reads it as
-        # "no usable duration", the same as sending none, where plexsim's `time > duration`
+        # "no usable duration", the same as sending none, where simplex's `time > duration`
         # refusal caught it as a 400.
         total_ms = int(duration) if str(duration).isdigit() and int(duration) else None
         row = self.catalog.items.get(int(rating_key)) if rating_key.isdigit() else None
@@ -17820,7 +17820,7 @@ class PlexSim:
         # timeline row too -- python-plexapi's `Playlist.updateTimeline()`. It runs the
         # item's own machine (ignore under a minute, progress, complete past 90% with the
         # list's `viewCount` stepping, the offset stored on the list), opens a Now Playing
-        # session and pushes a `playing` frame keyed `/playlists/{id}`. plexsim 404'd it.
+        # session and pushes a `playing` frame keyed `/playlists/{id}`. simplex 404'd it.
         listed = None
         if row is None and rating_key.isdigit():
             listed = self.library.playlist(int(rating_key))
@@ -17828,7 +17828,7 @@ class PlexSim:
         if rating_key and row is None:
             # Measured: a ratingKey the server does not have is a 404, not a 200
             # with an empty container.
-            return ("error", 404, "plexsim: no such item")
+            return ("error", 404, "simplex: no such item")
 
         # The player reports which queue item it is on, and a real PMS MOVES the
         # queue's selection to it. The client's play-queue fetch then DISCARDS any
@@ -17847,7 +17847,7 @@ class PlexSim:
                         # beat is for, over `ratingKey`. `ratingKey=A&playQueueItemID=<B's
                         # row>` at 92% completed B and stored B's resume point, 3/3, while A
                         # was untouched; an id no queue holds falls back to `ratingKey`.
-                        # plexsim applied the beat to `ratingKey`.
+                        # simplex applied the beat to `ratingKey`.
                         named = self.catalog.items.get(entry["ratingKey"])
                         if named is not None and row is not None:
                             row, listed = named, None
@@ -17859,7 +17859,7 @@ class PlexSim:
             # beat's `ratingKey` -- in any state, with or without `time` -- and leaves it
             # alone when no row holds the item. Another client's beat moves nothing, and an
             # EMPTY `playQueueItemID=` (or `0`, `abc`, an id no queue holds) moves nothing
-            # either: that is where empty and absent part. plexsim moved a selection only
+            # either: that is where empty and absent part. simplex moved a selection only
             # by id, so python-plexapi's `PlayQueue.create` and `updateTimeline` on its
             # second item left `selectedItem` on the first.
             client = (query.get("X-Plex-Client-Identifier")
@@ -17891,7 +17891,7 @@ class PlexSim:
             # answers `complete`; the same stop answers `ignore` when the 92% beat carried
             # another queue row's id (3/3), no id, an empty one or one no queue holds, when
             # the stop carries none, or when any beat for another item came between -- with
-            # `viewCount` unchanged each time. plexsim kept the latch on the item, per
+            # `viewCount` unchanged each time. simplex kept the latch on the item, per
             # session, whatever the beats in between said.
             #
             # The `progress` answer is the same latch's other half (cycle 87, plexscratch42,
@@ -17953,20 +17953,20 @@ class PlexSim:
             # Measured thresholds: nothing is reported back at or under a minute, on
             # ANY state, and past 90% the play is `complete` on any state too.
             # `viewCount` is the item's own count -- 0 on a first play in progress,
-            # measured -- where plexsim sent 1 for anything past a minute.
+            # measured -- where simplex sent 1 for anything past a minute.
             # The beat's own duration, as the library uses: with none, nothing is stored
             # and nothing completes, and the answer carries the item's stored offset.
             # Cycle 45: `playbackTime=` is a VALIDATED signed 32-bit integer -- the
             # client sends it on every beat -- and `1.5`, `abc`, an empty value, a
             # surrounding space, `0x10`, `1e6` and anything past the int32 bound are each
             # a 400 on both copies, while `0`, `4001`, `-1`, `+1`, `01` and `2147483647`
-            # pass. plexsim did not know the name at all.
+            # pass. simplex did not know the name at all.
             raw_playback = query.get("playbackTime")
             if raw_playback is not None:
                 text_playback = str(raw_playback)
                 if not re.fullmatch(r"[+-]?[0-9]+", text_playback) \
                         or not -2 ** 31 <= int(text_playback) < 2 ** 31:
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
             total = total_ms or 0
             # Cycle 45: the minute gate belongs to the resume point, not to the
             # reported state -- see `library.progress` -- and the 90% threshold is
@@ -17980,7 +17980,7 @@ class PlexSim:
                     # Past 90% the answer is never `progress`: it is `complete` for the beat
                     # that completed the play and every one after it until a `stopped` closes
                     # it, and `ignore` for a beat that completed nothing -- one that did not
-                    # cross into the last tenth inside this session. plexsim called every
+                    # cross into the last tenth inside this session. simplex called every
                     # near-end beat `complete`, and the crossing rule alone would have left
                     # the refused ones saying `progress`.
                     # Cycle 87 e3b, plexscratch42 (1.42.2), both beat shapes: except inside a
@@ -18005,7 +18005,7 @@ class PlexSim:
             # history row of the SESSION kind (no `viewType`), `complete` with the new count.
             # `viewCount=0` on a watched item clears its view state instead, answering
             # `complete` and 0; on an unwatched one it is the ordinary beat. A negative or
-            # unparseable value is ignored. plexsim never read the name, so an episode
+            # unparseable value is ignored. simplex never read the name, so an episode
             # watched offline stayed unwatched once the phone reconnected.
             # Cycle 87 e3b, plexscratch42: and a beat the play latch would answer `progress`
             # syncs the same -- test_ui_surface's offline sync after a 95% stop in the same
@@ -18026,7 +18026,7 @@ class PlexSim:
             bitrate = media.get("bitrate") or 0
             # Re-measured: `Bandwidths` appears once a DECISION has been made for
             # this item and then on every timeline including `stopped`, and it
-            # disappears again after the stopping one. plexsim keyed it on the
+            # disappears again after the stopping one. simplex keyed it on the
             # state alone, so it was present before any decision and absent on the
             # stop -- exactly inverted at both ends. The resolution here is the
             # LABEL (`1080p`), not the raw `videoResolution`.
@@ -18058,11 +18058,11 @@ class PlexSim:
             # Measured: with no ratingKey at all the answer is just the two fields.
             return self.bare_container(size=0, playbackState=playback_state)
         # Re-measured, correcting an earlier finding: `viewOffset` is the item's
-        # STORED offset and is -1 only when it has none. plexsim always sent -1, so
+        # STORED offset and is -1 only when it has none. simplex always sent -1, so
         # a client reading its resume point off the timeline never found one.
         stored = row.get("viewOffset")
         # Measured: `size` counts the Bandwidths block and nothing else -- 0 before a
-        # decision, 1 after. plexsim sent 1 on every response.
+        # decision, 1 after. simplex sent 1 on every response.
         return self.bare_container(size=1 if fields.get("Bandwidths") else 0,
                                    playbackState=playback_state,
                                    skipCount=0, viewCount=view_count,
@@ -18074,7 +18074,7 @@ class PlexSim:
 
         Measured on a writable copy of the reference: every frame of a session driven from a
         play queue -- playing, paused, a seek and the stop -- carries `playQueueItemID` and
-        `playQueueID`, and a session with no queue carries neither. plexsim sent neither
+        `playQueueID`, and a session with no queue carries neither. simplex sent neither
         ever, and the Now Playing panel and companion clients tie a frame to the queue item
         they hold by exactly these two.
         """
@@ -18151,7 +18151,7 @@ class PlexSim:
             # the copy with two sessions on one row. A session that has only ever sent
             # timelines carries a bare Media and Part -- no `selected`, no `decision`,
             # and no `location` on its Streams, though the Stream's own `selected` for
-            # the chosen audio track stays. plexsim stamped all four on every session,
+            # the chosen audio track stays. simplex stamped all four on every session,
             # so the Dashboard said "Direct Play" for a client that had never asked
             # whether it could play the file.
             decided = (entry.get("id"),
@@ -18233,24 +18233,24 @@ class PlexSim:
         """The row a `key=` parameter names, or the refusal a real PMS answers.
 
         Measured on every one of these state writes: a MISSING key is a 400 and a
-        key the server does not have is a 404. plexsim answered an empty 200 to
+        key the server does not have is a 404. simplex answered an empty 200 to
         both, which tells the client the write landed. Re-measured on a writable copy
         of the reference with the `identifier` the client always sends taken away:
         the checks run in a FIXED order -- a missing key is a 400, then a missing
         identifier is a 400 (even for a key the server does not have), then the
         write's own parameter (`validate`), and only then is a foreign identifier or
-        an unknown key a 404. plexsim never read the identifier.
+        an unknown key a 404. simplex never read the identifier.
         """
         raw = query.get("key")
         if raw is None:
-            return None, ("error", 400, "plexsim: bad request")
+            return None, ("error", 400, "simplex: bad request")
         # Cycle 21, measured on plexscratch: an EMPTY key is a 400 on scrobble,
         # unscrobble and progress, and a 500 on `/:/rate` alone -- it has no such check
         # and falls through to the int parse below.
         if raw == "" and not empty_key_ok:
-            return None, ("error", 400, "plexsim: bad request")
+            return None, ("error", 400, "simplex: bad request")
         if not query.get("identifier"):
-            return None, ("error", 400, "plexsim: bad request")
+            return None, ("error", 400, "simplex: bad request")
         # `rate` validates its `rating` before the identifier; `progress` validates the
         # identifier before its `time`. Measured both ways round on plexscratch.
         if validate is not None and validate_first:
@@ -18258,7 +18258,7 @@ class PlexSim:
             if refusal:
                 return None, refusal
         if query.get("identifier") != "com.plexapp.plugins.library":
-            return None, ("error", 404, "plexsim: no such item")
+            return None, ("error", 404, "simplex: no such item")
         if validate is not None and not validate_first:
             refusal = validate()
             if refusal:
@@ -18266,7 +18266,7 @@ class PlexSim:
         # Cycle 21, measured on plexscratch over eight key shapes: the key is a BARE
         # ratingKey. The path form -- `/library/metadata/17`, which the client builds
         # for `/:/timeline` -- is a 404 on scrobble and unscrobble and a 500 on rate
-        # and progress, where plexsim took the last path segment and accepted it. The
+        # and progress, where simplex took the last path segment and accepted it. The
         # accepted spelling is an optional sign then digits: `+17` and `017` parse and
         # a leading space does not.
         key = str(raw)
@@ -18274,16 +18274,16 @@ class PlexSim:
         if numeric_key and parsed is None:
             # `rate` and `progress` int-parse the key and answer 500 when it will not,
             # the empty value included; scrobble and unscrobble just look it up.
-            return None, ("error", 500, "plexsim: bad key")
+            return None, ("error", 500, "simplex: bad key")
         row = self.library.state_row(int(key)) if parsed else None
         if row is None and not any_key:
-            return None, ("error", 404, "plexsim: no such item")
+            return None, ("error", 404, "simplex: no such item")
         return row, None
 
     def progress(self, query):
         """`/:/progress?key=&time=&state=` -- the OTHER way a client reports resume.
 
-        Not an alias of `/:/timeline`, which plexsim had it routed as: this one keys
+        Not an alias of `/:/timeline`, which simplex had it routed as: this one keys
         on **`key`**, not `ratingKey`, and it answers an EMPTY body rather than a
         MediaContainer. Routed at the timeline it read no key at all, so every
         client that reports progress this way -- plex_debrid, Kodi/PKC, Infuse,
@@ -18291,10 +18291,10 @@ class PlexSim:
         """
         offset = query.get("time")
         # Measured on a writable copy of the reference: a missing or unparseable `time`
-        # is a 500 here, where plexsim stored 0 and answered 200.
+        # is a 500 here, where simplex stored 0 and answered 200.
         row, refusal = self._keyed_row(query, validate=lambda: None
                                        if _progress_time(offset) is not None
-                                       else ("error", 500, "plexsim: bad time"),
+                                       else ("error", 500, "simplex: bad time"),
                                        numeric_key=True, any_key=True)
         if refusal:
             return refusal
@@ -18335,11 +18335,11 @@ class PlexSim:
             value = float(rating)
         except (TypeError, ValueError):
             value = None
-        # Measured: an unparseable rating is a 400, where plexsim silently cleared the
+        # Measured: an unparseable rating is a 400, where simplex silently cleared the
         # rating instead -- and it is refused before a foreign identifier or an unknown
         # key would be.
         row, refusal = self._keyed_row(query, validate=lambda: None if value is not None
-                                       else ("error", 400, "plexsim: bad request"),
+                                       else ("error", 400, "simplex: bad request"),
                                        numeric_key=True, validate_first=True,
                                        empty_key_ok=True)
         if refusal:
@@ -18356,17 +18356,17 @@ class PlexSim:
         """
         if method == "GET":
             # Measured on a writable copy of the reference: the action is a WRITE -- a
-            # GET is a 404 -- and a PUT that names no ratingKey is a 400. plexsim hid
+            # GET is a 404 -- and a PUT that names no ratingKey is a 400. simplex hid
             # the row on a GET and 404'd the bare PUT.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if not (query.get("ratingKey") or query.get("key")):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         key = (query.get("ratingKey") or query.get("key") or "").rsplit("/", 1)[-1]
         if not key.isdigit() or self.library.remove_from_continue_watching(
                 int(key)) is None:
-            # Measured: an unknown ratingKey is a 404 here, where plexsim answered
+            # Measured: an unknown ratingKey is a 404 here, where simplex answered
             # an empty 200 for anything at all.
-            return ("error", 404, "plexsim: no such item")
+            return ("error", 404, "simplex: no such item")
         return self.bare_container(size=0)
 
     def ondeck_shelf_hidden(self):
@@ -18382,7 +18382,7 @@ class PlexSim:
             progress ep 9       onDeck [9] contW [9]         home.ondeck ABSENT
             + progress movie 17 onDeck [9] contW [9, 17]     both present
 
-        plexsim always sent both, so Home drew the same in-progress episode twice --
+        simplex always sent both, so Home drew the same in-progress episode twice --
         once under Continue Watching and again under On Deck.
         """
         deck = {str(row.get("ratingKey")) for row in self.continue_watching()
@@ -18400,7 +18400,7 @@ class PlexSim:
         on either copy puts episode 9 in it at once, beside the in-progress movies, and an
         unscrobble takes it out. Every row is stamped `includedAt` -- the second it
         entered, which for a next-up is the view that put it on deck -- and the list is
-        newest `includedAt` first. plexsim answered `resuming()` here, so Plex Web's Home
+        newest `includedAt` first. simplex answered `resuming()` here, so Plex Web's Home
         -- which drops `home.continue` and `home.ondeck` from `/hubs/promoted` and reads
         this hub instead -- never showed a next episode after one was finished.
         """
@@ -18418,7 +18418,7 @@ class PlexSim:
         lists take a next-up only when the episode it follows was completed in a PLAYBACK
         SESSION -- a timeline crossing 90% -- and not after a scrobble. The copies write no
         history row for a timeline completion (their recorded limit), so the provenance is
-        the play itself, which plexsim now records on the leaf. plexsim listed the
+        the play itself, which simplex now records on the leaf. simplex listed the
         scrobble-derived next-up, so Mark Played filled the library's shelf.
 
         Cycle 58 widened the gate from the anchor to the SHOW: once any of its episodes
@@ -18443,7 +18443,7 @@ class PlexSim:
         null offset and leaves Continue Watching EMPTY; a `/:/progress` on a movie puts
         the movie in Continue Watching and not on deck.
 
-        plexsim answered `continue_watching()` to both, so its hero shelf offered
+        simplex answered `continue_watching()` to both, so its hero shelf offered
         episodes nobody had started and with no resume position -- and, because the two
         lists were then always equal, the de-duplication below would have fired on every
         state instead of on the one it belongs to.
@@ -18457,7 +18457,7 @@ class PlexSim:
         its in-progress episode, or with none in progress the episode after the
         highest-numbered one watched. Removing any of its episodes from Continue
         Watching hides the show's row, and a timeline on any of them brings it back.
-        plexsim listed every episode with a resume point, and never the next one.
+        simplex listed every episode with a resume point, and never the next one.
 
         WHICH in-progress episode was recorded in cycle 9 as "the LOWEST season and
         episode number (not the one played last)". Cycle 14 re-measured it on the copy
@@ -18511,7 +18511,7 @@ class PlexSim:
                 # follows the MOST RECENTLY VIEWED watched episode, not the highest-numbered
                 # one -- scrobbling 10 and then 8 puts 9 on deck, and unscrobbling 8 moves
                 # it to the episode after 10 -- and the row carries that view's time as its
-                # `lastViewedAt`. plexsim anchored on the highest-numbered watched episode.
+                # `lastViewedAt`. simplex anchored on the highest-numbered watched episode.
                 watched = [n for n, e in enumerate(episodes) if e.get("viewCount")]
                 if watched:
                     anchor = max(watched, key=lambda n: (episodes[n].get("lastViewedAt") or 0))
@@ -18553,14 +18553,14 @@ class PlexSim:
         """
         uri = query.get("uri") or ""
         if not uri:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         # Cycle 31: the ITEM-uri half of that refusal is **1.43.4's**. On 1.42.2 the same
         # PUT is a 200 that REPLACES the stored query with the item uri -- measured on a
         # smart playlist built over a key list and again on one built over a listing, both
         # of which accept it: `content` went from
         # `library://x/directory/%2Flibrary%2Fmetadata%2F1%2C2` (leafCount 2) to
         # `library://x/item/%2Flibrary%2Fmetadata%2F4` (leafCount 1). 1.43.4 answers 400 to
-        # both. So on the version plexsim reports the items PUT is simply the Save, and it
+        # both. So on the version simplex reports the items PUT is simply the Save, and it
         # takes whatever uri it is given.
         target["uri"] = uri
         target["updatedAt"] = int(time.time())
@@ -18574,7 +18574,7 @@ class PlexSim:
     # `sub`, `idx`, `sup`, `pgs`, an unknown extension and an empty one are 400s.
     # Re-measured one extension at a time on the copy, extending cycle 11's set:
     # `psb` is accepted too, and the check is CASE-SENSITIVE -- `format=SRT` and a
-    # `title=x.SRT` are both 400 where the lowercase forms are 200. plexsim lowercased
+    # `title=x.SRT` are both 400 where the lowercase forms are 200. simplex lowercased
     # the value, so it accepted uploads a real PMS refuses. The client's own allowed
     # list is wider than the server's (`aqt jss rt utf utf-8 utf8 sub idx vtt` are
     # offered by the modal and refused by the server), which is the client's business.
@@ -18592,26 +18592,26 @@ class PlexSim:
         SELECTED subtitle, deselecting the one before it. The refusals are their own
         grammar: no `title` at all, and a title with no extension, are 500s; a format
         the server does not take is a 400; an empty body is a 406; an unknown item is a
-        404. plexsim fell through to the subtitle SEARCH branch and answered 400 to
+        404. simplex fell through to the subtitle SEARCH branch and answered 400 to
         every one of them, so the modal always reported "Unable to upload subtitle file"
         -- and cycle 10 recorded the endpoint as unmeasurable on the copy, from a
         request shape the client does not send.
         """
         # Cycle 15, measured on the copy: the EMPTY-BODY check runs FIRST. With
         # neither a title nor bytes the answer is 406, not the 500 a missing title
-        # gets on its own -- plexsim had the two the other way round.
+        # gets on its own -- simplex had the two the other way round.
         if not body:
-            return ("error", 406, "plexsim: not acceptable")
+            return ("error", 406, "simplex: not acceptable")
         title = str(query.get("title") or "")
         if not title or "." not in title:
-            return ("error", 500, "plexsim: internal error")
+            return ("error", 500, "simplex: internal error")
         stem, _, extension = title.rpartition(".")
         # Measured on the copy: the format is compared AS SENT -- `SRT` is a 400.
         fmt = str(query.get("format") or extension)
         if fmt not in self.SUBTITLE_UPLOAD_FORMATS:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if not body:
-            return ("error", 406, "plexsim: not acceptable")
+            return ("error", 406, "simplex: not acceptable")
         with self.lock:
             used = [int(stream.get("id") or 0)
                     for item in self.catalog.items.values()
@@ -18622,7 +18622,7 @@ class PlexSim:
             parts = [part for media in row.get("Media") or []
                      for part in media.get("Part") or []]
             if not parts:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             stream = {"id": stream_id, "streamType": 3, "codec": fmt, "format": fmt,
                       "title": stem, "key": "/library/streams/%d" % stream_id,
                       "transient": "0", "selected": True}
@@ -18645,26 +18645,26 @@ class PlexSim:
     def select_stream(self, part_id, query):
         """`PUT /library/parts/{partID}?audioStreamID=&subtitleStreamID=`.
 
-        Track selection from the player, and from Get Info. plexsim never
+        Track selection from the player, and from Get Info. simplex never
         repackages, so the choice only changes which Stream carries `selected` --
         which is what the client reads back.
         """
         # Cycle 44, measured cell by cell on plexscratch42 (1.42.2) and plexscratch
         # (1.43.4), which agree: the two parameters have DIFFERENT value grammars, and
-        # plexsim treated them the same.
+        # simplex treated them the same.
         #
         #   `subtitleStreamID` parses as a signed integer. A value that does not parse
         #   -- `abc`, ``, `1.5`, `0x1`, `+141`, `141.0` -- reads as **0**, which is the
         #   "no subtitle" pseudo-stream, so it CLEARS the selection with a 200; `00` and
-        #   `000` parse to 0 and clear too (plexsim answered 400); `-0` clears; `-1`
+        #   `000` parse to 0 and clear too (simplex answered 400); `-0` clears; `-1`
         #   reverts to the server's own default; and any other negative is a **400**
-        #   (plexsim answered 200 and did nothing).
+        #   (simplex answered 200 and did nothing).
         #
         #   `audioStreamID` has no "0" meaning: `0` and every negative but `-1` are
         #   **400**s, `-1` reverts to the default, and a value that does not parse is an
-        #   accepted no-op -- which is the behaviour plexsim applied to both.
+        #   accepted no-op -- which is the behaviour simplex applied to both.
         #
-        # Getting this wrong is a blank track picker either way round: plexsim left a
+        # Getting this wrong is a blank track picker either way round: simplex left a
         # subtitle selected where a real PMS clears it, and accepted a negative id a
         # real PMS refuses.
         wanted = {}
@@ -18680,22 +18680,22 @@ class PlexSim:
                 if number is None:
                     number = 0
                 if number < -1:
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 wanted[stream_type] = str(0 if number == -1 else number)
             else:
                 if number is None:
                     continue
                 if number == 0 or number < -1:
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if number == -1:
-                    # Revert to the default: plexsim's default is the first audio
+                    # Revert to the default: simplex's default is the first audio
                     # stream, which is what `_default_audio` already chooses.
                     wanted[stream_type] = "-1"
                 else:
                     wanted[stream_type] = str(number)
         # Cycle 18, measured on plexscratch: the PART is resolved before anything else.
         # `PUT /library/parts/999999`, `/abc` and `999999?subtitleStreamID=abc` are all
-        # 404s there, where plexsim answered 200 to each because it returned early
+        # 404s there, where simplex answered 200 to each because it returned early
         # whenever the request named no usable stream -- so a track picker pointed at a
         # stale part id was told the selection had been applied.
         #
@@ -18709,11 +18709,11 @@ class PlexSim:
                     if str(part.get("id")) == str(part_id):
                         owner = row
         if owner is None:
-            return ("error", 404, "plexsim: no such part")
+            return ("error", 404, "simplex: no such part")
         if not wanted:
             return ("empty", 200)
         # Measured: a stream id that is not a stream of the right TYPE on this item
-        # is a 400, and the selection is left untouched. plexsim accepted anything
+        # is a 400, and the selection is left untouched. simplex accepted anything
         # with a 200 and then cleared every selection, because nothing matched --
         # so a rejected request left the item with no selected track at all and the
         # track picker went blank. `0` is the client's "None" pseudo-stream and is
@@ -18743,7 +18743,7 @@ class PlexSim:
             if str(chosen) not in available.get(stream_type, set()):
                 logger.warning("STREAM SELECT refused: %s is not a type-%d stream of %s",
                                chosen, stream_type, owner["ratingKey"])
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
         for media in owner.get("Media", []):
             for part in media.get("Part", []):
                 if str(part.get("id")) != str(part_id) and query.get("allParts") != "1":
@@ -18773,7 +18773,7 @@ class PlexSim:
         """
         if method not in ("PUT", "POST"):
             # Measured: `GET /library/metadata/{id}/refresh` and `/analyze` are 404s.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
 
         if action == "refresh":
             self.library.refresh(row)
@@ -18783,7 +18783,7 @@ class PlexSim:
                 # frames below; a SEASON runs its episodes inside its own activity
                 # (18 frames on a three-episode season) and a SHOW nests a season's
                 # whole block under each season (49 on the two-season Firefly tree).
-                # plexsim sent seven at every level, so Refresh Metadata on a show
+                # simplex sent seven at every level, so Refresh Metadata on a show
                 # told the client one row had changed and left the tree stale.
                 if row["type"] == "show":
                     self.notify_show_cascade(row)
@@ -18802,7 +18802,7 @@ class PlexSim:
         elif action == "analyze":
             # The catalog rows already carry ffprobe-derived Media attributes; there
             # is no second, better analysis to run -- but the FRAMES are what a client
-            # watches for, and plexsim pushed none.
+            # watches for, and simplex pushed none.
             #
             # Cycle 15, re-measured on the copy with a control write first: per LEAF
             # and in tree order, three `state 5` frames carrying `mediaState`
@@ -18827,7 +18827,7 @@ class PlexSim:
             activity["progress"] = 100
             self.library.end_activity_quietly(activity)
             # Cycle 19, measured on plexscratch behind a control write: an analyze pushes
-            # the per-leaf triples and this one activity and NOTHING else. plexsim added a
+            # the per-leaf triples and this one activity and NOTHING else. simplex added a
             # `backgroundProcessingQueue` `queueRegenerated` frame of its own, telling
             # every client on the socket that the background queue had been rebuilt --
             # the same family as cycle 12's invented subtitle-upload pair.
@@ -18846,7 +18846,7 @@ class PlexSim:
                 # copy and put 30 stray activity frames through the listener). A SEASON's
                 # unmatch pushes ONE `matching` frame and then the SEASON cascade: 28
                 # frames in all, of which 9 are the state-dependent media pass this
-                # project records rather than emulates. plexsim sent the matching frame
+                # project records rather than emulates. simplex sent the matching frame
                 # and then `notify_refreshed` -- the seven-frame EPISODE form -- so every
                 # episode under the season it had just unmatched was left holding its old
                 # title and guid, and the season's own activity named the wrong work.
@@ -18859,7 +18859,7 @@ class PlexSim:
             elif row.get("type") == "show":
                 # Cycle 25, measured on the same uncontended socket, twice over (once with
                 # the show unmatched first on a freshly reset copy, once second): 46 frames
-                # where plexsim pushed NONE at all, so Fix Match on a show page changed
+                # where simplex pushed NONE at all, so Fix Match on a show page changed
                 # nothing on screen and left every `!!metadataState` gate latched.
                 #
                 # The opener is the MOVIE's -- `state 2 matching`, `state 3 matching`,
@@ -18873,7 +18873,7 @@ class PlexSim:
                 self.notify_show_unmatch_cascade(row)
             elif row.get("type") == "movie":
                 # Cycle 23, measured on plexscratch twice over: a MOVIE's unmatch pushes
-                # TWELVE frames where plexsim pushed none. It opens on two `matching`
+                # TWELVE frames where simplex pushed none. It opens on two `matching`
                 # frames -- `state 2` then `state 3`, a pair this server emitted nowhere
                 # -- and the activity inside it steps through a second TITLE,
                 # `Analyzing Media`, before returning to `Updating Metadata`. An unmatch
@@ -18901,12 +18901,12 @@ class PlexSim:
             if query.get("name") is None:
                 # Measured on a writable copy of the reference: the NAME is what this
                 # endpoint requires -- a guid with no name is a 400, and an empty guid with
-                # a name is a 200 that renames the row and refreshes it. plexsim had the
+                # a name is a 200 that renames the row and refreshes it. simplex had the
                 # test the other way round.
-                return ("error", 400, "plexsim: match needs a name")
+                return ("error", 400, "simplex: match needs a name")
             # Matching to a guid another row in the same library already carries MERGES this
             # row into that one: measured, the matched row is deleted and the survivor keeps
-            # both Media. plexsim left two rows claiming one identity.
+            # both Media. simplex left two rows claiming one identity.
             existing = next((other for other in list(self.catalog.items.values())
                              if guid and other is not row and other.get("guid") == guid
                              and str(other.get("librarySectionID")) == str(row.get("librarySectionID"))),
@@ -18952,14 +18952,14 @@ class PlexSim:
             others = [self.catalog.items.get(int(i)) if i.isdigit() else None for i in ids]
             # Measured on a writable copy of the reference: a merge with no `ids` is a
             # 400, an id the server does not have a 404, and a row of another type -- a
-            # movie into a show -- a 400. plexsim answered 200 to all three, and moved
+            # movie into a show -- a 400. simplex answered 200 to all three, and moved
             # the movie's media into the show.
             if not ids:
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if any(other is None for other in others):
-                return ("error", 404, "plexsim: no such item")
+                return ("error", 404, "simplex: no such item")
             if any(other.get("type") != row.get("type") for other in others):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             changed = []
             # Cycle 87: a show merge rewrites every playlist's and collection's items,
             # as a delete does, so both merges run under the list lock.
@@ -18970,11 +18970,11 @@ class PlexSim:
                     merged = self.library.merge(row, ids)
             # Cycle 84, plexscratch42: every row a merge absorbs leaves the play queues --
             # an episode merge's absorbed episode, a show merge's absorbed episodes -- with
-            # the version stepped per row (`drop_from_queues`). plexsim left them queued.
+            # the version stepped per row (`drop_from_queues`). simplex left them queued.
             self.drop_from_queues([int(other["ratingKey"]) for other in merged])
             # Measured on a writable copy of the reference: the absorbed row is deleted
             # (state 9, untitled) and the survivor refreshed under type -1, state 3 then
-            # 5. plexsim pushed nothing.
+            # 5. simplex pushed nothing.
             for other in merged:
                 self.notify_timeline(other, self.TIMELINE_DELETED, "deleted",
                                      title_override="")
@@ -18992,7 +18992,7 @@ class PlexSim:
             logger.info("MERGE %s <- %s (%d row(s) absorbed)",
                         row["ratingKey"], ids, len(merged))
         else:
-            return ("error", 404, "plexsim: unknown action")
+            return ("error", 404, "simplex: unknown action")
         return ("empty", 200)
 
     def matches(self, row, query):
@@ -19001,7 +19001,7 @@ class PlexSim:
         Shape measured on a real PMS: SearchResult rows of
         {guid, name, year, score, thumb, type, lifespanEnded, summary}. The
         guid each row carries is the one the client sends straight back to
-        `PUT .../match`, so it has to be a guid plexsim can resolve again --
+        `PUT .../match`, so it has to be a guid simplex can resolve again --
         hence the candidate map, which remembers which TMDB id minted it.
         """
         if self.tmdb is None:
@@ -19069,7 +19069,7 @@ class PlexSim:
         """The fallback and the cascade an artwork CLEAR owes its children. Cycle 31.
 
         An EMPTY `thumb.value=` or `art.value=` removes the column (measured on both
-        copies), and on 1.42.2 -- the build plexsim reports -- it is the only way to clear
+        copies), and on 1.42.2 -- the build simplex reports -- it is the only way to clear
         artwork at all, because `DELETE /library/metadata/{id}/thumb` is a 404 there. So
         everything `clear_artwork` does after dropping the field is owed here too: the row
         falls back to its nearest ancestor that OWNS one, and every borrower below is
@@ -19113,7 +19113,7 @@ class PlexSim:
             # Cycle 29, measured on plexscratch by clearing the THUMB of a season that
             # owned its poster and borrowed its backdrop: the borrowed `art` is left
             # exactly as it was, naming `/library/metadata/<show>/art/<the show's stamp>`.
-            # plexsim rewrote it as `/library/metadata/<season>/art/<now>` -- a row
+            # simplex rewrote it as `/library/metadata/<season>/art/<now>` -- a row
             # claiming an image the server has none of, which the derivation then handed
             # to every episode under it. The re-stamp is for the artwork the row OWNS,
             # which is the same gate the PICK path has had since cycle 27.
@@ -19124,7 +19124,7 @@ class PlexSim:
             # season that OWNED an `art` and has it cleared reads back carrying the SHOW's
             # path -- and its episodes' own `art` follows it there -- while the bare
             # `GET /library/metadata/{season}/art` is a 404, because the row no longer
-            # owns an image. plexsim left the field off the row entirely, so the season
+            # owns an image. simplex left the field off the row entirely, so the season
             # page and every episode page under it drew no backdrop at all where a real
             # PMS draws the show's.
             #
@@ -19145,7 +19145,7 @@ class PlexSim:
             # row's own poster does not leave it with none -- the row falls back to its
             # PARENT's, which is the same path its own `parentThumb` already names
             # (season 7's `thumb` became the show's, episode 8's became the season's).
-            # plexsim dropped the field, so the tile drew nothing where a real PMS draws
+            # simplex dropped the field, so the tile drew nothing where a real PMS draws
             # the parent's poster. Cycle 23's "the field gone" was measured on a MOVIE,
             # which has no parent to borrow from.
             row[field] = row["parentThumb"]
@@ -19159,12 +19159,12 @@ class PlexSim:
         """`/library/metadata/{id}/{posters,arts}` -- the Change Artwork picker.
 
         A real PMS lists every candidate the agent found, each with `selected`
-        on the current one. plexsim has exactly what TMDB gave it plus its own
+        on the current one. simplex has exactly what TMDB gave it plus its own
         generated placeholder, and says so rather than padding the list.
         """
         if kind == "arts" and row.get("type") in ("season", "episode"):
             # Measured: a season's and an episode's background candidates are their
-            # OWN (none on the lab, fanart.tv's on fun) -- never the show's. plexsim
+            # OWN (none on the lab, fanart.tv's on fun) -- never the show's. simplex
             # offered the show's backdrop as the item's selected choice.
             return self.tag_container(size=0, _xml={"Metadata": "Photo"})
         entries = []
@@ -19178,7 +19178,7 @@ class PlexSim:
             # candidate's `ratingKey` is the bare uri and its `key` and `thumb` are a
             # SERVER PATH that really serves the image. A `media://` (and an
             # `upload://`) candidate carries no `provider` at all; only an agent-
-            # supplied `metadata://` one does. plexsim put the bare uri in all three
+            # supplied `metadata://` one does. simplex put the bare uri in all three
             # and stamped `provider: "local"`, so Change Artwork drew every uploaded
             # tile with `img src="upload://posters/..."` -- a broken tile.
             entries.append({"key": _candidate_path(row["ratingKey"], key),
@@ -19193,7 +19193,7 @@ class PlexSim:
         current = row.get(field)
         # `selected` is whichever candidate the row's artwork actually POINTS AT: a
         # versioned `/library/metadata/{id}/thumb/{ver}` means the remote one, a bare
-        # `/thumb/1` the generated placeholder. plexsim keyed it on "is there any
+        # `/thumb/1` the generated placeholder. simplex keyed it on "is there any
         # artwork at all", so after picking the placeholder NOTHING came back selected
         # and the picker showed no current choice.
         chose_remote = bool(stored) and picked == stored
@@ -19316,7 +19316,7 @@ class PlexSim:
         both seasons and two episodes back after each: a borrowed artwork field is
         DERIVED from its owner, not stored, so a write to the owner re-derives it on
         every borrower -- including CREATING it and including the borrower's own
-        `thumb`. Cycle 25 measured the move-where-present half and plexsim built only
+        `thumb`. Cycle 25 measured the move-where-present half and simplex built only
         that, so three things stayed stale:
 
           * an episode's own `art` did not follow a SHOW pick, although its
@@ -19346,12 +19346,12 @@ class PlexSim:
                     child["parentThumb"] = row["thumb"]
                 # Cycle 29: a season that OWNS an `art` keeps it through a show pick --
                 # measured on the copy, where the season's own path and stamp survived
-                # and only its `parentThumb` followed. plexsim assigned the show's value
+                # and only its `parentThumb` followed. simplex assigned the show's value
                 # over it, so a season's own backdrop was lost to the next show write.
                 self._hand_down(child, "art", self._handed_down_from("art", child, row))
                 # Cycle 61, measured on plexscratch42 (a theme upload on a show) and read on
                 # kids' Firefly: a season carries the show's theme as `parentTheme` and has
-                # no `theme` of its own. plexsim handed `theme` down as the season's own and
+                # no `theme` of its own. simplex handed `theme` down as the season's own and
                 # never set `parentTheme`, so a season page played no theme music.
                 child.pop("theme", None)
                 if row.get("theme") is None:
@@ -19366,7 +19366,7 @@ class PlexSim:
                 else:
                     child.pop("parentThumb", None)
                 # Cycle 29: and their own `art` switches to the season's the moment the
-                # season owns one, where plexsim left it naming the show. (An episode has
+                # season owns one, where simplex left it naming the show. (An episode has
                 # no `theme` of its own -- only `grandparentTheme`, cycle 61.)
                 self._hand_down(child, "art", self._handed_down_from("art", row, show))
             # A row that borrows THIS row's poster shows it, so its own `thumb`
@@ -19383,7 +19383,7 @@ class PlexSim:
                     else:
                         leaf[target] = row[name]
                 # `art` is handed down borrowed or not (cycle 20), so an episode's own
-                # `art` IS an ancestor's and moves with it -- the half plexsim left out,
+                # `art` IS an ancestor's and moves with it -- the half simplex left out,
                 # which left `art` and `grandparentArt` naming the same image at two
                 # different versions on the same row. Cycle 29: WHICH ancestor is the
                 # nearest one that owns it, and the field is CREATED where there was
@@ -19397,22 +19397,22 @@ class PlexSim:
         becomes an `upload://posters/<sha1 of the bytes>` candidate (an episode's and a
         season's carry their place in the path) and is selected at once, the row's thumb AND
         art both re-version, and one timeline frame -- state 5, no metadataState -- is
-        pushed, with no state 3 before it. plexsim answered the candidate LIST and stored
+        pushed, with no state 3 before it. simplex answered the candidate LIST and stored
         nothing, so an upload looked like it worked and changed no artwork.
         """
         if not body:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         # Cycle 59, measured on plexscratch42 and plexscratch: a THEME and a clear LOGO
         # upload are stored the way a poster is -- a selected `upload://themes/<sha1>` /
         # `upload://clearLogos/<sha1>` candidate, and the row gains its own versioned
         # `theme` (served `audio/mpeg3`) or a `clearLogo` `Image` (served `image/jpeg`),
-        # every artwork it owns re-versioning onto the same stamp. plexsim answered 200,
+        # every artwork it owns re-versioning onto the same stamp. simplex answered 200,
         # pushed its frame and kept nothing -- and filed both as an `art` upload, so a
         # theme changed the row's backdrop.
         # Cycle 83, measured on plexscratch42 (1.42.2): a poster or backdrop upload is
         # served `image/jpeg` WHATEVER its bytes -- PNG uploads (its own and the copy's
         # earlier ones) and 32 bytes of plain text alike, on the candidate's `/file?url=`,
-        # the row's versioned `thumb`/`art` path and through the transcoder. plexsim
+        # the row's versioned `thumb`/`art` path and through the transcoder. simplex
         # sniffed the bytes and sent `image/png` or `application/octet-stream`. The
         # transcoder still DECODES them: see `_image_type` at `/photo/:/transcode`.
         field, prefix, served = {
@@ -19432,14 +19432,14 @@ class PlexSim:
         key = "%s/%s" % (prefix, hashlib.sha1(body).hexdigest())
         self.uploads[key] = (body, served or _image_type(body))
         # Cycle 59, measured on both copies: an upload is a candidate of the row it was
-        # posted to and of no other. plexsim listed every upload the server held on every
+        # posted to and of no other. simplex listed every upload the server held on every
         # row's picker, keyed by the bytes' hash alone.
         mine = row.setdefault("_uploads", {}).setdefault(field, [])
         if key not in mine:
             mine.append(key)
         private = "_%s_url" % {"thumb": "poster"}.get(field, field)
         # Cycle 59, measured on plexscratch: the agent's candidate stays in the picker,
-        # unselected, after an upload. plexsim kept it only in the selection slot the
+        # unselected, after an upload. simplex kept it only in the selection slot the
         # upload overwrote, so Change Poster could never go back to it.
         if row.get(private) and not str(row[private]).startswith("upload://"):
             row.setdefault(private.replace("_url", "_agent"), row[private])
@@ -19450,7 +19450,7 @@ class PlexSim:
             # borrowed both fields from its show: only the field the upload WROTE becomes
             # the row's own. Its `thumb` became `/library/metadata/11/thumb/<stamp>` and
             # its `art` went on naming `/library/metadata/6/art/<the show's stamp>`
-            # untouched. plexsim re-versioned both as the row's own, so a poster upload
+            # untouched. simplex re-versioned both as the row's own, so a poster upload
             # invented a season-owned backdrop path -- a row claiming an image it does not
             # have, which the derivation then handed to every episode under it. The PICK
             # path has read it this way since cycle 27; the upload path never did.
@@ -19466,14 +19466,14 @@ class PlexSim:
             row.setdefault(field, "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, stamp))
         # Cycle 17, measured on plexscratch: the upload moves `updatedAt` onto the SAME
         # stamp the new artwork path carries, exactly as an artwork PICK does. Cycle 15
-        # measured that for the pick and plexsim implemented it there only, so a client
+        # measured that for the pick and simplex implemented it there only, so a client
         # that caches on the stamp -- which is what it is for -- never refetched a
         # poster the user had just uploaded.
         row["updatedAt"] = stamp
         # Cycle 29, measured on plexscratch by uploading an `art` to a SEASON and reading
         # its three episodes back: an upload CASCADES exactly as a pick does -- the
         # season's own `thumb` and `art` land on one stamp and every episode's
-        # `parentThumb` follows it. plexsim set the row's two fields, moved `updatedAt`
+        # `parentThumb` follows it. simplex set the row's two fields, moved `updatedAt`
         # and pushed its frame, and never called the cascade at all, so every child kept
         # the old stamp. A client caches artwork on that stamp -- which is the entire
         # point of versioning it -- so an uploaded poster stayed invisible on every
@@ -19487,13 +19487,13 @@ class PlexSim:
         """`PUT /library/metadata/{id}/{posters,arts}?url=` -- pick one."""
         chosen = urllib.parse.unquote(query.get("url") or "")
         if not chosen:
-            return ("error", 400, "plexsim: no url")
+            return ("error", 400, "simplex: no url")
         field = "thumb" if kind == "posters" else "art"
         private = "_poster_url" if kind == "posters" else "_art_url"
         # Measured on a writable copy of the reference: whatever is picked -- a remote
         # candidate, an `upload://` one, even one the server does not have -- the row's
         # artwork becomes a NEW versioned path of its own and the response body is that
-        # path. plexsim stored the url ITSELF for anything but an http one, so picking an
+        # path. simplex stored the url ITSELF for anything but an http one, so picking an
         # upload set the row's `thumb` to `upload://posters/...` and the client pointed the
         # tile's img src at a string no server serves.
         placeholder = "/library/metadata/%s/%s/1" % (row["ratingKey"], field)
@@ -19510,7 +19510,7 @@ class PlexSim:
         # (`Field: [{locked: true, name: thumb}]`), and exactly one frame goes out --
         # `timeline type=2 state=5`, no `metadataState`.
         #
-        # plexsim re-versioned only the field that was picked, left the children
+        # simplex re-versioned only the field that was picked, left the children
         # pointing at the old stamp -- which is how a show wore its old poster on every
         # season and episode tile after a change -- locked nothing and pushed nothing.
         stamp = int(time.time())
@@ -19522,7 +19522,7 @@ class PlexSim:
             # corroborated on zen, where an episode's `art` names its SEASON while its
             # `grandparentArt` names the show at a different stamp.
             #
-            # plexsim re-versioned all three onto the picking row, so a season that
+            # simplex re-versioned all three onto the picking row, so a season that
             # borrowed the show's backdrop came away claiming
             # `/library/metadata/<season>/art/<stamp>` -- a path only the owner serves,
             # which is cycle 16's "an artwork path is a 200 only on the row that OWNS the
@@ -19557,9 +19557,9 @@ class PlexSim:
         It is what "Get Info" falls back to for an item whose Media the client has
         not already loaded.
 
-        It NESTS, which plexsim did not do: a show's tree holds its seasons, each
+        It NESTS, which simplex did not do: a show's tree holds its seasons, each
         season its episodes, and each episode its MediaItem -- and an EPISODE's own
-        tree is rooted at the SHOW. plexsim answered one flat row with
+        tree is rooted at the SHOW. simplex answered one flat row with
         `MediaItem: []`, which is both empty-list-shaped and missing the hierarchy
         the dialog reads.
         """
@@ -19585,16 +19585,16 @@ class PlexSim:
                     entry["MediaStream"] = streams
                 parts.append(entry)
             # Measured: a MediaItem here carries ONLY its id -- the width,
-            # height, codecs, container and bitrate plexsim added belong on the
+            # height, codecs, container and bitrate simplex added belong on the
             # Media of a normal detail response, not on this tree.
             media_items.append({"id": media.get("id"), "MediaPart": parts})
         # `hash` and `openSubtitleHash` are on a real MediaPart here and are
-        # deliberately absent: both are hashes OF THE FILE, and plexsim has no
+        # deliberately absent: both are hashes OF THE FILE, and simplex has no
         # file to hash.
         # Measured on both servers: a season's title is always EMPTY here, and every
         # node's parentTitle is the ROOT's -- the show's title throughout a season's
         # tree, and empty throughout a show's (which is where an episode's tree is
-        # rooted). plexsim sent each row's own titles.
+        # rooted). simplex sent each row's own titles.
         root = root or row
         item = {
             "id": int(row["ratingKey"]),
@@ -19620,7 +19620,7 @@ class PlexSim:
                     if keep is None or str(child.get("ratingKey")) in keep]
         if children:
             # Measured: the tree NESTS -- a show holds its seasons, each season
-            # its episodes, each episode its MediaItem. plexsim answered one flat
+            # its episodes, each episode its MediaItem. simplex answered one flat
             # row with an empty MediaItem list, so Get Info on a show or a season
             # had nothing under it.
             item["MetadataItem"] = children
@@ -19666,16 +19666,16 @@ class PlexSim:
                 if query.get("title") is None or not query.get("sectionId"):
                     # Measured on a writable copy of the reference: a collection create
                     # needs a `title` and a `sectionId` -- each missing one is a 400 --
-                    # where plexsim made an "Untitled" collection in the first row's
+                    # where simplex made an "Untitled" collection in the first row's
                     # library. A missing `uri` is a 200 on both servers.
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 # Measured on a writable copy of the reference: a collection over a show
                 # holds the SHOW (`subtype: show`, one child) and one over a season holds
-                # the season, where plexsim expanded both into episodes.
+                # the season, where simplex expanded both into episodes.
                 section = query.get("sectionId")
                 level = self._collection_level(section, query.get("type"))
                 if level is None:
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 number, subtype = level
                 rows = self._collection_uri_rows(query.get("uri", ""), section,
                                                  number, subtype)
@@ -19686,7 +19686,7 @@ class PlexSim:
                 logger.info("COLLECTION create %s smart=%s (%d item(s))",
                             collection["title"], collection["smart"], len(rows))
                 # Measured: a create pushes one frame -- type 18, state 0 "created",
-                # titled -- which plexsim never sent, and the create RESPONSE carries
+                # titled -- which simplex never sent, and the create RESPONSE carries
                 # no librarySection fields where the ADD response does.
                 self.notify_created({"ratingKey": collection["ratingKey"],
                                      "type": "collection", "title": collection["title"],
@@ -19696,24 +19696,24 @@ class PlexSim:
                                         "librarySectionTitle")}
                 return self.bare_container(size=1, Metadata=[created])
             # A real PMS 404s the bare GET: collections are listed per section.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
 
         collection = self.library.collection(segments[2])
         if collection is None:
-            return ("error", 404, "plexsim: no such collection")
+            return ("error", 404, "simplex: no such collection")
         if method not in ("GET", "HEAD", "PUT", "DELETE"):
             # Cycle 21, measured on plexscratch: `POST`, `PATCH` and a bare `OPTIONS`
             # are 404s here and on `/children`, which is cycle 19's read-only-verb
             # rule -- it had never reached the collection and playlist paths, so
-            # plexsim answered the collection ROW to a POST.
-            return ("error", 404, "plexsim: not found")
+            # simplex answered the collection ROW to a POST.
+            return ("error", 404, "simplex: not found")
 
         if len(segments) == 3:
             if method == "DELETE":
                 # Measured order: every MEMBER is queued (state 3), then every member
                 # is done (state 5) -- which is what makes another client refetch the
                 # rows and drop the collection's tag from them -- and only then the
-                # collection's own state 9, whose title is EMPTY. plexsim pushed the
+                # collection's own state 9, whose title is EMPTY. simplex pushed the
                 # state 9 alone. A smart collection tags nobody, so it has no members
                 # to refetch.
                 members = ([] if collection.get("smart")
@@ -19732,7 +19732,7 @@ class PlexSim:
                 # Cycle 21, measured on plexscratch: this path is the ITEM edit path,
                 # with the whole grammar behind it -- a form that writes nothing is a
                 # 400, an unknown `.value` is a 400, and a PREF name (`collectionMode`)
-                # is a 400 here where `/prefs` takes it. plexsim ran a second, weaker
+                # is a 400 here where `/prefs` takes it. simplex ran a second, weaker
                 # code path that answered 200 to every form and dropped
                 # `titleSort.value`, so a save on the collection page reported success
                 # and lost the edit. The grammar runs against a COPY, as the metadata
@@ -19740,7 +19740,7 @@ class PlexSim:
                 try:
                     self.library.edit(dict(collection), query, pairs=query.get("_pairs"))
                 except library_module.EditError as error:
-                    return ("error", error.status, "plexsim: %s" % error.detail)
+                    return ("error", error.status, "simplex: %s" % error.detail)
                 for name in ("titleSort", "contentRating"):
                     if query.get("%s.value" % name) is not None:
                         collection[name] = query["%s.value" % name]
@@ -19763,7 +19763,7 @@ class PlexSim:
                 return ("empty", 200)
             section = self.catalog.section(collection["librarySectionID"]) or {}
             # Measured: this container carries `allowSync` TRUE, the identifier and
-            # the media-tag pair, and its librarySectionID is a NUMBER -- plexsim
+            # the media-tag pair, and its librarySectionID is a NUMBER -- simplex
             # sent a string and omitted the other three, so a client could not
             # resolve a tag into an image URL from a collection page.
             return self.bare_container(
@@ -19783,19 +19783,19 @@ class PlexSim:
         leaf = segments[3]
         if leaf in ("refresh", "unmatch", "analyze"):
             # Cycle 22, measured on plexscratch: all three answer 200 with an EMPTY
-            # body here, where plexsim fell through and answered a `{size: 0}`
+            # body here, where simplex fell through and answered a `{size: 0}`
             # MediaContainer. CLAUDE.md's own rule -- "a mutating endpoint answers 200
             # with an EMPTY body, not a MediaContainer" -- had never reached these
             # three, and the client parses the body of `match` to decide whether the
             # match took.
             if method != "PUT":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             # Cycle 36, measured on plexscratch with a listener open: the empty body
             # cycle 22 landed is right and was only half the answer -- these three
             # really RUN. `/library/collections/{id}/refresh` pushes the same three
             # frames the metadata spelling does, and `/unmatch` really unmatches: the
             # collection's `guid` becomes `local://{rk}`, its `subtype` the literal
-            # `unknown` and its `ratingCount` goes. plexsim answered the empty 200 and
+            # `unknown` and its `ratingCount` goes. simplex answered the empty 200 and
             # did nothing, so the SAME action taken from the collection's own path and
             # from its metadata path had different effects on the same row -- and the
             # collections path is the one the client's context menu builds.
@@ -19816,12 +19816,12 @@ class PlexSim:
             #   GET / POST / DELETE    -> 404       unknown setting -> 400
             #
             # So it is the same one-verb-each shape as the collection's other item leaves,
-            # and plexsim advertised both settings in the `includePreferences` block while
+            # and simplex advertised both settings in the `includePreferences` block while
             # 404ing the save behind them -- CLAUDE.md's own trap, a menu entry whose write
             # does not exist. The metadata-keyed alias `/library/metadata/{id}/prefs`
-            # answers on both references too, and plexsim already had that one.
+            # answers on both references too, and simplex already had that one.
             if method != "PUT":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             return self.library_metadata(
                 ["library", "metadata", str(collection["ratingKey"]), "prefs"],
                 query, method, None)
@@ -19830,7 +19830,7 @@ class PlexSim:
             # triple, and `/posters` lists exactly one candidate -- the collection's
             # own composite, keyed `default://`, `selected`, and with NO `provider`
             # (the agent rows do carry one, so its absence is specific to this row).
-            # `/arts` is empty. plexsim answered a bare `{size: 0}` to both, so
+            # `/arts` is empty. simplex answered a bare `{size: 0}` to both, so
             # Change Poster on a collection page offered nothing at all.
             entries = []
             if leaf == "posters":
@@ -19847,20 +19847,20 @@ class PlexSim:
                 mediaTagVersion=1655122614,
                 Metadata=entries, _xml={"Metadata": "Photo"})
         if leaf in ("children", "items") and method == "GET":
-            # Measured: `/items` answers the same members as `/children` -- plexsim
+            # Measured: `/items` answers the same members as `/children` -- simplex
             # answered an empty container to it, so the Edit Collection dialog's
             # member list was blank.
             # Measured on a writable copy of the reference: a collection's members come
             # back as the LIGHT grid row -- no Guid, no Rating, no Field, a Part with no
             # Stream list and text-only tags -- while the same item's detail read is
-            # full. plexsim sent the detail row here and on a playlist's items, the two
+            # full. simplex sent the detail row here and on a playlist's items, the two
             # list endpoints the grid projection was never applied to, so every Edit
             # Collection dialog and every playlist page carried the whole stream table.
             rows = [_grid_row(_listing_row(r))
                     for r in self.library.collection_children(collection)]
             return self.bare_container(size=len(rows), Metadata=rows)
         # Measured: `/children/{ratingKey}` removes a member exactly as `/items/` does;
-        # plexsim answered it with an empty 200 and removed nothing.
+        # simplex answered it with an empty 200 and removed nothing.
         if leaf in ("items", "children") and len(segments) == 5 \
                 and method == "DELETE" and not segments[4].isdigit():
             # Cycle 17, measured on plexscratch: a ratingKey that is not a NUMBER is a
@@ -19868,11 +19868,11 @@ class PlexSim:
             # split the stream paths already have (cycle 15): a malformed id is told
             # apart from a missing one. Recorded in cycle 14 and left unimplemented, so
             # a client that built the path wrong was told the member had been removed.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         if leaf in ("items", "children") and len(segments) == 5 and method == "DELETE":
             # Remove-from-collection, which the client builds as
             # `collection.url + "/items/" + ratingKey` with type DELETE and then
-            # assigns the RESPONSE onto its own model. plexsim had no DELETE branch
+            # assigns the RESPONSE onto its own model. simplex had no DELETE branch
             # at all, so it fell to an empty container: the tile disappeared
             # optimistically and came back on the next fetch. Measured: 200 with the
             # collection row, and it is idempotent.
@@ -19887,22 +19887,22 @@ class PlexSim:
                 and segments[5] == "move":
             # Cycle 17, measured on plexscratch case by case with the order restored
             # before each: `/children/{ratingKey}/move` is the same endpoint as
-            # `/items/...` and really moves, where plexsim answered `{size: 0}` and
+            # `/items/...` and really moves, where simplex answered `{size: 0}` and
             # moved nothing. And the grammar refuses three shapes with a 400 --
             # `after=` naming the moving row itself, an EMPTY `after=`, and one that is
             # not a number -- while an `after=` that names NO member (`999999`, `0`) is
             # a 200 that moves the row to the FRONT, exactly as no `after=` does. A
-            # ratingKey that is not a member is a 400, not a 404. plexsim answered 200
+            # ratingKey that is not a member is a 400, not a 404. simplex answered 200
             # to every one and moved the row regardless.
             if method != "PUT":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             after = query.get("after")
             if after is not None and (after == segments[4]
                                       or not str(after).lstrip("-").isdigit()):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if not self.library.move_collection_item(collection, segments[4], after):
-                return ("error", 400, "plexsim: bad request")
-            # Measured: the move answers the collection ROW, where plexsim sent nothing.
+                return ("error", 400, "simplex: bad request")
+            # Measured: the move answers the collection ROW, where simplex sent nothing.
             return self.bare_container(
                 size=1, Metadata=[self.library._collection_row(collection)])
         if leaf == "items" and method == "PUT" and collection.get("smart"):
@@ -19924,17 +19924,17 @@ class PlexSim:
             # members it cannot use -- a movie and an episode into a movie collection is
             # a 200 that adds the movie and drops the episode, and an unknown key beside
             # a real one adds the real one. Only a SINGLE-key uri of the wrong type is
-            # the 400 cycle 9 recorded. plexsim refused the whole batch, so "Add to
+            # the 400 cycle 9 recorded. simplex refused the whole batch, so "Add to
             # Collection" over a multi-select lost every row when one was wrong.
             usable = [r for r in rows if r.get("type") == collection.get("subtype")]
             if not rows or (len(rows) == 1 and not usable):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             with self.lock:
                 self.library.add_collection_items(collection, usable)
                 answer = self.library._collection_row(collection)
             # Measured: a collection add answers the collection ROW -- with its new
             # childCount and year span -- and not the leafCountAdded/Requested pair a
-            # PLAYLIST add answers. plexsim sent the playlist shape here, so the
+            # PLAYLIST add answers. simplex sent the playlist shape here, so the
             # collection page had nothing to update itself from.
             return self.bare_container(size=1, Metadata=[answer])
         if leaf == "composite":
@@ -19952,7 +19952,7 @@ class PlexSim:
         `?includeMeta=1` on a playlist's items carries a Meta whose Type rows
         are All plus one per type the list can be narrowed to, every one of
         them `type: "mixed"` and keyed by this same path with a `?type=`.
-        plexsim carried no Meta, so the page drew no tabs.
+        simplex carried no Meta, so the page drew no tabs.
         """
         path = "/playlists/%s/items" % playlist["ratingKey"]
         return {"Type": [
@@ -20019,17 +20019,17 @@ class PlexSim:
             # corpus and replayed it on both writable PMS versions. The endpoint
             # requires BOTH query parameters; with either missing it is a 400.
             # With both present it reaches Plex's importer and fails 500 on these
-            # servers whether the absolute server path exists or not. plexsim has
+            # servers whether the absolute server path exists or not. simplex has
             # no M3U importer, so reproducing that closed surface is more faithful
             # than the generic 404 it previously returned.
             if method != "POST":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if query.get("sectionID") is None or query.get("path") is None:
-                return ("error", 400, "plexsim: bad request")
-            return ("error", 500, "plexsim: playlist import failed")
+                return ("error", 400, "simplex: bad request")
+            return ("error", 500, "simplex: playlist import failed")
         # The listing is a READ: on plexscratch (1.43.4, 2026-09-30) `POST
         # /playlists?type=42` is the create validator's 400 like any other POST there,
-        # and PUT, DELETE and a bare OPTIONS the dispatcher's empty row. plexsim answered
+        # and PUT, DELETE and a bare OPTIONS the dispatcher's empty row. simplex answered
         # the POST with the background list.
         if len(segments) == 1 and str(query.get("type") or "") in ("42", "042", "00042") \
                 and method in ("GET", "HEAD"):
@@ -20053,19 +20053,19 @@ class PlexSim:
                 return self.bare_container(size=len(PLAYLIST_SORTS),
                                            Directory=PLAYLIST_SORTS)
             if len(segments) > 1 and segments[1] == "generators":
-                # Optimized-version generators. plexsim has no encoder, so there
+                # Optimized-version generators. simplex has no encoder, so there
                 # is nothing generating versions; a real PMS 404s this too.
-                return ("error", 404, "plexsim: no version generators")
+                return ("error", 404, "simplex: no version generators")
             if method == "POST":
                 # Measured on a writable copy of the reference: a create needs a
                 # `title`, a `type` and a `uri` (each missing one is a 400), a type
                 # outside video/audio/photo is a 500, and a type that does not fit what
-                # the uri names -- `audio` or `photo` over a movie -- is a 400. plexsim
+                # the uri names -- `audio` or `photo` over a movie -- is a 400. simplex
                 # created an "Untitled" list of whatever it was sent.
                 if any(query.get(name) is None for name in ("title", "type", "uri")):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 if query["type"] not in ("video", "audio", "photo"):
-                    return ("error", 500, "plexsim: bad playlist type")
+                    return ("error", 500, "simplex: bad playlist type")
                 rows = self._items_for_uri(query.get("uri", ""))
                 # Cycle 41, measured on both writable copies: a type/content
                 # mismatch is a peculiar committed error. `audio` over a movie
@@ -20078,7 +20078,7 @@ class PlexSim:
                     rows = []
                 # Cycle 16, measured on plexscratch: `smart=1` over a comma-joined KEY
                 # LIST is a 400 and creates nothing -- a smart list's uri has to name a
-                # LISTING. plexsim created one whose stored query was a key list, so
+                # LISTING. simplex created one whose stored query was a key list, so
                 # its `content` named a path that selects nothing and the list was
                 # permanently empty.
                 #
@@ -20086,11 +20086,11 @@ class PlexSim:
                 # first attempt refused any uri that produced rows, and a listing uri
                 # produces rows too, so every smart create became a 400.
                 # Cycle 31: that 400 is **1.43.4's**. On plexscratch42 -- a fresh
-                # 1.42.2 install, the build plexsim reports -- the same create is a 200
+                # 1.42.2 install, the build simplex reports -- the same create is a 200
                 # that makes a real smart playlist: `smart: true`,
                 # `icon: "playlist://image.smart"`, `leafCount: 3` and
                 # `content: library://x/directory/%2Flibrary%2Fmetadata%2F1%2C2`. So on
-                # 1.42.2 a key list is a legal stored query, and plexsim refused it.
+                # 1.42.2 a key list is a legal stored query, and simplex refused it.
                 with self.lock:
                     playlist = self.library.create_playlist(
                         query.get("title") or "", query.get("type") or "video", rows,
@@ -20102,14 +20102,14 @@ class PlexSim:
                                      "librarySectionID": -1, "type": "playlist",
                                      "title": ""})
                 if mismatched:
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 # Measured: the CREATE response omits `content` the same way the
                 # list does; only /playlists/{id} carries it. Cycle 21: it omits the
                 # per-user-state block too, although the playlist is already born
                 # `viewCount: 1` -- `/playlists` shows the 1 that this response does not.
                 return self.bare_container(size=1, Metadata=[answer])
             rows = self.library.playlists(query.get("playlistType"))
-            # Cycle 16, measured on plexscratch: this listing FILTERS. plexsim honoured
+            # Cycle 16, measured on plexscratch: this listing FILTERS. simplex honoured
             # only `smart=0`, so a library's Recent Playlists shelf -- keyed by
             # `sectionID` -- showed every playlist on the server.
             if query.get("smart") in ("0", "1"):
@@ -20130,7 +20130,7 @@ class PlexSim:
                     rows = []
             # Cycle 16, measured on plexscratch: `mediaCount` is a real ordering
             # here -- by the number of items -- and it is the sixth sort this
-            # endpoint's own Meta advertises, as "Item Count". plexsim 500'd it
+            # endpoint's own Meta advertises, as "Item Count". simplex 500'd it
             # alongside `leafCount`, which really is a 500 on both servers, so the
             # sort menu's last entry answered an error page.
             spec = query.get("sort") or ""
@@ -20142,14 +20142,14 @@ class PlexSim:
                 rows, unsupported = self._sorted(rows, spec)
                 if unsupported:
                     return ("error", 500,
-                            "plexsim: unsupported sort key %s" % unsupported)
+                            "simplex: unsupported sort key %s" % unsupported)
             # Cycle 88, measured on plexscratch42: a playlist's locks (`Field`) ride on
             # `/playlists/{id}` and `/library/metadata/{id}` only; the listing carries none.
             rows = [{k: v for k, v in r.items() if k != "Field"} for r in rows]
             answer = self.paged_container(rows, query)
             if query.get("includeMeta") == "1":
                 # Measured on both references, byte-identical: the playlist page's
-                # own sort menu comes from here, and plexsim sent no Meta at all.
+                # own sort menu comes from here, and simplex sent no Meta at all.
                 answer["MediaContainer"]["Meta"] = _playlist_meta(
                     query, listing_all=segments[1:2] == ["all"])
             return answer
@@ -20166,7 +20166,7 @@ class PlexSim:
 
         playlist = self.library.playlist(segments[1])
         if playlist is None:
-            return ("error", 404, "plexsim: no such playlist")
+            return ("error", 404, "simplex: no such playlist")
 
         if len(segments) == 2:
             if method == "DELETE":
@@ -20181,7 +20181,7 @@ class PlexSim:
                 return ("empty", 204)
             if method == "PUT":
                 # Measured: a PUT that names nothing it can write is a 400 -- an
-                # unknown parameter, `smart=1`, or no parameters at all. plexsim
+                # unknown parameter, `smart=1`, or no parameters at all. simplex
                 # answered 200 to all three.
                 # Cycle 16, measured on plexscratch: this takes the whole ITEM
                 # edit grammar. `thumb=`/`art=` mint artwork under
@@ -20189,7 +20189,7 @@ class PlexSim:
                 # every `.locked` really locks; `year`, `originallyAvailableAt` and
                 # `studio` are stored; `userRating`, `guid`, `duration` and the
                 # timestamps are accepted and DISCARDED. Only the list's own structural
-                # fields, an unknown field and a bare PUT are 400s. plexsim allowed
+                # fields, an unknown field and a bare PUT are 400s. simplex allowed
                 # four fields, so the Edit dialog's Poster and Background pickers and
                 # every lock checkbox answered "There was a problem updating this item".
                 stored = {"title", "summary", "titleSort", "year", "studio",
@@ -20199,12 +20199,12 @@ class PlexSim:
                 named = [k for k in query
                          if not k.startswith("X-Plex-") and k != "_pairs"]
                 if not named:
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 for name in named:
                     field = name.rsplit(".", 1)[0] if name.endswith((".value", ".locked")) \
                         else name
                     if field not in stored and field not in discarded:
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                 self.library.edit(playlist, {k: v for k, v in query.items()
                                              if k in named
                                              and (k.rsplit(".", 1)[0]
@@ -20237,54 +20237,54 @@ class PlexSim:
             if method == "POST":
                 # Cycle 16, measured on plexscratch: a POST here is a plain 404 in
                 # every form -- with a uri, with an empty one, with none. Only PUT
-                # adds. plexsim answered the item listing with a 200, which reads to a
+                # adds. simplex answered the item listing with a 200, which reads to a
                 # client as "this endpoint exists and accepts writes".
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             if playlist.get("smart") and len(segments) >= 4 \
                     and method in ("PUT", "DELETE"):
                 # Cycle 16, measured on plexscratch: EVERY item write on a smart list is
                 # a 400 -- the move as well as the single delete and the clear, which
-                # were already right. plexsim answered 404 to the move, which reads as
+                # were already right. simplex answered 404 to the move, which reads as
                 # "no such item" where a real PMS says a smart list has no items to move.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if len(segments) == 5 and segments[4] == "move" and method == "PUT":
                 with self.lock:
                     moved = self.library.move_playlist_item(playlist, segments[3],
                                                             query.get("after"))
                     answer = self.library._playlist_row(playlist)
                 if not moved:
-                    return ("error", 404, "plexsim: no such playlist item")
+                    return ("error", 404, "simplex: no such playlist item")
                 return self.bare_container(size=1, Metadata=[answer])
             if playlist.get("smart") and len(segments) == 3 and method == "PUT":
                 # Measured on a writable copy of the reference: this is the Edit-smart-
                 # playlist Save. A LISTING uri REPLACES the stored query and answers the
                 # playlist row, re-evaluated; an ITEM uri and no uri are 400s, because a
-                # smart playlist's items are its query. plexsim refused every uri, so Save
+                # smart playlist's items are its query. simplex refused every uri, so Save
                 # answered "There was a problem updating this item."
                 return self.save_smart_query(playlist, query, "playlist")
             if playlist.get("smart") and ((len(segments) == 3 and method == "DELETE")
                                           or (len(segments) == 4 and method == "DELETE")):
                 # A smart playlist's items cannot be removed or cleared either.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             if len(segments) == 4 and method == "PUT":
                 # Cycle 18, measured on plexscratch: a PUT at ONE member is a 400 for a
                 # member id and for an unknown number alike, and a 404 for an id that is
-                # not a number -- the SHAPE is checked before membership. plexsim ran
+                # not a number -- the SHAPE is checked before membership. simplex ran
                 # the ADD here and answered 200 with `leafCountAdded: 0`.
                 if not segments[3].isdigit():
-                    return ("error", 404, "plexsim: no such playlist item")
-                return ("error", 400, "plexsim: bad request")
+                    return ("error", 404, "simplex: no such playlist item")
+                return ("error", 400, "simplex: bad request")
             if len(segments) == 4 and method == "DELETE":
                 with self.lock:
                     removed = self.library.remove_playlist_item(playlist, segments[3])
                     answer = self.library._playlist_row(playlist)
                 if not removed:
                     # Measured: an item id the playlist does not hold is a 404 -- and a
-                    # ratingKey is not an item id -- where plexsim answered 200.
-                    return ("error", 404, "plexsim: no such playlist item")
+                    # ratingKey is not an item id -- where simplex answered 200.
+                    return ("error", 404, "simplex: no such playlist item")
                 return self.bare_container(size=1, Metadata=[answer])
             if len(segments) == 3 and method == "DELETE":
-                # Measured: DELETE on the items CLEARS the playlist. plexsim answered the
+                # Measured: DELETE on the items CLEARS the playlist. simplex answered the
                 # item listing and removed nothing.
                 with self.lock:
                     self.library.clear_playlist(playlist)
@@ -20316,7 +20316,7 @@ class PlexSim:
             # fractional one is a 400. The library filters apply on top, `sort=` and
             # `limit=` are parsed and then ignored (an unparseable one is a 500), and
             # `includeMeta=1` carries the Meta the page's tab bar is built from.
-            # plexsim answered every row to every one of these.
+            # simplex answered every row to every one of these.
             self._parsed_type(query, 400, 400)
             wanted = str(query.get("type") or "")
             pairs = list(self.library.playlist_items(playlist))
@@ -20341,7 +20341,7 @@ class PlexSim:
             _, unsupported = self._sorted([row for row, _ in pairs],
                                           query.get("sort") or "")
             if unsupported:
-                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+                return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
             self._limited([], query)
             rows = []
             for row, item_id in pairs:
@@ -20375,13 +20375,13 @@ class PlexSim:
             # here. The bare `/playlists/{id}/composite` is a 404, as are `posters`,
             # `arts`, `thumb` and `art` -- a playlist's artwork lives under
             # `/library/metadata/{ratingKey}/`, which is where its own row points.
-            # plexsim answered all five, so a probe of a path a real PMS does not have
+            # simplex answered all five, so a probe of a path a real PMS does not have
             # came back 200.
             art = self.composite_for("playlist", segments[1])
             if art:
                 return ("image", self._at_width(art, query.get("width")))
             return ("png", query)
-        return ("error", 404, "plexsim: not found")
+        return ("error", 404, "simplex: not found")
 
     # -- play queue ------------------------------------------------------
 
@@ -20393,19 +20393,19 @@ class PlexSim:
         entries are drawn (the provider advertises `playqueue`) and neither does
         anything.
 
-        WHERE they insert is measured, and plexsim had both wrong. A plain add goes
+        WHERE they insert is measured, and simplex had both wrong. A plain add goes
         after the block of already-added items following the current one; a
         `next=1` add goes IMMEDIATELY after the current item, ahead of that block.
-        plexsim appended to the very end of the queue and inserted at index 1
+        simplex appended to the very end of the queue and inserted at index 1
         regardless of where the player actually was.
         """
         if not segments[1].isdigit():
-            return ("error", 404, "plexsim: no such play queue")
+            return ("error", 404, "simplex: no such play queue")
         queue_id = int(segments[1])
         with self.lock:
             queue = self.play_queues.get(queue_id)
         if queue is None:
-            return ("error", 404, "plexsim: no such play queue")
+            return ("error", 404, "simplex: no such play queue")
 
         if len(segments) == 3 and segments[2] in ("shuffle", "unshuffle"):
             # Cycle 75, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): the
@@ -20416,12 +20416,12 @@ class PlexSim:
             # in. Every row but the selected one gets a new id, minted by position, so the
             # selected row's own slot skips one. Once anything has been added
             # (`playQueueLastAddedItemID`) both are the 404 cycle 15 measured -- which was
-            # the only case it measured, so plexsim refused every shuffle.
+            # the only case it measured, so simplex refused every shuffle.
             if method != "PUT":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             with self.lock:
                 if queue.get("last_added") is not None:
-                    return ("error", 404, "plexsim: not found")
+                    return ("error", 404, "simplex: not found")
                 current = next((entry for entry in queue["items"]
                                 if entry["id"] == queue["selected"]), None)
                 order = list(queue.get("natural") or
@@ -20455,7 +20455,7 @@ class PlexSim:
         if len(segments) == 3 and segments[2] == "items" and method == "DELETE":
             # Measured on a writable copy of the reference: DELETE on the items clears
             # the queue down to its SELECTED item -- the one playing -- and steps the
-            # version. plexsim answered 404.
+            # version. simplex answered 404.
             with self.lock:
                 queue["items"] = [e for e in queue["items"] if e["id"] == queue["selected"]]
                 queue["version"] += 1
@@ -20467,7 +20467,7 @@ class PlexSim:
             # `playQueueTotalCount` -- with the rows that REMAIN; only the SELECTED
             # one also drops the rows entirely. The next read carries the stepped
             # version, the new total and, where the selection went, the item that
-            # followed it. Cycle 9 measured the selected case alone and plexsim
+            # followed it. Cycle 9 measured the selected case alone and simplex
             # answered the post-mutation container for every other item -- and the
             # client DISCARDS a queue response whose version it did not expect, so a
             # delete from Up Next threw the player's own queue away.
@@ -20478,17 +20478,17 @@ class PlexSim:
                 index = next((i for i, e in enumerate(items)
                               if str(e["id"]) == str(segments[3])), None)
                 if index is None:
-                    # Measured: an unknown item id is a 404. plexsim derived the
+                    # Measured: an unknown item id is a 404. simplex derived the
                     # index from the id arithmetically, so an id the client cached
                     # before an insert deleted a DIFFERENT row.
-                    return ("error", 404, "plexsim: no such play queue item")
+                    return ("error", 404, "simplex: no such play queue item")
                 items.pop(index)
                 queue["version"] += 1
                 if was_selected:
                     # Cycle 87, plexscratch42 (1.42.2): the selection moves to the row that
                     # FOLLOWED the removed one, and with none after it the queue has NO
                     # selection -- the same rule cycle 84 measured for a library removal
-                    # (`remove_from_play_queues`). plexsim selected the row before it.
+                    # (`remove_from_play_queues`). simplex selected the row before it.
                     following = items[index] if index < len(items) else None
                     queue["selected"] = following["id"] if following else None
                     if following is None and items:
@@ -20520,7 +20520,7 @@ class PlexSim:
                         body["playQueueSelectedItemID"] = was_id
                     # Cycle 87, plexscratch42: and that answer reports offset 0 and no
                     # `playQueueSelectedMetadataItemID`, whether the selection moved on or
-                    # was lost. plexsim reported the new selection's offset and item.
+                    # was lost. simplex reported the new selection's offset and item.
                     body["playQueueSelectedItemOffset"] = 0
                     body.pop("playQueueSelectedMetadataItemID", None)
             return answer
@@ -20528,20 +20528,20 @@ class PlexSim:
         if len(segments) == 2 and method == "PUT":
             if not query.get("uri") and not query.get("playlistID"):
                 # Measured: a bare refresh PUT with no uri is a 400.
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             rows = ([] if self._foreign_uri(query.get("uri", ""))
                     else self._items_for_uri(query.get("uri", ""),
                                              continuous=query.get("continuous") == "1"))
             if not query.get("uri") and query.get("playlistID"):
                 # Measured on a writable copy of the reference: `playlistID=` adds that
-                # playlist's items as a plain add. plexsim stepped the version and added
+                # playlist's items as a plain add. simplex stepped the version and added
                 # nothing.
                 playlist = self.library.playlist(query["playlistID"])
                 rows = [row for row, _item in self.library.playlist_items(playlist)] if playlist else []
             if not rows:
                 # Measured on the copy: an add that adds NOTHING leaves the queue exactly
                 # as it was -- `playQueueVersion` does not move, and neither does
-                # `playQueueLastAddedItemID`. plexsim stepped the version on every no-op,
+                # `playQueueLastAddedItemID`. simplex stepped the version on every no-op,
                 # and the client DISCARDS a queue response whose version it does not
                 # expect, so a no-op add invalidated the queue the player was holding.
                 # The return sits OUTSIDE the lock: play_queue_container takes the same
@@ -20559,7 +20559,7 @@ class PlexSim:
                     # Next block. Re-measured on a writable copy of the reference: a
                     # create of [A, B, C] with A playing, then a plain add of D, answers
                     # [A, D, B, C]; a second plain add of E answers [A, D, E, B, C], and a
-                    # `next=1` add goes in front of that block. plexsim tested
+                    # `next=1` add goes in front of that block. simplex tested
                     # `id > selected` as a proxy for "added", but every ORIGINAL member
                     # also has an id above the first item's, so it skipped the whole queue
                     # and appended at the very end -- Add to Queue from a grid dropped the
@@ -20583,7 +20583,7 @@ class PlexSim:
                     queue["last_added"] = self._queue_block_tail(queue)
                 # Cycle 32, measured on both writable copies: two concurrent adds to one
                 # queue each answer the queue AS THAT ADD LEFT IT -- versions 2 and 3, and
-                # each its own `playQueueLastAddedItemID` -- in 110 of 110 pairs. plexsim
+                # each its own `playQueueLastAddedItemID` -- in 110 of 110 pairs. simplex
                 # built the answer after releasing the lock and answered BOTH with the
                 # second add's container in 11 of 67, telling the first client that the
                 # item it just added was the other client's.
@@ -20593,13 +20593,13 @@ class PlexSim:
             return answer
 
         if len(segments) == 2 and method in ("POST", "DELETE"):
-            # Measured: both are 404 on a real PMS. plexsim's DELETE really dropped
+            # Measured: both are 404 on a real PMS. simplex's DELETE really dropped
             # the queue, so a client that tried one lost the queue it was playing.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
 
         if len(segments) == 2:
             return self.play_queue_container(queue_id, query)
-        return ("error", 404, "plexsim: not found")
+        return ("error", 404, "simplex: not found")
 
     @staticmethod
     def _queue_block_tail(queue):
@@ -20638,7 +20638,7 @@ class PlexSim:
 
         Measured on the reference: the queue shrinks, `playQueueTotalCount` drops and
         the VERSION steps -- and the selection moves to a row that still exists.
-        plexsim left the removed row's item id as `playQueueSelectedItemID` and never
+        simplex left the removed row's item id as `playQueueSelectedItemID` and never
         moved the version, which per its own findings is the response the client
         throws away: the player would have been holding a selection that no longer
         existed on a queue it could not refresh.
@@ -20649,7 +20649,7 @@ class PlexSim:
         an episode `/merge` and a show `/merge` for the rows they absorb. The version
         steps once PER ROW that leaves (three episodes: 1 -> 4), and a selection that
         left moves to the FOLLOWING surviving row -- not the first -- or, with nothing
-        after it, to no selection at all. plexsim dropped only the named key, so a
+        after it, to no selection at all. simplex dropped only the named key, so a
         deleted season's episodes stayed queued, and moved the selection to the head.
         """
         gone = {int(key) for key in rating_keys}
@@ -20683,7 +20683,7 @@ class PlexSim:
         """`PUT /playQueues/{id}/items/{itemID}/move?after=` -- drag in Up Next.
 
         Measured: `after=-1` moves the item to the FRONT and the version steps.
-        plexsim did not route this at all -- the request fell through to its
+        simplex did not route this at all -- the request fell through to its
         add-to-queue branch and answered 200 with the queue unchanged, so the
         handle moved and the order snapped back on the next read.
         """
@@ -20693,15 +20693,15 @@ class PlexSim:
             index = next((i for i, e in enumerate(items)
                           if str(e["id"]) == str(item_id)), None)
             if index is None:
-                return ("error", 404, "plexsim: no such play queue item")
+                return ("error", 404, "simplex: no such play queue item")
             # Cycle 16, measured on plexscratch: an `after` naming the MOVING
-            # item itself is a 404 and an EMPTY `after=` is a 400 -- plexsim moved to
+            # item itself is a 404 and an EMPTY `after=` is a 400 -- simplex moved to
             # the head for both. `after=-1`, which the client actually sends, is the
             # form that really does move to the front.
             if str(after) == str(item_id):
-                return ("error", 404, "plexsim: no such play queue item")
+                return ("error", 404, "simplex: no such play queue item")
             if after is not None and str(after) == "":
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             moving = items.pop(index)
             if after is None or str(after) == "-1":
                 items.insert(0, moving)
@@ -20710,7 +20710,7 @@ class PlexSim:
                                if str(e["id"]) == str(after)), None)
                 # Measured on a writable copy of the reference: an `after` the queue does
                 # not hold -- `0`, an unknown id -- moves the item to the FRONT, as `-1`
-                # does. plexsim answered 404 and left it where it was.
+                # does. simplex answered 404 and left it where it was.
                 items.insert(0 if target is None else target + 1, moving)
             # Cycle 41 measured create-one -> plain-add-one -> move-the-added-tail-to-
             # front ([A, B] lastAdded=B, then [B, A] lastAdded=A) and read it as "the
@@ -20739,7 +20739,7 @@ class PlexSim:
 
         `FriendlyName` is the one that matters: it is `hidden: false, group:
         "general"` and the client looks it up BY ID to draw Settings > General's
-        server-name field and to set its own `friendlyName`. plexsim's list was
+        server-name field and to set its own `friendlyName`. simplex's list was
         missing it, so the field did not render and a write to it was refused as an
         unknown preference.
         """
@@ -20747,7 +20747,7 @@ class PlexSim:
                 "MachineIdentifier": self.catalog.machine,
                 "PlexOnlineMail": self._owner() if self._claimed() else ""}
 
-    # Cycle 19: `server_prefs.json` was captured off kids (1.43.4) and plexsim reports
+    # Cycle 19: `server_prefs.json` was captured off kids (1.43.4) and simplex reports
     # 1.42.2 -- the fifth fixture found to be per VERSION, after `Meta.Type[].Filter`,
     # `Meta.Type[].Field`, `system_agents.json` and `section_prefs_new.json`. Measured:
     # kids answers 174 settings and zen 173, and exactly these two are on kids and not on
@@ -20775,12 +20775,12 @@ class PlexSim:
     # take a value they cannot parse without refusing. Both sets are the measurement.
     #
     # Cycle 30 re-measured the refusal list on **plexscratch42**, a writable copy of
-    # 1.42.2.10156 -- the build plexsim reports -- and it is TWO settings there, not four:
+    # 1.42.2.10156 -- the build simplex reports -- and it is TWO settings there, not four:
     # `TranscoderH264Options` and `TranscoderH264OptionsOverride` take a write with a 200
     # and really STORE it (`x` -> `c30probe` -> `""` on read-back), where 1.43.4 answers
     # 403 for both. `PlexOnlineUrl` and `allowMediaDeletionLanOnly` are 403 on both
     # versions. Cycle 19 measured the list on the 1.43.4 copy, which was the only writable
-    # reference there was, so plexsim refused two writes a server of its own version
+    # reference there was, so simplex refused two writes a server of its own version
     # accepts -- and the Transcoder pane's two advanced fields could not be set at all.
     WRITE_PROTECTED_PREFS = ("PlexOnlineUrl", "allowMediaDeletionLanOnly")
     LENIENT_INT_PREFS = ("ButlerStartHour", "ButlerEndHour")
@@ -20790,13 +20790,13 @@ class PlexSim:
 
         Validated the way a real PMS validates it, all of it measured:
         * an unknown preference is a 400, message and all, and NOTHING in the
-          request is applied -- plexsim applied the known ones beside it;
+          request is applied -- simplex applied the known ones beside it;
         * an `int` or `double` that does not parse (`abc`, `4.5` for an int) is a
           500 and an EMPTY one is ignored;
         * a `bool` is true for exactly `1` and `true`, and false for anything else,
           an empty value included;
         * the stored value keeps its TYPE, so the next read still says `40` and
-          `false` rather than the strings `"40"` and `"0"` plexsim echoed back.
+          `false` rather than the strings `"40"` and `"0"` simplex echoed back.
         """
         # ...and the WRITE path reads the same list, or a 1.43.4-only id could be
         # written on a server reporting 1.42.2, where a real one refuses the whole
@@ -20816,7 +20816,7 @@ class PlexSim:
                 # the set is the measurement rather than a rule. `PlexOnlineUrl` could be
                 # claim-gated on an unclaimed copy; the other three are not obviously so.
                 # See HANDOVER.md 3.3.
-                return ("error", 403, "plexsim: forbidden")
+                return ("error", 403, "simplex: forbidden")
         typed = []
         for name, value in writes:
             kind = settings[name].get("type")
@@ -20829,11 +20829,11 @@ class PlexSim:
                     if name in self.LENIENT_INT_PREFS:
                         # ...and these two take a WORD without refusing: `ButlerStartHour
                         # =abc` and `ButlerEndHour=abc` are 200s that store nothing, alone
-                        # among the 38 integer settings -- the other 36 are 500s. plexsim
+                        # among the 38 integer settings -- the other 36 are 500s. simplex
                         # 500'd all 38, so the Scheduled Tasks page could not be saved at
                         # all with an empty hour field.
                         continue
-                    return ("error", 500, "plexsim: internal error")
+                    return ("error", 500, "simplex: internal error")
             elif kind == "bool":
                 typed.append((name, value in ("1", "true")))
             else:
@@ -20845,7 +20845,7 @@ class PlexSim:
             # Measured on a writable copy of the reference: the name written here is the
             # server's name on `/`, `/media/providers` and `/servers` at once, and an EMPTY
             # one is kept as the preference's value while the displayed name falls back to
-            # the host name. plexsim stored the preference and kept its old name everywhere,
+            # the host name. simplex stored the preference and kept its old name everywhere,
             # so renaming the server in Settings changed nothing the client draws.
             self.catalog.friendly = dict(typed)["FriendlyName"] or socket.gethostname()
             if self.discovery is not None:
@@ -20854,12 +20854,12 @@ class PlexSim:
                 # container: a `FriendlyName` write changes the reply's `Name:` line and
                 # leaves the stamp where it was, while a library CREATE, EDIT or DELETE
                 # moves it to that write's own second. A refresh, an item edit, a
-                # collection create and an index delete all leave it alone. plexsim
+                # collection create and an index delete all leave it alone. simplex
                 # touched it here -- the one event that does not -- and on nothing else.
                 self.discovery.name = self.catalog.friendly
         # One `preference` frame per written id, in ASCII order of the id, whether or not
         # the value changed -- the shape `/:/prefs/get` answers, label and summary emptied.
-        # The client's alerts list and the Console consume these; plexsim pushed none.
+        # The client's alerts list and the Console consume these; simplex pushed none.
         current = {s.get("id"): s for s in self.server_prefs()}
         written = {name for name, _value in typed}
         moved = []
@@ -20868,7 +20868,7 @@ class PlexSim:
             # that leaves the maintenance window EMPTY (start == end, whichever was written,
             # one PUT or two) moves the end hour to start + 1, wrapping 23 to 0, and pushes
             # a `preference` frame for the moved setting before the written ones'. A window
-            # across midnight is left alone. plexsim kept the empty window.
+            # across midnight is left alone. simplex kept the empty window.
             start = (current.get("ButlerStartHour") or {}).get("value")
             end = (current.get("ButlerEndHour") or {}).get("value")
             if isinstance(start, int) and start == end:
@@ -20890,14 +20890,14 @@ class PlexSim:
         """`GET /library/sections/prefs?type=N&agent=ID` -- the Add Library form.
 
         The dialog asks for this before the library exists, and joins it with three
-        other reads, so a refusal stops the whole dialog from validating. plexsim
+        other reads, so a refusal stops the whole dialog from validating. simplex
         400'd every call. Measured: `type` is required and must be a number; the
         list depends on the type AND the agent; a legacy or unknown agent gives the
         type's base list and an unknown type gives `hidden` alone.
         """
         kind = query.get("type") or ""
         if not kind.lstrip("-").isdigit():
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         rows = self.section_pref_rows(str(int(kind)), query.get("agent"))
         return self.bare_container(size=len(rows), Setting=rows)
 
@@ -20918,9 +20918,9 @@ class PlexSim:
         sub-path is its base64 in the URL and answers its directories, but ONLY
         with `includeFiles` present (any value; `=1` adds the files) -- without it,
         and for anything that is not base64, it is a 400 -- and a path that does
-        not exist is an empty 200. plexsim
-        404'd the lot, so Add Folder opened on nothing. plexsim owns no disk: its
-        filesystem is the `/plexsim` tree its sections and parts are addressed by.
+        not exist is an empty 200. simplex
+        404'd the lot, so Add Folder opened on nothing. simplex owns no disk: its
+        filesystem is the `/simplex` tree its sections and parts are addressed by.
         """
         def entry(path):
             title = "/" if path == "/" else path.rstrip("/").rsplit("/", 1)[-1]
@@ -20928,22 +20928,22 @@ class PlexSim:
                     "title": title, "path": path}
         tree = {}
         for section in self.catalog.sections:
-            path = "/plexsim/%s" % section["key"]
-            tree.setdefault("/", set()).add("/plexsim")
-            tree.setdefault("/plexsim", set()).add(path)
+            path = "/simplex/%s" % section["key"]
+            tree.setdefault("/", set()).add("/simplex")
+            tree.setdefault("/simplex", set()).add(path)
         if route.rstrip("/") == "/services/browse":
-            rows = [entry("/"), entry("/plexsim")]
+            rows = [entry("/"), entry("/simplex")]
             return self.bare_container(size=len(rows), Path=rows)
         encoded = route[len("/services/browse/"):]
         try:
             path = base64.b64decode(encoded, validate=True).decode()
         except (ValueError, UnicodeDecodeError):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         # Measured: `includeFiles` must be PRESENT, whatever its value -- `=0`
         # answers the directories and `=1` adds `File` rows. Only its absence is a
         # 400.
         if "includeFiles" not in query or not path.startswith("/"):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         wanted = path.rstrip("/") or "/"
         children = sorted(tree.get(wanted, ()),
                           key=lambda child: child.rsplit("/", 1)[-1].lower())
@@ -20979,14 +20979,14 @@ class PlexSim:
         and tagKey and thumb where it has them -- in a container of identifier and the
         media-tag pair. `/media` lists the items that person is on, as listing rows that
         name their library by id, key and title. A non-numeric or unknown id is a 404.
-        plexsim 404'd both, although every Role it serves carries the id to ask with.
+        simplex 404'd both, although every Role it serves carries the id to ask with.
 
         Re-measured in cycle 11 on kids (1.43.4) and zen (1.42.2), correcting the line
         above: `viewGroup`/`viewMode` belong to an ACTOR's media list only. Measured
         across eight people on the two servers, a Role (tagType 6) carries both -- even
         when its rows are shows, which is where the earlier reading came from -- and a
         Director, Writer or Producer list carries neither. And the list is a QUERY: the
-        library filters apply to it, so `?year=` narrows it where plexsim answered every
+        library filters apply to it, so `?year=` narrows it where simplex answered every
         row the person is on.
         """
         # Cycle 27: a real PMS resolves this path by the numeric tag id AND by the
@@ -20995,7 +20995,7 @@ class PlexSim:
         wanted = str(person_id)
         if not wanted.isdigit():
             if len(wanted) != 24 or any(c not in "0123456789abcdef" for c in wanted):
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
         else:
             wanted = str(int(wanted))
         found, rows, seen = None, [], set()
@@ -21015,7 +21015,7 @@ class PlexSim:
                         seen.add(row.get("ratingKey"))
                         rows.append(row)
         if found is None:
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         common = {"identifier": "com.plexapp.plugins.library",
                   "mediaTagPrefix": "/system/bundle/media/flags/", "mediaTagVersion": 1655122614}
         if not media:
@@ -21031,7 +21031,7 @@ class PlexSim:
     def library_matches(self, query):
         """`/library/matches` -- does this library already hold an item?
 
-        plexsim advertises this key in /media/providers (`type: match`) and refused every
+        simplex advertises this key in /media/providers (`type: match`) and refused every
         request to it. Measured on both servers:
 
         - `type` is required and numeric (none, or `abc`, is a 400);
@@ -21045,7 +21045,7 @@ class PlexSim:
         """
         raw = query.get("type") or ""
         if not raw.lstrip("-").isdigit():
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         wanted = {"1": "movie", "2": "show", "3": "season", "4": "episode"}.get(str(int(raw)))
         rows = [r for r in self.catalog.items.values() if wanted and r.get("type") == wanted]
         scored = False
@@ -21074,7 +21074,7 @@ class PlexSim:
         """`/library/arts` -- every row on the server that OWNS an `art`.
 
         Cycle 45, found by sweeping the library-level name space against both references
-        and measured on kids (6 rows) and zen (4,190). It is a real listing that plexsim
+        and measured on kids (6 rows) and zen (4,190). It is a real listing that simplex
         404'd: `type: "image"` rows carrying the row's own versioned art path, with a
         fixed ELEVEN-attribute shape in which six attributes are the EMPTY STRING and
         four are `-1` -- they are not omitted, which is what makes this shape worth
@@ -21098,7 +21098,7 @@ class PlexSim:
         # PARSES the limit without honouring its value, as `/children` does, so
         # `limit=abc` is a 500 -- see `PARSES_LIMIT`); and it refuses the SAME FIFTEEN
         # keys `/hubs` refuses, which is why `group=` and `unwatched=` are 500s here and
-        # ordinary filters on a grid. plexsim answered its whole list to every one.
+        # ordinary filters on a grid. simplex answered its whole list to every one.
         query = query or {}
         refused = hub_refusal(query)
         if refused:
@@ -21114,7 +21114,7 @@ class PlexSim:
             _ordered, unsupported = self._sorted(list(members), query.get("sort")
                                                  or "titleSort")
             if unsupported:
-                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+                return ("error", 500, "simplex: unsupported sort key %s" % unsupported)
             for row in sorted(members, key=lambda item: int(item["ratingKey"])
                               if str(item.get("ratingKey", "")).isdigit() else 0):
                 art = str(row.get("art") or "")
@@ -21140,17 +21140,17 @@ class PlexSim:
 
         Measured: `Directory` rows of id, filter, tag and tagType, plus tagKey and
         thumb for a person. It is the TABLE, not what is currently on a row -- the
-        reference still lists a collection tag no item carries -- so plexsim reads
-        its own tag table as well as the rows. plexsim answered `size: 0` for every
+        reference still lists a collection tag no item carries -- so simplex reads
+        its own tag table as well as the rows. simplex answered `size: 0` for every
         type.
         """
         kind = query.get("type") or ""
         # Cycle 55: `type=2147483648` is a 400 too, on zen and kids.
         if not _int_param(kind):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if str(int(kind)) == "318":
             # Measured on both servers: studios are a tag table too, whose filter is a
-            # bare `=<id>`, ordered by id. plexsim keeps a studio as text on the row, so
+            # bare `=<id>`, ordered by id. simplex keeps a studio as text on the row, so
             # it mints the id from the name the way it mints every other tag's.
             names = {row.get("studio") for row in self.catalog.items.values()
                      if row.get("studio")}
@@ -21187,7 +21187,7 @@ class PlexSim:
 
         The modern agents only. A real PMS lists 17, most of them legacy plug-ins
         it still ships; claiming those would be advertising identification paths
-        plexsim does not have. Measured: `mediaType=N` lists exactly the agents that
+        simplex does not have. Measured: `mediaType=N` lists exactly the agents that
         type offers (a movie library: Plex Movie, Personal Media, NFO Movie), a type
         no agent serves is `size: 0`, and a non-number is a 400.
         """
@@ -21202,7 +21202,7 @@ class PlexSim:
         #
         # All six modern `tv.plex.agents.*` rows carry their 45 `Language` rows in BOTH
         # forms and a `MediaType` in neither, identically on kids (1.43.4) and zen
-        # (1.42.2), so it is not version drift. plexsim holds the modern agents only
+        # (1.42.2), so it is not version drift. simplex holds the modern agents only
         # (the legacy plug-ins are section 8), so the bare form is the typed form's
         # children -- and it stripped exactly the rows the Agents page reads to build
         # each agent's language selector, handing it a lone `MediaType` instead.
@@ -21212,7 +21212,7 @@ class PlexSim:
         wanted = query.get("mediaType")
         # Cycle 55, measured on zen and kids: `mediaType=+1` is the typed movie list.
         if wanted and not _int_param(wanted, None):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if wanted and int(wanted) == -1:
             # Cycle 55, measured on zen and kids: `mediaType=-1` answers byte for byte
             # what the bare request answers -- it is "no type", not the empty type list.
@@ -21254,7 +21254,7 @@ class PlexSim:
             # -- the Add Library dialog preselects the row that carries it, so a German
             # user would have had the dropdown open on English.
             # Cycle 49: `default` is the JSON BOOLEAN `true` on all four references and
-            # plexsim sent the STRING `"1"`. It survived because `agent_languages.json`
+            # simplex sent the STRING `"1"`. It survived because `agent_languages.json`
             # is read out of the XML -- the only form that carries every row -- and the
             # XML writes `default="1"` either way, so no XML sweep could ever see it.
             agents = [dict(agent, Language=[
@@ -21268,7 +21268,7 @@ class PlexSim:
 
     # The scanner names a real PMS offers per library type, captured verbatim.
     # The element is `Scanner` with nothing but a `name`, and the container's
-    # identifier is `com.plexapp.system` rather than the library's -- plexsim
+    # identifier is `com.plexapp.system` rather than the library's -- simplex
     # answered `Directory` rows with a key and a title, which the Edit Library
     # dialog's scanner dropdown does not read.
     SCANNERS = {
@@ -21293,13 +21293,13 @@ class PlexSim:
 
         The number is the library TYPE (`ScannerCollection` builds the URL from
         `sectionTypeID`), not a section id: `/system/scanners/13` is the photo
-        scanner on a server with no photo library. plexsim looked it up as a
+        scanner on a server with no photo library. simplex looked it up as a
         section and answered the movie list for anything it did not have; a real
         PMS answers 500 for a type with no scanner and for a non-number.
         """
         found = self.SCANNERS_BY_TYPE.get(str(type_id))
         if found is None:
-            return ("error", 500, "plexsim: internal error")
+            return ("error", 500, "simplex: internal error")
         size, names = found
         # Cycle 87, measured on zen, kids and plexscratch42, byte-identical on all three
         # and under every Accept: the answer is always this `application/xml` document
@@ -21336,7 +21336,7 @@ class PlexSim:
             # Measured: an account the server does not have is a 404, not an empty
             # container -- which a client reads as "the account exists, with no
             # settings".
-            return ("error", 404, "plexsim: no such account")
+            return ("error", 404, "simplex: no such account")
         return self.bare_container(
             size=1, identifier="com.plexapp.system.accounts", Account=[account])
 
@@ -21345,7 +21345,7 @@ class PlexSim:
         if self.sessions.has_numeric_platform():
             # Cycle 49, reproduced on both writable references: the row itself is
             # readable but this list's string cast throws `std::bad_cast`.
-            return ("error", 500, "plexsim: internal error")
+            return ("error", 500, "simplex: internal error")
         rows = self.sessions.devices()
         return self.bare_container(
             size=len(rows), identifier="com.plexapp.system.devices", Device=rows)
@@ -21363,7 +21363,7 @@ class PlexSim:
     # other key -- and an empty value, and an unknown DIRECTION (`at:zzz`, `at:nocollate`)
     # -- is a 400 on both, even on `/statistics/resources` where the value changes
     # nothing. `metadataType` is NOT a media key, which is the one that looks like it
-    # should be. plexsim answered 200 to all of them and sorted by none.
+    # should be. simplex answered 200 to all of them and sorted by none.
     STATISTICS_SORTS = {
         "bandwidth": ("at", "bytes", "deviceID", "accountID", "lan", "timespan"),
         "media": ("at", "deviceID", "accountID", "timespan", "count", "duration"),
@@ -21375,11 +21375,11 @@ class PlexSim:
         """`/statistics/{bandwidth,media,resources}` -- the Dashboard graphs.
 
         The Device and Account rows are real; the per-interval series is empty
-        because plexsim keeps no history. An invented series would draw a
+        because simplex keeps no history. An invented series would draw a
         plausible graph of traffic that never happened.
         """
         if which not in ("bandwidth", "media", "resources"):
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         # Cycle 54, measured on kids and zen: `/statistics/media` parses `count` and
         # `offset` as int32 and `/statistics/bandwidth` parses `bytes` as int64, each a
         # 400 otherwise.
@@ -21390,30 +21390,30 @@ class PlexSim:
                            else (("bytes", 64), ("offset", 32)) if which == "bandwidth"
                            else (("offset", 32),)):
             if name in (query or {}) and not _int_param(query[name], bits):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
         if "group" in (query or {}) and query["group"] not in self.STATISTICS_SORTS[which]:
             # Cycle 55: a `group=` that is not one of the endpoint's own keys -- an empty
             # value, `abc`, `/statistics/media?group=title` -- is a 400 on zen and kids,
             # where `bandwidth?group=at` and `group=accountID` are 200s.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if which == "bandwidth" and self.sessions.has_numeric_platform():
             # This family serialises the Device block even when the direct row can
             # still be read, and hits the same measured bad cast as `/devices`.
-            return ("error", 500, "plexsim: internal error")
+            return ("error", 500, "simplex: internal error")
         # Cycle 55: and the window is an int32 -- `timespan=2147483648` is a 400 on all three
         # endpoints on zen and kids, `timespan=+1` the one-second rollup.
         if "timespan" in (query or {}) and not _int_param((query or {})["timespan"]):
             # Measured on kids (1.43.4) and zen (1.42.2), on all three endpoints: the
             # rollup window has to parse as a whole number. `abc`, `1.5`, an empty value
             # and one with a leading space are 400s, where `0`, `-1` and `06` are 200s.
-            # plexsim ran an unguarded int() on it: a 500 on two of the three endpoints
+            # simplex ran an unguarded int() on it: a 500 on two of the three endpoints
             # and, on /statistics/resources, a silently ignored parameter.
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         # Cycle 26, measured on kids and zen over sixteen values on all three endpoints:
         # a `timespan` the server does not KEEP is an empty 200, not the nearest bucket.
         # Each endpoint stores its own set -- bandwidth `0 1 2 3 4 6`, media `0 1 2 3 4`,
         # resources `6` -- and 5, 7, 8, 9, 10, 99, -1 and 007 each answer `size 0` on
-        # both references. plexsim ran `TIMESPANS.get(int(timespan), 1)`, which falls
+        # both references. simplex ran `TIMESPANS.get(int(timespan), 1)`, which falls
         # back to the ONE-SECOND bucket, so every unstored value answered the live
         # per-second series RELABELLED with the asked-for timespan -- invented rows for
         # a window the server has no data for. The client's own enum names 5
@@ -21423,20 +21423,20 @@ class PlexSim:
         # CAP and it is PARSED -- `1`, `01`, `0`, `-1` and `-5` are 200s (a non-positive
         # one answers no rows at all) and `1.5`, `abc`, an empty value, a leading space
         # and `+1` are 400s, even where the value does nothing. `sort=` is a real
-        # ORDERING and is validated against a per-endpoint key list. plexsim ignored both
+        # ORDERING and is validated against a per-endpoint key list. simplex ignored both
         # and answered 200 to every value, so the Dashboard's own capped and sorted reads
         # got the whole unsorted series.
         raw_limit = (query or {}).get("limit")
         # Cycle 55, measured on zen and kids: `limit=+1` is a 200 (cycle 26's `+1` was a
         # raw `+`, which decodes to a space) and `limit=2147483648` a 400.
         if raw_limit is not None and not _int_param(raw_limit):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         raw_sort = (query or {}).get("sort")
         if raw_sort is not None:
             key, _, direction = str(raw_sort).partition(":")
             if key not in self.STATISTICS_SORTS[which] or direction not in ("", "asc",
                                                                            "desc"):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
         if raw_span is not None and int(raw_span) not in self.STORED_TIMESPANS[which]:
             return self.bare_container(size=0)
         if which == "resources":
@@ -21450,7 +21450,7 @@ class PlexSim:
         # the strict forms are not implemented at all -- `at=` is exact, and `at>=`,
         # `at<=` and `at!=` are UNKNOWN keys that are ignored and answer every row.
         # (The hunt reported `at!=` as the complement; driven against the true counts it
-        # answers all 175 and all 153, so it is ignored like the other two.) plexsim read
+        # answers all 175 and all 153, so it is ignored like the other two.) simplex read
         # `at>` or `at>=` and applied `>=`, and ignored `at<` and `at=` -- so a Dashboard
         # graph asking for a window got the whole series. Its own saga sends `at>`, which
         # is the one both already agreed on.
@@ -21473,17 +21473,17 @@ class PlexSim:
             # graphs filter the series -- `accountID` and `deviceID` keep matching rows
             # (an id with none answers `size 0`), `lan=0|1` keeps remote or local
             # traffic -- and an empty or non-numeric id, or any other `lan`, is a 400.
-            # plexsim ignored all three, so every filtered graph drew the whole server.
+            # simplex ignored all three, so every filtered graph drew the whole server.
             for name, field in (("accountID", "accountID"), ("deviceID", "deviceID")):
                 if name in query:
                     # Cycle 55, measured on zen and kids: a NEGATIVE id (`-1`) and `+1`
                     # parse -- `-1` answers `size 0`, a 200 -- where a word is the 400.
                     if not _int_param(query[name], None):
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                     rows = [r for r in rows if str(r.get(field)) == str(int(query[name]))]
             if "lan" in query:
                 if query["lan"] not in ("0", "1"):
-                    return ("error", 400, "plexsim: bad request")
+                    return ("error", 400, "simplex: bad request")
                 rows = [r for r in rows if bool(r.get("lan")) == (query["lan"] == "1")]
         else:
             rows = self.sessions.media_statistics(timespan)
@@ -21497,7 +21497,7 @@ class PlexSim:
             # Measured on both servers: this one filters like /statistics/bandwidth, which
             # cycle 8 implemented and left this out -- an `accountID` or `deviceID` the
             # server does not have answers `size 0` with no Device and no Account row, and
-            # an empty or non-numeric `accountID` is a 400. plexsim answered the whole
+            # an empty or non-numeric `accountID` is a 400. simplex answered the whole
             # server to every one of them, so the Dashboard's per-user and per-device views
             # showed everyone's plays.
             for name, field in (("accountID", "accountID"), ("deviceID", "deviceID")):
@@ -21505,7 +21505,7 @@ class PlexSim:
                     # Cycle 55, measured on zen and kids: a NEGATIVE id (`-1`) and `+1`
                     # parse -- `-1` answers `size 0`, a 200 -- where a word is the 400.
                     if not _int_param(query[name], None):
-                        return ("error", 400, "plexsim: bad request")
+                        return ("error", 400, "simplex: bad request")
                     rows = [r for r in rows if str(r.get(field)) == str(int(query[name]))]
         rows = self._statistics_window(rows, query)
         if not rows:
@@ -21520,14 +21520,14 @@ class PlexSim:
                                    Device=devices, Account=[account],
                                    **{element: rows})
 
-    # Scheduled tasks. A real PMS lists 23; plexsim lists the ones it can
+    # Scheduled tasks. A real PMS lists 23; simplex lists the ones it can
     # actually perform, because the page's Run button is a promise. The root
     # element is `ButlerTasks`, not MediaContainer -- one of the few endpoints
     # on the whole surface that is not a MediaContainer, which is exactly the
     # kind of thing that cannot be guessed.
     # The Scheduled Tasks page, task for task off the reference: 23 of them, and
     # only BackupDatabase carries a `title` and a `description` -- the client
-    # humanises the rest from the name itself. plexsim listed two with invented
+    # humanises the rest from the name itself. simplex listed two with invented
     # titles, so the page showed two tasks that do not exist on a real server and
     # hid twenty-one that do.
     BUTLER_TASKS = [
@@ -21546,7 +21546,7 @@ class PlexSim:
         # stripped, and it answers `enabled="0"` where kids answers `enabled="1"`. Both
         # CLAIMED references say enabled, on both versions, and so does the
         # `GenerateAdMarkerBehavior` preference (`scheduled`, which does not exist at all
-        # on an unclaimed server). plexsim asserts a claim, so it answers the claimed
+        # on an unclaimed server). simplex asserts a claim, so it answers the claimed
         # form; cycle 35 fixed a class-D error by installing a class-E one.
         {"name": "ButlerTaskGenerateAdMarkers", "interval": 1,
          "scheduleRandomized": False, "enabled": True},
@@ -21613,14 +21613,14 @@ class PlexSim:
     def resource_statistics(self, query):
         """`/statistics/resources` -- the Dashboard's CPU and memory graph.
 
-        plexsim used to 404 this, reasoning that a refusal reads as "unsupported"
+        simplex used to 404 this, reasoning that a refusal reads as "unsupported"
         and hides the graph. The measurement says otherwise: BOTH reference
         servers answer 200 with a `StatisticsResources` series, and only
         `timespan=6` has samples -- every coarser bucket is an empty 200.
 
         The samples are taken when the endpoint is ASKED, which is the only time
         they are wanted: the Dashboard polls while it is open, so the graph fills
-        in the way it does on a real server, and plexsim runs no sampler thread
+        in the way it does on a real server, and simplex runs no sampler thread
         for a page nobody is looking at. Two of the four numbers are real -- host
         CPU from the load average over the core count, process CPU from rusage
         over wall time -- and the two memory ones are honestly 0.0, because the
@@ -21673,12 +21673,12 @@ class PlexSim:
     # activity called "Butler tasks", which is what the Dashboard draws while it runs.
     # Cycle 17 re-measured every one of the 23 tasks, run singly with a notification
     # socket open: twelve reported a different sentence, three report SEVERAL messages
-    # and five report one where plexsim reported none. The message is a template with
+    # and five report one where simplex reported none. The message is a template with
     # the run's own count in it; the COUNT is content and not part of the rule, so
-    # plexsim fills in what it actually has. The two tasks with an activity of their own
+    # simplex fills in what it actually has. The two tasks with an activity of their own
     # differ in it too -- `CleanOldBundles` is titled `Cleaning Bundles` and steps its
     # SUBTITLE through four phases, and `OptimizeDatabase` is titled `Optimizing
-    # database` with the subtitle `Optimizing Database`, which plexsim had swapped.
+    # database` with the subtitle `Optimizing Database`, which simplex had swapped.
     BUTLER_MESSAGES = {
         "BackupDatabase": (["The butler backed up your database."],
                            ("general.db.backup", "Database", "Backing up database")),
@@ -21714,14 +21714,14 @@ class PlexSim:
     # Cycle 19, re-measured on plexscratch behind a control write: there are SEVEN
     # updates, not four. The fourth phase is not the end -- `Analyzing metadata bundles`
     # is followed by two `Deleting N metadata bundles` steps at 25 and 50, and the
-    # `ended` frame carries THAT subtitle rather than the analysing one. plexsim stopped
+    # `ended` frame carries THAT subtitle rather than the analysing one. simplex stopped
     # at the fourth, so the Dashboard's last word on the task was a phase that is not
     # its last.
     # Cycle 26, re-measured twice on a fresh copy: the task's two `progress` messages
     # are INTERLEAVED with these phases, not pushed after the activity has ended --
     # "cleaned N media bundles" lands between the media group and `Analyzing metadata
     # bundles`, and "cleaned N metadata bundles" between the last step and the `ended`.
-    # plexsim pushed both at the end, so the Dashboard reported the media bundles after
+    # simplex pushed both at the end, so the Dashboard reported the media bundles after
     # it had already moved on to the metadata ones. The third element is the index of
     # the message to push once that phase's frame has gone out.
     BUNDLE_CLEAN_PHASES = (("Analyzing media bundles", -1, None),
@@ -21736,25 +21736,25 @@ class PlexSim:
         if len(segments) == 1:
             if method in ("POST", "DELETE"):
                 # Measured on a writable copy of the reference: running every enabled task,
-                # and cancelling the queue, each answer an EMPTY body. plexsim answered the
+                # and cancelling the queue, each answer an EMPTY body. simplex answered the
                 # task list, which a client reads as a listing rather than an acceptance.
                 if method == "POST":
                     self.run_butler([task["name"] for task in self.BUTLER_TASKS
                                      if task.get("enabled")])
                 return ("empty", 200)
             if method != "GET" and method != "HEAD":
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
             # Measured: the ButlerTasks root carries NO size attribute, unlike
             # every MediaContainer on the surface.
             return {"ButlerTasks": {"ButlerTask": self.BUTLER_TASKS}}
         name = segments[1]
         if name not in {task["name"] for task in self.BUTLER_TASKS}:
-            return ("error", 404, "plexsim: no such task")
+            return ("error", 404, "simplex: no such task")
         if method != "POST":
             # Measured: every verb but POST is a 404 on a task a real PMS HAS -- the DELETE
-            # that cancels is on `/butler` itself, and plexsim answered 200 to a task DELETE,
+            # that cancels is on `/butler` itself, and simplex answered 200 to a task DELETE,
             # which tells the page a queued task was cancelled when none was.
-            return ("error", 404, "plexsim: not found")
+            return ("error", 404, "simplex: not found")
         self.run_butler([name])
         return ("empty", 200)
 
@@ -21763,7 +21763,7 @@ class PlexSim:
 
         Measured on a writable copy of the reference: one `butler` activity ("Butler tasks",
         started at -1) wraps the whole run; each task with an activity of its own starts,
-        steps and ends inside it; and each task ends with its own `progress` message. plexsim
+        steps and ends inside it; and each task ends with its own `progress` message. simplex
         pushed nothing, so the Dashboard showed no task running and no result.
         """
         wrapper = {"uuid": str(uuid.uuid4()), "type": "butler", "cancellable": False,
@@ -21800,7 +21800,7 @@ class PlexSim:
                     # and gains the subtitle on its first `updated`; `general.bundle.clean`
                     # starts at -1 with an empty one. Measured on plexscratch.
                     # Cycle 25, re-measured on plexscratch: the two tasks with an activity
-                    # of their own OPEN differently, and plexsim had one shape for both.
+                    # of their own OPEN differently, and simplex had one shape for both.
                     # `general.db.optimize` starts at 0 with an EMPTY subtitle and gains it
                     # on its first `updated` (cycle 19, still right); `general.db.backup`
                     # starts at -1 with its subtitle ALREADY SET. The old test keyed on
@@ -21828,7 +21828,7 @@ class PlexSim:
                     else:
                         # Cycle 19, measured on plexscratch over three runs: the progression
                         # is `started` at 0 with an EMPTY subtitle, then `updated` at 0 with
-                        # the subtitle set, then 10, 40, 60, then `ended` at 100. plexsim
+                        # the subtitle set, then 10, 40, 60, then `ended` at 100. simplex
                         # started at -1 with the subtitle already there and stepped
                         # 10/53/100 -- and its own `PUT /library/optimize` already answered
                         # the reference's sequence, so the two paths disagreed with each
@@ -21845,7 +21845,7 @@ class PlexSim:
                     # Cycle 19, measured on plexscratch: this task runs a section SCAN per
                     # library -- a `library.update.section` activity titled `Scanning
                     # <library>` with the per-item `progress` rows and the subscriptions
-                    # pair -- not a metadata refresh per row. plexsim pushed one
+                    # pair -- not a metadata refresh per row. simplex pushed one
                     # `library.update.item.metadata` triple per item and no progress rows at
                     # all, so the Dashboard named the wrong operation for the one task that
                     # runs daily.
@@ -21854,7 +21854,7 @@ class PlexSim:
                     # `The butler refreshed all libraries.` goes out first, the `butler`
                     # wrapper steps to 100 and ENDS, and only then does the first
                     # `library.update.section` frame appear. The scan is work the task
-                    # queues, not work it waits for, so plexsim defers it past the wrapper
+                    # queues, not work it waits for, so simplex defers it past the wrapper
                     # rather than running it inline -- where it held the wrapper open for
                     # the whole scan and reported the libraries refreshed after they were.
                     deferred.extend(self.catalog.sections)
@@ -21873,7 +21873,7 @@ class PlexSim:
             # finished, then `updated` at `round(100 * n / (n + 1))` for the queue --
             # 50, 67, 75, 80, 83, 86, 88, 89, 90, 91, 92, 92, 93, 93, 94, 94, 94, 95, 95,
             # 95, 95 for 22 tasks -- and no step after the last one, so a run of N pushes
-            # N `updated 100` frames and N-1 steps before its `ended`. plexsim pushed one
+            # N `updated 100` frames and N-1 steps before its `ended`. simplex pushed one
             # `updated 100` for the whole run, so the Dashboard's butler bar sat at -1
             # and then jumped to done however many tasks were running.
             #
@@ -21892,7 +21892,7 @@ class PlexSim:
             self.notify_section_scan(section["key"], section)
 
     def updater_status(self):
-        """`/updater/status` -- plexsim never has an update to install."""
+        """`/updater/status` -- simplex never has an update to install."""
         return self.bare_container(size=0, canInstall=False,
                                    checkedAt=int(time.time()), status=0)
 
@@ -21900,7 +21900,7 @@ class PlexSim:
     # (1.43.4) and zen (1.42.2) and identical on both, against every readable row on
     # each. It is not the listing's row: there is no `key`, no `ratingKey` and no
     # artwork, `viewType` is always 1, and an episode adds the show's title and the two
-    # indices. plexsim answered its stored listing row, so a client reading one history
+    # indices. simplex answered its stored listing row, so a client reading one history
     # entry was handed links the endpoint does not advertise.
     HISTORY_ROW_FIELDS = ("historyKey", "librarySectionID", "title", "grandparentTitle",
                           "type", "index", "parentIndex", "originallyAvailableAt",
@@ -21932,7 +21932,7 @@ class PlexSim:
         # Cycle 15: a listing row carries its `viewType`, which is also the column
         # `type=` matches -- see the gate below. Cycle 70: only a scrobble's row has one.
         rows = [dict(row) for row in self.library.history()]
-        # Measured: this page filters and sorts, and plexsim ignored all of it --
+        # Measured: this page filters and sorts, and simplex ignored all of it --
         # so Top Users' "View Play History" link (`accountID=&viewedAt=`) and the
         # per-item history link (`metadataItemID=`) both showed the whole server's
         # history in insertion order, and the Played column's sort did nothing.
@@ -21948,7 +21948,7 @@ class PlexSim:
         # is NOT 404, it is an empty 200. `deviceID` is not validated at all: `abc`
         # and empty are both 200. `viewedAt>=abc` and an empty one are 400s.
         #
-        # plexsim answered 200 with `size 0` to every one of them, so a client sending
+        # simplex answered 200 with `size 0` to every one of them, so a client sending
         # a malformed accountID read "this user has no history" instead of an error,
         # and the per-item History link on a row the server does not hold read "never
         # played" rather than saying so.
@@ -21958,10 +21958,10 @@ class PlexSim:
             # Cycle 55, measured on zen and kids: a leading `+` parses (`accountID=+1` is
             # zen's 50 rows), so the id is the NUMBER and not the string.
             if not _int_param(query.get(name) or "", None):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
         # Cycle 54, measured on kids and zen: `offset` is an int32 here.
         if "offset" in query and not _int_param(query["offset"]):
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         if "metadataItemID" in query:
             wanted = str(query["metadataItemID"])
             # Cycle 57, measured on plexscratch42 and plexscratch: a COLLECTION's or a
@@ -21970,7 +21970,7 @@ class PlexSim:
             if not any(str(r.get("ratingKey")) == wanted for r in rows) \
                     and self.catalog.items.get(int(wanted)) is None \
                     and self.library.state_row(int(wanted)) is None:
-                return ("error", 404, "plexsim: not found")
+                return ("error", 404, "simplex: not found")
         # Cycle 54 corrected the keys, measured on kids and zen with the client's own
         # encoding: `viewedAt%3E=` is the key `viewedAt>` and it is INCLUSIVE (zen's
         # newest view time answers its two rows), `viewedAt<` likewise, and a bare
@@ -21992,7 +21992,7 @@ class PlexSim:
         # OR, as everywhere else. `type=abc` and an empty `type=` are 400s -- the same
         # grammar the ids take, and validated after them.
         #
-        # plexsim ignored `type=` completely, so it answered its whole history where a
+        # simplex ignored `type=` completely, so it answered its whole history where a
         # real PMS answers none, and answered every row to `type=2` as well.
         # Cycle 70 REFINES that, measured on plexscratch42 (1.42.2) and kids (1.43.4): a
         # row with NO `viewType` -- the one a timeline completion writes -- is type 0,
@@ -22001,12 +22001,12 @@ class PlexSim:
         # both. Cycle 15 measured histories that held scrobble rows only (zen's 73, kids'
         # five), so its plain call looked empty. Plex for Android's Play History screen
         # (js:1622286) and python-plexapi's `history()` send no `type`, and after a
-        # watch in the app plexsim showed none.
+        # watch in the app simplex showed none.
         wanted_types = {0}
         if "type" in query:
             parts = str(query.get("type") or "").split(",")
             if not all(p.lstrip("-").isdigit() and p.lstrip("-") for p in parts):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             wanted_types = {int(p) for p in parts}
         rows = [r for r in rows if int(r.get("viewType") or 0) in wanted_types]
         for name, field in (("accountID", "accountID"),
@@ -22027,7 +22027,7 @@ class PlexSim:
         for field, descending, _seed in reversed(filters_module.sort_terms(spec)):
             if field not in ("viewedAt", "historyKey", "ratingKey", "accountID",
                              "deviceID", "title"):
-                return ("error", 400, "plexsim: bad request")
+                return ("error", 400, "simplex: bad request")
             rows = sorted(rows, key=lambda r: (r.get(field) is None, r.get(field) or 0),
                           reverse=descending)
         # Cycle 18, measured on kids (1.43.4) and zen (1.42.2), which agree: this page
@@ -22035,9 +22035,9 @@ class PlexSim:
         # 5 and 2 of zen's 73, and `limit=-1` answers ZERO where the same value lifts
         # the cap on `/library/recentlyAdded` and means "every row" on a section
         # listing. `group=` is refused outright with a 400, `group=` empty included,
-        # where cycle 15 found it reaches the section `allLeaves`. plexsim ignored both.
+        # where cycle 15 found it reaches the section `allLeaves`. simplex ignored both.
         if "group" in query:
-            return ("error", 400, "plexsim: bad request")
+            return ("error", 400, "simplex: bad request")
         raw = str(query.get("limit") or "")
         if raw.lstrip("-").isdigit():
             rows = rows[:max(int(raw), 0)]
@@ -22051,22 +22051,22 @@ class PlexSim:
     def delete_history(self, key):
         """`DELETE /status/sessions/history/{historyKey}` -- one row off the page.
 
-        plexsim routed the history path on the path alone, so a DELETE was answered
+        simplex routed the history path on the path alone, so a DELETE was answered
         with the LISTING, and a numeric key fell through to the live-sessions
         handler and answered `{size: 0}` -- which is exactly the "it worked" signal
         for a delete that did nothing. Measured: 200 with an empty container when
         the row goes, 404 when there is no such row.
         """
         if not self.library.delete_history(key):
-            return ("error", 404, "plexsim: no such history row")
+            return ("error", 404, "simplex: no such history row")
         logger.info("HISTORY delete %s", key)
         return self.bare_container(size=0)
 
     def log_archive(self):
-        """A zip of plexsim's own recent log, for Download Logs.
+        """A zip of simplex's own recent log, for Download Logs.
 
         The button exists because /media/providers advertises `diagnostics`
-        containing "logs". plexsim keeps the lines it logged in this process
+        containing "logs". simplex keeps the lines it logged in this process
         rather than reading a file it does not own.
         """
         buffer = io.BytesIO()
@@ -22075,7 +22075,7 @@ class PlexSim:
             requests = ["%s %s" % (m, p) for m, p in self.requests[-2000:]]
             unknown = list(self.unknown)
         with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr("plexsim.log", "\n".join(lines) + "\n")
+            archive.writestr("simplex.log", "\n".join(lines) + "\n")
             archive.writestr("requests.log", "\n".join(requests) + "\n")
             archive.writestr("unrouted.log", "\n".join(unknown) + "\n")
         return buffer.getvalue()
@@ -22098,18 +22098,18 @@ class PlexSim:
         not an integer is the generic 89-byte HTML 400, before anything else is looked at.
         Past that, EVERY failing check adds a line ending in CRLF, in a fixed order, and
         the whole list is one 400 with NO Content-Type -- `type=bogus` alone is two lines,
-        because no agent is valid for a type that does not exist. plexsim answered the
+        because no agent is valid for a type that does not exist. simplex answered the
         HTML page to all of them and stopped at the first failure.
         """
         for name in ("name", "type", "agent", "language"):
             if name not in query:
-                return ("error", 400, "plexsim: Add Library without %s" % name)
+                return ("error", 400, "simplex: Add Library without %s" % name)
         wanted_group = query.get("metadataAgentProviderGroupId")
         if wanted_group is not None:
             try:
                 wanted_group = int(wanted_group)
             except ValueError:
-                return ("error", 400, "plexsim: metadataAgentProviderGroupId is not a number")
+                return ("error", 400, "simplex: metadataAgentProviderGroupId is not a number")
         lines = []
         type_number = self.ADD_LIBRARY_TYPES.get(query["type"])
         kind = {1: "movie", 2: "show", 8: "artist", 13: "photo"}.get(type_number)
@@ -22177,7 +22177,7 @@ class PlexSim:
     def create_section(self, query, headers=None):
         """`POST /library/sections` -- Add Library.
 
-        plexsim has no filesystem to scan, so the new section starts empty --
+        simplex has no filesystem to scan, so the new section starts empty --
         which is also what a real PMS gives you for an empty folder, rather than
         an error. 201 with the created Directory is the measured answer.
         """
@@ -22198,8 +22198,8 @@ class PlexSim:
         # and group 3: the library KEEPS what the form named -- `/library/sections` and
         # `/media/providers` read back `tv.plex.agents.music`, `Plex Music`, group 3 and
         # the folder as sent, stamped with the create time (`createdAt`, `updatedAt` and
-        # `scannedAt` equal) and `contentChangedAt` -1. plexsim stored the title and type
-        # alone and re-derived the movie agent, `Plex Movie`, group 1 and `/plexsim/<n>`,
+        # `scannedAt` equal) and `contentChangedAt` -1. simplex stored the title and type
+        # alone and re-derived the movie agent, `Plex Movie`, group 1 and `/simplex/<n>`,
         # so the Edit Library dialog and python-plexapi read a music library as a movie one.
         agent = query.get("agent") or ""
         modern = [row["identifier"] for row in SYSTEM_AGENTS]
@@ -22225,7 +22225,7 @@ class PlexSim:
         if prefs:
             # Measured on a writable copy of the reference: the create applies its
             # `prefs[...]` -- `flattenSeasons` and `episodeSort` read back as sent -- where
-            # plexsim dropped them.
+            # simplex dropped them.
             self.library_section(["library", "sections", str(section["key"]), "prefs"], prefs, "PUT")
         # Cycle 35, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2), which
         # agree frame for frame: a create SCANS, and the scan's skeleton survives a
@@ -22233,9 +22233,9 @@ class PlexSim:
         # activity from `Scanning` through 99 and 100 to `ended`, the two LIBRARY_UPDATE
         # statuses around it, and the nested `provider.subscriptions.process` pair. Cycle
         # 15 read the scan as the per-item frames alone and concluded an empty library had
-        # nothing to push, so plexsim's create pushed only the queue frame: the client's
+        # nothing to push, so simplex's create pushed only the queue frame: the client's
         # own Add Library dialog draws its spinner and its "Library scan complete" toast
-        # off exactly these, and against plexsim a new library simply appeared.
+        # off exactly these, and against simplex a new library simply appeared.
         self.notify_section_scan(section["key"], section)
         # Cycle 15, re-measured on the copy: a create ends in ONE
         # `backgroundProcessingQueue` `queueRegenerated` frame (+63.1 s there).
@@ -22249,7 +22249,7 @@ class PlexSim:
             "key", "type", "title", "agent", "scanner", "language",
             "metadataAgentProviderGroupId", "uuid", "updatedAt", "createdAt")}
         echo.update(content=True, directory=True, contentChangedAt=-1, hidden=0,
-                    Location=[{"id": 1, "path": query.get("location") or "/plexsim"}])
+                    Location=[{"id": 1, "path": query.get("location") or "/simplex"}])
         return ("created", self.bare_container(size=1, Directory=[echo]),
                 "/library/sections/%s" % section["key"])
 
@@ -22257,7 +22257,7 @@ class PlexSim:
 
     # TMDB serves fixed-width variants, and the row stores one of them. Asking
     # upstream for the variant nearest the size the client wanted is the closest
-    # plexsim can get to a real PMS's resize, having no imaging library: the
+    # simplex can get to a real PMS's resize, having no imaging library: the
     # served image is still a fixed width rather than exactly the one requested,
     # which is a deliberate difference.
     TMDB_WIDTHS = (92, 154, 185, 342, 500, 780, 1280)
@@ -22277,7 +22277,7 @@ class PlexSim:
         """The poster behind a collection's, playlist's or section's tile.
 
         A real PMS builds a MOSAIC of its members' posters, 400x600 (measured).
-        plexsim has no imaging library and will not fabricate one, so it serves
+        simplex has no imaging library and will not fabricate one, so it serves
         one member's own poster -- which is honestly one of the images that
         mosaic would be made of, and is what the tile is for. A flat generated
         tile was the alternative, and it is what the client showed before.
@@ -22305,7 +22305,7 @@ class PlexSim:
         if not row and str(rating_key).isdigit():
             # Cycle 88, measured on plexscratch42: a COLLECTION's uploaded poster is the
             # image at its `thumb`, bare and versioned, and through the transcoder.
-            # plexsim looked for the row among the library's items alone and served its
+            # simplex looked for the row among the library's items alone and served its
             # grey placeholder (or a 404) for a list's own upload.
             row = self.library.collection(rating_key) or self.library.playlist(rating_key)
         if not row:
@@ -22357,16 +22357,16 @@ class _RequestReader(object):
       into three pieces 12 s apart -- maximum idle 12 s, total 24 s -- is closed by both
       references at exactly 20.0 s from the FIRST byte, with no response at all; so are
       four pieces 7 s apart and six pieces 4 s apart. Python's `Handler.timeout` is a
-      socket timeout and is therefore per-read by construction, so plexsim answered every
+      socket timeout and is therefore per-read by construction, so simplex answered every
       one of them: fifty clients dribbling a byte every two seconds held fifty threads
       for as long as they cared to, where a real PMS had dropped all fifty at 20.6 s.
       The IDLE timer between requests is a separate 20 s and resets per request -- both
-      references and plexsim already agreed on that.
+      references and simplex already agreed on that.
     * **Whether the header block ended at EOF.** `http.client.parse_headers` stops on a
       blank line OR on EOF and does not say which. A client that half-closes after its
-      headers, with no blank line, gets NOTHING from either reference; plexsim ran the
+      headers, with no blank line, gets NOTHING from either reference; simplex ran the
       request -- and a `PUT .../library/metadata/{id}?title.value=...` sent that way
-      really committed, which is the one cell in this family where plexsim changed
+      really committed, which is the one cell in this family where simplex changed
       durable state a real PMS discards.
     """
 
@@ -22391,7 +22391,7 @@ class _RequestReader(object):
             return
         left = self._deadline - time.monotonic()
         if left <= 0:
-            raise socket.timeout("plexsim: request incomplete after %ds" % self._limit)
+            raise socket.timeout("simplex: request incomplete after %ds" % self._limit)
         self._connection.settimeout(left)
 
     def _seen(self, data):
@@ -22514,10 +22514,10 @@ class _RequestReader(object):
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    server_version = "PlexSim/0.1"
+    server_version = "SimPlex/0.1"
     # Cycle 16, measured on kids and zen: an idle kept-alive connection is closed by
     # the server after exactly 20 seconds, which is the number it advertises in
-    # `Keep-Alive: timeout=20`. plexsim never closed one, so an abandoned socket held
+    # `Keep-Alive: timeout=20`. simplex never closed one, so an abandoned socket held
     # a ThreadingHTTPServer thread for the life of the process.
     timeout = 20
 
@@ -22531,7 +22531,7 @@ class Handler(BaseHTTPRequestHandler):
         # unexpected_message) where a `GET` on the same port draws the ordinary 200.
         # The certificate is a real Let's Encrypt wildcard for
         # `*.<hash>.plex.direct` -- the same hash the GDM reply's `Host` line carries --
-        # which plex.tv issues to a claimed server, so plexsim cannot mint one: the
+        # which plex.tv issues to a claimed server, so simplex cannot mint one: the
         # operator supplies it with `--tls-cert`/`--tls-key` and this sniffs for it.
         self._tls = False
         context = getattr(self.server, "tls_context", None)
@@ -22636,7 +22636,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if self.rfile.saw_eof:
                 # cycle 49: the header block was ended by EOF rather than by a blank
-                # line. Both references answer NOTHING to that and close; plexsim ran
+                # line. Both references answer NOTHING to that and close; simplex ran
                 # the request, and a query-only write really committed.
                 self.close_connection = True
                 return
@@ -22664,7 +22664,7 @@ class Handler(BaseHTTPRequestHandler):
             # Cycle 50: flush HERE, not only on the success path. Every early `return`
             # above -- a refused request line, a refused header block, an EOF-terminated
             # one -- skipped the stdlib's own `self.wfile.flush()`, so a refusal written
-            # for a PIPELINED second request never reached the wire: plexsim answered the
+            # for a PIPELINED second request never reached the wire: simplex answered the
             # first request and then dropped the socket in silence where a real PMS
             # answers 200 and then 400. It pre-dates cycle 49 and is visible only when a
             # refusal follows a successful response on one connection.
@@ -22691,10 +22691,10 @@ class Handler(BaseHTTPRequestHandler):
 
         Cycle 50, 12 forms x 4 servers: the value is everything after the colon with ONE
         optional leading space removed, and NOTHING else trimmed. `Content-Length:7` and
-        `: 7` parse everywhere; `:  7`, `:   7` and `: 7 ` parse only on plexsim, because
+        `: 7` parse everywhere; `:  7`, `:   7` and `: 7 ` parse only on simplex, because
         Python's `email.parser` strips whitespace from both ends. The same rule governs
         the TOKEN: `X-Plex-Token: <tok>` is a 200 on all four references and
-        `X-Plex-Token:  <tok>` a **401**, where plexsim answered 200 -- so a token a real
+        `X-Plex-Token:  <tok>` a **401**, where simplex answered 200 -- so a token a real
         PMS rejects was opening the whole library. Returns the LAST occurrence, as the
         surface's other repeated readers do, except where `Transfer-Encoding` and
         `Content-Length` ask for the FIRST. Cycle 50's first implementation covered only
@@ -22731,7 +22731,7 @@ class Handler(BaseHTTPRequestHandler):
 
         Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a real PMS
         really dechunks, including on a write -- a chunked subtitle upload lands a sidecar
-        byte-identical to the `Content-Length` form's. plexsim ignored the header
+        byte-identical to the `Content-Length` form's. simplex ignored the header
         entirely, so the upload was its empty-body 406 and the chunk framing then went
         into the next request. Returns `("ok", body)`, `("bad", b"")` for a framing error
         (a 400 that closes) or `("short", b"")` for a body that simply stops (answered
@@ -22821,7 +22821,7 @@ class Handler(BaseHTTPRequestHandler):
         Cycle 49, measured on both references: a real PMS answers a GET carrying a body
         WITHOUT waiting for it (cycle 37's half), and then consumes exactly
         `Content-Length` bytes and carries on -- two requests on one socket get two
-        answers. plexsim left the bytes in the stream, so they were glued to the front of
+        answers. simplex left the bytes in the stream, so they were glued to the front of
         the next request line and the client was handed a 400 belonging to nothing it
         sent. With a body of nine bytes and `Content-Length: 5` both references leave the
         four spare bytes and answer the NEXT request 500, which is how the count itself
@@ -22829,7 +22829,7 @@ class Handler(BaseHTTPRequestHandler):
 
         When the body never arrives a real PMS closes the socket -- already decided ~5 ms
         after the response, whether the body then turns up at 2 ms or at a second. That
-        is the mechanism that makes a desync impossible there. plexsim gives it a short
+        is the mechanism that makes a desync impossible there. simplex gives it a short
         grace instead of trying to read the reference's own decision point out of a
         buffered reader that cannot be peeked without blocking: a body that arrives
         inside the grace is consumed and the socket kept, which is safe in the other
@@ -22857,14 +22857,14 @@ class Handler(BaseHTTPRequestHandler):
         Cycle 27, measured on kids and zen: a single 70 KB header line and a 101st
         header are both a plain `400 Bad Request` there, where Python's own reader
         raises and `BaseHTTPRequestHandler` turns both into
-        `431 Request Header Fields Too Large`. plexsim shipped both, and 431 is a
+        `431 Request Header Fields Too Large`. simplex shipped both, and 431 is a
         status neither reference sends on any path. The name and value caps below
-        were already 400s, so this is the two refusals Python made before plexsim's
+        were already 400s, so this is the two refusals Python made before simplex's
         own code could see the request.
         """
         if code in (414, 431):
             # Cycle 27: `414 Request-URI Too Long` is the other status Python answers
-            # before plexsim's own code runs -- at its 64 KiB request-line limit, which
+            # before simplex's own code runs -- at its 64 KiB request-line limit, which
             # is twice the reference's own bound below.
             code, message, explain = 400, None, None
         # Cycle 36: every refusal below the API answers the SAME document as every
@@ -22887,14 +22887,14 @@ class Handler(BaseHTTPRequestHandler):
         if getattr(self, "path", None) is None:
             self.path = ""
         self.close_connection = True
-        return self._send_error(code, "plexsim: refused by the envelope")
+        return self._send_error(code, "simplex: refused by the envelope")
 
     # Cycle 36, swept byte by byte over 0x01-0xFF on kids and zen with an identical
     # answer from both: the request TARGET must be printable ASCII. Every raw byte
     # outside 0x21-0x7E -- every C0 control and every byte from 0x7F up -- is a plain
     # 400, in a path segment, in a single segment and in a query VALUE alike, while a
     # percent-escape of the same byte is fine (`%C3%A9` and `%FF` are ordinary 404s).
-    # plexsim answered 200 or 404 to 150 of the 158 refused bytes; the eight it did
+    # simplex answered 200 or 404 to 150 of the 158 refused bytes; the eight it did
     # refuse were an accident, being exactly Python's own unicode-whitespace set
     # (`\x0b\x0c\x1c-\x1f\x85\xa0`), which its request-line splitter reads as a
     # separator. So the shape was right for eight bytes and wrong for the other 150.
@@ -22946,7 +22946,7 @@ class Handler(BaseHTTPRequestHandler):
     # bounded at ten bytes. An unrecognised method of ten bytes or fewer is the recorded
     # `500` with the connection kept; the eleventh byte is a `400` with `Connection:
     # close`, and it arrives the moment that byte does -- before any delimiter, so a peer
-    # that sends eleven bytes and stops is refused at once where plexsim held the socket
+    # that sends eleven bytes and stops is refused at once where simplex held the socket
     # to its own 20-second cap. That is the missing half of "a method a real PMS does not
     # recognise at all is a 500, never a 501".
     METHOD_BYTES = 10
@@ -22955,9 +22955,9 @@ class Handler(BaseHTTPRequestHandler):
         """The request LINE's own grammar, measured on kids and zen.
 
         Cycle 27 sent nine malformed request lines at both references. They agree on
-        every one, and plexsim answered five of them differently:
+        every one, and simplex answered five of them differently:
 
-          | request line                    | a real PMS        | plexsim was     |
+          | request line                    | a real PMS        | simplex was     |
           | `GET  /identity HTTP/1.1` (2 SP)| 400               | 200             |
           | `GET /identity HTTP/1.1 ` (SP)  | 400               | 200             |
           | `GET\t/identity\tHTTP/1.1`      | 400               | 200             |
@@ -22988,7 +22988,7 @@ class Handler(BaseHTTPRequestHandler):
             # writable copies: `Get`, `Blah`, `HELLOGET` and `BLAH` are each the 500 an
             # unrecognised method gets, while `get`, `gET`, `blah` and `helloGET` draw
             # NOTHING -- so a mixed-case token that merely starts upper-case is answered.
-            # plexsim silenced anything that was not wholly upper-case, which is cycle
+            # simplex silenced anything that was not wholly upper-case, which is cycle
             # 27's rule read one step too wide; the cell that shows it is a leftover body
             # byte glued to the next request's `GET`.
             # The silence applies only at the connection's first request. Re-sweeping
@@ -23014,7 +23014,7 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 49, on both references: a request line with an EMPTY method token --
         # a bare CRLF before the request, or a leading space -- draws no answer at all
         # and the socket goes, which is the same silence a lower-case method gets.
-        # plexsim answered its 400.
+        # simplex answered its 400.
         if not parts[0]:
             self.close_connection = True
             return False
@@ -23035,7 +23035,7 @@ class Handler(BaseHTTPRequestHandler):
         # accepts the ABSOLUTE FORM -- what a client sends through an explicit HTTP proxy
         # -- and routes it, discarding the authority entirely. `http://example.invalid/
         # library/sections` is byte-identical to the origin-form answer, and so is
-        # `http://1.2.3.4:9999/...`. plexsim 404'd every one of them, reading the scheme
+        # `http://1.2.3.4:9999/...`. simplex 404'd every one of them, reading the scheme
         # as a path segment. The scheme must be lower-case `http` exactly (`HTTP://`,
         # `Http://` and `https://` are 400s, as are `http:/h/x`, `http://h` with no path,
         # and a bare `http:`), and a path is mandatory. Rewritten here so that every rule
@@ -23048,7 +23048,7 @@ class Handler(BaseHTTPRequestHandler):
                 # Every other scheme-shaped target is refused outright: `HTTP://`,
                 # `Http://`, `https://`, `ftp://`, `xyz://`, `http:/h/x`, `http://h`
                 # with no path, `http://` and a bare `http:` are all 400s on both
-                # references, where plexsim read the scheme as a path segment and
+                # references, where simplex read the scheme as a path segment and
                 # answered its ordinary 404 (or, for `http:`, the plug-in dispatcher's
                 # 200 for a single unknown segment).
                 self.send_error(400)
@@ -23072,7 +23072,7 @@ class Handler(BaseHTTPRequestHandler):
 
         Cycle 16 on kids and zen: a header line with no colon, a TAB anywhere in a
         value (a space is fine), a name over 1024 bytes and a value over 4096 are each
-        a 400. plexsim accepted all of them and only refused at Python's own 64 KiB
+        a 400. simplex accepted all of them and only refused at Python's own 64 KiB
         line limit, answering Python's HTML error page rather than a 400.
 
         Cycle 27 bisected the two caps rather than bracketing them: a name of exactly
@@ -23093,13 +23093,13 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 49, raw sockets on kids and zen: an `obs-fold` continuation line -- a
         # header value continued on the next line, indented with a space -- is a plain
         # 400 and the connection closes. Python's own reader unfolds it and hands the
-        # handler a perfectly ordinary header, so plexsim answered 200 to a request both
+        # handler a perfectly ordinary header, so simplex answered 200 to a request both
         # references refuse. (A TAB continuation was already a 400, because Python
         # refuses a tab in a value, so only the space form was reachable.)
         for line in self.rfile.lines:
             # Cycle 50: a WHITESPACE-ONLY continuation is a fold too. Cycle 49's
             # `and line.strip()` exempted it, and all four references answer 400 to a bare
-            # `" \r\n"` where plexsim answered 200 -- and a `PUT .../title.value=` sent
+            # `" \r\n"` where simplex answered 200 -- and a `PUT .../title.value=` sent
             # that way really COMMITTED, which is the second time this cycle's family has
             # changed durable state a real PMS discards.
             if line[:1] in (b" ", b"\t") and line not in (b"\r\n", b"\n", b""):
@@ -23122,7 +23122,7 @@ class Handler(BaseHTTPRequestHandler):
             # boundary does not move with the method, so it is the URL that is measured
             # and 32 KiB is the number.
             #
-            # plexsim inherited Python's 64 KiB request-line limit and answered
+            # simplex inherited Python's 64 KiB request-line limit and answered
             # `414 Request-URI Too Long` there, so a URL between 32 KiB and 64 KiB was a
             # 200 where a real PMS refuses, and one beyond that carried a status neither
             # reference sends. A comma-joined `/library/metadata/<keys>` from a large
@@ -23180,7 +23180,7 @@ class Handler(BaseHTTPRequestHandler):
 
         Both answer the 200 directly to `Expect: 100-continue` on a GET, and the copy
         waits for the body on a POST rather than inviting it.
-        BaseHTTPRequestHandler's default writes the interim response, so plexsim sent
+        BaseHTTPRequestHandler's default writes the interim response, so simplex sent
         one on every path. Returning True here keeps the request going without it.
         """
         return True
@@ -23196,7 +23196,7 @@ class Handler(BaseHTTPRequestHandler):
     # is per family, and the families genuinely contradict each other -- a 200 container
     # puts `Content-Type` before `Content-Length` and an error the other way round, an
     # image puts `Cache-Control` first and a container puts it last -- so no single
-    # order can be right. plexsim emitted `Date` FIRST (Python's `send_response` writes
+    # order can be right. simplex emitted `Date` FIRST (Python's `send_response` writes
     # it before anything else) and `X-Plex-Protocol` after the length, which is the
     # reverse of the reference at both ends.
     #
@@ -23285,7 +23285,7 @@ class Handler(BaseHTTPRequestHandler):
         # the plug-in cookie between the type and connection state.
         # Cycle 87: it is not one path's order but EVERY gzipped `/system` answer's --
         # `/system`, the contributor list, a scanner, an agent's config, `/system/agents`
-        # and its 400, `/system/scanners/zzz`'s 500 (kids, zen, plexscratch42). plexsim
+        # and its 400, `/system/scanners/zzz`'s 500 (kids, zen, plexscratch42). simplex
         # kept the plain family's order there and put the encoding trio before `Date`.
         "system-gzip": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
                         "Content-Type", "Set-Cookie", "X-Plex-Container-Start",
@@ -23336,7 +23336,7 @@ class Handler(BaseHTTPRequestHandler):
     # Cycle 49, raw sockets on kids and zen: an asset that is NOT THERE -- a missing
     # `/:/resources/*` and a missing `/web/*` -- answers a 404 that names NO connection
     # state at all and really closes the socket. It is the only 404 family on the surface
-    # that does, and it is the same shape the binary 416 already had. plexsim kept both
+    # that does, and it is the same shape the binary 416 already had. simplex kept both
     # alive with `Connection: Keep-Alive`.
     _silent_close = False
 
@@ -23390,7 +23390,7 @@ class Handler(BaseHTTPRequestHandler):
                 # Its CONTAINER orders like a container; its refusal does not. Measured
                 # 2026-09-30 on kids (1.43.4): `GET /system/agents?mediaType=abc` is the
                 # 89-byte 400 with `Content-Length` before `Content-Type`, like every
-                # other refusal. plexsim sent the container order to every status here,
+                # other refusal. simplex sent the container order to every status here,
                 # the PATCH 500 included.
                 return "error" if status >= 400 else "container"
             return "system"
@@ -23407,7 +23407,7 @@ class Handler(BaseHTTPRequestHandler):
             return "artwork"
         # Cycle 49, four refusal shapes on kids and zen, both identical: only the
         # transcoder's own 200 belongs to the image family. Its 400s and 404s order like
-        # every other refusal -- the length before the type -- where plexsim sent the
+        # every other refusal -- the length before the type -- where simplex sent the
         # image order to its refusals too and put `Connection`/`Keep-Alive` in front of
         # both. The asset family below has the same split: its missing-file 404 is an
         # error, and cycle 49 also found it names no connection state at all.
@@ -23462,7 +23462,7 @@ class Handler(BaseHTTPRequestHandler):
                 ranks = {}
                 for index, name in enumerate(order):
                     ranks.setdefault(name.lower(), []).append(index)
-                # An unmeasured header goes where plexsim put it, just before `Date`.
+                # An unmeasured header goes where simplex put it, just before `Date`.
                 unknown = ranks["date"][0] - 0.5
                 seen = {}
                 ranked = []
@@ -23488,7 +23488,7 @@ class Handler(BaseHTTPRequestHandler):
         `X-Plex-Protocol, Content-Type, Content-Length, Connection, Cache-Control,
         Date` and nothing else -- in that ORDER, which cycle 33 measured per response
         family and `end_headers` now writes. BaseHTTPRequestHandler's own `send_response` adds a
-        `Server:` from `server_version`, so plexsim named itself on every response it
+        `Server:` from `server_version`, so simplex named itself on every response it
         has ever sent. Blanking `version_string()` does not help -- `send_header`
         still puts an empty header on the wire -- so the banner has to be dropped by
         not sending it. `Date` stays: both references send one.
@@ -23527,7 +23527,7 @@ class Handler(BaseHTTPRequestHandler):
 
         Measured: a real PMS's `StatisticsBandwidth` rows include API replies,
         not only media -- a 4 KB `/status/sessions` answer showed up as its own
-        per-second row. plexsim serves every byte it reports, so these are real
+        per-second row. simplex serves every byte it reports, so these are real
         numbers rather than a drawn graph.
         """
         try:
@@ -23552,7 +23552,7 @@ class Handler(BaseHTTPRequestHandler):
 
         With an Origin it ECHOES that origin, and adds `Access-Control-Expose-
         Headers: Location, Date` and `Vary: Origin, X-Plex-Token`. With no Origin
-        it sends no CORS headers at all. plexsim answered `*` unconditionally,
+        it sends no CORS headers at all. simplex answered `*` unconditionally,
         which is not interchangeable: a wildcard is invalid on a credentialed
         request, so a client sending cookies or an Authorization header has its
         response rejected by the browser rather than by the server.
@@ -23579,7 +23579,7 @@ class Handler(BaseHTTPRequestHandler):
         and `zzz` keep the connection), the parameter name is case-SENSITIVE, a repeated
         parameter takes the LAST occurrence, and the HEADER wins when both are sent.
         That is the same header-or-query family `X-Plex-Platform` and `X-Plex-Language`
-        already belong to; plexsim read the header alone.
+        already belong to; simplex read the header alone.
         """
         value = self.headers.get("X-Plex-Http-Pipeline")
         if value is None:
@@ -23617,7 +23617,7 @@ class Handler(BaseHTTPRequestHandler):
         `/system/agents`, `/system/scanners/{N}` and `/system/proxy`. Nothing else on
         the surface sends a cookie at all: `/livetv`, `/services`, `/media`, `/status`,
         `/statistics`, `/security`, `/library` and an unknown single segment send none.
-        plexsim sent none anywhere, so a client that keeps a cookie jar had nothing to
+        simplex sent none anywhere, so a client that keeps a cookie jar had nothing to
         keep -- which is invisible to the Plex clients and is exactly the kind of thing
         a byte-for-byte diff of the two servers reads.
         """
@@ -23627,7 +23627,7 @@ class Handler(BaseHTTPRequestHandler):
             # the PATCH refusal carries the cookie, on either version. Both are answered
             # before the plug-in framework runs -- PATCH is not a method at all on 1.42.2
             # (a 500) and Tornado's own 405 on 1.43.4 -- so there is no plug-in session to
-            # hand back. plexsim attached the cookie to every response under `/system`.
+            # hand back. simplex attached the cookie to every response under `/system`.
             return None
         path = (self.path or "").split("?")[0].rstrip("/")
         if path.startswith("/:/plugins/"):
@@ -23647,7 +23647,7 @@ class Handler(BaseHTTPRequestHandler):
                 and pieces_config[4] == "config"):
             # Cycle 53: `/system/agents/{id}/config/{N}` is the one framework document
             # that carries NO cookie, on kids and zen alike, where its sibling
-            # `/system/agents/contributors` carries one. plexsim sent it on both.
+            # `/system/agents/contributors` carries one. simplex sent it on both.
             # Cycle 58, raw sockets on zen and plexscratch42: that is the READ's rule.
             # The order-saving PUT carries the cookie on every answer, its 404 included,
             # and so does a GET whose mediaType does not parse as an integer -- the one
@@ -23669,7 +23669,7 @@ class Handler(BaseHTTPRequestHandler):
         # response body -- `/identity`, a grid, `/:/prefs`, artwork,
         # `/web/index.html` -- answering 206 with a `Content-Range` and the
         # sliced bytes, 416 past the end, and an unrecognised unit served as
-        # bytes; a 206 is never gzipped. plexsim honoured Range on part reads
+        # bytes; a 206 is never gzipped. simplex honoured Range on part reads
         # alone and answered the whole body with a 200 everywhere else. It runs
         # before the status line goes out, which is the whole point.
         # Cycle 50: a real PMS answers a FULL HTTP/1.1 response to an HTTP/0.9 request
@@ -23691,10 +23691,10 @@ class Handler(BaseHTTPRequestHandler):
             # container paths: a 416 is an ERROR RESPONSE, not the original resource with
             # no bytes. The reference sends its 129-byte HTML page with
             # `Content-Type: text/html` and carries neither `Accept-Ranges` nor
-            # `Content-Range`; plexsim answered `Content-Length: 0` with the ORIGINAL
+            # `Content-Range`; simplex answered `Content-Length: 0` with the ORIGINAL
             # media type and the whole success header set, so a client was handed an
             # `image/jpeg` of zero bytes. Cycle 36 finished it: the BODY is the same
-            # 129-byte refusal document every other status answers, not plexsim's own
+            # 129-byte refusal document every other status answers, not simplex's own
             # sentence -- cycle 1's text/plain deviation is gone from the whole surface.
             # Cycle 44, re-measured on both references with a KEEP-ALIVE request, so the
             # answer is the server's own choice rather than an echo of the probe's
@@ -23706,7 +23706,7 @@ class Handler(BaseHTTPRequestHandler):
             # all, the only response class that does not"; that is the binary half only.
             #
             # And EVERY 416 carries `Cache-Control: no-cache`, the transcoder's included,
-            # where its 200 carries `max-age=259200`. plexsim cached the refusal for three
+            # where its 200 carries `max-age=259200`. simplex cached the refusal for three
             # days. It also kept `X-Plex-Local-Asset` on an artwork 416, which neither
             # reference sends on anything but the 200.
             self._range_error_container = bool(
@@ -23723,7 +23723,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         names = {name.lower() for name, _ in extra_headers}
         # Measured across eight endpoints on both reference servers: a real PMS
-        # sends `Cache-Control: no-cache` on EVERYTHING. plexsim sent none at all,
+        # sends `Cache-Control: no-cache` on EVERYTHING. simplex sent none at all,
         # except on artwork where it sent a day of caching that the reference does
         # not -- so a re-match or a Change Artwork stayed invisible to the browser.
         if "cache-control" not in names:
@@ -23731,7 +23731,7 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 16, measured on kids and zen over every status and both formats: a
         # real PMS names its connection state on EVERY response -- `Connection:
         # Keep-Alive` plus `Keep-Alive: timeout=20` when the connection is being
-        # kept, `Connection: close` when it is not. plexsim sent neither, so a
+        # kept, `Connection: close` when it is not. simplex sent neither, so a
         # client reading the advertised timeout to schedule reuse got nothing.
         if getattr(self, "_silent_close", False):
             # Cycle 49: named nothing, and the socket goes. See `_silent_close`.
@@ -23763,7 +23763,7 @@ class Handler(BaseHTTPRequestHandler):
             # body's length as well as the slice's -- the full one here, before the range,
             # and the slice's below. A ranged artwork, asset or part answers the slice
             # alone, and each of those carries `Accept-Ranges`, which is what tells them
-            # apart. plexsim answered one length for all of them.
+            # apart. simplex answered one length for all of them.
             if not any(name.lower() == "accept-ranges" for name, _ in extra_headers):
                 self.send_header("Content-Length", content_range.rsplit("/", 1)[-1])
             self.send_header("Content-Range", content_range)
@@ -23789,7 +23789,7 @@ class Handler(BaseHTTPRequestHandler):
 
     # Compressible types. Measured: a real PMS gzips its XML and JSON (3.4x on a
     # five-row grid) and names both sizes in two Plex-specific headers, which
-    # plexsim never sent -- so every container went out uncompressed.
+    # simplex never sent -- so every container went out uncompressed.
     GZIP_TYPES = ("text/xml", "application/xml", "application/json", "text/html",
                   "text/plain")
 
@@ -23800,14 +23800,14 @@ class Handler(BaseHTTPRequestHandler):
             # An EMPTY body is never compressed. Recorded from the official client's own
             # `PUT /updater/check` (`tests/fixtures/reference-walk.jsonl`), which offers
             # `gzip, deflate, br, zstd`: kids answers `Content-Length: 0`, `text/html`
-            # and no encoding pair, length before type. plexsim gzipped it into a
+            # and no encoding pair, length before type. simplex gzipped it into a
             # 20-byte stream that decodes to nothing and named an original length of 0,
             # so every empty write answer -- a 204 included -- took the gzip family's
             # header order too.
             return payload
         # Cycle 16, measured on kids and zen: the token is matched EXACTLY and
         # case-sensitively -- `GZIP`, `x-gzip` and `*` all get a plain body, while
-        # `gzip;q=0` is still gzipped because the q is ignored entirely. plexsim
+        # `gzip;q=0` is still gzipped because the q is ignored entirely. simplex
         # lower-cased the header and searched for the substring, so it compressed for
         # three offers a real PMS answers plain.
         offers = [piece.split(";")[0].strip()
@@ -23821,7 +23821,7 @@ class Handler(BaseHTTPRequestHandler):
         # with it the whole stream is byte-identical to `gzip.compress(payload, 6,
         # mtime=0)` -- checked on six bodies from 163 to 20,544 bytes on kids (1.43.4)
         # and zen (1.42.2), header, deflate stream and trailer alike. Python stamps the
-        # current time instead, so plexsim answered the SAME request with different
+        # current time instead, so simplex answered the SAME request with different
         # BYTES every second: cycle 30's same-request-twice sweep could not see it,
         # because it compared the decoded bodies.
         squeezed = gzip_module.compress(payload, 6, mtime=0)
@@ -23852,7 +23852,7 @@ class Handler(BaseHTTPRequestHandler):
         Cycle 53, measured on kids and zen: `/:/plugins/{id}/prefs` pages like every other
         framework container -- `Start=1&Size=1` on themoviedb's four settings answers
         `totalSize="4" ... size="1"` and one row, with both response headers -- where
-        plexsim served the whole captured document whatever was asked. The rows are the
+        simplex served the whole captured document whatever was asked. The rows are the
         document's own lines, so slicing them keeps every attribute byte for byte.
         """
         start, size = self._container_window()
@@ -23879,7 +23879,7 @@ class Handler(BaseHTTPRequestHandler):
         Cycle 16, measured on kids and zen: every container that pages carries
         `X-Plex-Container-Start` and `X-Plex-Container-Total-Size` beside the body's
         own `offset`/`totalSize` -- `/identity` answers Total-Size 0 -- and an unpaged
-        one carries neither. plexsim sent no such header at all.
+        one carries neither. simplex sent no such header at all.
         """
         if not isinstance(body, dict) or "totalSize" not in body:
             return ()
@@ -23888,7 +23888,7 @@ class Handler(BaseHTTPRequestHandler):
                     ("X-Plex-Container-Total-Size", str(body["totalSize"])))
         # Cycle 53: a plug-in FRAMEWORK container pages without emitting an `offset` --
         # cycle 18 measured that on `/system` -- and it still answers both response
-        # headers, on kids and zen alike. plexsim keyed the headers on the body's
+        # headers, on kids and zen alike. simplex keyed the headers on the body's
         # `offset`, so the one family that has none sent neither.
         if "noHistory" not in body:
             return ()
@@ -23919,7 +23919,7 @@ class Handler(BaseHTTPRequestHandler):
 
         Cycle 35 swept the GRAMMAR: 43 header values against both references and against
         both a container and a `/web` asset, 172 cells, and the rules below reproduce
-        every one of them. plexsim had twelve of the 43 wrong, and two of those are what
+        every one of them. simplex had twelve of the 43 wrong, and two of those are what
         a real client can actually provoke -- a reversed range answered a 206 with an
         EMPTY body where a real PMS answers 416, and an unparseable one answered 200
         with no `Content-Range` where a real PMS answers the whole body as a 206.
@@ -24014,14 +24014,14 @@ class Handler(BaseHTTPRequestHandler):
     # `Related` block's HUB titles are translated too (`Ähnliche Filme`), exactly as the
     # same hub at `/hubs/metadata/{id}/related` is; its member rows keep their guard, since
     # a row is recognised by its own `ratingKey`. Plex for Android draws that title on its
-    # detail screen (js:buildPmsDetailsScreen), and plexsim left it English.
+    # detail screen (js:buildPmsDetailsScreen), and simplex left it English.
     _LOCALISED_BLOCKS = frozenset(("Preferences", "Related"))
 
     # Cycle 25, measured on kids and on zen in de, fr and ja: the `Setting` rows a
     # SHOW's `/tree` node ends with are NOT localised -- all eight stay English in every
     # language, where the same settings under `?includePreferences=1` move. A tree node
     # is a ROW; it is keyed by `id` rather than `ratingKey`, so the row guard did not
-    # recognise it and plexsim translated labels a real PMS leaves alone. It is the
+    # recognise it and simplex translated labels a real PMS leaves alone. It is the
     # inverse of the usual defect, and it is still a rule broken.
     _ROW_BLOCKS = frozenset(("MetadataItem",))
 
@@ -24142,7 +24142,7 @@ class Handler(BaseHTTPRequestHandler):
         # application/json`: the framework's serialiser has no JSON form, so `/system`,
         # `/system/search`, `/system/library/sections` and `/system/scanners/{N}` answer
         # the same `application/xml` document whatever Accept says. Only the bare
-        # `/system/agents`, which PMS implements itself, answers JSON. plexsim answered
+        # `/system/agents`, which PMS implements itself, answers JSON. simplex answered
         # JSON to all four.
         if self._wants_xml() or framework:
             # Cycle 50: every path under `/system` but `/system/agents` is written by the
@@ -24154,7 +24154,7 @@ class Handler(BaseHTTPRequestHandler):
                 # is written by the framework's serialiser: the single-quoted declaration
                 # and a SELF-CLOSED empty container, where the core writer pairs
                 # `MediaContainer` and double-quotes `UTF-8`. Measured over three
-                # identifiers on kids and zen, which answer 130 bytes where plexsim
+                # identifiers on kids and zen, which answer 130 bytes where simplex
                 # answered 147.
                 self._send(200, "application/xml",
                            to_system_xml(container, elements), window)
@@ -24188,7 +24188,7 @@ class Handler(BaseHTTPRequestHandler):
     # Cycle 15 measured `PATCH` as ROUTED -- `/identity`, `/hubs` and `/playlists`
     # answering 200 and every other path 404 -- on plexscratch, which is **1.43.4**.
     #
-    # Cycle 31, on plexscratch42 (a fresh 1.42.2 install, the build plexsim reports),
+    # Cycle 31, on plexscratch42 (a fresh 1.42.2 install, the build simplex reports),
     # over 20 paths and three body dispositions: **PATCH is a 500 on every one of them**,
     # with the same 109-byte html `FROB` and `BREW` answer on both versions. It is not in
     # 1.42.2's method table at all. The decisive case is `/identity`, the one path that
@@ -24220,7 +24220,7 @@ class Handler(BaseHTTPRequestHandler):
 
     # What a real PMS allows on a preflight, measured. It ECHOES the requested
     # header list rather than publishing a fixed one, which is the only way to
-    # be sure of not blocking a header a client legitimately sends: plexsim's
+    # be sure of not blocking a header a client legitimately sends: simplex's
     # fixed list already omitted `X-Plex-Session-Id`, `X-Plex-Language`,
     # `X-Plex-Features` and half a dozen others the web client uses, and a
     # preflight that omits one makes the browser refuse the request with no
@@ -24236,7 +24236,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self.headers.get("Access-Control-Request-Method"):
             # Cycle 15, measured on the copy: a BARE OPTIONS is routed like any other
             # verb -- 200 on `/identity`, `/hubs` and `/playlists`, 404 everywhere
-            # else. Only a genuine preflight gets the CORS answer below. plexsim
+            # else. Only a genuine preflight gets the CORS answer below. simplex
             # answered every OPTIONS with the preflight, so a probe of any path read
             # as "this endpoint exists".
             self._dispatch("OPTIONS")
@@ -24249,7 +24249,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Vary", "Origin, X-Plex-Token")
         # Cycle 16, measured on the copy: with no `Origin` the preflight carries NO
         # CORS headers at all -- not the method list, not the header list, not
-        # Max-Age. plexsim sent all three, answering a question it had not been
+        # Max-Age. simplex sent all three, answering a question it had not been
         # asked. A browser always sends Origin, so nothing user-visible turns on it.
         if origin:
             self.send_header("Access-Control-Allow-Methods",
@@ -24258,7 +24258,7 @@ class Handler(BaseHTTPRequestHandler):
             # own preflight: `Access-Control-Allow-Headers` is sent ONLY when the request
             # carried `Access-Control-Request-Headers`, and it is that value echoed back.
             # Plex Web's preflight of `PUT /updater/check` asks for no headers at all, so
-            # the reference answers without the field -- where plexsim substituted a
+            # the reference answers without the field -- where simplex substituted a
             # fallback list and answered a question the browser had not asked. Cycle 16
             # recorded the echo and invented the fallback beside it.
             asked = self.headers.get("Access-Control-Request-Headers")
@@ -24266,7 +24266,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header("Access-Control-Allow-Headers", asked)
             self.send_header("Access-Control-Max-Age", "1209600")
         # Measured on the copy: the preflight response carries a Content-Type, and it
-        # is `text/plain`. plexsim sent none.
+        # is `text/plain`. simplex sent none.
         self.send_header("Content-Type", "text/plain")
         self.send_header("Content-Length", "0")
         # Cycle 33, measured on kids and zen: a preflight names its connection state and
@@ -24326,10 +24326,10 @@ class Handler(BaseHTTPRequestHandler):
 
     # And three single-segment paths answer their OWN refusal BEFORE the gate, on both
     # references: `/search` its no-parameters 400, `/downloadQueue` a 404 (a real PMS has
-    # no such route -- plexsim's own download queue is its invention, and the
+    # no such route -- simplex's own download queue is its invention, and the
     # unauthenticated answer is still the measured one), and `/player` a 400 on 1.42.2,
-    # the build plexsim reports (kids answers 401 there, so it is a version split).
-    # plexsim answered the generic 403 to all three.
+    # the build simplex reports (kids answers 401 there, so it is a version split).
+    # simplex answered the generic 403 to all three.
     UNAUTHORISED_OWN_REFUSAL = {"search": 400, "downloadQueue": 404, "player": 400}
 
     # Cycle 36, measured on kids and zen over seven statuses -- 400, 401, 403, 404, 406,
@@ -24340,15 +24340,15 @@ class Handler(BaseHTTPRequestHandler):
     # a HEAD carries its `Content-Length` with no body. The two references agree on every
     # cell, so it is not a version shape.
     #
-    # plexsim had THREE of them -- the 401, the 403 and the root's redirect -- each built
+    # simplex had THREE of them -- the 401, the 403 and the root's redirect -- each built
     # by the cycle that happened to measure that one refusal, and answered `text/plain`
     # with a sentence of its own for every other refusal on the surface. The sentences
-    # were the useful half for debugging plexsim, so they are kept: they move to the LOG,
+    # were the useful half for debugging simplex, so they are kept: they move to the LOG,
     # which is where a client never sees them.
     #
     # The two exceptions stay exceptions, both already measured: `GET /` answers the
     # 193-byte redirect document rather than the plain 401, and the `/system` subtree
-    # answers an EMPTY body with no `Content-Type` at all. 502 and 503 are plexsim's own
+    # answers an EMPTY body with no `Content-Type` at all. 502 and 503 are simplex's own
     # (a dead Real-Debrid link, a terminated session) and no real PMS answers them, so
     # they take the template by the RULE rather than by a witness of their own.
     @staticmethod
@@ -24358,7 +24358,7 @@ class Handler(BaseHTTPRequestHandler):
                 "</html>" % (reason, status, reason)).encode()
 
     def _send_error(self, status, sentence, extra_headers=()):
-        """A refusal: the reference's own document on the wire, plexsim's in the log."""
+        """A refusal: the reference's own document on the wire, simplex's in the log."""
         route = (self.path or "").split("?")[0]
         # Cycle 49: an ASSET that is not there -- under `/:/resources/` or `/web/` --
         # answers a 404 naming no connection state at all and closes. Every other 404 on
@@ -24409,7 +24409,7 @@ class Handler(BaseHTTPRequestHandler):
         if route in ("/manage", "/manage/"):
             # Cycle 52, measured on kids and zen with no token: `/manage` answers its 302
             # to the web client, like `/web` -- it is the short url a person types, and
-            # refusing it would send them to a 403 instead of the sign-in page. plexsim
+            # refusing it would send them to a 403 instead of the sign-in page. simplex
             # answered the generic 403.
             return True
         if route in STATIC_RESOURCES and self.command in ("GET", "HEAD"):
@@ -24425,13 +24425,13 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 36, measured on kids and zen with a bad token and a good one in the
         # same query: a repeated `X-Plex-Token=` takes the LAST occurrence -- bad then
         # good is a 200 and good then bad a 401, on both references -- which is the rule
-        # cycle 35 measured for every other key on the surface and the rule plexsim's own
+        # cycle 35 measured for every other key on the surface and the rule simplex's own
         # `query` dict already follows, being built by a dict comprehension over the
         # pairs. Three readers had been written with `parse_qs(...)[0]` instead and took
         # the FIRST: this gate, the client identifier the session bookkeeping keys on,
         # and the notification channels' `filters=` whitelist. A token appended to a URL
         # that already carried one -- what a client concatenating a base URL produces --
-        # was therefore refused by plexsim and accepted by a real PMS.
+        # was therefore refused by simplex and accepted by a real PMS.
         # Cycle 50: the HEADER's value is read the way a real PMS reads it -- one optional
         # leading space and nothing else trimmed -- so `X-Plex-Token:  <tok>` is not that
         # token and this gate refuses it, as all four references do.
@@ -24441,7 +24441,7 @@ class Handler(BaseHTTPRequestHandler):
 
     # Cycle 15, swept by METHOD across 33 paths on the disposable copy -- the sweep
     # nobody could run before, because it needs writes. A READ-ONLY route answers
-    # **404** to every verb but GET and HEAD; plexsim answered the GET body with a
+    # **404** to every verb but GET and HEAD; simplex answered the GET body with a
     # 200, which reads to a client (and to python-plexapi's capability probes, which
     # are exactly this shape) as "this endpoint exists and accepts writes".
     #
@@ -24455,7 +24455,7 @@ class Handler(BaseHTTPRequestHandler):
         "/:/plugins", "/channels/all", "/services/browse", "/updater/status",
         # Cycle 31, swept over OPTIONS, POST, PUT and DELETE on plexscratch42 (1.42.2) and
         # plexscratch (1.43.4), which agree on all 44 answers: each of these refuses every
-        # verb but GET and HEAD, with a 404. plexsim answered **200 with the whole GET
+        # verb but GET and HEAD, with a 404. simplex answered **200 with the whole GET
         # body** -- 3,852 bytes of `/media/providers` to a bare OPTIONS, 1,398 of
         # `/statistics/bandwidth`, its section list, its profile catalogue -- which is fix
         # 4's trap from the outside: a companion or proxy client that probes with OPTIONS
@@ -24470,7 +24470,7 @@ class Handler(BaseHTTPRequestHandler):
         # Re-measured on plexscratch (1.43.4, 2026-09-30) with PUT, POST, DELETE and a
         # bare OPTIONS: the session LISTINGS are one family -- `/status/sessions/
         # background` refuses every one of them as `/status/sessions` does -- and so
-        # are the two server-wide searches. plexsim answered each with its GET body.
+        # are the two server-wide searches. simplex answered each with its GET body.
         # (`/status/sessions/history/{id}` takes a DELETE and `/terminate` any verb, so
         # this is a list of listings, not a prefix.)
         "/status/sessions/background", "/library/search",
@@ -24487,10 +24487,10 @@ class Handler(BaseHTTPRequestHandler):
     # Re-measured on plexscratch (1.43.4, 2026-09-30): the `/statistics` subtree has no
     # writer at all -- `/statistics/resources` refuses PUT, POST, DELETE and a bare
     # OPTIONS with the 404 its two siblings do -- so the rule is the subtree, and
-    # plexsim's answer of the resources series to all four was the listed-path gap.
+    # simplex's answer of the resources series to all four was the listed-path gap.
     READ_ONLY_PREFIXES = ("/statistics/",)
     # Cycle 17, measured on plexscratch: the collection ITEM paths take exactly one
-    # verb each and answer 404 to every other. plexsim answered 200 with an empty
+    # verb each and answer 404 to every other. simplex answered 200 with an empty
     # container to four verbs on the list, 200 with an invented single-item container
     # to a GET of one member, and 200 with the whole children listing to a GET of
     # `/move` -- a client reads any 200 as "this endpoint exists".
@@ -24501,7 +24501,7 @@ class Handler(BaseHTTPRequestHandler):
                              "member": ("DELETE",)}
     # Cycle 18, measured on plexscratch with all seven verbs (GET, HEAD, POST, PUT,
     # DELETE, PATCH, OPTIONS) tried on each path: the PLAYLIST item paths have the same
-    # shape as the collection's and plexsim answered 200 to thirteen cells the reference
+    # shape as the collection's and simplex answered 200 to thirteen cells the reference
     # refuses -- a GET of one member returned the WHOLE item listing, and so did a GET
     # or a DELETE of `/move`. The verbs each path really takes:
     #   /playlists/{id}              GET HEAD PUT DELETE   (POST/PATCH/OPTIONS 404)
@@ -24520,15 +24520,15 @@ class Handler(BaseHTTPRequestHandler):
                              "grandchildren")
     # Cycle 17, measured on plexscratch: an item ACTION leaf takes PUT and refuses
     # POST with a 404, where `POST /library/sections/{id}/refresh` really is a 200.
-    # plexsim ran the action on a POST, so a client that got the verb wrong re-matched
+    # simplex ran the action on a POST, so a client that got the verb wrong re-matched
     # or re-analysed an item instead of being refused.
     # Cycle 18 adds `split` and `merge`, measured on plexscratch: `POST` on either is
-    # a 404 there too, where plexsim PERFORMED the split on a POST and answered its
+    # a 404 there too, where simplex PERFORMED the split on a POST and answered its
     # merge validator's 400. The rule was landed for three of the five leaves.
     ITEM_ACTION_LEAVES = ("refresh", "analyze", "unmatch", "split", "merge")
     # Cycle 18, measured on plexscratch: `/library/metadata/{id}/subtitles` answers
     # GET 400, POST 406 (the empty-body check), PUT 400 -- and 404 to DELETE, PATCH and
-    # OPTIONS, where plexsim answered its upload validator's 400 to all three.
+    # OPTIONS, where simplex answered its upload validator's 400 to all three.
     SUBTITLE_LEAF_VERBS = ("GET", "HEAD", "POST", "PUT")
 
     # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `limit=` and `parent=` are
@@ -24645,7 +24645,7 @@ class Handler(BaseHTTPRequestHandler):
             return True
         # Cycle 29, measured on plexscratch: `/library/metadata/{id}/extras/all` and
         # `/library/sections/{id}/extras/all` answer 404 to PUT, DELETE, PATCH, POST and a
-        # bare OPTIONS, like every other read-only route. plexsim's gate matched a FOUR
+        # bare OPTIONS, like every other read-only route. simplex's gate matched a FOUR
         # segment path, and cycle 18's `/extras/all` is five, so every one of those verbs
         # fell through to the extras container and answered it a 200 -- the one hole left
         # in cycle 18's "a read-only route answers 404 to every verb but GET and HEAD".
@@ -24669,7 +24669,7 @@ class Handler(BaseHTTPRequestHandler):
             # `/:/timeline` and `/:/progress` are all GETs from the web client.
             sim.state_store.touch()
             # Cycle 73, measured on plexscratch: five client writes answered 0.17-0.5 s
-            # before a `docker kill -s KILL` all survived the restart, where plexsim's
+            # before a `docker kill -s KILL` all survived the restart, where simplex's
             # 2 s coalesced save lost all five. A write is on disk before it is answered.
             self._persist_before_answer = (
                 method not in ("GET", "HEAD", "OPTIONS")
@@ -24678,7 +24678,7 @@ class Handler(BaseHTTPRequestHandler):
         if sim is not None:
             # Cycle 74, on plexscratch: a client's FIRST request -- a plain GET -- leaves
             # its device row behind even when the server is killed 0.16 s after the
-            # answer. plexsim registers a device when it counts the response's bytes,
+            # answer. simplex registers a device when it counts the response's bytes,
             # after the answer, so the device is registered here instead and saved first.
             # Measured on kids (2026-09-30): and a first `GET /devices` already LISTS the
             # asking client's new row, so this runs with or without `--state` -- without
@@ -24714,7 +24714,7 @@ class Handler(BaseHTTPRequestHandler):
         sim = self.server.sim
         # Cycle 27, measured on kids and zen (GET) and on the writable copy (POST): an
         # unparseable `Content-Length` is IGNORED -- `abc` is a 200 on every one of them,
-        # with no body read -- and a NEGATIVE one is a 500. plexsim called `int()` on the
+        # with no body read -- and a NEGATIVE one is a 500. simplex called `int()` on the
         # raw value, so `abc` raised inside the handler thread and the connection died
         # with no response at all, and `-1` became `rfile.read(-1)`, which blocks until
         # the peer closes. Both read to a client as a server that hung up.
@@ -24729,10 +24729,10 @@ class Handler(BaseHTTPRequestHandler):
             # "the one refusal that closes" (a query pair with no `=`) was never an
             # exception: it is envelope-level too.
             self.close_connection = True
-            self._send_error(500, "plexsim: server error")
+            self._send_error(500, "simplex: server error")
             return
         # Cycle 49, measured on both references: a leading `+` parses -- `Content-Length:
-        # +5` consumes five bytes where plexsim read none. Everything else that does not
+        # +5` consumes five bytes where simplex read none. Everything else that does not
         # parse (`abc`, `1.5`, an empty value, trailing garbage) is still ignored.
         digits = declared[1:] if declared.startswith("+") else declared
         length = int(digits) if digits.isdigit() else 0
@@ -24779,7 +24779,7 @@ class Handler(BaseHTTPRequestHandler):
             state, decoded = self._read_chunked()
             if state == "bad":
                 self.close_connection = True
-                self._send_error(400, "plexsim: bad request")
+                self._send_error(400, "simplex: bad request")
                 return
             body = decoded
             if state == "short":
@@ -24793,7 +24793,7 @@ class Handler(BaseHTTPRequestHandler):
             body = b""
             if state == "bad":
                 self.close_connection = True
-                self._send_error(400, "plexsim: bad request")
+                self._send_error(400, "simplex: bad request")
                 return
             if state == "short":
                 # Ran out of buffered framing: answer, then the socket goes, exactly as a
@@ -24815,7 +24815,7 @@ class Handler(BaseHTTPRequestHandler):
             # request parser collapses a leading `//` to `/` before this handler ever
             # sees `self.path` (an open-redirect guard), so it is read off the request
             # line -- `//identity` otherwise answered the identity document.
-            self._send_error(404, "plexsim: not found")
+            self._send_error(404, "simplex: not found")
             return
         # Cycle 37, swept over literal, mixed-case and mixed escaped spellings on
         # both references: a NON-TERMINAL segment made only of at least two dots is
@@ -24827,16 +24827,16 @@ class Handler(BaseHTTPRequestHandler):
             dot_segment = re.sub(r"(?i)%2e", ".", segment)
             if len(dot_segment) >= 2 and not dot_segment.strip("."):
                 self.close_connection = True          # cycle 49: envelope, so it closes
-                self._send_error(400, "plexsim: bad request")
+                self._send_error(400, "simplex: bad request")
                 return
 
         refusal = self._query_grammar_refusal(method, self.path)
         if refusal:
-            self._send_error(refusal, "plexsim: bad request")
+            self._send_error(refusal, "simplex: bad request")
             return
 
         if self._read_only_refusal(method, self.path):
-            self._send_error(404, "plexsim: not found -- read-only route")
+            self._send_error(404, "simplex: not found -- read-only route")
             return
 
         if not self._authorised(self.path):
@@ -24846,7 +24846,7 @@ class Handler(BaseHTTPRequestHandler):
             # section -- and only a path that DOES exist answers 401. The legacy
             # single-segment plug-in dispatcher is a 403 with its own body, and `GET /`
             # is a 401 whose body carries the script that walks a browser into the web
-            # client. plexsim answered one generic 401 to all of them.
+            # client. simplex answered one generic 401 to all of them.
             #
             # The routing probe runs the dispatcher, so it is limited to GET and HEAD
             # and to paths that cannot write: several PMS GETs mutate, and an
@@ -24859,10 +24859,10 @@ class Handler(BaseHTTPRequestHandler):
             # refusals -- a 401 with no token, a 401 with a wrong one, the 403 a single
             # unknown segment answers, a 404 for a path that does not exist, and the 401
             # on `/photo/:/transcode`: every one carries `Connection: Keep-Alive` and the
-            # socket really is reusable. plexsim forced a close on all of them, so a
+            # socket really is reusable. simplex forced a close on all of them, so a
             # gated server tore down one TCP connection per refused request -- and
             # `docs/findings.md`'s recorded 401 sample, which shows `Connection: close`,
-            # was plexsim's own answer read back as the reference's.
+            # was simplex's own answer read back as the reference's.
             self._send(refusal, "text/html", body)
             return
 
@@ -24871,7 +24871,7 @@ class Handler(BaseHTTPRequestHandler):
                                 self.client_address[0] if self.client_address else None)
         except Exception:
             logger.exception("handler failed for %s %s", method, self.path)
-            self._send_error(500, "plexsim: internal error")
+            self._send_error(500, "simplex: internal error")
             return
 
         with sim.lock:
@@ -24927,7 +24927,7 @@ class Handler(BaseHTTPRequestHandler):
                 # "Moved Temporarily" rather than Python's "Found", and the
                 # response carries `X-Plex-Protocol: 1.0` and `Cache-Control:
                 # public` -- the ONE place on the whole surface that is not
-                # `no-cache`. plexsim sent neither header.
+                # `no-cache`. simplex sent neither header.
                 # Cycle 46, measured on both PMS versions: an exact
                 # X-Plex-Neuter-Redirect: 1 keeps the redirect envelope (including
                 # Location) but changes its status to an empty 200. Other values
@@ -25035,7 +25035,7 @@ class Handler(BaseHTTPRequestHandler):
                 # Cycle 53: the framework does NOT close its error response. Measured on
                 # kids, zen and plexscratch42 over all five of these paths -- each answers
                 # `Connection: Keep-Alive` with `Keep-Alive: timeout=20`, and a second
-                # request on the same socket is served. plexsim set `close_connection`
+                # request on the same socket is served. simplex set `close_connection`
                 # here on a comment that was never measured, so a pipelining client lost
                 # its socket on every Agents-page probe. Cycle 45's rule says which way it
                 # goes: a refusal of the ENVELOPE closes and a refusal of the MEANING
@@ -25068,7 +25068,7 @@ class Handler(BaseHTTPRequestHandler):
             if kind == "created":
                 # POST /library/sections answers 201 with the created Directory -- and,
                 # measured on the copy, a `Location` header naming the new library
-                # (`/library/sections/6`). plexsim sent the body alone, so a client that
+                # (`/library/sections/6`). simplex sent the body alone, so a client that
                 # follows the header rather than parsing the row had nowhere to go.
                 payload = json_body(result[1])
                 created = [("Location", result[2])] if len(result) > 2 and result[2] else []
@@ -25080,7 +25080,7 @@ class Handler(BaseHTTPRequestHandler):
             if kind == "zip":
                 self._send(200, "application/zip", result[1],
                            [("Content-Disposition",
-                             "attachment; filename=\"plexsim-logs.zip\"")])
+                             "attachment; filename=\"simplex-logs.zip\"")])
                 return
 
         if True:
@@ -25092,12 +25092,12 @@ class Handler(BaseHTTPRequestHandler):
             #
             #   1.42.2  POST /playQueues -> size 1, totalSize 3, offset 1, one row
             #   1.43.4  the same
-            #   plexsim size 3, no totalSize, no offset, every row
+            #   simplex size 3, no totalSize, no offset, every row
             #
             # and with `excludeElements=Media` both references drop the Media tree and
-            # substitute `mediaCount: 1` where plexsim keeps the whole thing.
+            # substitute `mediaCount: 1` where simplex keeps the whole thing.
             #
-            # plexsim gated both post-processors on the METHOD, so exactly half the
+            # simplex gated both post-processors on the METHOD, so exactly half the
             # surface followed cycle 21's rule that "paging is a property of the RESPONSE,
             # not of a listing" -- the twelve playlist, collection and play-queue write
             # responses escaped it. `excludeFields=` was never affected: it is applied in
@@ -25108,7 +25108,7 @@ class Handler(BaseHTTPRequestHandler):
                 result = self._alternates_container(result)
                 result = self._page_container(result)
             except filters_module.FilterError as refused:
-                self._send_error(refused.status, "plexsim: %s" % refused.detail)
+                self._send_error(refused.status, "simplex: %s" % refused.detail)
                 return
         self._send_container(result)
 
@@ -25133,10 +25133,10 @@ class Handler(BaseHTTPRequestHandler):
         a fresh install with nothing matched and therefore no agent artwork to inline.
         zen, a real 1.42.2 library, answers it; the version rule was the instrument.
 
-        plexsim's remote candidate is the single TMDB image `metadata.py` minted, held
+        simplex's remote candidate is the single TMDB image `metadata.py` minted, held
         beside the row as `_poster_url`/`_art_url` (the same pair `/posters` and `/arts`
         answer their remote candidate from), so the inlined list is that one entry.
-        There is no `Theme`: plexsim holds no theme audio and no row names one.
+        There is no `Theme`: simplex holds no theme audio and no row names one.
         """
         if not isinstance(result, dict) or list(result) != ["MediaContainer"]:
             return result
@@ -25146,7 +25146,7 @@ class Handler(BaseHTTPRequestHandler):
         route, raw_query = _target_parts(self.path)
         if route.startswith("/video/:/transcode/universal/decision"):
             # Measured on kids: a decision ignores the option, exactly as it ignores
-            # `excludeElements=`. plexsim's decision row is the FULL projection, so
+            # `excludeElements=`. simplex's decision row is the FULL projection, so
             # without this the generic rule would inline artwork a real PMS does not.
             return result
         query = dict(urllib.parse.parse_qsl(raw_query, keep_blank_values=True))
@@ -25168,7 +25168,7 @@ class Handler(BaseHTTPRequestHandler):
                 # 19758), each twice: the inlined block is the row's OWN remote candidate
                 # list, so a row whose `/arts` answers `size 0` carries no `Art` key at
                 # all -- and zen's season 19757, whose `/arts` answers two, carries one.
-                # plexsim inlined the SHOW's candidate onto every episode and season,
+                # simplex inlined the SHOW's candidate onto every episode and season,
                 # because `hierarchy` copies `_art_url` down and this read it without the
                 # ownership gate the candidate leaf applies. The server contradicted its
                 # own `/arts`.
@@ -25211,7 +25211,7 @@ class Handler(BaseHTTPRequestHandler):
         here instead is the shape the measurement actually has.
 
         The Home screen is the one that costs a client something: `excludeElements=
-        Media` is how it asks for a cheap shelf, and plexsim sent the whole
+        Media` is how it asks for a cheap shelf, and simplex sent the whole
         Media/Part/Stream tree for every shelf row on every render.
         """
         if not isinstance(result, dict) or list(result) != ["MediaContainer"]:
@@ -25226,7 +25226,7 @@ class Handler(BaseHTTPRequestHandler):
             # DECISION. The container keeps its Media, Part and Streams whatever the
             # option names (`Media`, `Part`, `Genre` all tried), where cycle 15's rule --
             # this is a property of the RESPONSE, and every container that carries rows
-            # honours it -- holds everywhere else. plexsim applied it and substituted
+            # honours it -- holds everywhere else. simplex applied it and substituted
             # `mediaCount`, leaving the client a decision with nothing to play. No client
             # sends the option here, so the cost is to an API caller; the exception is
             # the finding.
@@ -25257,7 +25257,7 @@ class Handler(BaseHTTPRequestHandler):
         gains `totalSize: 0` and `offset: 0` (`/identity`). A container holding several
         lists (`/statistics/bandwidth`: Device, Account, StatisticsBandwidth) slices
         each, counts `size` over all of them and takes `totalSize` from the longest.
-        plexsim paged only the handful of listings that called page_window themselves,
+        simplex paged only the handful of listings that called page_window themselves,
         so a client asking for a page got every row and no total to stop at. The
         exceptions are measured too: a plug-in framework container (`noHistory`,
         `/system/scanners/{type}`) ignores paging, and a root that is not a
@@ -25283,7 +25283,7 @@ class Handler(BaseHTTPRequestHandler):
             # header `Start=1&Size=1` answers offset 1 size 1, a header
             # naming only the size takes the size from the header and the
             # offset from the query, and a header `Start=abc` beside a
-            # valid query is a 500. plexsim only read a header the query
+            # valid query is a 500. simplex only read a header the query
             # had not named, so a client sending both got the query's page.
             if self.headers.get(name) is not None:
                 query[name] = self.headers.get(name)
@@ -25303,7 +25303,7 @@ class Handler(BaseHTTPRequestHandler):
         # explicit `X-Plex-Container-Start` wins over it, a key naming no row in the list
         # starts at 0 with paging applied, and it needs a `Size` to do anything. No
         # measured client sends it today -- it is in no Plex Web or Plex Desktop bundle
-        # -- but it is PMS's own paging mode and plexsim answered the whole library.
+        # -- but it is PMS's own paging mode and simplex answered the whole library.
         focus = (self.headers.get("X-Plex-Container-Focus-Key")
                  or query.get("X-Plex-Container-Focus-Key"))
         if (focus and str(focus).startswith("/library/metadata/")
@@ -25346,7 +25346,7 @@ class Handler(BaseHTTPRequestHandler):
         # slice its Device and Account lists with the page. They are a LOOKUP for the
         # rows -- the page carries exactly the devices and accounts its own rows name,
         # by content, so a window past the end carries neither and a window over two
-        # devices carries both. plexsim sliced all three lists with the same offset, so
+        # devices carries both. simplex sliced all three lists with the same offset, so
         # the second page of a graph named a device it had not sent and lost the
         # Account row entirely: the Dashboard's per-device and per-account series
         # arrive unlabelable.
@@ -25450,7 +25450,7 @@ class Handler(BaseHTTPRequestHandler):
                     hit = (response.read(), response.headers.get("Content-Type", "image/jpeg"))
             except Exception as error:
                 logger.debug("artwork fetch failed for %s: %s", url[:80], error)
-                self._send_error(404, "plexsim: artwork unavailable")
+                self._send_error(404, "simplex: artwork unavailable")
                 return
             with self._image_lock:
                 # Bounded: a catalog of any size would otherwise grow this
@@ -25461,7 +25461,7 @@ class Handler(BaseHTTPRequestHandler):
         payload, content_type = hit
         # Measured: a real PMS sends `no-cache` on a VERSIONED direct asset and
         # `max-age=259200` only on transcoder output, plus `X-Plex-Local-Asset: 1`
-        # and `Accept-Ranges: bytes`. plexsim cached the direct asset for a day, so
+        # and `Accept-Ranges: bytes`. simplex cached the direct asset for a day, so
         # a Change Artwork or a re-match stayed invisible to the browser even though
         # the version in the URL had changed.
         transcoded = self.path.startswith("/photo/:/transcode")
@@ -25471,7 +25471,7 @@ class Handler(BaseHTTPRequestHandler):
         # artwork and nothing else. It is on `/library/metadata/{id}/{thumb,art,poster}`
         # and absent from a section's `/composite/{v}`, from the local candidate
         # `/library/metadata/{id}/file?url=`, from `/:/resources/*`, from `/web/*` and
-        # from a part read. plexsim put it on every image it sent, so a section tile
+        # from a part read. simplex put it on every image it sent, so a section tile
         # claimed to be an item's local asset.
         if not transcoded:
             headers += self._local_asset_header()
@@ -25482,23 +25482,23 @@ class Handler(BaseHTTPRequestHandler):
         root = self.server.sim.web_root
         if not root:
             self._silent_close = True          # cycle 49: no connection state, and close
-            self._send_error(404, "plexsim: no web client bundled")
+            self._send_error(404, "simplex: no web client bundled")
             return
 
         # Resolve and confine: a path that escapes the root is refused rather
         # than served, so a traversal cannot read the rest of the filesystem.
         # Cycle 29, measured on kids and zen: a request that escapes the root is a
         # **400** on both -- `/web/../identity` and `/web/%2e%2e/identity` alike -- where
-        # plexsim answered 403, a status that appears nowhere else on the surface.
+        # simplex answered 403, a status that appears nowhere else on the surface.
         target = os.path.realpath(os.path.join(root, relative))
         if not target.startswith(os.path.realpath(root) + os.sep):
             # Cycle 49: and it CLOSES, like every other refusal of the envelope.
             self.close_connection = True
-            self._send_error(400, "plexsim: bad request")
+            self._send_error(400, "simplex: bad request")
             return
         # Cycle 29: a DIRECTORY is an empty `application/octet-stream` 200 on both
         # references -- `/web/js`, `/web/js/` and `/web/static/` each answer
-        # `Content-Length: 0` -- and never the index page. plexsim substituted
+        # `Content-Length: 0` -- and never the index page. simplex substituted
         # `index.html`, so every directory under the bundle served the whole client.
         if os.path.isdir(target):
             self._send(200, "application/octet-stream", b"",
@@ -25506,10 +25506,10 @@ class Handler(BaseHTTPRequestHandler):
                         ("Content-Encoding", None)])
             return
         # Cycle 29: a trailing slash after a FILE is a 404 on both references, where
-        # plexsim's `realpath` collapsed it and served the file.
+        # simplex's `realpath` collapsed it and served the file.
         if relative.endswith("/") or not os.path.isfile(target):
             self._silent_close = True          # cycle 49: no connection state, and close
-            self._send_error(404, "plexsim: not found")
+            self._send_error(404, "simplex: not found")
             return
 
         with open(target, "rb") as handle:
@@ -25517,7 +25517,7 @@ class Handler(BaseHTTPRequestHandler):
         extension = os.path.splitext(target)[1].lower()
         # Cycle 16, measured on kids and zen over every asset the bundle serves:
         # `Cache-Control: no-cache` like the rest of the surface, `Accept-Ranges:
-        # bytes`, and NEVER gzipped even when the client offers gzip. plexsim cached
+        # bytes`, and NEVER gzipped even when the client offers gzip. simplex cached
         # them for an hour, which keeps an unhashed `index.html` pointing at the old
         # chunk names for an hour after a bundle upgrade, and it gzipped the html.
         self._send(
@@ -25559,7 +25559,7 @@ class Handler(BaseHTTPRequestHandler):
         """
         key = self.headers.get("Sec-WebSocket-Key")
         if not key:
-            self._send_error(400, "plexsim: not a websocket request")
+            self._send_error(400, "simplex: not a websocket request")
             return
 
         import base64
@@ -25571,10 +25571,10 @@ class Handler(BaseHTTPRequestHandler):
 
         self.close_connection = True
         # Measured: the reference's 101 carries the protocol version, the CORS pair
-        # and `Cache-Control` alongside the handshake. plexsim sent the three
+        # and `Cache-Control` alongside the handshake. simplex sent the three
         # handshake headers alone.
         # Cycle 30: the reference's 101 carries `Date` as its last header, like every
-        # other response on the surface -- plexsim writes this handshake by hand rather
+        # other response on the surface -- simplex writes this handshake by hand rather
         # than through `_send`, so it was the one response with none. No client reads it;
         # CLAUDE.md's envelope rule says it is there.
         # Cycle 34: the ORDER, read off the reference for the first time. It cannot be
@@ -25586,7 +25586,7 @@ class Handler(BaseHTTPRequestHandler):
         #   Sec-WebSocket-Accept, Cache-Control, Access-Control-Allow-Origin, Date
         #
         # -- so the CORS pair leads, ahead of the handshake headers, and the allowed
-        # origin follows `Cache-Control`. plexsim had the right set and put all three CORS
+        # origin follows `Cache-Control`. simplex had the right set and put all three CORS
         # headers at the end. The `Sec-WebSocket-Extensions` the client offers is not
         # echoed on either side.
         cors = dict(self._cors_headers())
@@ -25660,7 +25660,7 @@ class Handler(BaseHTTPRequestHandler):
                 # the same cadence a client that never pongs sees. A pong does not touch
                 # it.
                 #
-                # plexsim waited for "one ping interval" with a `select()` that returns
+                # simplex waited for "one ping interval" with a `select()` that returns
                 # for ANY frame, so a pong ended the wait and the loop pinged again at
                 # once: **903,480 pings in 35 seconds**, ~26,000/s, measured twice with
                 # two client stacks. Every compliant client -- every browser, every Plex
@@ -25692,10 +25692,10 @@ class Handler(BaseHTTPRequestHandler):
 
         Cycle 30: this returns as soon as ANY frame lands -- a PONG included -- so the
         caller must treat it as "did something arrive", not as "the interval has passed".
-        Reading it the second way is what made plexsim answer a pong with a ping.
+        Reading it the second way is what made simplex answer a pong with a ping.
 
-        plexsim never read the socket at all, so a browser's `ws.close()` hung in
-        CLOSING until its own timeout, plexsim never learnt the peer had gone, and
+        simplex never read the socket at all, so a browser's `ws.close()` hung in
+        CLOSING until its own timeout, simplex never learnt the peer had gone, and
         the sink stayed registered with its thread alive to the one-hour deadline --
         never-reaped sinks accumulating for the life of the process.
         """
@@ -25720,11 +25720,11 @@ class Handler(BaseHTTPRequestHandler):
         if opcode == 0x9:
             # Cycle 94, measured on kids (1.43.4) and zen (1.42.2): a client PING is answered
             # at once with an unmasked PONG carrying the same payload (`89 84 <mask> c94d` ->
-            # `8a 04 63 39 34 64`; an empty ping -> `8a 00`). plexsim read the ping and said
+            # `8a 04 63 39 34 64`; an empty ping -> `8a 00`). simplex read the ping and said
             # nothing. Plex for Android 2026.19.1 pings its notification socket and, with no
             # pong, drops it after 50 s with 1006 and never reopens it -- so the app lost
             # every server event (the subtitle-download activity it waits on, playing
-            # sessions) on plexsim alone. (zen also CLOSES after ponging an EMPTY ping, where
+            # sessions) on simplex alone. (zen also CLOSES after ponging an EMPTY ping, where
             # kids keeps the socket; that split is recorded, not emulated.)
             payload = rest[4:] if masked else rest
             if masked:
@@ -25804,7 +25804,7 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 30, measured on the copy over a 430-second idle capture: the reference's
         # eventsource channel is STILL OPEN at 430.0 s, pinging every 10 s (43 of them),
         # and neither server sends `id:` or `retry:` -- so there is no `Last-Event-ID`
-        # replay to fall back on. plexsim closed the channel at 300.2 s, and every frame
+        # replay to fall back on. simplex closed the channel at 300.2 s, and every frame
         # pushed in the ~3 s before the client's reconnect was lost: a row changed
         # elsewhere in that window never got its `state 5`, so the client's
         # `!!metadataState` gates -- the spinner, Refresh, Match -- stayed latched.
@@ -25832,14 +25832,14 @@ class Handler(BaseHTTPRequestHandler):
 
         This is the whole experiment.  A real PMS answers a Range GET here with
         206, Accept-Ranges and a true total size, and a client seeks by issuing
-        more Ranges; plexsim has to reproduce that against zurg, which owns the
+        more Ranges; simplex has to reproduce that against zurg, which owns the
         bytes.
         """
         sim = self.server.sim
         part_id = segments[2] if len(segments) > 2 else ""
         file, container, part_name, part_row = sim.resolve_part(part_id)
         if not file:
-            self._send_error(404, "plexsim: no such part")
+            self._send_error(404, "simplex: no such part")
             return
 
         # A terminated session's next part read is a 503 on a real PMS -- the
@@ -25848,7 +25848,7 @@ class Handler(BaseHTTPRequestHandler):
         session_id = query.get("X-Plex-Session-Identifier") or ""
         if session_id and sim.sessions.is_terminated(session_id):
             logger.info("PART %s refused: session %s terminated", part_id, session_id)
-            self._send_error(503, "plexsim: session terminated")
+            self._send_error(503, "simplex: session terminated")
             return
 
         # The Download context-menu entry is the same Part read with
@@ -25859,12 +25859,12 @@ class Handler(BaseHTTPRequestHandler):
         # the 0/1 options and carries their whole grammar -- `1`, `01` and `+1` are the
         # download, `0`, `00` and `+0` the plain read, and `2`, `-1`, `1.5`, `true`,
         # `false`, `TRUE`, `yes`, `abc`, an empty value, ` 1`, `1 ` and `10` are each a
-        # **400**. plexsim compared the raw string with `"1"`/`"true"`, so `download=true`
+        # **400**. simplex compared the raw string with `"1"`/`"true"`, so `download=true`
         # was a download where a real PMS refuses the whole read, and `download=2` or
         # `download=abc` streamed the media with no disposition.
         raw_download = query.get("download")
         if raw_download is not None and not _bool_option(raw_download):
-            self._send_error(400, "plexsim: bad request")
+            self._send_error(400, "simplex: bad request")
             return
         download = bool(raw_download is not None and int(str(raw_download).lstrip("+")))
 
@@ -25873,11 +25873,11 @@ class Handler(BaseHTTPRequestHandler):
         # provider link was -- and a file outside zurg's mount is no part zurg can serve.
         if sim.zurg is None:
             logger.error("PART %s upstream failed: no ZURG_URL configured", part_id)
-            self._send_error(502, "plexsim: upstream failed")
+            self._send_error(502, "simplex: upstream failed")
             return
         dav = sim.zurg.dav_path(file)
         if not dav:
-            self._send_error(404, "plexsim: no such part")
+            self._send_error(404, "simplex: no such part")
             return
 
         if sim.part_mode == "redirect":
@@ -25905,7 +25905,7 @@ class Handler(BaseHTTPRequestHandler):
         total = int((part or {}).get("size") or 0)
         window = _range_window(total, request_range) if total else None
         if window is not None and window[0] == 416:
-            self._send_error(416, "plexsim: range not satisfiable")
+            self._send_error(416, "simplex: range not satisfiable")
             return
         headers = {}
         content_range = None
@@ -25928,17 +25928,17 @@ class Handler(BaseHTTPRequestHandler):
             if error.code == 404:
                 # Cycle 44: the FILE is not there, which a real PMS answers with a plain
                 # 404 -- zen's part 23595 does, and its row reports `accessible=false`.
-                # plexsim answered 502 to this and to a network failure alike, so a
+                # simplex answered 502 to this and to a network failure alike, so a
                 # client that would have drawn "this file is missing" got a server error.
                 logger.error("part %s is unavailable upstream: %s", part_id, dav)
-                self._send_error(404, "plexsim: not found")
+                self._send_error(404, "simplex: not found")
                 return
             logger.error("PART %s upstream %s for range %s", part_id, error.code, request_range)
-            self._send_error(error.code, "plexsim: upstream refused")
+            self._send_error(error.code, "simplex: upstream refused")
             return
         except Exception as error:
             logger.error("PART %s upstream failed: %s", part_id, error)
-            self._send_error(502, "plexsim: upstream failed")
+            self._send_error(502, "simplex: upstream failed")
             return
 
         with upstream:
@@ -25977,8 +25977,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Accept-Ranges", "bytes")
             # Measured: every byte response from a real PMS carries BOTH validators,
             # on the 200 and on every 206 -- its `ETag` is the part's own file hash
-            # and `Last-Modified` is the file's mtime. plexsim sent neither, so a
-            # client had nothing to revalidate against. plexsim owns no file to hash,
+            # and `Last-Modified` is the file's mtime. simplex sent neither, so a
+            # client had nothing to revalidate against. simplex owns no file to hash,
             # so the ETag is a digest of what identifies these bytes (part id,
             # version, size) -- an opaque validator is exactly what the header is.
             if part is not None:
@@ -25997,7 +25997,7 @@ class Handler(BaseHTTPRequestHandler):
                 # `-` is left alone (`Big%20Buck%20Bunny%20%282008%29%20-%201080p%2Emkv`).
                 # It is the same escaper CLAUDE.md already records for a local artwork
                 # candidate's `/file?url=`, so this generalises it. `urllib.parse.quote`
-                # keeps `.`, `-`, `_` and `~`, so plexsim's name came out with a bare dot.
+                # keeps `.`, `-`, `_` and `~`, so simplex's name came out with a bare dot.
                 #
                 # No suite check reaches this: the header is only sent on a part read
                 # that resolves, and the fixture's Real-Debrid links are dead (the
@@ -26044,7 +26044,7 @@ class Handler(BaseHTTPRequestHandler):
                 logger.debug("PART %s client closed", part_id)
             finally:
                 # Cycle 44, measured on kids: a real PMS's bandwidth statistic counts
-                # what it actually WROTE. plexsim counted the advertised length however
+                # what it actually WROTE. simplex counted the advertised length however
                 # the read ended, and every seek and every stop is an abort -- so one
                 # 1 MB read of a 121 MB part moved the Dashboard by the whole 121 MB.
                 if written:
@@ -26056,7 +26056,7 @@ def _range_window(total, header):
     """`Range` -> (status, Content-Range, first, last) over a body of `total` bytes.
 
     The grammar is cycle 16's and cycle 35's, unchanged; cycle 44 lifted it out of
-    `_ranged` so the MEDIA path can use the same one. plexsim's part handler copied the
+    `_ranged` so the MEDIA path can use the same one. simplex's part handler copied the
     client's header to the debrid CDN and echoed whatever came back, so thirteen of the
     twenty cells both references agree on were wrong on a media body -- `bytes=-1` read
     the FIRST byte where a real PMS reads the last (which is how every player locates an
@@ -26073,7 +26073,7 @@ def _range_window(total, header):
 
     Cycle 44 also corrected one cell of the container grammar: a BARE `bytes=-`, with
     nothing after the dash, is not a Range at all -- 200 on both references, on
-    `/identity`, on artwork, on a `/web` asset and on a part -- where plexsim read it as
+    `/identity`, on artwork, on a `/web` asset and on a part -- where simplex read it as
     the zero-length suffix and answered a 206. `bytes=- `, `bytes=-x` and `bytes=-abc`
     are the 206; only the empty one is not.
     """
@@ -26125,7 +26125,7 @@ def _part_content_type(part, container):
     `.mkv` and answers `video/x-matroska`; asking for that part as `file.mp4`,
     `file.zzz`, `file.mov` or `file.webm` answers `video/x-matroska` every time. An
     extension the table does not name answers `application/octet-stream` -- zen's
-    `.m2ts` parts do -- where plexsim fell back to `video/mp4`.
+    `.m2ts` parts do -- where simplex fell back to `video/mp4`.
     """
     name = (part or {}).get("file") or ""
     extension = name.rsplit(".", 1)[-1].lower() if "." in name else ""
@@ -26140,7 +26140,7 @@ class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
     # Cycle 75, measured from kids over Tailscale: 30 simultaneous connects to
-    # plexscratch42 are all answered, three runs of three, where plexsim reset 25 of 30
+    # plexscratch42 are all answered, three runs of three, where simplex reset 25 of 30
     # -- and 6 of 8 runs at SIX, a browser's per-host connection count -- because
     # socketserver's listen backlog defaults to 5.
     request_queue_size = 128
@@ -26157,7 +26157,7 @@ class Server(ThreadingHTTPServer):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="plexsim -- a PMS that owns no files")
+    parser = argparse.ArgumentParser(description="simplex -- a PMS that owns no files")
     parser.add_argument("--catalog", default=os.path.join(os.path.dirname(__file__), "catalog.json"))
     parser.add_argument("--port", type=int, default=32400)
     parser.add_argument("--host", default="0.0.0.0")
@@ -26165,15 +26165,15 @@ def main():
         "--part-mode",
         choices=("proxy", "redirect"),
         default="proxy",
-        help="proxy streams bytes from zurg through plexsim; redirect 302s to the provider "
+        help="proxy streams bytes from zurg through simplex; redirect 302s to the provider "
              "URL zurg's signed link names",
     )
     parser.add_argument("--public-url", default=None)
     parser.add_argument(
-        "--token", default=os.environ.get("PLEXSIM_TOKEN"),
+        "--token", default=os.environ.get("SIMPLEX_TOKEN"),
         help="require this X-Plex-Token on every request except /identity and "
              "/web/* -- which is what a real PMS does. Default OFF, because the "
-             "test suites and probes talk to plexsim without one; a real server "
+             "test suites and probes talk to simplex without one; a real server "
              "always has a token, so leaving it off is a deliberate deviation.")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument(
@@ -26212,8 +26212,8 @@ def main():
     # 32400, because a test instance on another port must not claim the host's one
     # GDM identity; that gate is a deliberate deviation and is in HANDOVER 3.3.
     # Cycle 50: a real PMS carries TLS on its HTTP port, behind a `*.<hash>.plex.direct`
-    # certificate plex.tv issues to a claimed server. plexsim cannot mint one, so the
-    # operator supplies it; without it the port stays plain, which is what plexsim always
+    # certificate plex.tv issues to a claimed server. simplex cannot mint one, so the
+    # operator supplies it; without it the port stays plain, which is what simplex always
     # was.
     parser.add_argument(
         "--tls-cert", default=None,
@@ -26239,13 +26239,13 @@ def main():
     parser.add_argument(
         "--state", default=None,
         help="file to keep watch state, edits, lists, history, preferences, uploads "
-             "and statistics in across restarts. Default: plexsim.db beside the "
+             "and statistics in across restarts. Default: simplex.db beside the "
              "catalog, or the catalog itself when it is a database (state.pickle for "
-             "the Python server), or $PLEXSIM_STATE")
+             "the Python server), or $SIMPLEX_STATE")
     parser.add_argument(
         "--no-state", dest="state", action="store_const", const="",
         help="keep nothing across a restart: a restart reloads the catalog as it is "
-             "on disk, which the test suites rely on. Also an empty $PLEXSIM_STATE")
+             "on disk, which the test suites rely on. Also an empty $SIMPLEX_STATE")
     parser.add_argument(
         "--zurg-mount", default="/mnt/zurg",
         help="zurg's mount_path: Part files and library locations live under it, and "
@@ -26280,7 +26280,7 @@ def main():
     zurg = Zurg.from_env(args.zurg_mount)
     if zurg is None:
         logger.info("no ZURG_URL: parts have no bytes to stream")
-    sim = PlexSim(
+    sim = SimPlex(
         catalog,
         zurg,
         part_mode=args.part_mode,
@@ -26365,14 +26365,14 @@ def main():
     server = Server((args.host, args.port), sim, args.verbose, tls_context=tls_context)
     logger.info("claim state: %s", "CLAIMED by %s" % claim.owner if claim.claimed else "unclaimed")
     # Said out loud either way: a real PMS 401s everything but /identity and /web/*
-    # without its token, and a plexsim with no token is readable by any peer that
+    # without its token, and a simplex with no token is readable by any peer that
     # can reach the port -- library, preferences, sessions and media bytes alike.
     logger.info("token gate: %s", "ENFORCED" if args.token else
                 "ENFORCED -- claimed: the server's own token and the ones plex.tv lists for it"
                 if claim.claimed else
                 "OFF -- every peer that can reach this port can read the library")
     logger.info(
-        "plexsim on http://%s:%d  machine=%s  items=%d  parts=%s",
+        "simplex on http://%s:%d  machine=%s  items=%d  parts=%s",
         socket.gethostname(),
         args.port,
         catalog.machine,
@@ -26383,7 +26383,7 @@ def main():
     if args.announce_url and args.part_mode == "proxy":
         # Measured behind a Cloudflare tunnel: a `Range: bytes=0-99` arrives here
         # with NO Range header at all, because Cloudflare collapses a prefix
-        # range into a full origin fetch. plexsim then serves the whole file and
+        # range into a full origin fetch. simplex then serves the whole file and
         # the CDN pulls all of it -- so every playback start drains the entire
         # title out of the debrid provider. Loud, because the cost is invisible
         # until the bandwidth bill.
@@ -26394,12 +26394,12 @@ def main():
         )
 
     discovery = None
-    # `PLEXSIM_GDM_PORTS` moves the responder off the host's real udp/32410 and udp/32414,
+    # `SIMPLEX_GDM_PORTS` moves the responder off the host's real udp/32410 and udp/32414,
     # so it cannot claim the host's one GDM identity -- the reason for the `auto` gate --
     # and a test instance on any port may then answer GDM. The native server reads the
     # same variable; `tests/test_native_gdm.py` drives both through it.
     gdm_ports = []
-    for text in os.environ.get("PLEXSIM_GDM_PORTS", "").split(","):
+    for text in os.environ.get("SIMPLEX_GDM_PORTS", "").split(","):
         try:
             number = int(text.strip())
         except ValueError:

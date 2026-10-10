@@ -5,7 +5,7 @@ Each step is the exact request Plex for Mac / Plex Web was observed making, and
 each response is checked against the shape a real PMS returns for the same step
 (captured from fun). Key-level comparison is not enough: the `viewMode` bug was
 invisible to it, because both sides HAD the field and only the values were
-swapped -- a season list is 65593 and an episode list 65592, and plexsim had
+swapped -- a season list is 65593 and an episode list 65592, and simplex had
 them inverted, so the client was handed the episode layout for a season list and
 drew no seasons.
 """
@@ -23,7 +23,7 @@ RED = "\033[31m"
 YELLOW = "\033[33m"
 OFF = "\033[0m"
 
-UA = "Plex/1.115.0 (Macintosh; plexsim-test)"
+UA = "Plex/1.115.0 (Macintosh; simplex-test)"
 
 # The params the real clients were logged sending.
 SHOW_DETAIL = ("includeConcerts=1&includeExtras=1&includeOnDeck=1&includePopularLeaves=1"
@@ -205,7 +205,7 @@ def main():
     # Cycle 16, measured on kids (season 7, which owns no art) and zen (season 11114,
     # which owns its own, and its episode 11115): a row that BORROWS its background
     # carries the owner's path verbatim -- kids' season 7 and episode 8 both carry
-    # `/library/metadata/6/art/...` -- and its own `/art` is a 404. plexsim's
+    # `/library/metadata/6/art/...` -- and its own `/art` is a 404. simplex's
     # `_stamp_artwork` re-keyed every artwork URL to the row holding it, so a season
     # and its show claimed to own the same image under two paths and
     # `/library/metadata/<season>/art` answered 200 where a real PMS answers 404 --

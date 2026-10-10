@@ -8,10 +8,10 @@ the per-device byte counters behind `/statistics/bandwidth`, the resource sample
 `/statistics/resources`, and the empty `text/html` answer every mutating endpoint gives.
 
 Drives a real server process (`tests/server_command.py`), so it runs against the native
-binary by default and against the oracle with `PLEXSIM_SERVER=python`:
+binary by default and against the oracle with `SIMPLEX_SERVER=python`:
 
     python3 tests/test_parity_playback.py
-    PLEXSIM_SERVER=python python3 tests/test_parity_playback.py
+    SIMPLEX_SERVER=python python3 tests/test_parity_playback.py
 """
 import http.client
 import json
@@ -100,12 +100,12 @@ def timeline(client, key, state, time_ms, extra=""):
 
 
 def main():
-    port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
+    port = int(os.environ.get("SIMPLEX_TEST_PORT") or free_port())
     # The statistics buckets are CALENDAR buckets in the server's local time; a zone with
     # summer time is what tells a local January 1st from a UTC one.
-    env = dict(os.environ, PLEXSIM_PLEXTV_URL="http://127.0.0.1:9",
+    env = dict(os.environ, SIMPLEX_PLEXTV_URL="http://127.0.0.1:9",
                PYTHONDONTWRITEBYTECODE="1", TZ=ZONE)
-    for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+    for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
         env.pop(name, None)
     log = tempfile.TemporaryFile()
     proc = subprocess.Popen(

@@ -14,7 +14,7 @@ python-plexapi's `Playable.updateTimeline` shape:
   `ratingKey`; an EMPTY one (or `0`, `abc`, an unknown id) moves nothing.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `PLEXSIM_SERVER=python`.
+the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_followups_c87_e3.py
 """
@@ -34,8 +34,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 FIXTURE = json.load(open(os.path.join(HERE, "fixtures", "timeline_play_latch_s42.json")))
 # Three movies of the fixture catalog standing in for plexscratch42's A, B and C, and one
@@ -296,7 +296,7 @@ def queue_selection(port, machine):
               {"got": value, "measured": measured[case]})
 
 
-UA = "Plex Web/4.147.1 (plexsim-test)"
+UA = "Plex Web/4.147.1 (simplex-test)"
 LIBRARY = "identifier=com.plexapp.plugins.library"
 
 
@@ -310,7 +310,7 @@ def ui_surface_replay(port):
                 % (key, urllib.parse.quote("/library/metadata/%s" % key), LIBRARY, state_, at, duration))
         return request(port, "GET", path, headers={
             "User-Agent": UA, "X-Plex-Session-Identifier": session,
-            "X-Plex-Client-Identifier": "plexsim-ui-test", "X-Plex-Product": "Plex Web",
+            "X-Plex-Client-Identifier": "simplex-ui-test", "X-Plex-Product": "Plex Web",
             "X-Plex-Platform": "Chrome"})[1]
 
     def app_beat(key, duration, position, state_, session, extra=()):

@@ -8,7 +8,7 @@
    `loading` and that episode's bare 5. The copy's seasons are `local://` and open with
    a `matching`/5 pair a refresh of its matched show does not push; that opener is the
    unmatched row's and is dropped before the comparison. The fixture is reduced to roles
-   and checked against a model of the rule, and the model is applied to plexsim's
+   and checked against a model of the rule, and the model is applied to simplex's
    one- and four-episode seasons.
 2. `GET /library/sections/{id}/all?type=18&title=` -- python-plexapi's
    `LibrarySection.collections(title=...)` and `collection(title)`. Measured on
@@ -27,7 +27,7 @@
    the move landed after it and the DELETE answered 200.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `PLEXSIM_SERVER=python`.
+the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_followups_c87_e4.py
 """
@@ -50,8 +50,8 @@ SEASON_FIXTURE = os.path.join(HERE, "fixtures", "season_cascade_order_s43.json")
 TITLE_FIXTURE = os.path.join(HERE, "fixtures", "collection_title_filter.json")
 MERGE_FIXTURE = os.path.join(HERE, "fixtures", "merge_playlist_s43.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "followups-c87-e4", "Accept": "application/json"}
@@ -66,8 +66,8 @@ def check(name, ok, detail=""):
 
 
 def free_port():
-    """A free port; from `PLEXSIM_TEST_PORTS=LO-HI` when it is set."""
-    configured = os.environ.get("PLEXSIM_TEST_PORTS")
+    """A free port; from `SIMPLEX_TEST_PORTS=LO-HI` when it is set."""
+    configured = os.environ.get("SIMPLEX_TEST_PORTS")
     candidates = range(*(int(p) + n for n, p in enumerate(configured.split("-")))) \
         if configured else [0]
     for candidate in candidates:
@@ -79,7 +79,7 @@ def free_port():
             continue
         finally:
             probe.close()
-    raise SystemExit("no free port in PLEXSIM_TEST_PORTS=%s" % configured)
+    raise SystemExit("no free port in SIMPLEX_TEST_PORTS=%s" % configured)
 
 
 def request(port, method, path, headers=None):

@@ -1259,7 +1259,7 @@ mod tests {
     fn options(dir: &Path, catalog: &Path) -> RuntimeOptions {
         RuntimeOptions {
             catalog: catalog.to_path_buf(),
-            state: Some(dir.join("plexsim.db")),
+            state: Some(dir.join("simplex.db")),
             ..RuntimeOptions::default()
         }
     }
@@ -1285,7 +1285,7 @@ mod tests {
     /// One test, because the store's write queue is process-wide.
     #[test]
     fn scanned_rows_keep_their_keys_and_state_across_restarts_and_catalog_edits() {
-        let dir = std::env::temp_dir().join(format!("plexsim-scan-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("simplex-scan-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let catalog = dir.join("catalog.json");
@@ -1327,7 +1327,7 @@ mod tests {
         assert_eq!(runtime.catalog.get(&first).unwrap()["viewCount"], 2);
         assert!(runtime.catalog.get("1001").is_some());
         assert!(runtime.catalog.get("1002").is_some(), "the file's new row joins");
-        assert!(!dir.join("plexsim.db.stale").exists());
+        assert!(!dir.join("simplex.db.stale").exists());
         drop(runtime);
         let _ = fs::remove_dir_all(&dir);
     }
@@ -1337,7 +1337,7 @@ mod tests {
     /// live lookup would have put them. The answers are written for the test.
     #[test]
     fn an_imdb_id_from_zurg_names_the_release_and_plex_names_its_guids() {
-        let dir = std::env::temp_dir().join(format!("plexsim-name-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("simplex-name-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let api = "https://api.themoviedb.org/3";

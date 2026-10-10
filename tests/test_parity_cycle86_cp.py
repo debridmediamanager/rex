@@ -11,11 +11,11 @@ rule that gives both is round-half-to-even: truncation would have made the scan 
 round-half-up the cascade 45. The oracle (Python's `round`) already said 44; the native
 server rounded half away from zero and said 45.
 
-Re-read here from the fixture, then applied to plexsim's four-season show, whose second
+Re-read here from the fixture, then applied to simplex's four-season show, whose second
 season lands on the same 44.5.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `PLEXSIM_SERVER=python`.
+the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_parity_cycle86_cp.py
 """
@@ -35,8 +35,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "show_cascade_progress_s43.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "parity-cycle86-cp", "Accept": "application/json"}
@@ -159,7 +159,7 @@ def capture(port, method, path, seconds=4.0):
     return status, frames
 
 
-def plexsim_checks(port, half):
+def simplex_checks(port, half):
     status, body = request(port, "GET", "/library/metadata/%s/children" % SHOW)
     seasons = json.loads(body)["MediaContainer"]["Metadata"]
     check("the fixture show has four seasons (the second lands on n/len = 1/2)",
@@ -183,7 +183,7 @@ def main():
     half = reference_checks()
     process, port = start()
     try:
-        plexsim_checks(port, half)
+        simplex_checks(port, half)
     finally:
         stop(process)
     passed = sum(results)

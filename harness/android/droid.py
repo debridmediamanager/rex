@@ -27,7 +27,7 @@ class Droid:
         if self._user is None:
             req = urllib.request.Request("https://plex.tv/api/v2/user", headers={
                 "X-Plex-Token": ctx.options.acct, "Accept": "application/json",
-                "X-Plex-Client-Identifier": "plexsim-c70-droid", "X-Plex-Product": "plexsim-c70"})
+                "X-Plex-Client-Identifier": "simplex-c70-droid", "X-Plex-Product": "simplex-c70"})
             self._user = urllib.request.urlopen(req, timeout=20).read().decode()
         return self._user
 

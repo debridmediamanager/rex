@@ -1,6 +1,6 @@
 """Identify a release against TMDB and build Plex metadata for it.
 
-plexsim's rows previously carried only what the filename and an ffprobe gave:
+simplex's rows previously carried only what the filename and an ffprobe gave:
 a mangled title, a year if one happened to be in the name, and a generated
 solid-colour poster. A real Plex library row carries an identity (`guid`), a
 summary, artwork, genres, cast and crew, ratings and an air date, and clients
@@ -189,12 +189,13 @@ def plex_guid(kind, seed):
     Verified against a real PMS: `guid` is ALWAYS the plex:// form at every
     level (show, season, episode, movie) and the external ids live in the
     `Guid[]` array -- on the show only; season and episode carry an empty one.
-    plexsim previously put `imdb://` straight into `guid`, which is the legacy
+    simplex previously put `imdb://` straight into `guid`, which is the legacy
     agent shape, and the client did not link show -> season -> episode from it.
 
     The hash is derived from a stable external identity, so the same content
     always produces the same guid across catalog rebuilds.
     """
+    # "plexsim/" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
     return "plex://%s/%s" % (kind, hashlib.sha1(("plexsim/%s/%s" % (kind, seed)).encode()).hexdigest()[:24])
 
 
@@ -208,11 +209,11 @@ class PlexProvider:
     Cycle 70, measured with the native Plex for Android app (2026.9.0) in an emulator:
     a movie or show page whose `guid` is not one plex.tv knows never asks luma.plex.tv
     for its detail screen, so its action row (Watchlist, Rate, Mark as Watched, More)
-    stays a skeleton and a show's Seasons block spins forever. Swapping plexsim's minted
+    stays a skeleton and a show's Seasons block spins forever. Swapping simplex's minted
     guid for the real one through the proxy, and nothing else, made the same page draw
     both. A real PMS gets the guid from this agent: the lab's outbound capture shows
     `POST /library/metadata/matches` and then the item's `children`. The match accepts
-    the external id plexsim already holds (`{"type": 2, "guid": "tmdb://5920"}`), and a
+    the external id simplex already holds (`{"type": 2, "guid": "tmdb://5920"}`), and a
     season's and an episode's guids are the parent's `children` by `index`.
 
     Needs a Plex account token (`PLEX_TOKEN`); without one, or offline, every lookup
@@ -240,7 +241,7 @@ class PlexProvider:
             "Content-Type": "application/json",
             "X-Plex-Product": "Plex Media Server",
             "X-Plex-Provider-Version": "6.5.0",
-            "X-Plex-Client-Identifier": "plexsim",
+            "X-Plex-Client-Identifier": "simplex",
         }
         if method == "GET":
             # The agent pages at 50 (the lab capture); 500 is refused with a 400.
@@ -571,7 +572,7 @@ def enrich(row, tmdb, parsed, chosen=None):
             # own (and that one's sort title is its agent's arc name, not `Season N`).
             # A real Plex series agent gives a season the SHOW's year as `parentYear`;
             # writing TMDB's season air-date year into the season's own column put
-            # every plexsim season into the 1-in-742 shape and took its `parentYear`
+            # every simplex season into the 1-in-742 shape and took its `parentYear`
             # away, because `hierarchy` reads "has a year of its own" off that column.
             # The air date itself is kept: it is what `originallyAvailableAt` uses.
             air = season_details.get("air_date") or ""

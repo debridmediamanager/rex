@@ -1,6 +1,6 @@
 """Record every request/response pair as one JSON line.
 
-Written for diffing a real PMS against plexsim: the unit of comparison is the
+Written for diffing a real PMS against simplex: the unit of comparison is the
 client's *exact* request (method, path, every query param, every header) beside
 the server's *exact* answer. docs/findings.md records that replaying a request
 without the paging params the client actually sends hides the very field that

@@ -1,6 +1,6 @@
 //! zurg: where a Part's bytes come from and what a library scan lists.
 //!
-//! plexsim reads no media itself. A Part's `file` is the path zurg's own mount gives the
+//! simplex reads no media itself. A Part's `file` is the path zurg's own mount gives the
 //! file (`<mount>/<directory>/<release>/<file>`), which is what zurg's Plex integration
 //! sends as a scan's `path=` and reads back from each Part when it matches releases to
 //! ratingKeys. The same file is `/dav/<directory>/<release>/<file>` on zurg's WebDAV,
@@ -229,7 +229,7 @@ impl Zurg {
     /// Where `--part-mode redirect` sends a client: zurg's signed `.strm` URL for the
     /// file needs no credential and answers with the provider's own download URL, so
     /// the client is sent there, as it was sent to the debrid CDN before. `None` when zurg
-    /// streams the file itself (an archive member, a Usenet release): then plexsim proxies.
+    /// streams the file itself (an archive member, a Usenet release): then simplex proxies.
     pub(super) fn redirect_target(&self, dav: &str) -> Option<String> {
         let signed = self.entry(dav).ok()?;
         let signed = signed.get("signed_path").and_then(Value::as_str)?.to_string();
@@ -307,7 +307,7 @@ mod tests {
         assert_eq!(dav, "/dav/movies/A+B (2020)/A+B.mkv");
         assert_eq!(zurg.file_path(&dav), file);
         assert_eq!(zurg.url(&dav), "http://127.0.0.1:9999/dav/movies/A%2BB%20%282020%29/A%2BB.mkv");
-        assert_eq!(zurg.dav_path("/plexsim/1/movie.mkv"), None);
+        assert_eq!(zurg.dav_path("/simplex/1/movie.mkv"), None);
         assert_eq!(zurg.dav_path("/mnt/zurgish/x.mkv"), None);
     }
 

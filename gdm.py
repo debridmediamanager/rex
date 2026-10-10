@@ -2,14 +2,14 @@
 
 A client on the same network does not ask plex.tv where the server is.  It sends
 one datagram to a multicast group and every Plex Media Server on the wire answers
-with a seven-line block naming itself.  plexsim answered nothing at all, so no
+with a seven-line block naming itself.  simplex answered nothing at all, so no
 official client could find it without a plex.tv account or a hand-typed address --
 which is the "detected rather than merely reachable" half of `heartbeat.py`, on the
 LAN instead of through plex.tv.
 
 Everything here is measured, 2026-09-18, on four servers:
 
-  * zen        1.42.2, CLAIMED    -- the exact build plexsim reports
+  * zen        1.42.2, CLAIMED    -- the exact build simplex reports
   * plexlab    1.43.4, CLAIMED    -- the reference PMS on kids
   * plexscratch42 1.42.2, UNCLAIMED
   * plexscratch   1.43.4, UNCLAIMED
@@ -63,15 +63,15 @@ CRLF line endings, terminated by a blank line:
 **`Host` is the one field the claim moves.**  Both claimed references carry it and
 neither unclaimed copy carries it at all -- the line is absent, not empty.  An
 unclaimed PMS has no plex.direct certificate, so the claim and the certificate are
-confounded on these four instruments; plexsim therefore emits the line only when it
+confounded on these four instruments; simplex therefore emits the line only when it
 actually holds a plex.direct hostname, which is the honest reading either way.
 
 **A real PMS also SENDS.**  Listening on the group from zen's own LAN, zen emits
 ``b"M-SEARCH * HTTP/1.1\r\n"`` -- 21 bytes, ONE CRLF, not the doubled terminator -- to
 239.0.0.250:32414 every **5.00 seconds**, on every interface it holds (nine samples at
 0.96, 5.96, 10.96 ... 40.97 s).  That is how `/servers` is populated: zen's `/servers`
-listed itself, the second server on the wire, and -- within six seconds of plexsim being
-started with this module -- plexsim, at the address and port plexsim advertised.  A row
+listed itself, the second server on the wire, and -- within six seconds of simplex being
+started with this module -- simplex, at the address and port simplex advertised.  A row
 ages out when its server stops answering; see SERVERS_TTL.
 
 **`Updated-At` is not a clock.**  It stands still under polling (zen answered the same
@@ -84,7 +84,7 @@ afterwards, so each socket carries its own last-regenerated stamp rather than re
 one server-wide value. Cycle 50 then sampled both disposable versions across the
 server's write surface: library create, edit and delete move the stamp; FriendlyName
 changes the advertised Name without moving it; refresh, item edit, collection create
-and index deletion also leave it alone. Plexsim therefore stamps at construction and
+and index deletion also leave it alone. Simplex therefore stamps at construction and
 touches only those three library-lifecycle hooks.
 """
 
@@ -94,7 +94,7 @@ import struct
 import threading
 import time
 
-logger = logging.getLogger("plexsim.gdm")
+logger = logging.getLogger("simplex.gdm")
 
 # The two ports a real PMS answers on, measured by sweeping 32400-32419 on zen.
 PORTS = (32410, 32414)
@@ -275,7 +275,7 @@ class Discovery(object):
         """Every server seen on the wire recently, in first-seen order.
 
         A row that has stopped answering ages out: SERVERS_TTL is measured, not
-        chosen.  plexsim's own machineIdentifier is never in here -- its reply to its
+        chosen.  simplex's own machineIdentifier is never in here -- its reply to its
         own search is dropped, so `/servers` carries one self row and no duplicate.
         """
         now = time.time() if now is None else now
@@ -291,7 +291,7 @@ class Discovery(object):
         searches: `/servers` never listed two rows for that address -- the single row
         alternates, last writer wins -- while distinct addresses are listed side by side.
         So the table is keyed on where the answer came FROM, not on the identity in it,
-        and plexsim keying on the machineIdentifier listed two servers on one host twice.
+        and simplex keying on the machineIdentifier listed two servers on one host twice.
         """
         row = parse_response(datagram)
         if row is None or row["machine"] == self.machine:

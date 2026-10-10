@@ -16,7 +16,7 @@ has no `childCount` (cycle 83); the reference simply stops recomputing the aggre
 count reaches zero.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `PLEXSIM_SERVER=python`.
+the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_parity_cycle87_b.py
 """
@@ -38,8 +38,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "collection_emptied_s42.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "parity-cycle87-b", "Accept": "application/json"}
@@ -173,7 +173,7 @@ def reads(port, key):
     return out
 
 
-def plexsim_checks(port):
+def simplex_checks(port):
     year = {}
     for key in (A, B):
         row = request(port, "GET", "/library/metadata/%s" % key)[1]["MediaContainer"]["Metadata"][0]
@@ -220,7 +220,7 @@ def main():
     reference_checks()
     process, port = start()
     try:
-        plexsim_checks(port)
+        simplex_checks(port)
         created_empty_checks(port)
     finally:
         stop(process)
@@ -230,7 +230,7 @@ def main():
         state = os.path.join(tmp, "state.pickle")
         process, port = start(state=state)
         try:
-            key, stale = plexsim_checks(port)
+            key, stale = simplex_checks(port)
         finally:
             stop(process)
         process, port = start(port=port, state=state)

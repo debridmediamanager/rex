@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Drive plexsim with python-plexapi -- a real Plex client library.
+"""Drive simplex with python-plexapi -- a real Plex client library.
 
 python-plexapi is the same XML contract every official client parses, and it is
 strict: a missing attribute or a wrongly shaped child element raises here rather
 than degrading quietly.  This covers the browse half.  The playback half is the
 Range reads at the end, which is the part pd_inject never had.
 
-    .venv/bin/python plexsim/conformance.py [--base http://127.0.0.1:32400]
+    .venv/bin/python simplex/conformance.py [--base http://127.0.0.1:32400]
 """
 
 import argparse
@@ -37,7 +37,7 @@ def check(label, condition, detail=""):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", default="http://127.0.0.1:32400")
-    parser.add_argument("--token", default="plexsim-test-token")
+    parser.add_argument("--token", default="simplex-test-token")
     args = parser.parse_args()
 
     print("\n=== 1. connect + identity ===")
@@ -61,7 +61,7 @@ def main():
 
     print("\n=== 4. item detail + Media/Part/Stream ===")
     # Prefer the exact browser-direct-play shape. A merely-H.264 Matroska row
-    # still makes Plex Web ask for a transcode, which plexsim intentionally
+    # still makes Plex Web ask for a transcode, which simplex intentionally
     # does not provide.
     target = None
     h264_fallback = None

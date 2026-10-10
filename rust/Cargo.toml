@@ -1,5 +1,5 @@
 [package]
-name = "plexsim"
+name = "simplex"
 version = "0.1.0"
 edition = "2021"
 description = "Native Plex protocol emulator (migration bootstrap)"
@@ -19,5 +19,5 @@ rusqlite = { version = "0.40", features = ["bundled"] }
 path = "src/lib.rs"
 
 [[bin]]
-name = "plexsim"
+name = "simplex"
 path = "src/main.rs"

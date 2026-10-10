@@ -1,4 +1,4 @@
-//! Native plexsim components and the Rust HTTP runtime.
+//! Native simplex components and the Rust HTTP runtime.
 //!
 //! The modules share the measured catalog and sidecars with the Python
 //! implementation; the runtime itself never starts Python or replays a

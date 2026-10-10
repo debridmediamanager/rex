@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Does a plexsim registration actually decay? Cache-proof version.
+"""Does a simplex registration actually decay? Cache-proof version.
 
 `presence.py` announced once and then polled `/api/v2/resources` every 60 s with
 ONE client identifier, and saw `resource=YES` for 28 minutes -- from which I
@@ -35,7 +35,7 @@ def resources_uncached(token):
         headers={
             "X-Plex-Token": token,
             # A fresh identifier per call is the whole point.
-            "X-Plex-Client-Identifier": "plexsim-decay-" + uuid.uuid4().hex[:12],
+            "X-Plex-Client-Identifier": "simplex-decay-" + uuid.uuid4().hex[:12],
             "Accept": "application/json",
         },
     )
@@ -58,7 +58,7 @@ def device_row(token, name):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--name", default="plexsim-spike")
+    parser.add_argument("--name", default="simplex-spike")
     parser.add_argument("--device-id", required=True)
     parser.add_argument("--url", required=True)
     parser.add_argument(

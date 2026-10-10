@@ -1,7 +1,7 @@
 #!/bin/zsh
 # emu.sh <avd> <port>  -- boot an AVD through the c70 proxy, detached
 H=$(cd "$(dirname "$0")" && pwd)
-C=${DROID_WORK:-$HOME/plexsim-android}
+C=${DROID_WORK:-$HOME/simplex-android}
 mkdir -p $C/N/cap $C/N/out $C/N/shots
 export ANDROID_SDK_ROOT=/opt/homebrew/share/android-commandlinetools ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
 python3 -c "

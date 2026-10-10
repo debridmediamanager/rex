@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reduce a captured corpus to a checked-in fixture.
 
-Keeps only the server-directed exchanges -- the ones plexsim has to answer --
+Keeps only the server-directed exchanges -- the ones simplex has to answer --
 and removes every credential. Tokens appear in three places and all three matter:
 the X-Plex-Token query parameter, the X-Plex-Token header, and inside response
 bodies, where a server hands out accessToken and similar per-user values.

@@ -325,7 +325,7 @@ impl super::Runtime {
         let joined = |lines: &[String]| format!("{}\n", lines.join("\n"));
         let requests = &self.requests[self.requests.len().saturating_sub(2000)..];
         zip(&[
-            ("plexsim.log", joined(&lines())),
+            ("simplex.log", joined(&lines())),
             ("requests.log", joined(requests)),
             ("unrouted.log", joined(&self.unknown)),
         ])

@@ -19,7 +19,7 @@ for the same bytes:
   * `pre-selection` -- after `audioStreamID=-1` clears that choice. 41 of the 78 profiles
     then refuse the row as "not the first audio stream" although `selected` still names
     the first track, and the item's `Stream` rows are byte-identical to the other state.
-    That selection is per-user state the row does not carry, so plexsim -- which holds a
+    That selection is per-user state the row does not carry, so simplex -- which holds a
     chosen track -- cannot express it. These cells are RECORDED and not emulated; the
     suite counts them and never fails on them.
 

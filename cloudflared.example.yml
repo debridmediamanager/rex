@@ -1,4 +1,4 @@
-# Publishing plexsim over a NAMED Cloudflare tunnel.
+# Publishing simplex over a NAMED Cloudflare tunnel.
 #
 # Quick tunnels (`cloudflared tunnel --url`) do not work for this: Plex clients
 # reject the hostname and the edge mangles media requests. A named tunnel with
@@ -14,7 +14,7 @@ tunnel: 00000000-0000-0000-0000-000000000000
 credentials-file: /path/to/00000000-0000-0000-0000-000000000000.json
 
 ingress:
-  - hostname: plexsim.example.com
+  - hostname: simplex.example.com
     service: http://127.0.0.1:32400
     originRequest:
       # A media range read is a long streaming response: fine to connect in

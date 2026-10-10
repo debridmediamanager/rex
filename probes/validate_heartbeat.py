@@ -8,11 +8,11 @@ def visible():
     req = urllib.request.Request(
         "https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&includeIPv6=1",
         headers={"X-Plex-Token": TOKEN,
-                 "X-Plex-Client-Identifier": "plexsim-val-" + uuid.uuid4().hex[:12],
+                 "X-Plex-Client-Identifier": "simplex-val-" + uuid.uuid4().hex[:12],
                  "Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=25) as r:
         rows = json.load(r)
-    return "plexsim-spike" in [x.get("name") for x in rows if "server" in (x.get("provides") or "")]
+    return "simplex-spike" in [x.get("name") for x in rows if "server" in (x.get("provides") or "")]
 started = time.time()
 bad = 0
 for i in range(13):

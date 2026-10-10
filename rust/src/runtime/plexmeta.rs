@@ -76,7 +76,7 @@ impl crate::identify::PlexSource for PlexMeta {
             ("Content-Type", "application/json".to_string()),
             ("X-Plex-Product", "Plex Media Server".to_string()),
             ("X-Plex-Provider-Version", "6.5.0".to_string()),
-            ("X-Plex-Client-Identifier", "plexsim".to_string()),
+            ("X-Plex-Client-Identifier", "simplex".to_string()),
         ];
         if method == "GET" {
             // The agent pages at 50 (the lab capture); 500 is refused with a 400.

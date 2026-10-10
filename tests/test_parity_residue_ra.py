@@ -15,7 +15,7 @@ Each check asserts the MEASURED answer, not the other server's:
   (shelf, count) for the life of the process (zen, cycles 28 and 30).
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `PLEXSIM_SERVER=python`.
+default, the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_parity_residue_ra.py
 """
@@ -35,8 +35,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = [("Accept", "application/json"), ("X-Plex-Client-Identifier", "parity-residue-ra"),
            ("X-Plex-Product", "Plex Web"), ("X-Plex-Version", "4.147.1"),
@@ -176,7 +176,7 @@ def run(port):
         port, "GET", "/photo/:/transcode?width=200&height=300&url=%s" % urllib.parse.quote(art, safe=""))
     # Cycle 83, plexscratch42: an upload reads back `image/jpeg` whatever its bytes
     # (`tests/fixtures/upload_non_image.json`), text and PNG alike, directly and through
-    # the transcoder -- the octet-stream and image/png this checked were plexsim's sniff.
+    # the transcoder -- the octet-stream and image/png this checked were simplex's sniff.
     check("a non-image upload's direct read is a 200 image/jpeg, and the transcoder 500s it",
           status_direct == 200 and values_direct.get("content-type") == "image/jpeg"
           and status == 500 and len(body) == 109 and order(names) == ERROR_ORDER,

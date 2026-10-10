@@ -34,7 +34,7 @@ use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use serde_json::{Map, Value};
 
 pub const MAGIC: &[u8; 16] = b"SQLite format 3\0";
-pub const FORMAT: &str = "plexsim-sqlite-1";
+pub const FORMAT: &str = "simplex-sqlite-1";
 const STATE: &str = "state:";
 const CATALOG: &str = "catalog:";
 
@@ -908,7 +908,7 @@ mod tests {
 
     #[test]
     fn an_appended_or_removed_row_is_one_write_and_keeps_the_order() {
-        let dir = std::env::temp_dir().join(format!("plexsim-append-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("simplex-append-{}", std::process::id()));
         let _ = fs::create_dir_all(&dir);
         let path = dir.join("state.db");
         let key = |row: &Value| row.get("ratingKey").and_then(Value::as_str).map(str::to_string);
@@ -946,7 +946,7 @@ mod tests {
 
     #[test]
     fn round_trip_through_a_database() {
-        let dir = std::env::temp_dir().join(format!("plexsim-store-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("simplex-store-{}", std::process::id()));
         let _ = fs::create_dir_all(&dir);
         let path = dir.join("state.db");
         let saved = state(json!({

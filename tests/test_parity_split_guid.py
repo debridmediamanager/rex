@@ -9,15 +9,15 @@ Both halves are driven from `tests/fixtures/split_guid.json`, recorded on plexsc
   `ratingKey`, `key` and the artwork URLs built from them -- 17's title, its
   `plex://movie/...` guid, its whole `Guid` list, its `Field` locks, `addedAt` and
   `updatedAt` -- holding the absorbed item's Media. 17 keeps its own Media and its
-  `updatedAt`. plexsim minted `local://<new key>`, dropped the locks and stamped 17.
+  `updatedAt`. simplex minted `local://<new key>`, dropped the locks and stamped 17.
 - Under `includeGuids=1`, NO listing gives an unmatched row (`local://` or
   `tv.plex.agents.none://`) a `Guid` key -- the grid, `/unwatched`, Recently Added, the
   hub page, `/hubs` and home's Recently Added -- even where its detail still answers
-  the imdb/tmdb list the unmatch kept. plexsim kept an unmatched movie's stored ids in
+  the imdb/tmdb list the unmatch kept. simplex kept an unmatched movie's stored ids in
   every listing and gave a `local://` row a one-entry list on `/hubs`.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `PLEXSIM_SERVER=python`.
+default, the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_parity_split_guid.py
 """
@@ -36,8 +36,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "split_guid.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"Accept": "application/json", "X-Plex-Client-Identifier": "parity-split-guid",
            "X-Plex-Product": "Plex Web", "X-Plex-Version": "4.147.1",

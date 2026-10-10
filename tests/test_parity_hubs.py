@@ -8,8 +8,8 @@ and against the native server and diffing every exchange (`/hubs*`, `/hubs/searc
 `server.py`, failed on the native build before its fix, and passes after it.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the Python oracle with `PLEXSIM_SERVER=python`, any other build with
-`PLEXSIM_SERVER=/path/to/plexsim`. Writes go to its own in-memory catalog.
+default, the Python oracle with `SIMPLEX_SERVER=python`, any other build with
+`SIMPLEX_SERVER=/path/to/simplex`. Writes go to its own in-memory catalog.
 
     python3 tests/test_parity_hubs.py
 """
@@ -355,10 +355,10 @@ def write_checks(srv):
 
 
 def main():
-    port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
+    port = int(os.environ.get("SIMPLEX_TEST_PORT") or free_port())
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-               PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
-    for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+               SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
+    for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
         env.pop(name, None)
     log = tempfile.TemporaryFile()
     proc = subprocess.Popen(

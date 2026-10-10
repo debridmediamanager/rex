@@ -6,11 +6,11 @@ performs -- play queue, transcode decision, then byte reads -- and then proves
 the bytes actually decode, rather than trusting a 200.
 
 Two transports are checked separately because they behave differently:
-  local   127.0.0.1:32400, straight at plexsim
-  public  https://plexsim.sarmiento.cc, through the Cloudflare tunnel, which
+  local   127.0.0.1:32400, straight at simplex
+  public  https://simplex.sarmiento.cc, through the Cloudflare tunnel, which
           strips `Range` on a prefix request
 
-A client-side gate verdict is included per item, because a 200 from plexsim does
+A client-side gate verdict is included per item, because a 200 from simplex does
 not mean a given client will play it: Plex Web direct-plays mp4/h264/aac and
 refuses mkv and webm outright.
 """
@@ -55,8 +55,8 @@ MAGIC = {
 # Cloudflare answers 403 to `Python-urllib/<ver>` on the media path -- measured
 # against every other UA (curl, a Plex product string, a browser, and even an
 # empty UA), all of which get 206. So the harness must not use urllib's default
-# or it measures Cloudflare's bot filter instead of plexsim.
-CLIENT_UA = "Plex/1.115.0 (Macintosh; plexsim-test)"
+# or it measures Cloudflare's bot filter instead of simplex.
+CLIENT_UA = "Plex/1.115.0 (Macintosh; simplex-test)"
 
 
 def fetch(url, headers=None, timeout=60, method=None):
@@ -106,7 +106,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--catalog", default=os.path.join(ROOT, "catalog.json"))
     parser.add_argument("--local", default="http://127.0.0.1:32400")
-    parser.add_argument("--public", default="https://plexsim.sarmiento.cc")
+    parser.add_argument("--public", default="https://simplex.sarmiento.cc")
     parser.add_argument("--skip-decode", action="store_true")
     args = parser.parse_args()
 
@@ -171,7 +171,7 @@ def main():
         for name, base in (("local", args.local), ("public", args.public)):
             if name == "public":
                 time.sleep(1)  # be gentle on the tunnel
-            url = base + part["key"] + "?X-Plex-Token=plexsim-test"
+            url = base + part["key"] + "?X-Plex-Token=simplex-test"
             status, headers, body = fetch(url, headers={"Range": "bytes=0-1023"})
             ctype = (headers or {}).get("Content-Type", "")
             prefix_ok = status in (200, 206) and ctype.startswith("video/")
@@ -196,7 +196,7 @@ def main():
         if not args.skip_decode:
             offset = max(5, int((media.get("duration") or 0) / 1000 * 0.10))
             ok, detail = decode_frames(
-                args.local + part["key"] + "?X-Plex-Token=plexsim-test", offset)
+                args.local + part["key"] + "?X-Plex-Token=simplex-test", offset)
             results["decode @%ds" % offset] = (ok, detail)
 
         for check, (ok, detail) in results.items():
@@ -221,7 +221,7 @@ def main():
                                    (GREEN + "OK" + OFF) if server_ok else (RED + "FAIL" + OFF),
                                    plays))
     failed = [l for l, ok, _ in summary if not ok]
-    print("\n  %d/%d served correctly by plexsim" % (len(summary) - len(failed), len(summary)))
+    print("\n  %d/%d served correctly by simplex" % (len(summary) - len(failed), len(summary)))
     if failed:
         print("  server-side failures: %s" % ", ".join(failed))
     return 1 if failed else 0

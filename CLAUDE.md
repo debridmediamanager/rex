@@ -1,4 +1,4 @@
-# plexsim
+# simplex
 
 A Plex Media Server that owns no files. It answers the PMS API well enough that
 the **official** Plex clients treat it as a real server, and serves a library zurg
@@ -12,7 +12,7 @@ written from measurement against a real PMS.
 holds every measured behaviour, the native port is ported from it, and the parity
 suites (`test_native_phase2.py`, the decision corpus) compare against it. A new
 measurement lands in the Python oracle and the Rust server together, and the
-black-box suites must pass on both (`PLEXSIM_SERVER=python` selects the oracle).
+black-box suites must pass on both (`SIMPLEX_SERVER=python` selects the oracle).
 The last Python-only `main` is the `python-server` branch.
 
 ## The one rule that matters
@@ -29,7 +29,7 @@ client's exact request is the difference between finding it in an hour and not
 finding it at all. See `docs/findings.md`.
 
 Corollary: when the payload looks right and the client still renders nothing,
-**read the client**. plexsim serves the web client bundle, so its chunks can be
+**read the client**. simplex serves the web client bundle, so its chunks can be
 searched on disk. The gate is usually one truthiness check in minified code.
 
 ## Layout
@@ -74,7 +74,7 @@ with `dirname(__file__)`. The descriptors (`server_prefs.json`, `regional_server
 exception to the flat rule: `tmdb_cache.json` and `claim_state.json` are resolved beside the
 **catalog**, not beside `server.py`, because they are state rather than measurement.
 The state file is state too: a SQLite database beside the catalog by default
-(`plexsim.db`), the catalog itself when the catalog is a database, or wherever `--state`
+(`simplex.db`), the catalog itself when the catalog is a database, or wherever `--state`
 names.
 
 The native server finds the same sidecars beside the catalog, then one directory up,
@@ -94,7 +94,7 @@ Where things live in `rust/src/`:
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, TMDB, Plex's metadata agent and artwork |
 | `runtime/zurg.rs`, `runtime/scan.rs` | zurg's WebDAV (paths, bytes, listings, `/api/library/entry`), and the scanner: refreshes queued off the request thread, rows added, filled, trashed, keys minted once (`mint_key`) |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and the port of `identify.py` a scan names releases with |
-| `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and Fix Match (`PLEXSIM_PLEXTV_URL` points plex.tv at a stub) |
+| `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and Fix Match (`SIMPLEX_PLEXTV_URL` points plex.tv at a stub) |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
 | `filters.rs`, `hierarchy.rs`, `metadata.rs`, `mediainfo.rs`, `decision.rs`, `xmlout.rs`, `gate.rs`, `catalog.rs` | The ports of the Python modules of the same name |
 
@@ -106,12 +106,12 @@ gives the client a grid whose filter bar can only talk about the wrong type.
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
-python3 build_catalog.py --seed --name NAME --zurg-mount /mnt/zurg --out plexsim.db
+python3 build_catalog.py --seed --name NAME --zurg-mount /mnt/zurg --out simplex.db
 cp run.sh.example run.sh     # fill in ZURG_URL (+ZURG_USER/ZURG_PASSWORD), TMDB_KEY, PLEX_TOKEN
-./run.sh                     # or: rust/target/release/plexsim --catalog plexsim.db --zurg-mount /mnt/zurg
+./run.sh                     # or: rust/target/release/simplex --catalog simplex.db --zurg-mount /mnt/zurg
 ```
 
-zurg is the library and the only byte source; plexsim reads no media itself and has no
+zurg is the library and the only byte source; simplex reads no media itself and has no
 provider code of its own. The environment: `ZURG_URL` (zurg's address; without it parts
 have no bytes -- a part read is the 502 an unreachable source is -- and nothing scans),
 `ZURG_USER`/`ZURG_PASSWORD` (zurg's basic auth, when its config sets a username),
@@ -121,7 +121,7 @@ TMDB). `--zurg-mount` is zurg's `mount_path` (default `/mnt/zurg`): a Part's `fi
 on zurg, and each library's `Location` is `<mount>/<directory>` -- set in the catalog's
 sections (`build_catalog.py --seed`), or through Add Library's `location`.
 
-Point zurg at the server in zurg's `config.yml`: `plex_server_url` and `plexsim_url`
+Point zurg at the server in zurg's `config.yml`: `plex_server_url` and `simplex_url`
 (this server's URL), `plex_token` (this server's `--token`; once claimed, a token plex.tv
 lists for it, such as the owner's account token; anything when neither gates),
 `mount_path` (`--zurg-mount`), and `plex_settings_policy: off`. zurg then sends
@@ -142,7 +142,7 @@ list announces each URI as its own connection, as a PMS with several does. The P
 oracle reads parts from zurg the same way but does not scan.
 
 A real claim -- `POST /myplex/claim?token=` with a token from `plex.tv/api/claim/token.json`,
-once per machineIdentifier -- makes plexsim register the way a real PMS does (findings, "The
+once per machineIdentifier -- makes simplex register the way a real PMS does (findings, "The
 experiment, run"): `POST /servers.xml` writes plex.tv's server record (422 is its normal
 answer), and the pubsub stream it then holds open is what clients read as `presence`. The
 claim is kept in `claim_state.json`, so a restart re-registers without claiming again. A
@@ -160,15 +160,15 @@ credentials. `catalog.example.json` keeps the shape.
 Under launchd, so it outlives the shell that starts it:
 
 ```bash
-launchctl submit -l com.plexsim.dev -o plexsim.log -e plexsim.err -- /bin/zsh "$PWD/run.sh"
-launchctl remove com.plexsim.dev
+launchctl submit -l com.simplex.dev -o simplex.log -e simplex.err -- /bin/zsh "$PWD/run.sh"
+launchctl remove com.simplex.dev
 ```
 
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
 Several servers, started and stopped on demand: `./manager.py serve`, then
 `./manager.py create NAME --port P [--catalog PATH] [--zurg-mount M]` (keys from
-`ZURG_URL`/`ZURG_USER`/`ZURG_PASSWORD`/`TMDB_KEY`/`PLEX_TOKEN`/`PLEXSIM_TOKEN` in the
+`ZURG_URL`/`ZURG_USER`/`ZURG_PASSWORD`/`TMDB_KEY`/`PLEX_TOKEN`/`SIMPLEX_TOKEN` in the
 environment) and `start|stop|list|logs NAME`; without a catalog, `build NAME --start` seeds
 an empty library at zurg's mount first. Its data
 lives in `managed/` (gitignored, mode 700); `tests/test_manager.py` drives it end to end and
@@ -178,15 +178,15 @@ The state file keeps what clients change -- watch state, ratings, edits, deletes
 playlists, collections, history, sections, preferences, uploads, queues, and the device
 and statistics tables -- across restarts; see `persist.py` for what is and is not kept.
 It is **on by default** since 2026-10-05: a SQLite database written by the row since
-2026-10-06 (`rust/src/store.rs`), `plexsim.db` beside the catalog or the catalog's own
+2026-10-06 (`rust/src/store.rs`), `simplex.db` beside the catalog or the catalog's own
 database when the catalog is one (`catalogdb.py`, `build_catalog.py --convert`); an old
 `state.json` is imported once and kept as `state.json.migrated`. The Python oracle's is
-`state.pickle`. `--state FILE` / `PLEXSIM_STATE` move it. A second server on the
+`state.pickle`. `--state FILE` / `SIMPLEX_STATE` move it. A second server on the
 same catalog finds the default locked and exits 1, as a second PMS on a served data
 directory does (cycle 92). Every suite relies on a
 restart being the undo button, so **a test instance runs with `--no-state`**:
 `tests/server_command.py` adds it to every server a suite starts, and a cycle tree's
-`server.py` shim sets an empty `PLEXSIM_STATE`, so only a leg that names `--state` keeps one. The file is tied to the
+`server.py` shim sets an empty `SIMPLEX_STATE`, so only a leg that names `--state` keeps one. The file is tied to the
 catalog's digest; after a catalog rebuild only view state (by guid, then part file) and
 the server-level settings carry over, and the old file is kept as `<file>.stale` --
 unless the saved rows include scanned ones (`_scanned`): a library zurg built is the
@@ -209,7 +209,7 @@ fact about status and headers, not something to keep on disk.
 
 | Axis | File | What it holds |
 |---|---|---|
-| client → server | `capture/sessions/<label>.jsonl` | what the official client asks for and what a real PMS answers. The corpus plexsim must match. |
+| client → server | `capture/sessions/<label>.jsonl` | what the official client asks for and what a real PMS answers. The corpus simplex must match. |
 | server → plex.tv | `capture/outbound.jsonl` | how a real PMS registers and re-announces itself — the traffic that makes a server *detected* rather than merely reachable. |
 
 | Endpoint | What |
@@ -292,9 +292,9 @@ capture time and replay time:
 
 ```bash
 .venv/bin/python scripts/replay.py --corpus capture/sessions/reference-walk.jsonl \
-    --target http://127.0.0.1:32500 --target-token "$PLEXSIM_TOKEN" \
+    --target http://127.0.0.1:32500 --target-token "$SIMPLEX_TOKEN" \
     --reference http://127.0.0.1:32400 --reference-token "$SERVER_TOKEN" \
-    --out capture/diffs/plexsim.md
+    --out capture/diffs/simplex.md
 ```
 
 `replay.py` reissues each request byte-for-byte — same path, same query params
@@ -397,15 +397,15 @@ answering at `http://100.101.10.1:32410`:
 ## Testing
 
 The black-box suites start or target the native server by default
-(`tests/server_command.py` runs `rust/target/release/plexsim`, so build it first);
-`PLEXSIM_SERVER=python` runs them against the Python oracle, and a fix is done when
+(`tests/server_command.py` runs `rust/target/release/simplex`, so build it first);
+`SIMPLEX_SERVER=python` runs them against the Python oracle, and a fix is done when
 they pass on both. Neither needs network beyond RD and TMDB.
 
 ```bash
 python3 tests/test_navigation.py            # client request replay, shape conformance
 python3 tests/test_ui_surface.py            # context menu + every server page, end to end
 python3 tests/test_all.py                   # play queue → decision → byte reads → real decode
-python3 tests/conformance.py                # drives plexsim with python-plexapi
+python3 tests/conformance.py                # drives simplex with python-plexapi
 python3 tests/test_mediainfo.py             # mediainfo.py against a real PMS's analysis; no server
 python3 tests/test_decision.py              # decision.py against 1,872 measured decisions; no server
 python3 tests/test_gdm.py                   # gdm.py against four real servers' GDM; no server
@@ -440,9 +440,9 @@ python3 tests/test_followups_f{a,b,c,d}.py  # HANDOVER §2a's follow-ups, each a
 The native-only and parity suites, all black-box unless noted:
 
 ```bash
-python3 tests/test_native_runtime_smoke.py  # native routes and CLI refusals; refuses PLEXSIM_SERVER=python
+python3 tests/test_native_runtime_smoke.py  # native routes and CLI refusals; refuses SIMPLEX_SERVER=python
 python3 tests/test_native_gdm.py            # native GDM answers and the /servers self row
-PLEXSIM_NATIVE_BIN=rust/target/release/plexsim python3 tests/test_native_phase2.py
+SIMPLEX_NATIVE_BIN=rust/target/release/simplex python3 tests/test_native_phase2.py
                                             # the Rust core modules against the Python ones, row by row
 python3 tests/test_tls.py                   # HTTPS and plain HTTP on one port
 python3 tests/test_prefix_registry.py       # 58 measured prefix shapes
@@ -465,12 +465,12 @@ A provider account behind zurg is read-only in tests: read bytes, never add or d
 Where to run them: service and end-to-end tests run on **zen** (the workspace rule),
 with the native binary cross-built on the Mac --
 `docker run --rm --platform linux/amd64 -v "$PWD":/src -v <target dir outside the repo>:/target -e CARGO_TARGET_DIR=/target -w /src/rust rust:1-bullseye cargo build --release`
--- and copied to `rust/target/release/plexsim` in the zen copy. Keep every test port
+-- and copied to `rust/target/release/simplex` in the zen copy. Keep every test port
 **below 32768**: zen's ephemeral range starts there, so a port inside it is taken now and
 then by an outgoing connection and the server fails to bind (the cause of the old
 "flaky" `--web-root` sub-server crash). The UI suite binds three sub-servers of its own
 on fixed ports (`gated_port`, `web_port_c16y`, `port_c29l`, 32597-32599); two suites at
-once need those remapped in the test host's copy. Point `PLEXSIM_PLEXTV_URL` at a
+once need those remapped in the test host's copy. Point `SIMPLEX_PLEXTV_URL` at a
 closed local port for any run that must not reach plex.tv.
 
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
@@ -480,7 +480,7 @@ with `--no-state` — but run it against a test instance, started on the fixture
 checks are written against:
 
 ```bash
-rust/target/release/plexsim --port 32500 --catalog tests/catalog_ui.json --assert-claimed --no-state &
+rust/target/release/simplex --port 32500 --catalog tests/catalog_ui.json --assert-claimed --no-state &
 python3 tests/test_ui_surface.py --base http://127.0.0.1:32500
 ```
 

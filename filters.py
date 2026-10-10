@@ -13,12 +13,12 @@ So "year is after 2000" goes out as `year%3E%3E=2000`, and the server reads a
 parameter **named** `year>>` whose value is `2000`. There is no `year>=2000`
 anywhere on the wire. A server that iterates its query parameters looking for
 names it knows therefore sees nothing it recognises and applies no constraint at
-all -- which is what plexsim did, so every filter returned the whole library
+all -- which is what simplex did, so every filter returned the whole library
 while looking like it worked.
 
 What each (type, operator) pair means was measured against two real servers; the
 operator lists per type are not hard-coded here, they come from the `FieldType`
-block of the captured `Meta` that plexsim already serves, so the engine can only
+block of the captured `Meta` that simplex already serves, so the engine can only
 honour what it advertises.
 
 Three more shapes, all measured:
@@ -190,7 +190,7 @@ def split_scope(name):
     `episode.unwatched`, and it honours a prefix from any section -- `show.title`
     parses against a MOVIE library too.
 
-    plexsim looked the incoming name up after stripping the prefix, in a map
+    simplex looked the incoming name up after stripping the prefix, in a map
     keyed by the PREFIXED names, so nothing a show library advertised could ever
     match and every filter on a show grid silently returned everything.
     """
@@ -238,7 +238,7 @@ def as_epoch(value, now=None):
     # three per-user dates: an epoch is a SIGNED 64-BIT integer with nothing around it.
     # ` 1`, `1 ` and `9223372036854775808` are 500s where `9223372036854775807` is a 200
     # -- and so is `viewedAt= 1` on Top Played and `/users/top`, which parse the same way.
-    # plexsim stripped the value and read it with `float()`, answering 200 and no rows.
+    # simplex stripped the value and read it with `float()`, answering 200 and no rows.
     if value != value.strip():
         raise FilterError(500, "unparseable date %r" % value)
     if re.fullmatch(r"[+-]?[0-9]+", value) and not -2 ** 63 <= int(value) < 2 ** 63:
@@ -301,7 +301,7 @@ NULL_IS_ZERO_DATES = {"lastViewedAt", "lastRatedAt", "lastSkippedAt"}
 # rule is narrow: bare `=` only (`<=-1`, `<<=-1` and `>=0` match nothing), `-01` counts and
 # `-1.0` does not, a comma list ORs it (`rating=-1,7` is 3,150), and `year`, `duration`,
 # `viewCount`, `index`, `contentRatingAge`, `mediaSize`, `mediaBitrate`, `skipCount`,
-# `mediaCount` and `ratingCount` answer 0 to it. plexsim answered 0 on all five.
+# `mediaCount` and `ratingCount` answer 0 to it. simplex answered 0 on all five.
 NULL_SENTINEL_FIELDS = {"rating", "audienceRating", "userRating", "absoluteIndex", "parent"}
 
 # The boolean-looking column whose OPERATOR a real PMS ignores: cycle 20, measured on
@@ -390,7 +390,7 @@ def _word_prefixes(wanted, text, sort=None):
     #   kids `title=Steel.` -> 0, `title=Tears of Steel.` -> 0     zen `Actually.` -> 0
     #
     # An empty alternative matches every row -- which is the recorded `title=` rule -- so a
-    # trailing comma answers the whole library. plexsim STRIPPED both characters from the
+    # trailing comma answers the whole library. simplex STRIPPED both characters from the
     # query, so `Steel,` found one row where a real PMS answers all of them and `Steel.`
     # found one where a real PMS answers none. It is the filter bar's own text box, so a
     # typed comma or a trailing period silently gave a different row set.
@@ -405,7 +405,7 @@ def _word_prefixes(wanted, text, sort=None):
     # `title=Season 22` answers nothing.
     #
     # Rows with no article match either way, which is why thirteen cycles of this matcher
-    # never saw it. plexsim folded the TITLE, so it answered rows a real PMS does not
+    # never saw it. simplex folded the TITLE, so it answered rows a real PMS does not
     # (`Thé Simpsons`) and missed every row findable only by its sort title -- including,
     # on a real library, every generated-title season whose agent gave it one.
     return (_raw_word_prefixes(wanted, text)
@@ -462,7 +462,7 @@ def _folded_word_run(wanted, text):
     # 102-character query table: the 100 plus `\u017f` and `\u212a`, which only a case fold
     # reaches.
     #
-    # plexsim decomposed both sides with NFD, which folds 134 characters a real PMS does
+    # simplex decomposed both sides with NFD, which folds 134 characters a real PMS does
     # not (`Sint\u0119l`, `\u0100ra`) and misses the two the case fold does.
     words = fold_query(wanted).split(" ")
     if any(word == "" for word in words):
@@ -532,7 +532,7 @@ def _exact(operator, actual, wanted, field=""):
         # Cycle 88, measured on kids (1.43.4) and zen (1.42.2): a tag NAME matches ignoring
         # the case of its ASCII letters only -- `genre=ANIMATION` is `Animation`, and
         # `actor=ARINZé KENE` is `Arinzé Kene` while `ARINZÉ KENE` matches nothing (SQLite's
-        # NOCASE). plexsim compared exactly, so any other case found no row.
+        # NOCASE). simplex compared exactly, so any other case found no row.
         hit = _ascii_lower(wanted) in {_ascii_lower(value) for value in values}
     else:
         hit = wanted in values
@@ -565,7 +565,7 @@ def _tag_column(operator, actual, wanted, field=""):
     sorts above every rating a real library holds) where `<=PG` answers 3,197. kids
     agrees on all sixteen counts at its own scale.
 
-    plexsim answered NOTHING to six of the eight, so the Content Rating filter's
+    simplex answered NOTHING to six of the eight, so the Content Rating filter's
     "is before"/"is after" controls -- and `contentRating>=` with no value, which the
     client sends as "has any rating" -- came back empty.
     """
@@ -604,7 +604,7 @@ def compare(kind, operator, actual, wanted, field=""):
         # Cycle 56, measured on zen and kids: `decade` IGNORES its operator, like
         # `unmatched` and `resolution` -- `!=2010`, `>>=2000`, `<<=2020` answer the
         # `=2010`, `=2000` and `=2020` buckets (zen 349, 252, 790). It is a bucket, not
-        # an ordering; plexsim compared, so "Decade is not 2010s" showed the complement.
+        # an ordering; simplex compared, so "Decade is not 2010s" showed the complement.
         operator = "="
 
     if field == "location":
@@ -623,7 +623,7 @@ def compare(kind, operator, actual, wanted, field=""):
         # `resolution=1080` and all seven others each answer 3,608 of 3,887; `=sd` and
         # its seven answer 2; `=720` and its seven answer 6. kids agrees (5 and 0 and 0
         # on its five clips), and a show library is the same (490 of 507 for every
-        # operator at `1080`). plexsim negated `!=` and answered nothing to the other
+        # operator at `1080`). simplex negated `!=` and answered nothing to the other
         # six, so a client's "not 4k" filter emptied the grid.
         return _exact("=", actual, wanted)
 
@@ -698,7 +698,7 @@ def compare(kind, operator, actual, wanted, field=""):
         return _exact(operator, actual, wanted, field)
 
     if kind == "date":
-        # Cycle 15: the VALUE is parsed before the row's own is looked at. plexsim
+        # Cycle 15: the VALUE is parsed before the row's own is looked at. simplex
         # returned here first, so on a library where nothing carries the column --
         # `lastRatedAt`, `createdAt`, `lastViewedAt` on most of them -- an
         # unparseable value was never refused at all. Both references 500 it.
@@ -739,7 +739,7 @@ def compare(kind, operator, actual, wanted, field=""):
             return actual <= moment
         if operator in ("!=", "!=="):
             # Cycle 20: `!=` really compares. `addedAt!=2020-01-01` answers
-            # every row on both references, where plexsim fell through to the equality
+            # every row on both references, where simplex fell through to the equality
             # below and answered none.
             return abs(actual - moment) >= 1
         return abs(actual - moment) < 1
@@ -761,7 +761,7 @@ def compare(kind, operator, actual, wanted, field=""):
         # `!=2` is what rules the obvious model out: a value parsed to 0 and then
         # negated would answer the true set there, and it does not. So the operator
         # is honoured only for the two pairs above and the rest is a constant
-        # "the column is false". plexsim compared 0/1 numerically, so `unwatched>=0`
+        # "the column is false". simplex compared 0/1 numerically, so `unwatched>=0`
         # answered the whole library and `unwatched!=2` the unwatched half -- the
         # Unplayed filter inverted for every value the client does not send.
         if isinstance(actual, (list, tuple)):
@@ -781,7 +781,7 @@ def compare(kind, operator, actual, wanted, field=""):
             # operator, while every other value selects the false ones under every
             # operator. It is `resolution`'s rule, not `unwatched`'s, and `unwatched`
             # itself is the control: it follows the two-request boolean rule on both
-            # references. plexsim read it as a boolean, so `unmatched!=1` was inverted.
+            # references. simplex read it as a boolean, so `unmatched!=1` was inverted.
             return state == (1 if wanted == "1" else 0)
         if (operator == "=" and wanted == "1") or (operator == "!=" and wanted == "0"):
             return state == 1
@@ -796,7 +796,7 @@ def compare(kind, operator, actual, wanted, field=""):
         # `abc`, an empty value -- sorts ABOVE every number, so nothing is `>` it,
         # everything is `<` it, and `=` matches none while `!=` matches all. `==`
         # and `!==` are the exact-string pair and never match a number at all.
-        # plexsim had no such field, so python-plexapi's `editions()` -- which asks
+        # simplex had no such field, so python-plexapi's `editions()` -- which asks
         # `guid=<x>&id!=<self>` -- reported every item as its own duplicate.
         try:
             target = float(str(wanted).strip())
@@ -856,7 +856,7 @@ def compare(kind, operator, actual, wanted, field=""):
         # `rating!=7` is 736, `rating!==7` 742, `rating<=7` 368 and `rating>>=7` 374:
         # 368 + 374 = 742 exactly, so the 3,145 rows without one are in neither half.
         # Its show library, where NO row carries a rating at all, answers 0 to all
-        # eight. plexsim read the absence as 0, so every `<=`/`<<=`/`!=` on Rating,
+        # eight. simplex read the absence as 0, so every `<=`/`<<=`/`!=` on Rating,
         # Plays, Critic Rating or Audience Rating answered the rows that have no value
         # -- the majority of a real library -- and `rating<=7` was the whole grid.
         # The VALUE is still parsed first (cycle 15), so a word is a 500 here whether
@@ -880,7 +880,7 @@ def compare(kind, operator, actual, wanted, field=""):
             # `==5.0`'s 43 -- while the INTEGER column answers `year==2000` with the
             # same 39 as `year=2000` and `year==2000.0` with none. So the comparison is
             # against the column's own rendering: a float prints `7.0`, an integer
-            # `2000`. plexsim compared numerically, so `rating==7` found the 7.0 rows a
+            # `2000`. simplex compared numerically, so `rating==7` found the 7.0 rows a
             # real PMS does not.
             hit = str(actual) == str(wanted)
             return hit if operator == "==" else not hit
@@ -924,7 +924,7 @@ def compare(kind, operator, actual, wanted, field=""):
         #   raw `Aşkı`, `Işığı`, `Ồn`, `tuổi` -> 1 each;  `Aski`, `Isigi` -> 0
         #
         # So the terms must be adjacent (the title's matcher allows gaps), each but the
-        # last must be a whole word, the last may begin one, and nothing folds. plexsim ran
+        # last must be a whole word, the last may begin one, and nothing folds. simplex ran
         # the title matcher over it, which matched 14 extra rows in a 1,244-query corpus --
         # `A` finding 'The Doway Murders' through `à`, `La La` finding a row whose two
         # `la`s are not adjacent.
@@ -944,7 +944,7 @@ def compare(kind, operator, actual, wanted, field=""):
         # Cycle 14 measured that `titleSort`, `summary`, `tagline` and `originalTitle`
         # -- the string fields no Meta advertises -- take `>>`/`<<` where an advertised
         # one ignores them, and recorded `titleSort>>=ZZZZ` answering 1 row of zen's
-        # 3,887. plexsim allowed the operators and then fell through to CONTAINMENT,
+        # 3,887. simplex allowed the operators and then fell through to CONTAINMENT,
         # so `titleSort<<=0` matched every row whose title happens to hold a `0`.
         #
         # Cycle 18, on zen (1.42.2): all four keys are a case-insensitive
@@ -1110,7 +1110,7 @@ def parse(pairs, field_type, structural=STRUCTURAL, errors=None):
     if pending is not None and last is not None:
         # Measured: a TRAILING `and=1` re-places the last clause and reports
         # `eof` as an unknown field. Reproduced quirk and all, because the
-        # harness diffs plexsim's answer against the reference's.
+        # harness diffs simplex's answer against the reference's.
         place(last)
         report("field", "eof")
     while len(stack) > 1:

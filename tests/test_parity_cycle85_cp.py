@@ -4,7 +4,7 @@
 Measured on plexscratch42 (PMS 1.42.2) with two throwaway TV libraries, and the window
 half repeated on plexscratch (PMS 1.43.4); recorded in
 `tests/fixtures/queue_section_delete_s42.jsonl` and re-read here, so each rule below is
-checked against the reference's own exchange before it is applied to plexsim:
+checked against the reference's own exchange before it is applied to simplex:
 
 - `window` and `center` choose which rows are listed and never move the reported
   selection: `playQueueSelectedItemOffset` is the selection's index in the WHOLE queue
@@ -19,7 +19,7 @@ checked against the reference's own exchange before it is applied to plexsim:
   before the dead rows drop. Both servers counted and indexed only the live rows.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `PLEXSIM_SERVER=python`.
+the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_parity_cycle85_cp.py
 """
@@ -38,13 +38,13 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "queue_section_delete_s42.jsonl")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "Accept": "application/json"}
 # The fixture's reads after each delete, as (step, query) -- the same reads are sent to
-# plexsim's mirrored queue.
+# simplex's mirrored queue.
 WINDOW_READS = ("", "&window=1", "&includeBefore=0&includeAfter=1")
 
 results = []
@@ -211,7 +211,7 @@ def reference_checks():
            for step, _, state in window_reads])
 
 
-# -- plexsim ---------------------------------------------------------------------------
+# -- simplex ---------------------------------------------------------------------------
 
 def machine(port):
     return json.loads(request(port, "GET", "/identity")[1])["MediaContainer"]["machineIdentifier"]
@@ -238,7 +238,7 @@ def read(port, queue_id, client, query=""):
     return view(json.loads(raw)["MediaContainer"]) if status == 200 else {"status": status}
 
 
-def plexsim_checks(port):
+def simplex_checks(port):
     # F: the 1.42.2 control, mirrored on movies (2, 297, 299, 300 -> 1007, 1008, 1009, 1012).
     f = make(port, 1007, "F")
     for key in (1008, 1009, 1012):
@@ -281,7 +281,7 @@ def main():
     reference_checks()
     process, port = start()
     try:
-        plexsim_checks(port)
+        simplex_checks(port)
     finally:
         stop(process)
     passed = sum(results)

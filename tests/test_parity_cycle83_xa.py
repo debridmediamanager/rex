@@ -14,7 +14,7 @@ A's localisation and item-settings sweeps, checked against zen's (1.42.2) own an
 Both expectations are zen's recorded exchanges (`tests/fixtures/item_language_override_zen.json`,
 `tests/fixtures/query_parse_field_titles_zen.json`). Drives a real server process
 (`tests/server_command.py`): the native binary by default, the oracle with
-`PLEXSIM_SERVER=python`.
+`SIMPLEX_SERVER=python`.
 
     python3 tests/test_parity_cycle83_xa.py
 """
@@ -34,8 +34,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURES = os.path.join(HERE, "fixtures")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"Accept": "application/json", "X-Plex-Client-Identifier": "parity-cycle83-xa",
            "X-Plex-Product": "Plex Web", "X-Plex-Version": "4.147.1",

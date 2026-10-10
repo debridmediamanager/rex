@@ -1,6 +1,6 @@
 """zurg: where a Part's bytes come from.
 
-plexsim reads no media itself. A Part's `file` is the path zurg's own mount gives the
+simplex reads no media itself. A Part's `file` is the path zurg's own mount gives the
 file (`<mount>/<directory>/<release>/<file>`), and the same file is
 `/dav/<directory>/<release>/<file>` on zurg's WebDAV, which answers a Range GET with the
 bytes -- the path rclone's mount reads through, so archives, failover and every
@@ -18,7 +18,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-UPSTREAM_UA = "plexsim/0.1"
+UPSTREAM_UA = "simplex/0.1"
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -86,7 +86,7 @@ class Zurg:
     def redirect_target(self, dav):
         """Where `--part-mode redirect` sends a client: zurg's signed `.strm` URL needs no
         credential and answers with the provider's download URL. None when zurg streams
-        the file itself (an archive member, a Usenet release): then plexsim proxies."""
+        the file itself (an archive member, a Usenet release): then simplex proxies."""
         escaped = "/".join(urllib.parse.quote(segment, safe="") for segment in dav.split("/"))
         request = urllib.request.Request(
             self.base + "/api/library/entry?path=" + urllib.parse.quote(escaped, safe=""),

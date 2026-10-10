@@ -3,10 +3,10 @@
 
 Every parity comparison before this sent one request at a time. This suite drives a
 real server process (`tests/server_command.py`: the native binary by default, the
-oracle with `PLEXSIM_SERVER=python`) with many at once, black-box, and proves:
+oracle with `SIMPLEX_SERVER=python`) with many at once, black-box, and proves:
 
 1. races  -- two requests released by one barrier are serialised: two play-queue adds
-   answer two different containers (cycle 32: a real PMS 0 of 110, plexsim 11 of 67
+   answer two different containers (cycle 32: a real PMS 0 of 110, simplex 11 of 67
    before the fix), two creates both answer 200, two first beats of one player make
    one session, two writers of one row leave one of their values and lose neither
    field, and two list-membership writes answer two different lists and keep both;
@@ -32,7 +32,7 @@ oracle with `PLEXSIM_SERVER=python`) with many at once, black-box, and proves:
 
 The default run takes about four minutes, most of it the reaper's three. `--long` soaks
 the load for five minutes, so the reaper removes its sessions under full load.
-`PLEXSIM_TEST_PORTS=LO-HI` confines the servers it starts to that port range.
+`SIMPLEX_TEST_PORTS=LO-HI` confines the servers it starts to that port range.
 """
 import argparse
 import collections
@@ -57,8 +57,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LIBRARY = "com.plexapp.plugins.library"
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for _name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for _name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(_name, None)
 
 # catalog_ui.json: six movies in section 1, one show of eight episodes in section 2.
@@ -91,9 +91,9 @@ _ports_lock = threading.Lock()
 
 
 def free_port():
-    """A free port, from `PLEXSIM_TEST_PORTS=LO-HI` when it is set."""
+    """A free port, from `SIMPLEX_TEST_PORTS=LO-HI` when it is set."""
     global _ports
-    configured = os.environ.get("PLEXSIM_TEST_PORTS")
+    configured = os.environ.get("SIMPLEX_TEST_PORTS")
     if not configured:
         probe = socket.socket()
         probe.bind(("127.0.0.1", 0))
@@ -125,7 +125,7 @@ def free_port():
                 continue
             finally:
                 probe.close()
-    raise SystemExit("no free port in PLEXSIM_TEST_PORTS=%s" % configured)
+    raise SystemExit("no free port in SIMPLEX_TEST_PORTS=%s" % configured)
 
 
 class Server:
@@ -156,7 +156,7 @@ class Server:
         # would be someone else's.
         time.sleep(0.3)
         if self.proc.poll() is not None:
-            raise SystemExit("plexsim did not start:\n" + self.output()[-2000:])
+            raise SystemExit("simplex did not start:\n" + self.output()[-2000:])
         self.machine = call(self.port, "GET", "/identity")[1]["MediaContainer"][
             "machineIdentifier"]
 
@@ -1004,7 +1004,7 @@ def state_parses(path):
 
 
 def prop_state(catalog, seconds, threads, sig, label):
-    work = tempfile.mkdtemp(prefix="plexsim-cc-state-")
+    work = tempfile.mkdtemp(prefix="simplex-cc-state-")
     server = None
     try:
         state = os.path.join(work, "state")
@@ -1106,7 +1106,7 @@ def prop_state_quiet(catalog):
     way in 1 of 5 loaded kills. On a quiet server nothing else saves it: the saver has
     flushed, the device is known, and the kill follows the answer at once.
     """
-    work = tempfile.mkdtemp(prefix="plexsim-cc-quiet-")
+    work = tempfile.mkdtemp(prefix="simplex-cc-quiet-")
     server = None
     try:
         state = os.path.join(work, "state")
@@ -1158,7 +1158,7 @@ def prop_save_stall(catalog):
     every save: a median of 22.8 ms against the oracle's 0.6 ms, which saves outside
     its request lock (and 0.9 ms once the native write moved out of it).
     """
-    work = tempfile.mkdtemp(prefix="plexsim-cc-stall-")
+    work = tempfile.mkdtemp(prefix="simplex-cc-stall-")
     server = None
     try:
         server = Server(catalog, os.path.join(work, "state"))
@@ -1311,7 +1311,7 @@ def main():
     args = parser.parse_args()
     only = set(args.only.split(","))
     started = time.time()
-    work = tempfile.mkdtemp(prefix="plexsim-cc-")
+    work = tempfile.mkdtemp(prefix="simplex-cc-")
     try:
         catalog = os.path.join(work, "catalog.json")
         shutil.copy(os.path.join(HERE, "catalog_ui.json"), catalog)

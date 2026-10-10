@@ -25,19 +25,19 @@ are changing; replay the client's exact request before altering behavior.
 - **`catalog.json` links are account-scoped.** Real-Debrid `/d/` links resolve
   only for the account that created them. A different key answers
   `404 unavailable_file`, which surfaces as HTTP 502 on every part read and
-  looks like plexsim is broken.
+  looks like simplex is broken.
 - **Cloudflare strips `Range` on a prefix request.** `--part-mode proxy` then
   sees `range=-` and fetches the whole file per playback start. Use
   `--part-mode redirect` through the edge.
 - **Cloudflare 403s a `Python-urllib/*` User-Agent** on the media path. curl,
   a Plex product string, a browser string and even an empty UA all get 206. A
-  harness that leaves urllib's default measures the bot filter, not plexsim.
+  harness that leaves urllib's default measures the bot filter, not simplex.
 - **`Connection: close` on part responses is load-bearing.** With keep-alive,
   ffmpeg reuses a connection behind an undrained body and seeking fails with
   `AVERROR(ENOSYS)`.
 - **The Edit dialog saves to `PUT /library/sections/{id}/all`**, reads
   `/library/sections/{id}/common` first, and gets its editable TAG fields from
-  `/library/sections/{id}?includeDetails=1`. plexsim answered the grid listing to
+  `/library/sections/{id}?includeDetails=1`. simplex answered the grid listing to
   the save (200, nothing written), 404'd the pre-read, and sent two pivot rows and
   no `Type` — so every Save was a silent no-op and the Tags pane was empty. With no
   `id=` the save edits the whole FILTERED set, and a bare `field=value` there is a
@@ -48,7 +48,7 @@ are changing; replay the client's exact request before altering behavior.
   the row's other tags follow, and a removal removes only what it names. The INDEX
   orders the list, not the parameter's position. A tag matches case-insensitively and
   keeps its canonical spelling and id even after being removed from every row — a
-  real PMS keeps a tag TABLE, so plexsim does too.
+  real PMS keeps a tag TABLE, so simplex does too.
 - **Edit parameters are validated**: an unknown field or tag type is 400, an empty
   or unparseable integer is 500, a negative year or a bad date REMOVES the field,
   only `title`/`summary` store `""`, `userRating` is accepted and discarded, and
@@ -167,7 +167,7 @@ are changing; replay the client's exact request before altering behavior.
 - **A filter's operator is part of the parameter NAME, not the value.** The client
   sends `year%3E%3E=2000`, so the server reads a parameter called `year>>`. A
   server that looks for names it knows sees nothing and filters nothing — which is
-  what plexsim did for its whole life, while advertising 40 filterable fields.
+  what simplex did for its whole life, while advertising 40 filterable fields.
   A bare `=` on a string CONTAINS -- except on `title`, where each query word must
   BEGIN a title word in order, and on `titleSort`/`summary`/`tagline`, where it is
   equality. `==` is the exact one, and it ignores case. See `filters.py`. (Cycle 14:
@@ -186,7 +186,7 @@ are changing; replay the client's exact request before altering behavior.
   one of those is an unknown FIELD, ignored by a listing and reported as an error
   by `/query/parse`.
 - **A show library advertises its filter fields PREFIXED** (`show.genre`,
-  `episode.title`) and the client sends the advertised key back verbatim. plexsim
+  `episode.title`) and the client sends the advertised key back verbatim. simplex
   keyed its field map by those names and looked them up with the prefix stripped,
   so no filter on a show grid ever constrained anything. The prefix is a scope:
   the field is the tail, the TYPE lookup is global, the VALUE is read from the row the
@@ -194,7 +194,7 @@ are changing; replay the client's exact request before altering behavior.
   when any child does), and `/query/parse` echoes the scope back as the rule's own `type`.
 - **`/filters` is per library TYPE too** — a movie library lists 22, a show library
   a different 15 whose keys carry `?type=2` (except `country`, `unmatched` and
-  `editionTitle`). (Cycle 14: 22 is **1.42.2's**, the build plexsim reports; 1.43.4
+  `editionTitle`). (Cycle 14: 22 is **1.42.2's**, the build simplex reports; 1.43.4
   answers 28. See the per-version bullet below.) The type SCOPES an axis, so `/genre?type=2` on a movie library
   is empty. Seven of the advertised axes **404 on a real PMS as well**, so
   advertising them is the faithful answer, not the bug.
@@ -233,9 +233,9 @@ are changing; replay the client's exact request before altering behavior.
   500 on a real PMS, not a silently unsorted 200; an unknown MODIFIER is ignored.
 - **A real PMS 401s EVERYTHING but `/identity` and `/web/*`** — artwork, media bytes
   and both notification channels included — for a missing token and a wrong one
-  alike, with no `WWW-Authenticate`. plexsim had no token check at all, so any peer
+  alike, with no `WWW-Authenticate`. simplex had no token check at all, so any peer
   that could reach the port read the whole library. The gate is `--token` /
-  `PLEXSIM_TOKEN` and defaults OFF (the suites and probes carry no token); the
+  `SIMPLEX_TOKEN` and defaults OFF (the suites and probes carry no token); the
   startup line says which. `/security/token` is the one exception: its own 400 with
   no parameters and 403 with a bad token, never a 401.
 - **A CLAIMED server's gate is always up, and plex.tv decides who is in.** Besides its
@@ -244,7 +244,7 @@ are changing; replay the client's exact request before altering behavior.
   read at a claimed start and re-read for an unknown token -- with `&unknownToken=` --
   unless the last read finished about 6 s ago (zen's PMS log,
   `tests/fixtures/plextv_access_tokens_s1422.json`). Nothing re-reads it on a timer, so a
-  device that signs in later is let in by its first request. plexsim gates a real claim
+  device that signs in later is let in by its first request. simplex gates a real claim
   this way on both servers; `--assert-claimed` is not a claim and stays open.
 - **`Cache-Control: no-cache` goes on EVERY response**, and a versioned artwork
   asset is `no-cache` too — caching it for a day makes a Change Artwork invisible to
@@ -342,7 +342,7 @@ are changing; replay the client's exact request before altering behavior.
   playable `/library/metadata/{id}`, a bad `mediaIndex`, and a request whose profile
   name, platform and device all name no file in the server's `Resources/Profiles`
   (`Chrome` passes, `chrome` and `Darwin` do not). A test harness must send a real
-  `X-Plex-Platform`. And plexsim cannot convert, so a refused direct play answers
+  `X-Plex-Platform`. And simplex cannot convert, so a refused direct play answers
   2000 / 4005 "neither", never 1001 "Conversion OK".
 - **A playlist's timeline frames are type 15 and a collection's 18**, and the client
   builds the URL it updates from that number. A collection delete refetches its
@@ -353,7 +353,7 @@ are changing; replay the client's exact request before altering behavior.
   one trailing slash is harmless. Catch a leading `//` before `urlparse`, which reads it
   as a host.
 
-- **No row names a theme.** plexsim has no theme audio, so `theme`, `parentTheme` and
+- **No row names a theme.** simplex has no theme audio, so `theme`, `parentTheme` and
   `grandparentTheme` stay off every row and container -- a real show without one
   carries none of the three, and the client fetches whichever it finds.
 - **A hub row's projection depends on the row's TYPE and the SHELF**: movies and
@@ -409,7 +409,7 @@ are changing; replay the client's exact request before altering behavior.
 
 - **Paging is a property of the RESPONSE, not of a listing.** Every MediaContainer a
   real PMS answers honours `X-Plex-Container-Start/Size` (`/:/prefs`, `/identity`, a
-  detail row), except a plug-in framework one (`noHistory`). plexsim applies it in
+  detail row), except a plug-in framework one (`noHistory`). simplex applies it in
   `_page_container`, after the handler; a handler that pages itself sets `totalSize`
   and is left alone.
 - **An unlocked Sort Title does not stick.** A title write, a sort-title write and an
@@ -511,7 +511,7 @@ are changing; replay the client's exact request before altering behavior.
   suite then runs against a server it has already written to. The suite's own gate checks bind
   **32599** -- leave it free, or they measure whatever else is listening there.
 
-- **zen runs Plex 1.42.2 — the exact build plexsim reports — and kids 1.43.4.** With both, a
+- **zen runs Plex 1.42.2 — the exact build simplex reports — and kids 1.43.4.** With both, a
   field only kids sends is a version difference and a rule both answer is not; fun is a third
   opinion, not the only second one. zen is production: GET and HEAD only, like fun.
 - **A listing runs a QUERY, and four parts of it were never run.** `?limit=N` caps the rows
@@ -655,7 +655,7 @@ are changing; replay the client's exact request before altering behavior.
   and `title=Bogota ` find nothing, while every accented spelling does. The section's
   substring box, `/autocomplete` and `title!=` do not fold at all.
 - **`/filters` and the `Meta` descriptor are PER VERSION.** 1.43.4 advertises 28 movie
-  filters, 17 at `type=4` and 6 at `type=10`; 1.42.2 -- the build plexsim reports --
+  filters, 17 at `type=4` and 6 at `type=10`; 1.42.2 -- the build simplex reports --
   advertises 22, 9 and 5. The difference is the media-codec axes (`hdr10plus`, `atmos`,
   `videoCodec`, `audioCodec`, `subtitleCodec`, `audioLayout`) everywhere plus `hdr` and
   `dovi` on the EPISODE list, which the movie list keeps. Types 2, 3, 8, 9, 13 and 20
@@ -706,9 +706,9 @@ are changing; replay the client's exact request before altering behavior.
   does. The two families split on that, so neither inherits the other's rule.
 - **`/library/metadata/{id}/banners` and `/thumbs` are candidate lists too** (200 on both
   versions, `banners` empty on both, `thumbs` from the media bundle). `/squareArts` is
-  **1.43.4 only** -- 404 on zen -- so plexsim, which reports 1.42.2, keeps 404ing it.
+  **1.43.4 only** -- 404 on zen -- so simplex, which reports 1.42.2, keeps 404ing it.
 - **`/library/sections/{id}/recentlyReleased` does not exist.** A 404 on both references,
-  every library type, with and without `type=`. plexsim answered a listing there for its
+  every library type, with and without `type=`. simplex answered a listing there for its
   whole life; the name appears in no findings document and in no suite, so it was assumed
   rather than measured. Sweeping a surface path by path against BOTH references is what
   found it -- 59 top-level paths and 48 item leaves agreed, and this one did not.
@@ -724,7 +724,7 @@ are changing; replay the client's exact request before altering behavior.
   into another is a 200, no frames, and a tree that is completely unchanged -- both seasons
   and every episode still there -- and the `split` that would undo it is a no-op too. An
   EPISODE merge beside it is real (two Media on the survivor, a 404 on the other, the leaf
-  counts dropping). plexsim's `catalog.remove` cascades, so a season merge deleted the
+  counts dropping). simplex's `catalog.remove` cascades, so a season merge deleted the
   season AND its episodes: the programme's one data-loss bug.
 - **On Deck is the MOST RECENTLY VIEWED in-progress episode**, not the lowest-numbered --
   measured on `long` media, where an episode can actually be left in progress. A beat on
@@ -736,7 +736,7 @@ are changing; replay the client's exact request before altering behavior.
   What those four do instead is change the rows: `flattenSeasons=1` sets `skipChildren` on
   the show and `skipParent` on every episode while REMOVING their `parentRatingKey` and
   `parentKey`; `episodeSort=1` puts a season's `/children` newest first while `/allLeaves`
-  keeps broadcast order. plexsim cascaded on every prefs write and changed no row.
+  keeps broadcast order. simplex cascaded on every prefs write and changed no row.
 - **An artwork PICK re-versions `thumb`, `art` and `theme` onto ONE stamp**, moves
   `updatedAt` with them, LOCKS the picked field, pushes one frame (state 5, no
   `metadataState`) and CASCADES the stamp to the children that borrow it -- a season's
@@ -774,7 +774,7 @@ are changing; replay the client's exact request before altering behavior.
   `Bogot City` does. A query with an empty term -- a trailing or doubled space -- fails the
   folded pass. Punctuation rides inside a term: `tournee` misses `(tournee`.
 - **The section search box answers the LIGHT grid row**, like every other listing -- no
-  `Guid`, `Rating`, tag ids or `Stream`. It was the one listing plexsim answered in full.
+  `Guid`, `Rating`, tag ids or `Stream`. It was the one listing simplex answered in full.
 - **`excludeElements=` is a property of the RESPONSE, as paging is.** Every container that
   carries rows honours it, `/library/all`, `/library/recentlyAdded`, a section's
   `recentlyAdded`/`newest`/`search`/`common`, `/grandchildren` and every hub path included.
@@ -906,7 +906,7 @@ are changing; replay the client's exact request before altering behavior.
   none and every item write on one is a 400, and a playlist's artwork lives under
   `/library/metadata/{ratingKey}/` while `/playlists/{id}/{posters,arts,thumb,art}` and
   the bare `composite` are 404s.
-- **A shuffled play queue is really shuffled** (plexsim reversed it, identically every
+- **A shuffled play queue is really shuffled** (simplex reversed it, identically every
   time). `includeBefore`/`includeAfter` window the queue with NO `window=` -- the radius is
   unlimited then -- and each is a boolean whose every other value is a 400. EVERY item
   delete answers the container as it stood BEFORE it, and only the SELECTED one drops the
@@ -922,7 +922,7 @@ are changing; replay the client's exact request before altering behavior.
   `useOriginalTitle`, a MOVIE loses the whole `Preferences` block, a season keeps its
   three.
 
-- **Three fixtures were captured off 1.43.4 and plexsim reports 1.42.2.** Cycle 14 split
+- **Three fixtures were captured off 1.43.4 and simplex reports 1.42.2.** Cycle 14 split
   `Meta.Type[].Filter` per version and left `Field` at 1.43.4's: 1.42.2 advertises **34**
   movie Fields and **20** episode ones against 40 and 26, differing in the six media-codec
   axes -- and on 1.42.2 those six are UNKNOWN fields, so a listing filtered on one answers
@@ -956,7 +956,7 @@ are changing; replay the client's exact request before altering behavior.
   so a track titled "English" keeps `English (SRT)` in German while its plain title moves.
   The row's own `title`, `summary` and tags stay English.
 - **A save a real PMS REFUSES writes NOTHING.** Validate the whole form before applying any
-  of it: plexsim applied each parameter as it validated it, so a 500 left half the edit on
+  of it: simplex applied each parameter as it validated it, so a 500 left half the edit on
   disk while telling the client it had failed.
 - **The ITEM edit path's 400 means "this request edits nothing"**, not "an unknown field":
   with a real edit beside it every unrecognised name is IGNORED, and each alone is a 400.
@@ -978,7 +978,7 @@ are changing; replay the client's exact request before altering behavior.
   image. A `media://` or `upload://` candidate carries no `provider`. `DELETE .../thumb`
   clears the poster like `/poster`, and an artwork UPLOAD moves `updatedAt` onto the new
   stamp exactly as a PICK does.
-- **Twelve butler tasks report a different sentence than plexsim did**, three report
+- **Twelve butler tasks report a different sentence than simplex did**, three report
   SEVERAL and five report one where it reported none; `CleanOldBundles` steps its activity
   SUBTITLE through four named phases and `OptimizeDatabase` is titled `Optimizing database`
   with the subtitle `Optimizing Database`. And **an activity's subtitle is the row's FRAME
@@ -1122,7 +1122,7 @@ are changing; replay the client's exact request before altering behavior.
 - **A show library's scan names the SHOW before its seasons**, in a `progress` row with no
   activity update of its own; **`provider.subscriptions.process` is the one `cancellable:
   true` activity**; and **an analyze pushes NO `backgroundProcessingQueue` frame** --
-  plexsim invented one. **`PUT /updater/check` pushes one `update.statechange` frame**
+  simplex invented one. **`PUT /updater/check` pushes one `update.statechange` frame**
   carrying an `AutoUpdateNotification` row.
 - **`DELETE /devices/{id}` and `DELETE /accounts/{id}` are 404s**, for an id the server
   lists and one it does not; **`PUT /activities/{x}` is a 400** where its DELETE is a 404;
@@ -1215,7 +1215,7 @@ are changing; replay the client's exact request before altering behavior.
   the same document self-close.
 - **A SEASON's `audioLanguage`/`subtitleLanguage` inherit option is `:Series default`**
   -- a season inherits from its SHOW, where a show says `:Account default` and a movie
-  has no such setting. plexsim rebuilds that enum at read time and hardcoded the account
+  has no such setting. simplex rebuilds that enum at read time and hardcoded the account
   label.
 - **An EPISODE's `/tree` is the ancestor CHAIN** -- three `MetadataItem` nodes, the show,
   THAT episode's season and the episode, with no siblings. A season's is the season plus
@@ -1327,7 +1327,7 @@ are changing; replay the client's exact request before altering behavior.
 
 - **A `/search` row is the GRID row with a six-attribute lead** -- `allowSync,
   librarySectionID, librarySectionTitle, librarySectionUUID, personal, sourceTitle` in
-  front and nothing else different. plexsim answered the DETAIL row there, which on a real
+  front and nothing else different. simplex answered the DETAIL row there, which on a real
   library is several times the bytes per hit.
 - **A `Meta/Type`'s active SORT follows the asked `type=` AND the `sort=` parameter**: it is
   marked only inside the Type row matching the asked type (a movie library asked `type=2`
@@ -1344,10 +1344,10 @@ are changing; replay the client's exact request before altering behavior.
   GRANDPARENT pair** and puts the parent pair before `ratingKey`.
 - **The `_xml=` override has to reach the JSON writer too.** `_send_container` POPS it
   before either writer runs, so `/library/sections/{id}/common` bucketed as `Video[common]`
-  and its JSON keys stayed in build order -- the last path where plexsim's two writers
+  and its JSON keys stayed in build order -- the last path where simplex's two writers
   contradicted each other, which a real PMS never does (re-confirmed over 1,241 pairs).
 - **A MOVIE's unmatch pushes TWELVE frames**, opening on `2/matching` then `3/matching` --
-  a pair plexsim emitted nowhere -- with an activity that steps through a second TITLE,
+  a pair simplex emitted nowhere -- with an activity that steps through a second TITLE,
   `Analyzing Media`, before returning to `Updating Metadata`.
 - **A collection and a playlist answer `/refresh` and `/unmatch`** with their own sequences,
   and a collection's refresh is GATED ON ITS GUID: three frames on an agent guid, eight once
@@ -1378,14 +1378,14 @@ are changing; replay the client's exact request before altering behavior.
   mdr mon mya nno pan sin yor zul`). **A VIDEO stream carries `dub`** and never `comment`
   or `hearingImpaired`. **A layout ffprobe cannot name** (`8 channels (FL+FR+...)`) must be
   stripped of its trailing space.
-- **zen's stored `displayTitle` carries the codec and plexsim's catalog form does not** --
+- **zen's stored `displayTitle` carries the codec and simplex's catalog form does not** --
   that is the recorded CLIENT-TITLE rule (those rows are read as Plex Web), not a defect.
   Score `mediainfo` on the extended title, which is the catalog form.
 
 - **A SEASON's unmatch pushes ONE `matching` frame and a SHOW's the movie's PAIR.** The
   season then runs the SEASON cascade (28 frames, 9 of them the state-dependent media
-  pass) where plexsim sent the seven-frame EPISODE form; the show runs 46 frames of its
-  own where plexsim sent NONE. The show's activity is the MOVIE unmatch's -- `Analyzing
+  pass) where simplex sent the seven-frame EPISODE form; the show runs 46 frames of its
+  own where simplex sent NONE. The show's activity is the MOVIE unmatch's -- `Analyzing
   Media` at -1 and 25, then `Updating Metadata` at 25 and 50 -- and only then does the
   subtitle follow each season. **A season cascade's activity has no `updated` frame**;
   the docstring said so since cycle 15 and the code called `finish_activity`, which adds
@@ -1437,7 +1437,7 @@ are changing; replay the client's exact request before altering behavior.
   at all, which is why the translation table's attribute key is not enough on its own.
 - **A `/tree` node is a ROW and its `Setting` rows stay English**, where the same settings
   under `?includePreferences=1` move. It is keyed by `id` rather than `ratingKey`, so the
-  row guard did not see it and plexsim translated what a real PMS leaves alone.
+  row guard did not see it and simplex translated what a real PMS leaves alone.
 
 - **Continue Watching is NOT On Deck.** `/hubs/home/continueWatching` holds only the rows with
   a stored `viewOffset` -- movies and episodes alike -- where On Deck holds one row per show,
@@ -1472,7 +1472,7 @@ are changing; replay the client's exact request before altering behavior.
   MDE form's; only the container's codes differ, so "a direct play is only
   `mdeDecisionCode: 1000`" is the MDE form's rule. Measured: `Roku` and `Xbox One` direct play,
   `Chrome`/`Safari`/`Chromecast`/`Plex Desktop`/`Konvergo`/`HTML TV App`/`Opera` get `1001`
-  (which plexsim cannot answer), and `Firefox`/`Microsoft Edge`/`Generic`/`Plexamp` get the
+  (which simplex cannot answer), and `Firefox`/`Microsoft Edge`/`Generic`/`Plexamp` get the
   `3000/2000/4005` "neither".
 - **Only an OUT-OF-RANGE `mediaIndex` refuses a decision.** A missing, non-numeric, negative or
   empty one falls back to media 0; `partIndex` is never refused at any value; a `path` carrying
@@ -1502,7 +1502,7 @@ are changing; replay the client's exact request before altering behavior.
   **NOT** the decision's `session=` parameter, which names the transcode session.
 - **A transcode START from a session with no decision is a 400**, on every protocol and every
   leaf of the family; a transcode decision for that session turns the same `start.m3u8` into a
-  200. plexsim has no encoder, so its answer once a decision exists is its own 404 -- recorded,
+  200. simplex has no encoder, so its answer once a decision exists is its own 404 -- recorded,
   not modelled, because the reference's own `start.mpd` is a 404 there while its `start.m3u8`
   is a 200.
 - **A decision row keeps its `summary`**, whatever the row type. The rule that dropped it for
@@ -1521,7 +1521,7 @@ are changing; replay the client's exact request before altering behavior.
   hundreds and N-1 steps before `ended 100`. **`CleanOldBundles` INTERLEAVES its two messages
   with its own phases** and **`RefreshLibraries` reports and closes the wrapper BEFORE it
   scans**. `POST /butler` runs only what is DUE, which no row of `GET /butler` exposes, so
-  plexsim runs every enabled task; a second POST is a full run, not one `queueRegenerated`.
+  simplex runs every enabled task; a second POST is a full run, not one `queueRegenerated`.
 - **A session with no beat lives THREE MINUTES**, not seventy seconds: measured ten times on
   the copy, gone between +184.0 and +210.4, which is a cutoff at or below 184 s plus a reaper
   tick of at least 26 s. `SESSION_TTL` is the cutoff; the tick is recorded, not emulated.
@@ -1602,7 +1602,7 @@ are changing; replay the client's exact request before altering behavior.
 - **Every PERSON tag carries a 24-hex `tagKey`** -- `Director`, `Writer`, `Role` and `Producer`
   on a detail row, and `/library/tags?type=4|5|6|7` -- where `Genre` and `Country` carry none.
   The client builds every Cast & Crew link as `/library/people/${tag.tagKey}`, so a tag without
-  one links to `/library/people/undefined`. plexsim MINTS the value (sha1 of the name) and
+  one links to `/library/people/undefined`. simplex MINTS the value (sha1 of the name) and
   resolves the minted key on `/library/people/{key}` as a real PMS resolves both forms.
 
 - **`contentDirectoryID` scopes `/hubs` and all three `/hubs/home/*` leaves** -- and on
@@ -1617,7 +1617,7 @@ are changing; replay the client's exact request before altering behavior.
   `exclude<Name>=1` spelling does anything.
 - **A shelf's rows are the HEAD of its own `key` listing** -- 29 of 32 non-empty shelves byte
   for byte at `count=40` -- and the three exceptions are the `random="1"` ones, which are a
-  random SAMPLE of the whole key set in random order. plexsim's Recently Watched shelf
+  random SAMPLE of the whole key set in random order. simplex's Recently Watched shelf
   published `unwatched=0&viewOffset=0` and honoured neither. A NEGATIVE `count` is
   `len(rows) + count` clamped at 0 and says `more: false`, where `count=0` says `more: TRUE`.
 - **`/hubs/home/recentlyAdded?type=2` is a MIXED, ROLLED-UP list**, capped at 50: two or more
@@ -1667,7 +1667,7 @@ are changing; replay the client's exact request before altering behavior.
   show; a later show pick leaves the owning season's own path and stamp alone. Clearing a row's own
   `art` drops it back to the ancestor's, as `thumb` already did, and the bare `/art` becomes a 404.
 - **Every artwork write cascades, and both write paths re-version the OTHER field only when the row
-  OWNS it.** An artwork UPLOAD cascades exactly as a pick does (plexsim's never called the cascade,
+  OWNS it.** An artwork UPLOAD cascades exactly as a pick does (simplex's never called the cascade,
   so children kept the old stamp and a client that caches on it never refetched); a poster upload on
   a row that borrows its `art` leaves that `art` naming the owner, and so does clearing that row's
   thumb.
@@ -1688,7 +1688,7 @@ are changing; replay the client's exact request before altering behavior.
   `+` too. Cycle 22's and 23's "`+1` does not count" was a RAW `+` in a query string, which decodes
   to a SPACE.
 - **A 416 is an error response, not the resource with no bytes**: `Content-Type: text/html`, a
-  129-byte body, and neither `Accept-Ranges` nor `Content-Range`. plexsim sends its own text/plain
+  129-byte body, and neither `Accept-Ranges` nor `Content-Range`. simplex sends its own text/plain
   sentence (cycle 1's deviation) with the header dropped.
 - **Under `/web/*` a DIRECTORY is an empty `application/octet-stream` 200**, a trailing slash after
   a file is a 404, a path escaping the root is a **400**, and `.woff`/`.woff2` are
@@ -1707,7 +1707,7 @@ are changing; replay the client's exact request before altering behavior.
 - **`/library/metadata/{id}/extras/all` and the section's answer 404 to every verb but GET and
   HEAD** -- the bare `/extras` keeps its POST 400. A five-segment read-only route needs the gate as
   much as a four-segment one.
-- **A clip is a row type plexsim does not hold, and its shape is recorded** (attribute order with
+- **A clip is a row type simplex does not hold, and its shape is recorded** (attribute order with
   `extraType` LAST, no `Guid`/`Rating`/tags/`Field`, a container with `allowSync="0"` and no
   librarySection triple, `art` the parent's verbatim while `/art` is a 404, `primaryGuid` on trailer
   rows only, six `extraType` values, three projections, uncapped, and in NO listing or axis
@@ -1715,7 +1715,7 @@ are changing; replay the client's exact request before altering behavior.
 
 
 - **`plexscratch42` is the writable 1.42.2 reference** (`harness/scratch42/`, kids `:32411`) -- a
-  fresh install of the build plexsim reports, isolated from plex.tv, so every item is UNMATCHED and
+  fresh install of the build simplex reports, isolated from plex.tv, so every item is UNMATCHED and
   every SETTINGS count is short (151 prefs against zen's 173). Use it for grammar, never for a
   count, and never for anything needing real metadata or a claimed server.
 - **An On Deck row carries no `librarySectionKey` and is the detail row MINUS `Field`** -- on a
@@ -1724,13 +1724,13 @@ are changing; replay the client's exact request before altering behavior.
   `allowSync` and the librarySection triple without it. No resume list carries `Field`.
 - **`hdr10plus` takes an item LOCK on both versions**, where the five media-codec names beside it
   (`atmos`, `audioCodec`, `audioLayout`, `subtitleCodec`, `videoCodec`) are a **400 on 1.42.2** and a
-  200 on 1.43.4 -- so plexsim, which reports 1.42.2, refuses those five and accepts `hdr10plus`.
+  200 on 1.43.4 -- so simplex, which reports 1.42.2, refuses those five and accepts `hdr10plus`.
 - **Two settings answer 403 to a PUT on 1.42.2, not four**: `PlexOnlineUrl` and
   `allowMediaDeletionLanOnly`. `TranscoderH264Options` and `TranscoderH264OptionsOverride` take a
   write there and really store it, where 1.43.4 refuses both.
 - **A `random="1"` shelf's sample is STABLE** -- 21 reads over seven minutes on zen answered the
   identical rows, a different client identifier gets the same sample, and the same shelf at another
-  `count=` holds its own. What makes a real PMS redraw one is NOT measured, so plexsim mints a seed
+  `count=` holds its own. What makes a real PMS redraw one is NOT measured, so simplex mints a seed
   per (shelf, count) once and holds it.
 - **An unauthorised refusal KEEPS the connection alive** -- the 401 with no token, the 401 with a
   wrong one, the 403 for an unknown single segment, the 404 for a path that does not exist, all
@@ -1741,13 +1741,13 @@ are changing; replay the client's exact request before altering behavior.
   `/library/all?type=18` gains NOTHING -- only `POST /library/collections` makes an item. The tell is
   the `guid`: a tag-only collection's search row carries none.
 - **The ping timer is FREE-RUNNING: a pong must not trigger another ping.** The reference pings
-  every 10 s whether the client pongs or not; plexsim read "a frame arrived" as "the interval
+  every 10 s whether the client pongs or not; simplex read "a frame arrived" as "the interval
   passed" and answered a pong with a ping -- **903,480 pings in 35 seconds**. Every real client
   pongs automatically, and a probe that never pongs sees the correct cadence, which is how twelve
   cycles missed it.
 - **One notification consumer that stops reading must not reach the request path.** A dead socket
-  plus repeated writes took plexsim's write 105 to 20 s and timed out a second client's edit at 30 s,
-  where the reference bounds the per-socket backlog at ~415 KB and never slows a request. plexsim now
+  plus repeated writes took simplex's write 105 to 20 s and timed out a second client's edit at 30 s,
+  where the reference bounds the per-socket backlog at ~415 KB and never slows a request. simplex now
   gives a sink a two-second budget and DROPS the channel -- it drops where the reference buffers.
 - **A library DELETE pushes NO per-row timeline frames** -- only its eight `library.delete` activity
   frames, on a 3-row and a 200-row library alike. Cycle 18's fourteen `state 9` frames named another
@@ -1757,10 +1757,10 @@ are changing; replay the client's exact request before altering behavior.
   queued/processing, 4 loading, 5 done, 9 deleted): a row's CREATION pushes eight frames -- `state 0`
   with an empty title, then five `state 1`s, `state 4 loading`, `state 5` -- plus a
   `library.update.item.metadata` activity per new row, so cycle 19's "no scan does a metadata
-  activity per row" holds only for a scan that finds nothing new. plexsim cannot create a row during
+  activity per row" holds only for a scan that finds nothing new. simplex cannot create a row during
   a scan, so the sequence is recorded and not built.
 - **The eventsource channel has no five-minute deadline** on a real PMS (still open at 430 s), and
-  neither transport sends `id:` or `retry:`, so nothing replays across a reconnect. plexsim's 300 s
+  neither transport sends `id:` or `retry:`, so nothing replays across a reconnect. simplex's 300 s
   constant is gone; it still closes at ~256 s for an unfound reason (HANDOVER 3.3). **And the 101
   upgrade carries a `Date`** -- it was the one response on the surface without one.
 
@@ -1771,7 +1771,7 @@ are changing; replay the client's exact request before altering behavior.
   a method at all (a **500** on every path, `/identity` included, the same body `FROB` gets), all five
   `DELETE /library/metadata/{id}/{poster,thumb,art,banner,theme}` leaves are **404s**, a smart
   playlist accepts a comma-joined KEY LIST as its uri, and `PUT /playlists/{smart}/items?uri=` takes
-  an ITEM uri and REPLACES the stored query with it. plexsim reports 1.42.2 and carried 1.43.4's
+  an ITEM uri and REPLACES the stored query with it. simplex reports 1.42.2 and carried 1.43.4's
   answers to all four.
 - **An EMPTY `thumb.value=` or `art.value=` clears the column** (200, the field gone, the bare path a
   404) on both versions -- and on 1.42.2 it is the **only** way to clear artwork, since that DELETE
@@ -1780,7 +1780,7 @@ are changing; replay the client's exact request before altering behavior.
   has to be EMPTY for that to be visible, which is why cycle 20 read `thumb`/`art` as discarded.
 - **`PUT /library/collections/{id}/prefs` really writes** (`collectionSort`, `collectionMode`; an
   empty 200, GET/POST/DELETE 404, an unknown setting 400) on both versions. Cycle 15 measured the GET
-  alone and recorded the 404, so plexsim advertised both settings and 404'd the save behind them.
+  alone and recorded the 404, so simplex advertised both settings and 404'd the save behind them.
 - **`absoluteIndex.value=` stores NOTHING** on either path or version (its `.locked=1` does record the
   lock), and **`lastRatedAt.value=` on the SECTION path is a 500** on both -- the ninth member of that
   set. **`hdr10plus` stores neither a value nor a lock**: cycle 30 confirmed the 200 and put the name
@@ -1788,16 +1788,16 @@ are changing; replay the client's exact request before altering behavior.
 - **Ten read paths refuse every verb but GET and HEAD** (`/statistics`, its two series,
   `/status/sessions`, `/clients/profiles`, `/playlists/sorts`, `/library/sections/prefs`, and
   `/library/sections`, `/media/providers`, `/media/providers/metadata` -- whose POST is their own 400).
-  plexsim answered **200 with the whole GET body** to a bare OPTIONS on each, which is fix 4's trap
+  simplex answered **200 with the whole GET body** to a bare OPTIONS on each, which is fix 4's trap
   from the outside.
 - **A stored sort title EQUAL to a generated title is still stored.** Read off kids' own DATABASE:
   its agent-titled season 7 stores `title = ''` and `title_sort = 'Season 1'`, so the displayed
-  `Season N` is generated in every case and what an agent supplies is the SORT title. plexsim treated
+  `Season N` is generated in every case and what an agent supplies is the SORT title. simplex treated
   such a value as absent, so `titleSort=Season 1` found nothing, `titleSort=` wrongly kept the row and
   the ordering keys ignored it -- one clause, three symptoms.
 - **`title=`: a COMMA is an alternation and a DOT is literal.** `title=Steel,,` and `title=Love,`
   answer the WHOLE library, `title=Tears, of` answers the one row, and `title=Steel.` answers NONE.
-  plexsim stripped both characters out of the query. The comma half lives in the filter PARSER, which
+  simplex stripped both characters out of the query. The comma half lives in the filter PARSER, which
   already ORs a comma list and drops empty members -- on `title` the empty member is KEPT, and an
   empty query matches every row.
 - **`title=` matches the ORIGINAL title as a consecutive run of whole words, unfolded** -- `Salaire
@@ -1807,24 +1807,24 @@ are changing; replay the client's exact request before altering behavior.
 - **The hub matcher takes a multi-word query WORD BY WORD, in order** (`Tears Steel` finds "Tears of
   Steel" at 0.73; reversed it drops to the 0.33 fuzzy band), **tokenises the TITLE on WHITESPACE** so
   punctuation stays inside the word (`don't` finds "Don't Move"; `Delete` does not find
-  'Control-Alt-Delete'), and **matches a ONE-character query against a title equal to it**. plexsim
+  'Control-Alt-Delete'), and **matches a ONE-character query against a title equal to it**. simplex
   required the joined phrase, split the title on `[^0-9a-z]+` and had a two-character floor -- so two
   non-adjacent words of a title, or any title with an apostrophe, found nothing at all.
 - **The reference's own files are readable, and they explain two tables.** `ssh ben@kids docker exec
   plexlab-plex` reads the image: `Resources/Profiles/` holds 78 `.xml` plus a stray `sugar.cmake`
   (hence 78 rows), a row's title is its `<Client name="...">` and not the file name, and the 23
   `Player.profile` aliases are **22 `redirect="..."` attributes plus one name-versus-filename
-  difference** -- plexsim's table reproduces all 23 with zero errors. The `type=42` seven carry no
+  difference** -- simplex's table reproduces all 23 with zero errors. The `type=42` seven carry no
   marker, so that list is PMS's own. The decision's inputs are visible too: `redirect=`,
   `<DirectPlayProfiles>`, `<TranscodeTargets>`, `<CodecProfiles><Limitations>`.
 
 - **A write's RESPONSE pages and excludes like a read's.** `POST /playQueues`, the playlist and
   collection item writes and their moves and deletes all honour `X-Plex-Container-Start/Size` and
-  `excludeElements=` on both versions; plexsim gated both post-processors on GET and HEAD.
+  `excludeElements=` on both versions; simplex gated both post-processors on GET and HEAD.
 - **A write must build its answer inside the lock it wrote under.** Two concurrent
-  `POST /playQueues` from one client are two 200s on a real PMS and were a 404 for the queue plexsim
+  `POST /playQueues` from one client are two 200s on a real PMS and were a 404 for the queue simplex
   had just made in 9 of 60 pairs; two concurrent adds each answer the queue AS THAT ADD LEFT IT and
-  plexsim answered both with the second's container. The window is under a millisecond, so no
+  simplex answered both with the second's container. The window is under a millisecond, so no
   sequential check can see it: fire barrier-released pairs.
 - **The title FOLD is a 100-character TABLE, not NFD, and the two sides differ.** Swept on both
   copies over 2,076 codepoints for the sort title and on kids over 2,098 for the query: `ę ą ş ć ł`
@@ -1839,8 +1839,8 @@ are changing; replay the client's exact request before altering behavior.
   `client_profiles.json`, read out of the lab image): selected audio not first, container and video
   codec, the stream it would play, a sidecar subtitle, the audio codec, an embedded subtitle, then
   the container's limitations before a named codec's before `*`. Exact on 1,864 of 1,872 measured
-  cells; 44 profiles direct play a real row where plexsim hard-coded two, and those two do not list
-  webm or eac3. A refused direct play still answers "neither", because plexsim cannot convert.
+  cells; 44 profiles direct play a real row where simplex hard-coded two, and those two do not list
+  webm or eac3. A refused direct play still answers "neither", because simplex cannot convert.
 - **JSON is COMPACT and raw UTF-8**: no space after `:` or `,`, every non-ASCII character as itself,
   `/ < > &` unescaped, and a C0 control other than `\b \t \n \f \r` as `\u00XX` in UPPER-CASE hex. The
   notification frames too. Python's defaults differ on all three.
@@ -1852,7 +1852,7 @@ are changing; replay the client's exact request before altering behavior.
   always straight after `Connection`, and then per family -- a 200 container is type-then-length, an
   ERROR length-then-type, a gzipped body puts `Connection` ahead of the encoding pair, artwork leads
   with the type and `X-Plex-Local-Asset`, `/photo/:/transcode` and a `/web`/`/:/resources` asset send
-  the same names in two different orders, and a part read leads `ETag, Last-Modified`. plexsim wrote
+  the same names in two different orders, and a part read leads `ETag, Last-Modified`. simplex wrote
   `Date` first, which is Python's. See `HEADER_ORDER` and `end_headers`.
 - **A 416 names no connection state at all** -- the only response class that does not -- and **a part
   read carries no `Cache-Control`**, which is the exception to "no-cache goes on EVERY response".
@@ -1892,7 +1892,7 @@ are changing; replay the client's exact request before altering behavior.
   chosen a track, 41 of the 78 profiles refuse a row whose tracks name no language as "not the first
   audio stream" although `selected` names the first one; `PUT /library/parts/{id}?audioStreamID=<that
   same track>` makes all 41 answer from the visible row and `audioStreamID=-1` puts them back, with
-  `Media`, `Part` and `Stream` byte-identical throughout. plexsim holds a chosen track and models that
+  `Media`, `Part` and `Stream` byte-identical throughout. simplex holds a chosen track and models that
   state; `tests/test_decision.py` scores both against the recorded corpus.
 - **A sidecar fixture read out of the reference's image has to be the WHOLE thing.**
   `client_profiles.json` kept 10 of the 30 `<Setting>` rows -- the one the model of the day read --
@@ -2033,7 +2033,7 @@ are changing; replay the client's exact request before altering behavior.
   measured 28-string optimize/show-ordering sidecar. Technical GUID tokens can change the top ten
   and therefore which people reach the wire; never substitute a library-specific token dump.
 - **`/system/services/url/lookup` is not an empty collection.** The bare request is the legacy
-  plug-in framework's fixed 500 `application/xml` failure, independent of Accept. plexsim reports
+  plug-in framework's fixed 500 `application/xml` failure, independent of Accept. simplex reports
   the exact 464-byte 1.42.2 body: GET may gzip it, HEAD carries the uncompressed length without a
   body, and the response closes the connection. A valid `url=` request is external-fetch shaped and
   was not probed.
@@ -2118,7 +2118,7 @@ are changing; replay the client's exact request before altering behavior.
   unconditional Matroska assertion. MP4 carries `ftyp` at offset four; Matroska/WebM carries the
   EBML marker at zero. Keep the conformance target and magic assertion container-aware.
 
-- **plexsim's MEDIA BYTE PATH had never been run against a real byte until 2026-09-17**, because
+- **simplex's MEDIA BYTE PATH had never been run against a real byte until 2026-09-17**, because
   every link in the fixture was dead and every part read a 502. It applied NO `Range` grammar: the
   client's header went to the debrid CDN and whatever came back was echoed, so 13 of the 20 cells
   both references agree on were wrong — `bytes=-1` read the FIRST byte where a real PMS reads the
@@ -2144,7 +2144,7 @@ are changing; replay the client's exact request before altering behavior.
   family** — the `/web` 302 included, which carried no CORS headers at all. Cycle 33 measured the
   families without an `Origin`, where the trio is absent, so it could not see this.
 - **`/library/sections/{id}/rating` is a real axis that a MOVIE library ADVERTISES in its own pivot
-  list** (plexsim advertised it and 404'd it, so the client's Ratings entry opened nothing). Its
+  list** (simplex advertised it and 404'd it, so the client's Ratings entry opened nothing). Its
   container is byte-identical to `/userRating`'s and its BUCKETS read the CRITIC rating.
   **A star bucket rounds its key DOWN to an even star** and takes the values within one of it, so
   8 and 9 answer the same rows; `key=0` is the rows with NO value. Truncation gets every other
@@ -2182,7 +2182,7 @@ are changing; replay the client's exact request before altering behavior.
   in JSON `builtIn` is the STRING `"1"` on 1.42.2 and `order` is the FLOAT `1000.0` on both — the
   XML cannot tell either apart.
 - **A part whose FILE is gone is a plain 404**, not a 5xx: zen part 23595 (`accessible=false`,
-  `exists=false`) answers 404 to the byte read. plexsim answered 502 to a dead link and to a
+  `exists=false`) answers 404 to the byte read. simplex answered 502 to a dead link and to a
   network failure alike. Real-Debrid's `unavailable_file`/error_code 24 is now the 404 and
   everything else keeps the 502, so a transport failure is still diagnosable.
 - **`tests/test_part_bytes.py` stands up its own upstream** (a local CDN and a one-route
@@ -2220,7 +2220,7 @@ are changing; replay the client's exact request before altering behavior.
   is a `track` whose `guid` is `library://` + the **SHA-1 of the request path itself**, idempotent
   per (item, version), carrying no `librarySectionID` -- so it is invisible in every listing,
   `/library/all` included -- and readable at its own key. `theme` is the ONLY artwork leaf with
-  this sub-leaf. plexsim mints it BESIDE the catalog so a `track` row cannot leak into the tag
+  this sub-leaf. simplex mints it BESIDE the catalog so a `track` row cannot leak into the tag
   tables or the spelling index.
 - **`/library/shared` is a whole subtree**: a constant seven-row `Type` tab bar in its own
   identifier, under which EVERY second segment answers the same list of the server's own
@@ -2249,7 +2249,7 @@ are changing; replay the client's exact request before altering behavior.
   `+?0*<digits>` normalises in every other path segment -- read the RAW segment before the
   normalisation.
 - **A refusal keyed on the QUERY's declared type must not be decided per ROW.** `file=` is a 500
-  at `type=2` and `/library/all?file=` untyped is a 200 that really filters; plexsim raised it
+  at `type=2` and `/library/all?file=` untyped is a 200 that really filters; simplex raised it
   from inside the row walk -- "this row is a show" -- so the untyped whole-library query was a
   500. And **`extraType` is a 500 on every listing EXCEPT the section extras leaf**, which is the
   one path that really reads it (zen's 3,580 clips are 1,264 at `extraType=1`); putting the name
@@ -2283,12 +2283,12 @@ are changing; replay the client's exact request before altering behavior.
   server token; state uses the latest short-lived RS256 Bearer from the owner's `scrobbling`
   service. The encrypted service token is AES-256-CBC under PMS's measured MD5 expansion and
   permissive final-byte strip. The static 32-byte transport secret is NEVER checked in: inject
-  base64 through `PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64`, or sync stays off. `complete` stores
+  base64 through `SIMPLEX_SCROBBLING_DECRYPT_SECRET_B64`, or sync stays off. `complete` stores
   view time, `unplayed` clears it, an absent rating pair PRESERVES stars, `-1` clears them and a
   nonnegative rating sets them. Persist an `endCursor` only after applying the page; import writes
   no local history row.
 
-- **A client FINDS a server over UDP, and plexsim answered nothing.** A real PMS answers
+- **A client FINDS a server over UDP, and simplex answered nothing.** A real PMS answers
   Plex's own GDM discovery on udp/**32410** and udp/**32414** only (32412/32413 are the
   PLAYER side), on unicast, on broadcast and on the multicast group **239.0.0.250**. The
   trigger is a PREFIX COMPARE against `b"M-SEARCH * "` over `min(len, 11)` bytes -- an
@@ -2318,7 +2318,7 @@ are changing; replay the client's exact request before altering behavior.
 - **The incomplete-request cap is ABSOLUTE from the first byte, not idle.** Three pieces
   twelve seconds apart is closed at 20.0 s with no answer. A socket timeout is per-read by
   construction, which is why fifty dribbling clients held fifty threads. And a header block
-  ended by **EOF** rather than by a blank line is answered with NOTHING -- plexsim ran it,
+  ended by **EOF** rather than by a blank line is answered with NOTHING -- simplex ran it,
   and a query-only write really committed.
 - **A refusal of the ENVELOPE closes the connection; a refusal of the MEANING keeps it.**
   That is the rule behind cycle 30's lone "exception". A missing `/:/resources/*` or
@@ -2349,11 +2349,11 @@ are changing; replay the client's exact request before altering behavior.
   carry the whole tag family at once, which is why cycle 23's 2,994-path order sweep could
   not have found it. A `mood` write on a movie is a 200 that stores nothing.
 - **Emptying a collection leaves the collection ALIVE** and takes the tag off the item --
-  both, so the state plexsim's deliberate deletion called unrepresentable is not. And an
+  both, so the state simplex's deliberate deletion called unrepresentable is not. And an
   identifier-less request's `X-Plex-Device-Name`/`X-Plex-Platform` land on the ANONYMOUS
   device row.
 - **XML cannot see a JSON scalar's TYPE**, and that is where the last two-writer bug was
-  hiding: a `/system/agents` `Language`'s `default` is the boolean `true` and plexsim sent
+  hiding: a `/system/agents` `Language`'s `default` is the boolean `true` and simplex sent
   `"1"`, because the fixture is read out of the XML, which writes `default="1"` either way.
   `to_xml` also hard-coded `container=True` for the ROOT, so `/myplex/account` sorted its
   attributes alphabetically in XML and kept the right order in JSON.
@@ -2377,8 +2377,8 @@ are changing; replay the client's exact request before altering behavior.
   endpoint: `pt-BR` is its own catalogue everywhere, and `zh-TW` keeps Traditional ICU names.)
 - **The legacy single-segment prefix dispatcher is a finite registry, not a prefix algorithm.**
   The durable executed denominator is 58 unique paths (old prose said 57), identical over 174
-  reference GETs. Reproduce the captured ordered shapes only; deriving rows from plexsim's own
-  router would model plexsim rather than PMS. Double and trailing slashes are another finite
+  reference GETs. Reproduce the captured ordered shapes only; deriving rows from simplex's own
+  router would model simplex rather than PMS. Double and trailing slashes are another finite
   per-route table: there is no global path normalisation rule.
 - **GDM `Updated-At` moves only with library lifecycle.** Section create, edit and delete touch
   the advertisement. FriendlyName changes `Name` without moving the stamp; refresh, item edit,
@@ -2570,7 +2570,7 @@ are changing; replay the client's exact request before altering behavior.
   (`mediaHeight`, `mediaVideoCodec`, ... -- ANY-Media semantics, case-sensitive names), eighteen
   more tag-table fields (`mood`, `style`, `similar`, ...), the photo-cluster columns (parse,
   match nothing) and `trash` as an INTEGER. The tagging join (`tagId`, `tagType`,
-  `taggingIndex`) is real but matches hidden `tagType=318` taggings plexsim does not hold.
+  `taggingIndex`) is real but matches hidden `tagType=318` taggings simplex does not hold.
 - **An episode listing's leaf-count filters read the SHOW**, as a season's do, and so does a
   season's `unwatchedLeaves`.
 - **The listing query reaches further than the grid**: a show's `/children` and
@@ -2701,7 +2701,7 @@ are changing; replay the client's exact request before altering behavior.
 - **A proxied `/player/*` command (with `X-Plex-Target-Client-Identifier`) is a 404**, and
   `DELETE /library/sections/all/refresh` a 200 with a "Library scan canceled" status frame.
 - **Drive the RENDERED client, not only its requests.** Cycle 59 pointed the real Plex Web app
-  at plexscratch42, kids and plexsim through kids' 9223 Chromium with `page.route` answering
+  at plexscratch42, kids and simplex through kids' 9223 Chromium with `page.route` answering
   plex.tv, and found four surfaces no request replay had: a response is only half of what the
   client shows, and whether a tab EXISTS is decided by another endpoint entirely.
 
@@ -2735,7 +2735,7 @@ are changing; replay the client's exact request before altering behavior.
   stays plain where its `for <OS>` variants do not), the `Bandwidths` suppressor two.
 
 - **The reference's own translation catalogues are an instrument** (`Resources/locale/*/
-  LC_MESSAGES/plex.mo`, readable with `cat` on zen): search them for every string plexsim leaves
+  LC_MESSAGES/plex.mo`, readable with `cat` on zen): search them for every string simplex leaves
   in English. A capture only finds the strings on the pages it walks.
 - **`Plex Home Theater` alone gets a five-component server version** on `/` and
   `/media/providers`.
@@ -2752,7 +2752,7 @@ are changing; replay the client's exact request before altering behavior.
 - **`Accept-Language` is matched as a LIST**: a language with no catalogue of its own (`ca`, `nn`)
   is a fallback that any exact catalogue later in the header beats (Chrome's Catalan header is
   English).
-- **An item-prefs sweep must pair plexsim's item with a MATCHED reference item** (zen show
+- **An item-prefs sweep must pair simplex's item with a MATCHED reference item** (zen show
   6558/6559/6560): an unmatched one has no `showOrdering` enum and another content head, so the
   comparison is silently empty. A socket's regional catalogue (`hu-HU` reads `hu_HU`) answers
   before the one it is based on.
@@ -2797,7 +2797,7 @@ are changing; replay the client's exact request before altering behavior.
 - **A real PMS keeps a write it answered, even through a hard kill.** Five client writes (a rating,
   a scrobble, a playlist, a server pref, a locked edit) answered 0.17-0.5 s before `docker kill -s
   KILL` all survived on plexscratch. A coalescing saver loses exactly that window; with `--state`
-  plexsim saves a client write (any non-GET, and the scrobble/rate/progress/timeline GETs) before
+  simplex saves a client write (any non-GET, and the scrobble/rate/progress/timeline GETs) before
   its status line.
 - **An unseeded `sort=random` is a fresh order on every request** (zen, kids, plexscratch; `random:desc`
   too). Only `random:<seed>` holds one order, and a `random="1"` shelf's sample is a different
@@ -2816,7 +2816,7 @@ are changing; replay the client's exact request before altering behavior.
   optimize rebuilds the spellfix tables. `--state` saves the vocabulary's rows rather than
   rebuilding them at restore.
 - **A device row is written by the request that first names it**, and survives a hard kill 0.16 s
-  after a plain GET's answer on plexscratch. plexsim registers a device while counting the
+  after a plain GET's answer on plexscratch. simplex registers a device while counting the
   response's bytes, after the answer; with `--state` a new or renamed device is registered first
   and the request is saved before its status line.
 - **An empty maintenance window is not stored.** A `/:/prefs` write leaving `ButlerStartHour ==
@@ -2834,7 +2834,7 @@ are changing; replay the client's exact request before altering behavior.
   over a raw socket (cycle 75 found cycle 74's recorded `Connection: close` was exactly this).
 - **A real PMS answers a burst of simultaneous connections** (30 of 30 on plexscratch42 from kids);
   `socketserver`'s default listen backlog of 5 reset most of them, and six -- a browser's per-host
-  connection count -- already lost some. plexsim listens with a backlog of 128.
+  connection count -- already lost some. simplex listens with a backlog of 128.
 - **A play queue has an OWNER, and `own=1` moves it.** A queue read with `own=1` by a client that does
   not own it takes the queue (version + 1; the same owner's read changes nothing), and the
   one-queue-per-client rule follows the owner: the taker's other queue is retired at once, its next new
@@ -2885,7 +2885,7 @@ are changing; replay the client's exact request before altering behavior.
   show's key, `type=2` over an episode's, another library's key or section are empty collections of
   the named type. The oracle expanded a section's shows into episodes as a play queue does; the
   native server listed the shows whatever the type. An EMPTY collection carries no `childCount` on
-  1.42.2, where plexsim sent 0 -- see the empty-collection rule below.
+  1.42.2, where simplex sent 0 -- see the empty-collection rule below.
 - **The paging HEADER beats the query on every route family** (cycle 16, re-measured cycle 83 with
   GETs on kids, zen and plexscratch42, `tests/fixtures/paging_header_precedence.json`): section
   listings, `/children`, `/allLeaves`, `/hubs`, section hubs, `/hubs/search`, On Deck, Recently
@@ -2936,7 +2936,7 @@ are changing; replay the client's exact request before altering behavior.
   `=0`, `!=1`, `==1`, `=2` none. The filter COLUMN stays the row's own counter:
   `all?type=2&unwatched=1` answers all 509, the fully watched shows included, and `=0` none -- so
   "partly watched shows vanish from the TV Unwatched filter" is not the rule to copy, and Plex Web's
-  TV filter sends `unwatchedLeaves=1` (the Filter the show Meta advertises) anyway. plexsim read the
+  TV filter sends `unwatchedLeaves=1` (the Filter the show Meta advertises) anyway. simplex read the
   own counter on both lists, and an episode scrobble stamps one on its season and show.
 - **`/hubs/sections/{id}/{leaf}` routes four leaves and 404s the rest.** Swept on kids (1.43.4,
   2026-09-30) with 1,450 names under both sections: only `extras`, `manage`, `newReleases` and
@@ -3289,7 +3289,7 @@ are changing; replay the client's exact request before altering behavior.
   first of three episodes queues three, the second two, the last one;
   `tests/fixtures/playqueue_continuous_s42.json`). The native server ignored the flag and queued
   the episode alone, so the next episode never played; the oracle had it. Invisible to the
-  cycles' XML flow diff, which compares a reference episode with a different plexsim episode and
+  cycles' XML flow diff, which compares a reference episode with a different simplex episode and
   so always differs in item count; cycle 83 found it by running the oracle and the native server
   through the same flow.
 - **A smart collection is read at its OWN level on every read**, not the way a playlist or a play
@@ -3360,7 +3360,7 @@ are changing; replay the client's exact request before altering behavior.
   `location: direct`. Measured and NOT acted on: with a subtitle selected, `burn`, `auto`, an
   empty or an absent `subtitles` is a 400 on zen for Plex Web's and Plex for Android's shapes
   alike -- so the "transcoder-less copy" reason recorded for the plexscratch42 400 was not the
-  reason; plexsim, which cannot burn, still answers them. Plex Web reads only the decision's
+  reason; simplex, which cannot burn, still answers them. Plex Web reads only the decision's
   code pairs (it keeps the body as `decisionXML`, unread), so the stream list is invisible to it.
 - **A merge leaves the survivor's `updatedAt` alone** (cycle 84, `tests/fixtures/merge_updated_at_s42.json`).
   plexscratch42 (1.42.2), two rows of a throwaway section: after `PUT /library/metadata/768/merge?ids=769`
@@ -3368,7 +3368,7 @@ are changing; replay the client's exact request before altering behavior.
   that follows puts the new row 770 on the same time; plexscratch (1.43.4) agreed in cycle 83. Both
   servers stamped the merge time on the survivor (and so on the split-off row). Both scratches
   are isolated; a networked PMS runs an agent refresh after a merge that may restamp it --
-  plexsim runs no agent. The first merge attempt was a 500 ("Waited over 10 seconds for a busy
+  simplex runs no agent. The first merge attempt was a 500 ("Waited over 10 seconds for a busy
   database") that moved nothing: a scratch 500 under another agent's load is not a rule.
 - **A media item's DELETE frames the row as it WAS** (cycle 84, B's drive59 `movie.delete()` and
   `episode.delete()`, `tests/test_parity_cycle84_b.py`). The one `state 9` TimelineEntry carries
@@ -3487,13 +3487,13 @@ are changing; replay the client's exact request before altering behavior.
   out short with them. CLIENT-VISIBLE: Plex Web 4.162.1's Agents settings page
   (`chunk-4030`, `populateAgents`) asks for types 1, 2, 8, 9 and 13 and drops only the movie,
   series and music modern agents, so its Albums tab lists Plex Personal Media on a real server and
-  did not on plexsim. Personal Media's provider id is 5 on zen, not 4: not settled here.
+  did not on simplex. Personal Media's provider id is 5 on zen, not 4: not settled here.
 - **A LEGACY `/system/agents` row is `hasPrefs, identifier, primary` (then `name`), not the
   modern row's `identifier, name, hasPrefs, id`.** Measured on zen (1.42.2, 2026-10-01) in JSON
   and XML over the bare path and `mediaType=1,2,8,9`; kids (1.43.4) agrees after the `id` it
   alone leads legacy rows with. The bucket is told apart by `primary`, which no modern row
   carries. An empty legacy row (fanarttv, htbackdrops, ...) is a PAIRED `<Agent ...>\n</Agent>`
-  on both references. plexsim used the modern order for all eleven and self-closed the six
+  on both references. simplex used the modern order for all eleven and self-closed the six
   empty ones. After the fix every typed body is byte-identical to zen's
   (`tests/test_followups_c87_w3.py`). MALFORMED-ONLY: Plex Web reads the rows by key.
 - **The metadata PROVIDER table numbers Personal Media 5, not 4; `/system/agents` numbers it 4.**
@@ -3503,13 +3503,13 @@ are changing; replay the client's exact request before altering behavior.
   `org.musicbrainz.agents.music` `intermediary` (`MetadataType` 8, 9, 10), which no listing (nor
   `?metadataTypes=8`) shows and `GET /media/providers/metadata/4` answers. Built-in GROUPS are
   numbered 1-4 in agent order, each item carrying the group's id and naming the provider by the
-  provider's id: group 4, item 4, `metadataAgentProviderId` 5. plexsim numbered every provider by
+  provider's id: group 4, item 4, `metadataAgentProviderId` 5. simplex numbered every provider by
   agent position, so `/4` answered Personal Media and `/5` was a 404. The MusicBrainz row's
   `uri`/`online` are zen's (`provider://...`, `true`); kids and the fresh copy say `""`/`false`
   there and on Plex Music alike -- reachability state, not shape. MALFORMED-ONLY: Plex Web
   4.162.1 never GETs a provider by id; a provider id reaches it only as the Add/Edit Agent dialog's
   `additionalProvider`, sent as `PUT /media/providers/metadata/group/{custom}/items/{providerId}`,
-  which plexsim answers by the group rather than the id (cycle 40).
+  which simplex answers by the group rather than the id (cycle 40).
 - **A timeline beat is for the item its `playQueueItemID` names, its crossing reads the SESSION's
   last position, and `complete` lasts only while the beats name the same item by the same id**
   (cycle 87 e1, plexscratch42 1.42.2, 30 beat sequences in Plex Web's shape and python-plexapi's
@@ -3550,7 +3550,7 @@ are changing; replay the client's exact request before altering behavior.
 - **A write on a BUILT-IN metadata provider or group id is not the row and not a 404.** Measured
   on plexscratch42 (fresh 1.42.2, 2026-10-01; every listing and row re-read before and after,
   nothing changed): `PUT /media/providers/metadata/1` is a 400 with no or an empty `uri` and a
-  500 with an unreachable one (PMS fetches the provider; plexsim hosts none, so every `uri` is a
+  500 with an unreachable one (PMS fetches the provider; simplex hosts none, so every `uri` is a
   500 here), and `POST` on the id is a 404. `PUT /media/providers/metadata/group/3?title=` with
   its own title answers the group row, `POST /group/3` is a 404 and `PUT /group/3/items/5?after=-1`
   a 400. The oracle answered the provider row to every verb; the native server 404'd them all,
@@ -3687,7 +3687,7 @@ are changing; replay the client's exact request before altering behavior.
   is a 400 `unable to find entry for provided 'metadataAgentProviderGroupId'\r\n`, and no such
   parameter a 400 `unable to find built-in agent group for provided 'agent'\r\n`, both plain text
   with no Content-Type. Before the deletes the same music create was a 201 echoing
-  `agent: tv.plex.agents.music` and `metadataAgentProviderGroupId: 3`. plexsim answered both
+  `agent: tv.plex.agents.music` and `metadataAgentProviderGroupId: 3`. simplex answered both
   DELETEs with the provider row (oracle) or a 404 (native) and ignored the parameter. It still
   writes its create 400s as the generic HTML page, and refuses `type=artist` outright (no music
   libraries) -- both older gaps, closed by the next bullet. MALFORMED-ONLY: Plex Web hides Remove on a built-in provider and
@@ -3711,7 +3711,7 @@ are changing; replay the client's exact request before altering behavior.
   is never paired. The untyped body is still gzipped on offer (134 to 121 bytes for `type=bogus`)
   and writes `Connection`/`Keep-Alive` before `Content-Length` with or without the encoding trio.
   A valid `type=artist` (or `type=8`) form with `tv.plex.agents.music`, `Plex Music` and group 3
-  is a 201 echoing all three. plexsim answered the HTML page to every refusal, stopped at the first
+  is a 201 echoing all three. simplex answered the HTML page to every refusal, stopped at the first
   failure, refused both legacy forms Plex Web's dialog sends, and (oracle) refused music libraries.
   MALFORMED-ONLY for the refusal shapes (Plex Web builds the form from `/system/agents` and
   `/library/sections/prefs`); CLIENT-VISIBLE for the legacy-agent and music creates the dialog offers.
@@ -3740,8 +3740,8 @@ are changing; replay the client's exact request before altering behavior.
   `createdAt`, `updatedAt` and `scannedAt` are the one create moment and `contentChangedAt` is -1.
   The 201 echoes `key type title agent scanner language metadataAgentProviderGroupId uuid
   updatedAt createdAt content directory contentChangedAt hidden Location`, with no `refreshing`.
-  plexsim kept only title and type and re-derived the movie agent, `Plex Movie`, group 1 and
-  `/plexsim/<n>` on every read, so the Edit Library dialog and python-plexapi (`section.agent`,
+  simplex kept only title and type and re-derived the movie agent, `Plex Movie`, group 1 and
+  `/simplex/<n>` on every read, so the Edit Library dialog and python-plexapi (`section.agent`,
   `.scanner`, `.locations`) read a new music library as a movie one. CLIENT-VISIBLE.
 - **A music library has its OWN `Meta`, and its album sorts are not the type's list.** Measured on
   an empty `type=artist` library on plexscratch42 (1.42.2; plexscratch 1.43.4 adds only the track
@@ -3753,17 +3753,17 @@ are changing; replay the client's exact request before altering behavior.
   ("Critic Rating") after Release Date, which the same type's list on a movie or show library does
   not. Claim moves one row: zen (claimed) lists `source` for types 9 and 10 and both copies do not,
   while on the copy each Type's Filter list equals its `/filters?type=N`, so the album and track
-  lists carry zen's row. plexsim served the MOVIE Meta, so Plex Web's Library tab read "Movies"
+  lists carry zen's row. simplex served the MOVIE Meta, so Plex Web's Library tab read "Movies"
   with a movie sort and filter bar, and python-plexapi's `listFilters`/`listSorts`/`searchAlbums`/
   `recentlyAddedTracks` raised "Unknown libtype". CLIENT-VISIBLE.
 - **A music library's settings ARE the Add Library form's list for type 8 and its agent.**
   Measured on plexscratch42: an empty music library's `/library/sections/{id}/prefs` equals
   `/library/sections/prefs?type=8&agent=tv.plex.agents.music` row for row and value for value, and
   a write (`albumSort=2&artistBios=0`) is a 200 that reads back `2` and `false`. The copy is
-  unclaimed and answers nine rows; zen's form (claimed, plexsim's `section_prefs_new.json`) has
+  unclaimed and answers nine rows; zen's form (claimed, simplex's `section_prefs_new.json`) has
   thirteen -- `musicAnalysis`, `augmentWithSharedContent`, `useExternalLyrics` and `concerts` are
-  claim-gated, and the copy refuses a write to one as unknown -- so plexsim serves the thirteen.
-  plexsim answered an EMPTY list (and refused every write as unknown), so the Edit Library
+  claim-gated, and the copy refuses a write to one as unknown -- so simplex serves the thirteen.
+  simplex answered an EMPTY list (and refused every write as unknown), so the Edit Library
   dialog's Advanced tab was blank and python-plexapi's `settings()` was []. CLIENT-VISIBLE.
 - **A music library's Recommended tab is eight shelves, three of them behind request flags.**
   Measured on plexscratch42 and plexscratch over an empty music library: `/hubs/sections/{id}` is
@@ -3774,10 +3774,10 @@ are changing; replay the client's exact request before altering behavior.
   Web sends all three (8 shelves), python-plexapi's `hubs()`/`stations()` `includeStations=1`
   alone (6). The vault and touring shelves are `random`: a real PMS redraws the vault's period
   (2 months, 4 months, 8 months, 2 years, 3 years seen) and a `taggingCreatedAt` cutoff within the
-  last day every few minutes; plexsim draws once per process. `/hubs/promoted` for the library is
-  `music.recent.added.<id>` (the copy ignores `pinnedContentDirectoryID`; under it plexsim follows
+  last day every few minutes; simplex draws once per process. `/hubs/promoted` for the library is
+  `music.recent.added.<id>` (the copy ignores `pinnedContentDirectoryID`; under it simplex follows
   zen's swap to `home.music.recent`). `style`/`promoted` are absent on the unclaimed copies for
-  every library and kept as the claimed movie and show shelves carry them. plexsim answered a
+  every library and kept as the claimed movie and show shelves carry them. simplex answered a
   MOVIE library's shelves, so `stations()` returned None instead of []. CLIENT-VISIBLE
   (python-plexapi); Plex Web draws an empty library's page the same either way.
 - **Every container a music library answers names the ARTIST resources and carries `nocache`.**
@@ -3790,7 +3790,7 @@ are changing; replay the client's exact request before altering behavior.
   Recently Viewed ("Recently Viewed Episodes"), Unplayed and `/arts` the `track` view with
   `viewMode=65593`; `/library/sections/{id}` lists eleven pivots (All Artists, By Album, Genre,
   Decade, Year, Collection, Recently Added, By Folder, and three searches typed 8, 9, 10).
-  plexsim answered the movie library's containers and its twenty movie pivots. MALFORMED-ONLY:
+  simplex answered the movie library's containers and its twenty movie pivots. MALFORMED-ONLY:
   Plex Web draws an empty library's page from the Meta and the hubs, not from these.
 - **Deleting a music library takes its shelves with it, and both servers already agreed.**
   Measured on plexscratch42 and plexscratch: `DELETE /library/sections/{id}` on an empty music
@@ -3798,13 +3798,13 @@ are changing; replay the client's exact request before altering behavior.
   `/hubs/sections/{id}` (with or without `includeStations`), the library, its `/all` and its
   `/prefs` are 404s, `/hubs/promoted?contentDirectoryID={id}` keeps only Continue Watching and On
   Deck, and `/hubs` keeps `home.music.recent` -- which zen and the copies list with no music
-  library at all. plexsim answered all of it the same way; the check guards it.
+  library at all. simplex answered all of it the same way; the check guards it.
 - **An EMPTY library's composite is a 404.** Measured on plexscratch42 (1.42.2) and plexscratch
   (1.43.4) for an empty movie, show and music library made with Add Library's form:
   `/library/sections/{id}/composite/{n}` -- bare, and with the `width`/`height`/`rows`/`cols`/
   `border`/`media`/`repeat` set Plex Web's composite view appends -- is the ordinary 85-byte html
   404 under every Accept, and `/photo/:/transcode?url=` of it is the same 404. A library with
-  members answers a jpeg (kids). plexsim drew a generated PNG tile. MALFORMED-ONLY: no Plex Web
+  members answers a jpeg (kids). simplex drew a generated PNG tile. MALFORMED-ONLY: no Plex Web
   4.147.1/4.162.1 call site builds a SECTION composite (its composite view reads a row's own
   `composite`, and no section row on kids, zen or plexscratch42 carries one), and
   python-plexapi's `LibrarySection.composite` reads the same absent attribute.
@@ -3816,7 +3816,7 @@ are changing; replay the client's exact request before altering behavior.
   whatever Accept says; `/system/agents` (and `?mediaType=`) is the only JSON under `/system`.
   The three servers' scanner lists are byte-identical (1: four rows, 2: two, 8 and 9: two, 13:
   one), and the MUSIC list is a different writer's -- a double-quoted declaration and an empty
-  indented third row, `size="3"`, 220 bytes. plexsim answered JSON to a JSON Accept on the first
+  indented third row, `size="3"`, 220 bytes. simplex answered JSON to a JSON Accept on the first
   four and 217 bytes for music. MALFORMED-ONLY: Plex Web 4.147.1 and 4.162.1 read the list
   through `ScannerCollection`, whose responseType is the base `xml` (`Accept: application/xml`),
   and parse the body as XML; only a third-party JSON client saw the difference.
@@ -3925,17 +3925,17 @@ are changing; replay the client's exact request before altering behavior.
   the same ten as everywhere keeping English. Both servers left all 52 strings in English: the
   table had been captured off libraries that held no music. The same strings in a movie or show
   library's `sorts?type=8|9|10` read the same on zen, so cycle 63's bound -- recorded because
-  plexsim could hold no music library -- closes with it now that Add Library makes one. The
+  simplex could hold no music library -- closes with it now that Add Library makes one. The
   random `music.vault` shelf is worded around its number (`Keine Wiedergabe seit 11 Monaten`,
   `Nicht abgespielt in 4 Jahren`; `title_templates.json`), and its period is drawn PER LANGUAGE
   (each language's hub page is its own cache entry) from two to eleven months or two to five
   years, wider than the five periods the W5 witness saw: 2,070 reads, one wording per language
-  and unit. plexsim still draws one period per process from the five; the shelf is empty, so no
+  and unit. simplex still draws one period per process from the five; the shelf is empty, so no
   client draws it.
 - **A photo type's `Date Taken` sort is translated.** zen (1.42.2), a movie library's
   `sorts?type=13`, every language (2026-10-02, the same fixture's `zen_photo_sorts`):
   `originallyAvailableAt` is `Aufnahmedatum`/`Pris le`/`撮影日`, in the 34 languages that move;
-  both servers left it English. Cycle 63 recorded it as unreachable because plexsim could hold
+  both servers left it English. Cycle 63 recorded it as unreachable because simplex could hold
   no photo library; Add Library now creates one (`type=photo` with `com.plexapp.agents.none`).
 - **A modern agent's `Language` rows exist for every locale Plex Web ships, not 29 of them.**
   zen (1.42.2) and kids (1.43.4) answer `/system/agents[?mediaType=N]` with a list titled and
@@ -4021,7 +4021,7 @@ are changing; replay the client's exact request before altering behavior.
   `Collection.userRating`/`guid` (`Collection._loadData`). It is also why B's s42 chain sees
   `coll.editTitle` 409 and a pre-rated `C63B Coll`: a dead run left those tags behind.
 - **An unseeded `sort=random` is a UNIFORM order, not merely a different one** (cycle 90, N's
-  `fix76` leg: plexsim's six reads repeated two orders, zen's never did). Sixty reads of the
+  `fix76` leg: simplex's six reads repeated two orders, zen's never did). Sixty reads of the
   Android grid's request (`type=1&sort=random&includeCollections=1&includeAdvanced=1`, paged
   0/30): kids' five movies gave 44 distinct orders (a uniform draw: 47), plexscratch42's 24 gave
   60 of 60 (`tests/fixtures/c90_n_unseeded_random_orders.json`). Both servers ordered by the
@@ -4048,7 +4048,7 @@ are changing; replay the client's exact request before altering behavior.
   Measured cycle 92 on plexscratch (PMS 1.43.4, `tests/fixtures/pms_second_instance.json`):
   launching `Plex Media Server` again on the data directory the running one serves prints
   `Plex Media Server is already running. Will not start...` and exits 1 at once, leaving
-  the pid file and the log untouched. plexsim's default state file (`plexsim.db` /
+  the pid file and the log untouched. simplex's default state file (`simplex.db` /
   `state.pickle` beside the catalog) is that directory, and since `8978e61` a second
   server finding it locked ran on WITHOUT a state file: its clients' ratings, watched
   flags, playlists and server name vanished at the next restart, and when it came back
@@ -4069,9 +4069,9 @@ are changing; replay the client's exact request before altering behavior.
   (`tests/test_parity_cycle94_d.py`).
 - **The notification socket answers a client PING with a PONG at once**, unmasked, same payload
   (`89 84 <mask> c94d` -> `8a 04 63 39 34 64`, empty -> `8a 00`; kids and zen,
-  `tests/fixtures/c94_d_ws_ping.json`). plexsim ignored client pings. Plex for Android 2026.19.1
-  pings its `/:/websockets/notifications` socket and dropped plexsim's after exactly 50 s (close
-  1006, four runs) and never reopened it, so it saw no `playing` or activity event on plexsim;
+  `tests/fixtures/c94_d_ws_ping.json`). simplex ignored client pings. Plex for Android 2026.19.1
+  pings its `/:/websockets/notifications` socket and dropped simplex's after exactly 50 s (close
+  1006, four runs) and never reopened it, so it saw no `playing` or activity event on simplex;
   with pongs the socket stays open and carries them. CLIENT-VISIBLE. zen also CLOSES (`88 00`)
   after ponging an EMPTY ping where kids does not: recorded, not emulated
   (`tests/test_parity_cycle94_d.py`).

@@ -47,10 +47,10 @@ impl Wire {
 
 /// A response built outside `_send` (the preflight, a part read) is marked with this
 /// private header; the writer strips it.
-pub(super) const RAW_MARK: &str = "X-Plexsim-Raw";
+pub(super) const RAW_MARK: &str = "X-Simplex-Raw";
 /// Cycle 87: marks Add Library's untyped refusal (`Response::untyped`), which is gzipped
 /// without a type and orders like a gzipped body.
-pub(super) const UNTYPED_MARK: &str = "X-Plexsim-Untyped";
+pub(super) const UNTYPED_MARK: &str = "X-Simplex-Untyped";
 
 /// `Range` -> (status, Content-Range, first, last) over a body of `total` bytes, or
 /// None when the header is not a Range (cycles 16, 35, 44).
@@ -569,9 +569,9 @@ pub(super) fn envelope(
                         | "content-length"
                         | "content-type"
                         | "x-plex-protocol"
-                        | "x-plexsim-raw"
-                        | "x-plexsim-no-head-gzip"
-                        | "x-plexsim-untyped"
+                        | "x-simplex-raw"
+                        | "x-simplex-no-head-gzip"
+                        | "x-simplex-untyped"
                 ) && !(wire.origin.is_some()
                     && !raw
                     && matches!(
@@ -647,7 +647,7 @@ pub(super) fn envelope(
         && response
             .headers
             .iter()
-            .any(|(name, _)| name == "X-Plexsim-No-Head-Gzip");
+            .any(|(name, _)| name == "X-Simplex-No-Head-Gzip");
     let offered = !head_plain
         && wire.accept_encoding.as_deref().is_some_and(|value| {
             value

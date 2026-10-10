@@ -9,7 +9,7 @@ was refused and every poster tile answered 404 -- the app drew titles where the 
 The oracle answered 200. `/service(s)/ultrablur/colors` goes through the transcoder, and the
 Categories shelf reads its genre axis the same way.
 
-Starts its own servers (native by default, `PLEXSIM_SERVER=python` the oracle) on
+Starts its own servers (native by default, `SIMPLEX_SERVER=python` the oracle) on
 `tests/catalog_ui.json` with `--token`.
 """
 import gzip
@@ -62,7 +62,7 @@ def send(port, path, headers):
 def main():
     fixture = json.load(open(os.path.join(HERE, "fixtures", "android_query_token_transcode.json")))
     port = free_port()
-    env = dict(os.environ, PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
+    env = dict(os.environ, SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
     env.pop("TMDB_KEY", None)
     proc = subprocess.Popen(
         server_command("--port", str(port), "--catalog", "tests/catalog_ui.json",

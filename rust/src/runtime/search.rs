@@ -1031,7 +1031,7 @@ impl Runtime {
     /// `/hubs/search` -- seventeen hubs every time.
     pub(super) fn hubs_search(&self, query: &HashMap<String, String>) -> Response {
         let Some(text) = query.get("query").filter(|t| !t.is_empty()) else {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         };
         let wanted_section = match query.get("contentDirectoryID").filter(|v| !v.is_empty()) {
             Some(raw) => {
@@ -1044,7 +1044,7 @@ impl Runtime {
                     raw.clone()
                 };
                 if self.section(&normal).is_none() || self.section_visibility(&normal) >= 2 {
-                    return Response::error(404, "plexsim: not found");
+                    return Response::error(404, "simplex: not found");
                 }
                 Some(normal)
             }
@@ -1052,11 +1052,11 @@ impl Runtime {
         };
         if let Some(raw) = query.get("limit") {
             if !int_param(raw, None) {
-                return Response::error(400, "plexsim: bad request");
+                return Response::error(400, "simplex: bad request");
             }
             let value = raw.trim_start_matches('+').parse::<i128>().unwrap_or(0);
             if value <= 0 || !int_param(raw, Some(64)) {
-                return Response::error(500, "plexsim: internal error");
+                return Response::error(500, "simplex: internal error");
             }
         }
         let limit = query
@@ -1238,18 +1238,18 @@ impl Runtime {
     /// `/library/search` -- the same matches as one flat `SearchResult` list.
     pub(super) fn flat_search(&self, query: &HashMap<String, String>) -> Response {
         let Some(text) = query.get("query") else {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         };
         if text.is_empty() {
             return Response::json(200, json!({"MediaContainer": {"size": 0}}));
         }
         if let Some(raw) = query.get("limit") {
             if !int_param(raw, None) {
-                return Response::error(400, "plexsim: bad request");
+                return Response::error(400, "simplex: bad request");
             }
             let value = raw.trim_start_matches('+').parse::<i128>().unwrap_or(0);
             if value <= 0 || !int_param(raw, Some(64)) {
-                return Response::error(500, "plexsim: internal error");
+                return Response::error(500, "simplex: internal error");
             }
         }
         let limit = query
@@ -1453,7 +1453,7 @@ impl Runtime {
             "unwatchedLeaves",
         ];
         let Some(type_raw) = query.get("type").filter(|value| !value.is_empty()) else {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         };
         let asked = pairs
             .iter()
@@ -1467,26 +1467,26 @@ impl Runtime {
             .map(|(field, _)| field.as_str())
             .collect::<HashSet<_>>();
         if distinct.len() != 1 {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         }
         let (field, wanted) = asked.last().cloned().unwrap_or_default();
         if wanted.is_empty() {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         }
         let mut limit: Option<usize> = None;
         if let Some(raw) = query.get("limit") {
             let Ok(value) = raw.trim().trim_start_matches('+').parse::<i64>() else {
-                return Response::error(400, "plexsim: bad request");
+                return Response::error(400, "simplex: bad request");
             };
             limit = if value < 0 { None } else { Some(value.max(1) as usize) };
         }
         let field = field.as_str();
         if REFUSED.contains(&field) {
-            return Response::error(500, "plexsim: internal error");
+            return Response::error(500, "simplex: internal error");
         }
         let tag = TAGS.iter().find(|(name, _, _)| *name == field);
         if tag.is_none() && !TEXT.contains(&field) && !EMPTY.contains(&field) {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         }
         let type_number = match type_raw.as_str() {
             "1" => Some(1),
@@ -1514,7 +1514,7 @@ impl Runtime {
             .to_string();
         let rows = match self.filter_rows(rows, &filter_pairs, &source_type) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "plexsim: bad request"),
+            Err(status) => return Response::error(status, "simplex: bad request"),
         };
         let wanted = wanted.to_lowercase();
         let take = |count: usize| limit.map_or(count, |limit| limit.min(count));
@@ -1632,13 +1632,13 @@ impl Runtime {
     /// and always says its `size`, zero included.
     pub(super) fn voice_search(&self, query: &HashMap<String, String>) -> Response {
         let Some(text) = query.get("query").filter(|text| !text.is_empty()) else {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         };
         let limit = match query.get("limit").filter(|raw| !raw.is_empty()) {
             None => 30,
             Some(raw) => match raw.trim().trim_start_matches('+').parse::<i64>() {
                 Ok(value) => value.max(0) as usize,
-                Err(_) => return Response::error(500, "plexsim: internal error"),
+                Err(_) => return Response::error(500, "simplex: internal error"),
             },
         };
         let (typed, _tags) = self.search_matches(text, Some(limit), false);
@@ -1700,7 +1700,7 @@ impl Runtime {
             for row in typed.get(*kind).into_iter().flatten() {
                 // Cycle 23, measured on kids and zen with the same row read twice per
                 // server: a `/search` row is byte-identical to that row's GRID row,
-                // prefixed with six attributes and nothing else. plexsim answered the
+                // prefixed with six attributes and nothing else. simplex answered the
                 // detail-derived listing row led by `ratingKey`, with neither
                 // `allowSync` nor the `librarySectionUUID` a client keys a hit to its
                 // library by.

@@ -23,8 +23,8 @@
   "notification_stream": "ws://<server>/:/websockets/notifications?X-Plex-Token=<redacted> (no filters)",
   "client_headers": {
    "Accept": "application/json",
-   "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-   "X-Plex-Product": "plexsim-probe",
+   "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+   "X-Plex-Product": "simplex-probe",
    "X-Plex-Token": "<redacted>"
   },
   "restored": "config/ restored from a paused snapshot and every moved file put back (same inode, size, mtime); the touched rows were re-read and compared equal to the before captures"
@@ -41,8 +41,8 @@
      "path": "/:/prefs?autoEmptyTrash=0",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -57,8 +57,8 @@
      "path": "/library/sections/1/refresh?path=%2Fdata%2Fmovies%2FBig%20Buck%20Bunny%20%282008%29",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -75,8 +75,8 @@
       "path": "/library/metadata/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -234,8 +234,8 @@
       "path": "/library/metadata/1?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -395,8 +395,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -711,8 +711,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -1076,8 +1076,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -1110,8 +1110,8 @@
       "path": "/library/metadata/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -1272,8 +1272,8 @@
       "path": "/library/metadata/1?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -1435,8 +1435,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -1753,8 +1753,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -2120,8 +2120,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -2802,8 +2802,8 @@
      "path": "/library/sections/2/refresh?path=%2Fdata%2Fshows%2FFirefly%20%282002%29%2FSeason%2001",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -2820,8 +2820,8 @@
       "path": "/library/metadata/10",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -2974,8 +2974,8 @@
       "path": "/library/metadata/10?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -3130,8 +3130,8 @@
       "path": "/library/metadata/7",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -3197,8 +3197,8 @@
       "path": "/library/metadata/7?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -3264,8 +3264,8 @@
       "path": "/library/metadata/6",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -3342,8 +3342,8 @@
       "path": "/library/metadata/6?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -3420,8 +3420,8 @@
       "path": "/library/metadata/7/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -3660,8 +3660,8 @@
       "path": "/library/metadata/6/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -3762,8 +3762,8 @@
       "path": "/library/sections/2/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -3828,8 +3828,8 @@
       "path": "/library/sections/2/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -3905,8 +3905,8 @@
       "path": "/library/sections/2/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -3938,8 +3938,8 @@
       "path": "/library/sections/2/all?type=4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -4341,8 +4341,8 @@
       "path": "/library/sections/2/all?type=4&trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -4376,8 +4376,8 @@
       "path": "/library/metadata/10",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -4532,8 +4532,8 @@
       "path": "/library/metadata/10?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -4690,8 +4690,8 @@
       "path": "/library/metadata/7",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -4758,8 +4758,8 @@
       "path": "/library/metadata/7?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -4826,8 +4826,8 @@
       "path": "/library/metadata/6",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -4905,8 +4905,8 @@
       "path": "/library/metadata/6?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -4984,8 +4984,8 @@
       "path": "/library/metadata/7/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -5226,8 +5226,8 @@
       "path": "/library/metadata/6/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -5329,8 +5329,8 @@
       "path": "/library/sections/2/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -5396,8 +5396,8 @@
       "path": "/library/sections/2/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -5474,8 +5474,8 @@
       "path": "/library/sections/2/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -5507,8 +5507,8 @@
       "path": "/library/sections/2/all?type=4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -5912,8 +5912,8 @@
       "path": "/library/sections/2/all?type=4&trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -7160,8 +7160,8 @@
      "path": "/library/sections/1/emptyTrash",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -7178,8 +7178,8 @@
       "path": "/library/metadata/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -7339,8 +7339,8 @@
       "path": "/library/metadata/1?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -7502,8 +7502,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -7820,8 +7820,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -8187,8 +8187,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -8283,8 +8283,8 @@
       "path": "/library/metadata/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -8298,8 +8298,8 @@
       "path": "/library/metadata/1?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -8313,8 +8313,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -8571,8 +8571,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -8867,8 +8867,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -8957,8 +8957,8 @@
      "path": "/library/sections/2/emptyTrash",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -8975,8 +8975,8 @@
       "path": "/library/metadata/10",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -9131,8 +9131,8 @@
       "path": "/library/metadata/10?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -9289,8 +9289,8 @@
       "path": "/library/metadata/7",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -9357,8 +9357,8 @@
       "path": "/library/metadata/7?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -9425,8 +9425,8 @@
       "path": "/library/metadata/6",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -9504,8 +9504,8 @@
       "path": "/library/metadata/6?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -9583,8 +9583,8 @@
       "path": "/library/metadata/7/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -9825,8 +9825,8 @@
       "path": "/library/metadata/6/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -9928,8 +9928,8 @@
       "path": "/library/sections/2/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -9995,8 +9995,8 @@
       "path": "/library/sections/2/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -10073,8 +10073,8 @@
       "path": "/library/sections/2/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -10106,8 +10106,8 @@
       "path": "/library/sections/2/all?type=4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -10511,8 +10511,8 @@
       "path": "/library/sections/2/all?type=4&trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -10616,8 +10616,8 @@
       "path": "/library/metadata/10",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -10631,8 +10631,8 @@
       "path": "/library/metadata/10?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -10646,8 +10646,8 @@
       "path": "/library/metadata/7",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -10713,8 +10713,8 @@
       "path": "/library/metadata/7?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -10780,8 +10780,8 @@
       "path": "/library/metadata/6",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -10858,8 +10858,8 @@
       "path": "/library/metadata/6?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -10936,8 +10936,8 @@
       "path": "/library/metadata/7/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -11110,8 +11110,8 @@
       "path": "/library/metadata/6/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -11212,8 +11212,8 @@
       "path": "/library/sections/2/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -11278,8 +11278,8 @@
       "path": "/library/sections/2/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -11355,8 +11355,8 @@
       "path": "/library/sections/2/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -11388,8 +11388,8 @@
       "path": "/library/sections/2/all?type=4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -11725,8 +11725,8 @@
       "path": "/library/sections/2/all?type=4&trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -11938,8 +11938,8 @@
      "path": "/library/sections/1/refresh?path=%2Fdata%2Fmovies%2FBig%20Buck%20Bunny%20%282008%29",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -11956,8 +11956,8 @@
       "path": "/library/metadata/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -11971,8 +11971,8 @@
       "path": "/library/metadata/1?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -11986,8 +11986,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -12244,8 +12244,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -12540,8 +12540,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -12574,8 +12574,8 @@
       "path": "/library/metadata/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -12589,8 +12589,8 @@
       "path": "/library/metadata/1?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -12604,8 +12604,8 @@
       "path": "/library/metadata/66",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -12724,8 +12724,8 @@
       "path": "/library/metadata/66?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -12846,8 +12846,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -13148,8 +13148,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -13488,8 +13488,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14242,8 +14242,8 @@
      "path": "/library/sections/2/refresh?path=%2Fdata%2Fshows%2FFirefly%20%282002%29%2FSeason%2001",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -14260,8 +14260,8 @@
       "path": "/library/metadata/10",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14275,8 +14275,8 @@
       "path": "/library/metadata/10?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14290,8 +14290,8 @@
       "path": "/library/metadata/7",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14357,8 +14357,8 @@
       "path": "/library/metadata/7?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14424,8 +14424,8 @@
       "path": "/library/metadata/6",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14502,8 +14502,8 @@
       "path": "/library/metadata/6?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14580,8 +14580,8 @@
       "path": "/library/metadata/7/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14754,8 +14754,8 @@
       "path": "/library/metadata/6/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14856,8 +14856,8 @@
       "path": "/library/sections/2/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14922,8 +14922,8 @@
       "path": "/library/sections/2/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -14999,8 +14999,8 @@
       "path": "/library/sections/2/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -15032,8 +15032,8 @@
       "path": "/library/sections/2/all?type=4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -15369,8 +15369,8 @@
       "path": "/library/sections/2/all?type=4&trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -15404,8 +15404,8 @@
       "path": "/library/metadata/10",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -15419,8 +15419,8 @@
       "path": "/library/metadata/10?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -15434,8 +15434,8 @@
       "path": "/library/metadata/7",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -15501,8 +15501,8 @@
       "path": "/library/metadata/7?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -15568,8 +15568,8 @@
       "path": "/library/metadata/6",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -15646,8 +15646,8 @@
       "path": "/library/metadata/6?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -15724,8 +15724,8 @@
       "path": "/library/metadata/7/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -15958,8 +15958,8 @@
       "path": "/library/metadata/6/children",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -16060,8 +16060,8 @@
       "path": "/library/sections/2/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -16126,8 +16126,8 @@
       "path": "/library/sections/2/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -16203,8 +16203,8 @@
       "path": "/library/sections/2/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -16236,8 +16236,8 @@
       "path": "/library/sections/2/all?type=4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -16633,8 +16633,8 @@
       "path": "/library/sections/2/all?type=4&trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -16666,8 +16666,8 @@
       "path": "/library/metadata/67",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -16802,8 +16802,8 @@
       "path": "/library/metadata/67?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -18013,8 +18013,8 @@
      "path": "/:/prefs?autoEmptyTrash=1",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -18029,8 +18029,8 @@
      "path": "/library/sections/1/refresh?path=%2Fdata%2Fmovies%2FSintel%20%282010%29",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -18047,8 +18047,8 @@
       "path": "/library/metadata/3",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -18246,8 +18246,8 @@
       "path": "/library/metadata/3?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -18447,8 +18447,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -18749,8 +18749,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -19089,8 +19089,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -19123,8 +19123,8 @@
       "path": "/library/metadata/3",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -19138,8 +19138,8 @@
       "path": "/library/metadata/3?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -19153,8 +19153,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -19393,8 +19393,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -19660,8 +19660,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -20111,8 +20111,8 @@
      "path": "/library/sections/1/refresh?path=%2Fdata%2Fmovies%2FSintel%20%282010%29",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -20127,8 +20127,8 @@
      "path": "/:/prefs?autoEmptyTrash=0",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -20145,8 +20145,8 @@
       "path": "/library/metadata/3",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -20160,8 +20160,8 @@
       "path": "/library/metadata/3?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -20175,8 +20175,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -20415,8 +20415,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -20682,8 +20682,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -20716,8 +20716,8 @@
       "path": "/library/metadata/3",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -20731,8 +20731,8 @@
       "path": "/library/metadata/3?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -20746,8 +20746,8 @@
       "path": "/library/metadata/68",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -20866,8 +20866,8 @@
       "path": "/library/metadata/68?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -20988,8 +20988,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -21272,8 +21272,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -21583,8 +21583,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -22367,8 +22367,8 @@
      "path": "/library/sections/1/refresh?path=%2Fdata%2Fmovies%2FCosmos%20Laundromat%20%282015%29",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -22385,8 +22385,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -22531,8 +22531,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -22679,8 +22679,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -22963,8 +22963,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -23274,8 +23274,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -23308,8 +23308,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -23456,8 +23456,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -23606,8 +23606,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -23892,8 +23892,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -24205,8 +24205,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -24682,8 +24682,8 @@
      "path": "/library/sections/1/refresh?path=%2Fdata%2Fmovies%2FCosmos%20Laundromat%20%282015%29",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -24700,8 +24700,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -24848,8 +24848,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -24998,8 +24998,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -25284,8 +25284,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -25597,8 +25597,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -25691,8 +25691,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -25837,8 +25837,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -25985,8 +25985,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -26269,8 +26269,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -26580,8 +26580,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -27028,8 +27028,8 @@
      "path": "/library/sections/1/refresh",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -27046,8 +27046,8 @@
       "path": "/library/metadata/17",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -27206,8 +27206,8 @@
       "path": "/library/metadata/17?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -27368,8 +27368,8 @@
       "path": "/library/metadata/66",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -27488,8 +27488,8 @@
       "path": "/library/metadata/66?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -27610,8 +27610,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -27756,8 +27756,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -27904,8 +27904,8 @@
       "path": "/library/metadata/68",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -28024,8 +28024,8 @@
       "path": "/library/metadata/68?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -28146,8 +28146,8 @@
       "path": "/library/metadata/4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -28280,8 +28280,8 @@
       "path": "/library/metadata/4?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -28416,8 +28416,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -28700,8 +28700,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -29011,8 +29011,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -29043,8 +29043,8 @@
       "path": "/library/sections/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -29171,8 +29171,8 @@
       "path": "/library/metadata/17",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -29331,8 +29331,8 @@
       "path": "/library/metadata/17?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -29493,8 +29493,8 @@
       "path": "/library/metadata/66",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -29613,8 +29613,8 @@
       "path": "/library/metadata/66?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -29735,8 +29735,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -29881,8 +29881,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -30029,8 +30029,8 @@
       "path": "/library/metadata/68",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -30149,8 +30149,8 @@
       "path": "/library/metadata/68?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -30271,8 +30271,8 @@
       "path": "/library/metadata/4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -30405,8 +30405,8 @@
       "path": "/library/metadata/4?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -30541,8 +30541,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -30825,8 +30825,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -31136,8 +31136,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -31168,8 +31168,8 @@
       "path": "/library/sections/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -31697,8 +31697,8 @@
      "path": "/library/sections/1/refresh",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -31715,8 +31715,8 @@
       "path": "/library/metadata/17",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -31875,8 +31875,8 @@
       "path": "/library/metadata/17?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -32037,8 +32037,8 @@
       "path": "/library/metadata/66",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -32157,8 +32157,8 @@
       "path": "/library/metadata/66?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -32279,8 +32279,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -32425,8 +32425,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -32573,8 +32573,8 @@
       "path": "/library/metadata/68",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -32693,8 +32693,8 @@
       "path": "/library/metadata/68?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -32815,8 +32815,8 @@
       "path": "/library/metadata/4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -32949,8 +32949,8 @@
       "path": "/library/metadata/4?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -33085,8 +33085,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -33369,8 +33369,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -33680,8 +33680,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -33712,8 +33712,8 @@
       "path": "/library/sections/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -33840,8 +33840,8 @@
       "path": "/library/metadata/17",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -34000,8 +34000,8 @@
       "path": "/library/metadata/17?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -34162,8 +34162,8 @@
       "path": "/library/metadata/66",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -34282,8 +34282,8 @@
       "path": "/library/metadata/66?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -34404,8 +34404,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -34550,8 +34550,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -34698,8 +34698,8 @@
       "path": "/library/metadata/68",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -34818,8 +34818,8 @@
       "path": "/library/metadata/68?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -34940,8 +34940,8 @@
       "path": "/library/metadata/4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -35074,8 +35074,8 @@
       "path": "/library/metadata/4?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -35210,8 +35210,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -35494,8 +35494,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -35805,8 +35805,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -35837,8 +35837,8 @@
       "path": "/library/sections/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -36380,8 +36380,8 @@
      "path": "/library/sections/1/refresh",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -36398,8 +36398,8 @@
       "path": "/library/metadata/17",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -36558,8 +36558,8 @@
       "path": "/library/metadata/17?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -36720,8 +36720,8 @@
       "path": "/library/metadata/66",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -36840,8 +36840,8 @@
       "path": "/library/metadata/66?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -36962,8 +36962,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -37108,8 +37108,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -37256,8 +37256,8 @@
       "path": "/library/metadata/68",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -37376,8 +37376,8 @@
       "path": "/library/metadata/68?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -37498,8 +37498,8 @@
       "path": "/library/metadata/4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -37632,8 +37632,8 @@
       "path": "/library/metadata/4?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -37768,8 +37768,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -38052,8 +38052,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -38363,8 +38363,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -38395,8 +38395,8 @@
       "path": "/library/sections/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -38523,8 +38523,8 @@
       "path": "/library/metadata/17",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -38683,8 +38683,8 @@
       "path": "/library/metadata/17?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -38845,8 +38845,8 @@
       "path": "/library/metadata/66",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -38965,8 +38965,8 @@
       "path": "/library/metadata/66?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -39087,8 +39087,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -39233,8 +39233,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -39381,8 +39381,8 @@
       "path": "/library/metadata/68",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -39501,8 +39501,8 @@
       "path": "/library/metadata/68?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -39623,8 +39623,8 @@
       "path": "/library/metadata/4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -39757,8 +39757,8 @@
       "path": "/library/metadata/4?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -39893,8 +39893,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -40177,8 +40177,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -40488,8 +40488,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -40520,8 +40520,8 @@
       "path": "/library/sections/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -41056,8 +41056,8 @@
      "path": "/:/prefs?autoEmptyTrash=1",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -41072,8 +41072,8 @@
      "path": "/library/sections/1/refresh",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -41088,8 +41088,8 @@
      "path": "/:/prefs?autoEmptyTrash=0",
      "headers": {
       "Accept": "application/json",
-      "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-      "X-Plex-Product": "plexsim-probe",
+      "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+      "X-Plex-Product": "simplex-probe",
       "X-Plex-Token": "<redacted>"
      },
      "status": 200,
@@ -41106,8 +41106,8 @@
       "path": "/library/metadata/17",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -41266,8 +41266,8 @@
       "path": "/library/metadata/17?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -41428,8 +41428,8 @@
       "path": "/library/metadata/66",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -41548,8 +41548,8 @@
       "path": "/library/metadata/66?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -41670,8 +41670,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -41816,8 +41816,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -41964,8 +41964,8 @@
       "path": "/library/metadata/68",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -42084,8 +42084,8 @@
       "path": "/library/metadata/68?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -42206,8 +42206,8 @@
       "path": "/library/metadata/4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -42340,8 +42340,8 @@
       "path": "/library/metadata/4?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -42476,8 +42476,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -42760,8 +42760,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -43071,8 +43071,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -43103,8 +43103,8 @@
       "path": "/library/sections/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -43231,8 +43231,8 @@
       "path": "/library/metadata/17",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -43391,8 +43391,8 @@
       "path": "/library/metadata/17?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -43553,8 +43553,8 @@
       "path": "/library/metadata/66",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -43673,8 +43673,8 @@
       "path": "/library/metadata/66?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -43795,8 +43795,8 @@
       "path": "/library/metadata/18",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -43941,8 +43941,8 @@
       "path": "/library/metadata/18?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -44089,8 +44089,8 @@
       "path": "/library/metadata/68",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -44209,8 +44209,8 @@
       "path": "/library/metadata/68?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -44331,8 +44331,8 @@
       "path": "/library/metadata/4",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -44465,8 +44465,8 @@
       "path": "/library/metadata/4?checkFiles=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -44601,8 +44601,8 @@
       "path": "/library/sections/1/all",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -44885,8 +44885,8 @@
       "path": "/library/sections/1/all?includeGuids=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -45196,8 +45196,8 @@
       "path": "/library/sections/1/all?trash=1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },
@@ -45228,8 +45228,8 @@
       "path": "/library/sections/1",
       "headers": {
        "Accept": "application/json",
-       "X-Plex-Client-Identifier": "plexsim-missing-file-probe",
-       "X-Plex-Product": "plexsim-probe",
+       "X-Plex-Client-Identifier": "simplex-missing-file-probe",
+       "X-Plex-Product": "simplex-probe",
        "X-Plex-Token": "<redacted>"
       }
      },

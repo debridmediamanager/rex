@@ -1,6 +1,6 @@
 # plexscratch42 — a writable reference pinned to 1.42.2
 
-`plexscratch` is a copy of the lab's config and is therefore **1.43.4**. plexsim reports
+`plexscratch` is a copy of the lab's config and is therefore **1.43.4**. simplex reports
 **1.42.2.10156**, and four HANDOVER 3.3 entries (cycles 21, 25, 27, 28) all said the same
 thing: *a writable 1.42.2 copy would settle this.* This is that copy.
 
@@ -31,7 +31,7 @@ docker compose down                # and `rm -rf config` to start over
 - **It cannot** answer a SETTINGS count. It is unclaimed and unsubscribed, so `/:/prefs` answers
   151 rows where zen answers 173, and `/library/sections/prefs?type=1&agent=tv.plex.agents.movie`
   answers 14 where zen and kids both answer 19 — the missing rows are the marker-generation
-  settings and `ratingsSource`. plexsim's fixtures match zen's counts, which are right.
+  settings and `ratingsSource`. simplex's fixtures match zen's counts, which are right.
 - **It cannot** answer anything that needs a CLAIMED server either — cycle 25's
   scrobble-versus-timeline history pair still waits on one.
 

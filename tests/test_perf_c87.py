@@ -25,7 +25,7 @@ bound with it. The fixed servers sit at 0.1 to 2 of that unit; the unfixed ones 
 (a create) to 48 (twenty pairs).
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `PLEXSIM_SERVER=python`.
+the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_perf_c87.py
 """
@@ -45,8 +45,8 @@ from server_command import server_command
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "perf-c87", "Accept": "application/json"}
@@ -189,7 +189,7 @@ def run(port):
 
 
 def main():
-    directory = tempfile.mkdtemp(prefix="plexsim-perf-c87-")
+    directory = tempfile.mkdtemp(prefix="simplex-perf-c87-")
     try:
         process, port = start(catalog(directory))
         try:

@@ -11,7 +11,7 @@
 2. A merge leaves the survivor's `updatedAt` alone (`tests/fixtures/merge_updated_at_s42.json`,
    plexscratch42; plexscratch 1.43.4 agrees). Both servers stamped the merge time.
 
-Starts its own server (native by default, `PLEXSIM_SERVER=python` the oracle) on
+Starts its own server (native by default, `SIMPLEX_SERVER=python` the oracle) on
 `tests/catalog_ui.json`: movie 1012 holds 32 unselected srt subtitles beside a selected eac3,
 episode 1011 (part 10110) two unselected srt subtitles, movies 1008 and 1009 one Media each.
 """
@@ -106,9 +106,9 @@ def main():
     assert all(read["768"]["updatedAt"] == before for read in merge["reads"]), merge["reads"]
 
     port = free_port()
-    env = dict(os.environ, PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
+    env = dict(os.environ, SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
     env.pop("TMDB_KEY", None)
-    env.pop("PLEXSIM_STATE", None)
+    env.pop("SIMPLEX_STATE", None)
     proc = subprocess.Popen(
         server_command("--port", str(port), "--catalog", "tests/catalog_ui.json",
                        "--assert-claimed", "--gdm", "off", root=ROOT),

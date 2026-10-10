@@ -2,14 +2,14 @@
 """Drive the official Plex web client through a real browse sequence.
 
 Everything the client does lands in capture/sessions/<label>.jsonl via the
-proxy. That file is the reference corpus: plexsim is correct when it answers the
+proxy. That file is the reference corpus: simplex is correct when it answers the
 *same* requests with the same shapes. Requests are never synthesised here -- the
 point is to record what the real client actually sends, paging params and all,
 because a recording taken without the client's own params hides exactly the
 fields that turn out to be missing.
 
 The walk deliberately ends at show -> season -> episode. That is the path that
-hid the longest bug in plexsim (no Seasons block), and it is the one whose
+hid the longest bug in simplex (no Seasons block), and it is the one whose
 /children requests carry the paging params that matter.
 """
 import argparse, collections, json, os, shutil, sys, time, urllib.parse, urllib.request
@@ -83,7 +83,7 @@ def summarise(path):
     print("hosts:")
     for h, c in hosts.most_common(8):
         print(f"  {c:>4}  {h}")
-    print("server endpoints (the corpus plexsim must match):")
+    print("server endpoints (the corpus simplex must match):")
     for p, c in sorted(endpoints.items()):
         print(f"  {c:>3}  {p}")
 

@@ -1,10 +1,10 @@
-"""Keep a plexsim registration visible to Plex clients.
+"""Keep a simplex registration visible to Plex clients.
 
 A device registered with `PUT /devices/{id}?Connection[][uri]=...` appears in
 `/api/v2/resources` -- the list every Plex client reads to find servers -- and
 then STOPS appearing.  The device row carries `presence="0"` from the moment it
 is written, because presence is something a real PMS earns by maintaining a live
-relationship with plex.tv, not something the PUT confers.  Measured: plexsim
+relationship with plex.tv, not something the PUT confers.  Measured: simplex
 vanished from the resource list within minutes of registering, after which
 python-plexapi's discovery could not find it at all; re-announcing brought it
 straight back.
@@ -39,7 +39,7 @@ import xml.etree.ElementTree as ET
 
 from claim import plextv_url, read_body
 
-logger = logging.getLogger("plexsim.heartbeat")
+logger = logging.getLogger("simplex.heartbeat")
 
 # MEASURED 2026-09-11: a registration expires ~40 minutes after its last PUT.
 # One announce at 11:18:37 was still visible at t+39 min and gone at t+40 min,
@@ -55,14 +55,14 @@ DEFAULT_INTERVAL = 600
 # Where a real PMS announces, and the identity it carries. Read out of the harness's
 # `capture/outbound.jsonl` on kids: three `PUT`s, byte-identical, to `servers.plex.tv`.
 ANNOUNCE_BASE = "https://servers.plex.tv"
-# The version plexsim's own `/identity` reports. Announcing a different one tells
+# The version simplex's own `/identity` reports. Announcing a different one tells
 # plex.tv something no client reading the server would ever see.
-DEFAULT_VERSION = "1.42.2.10156-plexsim"
+DEFAULT_VERSION = "1.42.2.10156-simplex"
 DEFAULT_PLATFORM = "Linux"
 DEFAULT_PLATFORM_VERSION = "6.1"
 DEFAULT_DEVICE = "PC"
 DEFAULT_MODEL = "x86_64"
-DEFAULT_VENDOR = "plexsim"
+DEFAULT_VENDOR = "simplex"
 
 
 def resolve_device_id(token, *, name=None, client_identifier=None):
@@ -90,7 +90,7 @@ def resolve_device_id(token, *, name=None, client_identifier=None):
     return None
 
 
-def announce(token, machine_identifier, url, *, name="plexsim",
+def announce(token, machine_identifier, url, *, name="simplex",
              version=DEFAULT_VERSION, platform=DEFAULT_PLATFORM,
              platform_version=DEFAULT_PLATFORM_VERSION, device=DEFAULT_DEVICE,
              model=DEFAULT_MODEL, vendor=DEFAULT_VENDOR, https_enabled=True):
@@ -104,7 +104,7 @@ def announce(token, machine_identifier, url, *, name="plexsim",
             ?Connection[][uri]=<uri>&httpsEnabled=1&httpsRequired=0
             &dnsRebindingProtection=0&X-Plex-Token=<token>
 
-    with an empty body and thirteen headers in a fixed order. Four things plexsim had
+    with an empty body and thirteen headers in a fixed order. Four things simplex had
     wrong, each of them measured here:
 
     * the HOST is `servers.plex.tv`, not `plex.tv`;
@@ -119,7 +119,7 @@ def announce(token, machine_identifier, url, *, name="plexsim",
 
     A real PMS also sends its whole identity -- `User-Agent: PlexMediaServer/<version>`,
     `Accept: */*` (not `application/xml`), `Accept-Encoding: gzip`, and eight `X-Plex-*`
-    headers led by an `X-Plex-Client-Identifier` equal to the machineIdentifier. plexsim
+    headers led by an `X-Plex-Client-Identifier` equal to the machineIdentifier. simplex
     sent six headers and none of the identifying ones.
 
     Returns the parsed Device element.
@@ -168,7 +168,7 @@ def is_visible(token, name):
         plextv_url("https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&includeIPv6=1"),
         headers={
             "X-Plex-Token": token,
-            "X-Plex-Client-Identifier": "plexsim-heartbeat",
+            "X-Plex-Client-Identifier": "simplex-heartbeat",
             "Accept": "application/json",
         },
     )
@@ -184,7 +184,7 @@ def is_visible(token, name):
 class Heartbeat:
     """Re-announces the registration on an interval, on a daemon thread."""
 
-    def __init__(self, token, machine_identifier, url, *, name="plexsim",
+    def __init__(self, token, machine_identifier, url, *, name="simplex",
                  interval=DEFAULT_INTERVAL, version=DEFAULT_VERSION,
                  platform=DEFAULT_PLATFORM, platform_version=DEFAULT_PLATFORM_VERSION,
                  claim=None):
@@ -206,7 +206,7 @@ class Heartbeat:
     def start(self):
         if self._thread is not None:
             return
-        self._thread = threading.Thread(target=self._run, name="plexsim-heartbeat", daemon=True)
+        self._thread = threading.Thread(target=self._run, name="simplex-heartbeat", daemon=True)
         self._thread.start()
         logger.info(
             "heartbeat every %ds for machine %s -> %s", self._interval, self._machine, self._url
@@ -236,7 +236,7 @@ class Heartbeat:
                 if not is_visible(self._token, self._name):
                     logger.warning(
                         "announced but NOT visible in /api/v2/resources -- "
-                        "clients cannot see plexsim right now"
+                        "clients cannot see simplex right now"
                     )
             except Exception as error:
                 self.failures += 1

@@ -76,7 +76,7 @@ def main():
             except OSError:
                 time.sleep(0.1)
         else:
-            raise SystemExit("plexsim did not start")
+            raise SystemExit("simplex did not start")
 
         failures = []
         for case in cases:

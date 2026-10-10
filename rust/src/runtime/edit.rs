@@ -1343,7 +1343,7 @@ impl Runtime {
                 Err(error) => {
                     self.save_if_dirty();
                     warning!("EDIT REFUSED: {}", error.detail);
-                    return Response::error(error.status, &format!("plexsim: {}", error.detail));
+                    return Response::error(error.status, &format!("simplex: {}", error.detail));
                 }
             };
             let Some((row, outcome)) = edited else {

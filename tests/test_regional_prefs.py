@@ -12,8 +12,8 @@ from server_command import server_command
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.environ.get("PLEXSIM_TEST_ROOT", os.path.dirname(HERE))
-CATALOGUE = os.environ.get("PLEXSIM_REGIONAL_PREFS_FIXTURE",
+ROOT = os.environ.get("SIMPLEX_TEST_ROOT", os.path.dirname(HERE))
+CATALOGUE = os.environ.get("SIMPLEX_REGIONAL_PREFS_FIXTURE",
                            os.path.join(ROOT, "regional_server_prefs.json"))
 BASE_PREFS = os.path.join(ROOT, "server_prefs.json")
 VERSION_142_OMITS = {"AllowLegacyAgents", "CLDriver"}
@@ -76,7 +76,7 @@ def main():
             except OSError:
                 time.sleep(0.1)
         else:
-            print("FAIL plexsim did not start")
+            print("FAIL simplex did not start")
             return 1
 
         failures = []

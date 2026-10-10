@@ -7,14 +7,14 @@
   (`tests/fixtures/c87_w_provider_ids.json`). The oracle had this since cycle 44; the
   native port 404'd all of it.
 - 4.162.1's section editor sends `action=create|update` to `/system/agents?mediaType=N`
-  and `/system/scanners/{N}`. 1.42.2 (zen, the version plexsim reports) ignores it; only
+  and `/system/scanners/{N}`. 1.42.2 (zen, the version simplex reports) ignores it; only
   1.43.4 switches to a different list. Guards, measured on zen 2026-10-01.
 - The clearLogo/squareArt artwork panes are gated on a server `shortVersion` of 1.43.0,
   so a 1.42.2 server is never asked; its answers are pinned anyway (zen: an empty
   `clearLogos` container, a 404 `squareArts`).
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `PLEXSIM_SERVER=python`.
+default, the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_followups_c87_w.py
 """
@@ -34,8 +34,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "c87_w_provider_ids.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"Accept": "application/json", "X-Plex-Client-Identifier": "followups-c87-w",
            "X-Plex-Product": "Plex Web", "X-Plex-Version": "4.162.1",
@@ -108,7 +108,7 @@ def provider_ids(port):
             check("%s is a %d (zen)" % (exchange["path"], exchange["status"]),
                   status == exchange["status"], status)
             continue
-        # The rows are the four built-in modern agents, which plexsim holds under zen's
+        # The rows are the four built-in modern agents, which simplex holds under zen's
         # ids for movie/series/music, so the whole one-row container is comparable.
         check("%s is zen's one-row container" % exchange["path"],
               status == exchange["status"] and body == want, (status, body))

@@ -1,4 +1,4 @@
-# plexsim capabilities
+# simplex capabilities
 
 This is the feature inventory of the current movie/TV server, based on the code
 and recorded measurements through **cycle 95** (reopen triggers re-checked
@@ -6,7 +6,7 @@ and recorded measurements through **cycle 95** (reopen triggers re-checked
 implemented behavior and its prerequisites, not the current health or
 configuration of a deployed instance.
 
-plexsim presents a Plex library that zurg serves and streams the original media
+simplex presents a Plex library that zurg serves and streams the original media
 from zurg's WebDAV without keeping complete media files locally. Its largest limit
 is **direct play only**. Library changes last across restarts: a state file
 beside the catalog is kept by default, and `--no-state` turns that off.
@@ -145,7 +145,7 @@ Sources: [filters.py](filters.py), [spellfix.py](spellfix.py),
 
 ## Playback, downloads, and queues
 
-- Direct-play original media by proxying zurg's WebDAV bytes through plexsim, or
+- Direct-play original media by proxying zurg's WebDAV bytes through simplex, or
   redirecting the client to the provider URL zurg's signed link names.
 - Byte-range requests for seeking and partial reads.
 - Original-file downloading.
@@ -259,7 +259,7 @@ Source: [server.py](server.py).
 - Stream Console logs and provide a downloadable log archive.
 
 Statistics and the device table persist across restarts with `--state`, and are
-otherwise process-local. Live sessions never outlive the process. Redirected CDN traffic is outside plexsim's byte
+otherwise process-local. Live sessions never outlive the process. Redirected CDN traffic is outside simplex's byte
 counters; resource-memory values are placeholders. There is no persistent Plex
 database to export, and termination cannot recall bytes already delivered or a
 CDN URL already handed to a client.
@@ -316,8 +316,8 @@ Sources: [server.py](server.py), [xmlout.py](xmlout.py),
 ## Persistence
 
 The server saves what clients change to a SQLite database and restores it at start:
-by default `plexsim.db` beside a JSON catalog, or the catalog's own database when the
-catalog is one (below), or `--state FILE` / `PLEXSIM_STATE`. The Python server keeps
+by default `simplex.db` beside a JSON catalog, or the catalog's own database when the
+catalog is one (below), or `--state FILE` / `SIMPLEX_STATE`. The Python server keeps
 a pickle (`state.pickle`) instead. Each collection -- the catalog rows, history,
 lists, devices, statistics -- is stored a row per element, and a save writes only the
 elements that changed, in one transaction: one rating on a 20,000-row library writes
@@ -329,7 +329,7 @@ changed device name or platform, is on disk before it is answered, so a
 crash loses nothing a client was told succeeded -- a real PMS keeps writes answered a
 fraction of a second before a hard kill. Everything else is saved within about two
 seconds, every minute regardless, and on SIGTERM or Ctrl-C. `--no-state` (or an empty
-`PLEXSIM_STATE`) turns it off, which is how the test suites run: they rely on a restart
+`SIMPLEX_STATE`) turns it off, which is how the test suites run: they rely on a restart
 undoing their writes. A second server started on the same catalog does not share the
 first one's default file: it refuses to start, printing what a second PMS on a served
 data directory prints (`Plex Media Server is already running. Will not start...`) and
@@ -360,9 +360,9 @@ admits only plain data, so it cannot name code to run.
 A library a scan built is the state's own, and is kept row by row whatever the catalog
 file says: a changed catalog file then only adds its new rows.
 
-The catalog can be a database too. `build_catalog.py --seed --out plexsim.db` writes one,
-and `build_catalog.py --convert catalog.json --out plexsim.db` moves an existing JSON
-catalog into one. Run with `--catalog plexsim.db`: both servers read it, it serves
+The catalog can be a database too. `build_catalog.py --seed --out simplex.db` writes one,
+and `build_catalog.py --convert catalog.json --out simplex.db` moves an existing JSON
+catalog into one. Run with `--catalog simplex.db`: both servers read it, it serves
 exactly what its JSON source serves, and the native state then lives in the same
 file. A database records the digest of the JSON it came from, so a state saved over
 `catalog.json` carries over unchanged. Rebuilding the catalog into the same database
@@ -392,19 +392,19 @@ Sources: [store.rs](rust/src/store.rs), [catalogdb.py](catalogdb.py),
 |---|---|
 | Stream media and build the library from zurg | `ZURG_URL` (with `ZURG_USER`/`ZURG_PASSWORD` when zurg sets a username), `--zurg-mount` (zurg's `mount_path`), library `Location`s under it |
 | Start and stop servers on demand | `manager.py serve`; each server's keys, catalog and options in its configuration |
-| Media details of scanned files | zurg's stored ffprobe (zurg probes every new release once `plexsim_url` is set) |
+| Media details of scanned files | zurg's stored ffprobe (zurg probes every new release once `simplex_url` is set) |
 | TMDB enrichment and live match candidates | `TMDB_KEY` |
 | Genuine Plex metadata IDs for Android details | `PLEX_TOKEN` (scans, `build_catalog.py --relink`) |
 | Serve Plex Web | An extracted bundle at `--web-root` |
-| Enforce request authentication | `--token` or `PLEXSIM_TOKEN` |
+| Enforce request authentication | `--token` or `SIMPLEX_TOKEN` |
 | Report claimed state for isolated tests | `--assert-claimed`; this does not perform a real claim |
 | Register a public endpoint with plex.tv | `--announce-url`, `PLEX_TOKEN`, and a reachable configured endpoint |
 | Proxy or redirect media | `--part-mode proxy` or `--part-mode redirect` |
 | Answer LAN discovery | `--gdm on`, or `auto` when serving on port 32400 |
 | Serve HTTPS | `--tls-cert` and the corresponding key via `--tls-key` or the certificate file |
-| Keep library changes across restarts | On by default (`plexsim.db` beside the catalog, or the catalog's own database); `--state FILE` or `PLEXSIM_STATE` to move it, `--no-state` to turn it off |
-| Keep the catalog in a database | `build_catalog.py --seed --out plexsim.db`, or `--convert catalog.json --out plexsim.db`; then `--catalog plexsim.db` |
-| Import owner cloud watch/rating state | Real claim, account consent, and `PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64` service-token setup |
+| Keep library changes across restarts | On by default (`simplex.db` beside the catalog, or the catalog's own database); `--state FILE` or `SIMPLEX_STATE` to move it, `--no-state` to turn it off |
+| Keep the catalog in a database | `build_catalog.py --seed --out simplex.db`, or `--convert catalog.json --out simplex.db`; then `--catalog simplex.db` |
+| Import owner cloud watch/rating state | Real claim, account consent, and `SIMPLEX_SCROBBLING_DECRYPT_SECRET_B64` service-token setup |
 
 Plex and zurg credentials serve different purposes. Possessing a Plex
 token for catalog identification does not by itself claim or publish the server.
@@ -467,7 +467,7 @@ Evidence: [current status and coverage](HANDOVER.md),
 The server is the native Rust binary built from `rust/`. The Python server
 (`server.py` and the modules it imports, linked as sources above) stays in the
 tree as the measured oracle the native server is ported from; the black-box
-suites run against either (`PLEXSIM_SERVER=python` selects the oracle). The last
+suites run against either (`SIMPLEX_SERVER=python` selects the oracle). The last
 Python-only `main` is the `python-server` branch.
 
 On 2026-09-30 the native server matched the oracle check for check on the UI
@@ -481,7 +481,7 @@ not yet run as the deployed instance: that trial needs a claimed test identity o
 plex.tv.
 
 Known native differences from the oracle: the native state is a SQLite database
-(`plexsim.db`) and does not read the oracle's pickle (`state.pickle`), and a
+(`simplex.db`) and does not read the oracle's pickle (`state.pickle`), and a
 refused CDN URL is dropped at once where the oracle keeps it for its expiry (the
 same answer, one fewer dead read).
 

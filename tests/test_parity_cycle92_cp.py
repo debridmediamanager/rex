@@ -7,7 +7,7 @@ second Plex Media Server started on the data directory another one is serving pr
 touching the pid file or the log. There is never a second server whose writes live
 only in memory.
 
-plexsim's default state file (`plexsim.db`/`state.pickle` beside the catalog) is that
+simplex's default state file (`simplex.db`/`state.pickle` beside the catalog) is that
 data directory. A second server that found it held ran WITHOUT a state file, and its
 clients saw what a PMS never shows: everything they wrote (a rating, a watched flag,
 a playlist, the server's name) gone after a restart; and when the second server was
@@ -16,7 +16,7 @@ writes instead of its own. Now it refuses to start, as PMS does. An explicit `--
 or `--no-state` names a different arrangement and still starts.
 
 Drives real server processes (`tests/server_command.py`): the native binary by
-default, the oracle with `PLEXSIM_SERVER=python`.
+default, the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_parity_cycle92_cp.py
 """
@@ -75,8 +75,8 @@ class Instance:
         if not args:
             command.remove("--no-state")
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-                   PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
-        for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+                   SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
+        for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
             env.pop(name, None)
         self.log = tempfile.TemporaryFile()
         self.proc = subprocess.Popen(command, cwd=ROOT, env=env, stdout=self.log,
@@ -116,7 +116,7 @@ def item(instance, key):
 
 
 def main():
-    work = tempfile.mkdtemp(prefix="plexsim-c92cp-")
+    work = tempfile.mkdtemp(prefix="simplex-c92cp-")
     catalog = os.path.join(work, "catalog.json")
     shutil.copy(os.path.join(HERE, "catalog_ui.json"), catalog)
     started = []

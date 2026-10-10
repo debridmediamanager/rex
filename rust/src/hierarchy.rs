@@ -58,8 +58,10 @@ fn sha1_hex(seed: &str) -> String {
     format!("{:x}", hasher.finalize())
 }
 pub fn uuid(seed: &str) -> String {
+    // "plexsim" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
     sha1_hex(&format!("plexsim/{}", seed))
 }
+// "plexsim" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
 pub fn plex_guid(kind: &str, seed: &str) -> String {
     format!(
         "plex://{}/{}",
@@ -290,6 +292,7 @@ pub fn stored_sort_title(row: &Row) -> String {
     }
 }
 pub fn person_tag_key(name: &str) -> String {
+    // "plexsim" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
     sha1_hex(&format!("plexsim-person:{}", name))[..24].to_string()
 }
 pub const DEFAULT_ULTRABLUR: &[(&str, &str)] = &[
@@ -676,7 +679,7 @@ fn fill_real(rows: &mut [Value]) {
         if kind == "show" {
             let section = str_value(row, "librarySectionID").unwrap_or_default();
             row.entry("Location")
-                .or_insert(json!([{"path":format!("/plexsim/{}/{}",section,rk)}]));
+                .or_insert(json!([{"path":format!("/simplex/{}/{}",section,rk)}]));
         }
         if kind == "show" || kind == "movie" {
             let title = str_value(row, "title").unwrap_or_default();

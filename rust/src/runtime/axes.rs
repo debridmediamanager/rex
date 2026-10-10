@@ -55,7 +55,7 @@ const SECONDARY_TITLES: &[(&str, &str)] = &[
     ("userRating", "By Rating"),
 ];
 
-/// Cycle 44: 1.43.4 answers these four and 1.42.2 -- the build plexsim reports -- 404s.
+/// Cycle 44: 1.43.4 answers these four and 1.42.2 -- the build simplex reports -- 404s.
 const SECONDARY_MEDIA_1_43: &[&str] = &["videoCodec", "audioCodec", "subtitleCodec", "audioLayout"];
 const SECONDARY_MEDIA: &[&str] = &["resolution", "audioLanguage", "subtitleLanguage"];
 
@@ -390,7 +390,7 @@ impl Runtime {
             .collect::<Vec<_>>();
         let (page, paged, start, total) = match page_window(rows, query) {
             Ok(window) => window,
-            Err(status) => return Response::error(status, "plexsim: bad container parameter"),
+            Err(status) => return Response::error(status, "simplex: bad container parameter"),
         };
         let show = section.get("type").and_then(Value::as_str) == Some("show");
         let mut fields = Map::new();
@@ -470,12 +470,12 @@ impl Runtime {
         let is_field = lookup(SECONDARY_FIELDS, leaf).is_some();
         if leaf == "firstCharacter" {
             if let Some(status) = Self::axis_type_refusal(query, 500, 500) {
-                return Some(Response::error(status, "plexsim: bad type"));
+                return Some(Response::error(status, "simplex: bad type"));
             }
             let rows = self.axis_typed_rows(section_id, query, pairs);
             let rows = match self.axis_filters(rows, pairs, section) {
                 Ok(rows) => rows,
-                Err(status) => return Some(Response::error(status, "plexsim: bad filter")),
+                Err(status) => return Some(Response::error(status, "simplex: bad filter")),
             };
             // Cycle 16: the AXIS counts a season or an episode under its SHOW's sort
             // title; cycle 41: every ASCII non-letter is counted under `#`, while
@@ -517,12 +517,12 @@ impl Runtime {
             // cannot parse -- 500 everywhere, and 400 on `year` alone.
             let refusal = if leaf == "year" { 400 } else { 500 };
             if let Some(status) = Self::axis_type_refusal(query, refusal, refusal) {
-                return Some(Response::error(status, "plexsim: bad type"));
+                return Some(Response::error(status, "simplex: bad type"));
             }
             return Some(self.secondary_directory(section_id, section, leaf, query, pairs));
         }
         if SECONDARY_MEDIA_1_43.contains(&leaf) {
-            return Some(Response::error(404, "plexsim: not found"));
+            return Some(Response::error(404, "simplex: not found"));
         }
         if SECONDARY_MEDIA.contains(&leaf) {
             return Some(self.media_axis(section_id, section, leaf, pairs));
@@ -548,7 +548,7 @@ impl Runtime {
             // `type=` that does not parse is a 500 -- except on `narrator`.
             if !TYPE_BLIND_AXES.contains(&leaf) {
                 if let Some(status) = Self::axis_type_refusal(query, 500, 500) {
-                    return Some(Response::error(status, "plexsim: bad type"));
+                    return Some(Response::error(status, "simplex: bad type"));
                 }
             }
             return Some(Response::json(
@@ -604,7 +604,7 @@ impl Runtime {
         let rows = self.axis_typed_rows(section_id, query, pairs);
         let mut rows = match self.axis_filters(rows, pairs, section) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "plexsim: bad filter"),
+            Err(status) => return Response::error(status, "simplex: bad filter"),
         };
         // Cycle 83, measured on kids and zen: a TAG-TABLE axis under any leaf-count
         // filter is EMPTY (any value and operator) where a column axis applies it.
@@ -790,7 +790,7 @@ impl Runtime {
             .collect::<Vec<_>>();
         let rows = match self.axis_filters(rows, &without_type, section) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "plexsim: bad filter"),
+            Err(status) => return Response::error(status, "simplex: bad filter"),
         };
         let mut seen: Vec<(String, Option<String>)> = Vec::new();
         for row in &rows {
@@ -910,7 +910,7 @@ impl Runtime {
     ) -> Response {
         let wanted = percent_decode(raw_key);
         if let Some(status) = Self::axis_type_refusal(query, 500, 500) {
-            return Response::error(status, "plexsim: bad type");
+            return Response::error(status, "simplex: bad type");
         }
         let rows = self
             .axis_typed_rows(section_id, query, pairs)
@@ -922,7 +922,7 @@ impl Runtime {
             .collect::<Vec<_>>();
         let rows = match self.axis_filters(rows, pairs, section) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "plexsim: bad filter"),
+            Err(status) => return Response::error(status, "simplex: bad filter"),
         };
         let sort = query
             .get("sort")
@@ -931,7 +931,7 @@ impl Runtime {
             .unwrap_or("titleSort");
         let rows = match self.sort_rows(rows, Some(sort)) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "plexsim: unsupported sort"),
+            Err(status) => return Response::error(status, "simplex: unsupported sort"),
         };
         self.axis_listing(
             section_id,
@@ -976,7 +976,7 @@ impl Runtime {
                     })
                 });
                 let Some(title) = title else {
-                    return Some(Response::error(404, "plexsim: not found"));
+                    return Some(Response::error(404, "simplex: not found"));
                 };
                 rows.retain(|row| {
                     TAG_FIELDS.iter().any(|column| {
@@ -993,7 +993,7 @@ impl Runtime {
             }
             "year" | "decade" | "userRating" => {
                 if !wanted.bytes().all(|b| b.is_ascii_digit()) || wanted.is_empty() {
-                    return Some(Response::error(404, "plexsim: not found"));
+                    return Some(Response::error(404, "simplex: not found"));
                 }
                 let number = wanted.parse::<i64>().unwrap_or(0);
                 if kind == "year" {
@@ -1076,7 +1076,7 @@ impl Runtime {
         }
         let rows = match self.axis_filters(rows, pairs, section) {
             Ok(rows) => rows,
-            Err(status) => return Some(Response::error(status, "plexsim: bad filter")),
+            Err(status) => return Some(Response::error(status, "simplex: bad filter")),
         };
         let sort = query
             .get("sort")
@@ -1085,7 +1085,7 @@ impl Runtime {
             .unwrap_or("titleSort");
         let rows = match self.sort_rows(rows, Some(sort)) {
             Ok(rows) => rows,
-            Err(status) => return Some(Response::error(status, "plexsim: unsupported sort")),
+            Err(status) => return Some(Response::error(status, "simplex: unsupported sort")),
         };
         Some(self.axis_listing(section_id, section, rows, query, &title2, true))
     }
@@ -1102,7 +1102,7 @@ impl Runtime {
         pairs: &[(String, String)],
     ) -> Response {
         if let Some(status) = Self::axis_type_refusal(query, 500, 500) {
-            return Response::error(status, "plexsim: bad type");
+            return Response::error(status, "simplex: bad type");
         }
         let own = if section.get("type").and_then(Value::as_str) == Some("show") {
             2
@@ -1125,11 +1125,11 @@ impl Runtime {
         };
         let rows = match self.axis_filters(rows, pairs, section) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "plexsim: bad filter"),
+            Err(status) => return Response::error(status, "simplex: bad filter"),
         };
         if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
             if let Err(status) = self.sort_rows(rows.clone(), Some(sort)) {
-                return Response::error(status, "plexsim: unsupported sort");
+                return Response::error(status, "simplex: unsupported sort");
             }
         }
         let rows = self

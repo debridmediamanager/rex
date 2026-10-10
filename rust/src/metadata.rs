@@ -18,6 +18,7 @@ fn sha1_hex(text: &str) -> String {
     format!("{:x}", h.finalize())
 }
 
+// "plexsim" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
 pub fn plex_guid(kind: &str, seed: &str) -> String {
     format!(
         "plex://{}/{}",

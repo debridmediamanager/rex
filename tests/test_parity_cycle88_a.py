@@ -27,8 +27,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "c88_a_agent_languages_zen.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 
 results = []
@@ -86,7 +86,7 @@ def main():
     try:
         for language, documents in sorted(fixture["documents"].items()):
             headers = dict(fixture["request_headers"], **{"X-Plex-Language": language,
-                                                          "X-Plex-Token": "plexsimtok"})
+                                                          "X-Plex-Token": "simplextok"})
             wrong = []
             for media_type in ("1", "2", "8", None):
                 path = "/system/agents" + ("?mediaType=" + media_type if media_type else "")

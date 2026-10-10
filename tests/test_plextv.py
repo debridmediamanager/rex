@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""plexsim's plex.tv integration, black-box, against a LOCAL stub of plex.tv.
+"""simplex's plex.tv integration, black-box, against a LOCAL stub of plex.tv.
 
-Drives a real server process (`tests/server_command.py`: unset `PLEXSIM_SERVER` is the
-native binary, `PLEXSIM_SERVER=python` the Python oracle) through the four things a deployment
+Drives a real server process (`tests/server_command.py`: unset `SIMPLEX_SERVER` is the
+native binary, `SIMPLEX_SERVER=python` the Python oracle) through the four things a deployment
 does with plex.tv:
 
 * announcing its connection URI on `--heartbeat-interval` (heartbeat.py),
@@ -11,7 +11,7 @@ does with plex.tv:
   (accountstate.py), and
 * a restart that keeps the claim (`claim_state.json` beside the catalog).
 
-Nothing here reaches plex.tv. `PLEXSIM_PLEXTV_URL` sends every plex.tv,
+Nothing here reaches plex.tv. `SIMPLEX_PLEXTV_URL` sends every plex.tv,
 servers.plex.tv and scrobbles.plex.tv request to the stub below as
 `<stub>/<host><path>`. The claim token, the account token and the server token are
 literal placeholders; a real claim or announce from a test identity is what reset the
@@ -28,9 +28,9 @@ plex.tv traffic recorded: the stub replays that recording's pubsub events and it
 gzips an answer whenever the request asks for gzip, as plex.tv did there.
 
     python3 tests/test_plextv.py                      # the native server
-    PLEXSIM_SERVER=python python3 tests/test_plextv.py   # the Python oracle
+    SIMPLEX_SERVER=python python3 tests/test_plextv.py   # the Python oracle
 
-`PLEXSIM_TEST_PORT` picks the first of the three ports it binds (server, restarted
+`SIMPLEX_TEST_PORT` picks the first of the three ports it binds (server, restarted
 server, stub); the default asks the OS for free ones.
 """
 import base64
@@ -65,7 +65,7 @@ import test_accountstate  # noqa: E402  (its synthetic encrypted-service helpers
 CATALOG = os.path.join(HERE, "catalog_ui.json")
 with open(os.path.join(HERE, "fixtures", "plextv_registration_s1422.json")) as _handle:
     RECORDED = json.load(_handle)
-# plex.tv's list of the tokens a claimed server lets in, as it answered for plexsim-e2e, and
+# plex.tv's list of the tokens a claimed server lets in, as it answered for simplex-e2e, and
 # zen's own PMS re-reading it for an unknown token (the 6 s window is measured there).
 with open(os.path.join(HERE, "fixtures", "plextv_access_tokens_s1422.json")) as _handle:
     ACCESS = json.load(_handle)
@@ -73,8 +73,8 @@ with open(os.path.join(HERE, "fixtures", "plextv_access_tokens_s1422.json")) as 
 with open(os.path.join(HERE, "fixtures", "pms_announce_connections_s1422.json")) as _handle:
     CONNECTIONS = json.load(_handle)
 MACHINE = "f1x7u4e0000000000000000000000000000000f1"
-FRIENDLY = "plexsim-ui-fixture"
-VERSION = "1.42.2.10156-plexsim"
+FRIENDLY = "simplex-ui-fixture"
+VERSION = "1.42.2.10156-simplex"
 CLAIM_TOKEN = "claim-STUB-CLAIM-TOKEN"
 ACCOUNT_TOKEN = "ACCOUNT-TOKEN-STUB"
 SERVER_TOKEN = "SERVER-TOKEN-STUB"
@@ -86,9 +86,9 @@ ACCESS_WINDOW = 6
 OWNER = "stubowner"
 EMAIL = "owner@stub.invalid"
 ACCOUNT_ID = 42
-ANNOUNCE_URL = "https://plexsim.stub.invalid"
+ANNOUNCE_URL = "https://simplex.stub.invalid"
 # A second connection (a public one, as a Funnel hostname is), announced beside the first.
-ANNOUNCE_URLS = ANNOUNCE_URL + ",https://plexsim-public.stub.invalid:8443"
+ANNOUNCE_URLS = ANNOUNCE_URL + ",https://simplex-public.stub.invalid:8443"
 SECRET = bytes(range(32))
 WATCHED_KEY, WATCHED_GUID = "1007", "plex://movie/520a1a3c2c634f2594808ee9"
 UNPLAYED_GUID = "plex://movie/520a1a3c2c634f2594808ee9-fixture1008"
@@ -114,14 +114,14 @@ IDENTITY = [
 ]
 
 # What a real PMS sends on every claim and registration call, in its order, with
-# plexsim's own identity values (claim.Claim.pms_headers).
+# simplex's own identity values (claim.Claim.pms_headers).
 PMS_HEADERS = [
     ("user-agent", "PlexMediaServer/%s" % VERSION), ("accept", "*/*"),
     ("accept-encoding", "gzip"), ("x-plex-client-identifier", MACHINE),
     ("x-plex-version", VERSION), ("x-plex-provides", "server"), ("x-plex-platform", "Linux"),
     ("x-plex-product", "Plex Media Server"), ("x-plex-platform-version", "6.1"),
     ("x-plex-device-name", FRIENDLY), ("x-plex-device", "PC"), ("x-plex-model", "x86_64"),
-    ("x-plex-device-vendor", "plexsim"),
+    ("x-plex-device-vendor", "simplex"),
 ]
 
 
@@ -353,9 +353,9 @@ class Instance:
                                  "--account-state-interval", 3600, *extra, root=ROOT)
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
                    PLEX_TOKEN=ACCOUNT_TOKEN,
-                   PLEXSIM_PLEXTV_URL="http://127.0.0.1:%d" % stub_port,
-                   PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64=base64.b64encode(SECRET).decode())
-        for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+                   SIMPLEX_PLEXTV_URL="http://127.0.0.1:%d" % stub_port,
+                   SIMPLEX_SCROBBLING_DECRYPT_SECRET_B64=base64.b64encode(SECRET).decode())
+        for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
             env.pop(name, None)
         self.log = tempfile.TemporaryFile()
         self.proc = subprocess.Popen(command, cwd=ROOT, env=env,
@@ -368,7 +368,7 @@ class Instance:
                 if self.proc.poll() is not None:
                     break
                 time.sleep(0.1)
-        raise SystemExit("plexsim did not start:\n" + self.output())
+        raise SystemExit("simplex did not start:\n" + self.output())
 
     def request(self, method, path, raw=False, token=None):
         headers = {"Accept": "application/json", "X-Plex-Client-Identifier": "plextv-suite",
@@ -487,12 +487,12 @@ def pref(body, name):
 
 
 def main():
-    base = os.environ.get("PLEXSIM_TEST_PORT")
+    base = os.environ.get("SIMPLEX_TEST_PORT")
     ports = [int(base) + offset for offset in range(3)] if base else \
         [free_port(), free_port(), free_port()]
     stub = Stub(ports[2])
     threading.Thread(target=stub.serve_forever, daemon=True).start()
-    directory = tempfile.mkdtemp(prefix="plexsim-plextv-")
+    directory = tempfile.mkdtemp(prefix="simplex-plextv-")
     shutil.copy(CATALOG, os.path.join(directory, "catalog.json"))
     claim_file = os.path.join(directory, "claim_state.json")
     features = ",".join(sorted(set(NAMED_FEATURES.split(",")) | set(FEATURE_UUIDS)))
@@ -520,7 +520,7 @@ def main():
                       ("x-plex-product", "Plex Media Server"),
                       ("x-plex-platform-version", "6.1"), ("x-plex-device-name", FRIENDLY),
                       ("x-plex-device", "PC"), ("x-plex-model", "x86_64"),
-                      ("x-plex-device-vendor", "plexsim")], sent(put))
+                      ("x-plex-device-vendor", "simplex")], sent(put))
             gap = announces[1]["at"] - announces[0]["at"]
             check("renewal follows the interval, not a busy loop", 1.0 <= gap <= 6.0, gap)
         visible = stub.taken("plex.tv", "/api/v2/resources", "GET")
@@ -528,7 +528,7 @@ def main():
               visible and visible[0]["query"] == [("includeHttps", "1"), ("includeRelay", "1"),
                                                  ("includeIPv6", "1")]
               and sent(visible[0]) == [("x-plex-token", ACCOUNT_TOKEN),
-                                       ("x-plex-client-identifier", "plexsim-heartbeat"),
+                                       ("x-plex-client-identifier", "simplex-heartbeat"),
                                        ("accept", "application/json")],
               visible and (visible[0]["query"], sent(visible[0])))
         check("nothing but the announce reaches plex.tv while unclaimed",
@@ -724,7 +724,7 @@ def main():
               logged(first_log, "INFO", r"claim state: unclaimed")
               and logged(first_log, "INFO", r"token gate: OFF -- every peer that can reach "
                                             r"this port can read the library")
-              and logged(first_log, "INFO", r"plexsim on http://\S+:%d  machine=%s  items=\d+  "
+              and logged(first_log, "INFO", r"simplex on http://\S+:%d  machine=%s  items=\d+  "
                                             r"parts=proxy" % (ports[0], MACHINE)),
               first_log[-3000:])
         check("the heartbeat and the proxy-behind-a-public-URL warning are logged",
@@ -840,13 +840,13 @@ def main():
               pages and pages[0]["query"])
         time.sleep(0.5)
         status, files = log_archive(second, ACCOUNT_TOKEN)
-        plexsim_log = files.get("plexsim.log", "")
+        simplex_log = files.get("simplex.log", "")
         check("Download Logs hands back the startup lines, claimed",
-              status == 200 and logged(plexsim_log, "INFO", r"claim state: CLAIMED by %s" % OWNER,
+              status == 200 and logged(simplex_log, "INFO", r"claim state: CLAIMED by %s" % OWNER,
                                        ARCHIVE_LINE)
-              and logged(plexsim_log, "INFO", r"token gate: ENFORCED -- claimed: the server's own "
+              and logged(simplex_log, "INFO", r"token gate: ENFORCED -- claimed: the server's own "
                                               r"token and the ones plex\.tv lists for it", ARCHIVE_LINE),
-              (status, sorted(files), plexsim_log[-1500:]))
+              (status, sorted(files), simplex_log[-1500:]))
         check("Download Logs carries the request log",
               re.search(r"^GET /identity$", files.get("requests.log", ""), re.M) is not None,
               files.get("requests.log", "")[-500:])

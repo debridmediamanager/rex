@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cycle 87 follow-up W5: an EMPTY music library, read the way Plex Web reads it.
 
-Add Library now creates a `type=artist` library on both servers (W4), and plexsim
+Add Library now creates a `type=artist` library on both servers (W4), and simplex
 holds no music, so the library a user adds is empty. Plex Web 4.162.1 and python-plexapi
 4.18.2 then read its row, its `/media/providers` directory, its `Meta`, its filter and
 sort descriptors, its preferences and its hubs. `tests/fixtures/c87_w5_music_library_s42.json`
@@ -9,7 +9,7 @@ is every one of those reads, replayed on plexscratch42 (1.42.2) against the same
 music library made with the same form, and each check below asserts the measured value.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `PLEXSIM_SERVER=python`.
+default, the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_followups_c87_w5.py
 """
@@ -28,8 +28,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "c87_w5_music_library_s42.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 
 results = []

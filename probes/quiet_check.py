@@ -10,7 +10,7 @@ def read_once():
     req = urllib.request.Request(
         "https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&includeIPv6=1",
         headers={"X-Plex-Token": os.environ["PLEX_TOKEN"],
-                 "X-Plex-Client-Identifier": "plexsim-quiet-" + uuid.uuid4().hex[:12],
+                 "X-Plex-Client-Identifier": "simplex-quiet-" + uuid.uuid4().hex[:12],
                  "Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=25) as r:
         rows = json.load(r)
@@ -20,7 +20,7 @@ print("quiet gap of 300s with zero reads and zero announces...", flush=True)
 time.sleep(300)
 for i in range(4):
     names = read_once()
-    print("  read %d after quiet gap: plexsim visible=%s  (%s)"
-          % (i + 1, "YES" if "plexsim-spike" in names else "no", ",".join(n for n in names if n)), flush=True)
+    print("  read %d after quiet gap: simplex visible=%s  (%s)"
+          % (i + 1, "YES" if "simplex-spike" in names else "no", ",".join(n for n in names if n)), flush=True)
     if i < 3:
         time.sleep(60)

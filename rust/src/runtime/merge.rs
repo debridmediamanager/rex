@@ -64,7 +64,7 @@ impl Runtime {
     /// fresh key carrying the source's metadata, its guid and locks included.
     pub(super) fn route_split(&mut self, key: &str) -> Response {
         let Some(original) = self.catalog.get(key).cloned() else {
-            return Response::error(404, "plexsim: not found");
+            return Response::error(404, "simplex: not found");
         };
         let media = original
             .get("Media")

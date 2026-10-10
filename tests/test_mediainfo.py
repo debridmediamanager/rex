@@ -55,9 +55,9 @@ def streams(media, kind=None):
 
 
 def paired(fixture, kind):
-    """(real stream, plexsim stream) for every real stream that has a container index.
+    """(real stream, simplex stream) for every real stream that has a container index.
 
-    An external subtitle a real PMS found beside the file has no index; plexsim has no
+    An external subtitle a real PMS found beside the file has no index; simplex has no
     sidecars, so it is not compared.
     """
     built = {s.get("index"): s for s in streams(fixture["sim"], kind)}
@@ -346,7 +346,7 @@ def _short_wide_480_boundary(mediainfo):
 
     The boundary sweep used a fixed 360-pixel height and observed stored widths 840,
     842, 844 and 846 as ``sd`` and 848 as ``480``. Odd source widths were normalised
-    down by analysis, so this tests the values PMS actually stores and plexsim reads.
+    down by analysis, so this tests the values PMS actually stores and simplex reads.
     """
     return [("%dx360" % width, expected, mediainfo._video_resolution(360, width))
             for width, expected in ((840, "sd"), (842, "sd"), (844, "sd"),
@@ -358,7 +358,7 @@ def _pixel_aspect_pair(fixture):
     """Cycle 25: `pixelAspectRatio` and `anamorphic` come as a PAIR, or not at all.
 
     The corpus holds two streams that carry them -- `333:320` with `anamorphic` false and
-    `32:27` with it true -- and fifty-four that carry neither. plexsim sent neither field
+    `32:27` with it true -- and fifty-four that carry neither. simplex sent neither field
     on any stream, so Get Info printed no pixel aspect and a client deciding whether it
     had to correct the aspect on playback was told nothing.
     """
@@ -576,7 +576,7 @@ def main():
             continue
         print("FAIL %s: %d of %d differ" % (name, len(wrong), len(rows)))
         for label, real, sim in wrong[:args.examples]:
-            print("     %s: real %r, plexsim %r" % (label, real, sim))
+            print("     %s: real %r, simplex %r" % (label, real, sim))
     print("%d/%d checks passed" % (passed, total))
     return 0 if passed == total and total else 1
 

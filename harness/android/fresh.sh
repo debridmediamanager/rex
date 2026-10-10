@@ -1,7 +1,7 @@
 #!/bin/zsh
 # fresh.sh <serial> <label> <name> <machine> <uri> <token> <version>
 H=$(cd "$(dirname "$0")" && pwd)
-C=${DROID_WORK:-$HOME/plexsim-android}
+C=${DROID_WORK:-$HOME/simplex-android}
 mkdir -p $C/N/cap $C/N/out $C/N/shots
 S=$1; shift
 E(){ adb -s $S "$@"; }

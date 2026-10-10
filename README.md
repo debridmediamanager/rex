@@ -1,8 +1,8 @@
-# plexsim
+# simplex
 
 A Plex Media Server that owns no files.
 
-plexsim answers the PMS API closely enough that the **official** Plex clients
+simplex answers the PMS API closely enough that the **official** Plex clients
 treat it as a real server — it appears in the account's server list, browses
 like a library, and direct-plays 1080p H.264 in Plex Web with zero dropped
 frames. The media is never on disk: the library is [zurg](https://github.com/debridmediamanager/zurg)'s,
@@ -17,15 +17,15 @@ Jellyfin.
   PART 200`, verified byte-identical across proxy, redirect and CDN paths
   (`e49cf18e698064cddc10a13ea0926fb3`), with real frames decoded at an offset
   rather than a trusted HTTP 200.
-- **Discoverable on the LAN.** plexsim answers Plex's own GDM discovery protocol
+- **Discoverable on the LAN.** simplex answers Plex's own GDM discovery protocol
   on udp/32410 and udp/32414, so an official client on the same network finds it
   without plex.tv — and a real Plex Media Server on the same wire lists it in its
   own `/servers`.
 - **A real library shape.** Movies in a movie section; shows with seasons and
   episodes, synthesised parents, `childCount`/`leafCount`, On Deck, Extras and
   per-section preferences.
-- **A live library from zurg.** zurg asks plexsim to scan each release it adds,
-  changes or drops (the normal `/library/sections/{id}/refresh?path=`); plexsim lists
+- **A live library from zurg.** zurg asks simplex to scan each release it adds,
+  changes or drops (the normal `/library/sections/{id}/refresh?path=`); simplex lists
   the folder on zurg's WebDAV, adds the new files with zurg's stored ffprobe, trashes
   what is gone the way a real PMS does, and keeps every ratingKey for good.
 - **Real identification.** zurg's IMDb id for a release is exact; otherwise its name
@@ -49,42 +49,42 @@ Jellyfin.
   `/library/sections`.
 - **Survives a restart**: watch state, edits, playlists, collections, history,
   sections, preferences and uploads are saved as they change, a row at a time, to
-  a SQLite database (`plexsim.db` beside the catalog, or `--state FILE`) and
+  a SQLite database (`simplex.db` beside the catalog, or `--state FILE`) and
   restored at start; a library zurg built is kept row by row, on the same keys,
   whatever the catalog file says. The catalog can live in the same database
-  (`build_catalog.py --seed` or `--convert catalog.json`, `--out plexsim.db`, then
-  `--catalog plexsim.db`). With `--no-state` a restart reloads the catalog.
+  (`build_catalog.py --seed` or `--convert catalog.json`, `--out simplex.db`, then
+  `--catalog simplex.db`). With `--no-state` a restart reloads the catalog.
 - **Published over a named Cloudflare tunnel**, so clients reach it without a
   port forward or a `*.plex.direct` certificate.
 
-plexsim serves **anyone who can reach the port** unless you give it a token:
-`--token <value>` (or `PLEXSIM_TOKEN`) makes it 401 everything but `/identity` and
+simplex serves **anyone who can reach the port** unless you give it a token:
+`--token <value>` (or `SIMPLEX_TOKEN`) makes it 401 everything but `/identity` and
 `/web/*`, which is what a real PMS does. The startup line says which mode it is in.
 
 ## Quick start
 
-plexsim is a native Rust server (`rust/`) in front of a zurg. Build it, write its
+simplex is a native Rust server (`rust/`) in front of a zurg. Build it, write its
 catalog -- the server's identity and two libraries whose folders are zurg's -- and run it:
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
-python3 build_catalog.py --seed --name den --zurg-mount /mnt/zurg --out plexsim.db
+python3 build_catalog.py --seed --name den --zurg-mount /mnt/zurg --out simplex.db
 #   a movie library at /mnt/zurg/movies and a show library at /mnt/zurg/shows
 #   (--movies/--shows name other zurg directories)
 export ZURG_URL=http://127.0.0.1:9999 ZURG_USER=... ZURG_PASSWORD=...   # zurg's username/password, if set
 export TMDB_KEY=... PLEX_TOKEN=...       # identification; without them new items stay unmatched
-rust/target/release/plexsim --catalog plexsim.db --zurg-mount /mnt/zurg --port 32400
+rust/target/release/simplex --catalog simplex.db --zurg-mount /mnt/zurg --port 32400
 ```
 
-`run.sh.example` is the same as a script. At start plexsim scans every library once;
+`run.sh.example` is the same as a script. At start simplex scans every library once;
 afterwards zurg tells it what changed. In zurg's `config.yml`:
 
 ```yaml
-mount_path: /mnt/zurg            # plexsim's --zurg-mount; zurg needs no real mount for plexsim
+mount_path: /mnt/zurg            # simplex's --zurg-mount; zurg needs no real mount for simplex
 plex_server_url: http://127.0.0.1:32400
-plex_token: anything             # plexsim's --token when it has one
-plexsim_url: http://127.0.0.1:32400   # zurg then probes every new release and rescans it once probed
-plex_settings_policy: off        # zurg leaves plexsim's preferences alone
+plex_token: anything             # simplex's --token when it has one
+simplex_url: http://127.0.0.1:32400   # zurg then probes every new release and rescans it once probed
+plex_settings_policy: off        # zurg leaves simplex's preferences alone
 ```
 
 zurg finds a library by its location: a release in zurg's `movies` directory is scanned
@@ -95,7 +95,7 @@ with `--web-root`, or point any Plex client at the host.
 
 ### Running several servers: manager.py
 
-`manager.py` is a control service on top of the server. It runs **no** plexsim server
+`manager.py` is a control service on top of the server. It runs **no** simplex server
 until you start one: you create a server from a configuration (port, zurg, keys,
 catalog, options), start and stop it, and the manager supervises it -- an unexpected exit
 is restarted with a backoff, and one that keeps dying is marked failed. Whatever was
@@ -114,7 +114,7 @@ export ZURG_URL=... ZURG_USER=... ZURG_PASSWORD=... TMDB_KEY=... PLEX_TOKEN=...
 ./manager.py build den --start           # build_catalog.py --seed, then start (restart if running)
 ```
 
-Each server gets `managed/servers/<name>/`, whose `plexsim.db` holds its catalog (copied
+Each server gets `managed/servers/<name>/`, whose `simplex.db` holds its catalog (copied
 in; a JSON catalog is converted) and, on the native server, its state. Keys are stored in
 `managed/manager.db` (mode 600) and passed to each server through its environment; the
 API redacts them. `http://127.0.0.1:32300/` is a small page for the same operations (paste
@@ -122,34 +122,34 @@ the admin token from `managed/admin.token`). `build NAME` runs `build_catalog.py
 into the server's database as a background job.
 
 Run the manager itself under the init system, so it outlives any shell. macOS (launchd,
-`~/Library/LaunchAgents/com.plexsim.manager.plist`):
+`~/Library/LaunchAgents/com.simplex.manager.plist`):
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>Label</key><string>com.plexsim.manager</string>
+  <key>Label</key><string>com.simplex.manager</string>
   <key>ProgramArguments</key><array>
-    <string>/usr/bin/python3</string><string>/path/to/plexsim/manager.py</string><string>serve</string>
+    <string>/usr/bin/python3</string><string>/path/to/simplex/manager.py</string><string>serve</string>
   </array>
   <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
-  <key>StandardOutPath</key><string>/path/to/plexsim/managed.log</string>
-  <key>StandardErrorPath</key><string>/path/to/plexsim/managed.log</string>
+  <key>StandardOutPath</key><string>/path/to/simplex/managed.log</string>
+  <key>StandardErrorPath</key><string>/path/to/simplex/managed.log</string>
 </dict></plist>
 ```
 
-Linux (systemd, `/etc/systemd/system/plexsim-manager.service`); `KillMode=mixed` lets the
+Linux (systemd, `/etc/systemd/system/simplex-manager.service`); `KillMode=mixed` lets the
 manager's own SIGTERM stop its servers, which it restores at the next start:
 
 ```ini
 [Unit]
-Description=plexsim manager
+Description=simplex manager
 After=network-online.target
 
 [Service]
 User=ben
-WorkingDirectory=/path/to/plexsim
-ExecStart=/usr/bin/python3 /path/to/plexsim/manager.py serve
+WorkingDirectory=/path/to/simplex
+ExecStart=/usr/bin/python3 /path/to/simplex/manager.py serve
 KillMode=mixed
 TimeoutStopSec=60
 Restart=on-failure
@@ -162,7 +162,7 @@ WantedBy=multi-user.target
 
 The Python server (`server.py` and its modules) is kept in the tree as the
 measured reference the native server is ported from and compared against. It
-runs with the same flags (`python3 server.py ...`), and `PLEXSIM_SERVER=python`
+runs with the same flags (`python3 server.py ...`), and `SIMPLEX_SERVER=python`
 points the black-box test suites at it. Its state file is a pickle (`state.pickle` by
 default) that the native server does not read. The last Python-only `main` is the `python-server`
 branch.
@@ -170,14 +170,14 @@ branch.
 ## Tests
 
 The suites target the native server (`tests/server_command.py` starts
-`rust/target/release/plexsim`); set `PLEXSIM_SERVER=python` to run them against
+`rust/target/release/simplex`); set `SIMPLEX_SERVER=python` to run them against
 the Python oracle.
 
 ```bash
 python3 tests/test_navigation.py   # replays a client's request sequence, checks shape
 python3 tests/test_ui_surface.py   # the context menu and every server page, end to end
 python3 tests/test_all.py          # play queue → decision → byte reads → frame decode
-python3 tests/conformance.py       # drives plexsim with python-plexapi
+python3 tests/conformance.py       # drives simplex with python-plexapi
 python3 tests/test_persist.py      # --state survives restarts, crashes and catalog rebuilds
 python3 tests/test_native_zurg_scan.py   # scans against a local zurg stub: add, fill, trash, keys
 ```

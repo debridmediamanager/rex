@@ -4,11 +4,11 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use plexsim::{catalog, decision, filters, gate, hierarchy, mediainfo, metadata, runtime, xmlout};
+use simplex::{catalog, decision, filters, gate, hierarchy, mediainfo, metadata, runtime, xmlout};
 use serde_json::json;
 
 fn usage() -> &'static str {
-    "Usage: plexsim [server options] | plexsim <decision|mediainfo|normalize-media|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
+    "Usage: simplex [server options] | simplex <decision|mediainfo|normalize-media|hierarchy-build|hierarchy-normalize|hierarchy-fold|hierarchy-case|catalog-normalize|xml|system-xml|ordered|guid|provider-guids|gate|metadata-parse|metadata-enrich|filter-compare|filter-parse|filter-evaluate|filter-describe|filter-document|filter-orders|filter-source-order> ..."
 }
 
 /// `main()`'s `argparse` options, in its declaration order: (flag, metavar, takes a value).
@@ -39,8 +39,8 @@ const SERVER_OPTIONS: &[(&str, &str, bool)] = &[
 
 /// `parser.print_usage()`: argparse's wrapped usage block, with this binary's name.
 fn server_usage() -> String {
-    let indent = " ".repeat("usage: plexsim ".len());
-    let mut lines = vec![String::from("usage: plexsim")];
+    let indent = " ".repeat("usage: simplex ".len());
+    let mut lines = vec![String::from("usage: simplex")];
     let mut parts = vec!["[-h]".to_string()];
     parts.extend(SERVER_OPTIONS.iter().map(|(flag, metavar, takes)| {
         if *takes {
@@ -51,7 +51,7 @@ fn server_usage() -> String {
     }));
     for part in parts {
         let last = lines.last_mut().expect("usage has a first line");
-        if last.len() + 1 + part.len() > 78 && last.trim() != "usage: plexsim" {
+        if last.len() + 1 + part.len() > 78 && last.trim() != "usage: simplex" {
             lines.push(format!("{indent}{part}"));
         } else {
             last.push(' ');
@@ -65,8 +65,8 @@ fn server_usage() -> String {
 /// the oracle's own help text.
 fn server_help() -> String {
     let helps: HashMap<&str, &str> = [
-        ("--part-mode", "proxy streams bytes from zurg through plexsim; redirect 302s to the provider URL zurg's signed link names"),
-        ("--token", "require this X-Plex-Token on every request except /identity and /web/* -- which is what a real PMS does. Default OFF, because the test suites and probes talk to plexsim without one; a real server always has a token, so leaving it off is a deliberate deviation."),
+        ("--part-mode", "proxy streams bytes from zurg through simplex; redirect 302s to the provider URL zurg's signed link names"),
+        ("--token", "require this X-Plex-Token on every request except /identity and /web/* -- which is what a real PMS does. Default OFF, because the test suites and probes talk to simplex without one; a real server always has a token, so leaving it off is a deliberate deviation."),
         ("--assert-claimed", "report claimed=1 without performing a real plex.tv claim exchange"),
         ("--web-root", "directory of the extracted Plex Web client, served at /web"),
         ("--owner-email", "owner email, which is what a real PMS reports as myPlexUsername"),
@@ -78,8 +78,8 @@ fn server_help() -> String {
         ("--gdm", "answer Plex's LAN discovery protocol on udp/32410 and udp/32414"),
         ("--plex-direct-host", "the <hash>.plex.direct hostname to advertise in GDM's Host: line; omitted entirely when unknown, which is what a PMS with no certificate does"),
         ("--account-state-interval", "seconds between claimed-account watch/rating imports"),
-        ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: plexsim.db beside the catalog, or the catalog itself when it is a database (state.pickle for the Python server), or $PLEXSIM_STATE"),
-        ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $PLEXSIM_STATE"),
+        ("--state", "file to keep watch state, edits, lists, history, preferences, uploads and statistics in across restarts. Default: simplex.db beside the catalog, or the catalog itself when it is a database (state.pickle for the Python server), or $SIMPLEX_STATE"),
+        ("--no-state", "keep nothing across a restart: a restart reloads the catalog as it is on disk, which the test suites rely on. Also an empty $SIMPLEX_STATE"),
         ("--zurg-mount", "zurg's mount_path: Part files and library locations live under it, and the same files are /dav/... on zurg ($ZURG_URL, with $ZURG_USER/$ZURG_PASSWORD). Default /mnt/zurg"),
     ]
     .into_iter()
@@ -100,7 +100,7 @@ fn server_help() -> String {
         lines
     };
     let mut out = format!(
-        "{}\n\nplexsim -- a PMS that owns no files\n\noptions:\n  -h, --help            show this help message and exit\n",
+        "{}\n\nsimplex -- a PMS that owns no files\n\noptions:\n  -h, --help            show this help message and exit\n",
         server_usage()
     );
     for (flag, metavar, takes) in SERVER_OPTIONS {
@@ -271,7 +271,7 @@ fn parse_server_args(args: &[String]) -> Result<ServerArgs, String> {
 }
 
 /// server.py's default is `webclient` beside itself. The native binary lives three
-/// levels under the checkout (`rust/target/release/plexsim`), so the same folder is
+/// levels under the checkout (`rust/target/release/simplex`), so the same folder is
 /// `./webclient` when started from the checkout, or that one found from the binary.
 fn default_web_root() -> Option<PathBuf> {
     let local = PathBuf::from("webclient");
@@ -285,7 +285,7 @@ fn default_web_root() -> Option<PathBuf> {
 
 fn run_server(args: &[String]) -> Result<(), String> {
     // argparse's `parser.error()`: the usage block, then `prog: error: message`, exit 2.
-    let failed = |error: String| format!("{}\nplexsim: error: {error}", server_usage());
+    let failed = |error: String| format!("{}\nsimplex: error: {error}", server_usage());
     match parse_server_args(args).map_err(failed)? {
         ServerArgs::Help => {
             print!("{}", server_help());
@@ -922,10 +922,10 @@ fn main() -> ExitCode {
         run_core(&command, &args)
     };
     if let Err(error) = result {
-        if error.contains("\nplexsim: error: ") {
+        if error.contains("\nsimplex: error: ") {
             eprintln!("{error}");
         } else {
-            eprintln!("plexsim: {error}");
+            eprintln!("simplex: {error}");
         }
         ExitCode::from(2)
     } else {

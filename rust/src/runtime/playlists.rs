@@ -72,7 +72,7 @@ impl Runtime {
             json!(if unmatched {
                 format!("local://{}", playlist.id)
             } else {
-                format!("com.plexapp.agents.none://plexsim-playlist-{}", playlist.id)
+                format!("com.plexapp.agents.none://simplex-playlist-{}", playlist.id)
             }),
         );
         row.insert("type".to_string(), json!("playlist"));
@@ -198,11 +198,11 @@ impl Runtime {
             .iter()
             .any(|name| query.get(*name).is_none())
         {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         }
         let kind = query.get("type").cloned().unwrap_or_default();
         if !matches!(kind.as_str(), "video" | "audio" | "photo") {
-            return Response::error(500, "plexsim: bad playlist type");
+            return Response::error(500, "simplex: bad playlist type");
         }
         let uri = query.get("uri").cloned().unwrap_or_default();
         let mut rows = self.playable_rows_for_uri(&uri);
@@ -263,7 +263,7 @@ impl Runtime {
         self.dirty = true;
         self.save_if_dirty();
         if mismatched {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         }
         // The CREATE response omits `content` and the per-user-state block.
         let row = self.playlist_row(&playlist, false, false);
@@ -337,7 +337,7 @@ impl Runtime {
             "type",
         ];
         let Some(playlist) = self.playlists.get(id).cloned() else {
-            return Response::error(404, "plexsim: not found");
+            return Response::error(404, "simplex: not found");
         };
         let field_of = |name: &str| {
             name.strip_suffix(".value")
@@ -355,16 +355,16 @@ impl Runtime {
             probe.insert("ratingKey".to_string(), json!(id));
             probe.insert("title".to_string(), json!(playlist.title));
             if let Err(error) = self.edit_row_copy(&probe, pairs, false) {
-                return Response::error(error.status, &format!("plexsim: {}", error.detail));
+                return Response::error(error.status, &format!("simplex: {}", error.detail));
             }
         }
         if named.is_empty() {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         }
         for (name, _) in named.iter().filter(|_| !alias) {
             let field = field_of(name);
             if !STORED.contains(&field.as_str()) && !DISCARDED.contains(&field.as_str()) {
-                return Response::error(400, "plexsim: bad request");
+                return Response::error(400, "simplex: bad request");
             }
         }
         let mut columns = self.playlist_columns(id);
@@ -387,7 +387,7 @@ impl Runtime {
                 Ok(Some((edited, _))) => columns = edited,
                 Ok(None) => {}
                 Err(error) => {
-                    return Response::error(error.status, &format!("plexsim: {}", error.detail))
+                    return Response::error(error.status, &format!("simplex: {}", error.detail))
                 }
             }
         }
@@ -478,7 +478,7 @@ impl Runtime {
     ) -> Response {
         let uri = query.get("uri").cloned().unwrap_or_default();
         if uri.is_empty() {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         }
         info!(
             "PLAYLIST {id} query <- {}",
@@ -494,7 +494,7 @@ impl Runtime {
         self.dirty = true;
         self.save_if_dirty();
         let Some(playlist) = self.playlists.get(id).cloned() else {
-            return Response::error(404, "plexsim: not found");
+            return Response::error(404, "simplex: not found");
         };
         let row = self.playlist_row(&playlist, false, true);
         Response::json(
@@ -535,7 +535,7 @@ impl Runtime {
     /// it answers them the way a collection does except where the row type splits
     /// them -- `/analyze` is a 400 here, `/allLeaves` and `/grandchildren` are 404s, and
     /// `/related` is an empty container with neither the librarySection triple nor
-    /// `allowSync`. plexsim 404'd every one, so Change Poster, Refresh Metadata and Fix
+    /// `allowSync`. simplex 404'd every one, so Change Poster, Refresh Metadata and Fix
     /// Match on a playlist page did nothing at all. `None` leaves a GET of the artwork
     /// to the ordinary path.
     pub(super) fn playlist_action_leaf(
@@ -547,7 +547,7 @@ impl Runtime {
     ) -> Option<Response> {
         let method = request.method.as_str();
         if !matches!(method, "GET" | "HEAD" | "PUT" | "DELETE") {
-            return Some(Response::error(404, "plexsim: not found"));
+            return Some(Response::error(404, "simplex: not found"));
         }
         if matches!(leaf, "poster" | "art" | "thumb") {
             return match method {
@@ -555,17 +555,17 @@ impl Runtime {
                 // on `/thumb` picks the ART, exactly as the Python path does.
                 "PUT" => Some(self.set_playlist_artwork(playlist, leaf == "poster", query)),
                 // Cycle 31: a 404 on 1.42.2, like the item path.
-                "DELETE" => Some(Response::error(404, "plexsim: not found")),
+                "DELETE" => Some(Response::error(404, "simplex: not found")),
                 _ => None,
             };
         }
         if !matches!(method, "GET" | "HEAD" | "PUT") {
-            return Some(Response::error(404, "plexsim: not found"));
+            return Some(Response::error(404, "simplex: not found"));
         }
         Some(match leaf {
             // The same no-parameters 400 the item path answers, and a playlist's
             // analyze splits from a collection's 200.
-            "match" | "extras" | "analyze" => Response::error(400, "plexsim: bad request"),
+            "match" | "extras" | "analyze" => Response::error(400, "simplex: bad request"),
             "related" => Response::json(
                 200,
                 json!({"MediaContainer": {"size": 0, "identifier": "com.plexapp.plugins.library",
@@ -593,7 +593,7 @@ impl Runtime {
                 Response::empty(200)
             }
             // A playlist has no leaf view of its own.
-            _ => Response::error(404, "plexsim: not found"),
+            _ => Response::error(404, "simplex: not found"),
         })
     }
 
@@ -612,7 +612,7 @@ impl Runtime {
             .map(|value| percent_decode(value))
             .unwrap_or_default();
         if chosen.is_empty() {
-            return Response::error(400, "plexsim: no url");
+            return Response::error(400, "simplex: no url");
         }
         let field = if poster { "thumb" } else { "art" };
         let private = if poster { "_poster_url" } else { "_art_url" };

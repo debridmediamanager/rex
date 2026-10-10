@@ -1,6 +1,6 @@
 {
   "machineIdentifier": "0000000000000000000000000000000000000000",
-  "friendlyName": "plexsim",
+  "friendlyName": "simplex",
   "sections": [
     {
       "key": "1",
@@ -110,7 +110,7 @@
       "Location": [
         {
           "id": 20001,
-          "path": "/plexsim/2/20001"
+          "path": "/simplex/2/20001"
         }
       ],
       "slug": "the-simpsons",
@@ -413,7 +413,7 @@
       "Location": [
         {
           "id": 20002,
-          "path": "/plexsim/2/20002"
+          "path": "/simplex/2/20002"
         }
       ],
       "slug": "hell-s-kitchen",
@@ -782,7 +782,7 @@
       "Location": [
         {
           "id": 1007,
-          "path": "/plexsim/1/1007"
+          "path": "/simplex/1/1007"
         }
       ],
       "slug": "tears-of-steel",

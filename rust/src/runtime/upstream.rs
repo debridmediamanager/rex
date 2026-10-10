@@ -15,9 +15,9 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 /// `server.py`'s `UPSTREAM_UA`, sent on artwork and part reads.
-pub(super) const UPSTREAM_UA: &str = "plexsim/0.1";
+pub(super) const UPSTREAM_UA: &str = "simplex/0.1";
 
-/// The roots urllib uses on the Linux hosts plexsim runs on. Loaded once.
+/// The roots urllib uses on the Linux hosts simplex runs on. Loaded once.
 fn client_config() -> Option<Arc<ClientConfig>> {
     static CONFIG: OnceLock<Option<Arc<ClientConfig>>> = OnceLock::new();
     CONFIG

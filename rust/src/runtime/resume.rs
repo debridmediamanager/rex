@@ -900,7 +900,7 @@ impl Runtime {
                 // `music.recent.added.<id>`, typed `album`, keyed on the library's albums
                 // by date added; under `pinnedContentDirectoryID` zen's swap onto the Home
                 // shelf's own identity (`home.music.recent`, "Recently Added Music",
-                // `type=8`). plexsim holds no music rows.
+                // `type=8`). simplex holds no music rows.
                 rows = Vec::new();
                 kind = "album";
                 identifier = format!("music.recent.added.{section_key}");
@@ -1004,7 +1004,7 @@ pub(super) fn hub_refusal(query: &HashMap<String, String>) -> Option<Response> {
         {
             return Some(Response::error(
                 500,
-                &format!("plexsim: cannot filter a hub on {key}"),
+                &format!("simplex: cannot filter a hub on {key}"),
             ));
         }
     }

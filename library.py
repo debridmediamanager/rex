@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The mutable half of plexsim's library: everything the UI can change.
+"""The mutable half of simplex's library: everything the UI can change.
 
 `catalog.json` is read-only input. The Plex UI is not a read-only client: every
 entry in an item's context menu is a write, and the web client decides which
@@ -24,7 +24,7 @@ Everything here is in memory, and catalog.json is never rewritten. Without
 `--state` that makes a restart the undo button; with it, persist.py saves this
 state beside the catalog and a restart changes nothing. Either way a Delete in
 the Plex UI -- phrased "delete from your filesystem" -- only drops the row from
-the library: plexsim owns no files, and the debrid content behind it is untouched.
+the library: simplex owns no files, and the debrid content behind it is untouched.
 
 Key spaces stay disjoint, the way the catalog's already are (leaves 1000+,
 shows 20000+, seasons 30000+), so a ratingKey identifies its own kind on sight:
@@ -44,7 +44,7 @@ from hierarchy import (_GENERATED_TITLE as GENERATED_SEASON_TITLE,
                        PERSON_TAG_ELEMENTS, person_tag_key, set_season_count,
                        sort_title)
 
-logger = logging.getLogger("plexsim.library")
+logger = logging.getLogger("simplex.library")
 
 # Fields a row carries as a number. The client sends every edit as a string.
 # The columns whose VALUE the ITEM edit path really reads. Cycle 20, measured one at a
@@ -57,13 +57,13 @@ INTEGER_FIELDS = {"year", "index", "absoluteIndex", "parentIndex", "duration", "
 DATE_FIELDS = {"originallyAvailableAt"}
 
 # Fields the Edit dialog may write. Measured: anything else is a 400, including
-# `sortTitle` (the field is `titleSort`) -- plexsim stored whatever it was sent,
+# `sortTitle` (the field is `titleSort`) -- simplex stored whatever it was sent,
 # so a client typo became a row attribute and a `Field` lock for a field that
 # does not exist.
 # Cycle 53, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2), identical on
 # both: the ten columns cycle 53 read out of the database template are editable on the
 # ITEM path -- `<column>.value=` is a 200 and `.locked=1` records the lock -- where
-# plexsim answered 400 to nine of the ten. Only `isAdult` is READ BACK: exactly the
+# simplex answered 400 to nine of the ten. Only `isAdult` is READ BACK: exactly the
 # literal `1` stores it and every other value clears it, and the row then carries
 # `isAdult: true` between `originalTitle` and `summary` on every projection, the light
 # grid row included. The other nine store nothing visible, which is the `LOCK_ONLY_FIELDS`
@@ -87,7 +87,7 @@ EDITABLE_FIELDS = {
     # 200 that stores nothing on the item path and on the section path, on a movie, an
     # episode, a season and a show -- twelve measurements -- while `.locked=1` really
     # does record the lock (`Field` gains the name on both). Cycle 20 recorded it as
-    # "read on both" and plexsim stored the number, so an edited row carried an
+    # "read on both" and simplex stored the number, so an edited row carried an
     # attribute no real PMS puts there and `sort=absoluteIndex` ordered on it.
     "updatedAt", "createdAt", "skipCount", "viewOffset", "ratingCount", "type",
     "viewedLeafCount", "contentRatingAge", "mediaCount", "extraType", "absoluteIndex",
@@ -99,7 +99,7 @@ IGNORED_EDIT_FIELDS = {"userRating"}
 
 # Accepted with a 200 and DISCARDED as values. Measured on a writable copy of the
 # reference: `addedAt.value=`, `guid.value=`, `lastViewedAt.value=`, `viewCount.value=`
-# and an episode's `parentIndex.value=` change nothing, where plexsim refused each as an
+# and an episode's `parentIndex.value=` change nothing, where simplex refused each as an
 # unknown field. Play state is written through /:/scrobble.
 #
 # Cycle 31 moved `thumb` and `art` OUT of this set: they are artwork COLUMNS that take a
@@ -123,18 +123,18 @@ IGNORED_VALUE_FIELDS = {"addedAt", "guid", "lastViewedAt", "viewCount",
 # `absoluteIndex.value=7` is a 200 that stores NOTHING, while `=ZZQ1` and `=1.5` are 500s
 # -- so the value is read as an integer and then discarded, the way `duration` and
 # `parentIndex` are on the section path. Cycle 20 recorded it as read on both paths and
-# plexsim stored the number; putting it in IGNORED_VALUE_FIELDS skipped the parse and made
+# simplex stored the number; putting it in IGNORED_VALUE_FIELDS skipped the parse and made
 # a word a 200, which is the opposite error.
 PARSED_NOT_STORED = {"absoluteIndex"}
 
 # A tag type accepted and discarded: a show's `network[0].tag.tag=` is a 200 that stores
-# nothing visible, where plexsim 400'd it.
+# nothing visible, where simplex 400'd it.
 # Cycle 49 added `mood`: on plexscratch42 (1.42.2) a `mood[0].tag.tag=` write to a MOVIE
 # is a 200 that stores nothing -- the row carries no `Mood` afterwards -- where the `style`
-# and `similar` beside it really store. plexsim stored it, and then carried a `Mood`
+# and `similar` beside it really store. simplex stored it, and then carried a `Mood`
 # element no real PMS emits on a movie into every projection that reads the row.
-# (`mood` is a music-library field; plexsim holds no music library, so "not stored on the
-# types plexsim holds" is the whole of what is measured here.)
+# (`mood` is a music-library field; simplex holds no music library, so "not stored on the
+# types simplex holds" is the whole of what is measured here.)
 IGNORED_TAG_TYPES = {"network", "mood"}
 
 # Cycle 31, re-measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which agree:
@@ -171,7 +171,7 @@ SECTION_REFUSED_FIELDS = {"viewCount", "lastViewedAt", "skipCount", "viewOffset"
                           # (`5`, `0`, `abc`, empty, a real epoch): `lastRatedAt.value=` is
                           # a **500 on the section path on both versions**, every time,
                           # where the ITEM path takes it with a 200. It is the ninth member
-                          # of this set and the one plexsim answered with the unknown-field
+                          # of this set and the one simplex answered with the unknown-field
                           # 400 -- a refusal either way, so nothing renders differently;
                           # it is the status a client logs and retries on.
                           "lastRatedAt"}
@@ -184,7 +184,7 @@ FLOAT_FIELDS = {"audienceRating", "rating", "userRating"}
 KEEP_EMPTY_FIELDS = {"title", "summary"}
 
 # The order a real PMS lists locks in -- a fixed column order, not the order the
-# client happened to write them. plexsim appended, so re-locking a field moved it
+# client happened to write them. simplex appended, so re-locking a field moved it
 # to the end and the dialog's checkbox order shuffled. Measured with every lockable
 # field locked in reverse, on a movie and on an episode.
 FIELD_ORDER = ["title", "titleSort", "originalTitle", "studio", "rating", "tagline",
@@ -195,7 +195,7 @@ FIELD_ORDER = ["title", "titleSort", "originalTitle", "studio", "rating", "tagli
                "viewCount", "userRating", "parentIndex"]
 
 # Columns that take a LOCK without being editable fields. Measured: each is a 200 and
-# recorded in `Field`, where plexsim answered 400 "unknown field"; `key`, `ratingImage`
+# recorded in `Field`, where simplex answered 400 "unknown field"; `key`, `ratingImage`
 # and `audienceRatingImage` stay a 400.
 # Cycle 20, measured on plexscratch: `theme` and `banner` are ARTWORK columns on the
 # edit path. The URL written is DISCARDED and the column becomes a versioned path of the
@@ -214,7 +214,7 @@ FIELD_ORDER = ["title", "titleSort", "originalTitle", "studio", "rating", "tagli
 # The url is DISCARDED and the column becomes the row's own versioned path, exactly as
 # `theme` and `banner` already did. There is no image behind it either way -- a GET of the
 # new path is a 404 on both references -- so it is a column write and nothing more.
-# plexsim discarded the value AND the column, so the Edit dialog's artwork fields wrote
+# simplex discarded the value AND the column, so the Edit dialog's artwork fields wrote
 # nothing and the save read as a silent no-op.
 ARTWORK_VALUE_FIELDS = {"theme", "banner", "thumb", "art"}
 
@@ -225,13 +225,13 @@ LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt"
                     "remote", "resourcesChangedAt", "userFields", "lastSkippedAt",
                     "mediaAnalysisVersion", "beginsAt", "endsAt", "agent",
                     "viewCount", "network", "parentIndex",
-                    # Cycle 20: `lastViewedAt` records a lock as well -- plexsim
+                    # Cycle 20: `lastViewedAt` records a lock as well -- simplex
                     # accepted the write and left the `Field` list alone.
                     "lastViewedAt",
                     # Cycle 21, swept on plexscratch over 41 candidate names drawn
                     # from both references' `Meta` keys and every column findings.md
                     # records: each of these is a 200 that stores a lock and a `Field`
-                    # row, and stores no VALUE, where plexsim answered 400 "unknown
+                    # row, and stores no VALUE, where simplex answered 400 "unknown
                     # field". Eleven names (`album`, `artist`, `chapterSource`,
                     # `childCount`, `hasChapterVideoStream`, `leafCount`, `logo`,
                     # `poster`, `role`, `sourceType`, `track`) are a 400 on both and
@@ -241,7 +241,7 @@ LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt"
                     # **plexscratch42** -- a fresh writable 1.42.2 copy built for exactly
                     # this (HANDOVER 4). On 1.42.2 the five media-codec names (`atmos`,
                     # `audioCodec`, `audioLayout`, `subtitleCodec`, `videoCodec`) are each
-                    # a **400** where 1.43.4 answers 200, so plexsim's refusal was right
+                    # a **400** where 1.43.4 answers 200, so simplex's refusal was right
                     # and that hold-out is CLOSED rather than implemented. `hdr10plus` is
                     # the opposite: a **200** on 1.42.2 as well as on 1.43.4 -- two
                     # witnesses, both versions. Cycle 31 read the `Field` list BACK and it
@@ -355,7 +355,7 @@ class Library:
         # The tag TABLE: every tag this server has ever minted, by (row key,
         # lowercased name). A real PMS keeps tags independently of membership, so a
         # tag removed from the last row and re-added comes back with its original
-        # id and spelling -- measured. plexsim looked only at the rows, so clearing
+        # id and spelling -- measured. simplex looked only at the rows, so clearing
         # a tag lost its identity.
         self._tags = {}
         # Cycle 89, measured on plexscratch42 (1.42.2),
@@ -499,7 +499,7 @@ class Library:
         # A show or season keeps its OWN play counter, independent of its leaves:
         # measured, scrobbling one episode twice took the show to `viewCount 2`,
         # unscrobbling that episode left it at 2 (it increments, it does not
-        # recompute), and unscrobbling the SHOW removed the field entirely. plexsim
+        # recompute), and unscrobbling the SHOW removed the field entirely. simplex
         # emitted neither field on a parent at all, so a TV grid's "Last Played" sort
         # and its viewCount filter had nothing to read -- and then implemented that note
         # the wrong way round. Re-measured one scrobble at a time on a writable copy of
@@ -531,7 +531,7 @@ class Library:
         and a fresh playlist: both take EVERY write in this family, and `rate`,
         `progress` and `unscrobble` store on them exactly as they do on an item -- an 8
         is `userRating` plus `lastRatedAt`, and it survives the unscrobble that drops
-        the view state. plexsim resolved the catalog alone, so all ten writes were a
+        the view state. simplex resolved the catalog alone, so all ten writes were a
         404 and the star rating on a collection page and on a playlist page errored.
         """
         row = self.catalog.items.get(rating_key)
@@ -565,7 +565,7 @@ class Library:
         nor `viewUpdatedAt`; a clear (`-1`, an empty section value) of a row with no
         stored rating stamps nothing and keeps a `lastRatedAt` a `-5` left. Any OTHER
         negative is never unchanged: it clears the stars and stamps both every time.
-        plexsim re-stamped on every write, so re-rating a row moved it to the front
+        simplex re-stamped on every write, so re-rating a row moved it to the front
         of Recently Watched, which orders by `viewUpdatedAt`.
         """
         stored = row.get("userRating")
@@ -609,7 +609,7 @@ class Library:
 
         `track` is `list` for a playlist's own beat and `item` otherwise: the two keep
         separate previous positions (cycle 87). `progressed` is the timeline's word on
-        whether this play has already passed the minute -- see `PlexSim.timeline`.
+        whether this play has already passed the minute -- see `SimPlex.timeline`.
         """
         row = self.state_row(rating_key)
         if row is None:
@@ -617,14 +617,14 @@ class Library:
         # The duration the BEAT carries, and nothing else: measured on a writable copy of
         # the reference with half-hour media, a beat with no `duration` stores nothing and
         # completes nothing, however far along it says it is -- 95% of the item's own length
-        # included. plexsim fell back to the row's duration, so a player that omits it (and
+        # included. simplex fell back to the row's duration, so a player that omits it (and
         # `/:/progress` never sends one) drove the whole watched-state machine.
         total = int(duration) if duration else 0
         # Cycle 58: a beat at EXACTLY the stored position writes nothing -- measured on both
         # copies in every state and from a new session and the same one alike:
         # `lastViewedAt` stands still and a row removed from Continue Watching stays
         # removed, where 1 ms either side stamps it and brings it back. It is what a
-        # client sends for "resume, then stop before the position moves", and plexsim
+        # client sends for "resume, then stop before the position moves", and simplex
         # re-sorted Continue Watching and un-hid the row the user had removed.
         unmoved = (offset is not None and row.get("viewOffset") is not None
                    and int(offset) == int(row["viewOffset"]))
@@ -640,11 +640,11 @@ class Library:
             # Measured: a resume point under a MINUTE is not stored at all -- the
             # reference answers `playbackState: ignore` AND leaves the row untouched
             # at 3 000, 20 000 and 59 000 ms, and only starts recording at 61 000.
-            # plexsim answered `ignore` and wrote the offset anyway, so a title
+            # simplex answered `ignore` and wrote the offset anyway, so a title
             # glanced at for two seconds appeared in Continue Watching.
             # Pinned since: EXACTLY 60 000 is not stored, and the rule holds for
             # EVERY state -- a `stopped` beat under a minute stores nothing either,
-            # measured at 30 000 and at 59 500 of a 60 000 ms item. plexsim exempted
+            # measured at 30 000 and at 59 500 of a 60 000 ms item. simplex exempted
             # `stopped`, so stopping a trailer at ten seconds left a resume point on
             # it, and stopping one near its end marked it watched.
             # A position inside the last 10% is a completion, not a resume point:
@@ -659,7 +659,7 @@ class Library:
                 row["lastViewedAt"] = _now()
                 self._stamp_view(row, *self._parents(row))
                 # Measured: a progress beat stamps `lastViewedAt` on the SEASON and the SHOW
-                # as well, before anything is watched -- plexsim touched the parents only on
+                # as well, before anything is watched -- simplex touched the parents only on
                 # a completion, so a show part-way through an episode sorted as never played.
                 for name in ("parentRatingKey", "grandparentRatingKey"):
                     parent = self.catalog.items.get(int(row[name])) \
@@ -672,10 +672,10 @@ class Library:
                 # already reported a position past the minute (cycle 58, both copies). A
                 # NEW session's sub-minute beats leave the stored offset alone and answer
                 # `ignore` with it, which is "Play from beginning, stop within a minute":
-                # a real PMS keeps the old resume point in Continue Watching and plexsim
+                # a real PMS keeps the old resume point in Continue Watching and simplex
                 # deleted it. `lastViewedAt` is left alone either way.
                 # Cycle 87, plexscratch42 (1.42.2): "has passed the minute" is the PLAY's
-                # `progress` latch (`PlexSim.timeline`), not every item the session ever
+                # `progress` latch (`SimPlex.timeline`), not every item the session ever
                 # took past a minute -- 70 000 on A, 3 000 on B, then 3 000 on A keeps A's
                 # resume point -- and a `stopped` beat never deletes: 70 000 then a stop at
                 # 3 000 answers `progress` and leaves 70 000 stored.
@@ -689,14 +689,14 @@ class Library:
         # session's previous position for the item was under 90% of the duration this beat
         # carries. A cold item beaten once at 95% records nothing, and five climbing beats
         # from 95% record nothing either; another client's earlier position does not count,
-        # and neither does an offset stored by `/:/progress`. plexsim completed on the
+        # and neither does an offset stored by `/:/progress`. simplex completed on the
         # position alone.
         # Cycle 87, measured on plexscratch42 (1.42.2) in 30 beat sequences: the previous
         # position is the SESSION's last beat, whatever item it named. One session beaten
         # 3 000 on A and then 92% on B completes B (Plex Web's shape and python-plexapi's
         # alike), 3 000 on B then 92% on A completes A, and 92% on B then a stop at 93% on
         # A completes nothing -- A's own last position was 3 000. Another session's beats
-        # still do not count. plexsim kept the position per (session, item).
+        # still do not count. simplex kept the position per (session, item).
         # Cycle 87 again: a PLAYLIST's own beats (`Playlist.updateTimeline`) keep a previous
         # position apart from the session's item beats -- 3 000 on A then 92% on the list
         # answers `ignore` and completes nothing, and so does 3 000 on the list then 92% on
@@ -710,7 +710,7 @@ class Library:
         # crossing beat whose predecessor was 0 -- a seek into the last tenth before the
         # first real position -- answers `ignore` and leaves the item unwatched on both
         # versions; `1` then 95% completes, and so does 0, 2000, 95% or a later crossing
-        # after a refused one. plexsim counted the 0 as a position and marked it watched.
+        # after a refused one. simplex counted the 0 as a position and marked it watched.
         crossed = seen is not None and seen > 0 and total and seen < total * 0.9
         # Cycle 45 REFUTED the `position > 60000` gate that used to stand here. The
         # minute rule is real for the RESUME POINT -- a beat at or under 60 000 ms
@@ -739,7 +739,7 @@ class Library:
             row["_viewedInSession"] = True
             row.pop("viewOffset", None)
             # Cycle 45: the completion stamps the ROW's own `lastViewedAt`, which
-            # plexsim set only when a `progress` beat happened to run first --
+            # simplex set only when a `progress` beat happened to run first --
             # measured on both copies, where a single crossing pair leaves it set. A
             # watched row without it sorts last under `sort=lastViewedAt`, never
             # reaches `/recentlyViewed` and cannot win On Deck's most-recently-viewed
@@ -767,7 +767,7 @@ class Library:
         Measured: the reference answers 200, the row KEEPS its `viewOffset` (91 000
         was still there afterwards), and it simply stops appearing in
         `/library/onDeck` and `/hubs/continueWatching` -- until the next timeline
-        brings it back. plexsim deleted the offset, so "Remove from Continue
+        brings it back. simplex deleted the offset, so "Remove from Continue
         Watching" also threw away the resume position and the next Play started the
         item over.
         """
@@ -817,7 +817,7 @@ class Library:
         librarySectionID as a STRING, viewedAt, accountID and deviceID.
         """
         # Measured: the key is a MONOTONIC counter, never reused -- the reference went
-        # 34, 35, delete 35, then 36. plexsim derived it from the list length, so a
+        # 34, 35, delete 35, then 36. simplex derived it from the list length, so a
         # delete made the next play reuse the deleted key and a client keyed on
         # historyKey got two different plays under one key.
         self._next_history += 1
@@ -881,7 +881,7 @@ class Library:
 
         Measured: after the scanner removed an item its history row SURVIVED as
         `{historyKey, title, viewedAt}` -- `ratingKey` and `key` were stripped.
-        plexsim left both, so the History page linked a 404.
+        simplex left both, so the History page linked a 404.
         """
         for entry in self._history:
             if str(entry.get("ratingKey")) == str(rating_key):
@@ -941,7 +941,7 @@ class Library:
         """End an activity the way a real refresh does: an `updated` frame, then
         `ended` at 100, and the row leaves /activities.
 
-        plexsim only ever fired `started`, and only `cancel_activity` ever fired
+        simplex only ever fired `started`, and only `cancel_activity` ever fired
         `ended` -- so an activity that nothing cancelled stayed in /activities for
         the life of the process and the header's spinner never stopped. Measured on
         the reference: the started frame's progress is **-1**, not 0, and it reaches
@@ -1005,7 +1005,7 @@ class Library:
           `<tag>[].tag.tag-=a,b`   remove those tags
 
         Raises EditError with the status a real PMS answers. Measured, parameter by
-        parameter against the reference, and plexsim had all of this wrong:
+        parameter against the reference, and simplex had all of this wrong:
 
           * an UNKNOWN field is a 400, not a silently stored attribute;
           * `year.value=abc` is a 500, and `year.value=-5` REMOVES the year;
@@ -1013,7 +1013,7 @@ class Library:
           * `userRating` is accepted and IGNORED on the item path (the star rating
             is /:/rate) and STORED on the section path;
           * on the item path only `.locked=1` locks -- `true`, `false` and an empty
-            value all UNLOCK, where plexsim locked on anything non-empty; the
+            value all UNLOCK, where simplex locked on anything non-empty; the
             section path 400s anything but an integer 0 or 1;
           * on the ITEM path an indexed tag list REPLACES the whole list rather
             than appending, and a `tag-` removal with any value CLEARS it; on the
@@ -1032,7 +1032,7 @@ class Library:
                  # scoping parameter and nothing else there, but on the ITEM path a
                  # bare `type=1` -- or `type=4`, or `type=abc` -- is a 200 that reads
                  # no value and changes no row, exactly like every other name cycle 20
-                 # added to the lockable set. plexsim dropped it on BOTH paths, so a
+                 # added to the lockable set. simplex dropped it on BOTH paths, so a
                  # form naming only `type` looked EMPTY on the item path and got the
                  # 400 an empty form answers.
                  and not (section and k == "type")]
@@ -1061,12 +1061,12 @@ class Library:
             # `flattenSeasons=1` all answer 200 and the edit lands -- while each of
             # them ALONE is a 400. The recorded rule was measured with the unknown
             # name alone, which is failure class A: a client appends its own options
-            # to the save, and plexsim refused 34 of the 71 names swept.
+            # to the save, and simplex refused 34 of the 71 names swept.
             raise EditError(400, "bad request")
 
         # Cycle 17, measured on plexscratch: a save a real PMS REFUSES writes
         # NOTHING. `title.value=PARTIAL&year.value=abc` is a 500 there and the title
-        # is untouched, on the item path and the section path alike. plexsim applied
+        # is untouched, on the item path and the section path alike. simplex applied
         # each parameter as it validated it, so everything before the bad one landed
         # and everything after it did not -- the client is told the save failed, keeps
         # its old model, and the row on disk has moved, with nothing to tell the user.
@@ -1159,14 +1159,14 @@ class Library:
                         or (field in TAG_KEYS and not name.endswith(".value")):
                     # Measured: each is a 200 that changes nothing -- the value-less
                     # columns above, a movie's `duration` and `index`, and a bare tag
-                    # name (`genre=Drama`) on the item path, where plexsim stored the
+                    # name (`genre=Drama`) on the item path, where simplex stored the
                     # first two and 400'd the rest.
                     changed = True
                     continue
                 if field in ARTWORK_VALUE_FIELDS or (section and field == "slug"):
                     # Cycle 20: the artwork columns take a value on both paths -- the
                     # url is discarded and the column becomes the row's own versioned
-                    # path -- and `slug` is accepted on the section path where plexsim
+                    # path -- and `slug` is accepted on the section path where simplex
                     # answered 400.
                     if field in ARTWORK_VALUE_FIELDS:
                         if str(value) == "":
@@ -1178,7 +1178,7 @@ class Library:
                             # This matters beyond the grammar. On 1.42.2 that DELETE does
                             # not exist at all (it is a 404 on all five artwork leaves), so
                             # the empty-value edit is the ONLY way a client on the version
-                            # plexsim reports can clear a row's artwork -- which is how the
+                            # simplex reports can clear a row's artwork -- which is how the
                             # cleared-artwork state cycle 29's derivation rules are all
                             # about is reached there.
                             row.pop(field, None)
@@ -1230,7 +1230,7 @@ class Library:
             # Cycle 55, measured on plexscratch42: a season's title is GENERATED unless
             # the user wrote one (cycle 31 read `title = ''` for every season out of the
             # database), so it follows an index edit -- `index.value=0` is `Specials` and
-            # putting the index back is `Season N` again. plexsim re-titled only rows it
+            # putting the index back is `Season N` again. simplex re-titled only rows it
             # had itself generated, so a catalog season kept `Season 20` at index 0.
             index = row.get("index")
             row["title"] = ("Specials" if str(index) == "0"
@@ -1250,7 +1250,7 @@ class Library:
             # Cycle 20, measured on plexscratch: the inheritance is a READ-TIME
             # fallback, not a copy made when the show is written. Clearing an
             # episode's own rating (`contentRating.value=`) makes it read the show's
-            # AT ONCE, and a later show write moves it again. plexsim copied the
+            # AT ONCE, and a later show write moves it again. simplex copied the
             # show's value onto the episode at load and on a show edit, so a cleared
             # rating left the episode with none at all and its page drew a blank
             # badge for the life of the process. Re-inheriting here reproduces every
@@ -1265,7 +1265,7 @@ class Library:
             # Cycle 16, measured on plexscratch: a SEASON with no year of its
             # own carries the show's as `parentYear`, and one that LOSES its
             # year gains it in the same read. The rule is recorded and already
-            # right at catalog LOAD; plexsim derived it only there, so a season
+            # right at catalog LOAD; simplex derived it only there, so a season
             # edited at runtime carried neither year and its page printed none.
             parent = self.catalog.items.get(int(row["parentRatingKey"])) \
                 if str(row.get("parentRatingKey") or "").isdigit() else None
@@ -1278,7 +1278,7 @@ class Library:
         # the column where it was, on both paths, while a poster write in the same
         # session moved it -- so the column follows the ARTWORK and the row's own
         # identity, not its text. It is the cursor python-plexapi and every sync client
-        # polls, and plexsim stamped it on every edit, which made a title fix look like
+        # polls, and simplex stamped it on every edit, which made a title fix look like
         # a new row. The artwork writers stamp it themselves.
         return changed
 
@@ -1338,7 +1338,7 @@ class Library:
             # is a 500 on both paths), and an EMPTY one is a 500 on the item path and
             # removes the field on the section path. The section path STORES a
             # userRating, stamping lastRatedAt, and -1 or empty clears both -- the Edit
-            # dialog's own save is a rating write. plexsim kept every rating as the
+            # dialog's own save is a rating write. simplex kept every rating as the
             # string it was sent and discarded userRating on both paths.
             text = str(value).strip()
             if (text == "" and not section) \
@@ -1354,7 +1354,7 @@ class Library:
             if number is None or (number < 0 and field in ("rating", "audienceRating")):
                 # Cycle 20, measured on plexscratch: a negative `rating` or
                 # `audienceRating` REMOVES the field, the way a negative year does --
-                # plexsim stored -3.0 and the preplay page printed it.
+                # simplex stored -3.0 and the preplay page printed it.
                 row.pop(field, None)
             else:
                 row[field] = number
@@ -1395,7 +1395,7 @@ class Library:
                 row.pop(field, None)
             elif number < 0 or (field == "year" and number == 0):
                 # Measured: a negative year REMOVES the field, and so does 0 -- while
-                # `+2000` is 2000, where plexsim answered 500.
+                # `+2000` is 2000, where simplex answered 500.
                 row.pop(field, None)
             else:
                 row[field] = number
@@ -1407,7 +1407,7 @@ class Library:
                 raise EditError(500, "unparseable %s %r" % (field, value))
             if parsed is None:
                 # Measured: the item path removes the field rather than storing the
-                # text, which is what plexsim did.
+                # text, which is what simplex did.
                 row.pop(field, None)
             else:
                 row[field] = parsed
@@ -1436,7 +1436,7 @@ class Library:
         """Replace a tag list, which is what an indexed write means.
 
         Measured: `genre[0].tag.tag=A&genre[1].tag.tag=B` leaves EXACTLY [A, B] --
-        the originals are gone. plexsim appended, so the Edit dialog could only
+        the originals are gone. simplex appended, so the Edit dialog could only
         ever add tags and the list grew every time it was saved.
         """
         key = TAG_KEYS.get(tag_type)
@@ -1476,7 +1476,7 @@ class Library:
                 minted["tagKey"] = person_tag_key(value)
             if key == "Role":
                 # Measured: an actor added through an edit carries `role: ""`, where
-                # plexsim omitted the field.
+                # simplex omitted the field.
                 minted["role"] = ""
             self._tags[(key, str(value).lower())] = minted
             existing[str(value).lower()] = minted
@@ -1499,7 +1499,7 @@ class Library:
         on its episodes' `parentTitle` and `parentStudio`, and a show's on its seasons'
         `parentTitle` and `parentStudio` and every episode's `grandparentTitle` -- on
         the detail row, the child list and the grid alike. An EMPTY show title removes
-        them rather than sending "". plexsim copied these once, when the catalog
+        them rather than sending "". simplex copied these once, when the catalog
         loaded, so a renamed show kept its old name on every episode.
         """
         kind, key = row.get("type"), str(row.get("ratingKey"))
@@ -1520,7 +1520,7 @@ class Library:
                 if "index" in written and kind == "show":
                     # Cycle 16, measured on plexscratch: a SHOW's `index` lands on its
                     # seasons' `parentIndex` the same way a season's lands on its
-                    # episodes'. plexsim moved the show's own index and left every
+                    # episodes'. simplex moved the show's own index and left every
                     # season claiming the old one.
                     child["parentIndex"] = row.get("index")
                 if "index" in written and kind == "season":
@@ -1540,14 +1540,14 @@ class Library:
                 # episodes beneath it, and clearing it clears theirs. The read side on
                 # kids and zen is the same rule seen from the other end -- every
                 # episode of a show carries the show's certificate, a season carries
-                # none. plexsim derived it only at load, so a show edited afterwards
+                # none. simplex derived it only at load, so a show edited afterwards
                 # left its episodes showing a certificate it no longer had. A real PMS
                 # keeps an episode's OWN agent rating separate and moves only the
-                # inherited ones; plexsim's catalog has one column for both.
+                # inherited ones; simplex's catalog has one column for both.
                 # Cycle 16, re-measured on plexscratch: the cascade reaches only the
                 # episodes that carry NO rating of their own. Three matched episodes
                 # kept theirs while three unmatched ones followed the show, and an
-                # episode written explicitly survived the next show write. plexsim
+                # episode written explicitly survived the next show write. simplex
                 # stamped the show's rating on every episode, destroying an explicit
                 # per-episode rating on the next edit of its show. The catalog has one
                 # column for both, so the flag records which ones are the row's own.
@@ -1561,7 +1561,7 @@ class Library:
         the index, which follows a later index edit -- while a movie, a show and a list
         keep "". Every one keeps its old title's sort form as `titleSort` (`The Old
         List` sorts as `Old List`, `Bushwhacked` as `Bushwhacked`) unless the sort title
-        is locked. plexsim stored "" for all of them and dropped the sort title.
+        is locked. simplex stored "" for all of them and dropped the sort title.
         """
         locked = any(f.get("name") == "titleSort" and f.get("locked") for f in row.get("Field") or [])
         if old_title and not locked:
@@ -1577,7 +1577,7 @@ class Library:
         whatever `titleSort.value` said, a season retitled `The Season Name` sorts as
         `Season Name` -- and only a lock, sent with the value or before the title
         changes, keeps what was typed. An EMPTY title leaves it as it was. A
-        collection and a playlist follow the same rule. plexsim stored whatever it
+        collection and a playlist follow the same rule. simplex stored whatever it
         was sent, so a Sort Title typed without its lock filed the row where a real
         server would not.
         """
@@ -1587,7 +1587,7 @@ class Library:
             # Cycle 16, measured on plexscratch: the SECTION save path STORES an
             # unlocked `titleSort.value=` -- it survives until the next TITLE write,
             # which re-derives it -- while the ITEM path discards it, which is the rule
-            # already recorded. That recorded rule is the item path's alone; plexsim
+            # already recorded. That recorded rule is the item path's alone; simplex
             # applied it to both, so a Sort Title typed into the grid's own edit dialog
             # vanished the moment it was saved.
             return
@@ -1616,7 +1616,7 @@ class Library:
         FIRST, deduplicated case-insensitively, and the row's other tags follow in
         their order; a `tag-` removal removes exactly the names it lists, ignoring
         ones the row does not have; and an empty indexed value changes nothing.
-        plexsim replaced or cleared the list here as it does on the item path, so a
+        simplex replaced or cleared the list here as it does on the item path, so a
         partial save -- python-plexapi's addGenre, a second client -- lost tags.
         """
         key = TAG_KEYS.get(tag_type)
@@ -1636,7 +1636,7 @@ class Library:
         """A real PMS reports locks as a `Field` array on the row, in COLUMN order.
 
         Measured: the order is fixed (`FIELD_ORDER`, the metadata table's columns),
-        not the order the client wrote them -- plexsim appended, so re-locking a
+        not the order the client wrote them -- simplex appended, so re-locking a
         field moved it to the end.
         """
         fields = [f for f in row.get("Field", []) if f.get("name") != field]
@@ -1707,13 +1707,13 @@ class Library:
         """Drop this row from the named collection. The collection itself SURVIVES.
 
         Cycle 49 REFUTED the premise the deletion here rested on. The old comment said
-        the reference "also leaves the stale tag on the item, which is a state plexsim
+        the reference "also leaves the stale tag on the item, which is a state simplex
         has no way to represent consistently" -- it does not. Measured on plexscratch42
         (1.42.2): a collection created over one movie, then that movie's collection list
         replaced, leaves the collection ITEM alive (`/library/metadata/{id}` 200, still
         in `/library/all?type=18`) AND removes the tag from the item (the `/collection`
         axis carries only the surviving tag). So the state is perfectly representable,
-        and plexsim was deleting a row a real PMS keeps -- which a client sees as a
+        and simplex was deleting a row a real PMS keeps -- which a client sees as a
         collection disappearing out of its Collections pivot when an item is edited.
         """
         collection = self.find_collection(title, row.get("librarySectionID"))
@@ -1736,7 +1736,7 @@ class Library:
         edit -- keeps the `childCount`, `minYear` and `maxYear` it had with one member
         left, on the DELETE's answer and on every read, while `/children` lists nothing.
         The reference stops recomputing the aggregate at zero; a collection CREATED empty
-        never had one (cycle 83). plexsim dropped all three.
+        never had one (cycle 83). simplex dropped all three.
         """
         if collection.get("smart"):
             return
@@ -1766,7 +1766,7 @@ class Library:
         collection whose only member was 4 left it reading `childCount` 1 and 4's year, at once
         and 20 s later, while `/children` listed nothing; `merge?ids=17` on a collection of 17
         and 18 listed 18 once and still read 2 and both years. The aggregate stays as it was
-        until the next membership write recounts it. plexsim pruned the key and recounted live,
+        until the next membership write recounts it. simplex pruned the key and recounted live,
         so the first lost its `childCount` and the second read 1.
         """
         for collection in list(self._collections.values()):
@@ -1823,7 +1823,7 @@ class Library:
                 # season left matched: the same field set goes as in a season's
                 # cascade -- the four people lists, `audienceRating`, `year`, and
                 # `summary` emptied -- so these belong to "unmatch an episode" rather
-                # than to the cascade. plexsim changed the guid and the title and kept
+                # than to the cascade. simplex changed the guid and the title and kept
                 # the rest, which left an unmatched episode carrying the agent's
                 # summary, rating and cast under a `local://` guid.
                 for field in self.EPISODE_UNMATCH_DROPS:
@@ -1842,7 +1842,7 @@ class Library:
             # way down. Every season becomes `local://` and every episode with it, each
             # season's `parentGuid` and each episode's `grandparentGuid` follow the
             # show's new `none://` guid, and the artwork the children borrowed from the
-            # show goes with it -- as does the `contentRating` they inherited. plexsim
+            # show goes with it -- as does the `contentRating` they inherited. simplex
             # edited the show row alone, which left matched seasons and episodes under
             # an unmatched show: a state a real PMS cannot produce, and one where the
             # client's own Match / Fix Match predicate disagrees from row to row.
@@ -1876,7 +1876,7 @@ class Library:
             # moves AND the poster the row owns follows it -- `thumb/1790724822` became
             # `thumb/1790724825` beside `updatedAt 1790724825` -- which is cycle 20's rule
             # that an owned artwork version IS the row's `updatedAt` (726 of 726 on zen).
-            # plexsim moved the stamp and kept the old version, so an unmatched row's
+            # simplex moved the stamp and kept the old version, so an unmatched row's
             # poster named a version its own row no longer carried.
             for field in ("thumb", "art"):
                 value = str(row.get(field) or "")
@@ -1884,7 +1884,7 @@ class Library:
                 if value.startswith(owned):
                     row[field] = owned + str(row["updatedAt"])
         # Re-measured on the copy: a movie unmatch runs the full refresh sequence and
-        # its activity ENDS -- `/activities` is empty straight afterwards. plexsim
+        # its activity ENDS -- `/activities` is empty straight afterwards. simplex
         # opened an `Unmatching` activity at progress 0 and never closed it, so the
         # Dashboard spinner turned for the life of the process. The caller pushes the
         # refresh frames; nothing is left open here.
@@ -1962,7 +1962,7 @@ class Library:
                 pass
         # Cycle 59: a rename here reaches the children as an edit's does -- a real PMS
         # reads a child's `parentTitle`/`grandparentTitle` off the parent row -- where
-        # plexsim renamed the show and left every season and episode on the old name.
+        # simplex renamed the show and left every season and episode on the old name.
         self._follow_parent(row, {"title", "studio"})
         row["updatedAt"] = _now()
         # No activity here: the server runs the measured refresh sequence around this call,
@@ -1977,7 +1977,7 @@ class Library:
         a refresh does NOT move the row's `updatedAt` -- and the reference really ran
         it, because it pushed the seven-frame sequence each time. Cycle 20 established
         that an artwork URL's version IS the row's `updatedAt`, so the two move
-        together and neither does: plexsim stamped both, and every Refresh Metadata
+        together and neither does: simplex stamped both, and every Refresh Metadata
         therefore told every client that an unchanged row's poster and background had
         changed. (plexscratch is isolated from plex.tv, so what is measured is that
         running the refresh sequence does not by itself stamp the row.)
@@ -1992,7 +1992,7 @@ class Library:
         """`PUT /library/metadata/{id}/split` -- one row per Media again.
 
         Only offered by the client when the item has more than one Media, which
-        for plexsim only happens after a merge. Splitting returns the extra
+        for simplex only happens after a merge. Splitting returns the extra
         Media to rows of their own.
         """
         media = row.get("Media") or []
@@ -2017,8 +2017,8 @@ class Library:
             # 58 is 17 in every field but `ratingKey`, `key` and the artwork URLs built
             # from them -- the FIRST item's title, its `plex://movie/...` guid and its
             # whole imdb/tmdb/tvdb `Guid` list, `addedAt`, `updatedAt` and even its `Field`
-            # locks (17's `collection` lock came along; plexsim dropped them) -- holding the
-            # absorbed item's Media unchanged. plexsim minted `local://<new key>`, so the
+            # locks (17's `collection` lock came along; simplex dropped them) -- holding the
+            # absorbed item's Media unchanged. simplex minted `local://<new key>`, so the
             # row lost its identity in every `includeGuids` listing. 1.42.2 agrees: a
             # split on plexscratch42 left row 353 on the first row's `local://297`.
             self.catalog.add(clone)
@@ -2034,7 +2034,7 @@ class Library:
         Measured warning, the hard way: on a real PMS this is not reversible.
         The split that undoes it leaves the second item on a NEW ratingKey
         carrying the first one's metadata, so a merge on a library you care
-        about costs a re-match. plexsim's is in memory, so a restart undoes it.
+        about costs a re-match. simplex's is in memory, so a restart undoes it.
         """
         # Cycle 14, measured on the copy and re-measured by the driver: a merge whose
         # target has no `Media` of its OWN absorbs nothing. `PUT /library/metadata/7/
@@ -2045,7 +2045,7 @@ class Library:
         # server: 9 goes into 8, 8 carries two Media, 9 is a 404, and the season's and
         # show's leaf counts drop 3->2 and 6->5.
         #
-        # This was plexsim's one DATA-LOSS bug. `catalog.remove` cascades to children,
+        # This was simplex's one DATA-LOSS bug. `catalog.remove` cascades to children,
         # so merging one season into another deleted the absorbed season AND every
         # episode under it, leaving the show's `leafCount` stale and the episodes gone
         # from every listing. The split does not bring them back.
@@ -2067,7 +2067,7 @@ class Library:
             # the absorbed row's playlist ENTRY goes with it -- its playlistItemID is a 404
             # to a DELETE and to a move, a `move?after=` it sends the item to the front as
             # any unknown `after` does, and the split that follows does not bring it back.
-            # plexsim kept the entry and only hid it at render, so a client holding the
+            # simplex kept the entry and only hid it at render, so a client holding the
             # list from before the merge still addressed a slot nobody could see.
             for playlist in list(self._playlists.values()):
                 playlist["items"] = [item for item in playlist["items"]
@@ -2078,10 +2078,10 @@ class Library:
             merged.append(other)
         # Cycle 84, measured on plexscratch42 (1.42.2, `tests/fixtures/merge_updated_at_s42.json`)
         # and before it on plexscratch (1.43.4): a merge leaves the survivor's `updatedAt`
-        # and its artwork version where they were, read at once and 100 s later. plexsim
+        # and its artwork version where they were, read at once and 100 s later. simplex
         # stamped the merge time, so the survivor and the row a split later makes from it
         # carried a time no reference writes. (A networked PMS may restamp during the
-        # agent refresh that follows; plexsim runs no agent.)
+        # agent refresh that follows; simplex runs no agent.)
         return merged
 
     def merge_shows(self, row, other_keys):
@@ -2172,7 +2172,7 @@ class Library:
         for gone in (removed or {rating_key}):
             self._forget_item(gone)
         # Measured through the reference's scanner: removing a season's LAST episode
-        # removes the season too, and the show's childCount drops with it. plexsim
+        # removes the season too, and the show's childCount drops with it. simplex
         # left the empty season listed, so the show page drew a season tile with
         # nothing behind it.
         if row.get("type") == "episode" and parent_key:
@@ -2216,7 +2216,7 @@ class Library:
         # Cycle 16, measured on plexscratch over five lists whose ratingKey, addedAt
         # and title orders are all different: the SMART ones come first, then
         # `titleSort` within each group, and every tie under an explicit sort falls
-        # back to the same. plexsim ordered by titleSort alone.
+        # back to the same. simplex ordered by titleSort alone.
         return sorted(rows, key=lambda r: (not r.get("smart"),
                                            str(r.get("titleSort") or r.get("title") or "")))
 
@@ -2231,7 +2231,7 @@ class Library:
             "ratingKey": key,
             # Cycle 16, measured on plexscratch: an EMPTY title is stored
             # verbatim and reads back as `""`; a single space is kept too.
-            # plexsim substituted "Untitled", inventing a name the user never
+            # simplex substituted "Untitled", inventing a name the user never
             # typed. (A MISSING title is a 400 on both, refused before this.)
             "title": title,
             "playlistType": playlist_type or "video",
@@ -2276,7 +2276,7 @@ class Library:
         # Cycle 31, measured on plexscratch42: the middle segment is `item` when the uri
         # names ONE metadata row and `directory` otherwise -- a comma-joined key list is a
         # `directory` (`library://x/directory/%2Flibrary%2Fmetadata%2F1%2C2`) and a single
-        # key is an `item` (`library://x/item/%2Flibrary%2Fmetadata%2F4`). plexsim wrote
+        # key is an `item` (`library://x/item/%2Flibrary%2Fmetadata%2F4`). simplex wrote
         # `directory` for both, so the Save of a single-item smart query came back with a
         # content string the client cannot reopen as a rule.
         kind = ("item" if (path.startswith("/library/metadata/")
@@ -2291,7 +2291,7 @@ class Library:
         the client can tell the user "3 of 5 added" -- and measured, a row already in
         the playlist is NOT added again: re-adding it answers `leafCountAdded: 0` and
         leaves the count alone, and a uri naming the same key twice adds it once.
-        plexsim appended every time, so Add to Playlist on something already there
+        simplex appended every time, so Add to Playlist on something already there
         silently duplicated it.
         """
         added = 0
@@ -2303,7 +2303,7 @@ class Library:
             present.add(key)
             # Cycle 16, measured on plexscratch: `playlistItemID` is a SERVER-WIDE
             # sequence -- three lists built in a row took 40/41, 42/43, 44/45, unbroken
-            # across them. plexsim restarted at 1 inside each playlist, so two lists
+            # across them. simplex restarted at 1 inside each playlist, so two lists
             # handed the client the same ids for different rows and a cached id from
             # one list addressed a row in another.
             self._next_playlist_item += 1
@@ -2336,7 +2336,7 @@ class Library:
             (n for n, i in enumerate(items) if str(i["playlistItemID"]) == str(after)), None)
         # Measured on a writable copy of the reference: an `after` the playlist does not
         # hold -- an unknown id, `0`, `abc` -- sends the item to the FRONT, as no `after`
-        # does. plexsim appended it at the end.
+        # does. simplex appended it at the end.
         items.insert(0 if index is None else index + 1, moving)
         playlist["updatedAt"] = _now()
         return True
@@ -2416,7 +2416,7 @@ class Library:
         if playlist.get("smart"):
             # Cycle 16, measured on plexscratch: a SMART list's items carry NO
             # `playlistItemID` at all -- its members are its query, so there is nothing
-            # to address. plexsim stamped 1, 2, 3 on them, which offers the client an
+            # to address. simplex stamped 1, 2, 3 on them, which offers the client an
             # item id for a row that cannot be moved or removed.
             return [(row, None) for row in self.smart_rows(playlist.get("uri"))]
         out = []
@@ -2452,7 +2452,7 @@ class Library:
         rows = [r for r in rows if r]
         # Cycle 55, from `sum(round(duration/1000, 0))` over each item's longest Media
         # (SQLite integer division) and measured on plexscratch42: 1800689 + 1800689 +
-        # 20032 ms answers 3620000. plexsim summed the raw milliseconds.
+        # 20032 ms answers 3620000. simplex summed the raw milliseconds.
         duration = 1000 * sum(
             max([int(m.get("duration") or 0) for m in r.get("Media") or []]
                 or [int(r.get("duration") or 0)]) // 1000 for r in rows)
@@ -2463,7 +2463,7 @@ class Library:
             # Cycle 26: an unmatched playlist carries `local://{rk}` and loses its
             # `duration`. See the collection row below.
             "guid": ("local://%s" % playlist["ratingKey"] if playlist.get("_unmatched")
-                     else "com.plexapp.agents.none://plexsim-playlist-%s"
+                     else "com.plexapp.agents.none://simplex-playlist-%s"
                      % playlist["ratingKey"]),
             "type": "playlist",
             "title": playlist["title"],
@@ -2491,7 +2491,7 @@ class Library:
             row["Image"] = images
         if rows:
             # Measured: an EMPTY playlist -- never filled, or emptied -- carries
-            # neither a composite nor a duration. plexsim kept both, with the
+            # neither a composite nor a duration. simplex kept both, with the
             # duration at 0 and a composite of nothing.
             row["composite"] = "/playlists/%s/composite/%d" % (playlist["ratingKey"], stamp)
             if not playlist.get("_unmatched"):
@@ -2544,7 +2544,7 @@ class Library:
         # title, its guid, and the userRating and lastRatedAt rated against the guid --
         # `c89b recase` after `C89B Recase` reads `C89B Recase`, its old guid and 7.0
         # from the first read. Its old prefs come back with the next prefs write
-        # (`_inherited_prefs`). plexsim minted a new guid and nothing came back.
+        # (`_inherited_prefs`). simplex minted a new guid and nothing came back.
         previous = self._collection_guids.get(collection["title"].lower())
         if previous:
             collection["title"] = previous["tag"]
@@ -2554,7 +2554,7 @@ class Library:
             if previous.get("prefs"):
                 collection["_inherited_prefs"] = dict(previous["prefs"])
         else:
-            collection["guid"] = "collection://plexsim-%s" % key
+            collection["guid"] = "collection://simplex-%s" % key
         self._derive_title_sort(collection)
         # Cycle 61, measured on both copies: the members' tag of a NEW collection titled
         # `c61c lowcreate` is `C61c lowcreate` -- the title stays as typed -- and an
@@ -2618,7 +2618,7 @@ class Library:
         tags against four collection items, which is its steady state. Only
         `POST /library/collections` makes an item.
         //
-        plexsim materialised a full, browsable collection from the tag write, so "Add to
+        simplex materialised a full, browsable collection from the tag write, so "Add to
         Collection" on an item created a row in the Collections tab that a real PMS does
         not have -- and the search row it answered carried a `guid`, which a tag-only
         collection's does not.
@@ -2642,13 +2642,13 @@ class Library:
         """Rename or re-summarise a collection.
 
         Measured on a writable copy of the reference: renaming a collection leaves its
-        members' Collection TAG as it was. plexsim renamed the tag in place; now the
+        members' Collection TAG as it was. simplex renamed the tag in place; now the
         collection keeps the tag it was created under (`tag`) and finds, removes and
         untags its members by that, so the rename changes the title alone.
         """
         if title == "" and collection["title"]:
             # Measured: an emptied collection title is stored as "" and keeps its old
-            # title's sort form. plexsim ignored an empty title here.
+            # title's sort form. simplex ignored an empty title here.
             self._empty_title(collection, collection["title"])
             collection["title"] = ""
         if title and title != collection["title"]:
@@ -2670,7 +2670,7 @@ class Library:
         it out; on the SECTION path the indexed `label[N]` list MERGES and a
         `label[].tag.tag-` removal removes the names it lists, ignoring case, while on
         the item and collections paths the list REPLACES and any removal clears it.
-        plexsim stored a `titleSort` lock alone, replaced the labels on every path and
+        simplex stored a `titleSort` lock alone, replaced the labels on every path and
         ignored every removal -- python-plexapi's `removeLabel` and the Edit dialog's
         "remove the last label" changed nothing, and its lock icons never lit.
         """
@@ -2716,7 +2716,7 @@ class Library:
         if title == old:
             return
         # The tag keeps its ID across the rename -- measured on the copy, where tag 239
-        # stayed 239 through it. plexsim derives a tag id by hashing the NAME, so the
+        # stayed 239 through it. simplex derives a tag id by hashing the NAME, so the
         # id the members already carry has to be pinned onto the collection before the
         # name moves, or the row's `index` and the axis key would jump.
         collection.setdefault("tagID", self.catalog.tag_id("Collection", old))
@@ -2777,7 +2777,7 @@ class Library:
     def collection_guid(collection):
         # A collection stored before cycle 89 has no guid of its own: it was always
         # minted from the ratingKey.
-        return collection.get("guid") or "collection://plexsim-%s" % collection["ratingKey"]
+        return collection.get("guid") or "collection://simplex-%s" % collection["ratingKey"]
 
     def inherit_collection_prefs(self, collection, written):
         """Cycle 89 (plexscratch42): a re-created collection reads none of its old prefs
@@ -2821,7 +2821,7 @@ class Library:
         members come back by RELEASE DATE, oldest first, whatever order they were added
         in; `2` is the custom order a move writes. `1` gave the same order on members
         whose release order and titles agree, and is alphabetical by python-plexapi's
-        mapping (0 release, 1 alpha, 2 custom). plexsim listed insertion order.
+        mapping (0 release, 1 alpha, 2 custom). simplex listed insertion order.
         """
         sort = str(collection.get("collectionSort") or "0")
         if sort == "2":
@@ -2830,7 +2830,7 @@ class Library:
         # that parses as a plain non-zero integer -- `3`, `99`, `-1`, `01` and `+1` as
         # well as `1` -- and RELEASE DATE for `0` and for anything that does not parse
         # (`1.5`, a leading space, `abc`, an empty value). So a leading `+` is allowed
-        # and a decimal point and a leading space are not. plexsim honoured `1` alone
+        # and a decimal point and a leading space are not. simplex honoured `1` alone
         # and fell back to release date for every other number, which a free-text pref
         # can hold easily enough.
         if sort.lstrip("+-").isdigit() and sort.lstrip("+-").lstrip("0"):
@@ -2873,7 +2873,7 @@ class Library:
             # Cycle 14, measured on the copy: a collection row's `index` is its own
             # TAG id -- the same number its members carry in their `Collection` tag and
             # the same one the `/collection` axis keys on (235 and 236 for two
-            # collections made in order). plexsim sent 1 for every collection, so the
+            # collections made in order). simplex sent 1 for every collection, so the
             # number the client uses to tie a row to its tag was the same on all of
             # them. The tag id comes from the catalog's own allocator, so a rename
             # follows the tag the collection was created under.
@@ -2885,7 +2885,7 @@ class Library:
             # NUMBER of the members -- movie 1, show 2, season 3, episode 4 -- plus
             # 100 when the collection is smart (101/102/104). Cycle 14 saw the `1` on
             # a three-member collection and left it unexplained; the rule predicted
-            # 102 and 104 before either was measured. plexsim sent the member count,
+            # 102 and 104 before either was measured. simplex sent the member count,
             # which `childCount` already carries.
             "ratingCount": (TYPE_NUMBERS.get(collection["subtype"], 1)
                             + (100 if collection.get("smart") else 0)),
@@ -2900,7 +2900,7 @@ class Library:
             "addedAt": collection["addedAt"],
             "updatedAt": stamp,
             "childCount": len(rows),
-            # Cycle 15: a NUMBER here, as on every other row. plexsim already sent
+            # Cycle 15: a NUMBER here, as on every other row. simplex already sent
             # an int on a movie detail row, so the collection path disagreed with its
             # own library rows.
             "librarySectionID": int(collection["librarySectionID"])
@@ -2916,7 +2916,7 @@ class Library:
             # created over a show's key (so it holds nothing): the row carries NO
             # `childCount` -- section `/collections`, `/library/metadata/{id}`,
             # `/library/collections/{id}`, `all?type=18`, `/library/all` alike -- where
-            # a one-member collection beside it says 1. plexsim sent 0.
+            # a one-member collection beside it says 1. simplex sent 0.
             row.pop("childCount")
         if collection.get("_unmatched"):
             # Cycle 26: an unmatch REMOVES it. Built above and popped here rather than
@@ -2952,7 +2952,7 @@ class Library:
             row["collectionFilterBasedOnUser"] = collection["collectionFilterBasedOnUser"]
         if years and not collection.get("smart"):
             # Measured: a SMART collection carries no minYear/maxYear -- its
-            # membership is a query, so there is no fixed span to report. plexsim
+            # membership is a query, so there is no fixed span to report. simplex
             # computed them from whatever the query matched at that moment.
             row["minYear"] = years[0]
             row["maxYear"] = years[-1]

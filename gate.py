@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the official client's direct-play gate to plexsim's catalog.
+"""Apply the official client's direct-play gate to simplex's catalog.
 
 This re-implements the checks in plex-for-kodi's
 `MediaDecisionEngine.canDirectPlay` (plexnet/mediadecisionengine.py), which every
@@ -11,7 +11,7 @@ decision:
     frameRate > 30 and height >= 1080           -> transcode  (no 1080p60 support)
     videoCodec == hevc and not allow_hevc       -> transcode
 
-plexsim has no encoder, so a "transcode" verdict here is not a quality
+simplex has no encoder, so a "transcode" verdict here is not a quality
 downgrade, it is an item that will not play at all.  Running this against the
 catalog says which rows are actually deliverable to which client class, instead
 of discovering it one silent failure at a time.

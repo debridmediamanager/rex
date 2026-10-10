@@ -5,16 +5,16 @@
    library on plexscratch42 (1.42.2), made with Add Library's form. Their versioned
    `/library/sections/{S}/composite/{n}` -- bare and with the `width`/`height`/`rows`/
    `cols`/`border`/`media`/`repeat` set Plex Web's composite view appends -- and the photo
-   transcoder's fetch of it are the ordinary 404 under every Accept. plexsim drew a
+   transcoder's fetch of it are the ordinary 404 under every Accept. simplex drew a
    generated PNG for all of them.
 2. `tests/fixtures/c87_w6_system_xml_accept.json`: every `/system` path Plex Web reads,
    under four Accept values. Only the bare `/system/agents` answers JSON; `/system`,
    `/system/search`, `/system/library/sections` and `/system/scanners/{N}` answer their
    `application/xml` document whatever Accept says, and the music scanner list is its own
-   220-byte form. plexsim answered JSON to a JSON Accept, and 217 bytes for music.
+   220-byte form. simplex answered JSON to a JSON Accept, and 217 bytes for music.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `PLEXSIM_SERVER=python`.
+default, the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_followups_c87_w6.py
 """
@@ -34,8 +34,8 @@ CATALOG = os.path.join("tests", "catalog_ui.json")
 COMPOSITE = os.path.join(HERE, "fixtures", "c87_w6_empty_composite_s42.json")
 SYSTEM = os.path.join(HERE, "fixtures", "c87_w6_system_xml_accept.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 
 results = []

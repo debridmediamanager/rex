@@ -1,7 +1,7 @@
 #!/bin/zsh
 # usage: mitm.sh <label> <name> <machine> <uri> <token> <version>
 H=$(cd "$(dirname "$0")" && pwd)
-C=${DROID_WORK:-$HOME/plexsim-android}
+C=${DROID_WORK:-$HOME/simplex-android}
 mkdir -p $C/N/cap $C/N/out $C/N/shots
 set -a; . ${DROID_TOKENS:-$C/tokens.env}; set +a
 exec ${MITMDUMP:-/opt/homebrew/bin/mitmdump} -q --listen-port 8899 --set block_global=false --set connection_strategy=lazy --set http2=false \

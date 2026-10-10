@@ -1,6 +1,6 @@
 {
   "machineIdentifier": "c37catalogfeatures0000000000000000000000",
-  "friendlyName": "plexsim catalog features",
+  "friendlyName": "simplex catalog features",
   "sections": [
     {
       "key": "1",
@@ -54,7 +54,7 @@
               "id": 1010,
               "key": "/library/parts/1010/1789500000/file-cd1.mkv",
               "duration": 111000,
-              "file": "/plexsim/1/Stacked Feature - cd1.mkv",
+              "file": "/simplex/1/Stacked Feature - cd1.mkv",
               "size": 111000000,
               "container": "mkv",
               "videoProfile": "high",
@@ -70,7 +70,7 @@
               "id": 1011,
               "key": "/library/parts/1011/1789500000/file-cd2.mkv",
               "duration": 222000,
-              "file": "/plexsim/1/Stacked Feature - cd2.mkv",
+              "file": "/simplex/1/Stacked Feature - cd2.mkv",
               "size": 222000000,
               "container": "mkv",
               "videoProfile": "high",
@@ -124,7 +124,7 @@
               "id": 1020,
               "key": "/library/parts/1020/1789500001/file.mkv",
               "duration": 10000,
-              "file": "/plexsim/1/Dolby Vision Profile 5 Feature.mkv",
+              "file": "/simplex/1/Dolby Vision Profile 5 Feature.mkv",
               "size": 2000000,
               "container": "mkv",
               "videoProfile": "main 10",
@@ -254,7 +254,7 @@
               "id": 2010,
               "key": "/library/parts/2010/1789500002/file.mp4",
               "duration": 5000,
-              "file": "/plexsim/1/Stacked Feature Trailer.mp4",
+              "file": "/simplex/1/Stacked Feature Trailer.mp4",
               "size": 1000000,
               "container": "mp4",
               "videoProfile": "high",

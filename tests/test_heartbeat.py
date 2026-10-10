@@ -6,7 +6,7 @@ exchanges a real 1.43.4 PMS made to plex.tv, lifted out of the harness's
 `capture/outbound.jsonl` on kids with every token replaced. All three are identical,
 which is what makes them a specification rather than a sample.
 
-The announce is the only traffic plexsim sends to plex.tv, and it is what makes a
+The announce is the only traffic simplex sends to plex.tv, and it is what makes a
 server DETECTED rather than merely reachable -- so it is emulated like any other
 response. This suite drives `announce()` with a stubbed opener and compares the request
 it builds with the recorded one; it never opens a socket.
@@ -91,7 +91,7 @@ def main():
                     platform=want["platform"], platform_version=want["platformVersion"],
                     device=want["device"], model=want["model"], vendor=want["vendor"])
     check("announce() builds a request at all", built is not None)
-    # The parameter's NAME is the contract: plexsim's took plex.tv's numeric device id,
+    # The parameter's NAME is the contract: simplex's took plex.tv's numeric device id,
     # which resolves to whatever device row already holds it and silently overwrites
     # that device. That is the half of this the safety notes have warned about since
     # cycle 7 while the code went on doing it.
@@ -141,10 +141,10 @@ def main():
           dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(plain.full_url).query))
           .get("httpsEnabled") == "1")
 
-    # plexsim's `/identity` says 1.42.2.10156-plexsim, so announcing 1.43.3 tells
+    # simplex's `/identity` says 1.42.2.10156-simplex, so announcing 1.43.3 tells
     # plex.tv a different version from the one every client reads off the server.
     default = getattr(heartbeat, "DEFAULT_VERSION", None)
-    check("the default version is the one plexsim reports",
+    check("the default version is the one simplex reports",
           isinstance(default, str) and default.startswith("1.42.2"), repr(default))
 
     # Cycle 46: the reference's public ownerFeatures is exactly the union of its

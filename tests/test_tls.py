@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""plexsim's TLS port against what a real PMS does with the same port.
+"""simplex's TLS port against what a real PMS does with the same port.
 
 A real PMS MULTIPLEXES: TLS and plain HTTP live on the same TCP port, and the
 discriminator is the first byte. Measured 2026-09-18 on zen (1.42.2) and kids (1.43.4),
 identical on both -- see `tests/fixtures/tls/reference.json` for the cells.
 
-This suite starts its own plexsim and makes its own throwaway certificate with `openssl`,
+This suite starts its own simplex and makes its own throwaway certificate with `openssl`,
 so it needs no credential and no network. Run it with `python3 tests/test_tls.py`.
 """
 import json
@@ -69,7 +69,7 @@ def first_bytes(port, payload, wait=3.0, limit=200):
         sock.close()
 
 
-def handshake(port, maximum=None, minimum=None, sni="plexsim.test", alpn=None):
+def handshake(port, maximum=None, minimum=None, sni="simplex.test", alpn=None):
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
@@ -119,7 +119,7 @@ def serve(port, extra):
         except OSError:
             time.sleep(0.25)
     proc.kill()
-    raise SystemExit("plexsim did not start on %d" % port)
+    raise SystemExit("simplex did not start on %d" % port)
 
 
 def main():
@@ -131,7 +131,7 @@ def main():
         print("\n%d/%d checks passed, %d skipped" % (PASS, PASS + FAIL, SKIP))
         return 0
 
-    work = tempfile.mkdtemp(prefix="plexsim-tls-")
+    work = tempfile.mkdtemp(prefix="simplex-tls-")
     pem = os.path.join(work, "test.pem")
     key = os.path.join(work, "test.key")
     crt = os.path.join(work, "test.crt")
@@ -189,7 +189,7 @@ def main():
                 sock_sni.close()
             check("%s still completes the handshake" % label, version_sni, negotiated)
 
-        # 5. Without a certificate the port is plain only -- which is what plexsim was.
+        # 5. Without a certificate the port is plain only -- which is what simplex was.
         check("a server with no --tls-cert answers no TLS",
               handshake(plain_port)[0], "FAIL")
         check("...and still answers plain HTTP",

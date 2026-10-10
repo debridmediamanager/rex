@@ -7,8 +7,8 @@ movie library created on the legacy Personal Media agent over the reference medi
 asserts the measured values: no `Guid` key on that row in any `includeGuids=1` listing, JSON or
 XML, and the row NOT counted by the `unmatched=1` filter.
 
-Starts its own server (native by default, `PLEXSIM_SERVER=python` the oracle,
-`PLEXSIM_SERVER=/path/to/binary` any build), without `--state`.
+Starts its own server (native by default, `SIMPLEX_SERVER=python` the oracle,
+`SIMPLEX_SERVER=/path/to/binary` any build), without `--state`.
 """
 import http.client
 import json
@@ -64,8 +64,8 @@ def legacy_catalog():
 class Server:
     def __init__(self, catalog):
         self.port = free_port()
-        env = dict(os.environ, PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
-        for name in ("TMDB_KEY", "PLEXSIM_STATE"):
+        env = dict(os.environ, SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
+        for name in ("TMDB_KEY", "SIMPLEX_STATE"):
             env.pop(name, None)
         self.proc = subprocess.Popen(
             server_command("--port", str(self.port), "--catalog", catalog,

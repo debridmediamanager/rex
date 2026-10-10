@@ -51,7 +51,7 @@ impl Collection {
             .get("guid")
             .and_then(Value::as_str)
             .map(str::to_string)
-            .unwrap_or_else(|| format!("collection://plexsim-{}", self.id))
+            .unwrap_or_else(|| format!("collection://simplex-{}", self.id))
     }
 
     pub(super) fn stamp(&self) -> i64 {
@@ -682,16 +682,16 @@ impl Runtime {
     /// one type-18 `created` frame, and its RESPONSE carries no librarySection fields.
     pub(super) fn create_collection(&mut self, query: &HashMap<String, String>) -> Response {
         let Some(title) = query.get("title") else {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         };
         let Some(section) = query.get("sectionId").filter(|value| !value.is_empty()) else {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         };
         let uri = query.get("uri").cloned().unwrap_or_default();
         let Some((number, subtype)) =
             self.collection_level(section, query.get("type").map(String::as_str))
         else {
-            return Response::error(400, "plexsim: bad request");
+            return Response::error(400, "simplex: bad request");
         };
         let rows = self.collection_uri_rows(&uri, section, number, &subtype, true);
         let smart = query.get("smart").map(String::as_str) == Some("1");
@@ -754,7 +754,7 @@ impl Runtime {
             None => {
                 extra.insert(
                     "guid".to_string(),
-                    json!(format!("collection://plexsim-{id}")),
+                    json!(format!("collection://simplex-{id}")),
                 );
             }
         }
@@ -858,7 +858,7 @@ impl Runtime {
         match self.edit_row_copy(&map, pairs, false) {
             Err(error) => Some(Response::error(
                 error.status,
-                &format!("plexsim: {}", error.detail),
+                &format!("simplex: {}", error.detail),
             )),
             Ok(_) => None,
         }
@@ -881,7 +881,7 @@ impl Runtime {
         // the ITEM grammar -- on the SECTION path the indexed list MERGES (deduplicated
         // ignoring case, the collection's other labels after it) and `label[].tag.tag-`
         // removes what it names; on the item and collections paths the list REPLACES and
-        // any removal clears it. plexsim replaced on every path and ignored removals.
+        // any removal clears it. simplex replaced on every path and ignored removals.
         let mut adding: Vec<(i64, usize, String)> = Vec::new();
         let mut removing: Vec<String> = Vec::new();
         for (position, (name, value)) in pairs.iter().enumerate() {
@@ -1010,7 +1010,7 @@ impl Runtime {
                 collection.extra.insert(name.to_string(), json!(value));
             }
         }
-        // Cycle 88: every `.locked` column lands in `Field` (plexsim kept a `titleSort`
+        // Cycle 88: every `.locked` column lands in `Field` (simplex kept a `titleSort`
         // lock alone), parsed as the path parses it.
         let locks = pairs
             .iter()
@@ -1224,7 +1224,7 @@ impl Runtime {
                 .unwrap_or_default();
             own.insert(collection.title.to_lowercase());
             if taken.contains(&lowered) && !own.contains(&lowered) {
-                return Response::error(409, "plexsim: a collection has that name");
+                return Response::error(409, "simplex: a collection has that name");
             }
         }
         if let Some(title) = &wanted {
@@ -1249,7 +1249,7 @@ impl Runtime {
     /// and the collection goes.
     fn delete_collection(&mut self, id: &str) -> Response {
         let Some(collection) = self.collections.get(id).cloned() else {
-            return Response::error(404, "plexsim: not found");
+            return Response::error(404, "simplex: not found");
         };
         let members = if collection.smart {
             Vec::new()
@@ -1339,7 +1339,7 @@ impl Runtime {
     /// The bare `{size, Metadata: [row]}` a collection write answers with.
     fn collection_row_container(&self, id: &str) -> Response {
         let Some(collection) = self.collections.get(id) else {
-            return Response::error(404, "plexsim: not found");
+            return Response::error(404, "simplex: not found");
         };
         Response::json(
             200,
@@ -1360,15 +1360,15 @@ impl Runtime {
                 return self.create_collection(query);
             }
             // A real PMS 404s the bare GET: collections are listed per section.
-            return Response::error(404, "plexsim: not found");
+            return Response::error(404, "simplex: not found");
         }
         let id = segments[0];
         let Some(collection) = self.collections.get(id).cloned() else {
-            return Response::error(404, "plexsim: no such collection");
+            return Response::error(404, "simplex: no such collection");
         };
         if !matches!(method, "GET" | "HEAD" | "PUT" | "DELETE") {
             // Cycle 21: POST, PATCH and a bare OPTIONS are 404s here and below.
-            return Response::error(404, "plexsim: not found");
+            return Response::error(404, "simplex: not found");
         }
         let pairs = Self::request_pairs(request);
         if segments.len() == 1 {
@@ -1414,7 +1414,7 @@ impl Runtime {
             "refresh" | "unmatch" | "analyze" | "prefs" => {
                 // Delegated to the metadata path, where the sequences were measured.
                 if method != "PUT" {
-                    return Response::error(404, "plexsim: not found");
+                    return Response::error(404, "simplex: not found");
                 }
                 return self.route_collection_metadata(&collection, &segments[1..], query, request);
             }
@@ -1459,7 +1459,7 @@ impl Runtime {
             let member = segments[2];
             if member.is_empty() || !member.bytes().all(|b| b.is_ascii_digit()) {
                 // Cycle 17: a ratingKey that is not a NUMBER is a 404.
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "simplex: not found");
             }
             let name = collection.tag_name();
             let removed = self
@@ -1480,7 +1480,7 @@ impl Runtime {
         }
         if matches!(leaf, "items" | "children") && segments.len() == 4 && segments[3] == "move" {
             if method != "PUT" {
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "simplex: not found");
             }
             let member = segments[2];
             let after = query.get("after");
@@ -1490,11 +1490,11 @@ impl Runtime {
                     || digits.is_empty()
                     || !digits.bytes().all(|b| b.is_ascii_digit())
                 {
-                    return Response::error(400, "plexsim: bad request");
+                    return Response::error(400, "simplex: bad request");
                 }
             }
             if !collection.items.contains(member) {
-                return Response::error(400, "plexsim: bad request");
+                return Response::error(400, "simplex: bad request");
             }
             // Measured: a move starts from the order SHOWN and switches the collection
             // to its custom order, `collectionSort` 2; an `after=` naming no member
@@ -1532,7 +1532,7 @@ impl Runtime {
             if collection.smart {
                 // The Edit-smart-collection Save: the stored query is REPLACED.
                 let Some(uri) = query.get("uri").filter(|uri| !uri.is_empty()) else {
-                    return Response::error(400, "plexsim: bad request");
+                    return Response::error(400, "simplex: bad request");
                 };
                 if let Some(stored) = self.collections.get_mut(id) {
                     stored.uri = uri.clone();
@@ -1573,7 +1573,7 @@ impl Runtime {
                 .filter_map(key_of)
                 .collect::<Vec<_>>();
             if rows.is_empty() || (rows.len() == 1 && usable.is_empty()) {
-                return Response::error(400, "plexsim: bad request");
+                return Response::error(400, "simplex: bad request");
             }
             self.add_collection_items(id, &usable);
             self.dirty = true;
@@ -1600,16 +1600,16 @@ impl Runtime {
         if !matches!(method, "GET" | "HEAD" | "PUT" | "DELETE")
             && !(method == "POST" && tail.len() == 1 && matches!(tail[0], "posters" | "arts"))
         {
-            return Response::error(404, "plexsim: not found");
+            return Response::error(404, "simplex: not found");
         }
         let pairs = Self::request_pairs(request);
         if tail.len() == 1 && tail[0] == "prefs" {
             if method != "PUT" {
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "simplex: not found");
             }
             if collection.smart && pairs.iter().any(|(name, _)| name == "collectionSort") {
                 // Cycle 15: a SMART collection refuses `collectionSort` with a 400.
-                return Response::error(400, "plexsim: bad request");
+                return Response::error(400, "simplex: bad request");
             }
             let mut accepted = vec!["collectionSort", "collectionMode"];
             if collection.smart {
@@ -1624,7 +1624,7 @@ impl Runtime {
                 .iter()
                 .any(|(name, _)| !accepted.contains(&name.as_str()))
             {
-                return Response::error(400, "plexsim: bad request");
+                return Response::error(400, "simplex: bad request");
             }
             if let Some(stored) = self.collections.get_mut(&id) {
                 // Cycle 89 (plexscratch42): a re-created collection reads none of its old
@@ -1660,13 +1660,13 @@ impl Runtime {
         }
         if tail.len() == 1 && matches!(tail[0], "thumbs" | "banners") {
             if !matches!(method, "GET" | "HEAD") {
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "simplex: not found");
             }
             return Response::json(200, self.tag_container(Map::new()));
         }
         if tail.len() == 1 && tail[0] == "tree" {
             if !matches!(method, "GET" | "HEAD") {
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "simplex: not found");
             }
             let key = id
                 .parse::<i64>()
@@ -1684,7 +1684,7 @@ impl Runtime {
             // Cycle 14/17: a full secondary container with LIGHT grid rows, the
             // librarySection triple on the CONTAINER, `allowSync: true`, no thumb.
             if !matches!(method, "GET" | "HEAD") {
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "simplex: not found");
             }
             let section = self
                 .section(&collection.section)
@@ -1736,7 +1736,7 @@ impl Runtime {
         }
         if tail.len() == 1 && tail[0] == "composite" || tail.first() == Some(&"composite") {
             if !matches!(method, "GET" | "HEAD") {
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "simplex: not found");
             }
             let rows = self.collection_members(collection);
             return self.composite_image(&rows, query);
@@ -1765,13 +1765,13 @@ impl Runtime {
                 if method == "PUT" && leaf != "thumb" {
                     return self.set_collection_artwork(&id, leaf, query);
                 }
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "simplex: not found");
             }
             if !matches!(method, "GET" | "HEAD" | "PUT") {
-                return Response::error(404, "plexsim: not found");
+                return Response::error(404, "simplex: not found");
             }
             if leaf == "match" || leaf == "extras" {
-                return Response::error(400, "plexsim: bad request");
+                return Response::error(400, "simplex: bad request");
             }
             if leaf == "analyze" {
                 // Cycle 23: the activity PAIR and nothing else.
@@ -1870,7 +1870,7 @@ impl Runtime {
             return Response::json(200, json!({"MediaContainer": body}));
         }
         if !tail.is_empty() {
-            return Response::error(404, "plexsim: not found");
+            return Response::error(404, "simplex: not found");
         }
         if method == "PUT" {
             if let Some(refusal) = self.collection_edit_refusal(collection, &pairs) {
@@ -1970,14 +1970,14 @@ impl Runtime {
         query: &HashMap<String, String>,
     ) -> Response {
         if query.get("url").is_none_or(|url| url.is_empty()) {
-            return Response::error(400, "plexsim: no url");
+            return Response::error(400, "simplex: no url");
         }
         let field = if leaf == "poster" { "thumb" } else { "art" };
         let stamp = now();
         let path = format!("/library/metadata/{id}/{field}/{stamp}");
         let chosen = query.get("url").map(|value| percent_decode(value)).unwrap_or_default();
         let Some(collection) = self.collections.get_mut(id) else {
-            return Response::error(404, "plexsim: not found");
+            return Response::error(404, "simplex: not found");
         };
         // The oracle's `set_artwork` keeps what was picked as the row's private url --
         // the candidate `/posters` then lists as selected -- except the placeholder.

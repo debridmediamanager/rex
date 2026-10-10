@@ -14,7 +14,7 @@
   listings, hubs, On Deck, Recently Added, search, playlists, collections and play queues.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `PLEXSIM_SERVER=python`.
+the oracle with `SIMPLEX_SERVER=python`.
 
     python3 tests/test_followups_fc.py
 """
@@ -34,8 +34,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURES = os.path.join(HERE, "fixtures")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY", "PLEXSIM_GDM_PORTS"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY", "SIMPLEX_GDM_PORTS"):
     ENV.pop(name, None)
 HEADERS = {"Accept": "application/json", "X-Plex-Client-Identifier": "followups-fc",
            "X-Plex-Product": "Plex Web", "X-Plex-Version": "4.147.1",
@@ -323,7 +323,7 @@ def next_second():
 
 def gdm():
     udp = [free_port(socket.SOCK_DGRAM), free_port(socket.SOCK_DGRAM)]
-    process, port = start(("--gdm", "auto"), {"PLEXSIM_GDM_PORTS": "%d,%d" % tuple(udp)})
+    process, port = start(("--gdm", "auto"), {"SIMPLEX_GDM_PORTS": "%d,%d" % tuple(udp)})
     try:
         first = gdm_reply(udp[0])
         check("GDM answers on a private port", "Updated-At" in first, first)

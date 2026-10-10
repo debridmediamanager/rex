@@ -2,14 +2,14 @@
 """Keeping what the UI changes across a restart.
 
 A real PMS keeps its library, watch state, lists, history, preferences and device
-table in its database, so a restart changes nothing a client can see. plexsim kept
+table in its database, so a restart changes nothing a client can see. simplex kept
 all of it in memory and reloaded `catalog.json`, which made a restart the undo
 button: a watched episode came back unwatched, a playlist vanished, a renamed server
 took its old name back.
 
 This is the default: `state.pickle` beside the catalog (the native server's is
-`state.json`), or `--state FILE` / `$PLEXSIM_STATE`. `--no-state`, or an empty
-`$PLEXSIM_STATE`, turns it off, and the test suites run that way: `test_ui_surface.py`
+`state.json`), or `--state FILE` / `$SIMPLEX_STATE`. `--no-state`, or an empty
+`$SIMPLEX_STATE`, turns it off, and the test suites run that way: `test_ui_surface.py`
 writes rows, lists and sections, and its checks assume every instance it starts
 begins from the fixture. The default file is the server's data directory, held by an
 advisory lock for the life of the process; a second server finding it held refuses to
@@ -62,7 +62,7 @@ import threading
 import catalogdb
 import spellfix as spellfix_module
 
-logger = logging.getLogger("plexsim.persist")
+logger = logging.getLogger("simplex.persist")
 
 FORMAT = 1
 
@@ -71,7 +71,7 @@ CATALOG_SKIP = {"spelling"}
 # Wiring (the catalog object itself and two callbacks into the server) and the
 # activity list, whose entries describe work in flight in THIS process.
 LIBRARY_SKIP = {"catalog", "_resolve", "_resolve_collection", "_notify", "_activities"}
-# PlexSim attributes that are state a client wrote. Everything else on it is a
+# SimPlex attributes that are state a client wrote. Everything else on it is a
 # connection, a socket, a lock, a cache or a per-process counter.
 SIM_FIELDS = ("pref_overrides", "section_pref_overrides", "agent_orders",
               "metadata_provider_groups", "next_metadata_provider_group",
@@ -116,10 +116,10 @@ def loads(blob):
 def resolve_path(named, catalog_path):
     """The state file `main()` keeps, or None. `--state` and `--no-state` share one
     destination (the last given wins; `--no-state` stores an empty path), then
-    `$PLEXSIM_STATE`, where empty also means none, then `state.pickle` beside the
+    `$SIMPLEX_STATE`, where empty also means none, then `state.pickle` beside the
     catalog, locked for this process: a default another server holds ends this one."""
     if named is None:
-        named = os.environ.get("PLEXSIM_STATE")
+        named = os.environ.get("SIMPLEX_STATE")
     if named is not None:
         return named or None
     path = os.path.join(os.path.dirname(os.path.abspath(catalog_path)), "state.pickle")
@@ -137,7 +137,7 @@ def resolve_path(named, catalog_path):
         # one is serving prints this line and exits 1 at once. Running on without the
         # file instead served clients whose every write vanished at the next restart,
         # or, when this server came back first, the other server's writes in their place.
-        logger.error("state file %s is in use by another plexsim", path)
+        logger.error("state file %s is in use by another simplex", path)
         print(ALREADY_RUNNING, flush=True)
         raise SystemExit(1)
     _LOCKS.append(handle)
@@ -326,7 +326,7 @@ class Store:
     @staticmethod
     def _apply_friendly_name(sim):
         # The one preference whose write changes state outside `pref_overrides`: see
-        # `PlexSim.set_prefs`. An empty name falls back to the host name there too.
+        # `SimPlex.set_prefs`. An empty name falls back to the host name there too.
         if "FriendlyName" in sim.pref_overrides:
             sim.catalog.friendly = sim.pref_overrides["FriendlyName"] or socket.gethostname()
 

@@ -3,7 +3,7 @@
 
 Every route that logs in `server.py` writes one line with its own text and level, on
 the thread that served the request, and that line reaches Download Logs
-(`/diagnostics/logs`, `plexsim.log`) and every event channel opened with
+(`/diagnostics/logs`, `simplex.log`) and every event channel opened with
 `filters=log` as a `LogSentNotification`. A server that answers the same bytes but
 logs nothing leaves the Troubleshooting page and the Console empty, which is exactly
 what the Console exists to show.
@@ -14,7 +14,7 @@ its first ping, an edit pushes its real `EDIT` line and nothing invented, and a
 websocket CLOSE is echoed with 1000.
 
 Drives real server processes (`tests/server_command.py`), so it runs against the
-native binary by default and the Python oracle with `PLEXSIM_SERVER=python`. The
+native binary by default and the Python oracle with `SIMPLEX_SERVER=python`. The
 part read reaches Real-Debrid with a dummy key and expects its 401.
 
     python3 tests/test_server_log.py
@@ -41,8 +41,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 # zurg on a closed port: every part read is a transport failure, and its log lines are.
 ENV = dict(os.environ, ZURG_URL="http://127.0.0.1:9", PYTHONDONTWRITEBYTECODE="1",
-           PLEXSIM_PLEXTV_URL=os.environ.get("PLEXSIM_PLEXTV_URL", "http://127.0.0.1:9"))
-for _name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN", "TMDB_KEY"):
+           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
+for _name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
     ENV.pop(_name, None)
 HEADERS = {"X-Plex-Client-Identifier": "logcheck", "X-Plex-Product": "Plex Web",
            "X-Plex-Version": "4.147.1", "X-Plex-Platform": "Chrome",
@@ -73,7 +73,7 @@ class Server:
         self.connections = 0
         self.process = subprocess.Popen(
             server_command("--port", self.port, "--catalog", "tests/catalog_ui.json",
-                           "--assert-claimed", "--gdm", "off", "--zurg-mount", "/plexsim",
+                           "--assert-claimed", "--gdm", "off", "--zurg-mount", "/simplex",
                            root=ROOT),
             cwd=ROOT, env=ENV, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(120):
@@ -104,7 +104,7 @@ class Server:
         status, body, _ = self.request("GET", "/diagnostics/logs")
         if status != 200:
             return []
-        text = zipfile.ZipFile(io.BytesIO(body)).read("plexsim.log").decode("utf-8", "replace")
+        text = zipfile.ZipFile(io.BytesIO(body)).read("simplex.log").decode("utf-8", "replace")
         return [STAMP.sub("", line) for line in text.splitlines() if line]
 
     def stop(self):
@@ -214,21 +214,21 @@ def main():
         E = re.escape
         run("a refused filter", "GET", "/library/sections/1/all?year%3E%3E=abc",
             [("WARNING", E("REFUSED /library/sections/1/all: unparseable number 'abc'")),
-             ("INFO", E("500 GET /library/sections/1/all -- plexsim: unparseable number 'abc'"))],
+             ("INFO", E("500 GET /library/sections/1/all -- simplex: unparseable number 'abc'"))],
             status=500)
         run("an unsupported sort", "GET", "/library/sections/1/all?sort=bogusKey",
             [("WARNING", E("UNSUPPORTED sort key 'bogusKey'")),
-             ("INFO", E("500 GET /library/sections/1/all -- plexsim: unsupported sort key bogusKey"))],
+             ("INFO", E("500 GET /library/sections/1/all -- simplex: unsupported sort key bogusKey"))],
             status=500)
         run("an updater apply", "PUT", "/updater/apply",
             [("WARNING", E("UPDATER apply requested -- nothing downloaded")),
-             ("INFO", E("400 PUT /updater/apply -- plexsim: bad request"))], status=400)
+             ("INFO", E("400 PUT /updater/apply -- simplex: bad request"))], status=400)
         run("a client log GET", "GET", "/log?level=2&source=web&message=hello%20there",
             [("INFO", E("CLIENT LOG [2] web: hello there"))], status=200)
         run("a client log POST", "POST", "/log?level=3&message=posted",
             [("INFO", E("CLIENT LOG [3] client: posted"))], status=200)
         run("a client log with a bad level", "POST", "/log?level=x&message=posted",
-            [("INFO", E("400 POST /log -- plexsim: bad request"))], status=400)
+            [("INFO", E("400 POST /log -- simplex: bad request"))], status=400)
         run("a database optimize", "PUT", "/library/optimize",
             [("INFO", E("OPTIMIZE database -- rebuilt the search vocabulary"))], status=200)
         run("an unknown single-segment path", "GET", "/foo",
@@ -239,7 +239,7 @@ def main():
             [("INFO", E("PLUGIN PATH GET /sync -- legacy dispatcher"))], status=200)
         run("an unknown path", "GET", "/nothing/here",
             [("WARNING", E("UNKNOWN GET /nothing/here")),
-             ("INFO", E("404 GET /nothing/here -- plexsim: not found"))], status=404)
+             ("INFO", E("404 GET /nothing/here -- simplex: not found"))], status=404)
         run("a section edit", "PUT",
             "/library/sections/1?name=Renamed&agent=tv.plex.agents.movie&language=en-US",
             [("INFO", E("SECTION edit 1 -> Renamed"))], status=200)
@@ -253,28 +253,28 @@ def main():
         run("a scan cancel", "DELETE", "/library/sections/1/refresh",
             [("INFO", E("SECTION refresh cancelled 1"))], status=200)
         run("a section analyze", "PUT", "/library/sections/1/analyze",
-            [("INFO", E("SECTION analyze 1 -- nothing to analyze, plexsim owns no files"))],
+            [("INFO", E("SECTION analyze 1 -- nothing to analyze, simplex owns no files"))],
             status=200)
         run("a section empty-trash", "PUT", "/library/sections/1/emptyTrash",
-            [("INFO", E("SECTION emptyTrash 1 -- nothing to emptyTrash, plexsim owns no files"))],
+            [("INFO", E("SECTION emptyTrash 1 -- nothing to emptyTrash, simplex owns no files"))],
             status=200)
         run("a section preference", "PUT", "/library/sections/1/prefs?enableCinemaTrailers=0",
             [("INFO", E("SECTION PREF 1 enableCinemaTrailers = false"))], status=200)
         run("an unknown section leaf", "GET", "/library/sections/1/bogusleaf",
             [("WARNING", E("UNKNOWN section leaf bogusleaf on section 1")),
-             ("INFO", E("404 GET /library/sections/1/bogusleaf -- plexsim: not found"))],
+             ("INFO", E("404 GET /library/sections/1/bogusleaf -- simplex: not found"))],
             status=404)
         run("an item edit", "PUT", M + "1007?title.value=Edited&title.locked=1",
             [("INFO", E("EDIT 1007 <- title.value,title.locked"))], status=200)
         run("a refused item edit", "PUT", M + "1007?year.value=abc",
             [("WARNING", E("EDIT REFUSED: unparseable year 'abc'")),
-             ("INFO", E("500 PUT /library/metadata/1007 -- plexsim: unparseable year 'abc'"))],
+             ("INFO", E("500 PUT /library/metadata/1007 -- simplex: unparseable year 'abc'"))],
             status=500)
         run("an item preference", "PUT", M + "20001/prefs?episodeSort=1",
             [("INFO", E("ITEM PREF 20001 episodeSort = 1"))], status=200)
         run("an unknown item leaf", "GET", M + "1007/bogusleaf",
             [("WARNING", E("UNKNOWN item leaf bogusleaf on 1007")),
-             ("INFO", E("404 GET /library/metadata/1007/bogusleaf -- plexsim: not found"))],
+             ("INFO", E("404 GET /library/metadata/1007/bogusleaf -- simplex: not found"))],
             status=404)
         run("an item refresh", "PUT", M + "1007/refresh",
             [("INFO", E("REFRESH 1007 (Edited)"))], status=200)
@@ -310,14 +310,14 @@ def main():
             "start.m3u8?path=%2Flibrary%2Fmetadata%2F1007&session=lp3&protocol=hls",
             [("WARNING", E("TRANSCODE REQUESTED -- client refused direct play: "
                            "/library/metadata/1007")),
-             ("INFO", E("404 GET /video/:/transcode/universal/start.m3u8 -- plexsim: no transcoder"))],
+             ("INFO", E("404 GET /video/:/transcode/universal/start.m3u8 -- simplex: no transcoder"))],
             status=404)
         run("a timeline beat", "GET", "/:/timeline?ratingKey=1007&key=%2Flibrary%2Fmetadata%2F1007"
             "&state=playing&time=1000&duration=10000",
             [("INFO", r"TIMELINE 1007 state=playing t=1000ms session=\S+")], status=200,
             headers={"X-Plex-Session-Identifier": "lp1"})
         run("a terminate of no session", "GET", "/status/sessions/terminate?sessionId=zzz&reason=bye",
-            [("INFO", E("404 GET /status/sessions/terminate -- plexsim: no such session"))],
+            [("INFO", E("404 GET /status/sessions/terminate -- simplex: no such session"))],
             status=404)
         run("a progress write", "GET", "/:/progress?key=1007&identifier=com.plexapp.plugins.library"
             "&time=2000&state=paused",
@@ -336,11 +336,11 @@ def main():
         run("a refused track selection", "PUT", "/library/parts/%s?audioStreamID=999999&allParts=1"
             % part_id,
             [("WARNING", E("STREAM SELECT refused: 999999 is not a type-2 stream of 1007")),
-             ("INFO", E("400 PUT /library/parts/%s -- plexsim: bad request" % part_id))],
+             ("INFO", E("400 PUT /library/parts/%s -- simplex: bad request" % part_id))],
             status=400)
         run("a subtitle upload with no extension", "POST",
             M + "1007/subtitles?title=t&language=en&format=srt",
-            [("INFO", E("500 POST /library/metadata/1007/subtitles -- plexsim: internal error"))],
+            [("INFO", E("500 POST /library/metadata/1007/subtitles -- simplex: internal error"))],
             body=b"1\n00:00:01,000 --> 00:00:02,000\nhi\n", status=500)
         run("a subtitle upload", "POST", M + "1007/subtitles?title=t.srt&language=en&format=srt",
             [("INFO", r"SUBTITLE upload 1007 -> stream \d+ \(srt\)")],
@@ -408,12 +408,12 @@ def main():
                 [("INFO", E("SECTION delete %s (LogLib)" % added[0]))], status=200)
         run("a part read zurg cannot answer", "GET", "/library/parts/%s/0/file.mkv" % part_id,
             [("ERROR", E("PART %s upstream failed: <urlopen error " % part_id) + ".*>"),
-             ("INFO", E("502 GET /library/parts/%s/0/file.mkv -- plexsim: upstream failed"
+             ("INFO", E("502 GET /library/parts/%s/0/file.mkv -- simplex: upstream failed"
                         % part_id))], headers={"Range": "bytes=0-99"}, status=502)
         run("a remote artwork read", "GET", "/photo/:/transcode?width=100&height=100&url=%s"
             % urllib.parse.quote("http://127.0.0.1:9/x.jpg"),
             [("INFO", E("ARTWORK fetch http://127.0.0.1:9/x.jpg")),
-             ("INFO", E("404 GET /photo/:/transcode -- plexsim: artwork unavailable"))],
+             ("INFO", E("404 GET /photo/:/transcode -- simplex: artwork unavailable"))],
             status=404)
 
         lines = server.log_lines()

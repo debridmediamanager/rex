@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Write plexsim's catalog: the server's identity and its libraries.
+"""Write simplex's catalog: the server's identity and its libraries.
 
 The library itself is zurg's. The native server lists each library's folder on zurg's
 WebDAV and adds what it finds -- probed by zurg, identified, placed -- whenever zurg
-asks it to scan (zurg's `plex_server_url` pointed at plexsim), and at start. So a new
+asks it to scan (zurg's `plex_server_url` pointed at simplex), and at start. So a new
 server's catalog is a seed: a machineIdentifier, a name, and a movie and a show
 library whose locations are folders under zurg's mount:
 
-    ./build_catalog.py --seed --name den --zurg-mount /mnt/zurg --out plexsim.db
+    ./build_catalog.py --seed --name den --zurg-mount /mnt/zurg --out simplex.db
 
 An `--out` ending in `.db` writes the catalog into a SQLite database instead (see
 catalogdb.py), which the server takes as `--catalog` and keeps its state in too. An
 existing JSON catalog is moved into one with
 
-    ./build_catalog.py --convert catalog.json --out plexsim.db
+    ./build_catalog.py --convert catalog.json --out simplex.db
 """
 
 import argparse
@@ -33,7 +33,7 @@ import metadata as metadata_module  # noqa: E402
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "catalog.json"))
-    parser.add_argument("--name", default="plexsim", help="friendlyName the clients show")
+    parser.add_argument("--name", default="simplex", help="friendlyName the clients show")
     parser.add_argument("--seed", action="store_true",
                         help="write an empty library for a zurg-backed server")
     parser.add_argument("--zurg-mount", default="/mnt/zurg", help="with --seed: zurg's mount_path")
@@ -74,6 +74,7 @@ def main():
     # machineIdentifier must be stable across restarts: plex.tv keys the registered
     # device on it, and a client that saw the old one treats a new value as a different
     # server -- so a re-seed keeps the one already there.
+    # "plexsim/" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
     machine = existing_machine(args.out) or hashlib.sha1(
         ("plexsim/" + args.name).encode()).hexdigest()[:40]
     sections = hierarchy_module.sections(args.name)

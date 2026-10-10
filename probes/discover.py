@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """The full client path: plex.tv account -> resource discovery -> connect -> play.
 
-conformance.py points a client straight at plexsim's URL, which proves the REST
+conformance.py points a client straight at simplex's URL, which proves the REST
 contract but skips the half that makes the whole idea work: a real Plex client
 never takes a URL, it asks plex.tv which servers the account has and dials what
 it is told.  This drives that path with python-plexapi's MyPlexAccount, the same
 discovery every official client performs.
 
-    PLEX_TOKEN=... .venv/bin/python plexsim/discover.py
+    PLEX_TOKEN=... .venv/bin/python simplex/discover.py
 """
 
 import argparse
@@ -31,7 +31,7 @@ def check(label, condition, detail=""):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--name", default="plexsim-spike", help="resource name to dial")
+    parser.add_argument("--name", default="simplex-spike", help="resource name to dial")
     args = parser.parse_args()
 
     token = os.environ.get("PLEX_TOKEN")
@@ -51,7 +51,7 @@ def main():
         print("        - %-18s product=%-20s" % (resource.name, resource.product))
 
     target = next((r for r in resources if r.name == args.name), None)
-    if not check("plexsim is discoverable", target is not None, args.name):
+    if not check("simplex is discoverable", target is not None, args.name):
         return 1
 
     print("\n=== 3. connect via the advertised connection ===")

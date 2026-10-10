@@ -7,7 +7,7 @@ player that stops beating stays listed for 180-210 s. A server with no reaper li
 until the process ends; one with a per-row timer drops it at exactly 180 s.
 
 Drives a real server process (`tests/server_command.py`), so it runs against the
-Python oracle and, with `PLEXSIM_SERVER`, the native binary. It takes about 3.5
+Python oracle and, with `SIMPLEX_SERVER`, the native binary. It takes about 3.5
 minutes: the rule is about wall-clock minutes and is measured on them.
 
     python3 tests/test_session_reaper.py
@@ -69,9 +69,9 @@ def listed(port):
 
 
 def main():
-    port = int(os.environ.get("PLEXSIM_TEST_PORT") or free_port())
+    port = int(os.environ.get("SIMPLEX_TEST_PORT") or free_port())
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
-    for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN"):
+    for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN"):
         env.pop(name, None)
     log = tempfile.TemporaryFile()
     proc = subprocess.Popen(

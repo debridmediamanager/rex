@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """The native server's library scan against a local zurg: zurg is the library.
 
-zurg's Plex integration (its `plex_server_url` pointed at plexsim) sends
+zurg's Plex integration (its `plex_server_url` pointed at simplex) sends
 `GET /library/sections/{id}/refresh?path=<mount>/<dir>/<release>` when a release
-arrives, changes or goes. plexsim lists the folder on zurg's WebDAV, asks
+arrives, changes or goes. simplex lists the folder on zurg's WebDAV, asks
 `/api/library/entry` about each new file and adds it, trashes what is gone the way a
 real PMS does (`fixtures/missing_file_scan_s43.json`, measured on plexscratch), and keeps
 every row's ratingKey across scans and restarts -- zurg drops a release's IMDb id when
@@ -243,13 +243,13 @@ class Server:
     def __init__(self, work, zurg_port):
         self.port = free_port()
         env = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port, ZURG_USER="zuser",
-                   ZURG_PASSWORD="zpass", PLEXSIM_PLEXTV_URL="http://127.0.0.1:9")
-        for name in ("PLEXSIM_STATE", "PLEXSIM_TOKEN") + (() if KEYED else ("TMDB_KEY", "PLEX_TOKEN")):
+                   ZURG_PASSWORD="zpass", SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
+        for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN") + (() if KEYED else ("TMDB_KEY", "PLEX_TOKEN")):
             env.pop(name, None)
         self.log = open(os.path.join(work, "server.log"), "ab")
         self.process = subprocess.Popen(
             server_command("--port", self.port, "--catalog", os.path.join(work, "catalog.json"),
-                           "--state", os.path.join(work, "plexsim.db"), "--zurg-mount", "/zurg",
+                           "--state", os.path.join(work, "simplex.db"), "--zurg-mount", "/zurg",
                            "--assert-claimed", "--gdm", "off", root=ROOT),
             cwd=ROOT, env=env, stdout=self.log, stderr=subprocess.STDOUT)
         for _ in range(160):
@@ -291,7 +291,7 @@ class Server:
 
 
 def main():
-    work = tempfile.mkdtemp(prefix="plexsim-zurg-scan-")
+    work = tempfile.mkdtemp(prefix="simplex-zurg-scan-")
     zurg = Zurg()
     movie = FIXTURE["movie"]
     episode = FIXTURE["episode"]
@@ -299,7 +299,7 @@ def main():
     zurg.add("shows", episode["release"], episode["file"], episode["entry"])
     zurg_port = serve(zurg.handler())
     json.dump({"machineIdentifier": "00000000000000000000000000000000000000zz",
-               "friendlyName": "plexsim-zurg-scan",
+               "friendlyName": "simplex-zurg-scan",
                "sections": [{"key": "1", "type": "movie", "title": "Movies",
                              "uuid": "0000000000000000000000000000000000000001",
                              "Location": [{"id": 1, "path": "/zurg/movies"}]},
@@ -504,7 +504,7 @@ def main():
 
 
 if __name__ == "__main__":
-    if os.environ.get("PLEXSIM_SERVER") == "python":
+    if os.environ.get("SIMPLEX_SERVER") == "python":
         print("the Python oracle does not scan; this suite is native only")
         sys.exit(0)
     sys.exit(main())

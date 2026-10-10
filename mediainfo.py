@@ -6,7 +6,7 @@ for a decision.  plex-for-kodi's `MediaDecisionEngine.canDirectPlay` rejects on
 height over the client max, bitrate over the client max, frame rate above 30 at
 1080p+, and HEVC when the client has it disabled -- all read straight off the
 `Media` element.  A plausible-looking guess therefore does not fail loudly, it
-makes a client silently ask for a transcode plexsim cannot serve.  So the
+makes a client silently ask for a transcode simplex cannot serve.  So the
 numbers come from a real probe of the real byte stream.
 """
 
@@ -31,7 +31,7 @@ _FRAME_RATE_TOKENS = [
 # `language` is the language's name IN that language (`日本語`, `Español`, `polski`),
 # `languageCode` the ISO 639-2 terminology code (ffprobe's `fre`, `ger`, `cze` and `chi` read
 # back `fra`, `deu`, `ces` and `zho`), and `languageTag` the two-letter ISO 639-1 code, or the
-# three-letter code where a language has none (`fil`, `mul`). plexsim printed English names
+# three-letter code where a language has none (`fil`, `mul`). simplex printed English names
 # for 15 languages and the raw code for the rest, kept bibliographic codes, and cut the tag
 # to two letters -- `jp` for Japanese, `sp` for Spanish, `fi` (Finnish) for Filipino -- and a
 # client picks a track by the tag. languages.json holds every name and tag fun wrote.
@@ -78,7 +78,7 @@ def _frame_rate_token(rate):
 
 # The resolution label, measured on all 4947 Media of fun's movie libraries with no
 # exception: the larger of a WIDTH bucket and a HEIGHT bucket, with `2k` and `2.7k` between
-# 1080 and 4k. plexsim read the height alone, so a cropped 1080p release (1920x800) was
+# 1080 and 4k. simplex read the height alone, so a cropped 1080p release (1920x800) was
 # `720`, and both a client's quality gate and the Resolution filter read the label. Each
 # threshold is the smallest dimension fun has in its bucket; the largest it has in the
 # bucket below is in the comment, and nothing between the two has been seen.
@@ -111,7 +111,7 @@ def _video_resolution(height, width):
 
 # The aspect ratio a real PMS writes is one of six values -- 1.33, 1.66, 1.78, 1.85, 2.2 and
 # 2.35 -- on every Media of fun's movie libraries: the DISPLAY aspect (width times the sample
-# aspect ratio, over height) snapped to the nearest. plexsim wrote the raw quotient and
+# aspect ratio, over height) snapped to the nearest. simplex wrote the raw quotient and
 # ignored the sample aspect ratio, so a 1920x800 release read 2.4 where a real server says
 # 2.35, and an anamorphic 3840x2160 (SAR 333:320) 1.78 where it says 1.85.
 _ASPECT_RATIOS = (1.33, 1.66, 1.78, 1.85, 2.2, 2.35)
@@ -157,7 +157,7 @@ def _language_fields(tags):
 # A track TITLE never enters displayTitle. It leads the extended title, followed in brackets
 # by the label parts it does not already carry -- `BTM TrueHD Atmos 7.1 (English)`,
 # `SDH (English SRT)` -- and by nothing when it carries every one (`English DTS Express 5.1`).
-# plexsim printed the track title as an audio title, `sdp` for SD video, `Dolby Digital Plus`
+# simplex printed the track title as an audio title, `sdp` for SD video, `Dolby Digital Plus`
 # and `3ch`, and never named a profile.
 
 # Resolution buckets as a title prints them: five labels, so a 576 or 2k stream reads as its
@@ -292,7 +292,7 @@ def _subtitle_codec_label(row, external="External"):
     """The codec part of a subtitle's titles.
 
     Measured on a writable copy of the reference: a SIDECAR subtitle -- one uploaded
-    through the client's Upload Subtitle modal, which is the only kind plexsim can
+    through the client's Upload Subtitle modal, which is the only kind simplex can
     hold -- labels itself `<CODEC> External`, so its plain title reads
     `Unknown (SRT External)` and its extended one `<name> (SRT External)`. An embedded
     track keeps the bare codec. The tell is the sidecar `key`: an embedded stream has
@@ -329,7 +329,7 @@ def stream_titles(row, stand_in=None, words=None):
     Cycle 60, measured on zen's forced (1924) and SDH (2925) tracks in 28 languages: the
     part that IS carried is rendered in the LOCALISED name (`www.TamilRockers.com
     (Englisch Erzwungen SRT)`), and `words` localises `Unknown`, `Forced` and `SDH`
-    wherever they are composed -- plexsim decided the omission on the localised name and
+    wherever they are composed -- simplex decided the omission on the localised name and
     rendered the English one, the other way round.
     """
     words = words or {}
@@ -403,7 +403,7 @@ def stream_titles(row, stand_in=None, words=None):
 # case-sensitively, and for no other (`Apple TV`, `Plex for Android`, `Plex for Xbox One`,
 # `Plex Desktop`, Roku, HTPC, Kodi, PlexAPI and no product at all get the plain title). An
 # audio title and every extended title are the same for everyone. The recorded rule, a
-# video `displayTitle` of `1080p`, was the no-product answer, and plexsim sent it to Plex
+# video `displayTitle` of `1080p`, was the no-product answer, and simplex sent it to Plex
 # Web itself.
 CODEC_TITLE_PRODUCTS = frozenset((
     "Plex Web", "Plex for iOS", "Plex for Apple TV", "Plex for Android (TV)",
@@ -488,7 +488,7 @@ def _video_stream(stream, stream_id):
     # Measured on the six Dolby Vision files probed on fun (profiles 5, 7, 8 and 10): the
     # eight DOVI attributes are ffprobe's DOVI configuration record, field for field. They
     # are what tells a client a Dolby Vision stream it can play from one it cannot, and
-    # plexsim sent none of them.
+    # simplex sent none of them.
     dovi = next((data for data in stream.get("side_data_list") or []
                  if data.get("side_data_type") == "DOVI configuration record"), None)
     if dovi:
@@ -506,7 +506,7 @@ def _video_stream(stream, stream_id):
     # `comment` or `hearingImpaired`, so the video set is these four.
     row.update(_disposition(stream, _VIDEO_FLAGS))
     # A video stream carries its own language and title from its tags, measured on 17 and
-    # 10 streams on fun; plexsim set neither.
+    # 10 streams on fun; simplex set neither.
     tags = stream.get("tags") or {}
     row.update(_language_fields(tags))
     if tags.get("title"):
@@ -564,7 +564,7 @@ def _bit_depth(stream):
 
     ffprobe reports `bits_per_raw_sample` for H.264 and leaves it out for HEVC and AV1,
     where the depth is only in the pixel format. Measured on fun: all 16 ten-bit streams
-    probed without it (`yuv420p10le`, `yuv444p10le`) read `bitDepth: 10`. plexsim defaulted
+    probed without it (`yuv420p10le`, `yuv444p10le`) read `bitDepth: 10`. simplex defaulted
     every one to 8, and ten-bit is a direct-play gate on many clients.
     """
     raw = _int_or(stream.get("bits_per_raw_sample"), None)
@@ -577,7 +577,7 @@ def _bit_depth(stream):
 def _frame_rate(stream):
     """The AVERAGE frame rate, falling back to the nominal one. Measured: the reference's mp4
     clip whose nominal rate is 48 reads `frameRate: 23.947` and `24p`, which is ffprobe's
-    `avg_frame_rate`; plexsim read `r_frame_rate` and said 48p."""
+    `avg_frame_rate`; simplex read `r_frame_rate` and said 48p."""
     average = stream.get("avg_frame_rate") or ""
     if average and not average.startswith("0/"):
         return average
@@ -587,7 +587,7 @@ def _frame_rate(stream):
 def _video_profile(profile):
     """ffprobe's video profile as a real PMS writes it: lower case, without a trailing
     ` Profile` (`Simple Profile` is `simple`), and absent where ffprobe has only its unknown
-    marker `0` (which comes with level -99). Measured on fun; plexsim wrote `0` and -99."""
+    marker `0` (which comes with level -99). Measured on fun; simplex wrote `0` and -99."""
     text = (profile or "").strip().lower()
     if text.endswith(" profile"):
         text = text[:-len(" profile")]
@@ -607,7 +607,7 @@ def _coded_height(stream):
 def _codec_id(stream):
     """A video stream's codec tag, measured on 8 of 8 streams that have a real one: `hev1`,
     `hvc1` and `dvhe` in an mp4, `XVID` and `DX50` in an AVI, `HDMV` in MPEG-TS -- but not
-    `avc1`, and never on an audio or subtitle stream. plexsim sent none."""
+    `avc1`, and never on an audio or subtitle stream. simplex sent none."""
     tag = stream.get("codec_tag_string") or ""
     if not tag or "[" in tag or tag == "avc1":
         return None
@@ -617,7 +617,7 @@ def _codec_id(stream):
 def _stream_identifier(stream):
     """The container's own track id in decimal, measured on 79 streams: an mp4 track number
     (`0x2` is `"2"`), an MPEG-TS PID (`0x1011` is `"4113"`), and absent in Matroska, where
-    ffprobe reports no id. A string, as a real PMS sends it. plexsim sent none."""
+    ffprobe reports no id. A string, as a real PMS sends it. simplex sent none."""
     try:
         return str(int(stream["id"], 16))
     except (KeyError, TypeError, ValueError):
@@ -626,7 +626,7 @@ def _stream_identifier(stream):
 
 def _audio_bit_depth(stream):
     """Measured on 42 lossless and DTS tracks on fun: ffprobe's `bits_per_raw_sample`, and 24
-    for a DTS track without it (DTS Express excepted); a lossy codec carries none. plexsim
+    for a DTS track without it (DTS Express excepted); a lossy codec carries none. simplex
     never sent an audio bit depth."""
     raw = _int_or(stream.get("bits_per_raw_sample"), None)
     if raw:
@@ -638,7 +638,7 @@ def _audio_bit_depth(stream):
 
 def _scan_type(field_order):
     """Measured on 47 video streams: absent where ffprobe reports no field order (19),
-    `interlaced` for a field-ordered stream (`tt`), `progressive` otherwise. plexsim wrote
+    `interlaced` for a field-ordered stream (`tt`), `progressive` otherwise. simplex wrote
     `progressive` on every one."""
     if not field_order:
         return None
@@ -664,7 +664,7 @@ def _float_or_none(rate):
 # tracks on fun and the reference. Every DTS variant is `dca`, with the profile naming the
 # variant; PCM in Matroska is `pcm` with ffprobe's sample format as its profile, while
 # Blu-ray PCM keeps its own name; and the `+ Dolby Atmos` profile ffprobe gives TrueHD and
-# E-AC-3 is not written at all. plexsim passed ffprobe's names through, and a client's
+# E-AC-3 is not written at all. simplex passed ffprobe's names through, and a client's
 # direct-play profile names `dca`: a `dts` track matched nothing in it.
 DTS_PROFILES = {"dts": "dts", "dts-hd ma": "ma", "dts-es": "es", "dts-hd hra": "hra",
                 "dts express": "express"}
@@ -696,7 +696,7 @@ def _audio_stream(stream, stream_id, selected):
         "streamIdentifier": _stream_identifier(stream),
         "channels": channels,
         # ffprobe's layout verbatim, measured on 126 of 130 tracks on fun, and absent where
-        # it has none. plexsim derived it from the channel count, so a `5.1` track was
+        # it has none. simplex derived it from the channel count, so a `5.1` track was
         # `5.1(side)` and a 3-, 4-, 5- or 7-channel one had no layout.
         "audioChannelLayout": stream.get("channel_layout") or None,
         "samplingRate": stream.get("sample_rate") and int(stream["sample_rate"]),
@@ -704,9 +704,9 @@ def _audio_stream(stream, stream_id, selected):
         "profile": plex_profile,
     }
     # Measured on 130 audio tracks on fun: every flag is ffprobe's disposition and appears
-    # only when true. plexsim marked the FIRST track default, sent `default: false` and
+    # only when true. simplex marked the FIRST track default, sent `default: false` and
     # `selected: false` on every other one, and none of the other five flags. Which track
-    # is selected depends on the account's language settings, which plexsim does not have,
+    # is selected depends on the account's language settings, which simplex does not have,
     # so the first one still is.
     if selected:
         row["selected"] = True
@@ -722,7 +722,7 @@ def _audio_stream(stream, stream_id, selected):
 
 # ffprobe's subtitle decoder names against the codec a real PMS writes, measured on every
 # embedded track of 35 files on fun: SubRip is `srt`, a Blu-ray bitmap track `pgs` and a DVD
-# one `vobsub`. plexsim passed the last two through as `hdmv_pgs_subtitle` and
+# one `vobsub`. simplex passed the last two through as `hdmv_pgs_subtitle` and
 # `dvd_subtitle`, which no client's burn-in rule names.
 SUBTITLE_CODECS = {"subrip": "srt", "hdmv_pgs_subtitle": "pgs", "dvd_subtitle": "vobsub"}
 
@@ -734,7 +734,7 @@ def _subtitle_stream(stream, stream_id):
     # Measured on 432 embedded subtitle tracks on fun: `default` and `forced`
     # appear only when TRUE, every track says `canAutoSync: false`, and none
     # carries `embeddedInVideo` -- which marks captions carried INSIDE the video
-    # stream, not a subtitle track muxed beside it. plexsim sent all three on
+    # stream, not a subtitle track muxed beside it. simplex sent all three on
     # every track, false flags included.
     row = {
         "id": stream_id,
@@ -779,7 +779,7 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     subtitles = [s for s in streams if s.get("codec_type") == "subtitle"]
 
     duration_ms = int(float(fmt.get("duration") or 0) * 1000)
-    # Rounded, not truncated: measured on 33 of 35 files on fun, where plexsim read one short
+    # Rounded, not truncated: measured on 33 of 35 files on fun, where simplex read one short
     # on 28 of them. Stream bitrates round the same way.
     bitrate_kbps = round(int(fmt.get("bit_rate") or 0) / 1000) or None
 
@@ -801,7 +801,7 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     # The Media's audio fields name the track with the MOST channels, the first of them on a
     # tie -- measured on 35 of 35 files on fun, where the first track was the wrong one in 9
     # -- and a DTS-HD MA track is `dca-ma` there while every other DTS variant stays `dca`.
-    # plexsim named the first track, and a client gates direct play on these fields.
+    # simplex named the first track, and a client gates direct play on these fields.
     main_audio = max(audios, key=lambda s: s.get("channels") or 0) if audios else {}
     main_codec, main_profile = audio_codec(main_audio.get("codec_name"), main_audio.get("profile"))
     container = _CONTAINER_ALIASES.get(
@@ -812,8 +812,8 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     # a real PMS reports", and turned a `.webm` file's container into `webm`.
     #
     # A real PMS reports `mkv`. Measured on the SAME FILE -- zen ratingKey 19769 and
-    # plexsim row 1002 are both `Tears of Steel.webm`, 571,346,576 bytes, vp8/vorbis
-    # 1920x800 -- where zen (1.42.2, the build plexsim reports) answers
+    # simplex row 1002 are both `Tears of Steel.webm`, 571,346,576 bytes, vp8/vorbis
+    # 1920x800 -- where zen (1.42.2, the build simplex reports) answers
     # `container: "mkv"` and `Part.container: "mkv"` while the Part's key keeps
     # `file.webm`. No row of zen's 4,508 movie Media carries `webm` as a container at
     # all. And the project's own corpus has said so since cycle 10:
@@ -821,7 +821,7 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     # -- what a real PMS wrote for it -- is `mkv`. Nothing caught it because
     # `test_mediainfo.py` compared every stream and never the container; it does now.
     #
-    # `docs/findings.md` kept it as a cycle-10 lead on the argument that "plexsim keeps
+    # `docs/findings.md` kept it as a cycle-10 lead on the argument that "simplex keeps
     # `webm`, which Plex Web's direct-play rule depends on". Driven across all 78 client
     # profiles against both containers, the browser profiles answer the SAME outcome
     # either way; the one cell that moves is `Sony Bravia 2013`, which direct-plays the
@@ -833,7 +833,7 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     # `mov` for a `.mov` and `mp4` for the rest -- measured on plexscratch42 (1.42.2) with
     # the brand crossed against the extension: a `.mov` written by the MP4 muxer (brand
     # `isom`) is still `mov`, and an `.mp4` written by the QuickTime muxer (brand `qt  `)
-    # is still `mp4`. zen's one real `.mov` part is `mov` too. plexsim answered `mp4` for
+    # is still `mp4`. zen's one real `.mov` part is `mov` too. simplex answered `mp4` for
     # every file of the family.
     container = _container_for(container, container_hint)
     video_profile = _video_profile(video.get("profile")) if video else None
@@ -884,11 +884,11 @@ def normalize_media(media):
     * `optimizedForStreaming` and `has64bitOffsets` exist ONLY for an mp4/mov --
       absent on every mkv, mpegts and avi. On an mp4 the Media's
       `optimizedForStreaming` is an INTEGER and the Part's a boolean, and both
-      flags appear on both. plexsim sent `false` on every Media of every container.
+      flags appear on both. simplex sent `false` on every Media of every container.
     * `hasVoiceActivity: false` is on EVERY Media row of both real servers; the
       player's Auto-Sync Subtitles control reads it.
     * `Part.hasThumbnail` appears only as the string `"1"`, and only when a
-      thumbnail exists. plexsim sent `false` everywhere.
+      thumbnail exists. simplex sent `false` everywhere.
 
     `optimizedForStreaming` cannot be read from ffprobe (it is where the moov atom
     sits), so it stays 0. `has64bitOffsets` can be: an mp4 larger than 4 GiB cannot
@@ -941,7 +941,7 @@ def normalize_media(media):
         # Cycle 54: every MPEG-TS Part carries `packetLength: 188` -- a Blu-ray `.m2ts`,
         # whose packets are really 192 bytes, included -- and no other container's does.
         # Measured on zen's fourteen `.m2ts` parts and on plexscratch42's `.ts`, `.mts` and
-        # `.m2ts`; plexsim never sent it.
+        # `.m2ts`; simplex never sent it.
         if container == "mpegts":
             part["packetLength"] = 188
         else:

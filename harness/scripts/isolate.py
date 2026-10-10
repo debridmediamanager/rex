@@ -7,7 +7,7 @@ the lab at all -- measured, a blocked-hostname-only run drew fun's sidebar with
 unreachable warnings and issued 46 requests to fun for every 8 to the lab.
 
 So the resource list itself is filtered. The client then sees a single owned
-server, which is also the shape a real plexsim user would have, and every
+server, which is also the shape a real simplex user would have, and every
 library request necessarily goes to the server under test.
 
 plex.tv stays reachable throughout -- the account, discovery and registration

@@ -29,8 +29,8 @@ import metadata  # noqa: E402
 import xmlout  # noqa: E402
 
 
-BIN = os.environ.get("PLEXSIM_NATIVE_BIN",
-                     os.path.join(ROOT, "rust", "target", "debug", "plexsim"))
+BIN = os.environ.get("SIMPLEX_NATIVE_BIN",
+                     os.path.join(ROOT, "rust", "target", "debug", "simplex"))
 
 
 def equivalent(left, right):
