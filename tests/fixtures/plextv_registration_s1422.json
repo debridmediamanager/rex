@@ -1,0 +1,6889 @@
+{
+ "source": "pms-probe: plexinc/pms-docker:1.42.2.10156-f737b826c on zen, claimed once by POST /myplex/claim?token= on the PMS, its plex.tv traffic recorded TLS-decrypted by the harness gateway (mitmproxy transparent at uid 8888, its CA trusted in the container before PMS first started)",
+ "captured": "2026-10-10",
+ "note": "Tokens, the claim token, the account email/username/uuid, the home IP (publicAddress) and certificate material are redacted or dropped. The machineIdentifier is the throwaway probe's, removed from the account afterwards. Times are UTC.",
+ "registry": {
+  "read": "GET plex.tv/api/servers/{machine} with the account token",
+  "before_claim": "404 for a machine that never POSTed /servers.xml (plexsim-e2e, same day)",
+  "createdAt": 1791598890,
+  "first_publish_date": "1791598890672774",
+  "updatedAt_after_claim": 1791598948,
+  "second_publish_date": "1791598947924742",
+  "updatedAt_after_restart": 1791599312,
+  "restart_second_publish_date": "1791599312186973",
+  "device_createdAt": 1791598889,
+  "exchange_iso": "2026-10-10T02:21:29",
+  "publish_status": 422
+ },
+ "presence": {
+  "first_run": "pubsub stream buffered by the recorder: PMS gave up after 20 s and retried after 30 s; presence=true at 02:22:05; no connectivity PUT in the whole run",
+  "stop": "docker stop 02:24:33: presence=false at the first poll (02:24:33) and every 20 s poll to 02:27:59; accessToken still published",
+  "restart": "stream passed through from 02:28:46: presence=true at all 57 polls 02:30:16-03:29:28 (60 s apart; no polls 02:45-02:49 while the poller restarted)"
+ },
+ "pms_log": [
+  "02:28:46.790 [EventSourceClient/pubsub/pubsub.plex.tv:443] MyPlex: We appear to have regained Internet connectivity.",
+  "02:28:46.792 MyPlex: Requesting reachability check.",
+  "02:28:46.792 HTTP requesting PUT https://plex.tv/api/servers/{machine}/connectivity?X-Plex-Token=REDACTED&asyncIdentifier=c4bd853c-3be3-434a-8d2e-f6a157b248b9",
+  "02:28:50.195 PubSub: Got notified of reachability for async identifier c4bd853c-3be3-434a-8d2e-f6a157b248b9: 0 for :0 (responded in 3025 ms)",
+  "before the stream: MyPlex: attempted a reachability check but we're not yet online."
+ ],
+ "claim": [
+  {
+   "iso": "2026-10-10T02:21:29",
+   "method": "POST",
+   "host": "plex.tv",
+   "path": "/api/claim/exchange",
+   "query": [
+    [
+     "token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "application/x-www-form-urlencoded"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:29 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"6cd18ad685920768ab55780ad114c885\""
+    ],
+    [
+     "x-request-id",
+     "12638d5a-edb0-9648-bd95-4f27c65639a2"
+    ],
+    [
+     "x-runtime",
+     "0.192027"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<user email=\"REDACTED\" id=\"316687974\" uuid=\"REDACTED\" mailing_list_status=\"active\" thumb=\"REDACTED\" username=\"REDACTED\" title=\"REDACTED\" cloudSyncDevice=\"\" locale=\"\" authenticationToken=\"REDACTED\" authToken=\"REDACTED\" scrobbleTypes=\"\" restricted=\"0\" home=\"0\" guest=\"0\" queueEmail=\"REDACTED\" queueUid=\"REDACTED\" hasPassword=\"true\" homeSize=\"1\" maxHomeSize=\"15\" secure=\"1\" certificateVersion=\"3\">  <!-- subscription and feature children dropped -->"
+  },
+  {
+   "iso": "2026-10-10T02:21:29",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/webhooks",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 403,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:29 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "bbd72ed0-c5d8-9858-aafc-6a7a2b3fb132"
+    ],
+    [
+     "x-runtime",
+     "0.014638"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<errors>\n  <error code=\"1080\" message=\"A valid server token is required to perform this action\" status=\"403\"/>\n</errors>\n"
+  },
+  {
+   "iso": "2026-10-10T02:21:29",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/user/privacy",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:30 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"792b4ec85a2dd7b6535391a9642396b4\""
+    ],
+    [
+     "x-request-id",
+     "17939483-0233-9bd6-9b99-5d09b8c229de"
+    ],
+    [
+     "x-runtime",
+     "0.017632"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin, Accept-Encoding"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<8392 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:21:30",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/release_channels",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:30 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"487616eb062c70c1a29a9e4aa3e1c17f\""
+    ],
+    [
+     "x-request-id",
+     "7b8adac5-c343-9d62-a047-52886a4b45c3"
+    ],
+    [
+     "x-runtime",
+     "0.030201"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<release_channels>\n  <release_channel id=\"0\" name=\"Public\" public=\"true\">\n  </release_channel>\n  <release_channel id=\"8\" name=\"Beta\" public=\"false\">\n    <roles>\n      <role role=\"plexpass\"/>\n      <role role=\"ninja\"/>\n      <role role=\"employee\"/>\n      <role role=\"employee_tester\"/>\n    </roles>\n  </release_channel>\n</release_channels>\n"
+  },
+  {
+   "iso": "2026-10-10T02:21:30",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/features",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:30 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"dda41a6bf5245f22e2435b8e683386c0\""
+    ],
+    [
+     "x-request-id",
+     "73cb77bb-f5bb-9ff4-9f74-17009fafa11c"
+    ],
+    [
+     "x-runtime",
+     "0.184089"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<14158 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:21:30",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/users/features",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 403,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:30 GMT"
+    ],
+    [
+     "content-type",
+     "application/json"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "4220c013-d589-934d-bfc4-bf832422e16c"
+    ],
+    [
+     "x-runtime",
+     "0.015757"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "{\"errors\":[{\"code\":1080,\"message\":\"A valid server token is required to perform this action\",\"status\":403}]}"
+  },
+  {
+   "iso": "2026-10-10T02:21:30",
+   "method": "POST",
+   "host": "plex.tv",
+   "path": "/servers.xml",
+   "query": [
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Content-Length",
+     "237"
+    ]
+   ],
+   "req_body": "<MediaContainer size=\"1\">\n<Server relay=\"0\" name=\"pms-probe\" host=\"\" localAddresses=\"10.231.47.2\" machineIdentifier=\"986defbf8acea209c4d15a033c964a873ee358bc\" version=\"1.42.2.10156-f737b826c\" date=\"1791598890672774\" />\n</MediaContainer>\n",
+   "status": 422,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:30 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "3c8257e2-04bb-95cb-92ac-b2fc830d4afa"
+    ],
+    [
+     "x-runtime",
+     "0.068787"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:21:30",
+   "method": "PUT",
+   "host": "plex.tv",
+   "path": "/devices/986defbf8acea209c4d15a033c964a873ee358bc",
+   "query": [
+    [
+     "Connection[][uri]",
+     "http://10.231.47.2:32400"
+    ],
+    [
+     "httpsEnabled",
+     "0"
+    ],
+    [
+     "httpsRequired",
+     "0"
+    ],
+    [
+     "dnsRebindingProtection",
+     "0"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:30 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "etag",
+     "W/\"125abfde9df60a9899aa416b373a3c78\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "x-request-id",
+     "3d47201f-2f48-981e-891c-7d4dac204e3b"
+    ],
+    [
+     "x-runtime",
+     "0.049587"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Device name=\"pms-probe\" product=\"Plex Media Server\" productVersion=\"1.42.2.10156-f737b826c\" platform=\"Linux\" platformVersion=\"5.15.0-190-generic\" device=\"Docker Container\" clientIdentifier=\"986defbf8acea209c4d15a033c964a873ee358bc\" createdAt=\"1791598889\" lastSeenAt=\"1791598889\" provides=\"server\" owned=\"1\" searchEnabled=\"true\" publicAddress=\"203.0.113.1\" presence=\"0\" certificateIdentifier=\"\">\n  <Connection protocol=\"http\" address=\"10.231.47.2\" port=\"32400\" uri=\"http://10.231.47.2:32400\" local=\"1\"/>\n</Device>\n"
+  },
+  {
+   "iso": "2026-10-10T02:21:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/devices/986defbf8acea209c4d15a033c964a873ee358bc/certificate/subject",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"a2a202144abf417b6ee0b90280ed2c87\""
+    ],
+    [
+     "x-request-id",
+     "e92fa29d-e964-9923-a8ce-77d33cd2bdcd"
+    ],
+    [
+     "x-runtime",
+     "0.037729"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<201 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:21:31",
+   "method": "PUT",
+   "host": "plex.tv",
+   "path": "/api/v2/devices/986defbf8acea209c4d15a033c964a873ee358bc/certificate/csr",
+   "query": [
+    [
+     "reason",
+     "new"
+    ],
+    [
+     "invalidIn",
+     "0"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "Content-Length",
+     "1137"
+    ],
+    [
+     "Content-Type",
+     "multipart/form-data; boundary=------------------------ta2CTBSEIb0cLmJSKENKrA"
+    ]
+   ],
+   "req_body": "<1137 chars dropped: not registration evidence, or carries account data>",
+   "status": 204,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:31 GMT"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "663297ce-f27d-9e3f-ac1e-8d2d2f0ff59b"
+    ],
+    [
+     "x-runtime",
+     "0.036291"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:21:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/devices/986defbf8acea209c4d15a033c964a873ee358bc/certificate/download",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 202,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/x-pem-file"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "content-disposition",
+     "attachment; filename*=UTF-8''cert.pem"
+    ],
+    [
+     "retry-after",
+     "1"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "6748e10f-eff0-9214-b226-c92fc89aacb9"
+    ],
+    [
+     "x-runtime",
+     "0.032647"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:21:32",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/devices/986defbf8acea209c4d15a033c964a873ee358bc/certificate/download",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 202,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:32 GMT"
+    ],
+    [
+     "content-type",
+     "application/x-pem-file"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "content-disposition",
+     "attachment; filename*=UTF-8''cert.pem"
+    ],
+    [
+     "retry-after",
+     "1"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "5d0942af-eff7-9eb0-a00e-61230771acf3"
+    ],
+    [
+     "x-runtime",
+     "0.026636"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:21:32",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/media/providers",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "6.5.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:32 GMT"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"1339c78f586c49c7cf89af4f8497df1a\""
+    ],
+    [
+     "x-request-id",
+     "c1a926ee-2cf4-9f76-bc5b-bc42c9ce9a3b"
+    ],
+    [
+     "x-runtime",
+     "0.031446"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Accept, Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "[{\"identifier\":\"tv.plex.provider.vod\",\"baseURL\":\"https://vod.provider.plex.tv\",\"title\":\"REDACTED\",\"icon\":\"https://provider-static.plex.tv/icons/vod-560.svg\",\"sourceTitle\":\"On Plex\",\"token\":\"REDACTED\"},{\"identifier\":\"tv.plex.provider.metadata\",\"baseURL\":\"https://metadata.provider.plex.tv\",\"title\":\"REDACTED\",\"icon\":\"https://provider-static.plex.tv/icons/metadata-560.svg\",\"sourceTitle\":null,\"token\":\"REDACTED\"}]"
+  },
+  {
+   "iso": "2026-10-10T02:21:33",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/devices/986defbf8acea209c4d15a033c964a873ee358bc/certificate/download",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 202,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:33 GMT"
+    ],
+    [
+     "content-type",
+     "application/x-pem-file"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "content-disposition",
+     "attachment; filename*=UTF-8''cert.pem"
+    ],
+    [
+     "retry-after",
+     "1"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "dd0d7668-3ef7-92cd-93a3-034d6b1741e7"
+    ],
+    [
+     "x-runtime",
+     "0.025368"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:21:34",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/services/pubsub/servers",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:34 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "etag",
+     "W/\"52b8f5fde1159289da91e713a0904b98\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "x-request-id",
+     "6010526c-76e0-96b5-b419-a207eb0ee943"
+    ],
+    [
+     "x-runtime",
+     "0.035889"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<Servers size=\"18\">\n  <Server host=\"pubsub00.pop.dfw.plex.bz\" region=\"dfw\"/>\n  <Server host=\"pubsub03.pop.dfw.plex.bz\" region=\"dfw\"/>\n  <Server host=\"pubsub00.pop.yyz.plex.bz\" region=\"yyz\"/>\n  <Server host=\"pubsub04.pop.yyz.plex.bz\" region=\"yyz\"/>\n  <Server host=\"pubsub02.pop.ewr.plex.bz\" region=\"ewr\"/>\n  <Server host=\"pubsub12.pop.ewr.plex.bz\" region=\"ewr\"/>\n  <Server host=\"pubsub00.pop.atl.plex.bz\" region=\"atl\"/>\n  <Server host=\"pubsub04.pop.atl.plex.bz\" region=\"atl\"/>\n  <Server host=\"pubsub11.pop.fra.plex.bz\" region=\"fra\"/>\n  <Server host=\"pubsub13.pop.fra.plex.bz\" region=\"fra\"/>\n  <Server host=\"pubsub02.pop.hnd.plex.bz\" region=\"hnd\"/>\n  <Server host=\"pubsub00.pop.hnd.plex.bz\" region=\"hnd\"/>\n  <Server host=\"pubsub00.pop.sin.plex.bz\" region=\"sin\"/>\n  <Server host=\"pubsub03.pop.sin.plex.bz\" region=\"sin\"/>\n  <Server host=\"pubsub03.pop.lhr.plex.bz\" region=\"lhr\"/>\n  <Server host=\"pubsub06.pop.lhr.plex.bz\" region=\"lhr\"/>\n  <Server host=\"pubsub03.pop.fmt.plex.bz\" region=\"fmt\"/>\n  <Server host=\"pubsub04.pop.fmt.plex.bz\" region=\"fmt\"/>\n</Servers>\n"
+  },
+  {
+   "iso": "2026-10-10T02:21:34",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/devices/986defbf8acea209c4d15a033c964a873ee358bc/certificate/download",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 202,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:35 GMT"
+    ],
+    [
+     "content-type",
+     "application/x-pem-file"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "content-disposition",
+     "attachment; filename*=UTF-8''cert.pem"
+    ],
+    [
+     "retry-after",
+     "1"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "c4ee8afc-732d-9bae-b10a-f473f444bc3a"
+    ],
+    [
+     "x-runtime",
+     "0.015345"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:21:36",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/devices/986defbf8acea209c4d15a033c964a873ee358bc/certificate/download",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 202,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:36 GMT"
+    ],
+    [
+     "content-type",
+     "application/x-pem-file"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "content-disposition",
+     "attachment; filename*=UTF-8''cert.pem"
+    ],
+    [
+     "retry-after",
+     "1"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "839b1008-96ae-9732-b525-4d5e278dc04a"
+    ],
+    [
+     "x-runtime",
+     "0.027672"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:21:37",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/devices/986defbf8acea209c4d15a033c964a873ee358bc/certificate/download",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 202,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:37 GMT"
+    ],
+    [
+     "content-type",
+     "application/x-pem-file"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "content-disposition",
+     "attachment; filename*=UTF-8''cert.pem"
+    ],
+    [
+     "retry-after",
+     "1"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "06ae5d25-3fb9-9ef9-8ca9-69625a7e179d"
+    ],
+    [
+     "x-runtime",
+     "0.040061"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:21:38",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/devices/986defbf8acea209c4d15a033c964a873ee358bc/certificate/download",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:38 GMT"
+    ],
+    [
+     "content-type",
+     "application/x-pem-file"
+    ],
+    [
+     "content-length",
+     "5738"
+    ],
+    [
+     "content-disposition",
+     "attachment; filename*=UTF-8''cert.pem"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"f77480f24c59902a33bad15309bb0b6c\""
+    ],
+    [
+     "x-request-id",
+     "5d51ba12-6ebe-9b60-b349-171688b1609d"
+    ],
+    [
+     "x-runtime",
+     "0.028193"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": "<5738 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:21:38",
+   "method": "PUT",
+   "host": "plex.tv",
+   "path": "/devices/986defbf8acea209c4d15a033c964a873ee358bc",
+   "query": [
+    [
+     "Connection[][uri]",
+     "http://10.231.47.2:32400"
+    ],
+    [
+     "httpsEnabled",
+     "1"
+    ],
+    [
+     "httpsRequired",
+     "0"
+    ],
+    [
+     "dnsRebindingProtection",
+     "0"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:38 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "etag",
+     "W/\"eae9c444b87dcdd6f74594d9fe0ddea3\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "x-request-id",
+     "9594839d-c625-919b-bb02-389f4a820cb2"
+    ],
+    [
+     "x-runtime",
+     "0.098795"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Device name=\"pms-probe\" product=\"Plex Media Server\" productVersion=\"1.42.2.10156-f737b826c\" platform=\"Linux\" platformVersion=\"5.15.0-190-generic\" device=\"Docker Container\" clientIdentifier=\"986defbf8acea209c4d15a033c964a873ee358bc\" createdAt=\"1791598889\" lastSeenAt=\"1791598889\" provides=\"server\" owned=\"1\" searchEnabled=\"true\" publicAddress=\"203.0.113.1\" httpsRequired=\"0\" presence=\"0\" certificateIdentifier=\"9896b630a22a4b3a818fb45aa12a41e4\">\n  <Connection protocol=\"https\" address=\"10.231.47.2\" port=\"32400\" uri=\"https://10-231-47-2.9896b630a22a4b3a818fb45aa12a41e4.plex.direct:32400\" local=\"1\"/>\n</Device>\n"
+  },
+  {
+   "iso": "2026-10-10T02:21:40",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/resources.xml",
+   "query": [
+    [
+     "includeHttps",
+     "1"
+    ],
+    [
+     "includeRelay",
+     "1"
+    ],
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:21:40 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"49b4f67aaabaafa31b5e10fabb5e8688\""
+    ],
+    [
+     "x-request-id",
+     "fdbfbe32-88d4-9154-8414-232420689276"
+    ],
+    [
+     "x-runtime",
+     "0.070620"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<6443 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:22:28",
+   "method": "POST",
+   "host": "plex.tv",
+   "path": "/servers.xml",
+   "query": [
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Content-Length",
+     "237"
+    ]
+   ],
+   "req_body": "<MediaContainer size=\"1\">\n<Server relay=\"0\" name=\"pms-probe\" host=\"\" localAddresses=\"10.231.47.2\" machineIdentifier=\"986defbf8acea209c4d15a033c964a873ee358bc\" version=\"1.42.2.10156-f737b826c\" date=\"1791598947924742\" />\n</MediaContainer>\n",
+   "status": 422,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:22:28 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "39aa2e97-7723-96a6-bc0e-32d9e073e517"
+    ],
+    [
+     "x-runtime",
+     "0.042462"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  }
+ ],
+ "claimed_start": [
+  {
+   "iso": "2026-10-10T02:28:25",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/access_tokens",
+   "query": [
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:25 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "etag",
+     "W/\"5238c35abe8670ddcd8dbdb57961acc0\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "d1c0debb-0e6e-95ef-9dc3-b6409e139a3e"
+    ],
+    [
+     "x-runtime",
+     "0.034882"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<2744 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:28:25",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/users",
+   "query": [
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:25 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "etag",
+     "W/\"b932116bc14489d2f9ed234f03f5ee16\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "0aa05c01-d2d1-9293-8d7b-2ae6e80f20fc"
+    ],
+    [
+     "x-runtime",
+     "0.034841"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<users>\n</users>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:25",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/users/subscriptions",
+   "query": [
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:25 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "etag",
+     "W/\"b932116bc14489d2f9ed234f03f5ee16\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "bc221675-f32c-90fb-9028-17aec5a83662"
+    ],
+    [
+     "x-runtime",
+     "0.078320"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<users>\n</users>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:28",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/media/providers",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "6.5.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:28 GMT"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"1339c78f586c49c7cf89af4f8497df1a\""
+    ],
+    [
+     "x-request-id",
+     "c989664a-8457-9781-959c-32d0d3ff8935"
+    ],
+    [
+     "x-runtime",
+     "0.019501"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Accept, Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "[{\"identifier\":\"tv.plex.provider.vod\",\"baseURL\":\"https://vod.provider.plex.tv\",\"title\":\"REDACTED\",\"icon\":\"https://provider-static.plex.tv/icons/vod-560.svg\",\"sourceTitle\":\"On Plex\",\"token\":\"REDACTED\"},{\"identifier\":\"tv.plex.provider.metadata\",\"baseURL\":\"https://metadata.provider.plex.tv\",\"title\":\"REDACTED\",\"icon\":\"https://provider-static.plex.tv/icons/metadata-560.svg\",\"sourceTitle\":null,\"token\":\"REDACTED\"}]"
+  },
+  {
+   "iso": "2026-10-10T02:28:30",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/taas/profile",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:30 GMT"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"d1f27828b462f0627bbbffa3c4c44365\""
+    ],
+    [
+     "x-request-id",
+     "edc22605-7f58-9160-ad15-b7850da87169"
+    ],
+    [
+     "x-runtime",
+     "0.007800"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<119541 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:28:30",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/user",
+   "query": [
+    [
+     "includeSubscriptions",
+     "1"
+    ],
+    [
+     "includeProviders",
+     "1"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:30 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "etag",
+     "W/\"ddd3f350d8f79ea0b8c7a88cf4f5d2a7\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "8a58c239-263b-969f-856d-82090d0b5aee"
+    ],
+    [
+     "x-runtime",
+     "0.154455"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin, Accept-Encoding"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<13104 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/release_channels",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"487616eb062c70c1a29a9e4aa3e1c17f\""
+    ],
+    [
+     "x-request-id",
+     "e47c1725-7339-96ea-bb71-e0c076790072"
+    ],
+    [
+     "x-runtime",
+     "0.015494"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<release_channels>\n  <release_channel id=\"0\" name=\"Public\" public=\"true\">\n  </release_channel>\n  <release_channel id=\"8\" name=\"Beta\" public=\"false\">\n    <roles>\n      <role role=\"plexpass\"/>\n      <role role=\"ninja\"/>\n      <role role=\"employee\"/>\n      <role role=\"employee_tester\"/>\n    </roles>\n  </release_channel>\n</release_channels>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/user/privacy",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"792b4ec85a2dd7b6535391a9642396b4\""
+    ],
+    [
+     "x-request-id",
+     "7688cd7e-afff-9cf5-8454-3a0b1fe24a0a"
+    ],
+    [
+     "x-runtime",
+     "0.012419"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin, Accept-Encoding"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<8392 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/geoip",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"cd01e2a2ec43908b729c2372a841ac25\""
+    ],
+    [
+     "x-request-id",
+     "31f514b7-7fd4-9818-b3a1-4922ec7b5b37"
+    ],
+    [
+     "x-runtime",
+     "0.016453"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<318 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "POST",
+   "host": "plex.tv",
+   "path": "/devices/986defbf8acea209c4d15a033c964a873ee358bc/unclaimed",
+   "query": [
+    [
+     "Connection[][uri]",
+     "http://10.231.47.2:32400"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ],
+    [
+     "Content-Type",
+     "application/x-www-form-urlencoded"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "etag",
+     "W/\"4b7524bcf8f38733d97852c6c9df71ff\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "x-request-id",
+     "3887b1f3-e9c7-9b94-badb-51450fc70d6d"
+    ],
+    [
+     "x-runtime",
+     "0.008512"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response code=\"200\" subscribers=\"0\"/>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/features",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"dda41a6bf5245f22e2435b8e683386c0\""
+    ],
+    [
+     "x-request-id",
+     "a0496bdd-a0bf-92c4-869a-c6cba90b2e3f"
+    ],
+    [
+     "x-runtime",
+     "0.137180"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<14158 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/user/privacy",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"792b4ec85a2dd7b6535391a9642396b4\""
+    ],
+    [
+     "x-request-id",
+     "f45f3e4a-94af-90a8-8345-25899236bab4"
+    ],
+    [
+     "x-runtime",
+     "0.012391"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin, Accept-Encoding"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<8392 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/webhooks",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "etag",
+     "W/\"8e42ea473c1abee27a399c6744e6ba84\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "84a8b86e-0ed0-9783-a8ff-b9da99b79958"
+    ],
+    [
+     "x-runtime",
+     "0.093263"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<users>\n<user id=\"316687974\" uuid=\"REDACTED\" hasPassword=\"1\" owner=\"1\" adsConsent=\"1\" adsConsentSetAt=\"1790777279\" adsConsentReminderAt=\"1796047679\" experimentalFeatures=\"1\">\n  <webhooks>\n  </webhooks>\n</user>\n</users>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/release_channels",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"487616eb062c70c1a29a9e4aa3e1c17f\""
+    ],
+    [
+     "x-request-id",
+     "e8567081-ed17-98bc-9a88-33063abdb54f"
+    ],
+    [
+     "x-runtime",
+     "0.015769"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<release_channels>\n  <release_channel id=\"0\" name=\"Public\" public=\"true\">\n  </release_channel>\n  <release_channel id=\"8\" name=\"Beta\" public=\"false\">\n    <roles>\n      <role role=\"plexpass\"/>\n      <role role=\"ninja\"/>\n      <role role=\"employee\"/>\n      <role role=\"employee_tester\"/>\n    </roles>\n  </release_channel>\n</release_channels>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/users/features",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/json"
+    ],
+    [
+     "etag",
+     "W/\"828a8aeeedee577f193894dcea05d3c7\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "d1fd31f4-c579-9e64-acc6-d9e1686f8abf"
+    ],
+    [
+     "x-runtime",
+     "0.028143"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "[{\"id\":316687974,\"uuid\":\"REDACTED\",\"username\":\"REDACTED\",\"title\":\"REDACTED\",\"email\":\"REDACTED\",\"friendlyName\":\"\",\"features\":[\"6ab6677b-ad9b-444f-9ca1-b8027d05b3e1\",\"926bc176-58ca-47da-b8e3-080ed14ea6ba\",\"ea791163-c28d-4b7c-af88-bcc9553b206d\",\"b83c8dc9-5a01-4b7a-a7c9-5870c8a6e21b\",\"76ddd91e-8321-4916-94b6-ded8e3727a64\",\"56cd352b-0d47-436d-aced-f20db3508de5\"]}]"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/features",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"dda41a6bf5245f22e2435b8e683386c0\""
+    ],
+    [
+     "x-request-id",
+     "f4f0833f-0c07-998d-9da3-29276bf58bfd"
+    ],
+    [
+     "x-runtime",
+     "0.116596"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<14158 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/users/features",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:31 GMT"
+    ],
+    [
+     "content-type",
+     "application/json"
+    ],
+    [
+     "etag",
+     "W/\"828a8aeeedee577f193894dcea05d3c7\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "ff4b664e-98a2-93d3-980f-3450f2e48dde"
+    ],
+    [
+     "x-runtime",
+     "0.030441"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "[{\"id\":316687974,\"uuid\":\"REDACTED\",\"username\":\"REDACTED\",\"title\":\"REDACTED\",\"email\":\"REDACTED\",\"friendlyName\":\"\",\"features\":[\"6ab6677b-ad9b-444f-9ca1-b8027d05b3e1\",\"926bc176-58ca-47da-b8e3-080ed14ea6ba\",\"ea791163-c28d-4b7c-af88-bcc9553b206d\",\"b83c8dc9-5a01-4b7a-a7c9-5870c8a6e21b\",\"76ddd91e-8321-4916-94b6-ded8e3727a64\",\"56cd352b-0d47-436d-aced-f20db3508de5\"]}]"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "PUT",
+   "host": "plex.tv",
+   "path": "/devices/986defbf8acea209c4d15a033c964a873ee358bc",
+   "query": [
+    [
+     "Connection[][uri]",
+     "http://10.231.47.2:32400"
+    ],
+    [
+     "httpsEnabled",
+     "1"
+    ],
+    [
+     "httpsRequired",
+     "0"
+    ],
+    [
+     "dnsRebindingProtection",
+     "0"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:32 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "etag",
+     "W/\"5c0cf14f441faea632a7c340156f0acb\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "x-request-id",
+     "a11abeb2-db85-98c8-9443-ba7335dd35c3"
+    ],
+    [
+     "x-runtime",
+     "0.036342"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Device name=\"pms-probe\" product=\"Plex Media Server\" productVersion=\"1.42.2.10156-f737b826c\" platform=\"Linux\" platformVersion=\"5.15.0-190-generic\" device=\"Docker Container\" clientIdentifier=\"986defbf8acea209c4d15a033c964a873ee358bc\" createdAt=\"1791598889\" lastSeenAt=\"1791598900\" provides=\"server\" owned=\"1\" searchEnabled=\"true\" publicAddress=\"203.0.113.1\" httpsRequired=\"0\" presence=\"0\" certificateIdentifier=\"9896b630a22a4b3a818fb45aa12a41e4\">\n  <Connection protocol=\"https\" address=\"10.231.47.2\" port=\"32400\" uri=\"https://10-231-47-2.9896b630a22a4b3a818fb45aa12a41e4.plex.direct:32400\" local=\"1\"/>\n</Device>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:31",
+   "method": "POST",
+   "host": "plex.tv",
+   "path": "/servers.xml",
+   "query": [
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Content-Length",
+     "237"
+    ]
+   ],
+   "req_body": "<MediaContainer size=\"1\">\n<Server relay=\"0\" name=\"pms-probe\" host=\"\" localAddresses=\"10.231.47.2\" machineIdentifier=\"986defbf8acea209c4d15a033c964a873ee358bc\" version=\"1.42.2.10156-f737b826c\" date=\"1791599311988756\" />\n</MediaContainer>\n",
+   "status": 422,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:32 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "c8f9d267-ae28-95d9-a754-49c834eb00bd"
+    ],
+    [
+     "x-runtime",
+     "0.068547"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:28:32",
+   "method": "POST",
+   "host": "plex.tv",
+   "path": "/servers.xml",
+   "query": [
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "Content-Type",
+     "application/xml"
+    ],
+    [
+     "Content-Length",
+     "237"
+    ]
+   ],
+   "req_body": "<MediaContainer size=\"1\">\n<Server relay=\"0\" name=\"pms-probe\" host=\"\" localAddresses=\"10.231.47.2\" machineIdentifier=\"986defbf8acea209c4d15a033c964a873ee358bc\" version=\"1.42.2.10156-f737b826c\" date=\"1791599312186973\" />\n</MediaContainer>\n",
+   "status": 422,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:32 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "491a7a2d-519d-96b3-bcb4-b34f4d8e9aac"
+    ],
+    [
+     "x-runtime",
+     "0.091715"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:28:34",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/media/providers",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "6.5.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:34 GMT"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"1339c78f586c49c7cf89af4f8497df1a\""
+    ],
+    [
+     "x-request-id",
+     "7ba5024e-f980-9edd-9ab7-b0b44d7f92d7"
+    ],
+    [
+     "x-runtime",
+     "0.020593"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Accept, Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "[{\"identifier\":\"tv.plex.provider.vod\",\"baseURL\":\"https://vod.provider.plex.tv\",\"title\":\"REDACTED\",\"icon\":\"https://provider-static.plex.tv/icons/vod-560.svg\",\"sourceTitle\":\"On Plex\",\"token\":\"REDACTED\"},{\"identifier\":\"tv.plex.provider.metadata\",\"baseURL\":\"https://metadata.provider.plex.tv\",\"title\":\"REDACTED\",\"icon\":\"https://provider-static.plex.tv/icons/metadata-560.svg\",\"sourceTitle\":null,\"token\":\"REDACTED\"}]"
+  },
+  {
+   "iso": "2026-10-10T02:28:36",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/services/pubsub/servers",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:36 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "etag",
+     "W/\"b94137ae4e474543f2ad2d5c00d5b6ba\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "x-request-id",
+     "e921e365-a1b9-90f1-803f-c868d3a5b31c"
+    ],
+    [
+     "x-runtime",
+     "0.013949"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<Servers size=\"18\">\n  <Server host=\"pubsub03.pop.dfw.plex.bz\" region=\"dfw\"/>\n  <Server host=\"pubsub00.pop.dfw.plex.bz\" region=\"dfw\"/>\n  <Server host=\"pubsub00.pop.fmt.plex.bz\" region=\"fmt\"/>\n  <Server host=\"pubsub05.pop.fmt.plex.bz\" region=\"fmt\"/>\n  <Server host=\"pubsub06.pop.lhr.plex.bz\" region=\"lhr\"/>\n  <Server host=\"pubsub08.pop.lhr.plex.bz\" region=\"lhr\"/>\n  <Server host=\"pubsub02.pop.yyz.plex.bz\" region=\"yyz\"/>\n  <Server host=\"pubsub01.pop.yyz.plex.bz\" region=\"yyz\"/>\n  <Server host=\"pubsub05.pop.atl.plex.bz\" region=\"atl\"/>\n  <Server host=\"pubsub07.pop.atl.plex.bz\" region=\"atl\"/>\n  <Server host=\"pubsub04.pop.ewr.plex.bz\" region=\"ewr\"/>\n  <Server host=\"pubsub05.pop.ewr.plex.bz\" region=\"ewr\"/>\n  <Server host=\"pubsub01.pop.fra.plex.bz\" region=\"fra\"/>\n  <Server host=\"pubsub13.pop.fra.plex.bz\" region=\"fra\"/>\n  <Server host=\"pubsub01.pop.hnd.plex.bz\" region=\"hnd\"/>\n  <Server host=\"pubsub02.pop.hnd.plex.bz\" region=\"hnd\"/>\n  <Server host=\"pubsub00.pop.sin.plex.bz\" region=\"sin\"/>\n  <Server host=\"pubsub04.pop.sin.plex.bz\" region=\"sin\"/>\n</Servers>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:41",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/resources.xml",
+   "query": [
+    [
+     "includeHttps",
+     "1"
+    ],
+    [
+     "includeRelay",
+     "1"
+    ],
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:41 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"f4051c52f06047f483fd3d6d1098566a\""
+    ],
+    [
+     "x-request-id",
+     "06b43c5d-f1ec-9bd7-ac8a-b5138e8f68fa"
+    ],
+    [
+     "x-runtime",
+     "0.062868"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<6443 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:28:47",
+   "method": "PUT",
+   "host": "plex.tv",
+   "path": "/api/servers/986defbf8acea209c4d15a033c964a873ee358bc/connectivity",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ],
+    [
+     "asyncIdentifier",
+     "c4bd853c-3be3-434a-8d2e-f6a157b248b9"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "Content-Length",
+     "0"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:47 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "content-length",
+     "0"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "x-request-id",
+     "051e2abe-4919-9bcb-8bf1-15987a5acb57"
+    ],
+    [
+     "x-runtime",
+     "0.016334"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ]
+   ],
+   "res_body": null
+  },
+  {
+   "iso": "2026-10-10T02:28:54",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/shared_sources/owned",
+   "query": [
+    [
+     "machineIdentifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:55 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "etag",
+     "W/\"6b7c6dfd05b845d04243328aa96f4f2f\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "189f6af9-7bd1-96aa-b87c-9f76f2eabbb2"
+    ],
+    [
+     "x-runtime",
+     "0.020229"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<sharedSources>\n</sharedSources>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:55",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/access_tokens",
+   "query": [
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:55 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "etag",
+     "W/\"5238c35abe8670ddcd8dbdb57961acc0\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "44b8fedf-a87b-9dc9-afb1-28c53111b02f"
+    ],
+    [
+     "x-runtime",
+     "0.031238"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<2744 chars dropped: not registration evidence, or carries account data>"
+  },
+  {
+   "iso": "2026-10-10T02:28:55",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/users",
+   "query": [
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:55 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "etag",
+     "W/\"b932116bc14489d2f9ed234f03f5ee16\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "75a7302d-6760-9d98-b603-0683dc371867"
+    ],
+    [
+     "x-runtime",
+     "0.048392"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<users>\n</users>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:55",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/api/v2/server/users/subscriptions",
+   "query": [
+    [
+     "auth_token",
+     "REDACTED"
+    ]
+   ],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:55 GMT"
+    ],
+    [
+     "content-type",
+     "application/xml"
+    ],
+    [
+     "etag",
+     "W/\"b932116bc14489d2f9ed234f03f5ee16\""
+    ],
+    [
+     "cache-control",
+     "max-age=0, private, must-revalidate"
+    ],
+    [
+     "set-cookie",
+     "REDACTED"
+    ],
+    [
+     "x-request-id",
+     "437cd987-91a9-9368-a834-1474d0d38a03"
+    ],
+    [
+     "x-runtime",
+     "0.018110"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<users>\n</users>\n"
+  },
+  {
+   "iso": "2026-10-10T02:28:58",
+   "method": "GET",
+   "host": "plex.tv",
+   "path": "/media/providers",
+   "query": [],
+   "req_headers": [
+    [
+     "Host",
+     "plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept-Encoding",
+     "gzip"
+    ],
+    [
+     "Accept",
+     "application/json"
+    ],
+    [
+     "X-Plex-Provider-Version",
+     "6.5.0"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ],
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "req_body": null,
+   "status": 200,
+   "res_headers": [
+    [
+     "date",
+     "Sat, 10 Oct 2026 02:28:58 GMT"
+    ],
+    [
+     "content-type",
+     "application/json; charset=utf-8"
+    ],
+    [
+     "cache-control",
+     "no-cache"
+    ],
+    [
+     "etag",
+     "W/\"1339c78f586c49c7cf89af4f8497df1a\""
+    ],
+    [
+     "x-request-id",
+     "fc6d7301-93a0-9e6f-a263-355de8eed68e"
+    ],
+    [
+     "x-runtime",
+     "0.021333"
+    ],
+    [
+     "x-content-type-options",
+     "nosniff"
+    ],
+    [
+     "referrer-policy",
+     "origin-when-cross-origin"
+    ],
+    [
+     "vary",
+     "Accept, Origin"
+    ],
+    [
+     "content-encoding",
+     "gzip"
+    ],
+    [
+     "strict-transport-security",
+     "max-age=31536000; includeSubDomains; preload"
+    ],
+    [
+     "x-frame-options",
+     "SAMEORIGIN"
+    ],
+    [
+     "x-xss-protection",
+     "1; mode=block"
+    ],
+    [
+     "transfer-encoding",
+     "chunked"
+    ]
+   ],
+   "res_body": "[{\"identifier\":\"tv.plex.provider.vod\",\"baseURL\":\"https://vod.provider.plex.tv\",\"title\":\"REDACTED\",\"icon\":\"https://provider-static.plex.tv/icons/vod-560.svg\",\"sourceTitle\":\"On Plex\",\"token\":\"REDACTED\"},{\"identifier\":\"tv.plex.provider.metadata\",\"baseURL\":\"https://metadata.provider.plex.tv\",\"title\":\"REDACTED\",\"icon\":\"https://provider-static.plex.tv/icons/metadata-560.svg\",\"sourceTitle\":null,\"token\":\"REDACTED\"}]"
+  }
+ ],
+ "pubsub": {
+  "request": {
+   "method": "GET",
+   "host": "pubsub.plex.tv",
+   "path": "/sub/eventsource/316687974/986defbf8acea209c4d15a033c964a873ee358bc",
+   "query": [
+    [
+     "X-Plex-Token",
+     "REDACTED"
+    ]
+   ],
+   "headers": [
+    [
+     "Host",
+     "pubsub.plex.tv"
+    ],
+    [
+     "User-Agent",
+     "PlexMediaServer-EventSourceClient/1.42.2.10156-f737b826c"
+    ],
+    [
+     "Accept",
+     "*/*"
+    ],
+    [
+     "X-Plex-Client-Identifier",
+     "986defbf8acea209c4d15a033c964a873ee358bc"
+    ],
+    [
+     "X-Plex-Version",
+     "1.42.2.10156-f737b826c"
+    ],
+    [
+     "X-Plex-Provides",
+     "server"
+    ],
+    [
+     "X-Plex-Platform",
+     "Linux"
+    ],
+    [
+     "X-Plex-Product",
+     "Plex Media Server"
+    ],
+    [
+     "X-Plex-Platform-Version",
+     "5.15.0-190-generic"
+    ],
+    [
+     "X-Plex-Device-Name",
+     "pms-probe"
+    ],
+    [
+     "X-Plex-Device",
+     "Docker Container"
+    ],
+    [
+     "X-Plex-Model",
+     "x86_64"
+    ],
+    [
+     "X-Plex-Device-Vendor",
+     "Docker"
+    ]
+   ]
+  },
+  "response": {
+   "status": 200,
+   "headers": [
+    [
+     "Server",
+     "nginx"
+    ],
+    [
+     "Date",
+     "Sat, 10 Oct 2026 02:28:46 GMT"
+    ],
+    [
+     "Content-Type",
+     "text/event-stream; charset=utf-8"
+    ],
+    [
+     "Connection",
+     "close"
+    ],
+    [
+     "Expires",
+     "Thu, 01 Jan 1970 00:00:01 GMT"
+    ],
+    [
+     "Cache-Control",
+     "no-cache, no-store, must-revalidate"
+    ]
+   ]
+  },
+  "events": [
+   {
+    "after_s": 0.4,
+    "data": ": \n"
+   },
+   {
+    "after_s": 3.8,
+    "data": "data: <Message address=\"\" port=\"0\" asyncIdentifier=\"c4bd853c-3be3-434a-8d2e-f6a157b248b9\" connectivity=\"0\" command=\"notifyConnectivity\"/>\n\n"
+   },
+   {
+    "after_s": 13.8,
+    "data": ": -1\n"
+   },
+   {
+    "after_s": 23.8,
+    "data": ": -1\n"
+   },
+   {
+    "after_s": 33.8,
+    "data": ": -1\n"
+   },
+   {
+    "after_s": 43.8,
+    "data": ": -1\n"
+   }
+  ],
+  "connectivity_put_after_s": 0.6
+ },
+ "steady_state": {
+  "window": "02:29-03:29, the hour after the claimed restart",
+  "plex_tv_calls": [
+   {
+    "count": 2,
+    "method": "GET",
+    "host": "plex.tv",
+    "path": "/api/v2/server/users/316687974/view_state_sync"
+   },
+   {
+    "count": 1,
+    "method": "GET",
+    "host": "plex.tv",
+    "path": "/api/v2/server/users/services"
+   },
+   {
+    "count": 87,
+    "method": "GET",
+    "host": "scrobbles.plex.tv",
+    "path": "/state/316687974"
+   }
+  ],
+  "not_sent": [
+   "POST /servers.xml",
+   "PUT /devices/{machine}",
+   "PUT /api/servers/{machine}/connectivity"
+  ],
+  "pubsub_requests": 1,
+  "keepalives": 360
+ }
+}

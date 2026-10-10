@@ -11646,12 +11646,105 @@ writing produces it, and neither the claim exchange nor `/api/v2/ping` creates
 one.
 
 **The one remaining unknown is how a server-registry record gets created.** It
-is not in fun's current logs because fun was claimed long ago.
+is not in fun's current logs because fun was claimed long ago. (Answered on
+2026-10-10, below: `POST /servers.xml` writes it despite its 422, and presence is
+the pubsub stream.)
 
 **The definitive experiment:** run a real PMS in a container on zen (the test
 host), claim it with a fresh claim token, and read its **first-run** log. The
 call that creates `/api/servers/{machine}` will be in that startup sequence.
 Bounded, and on a test host rather than production.
+
+### The experiment, run (2026-10-10): `/servers.xml` writes the record, pubsub is presence
+
+A throwaway real PMS (`plexinc/pms-docker:1.42.2.10156-f737b826c`, the version plexsim
+reports, friendly name `pms-probe`, its own empty config) ran on zen behind the harness
+gateway: mitmproxy transparent on 80/443 at uid 8888, its CA trusted in the container by a
+`cont-init.d` script before PMS first started. It was claimed once, the supported way: a
+claim token from `GET plex.tv/api/claim/token.json` redeemed by `POST /myplex/claim?token=`
+on the PMS itself. Every plex.tv request and answer from the claim, a claimed restart and
+an hour after it is in `tests/fixtures/plextv_registration_s1422.json` (tokens, email, home
+IP and certificate material redacted). Account token valid and fun and zen `presence=true`
+were rechecked after each step; nothing regressed.
+
+The claim, in order (02:21:29 UTC):
+
+| t | request | answer |
+|---|---|---|
+| 0.0 s | `POST plex.tv/api/claim/exchange?token=<claim>` | 200, `<user id=… authToken=…>` (gzip) |
+| 0.4 s | `GET` webhooks, privacy, release_channels, features, server/users/features | 403/200 |
+| 1.0 s | `POST plex.tv/servers.xml?auth_token=<server token>`, body below | **422**, empty |
+| 1.2 s | `PUT plex.tv/devices/{machine}?Connection[][uri]=http://10.231.47.2:32400&httpsEnabled=0&…` | 200, `presence="0"` |
+| 1.5–9 s | `certificate/subject`, `PUT certificate/csr`, `certificate/download` ×7 | the plex.direct certificate |
+| 5 s | `GET plex.tv/services/pubsub/servers` | 18 pubsub hosts |
+| 0.5 s on | `GET https://pubsub.plex.tv/sub/eventsource/{accountId}/{machine}?X-Plex-Token=<server token>` | `text/event-stream` |
+| 9 s | the device `PUT` again, `httpsEnabled=1` | 200, `presence="0"`, the plex.direct uri |
+
+```
+<MediaContainer size="1">
+<Server relay="0" name="pms-probe" host="" localAddresses="10.231.47.2" machineIdentifier="986d…" version="1.42.2.10156-f737b826c" date="1791598890672774" />
+</MediaContainer>
+```
+
+1. **`POST /servers.xml` creates the SERVER record, and plex.tv answers it 422.** After the
+   claim, `GET plex.tv/api/servers/986d…` with the account token answered 200, its
+   `createdAt="1791598890"` the second of the first POST (`date="1791598890672774"`) and
+   its `updatedAt="1791598948"` the second POST's. After a restart `updatedAt` moved to
+   1791599312, the second startup POST's `date`. The device row's `createdAt` is the
+   exchange's second (1791598889), one earlier. So the 422 that closed this lead above
+   ("the endpoint is dead") is plex.tv's normal answer to a real PMS, and the record is
+   written regardless. The spike never sent the PMS's body with the server token;
+   plexsim-e2e's `/api/servers/aebd…` still answered 404 on the day.
+2. **`presence` is the pubsub subscription: not a lease, and not the connectivity PUT.**
+   - In the first run the gateway buffered the event stream (`tap.py` records a flow when
+     its body ends, which an event stream never does), so PMS got no reply, gave up after
+     20 s and retried 30 s later. plex.tv still saw a subscriber for those 20 s windows:
+     resources read `presence=true` at 02:22:05, the second after one closed. No
+     connectivity PUT was sent in that whole run.
+   - `docker stop`: `presence=false` at the first poll, within a second. The 40-minute
+     lease measured for the device registry does not apply to presence.
+   - With the stream passed through (`streamtap.py`), the restart subscribed at 02:28:46
+     and presence was true at all 57 polls, 60 s apart, from 02:30 to 03:29 (none ran
+     02:45-02:49 while the poller restarted).
+   - `accessToken` stayed published while presence was false: it follows the server
+     record, presence follows the stream.
+3. **The connectivity PUT is a reachability check, and pubsub carries the verdict.** PMS's
+   log, in order: 02:28:46.790 "We appear to have regained Internet connectivity" (the
+   stream answered), 02:28:46.792 "Requesting reachability check" and
+   `PUT plex.tv/api/servers/{machine}/connectivity?X-Plex-Token=<server token>&asyncIdentifier=c4bd…`
+   (200, empty; 0.6 s after the subscription request in the recording), then at
+   02:28:50.195 the event
+   `data: <Message address="" port="0" asyncIdentifier="c4bd…" connectivity="0" command="notifyConnectivity"/>`,
+   logged "Got notified of reachability for async identifier c4bd…: 0 (responded in 3025
+   ms)". The asyncIdentifier is the server's own uuid4 -- the spike had that shape right;
+   what it lacked was the server record (404) and the open stream. Before the stream
+   was up PMS logged "attempted a reachability check but we're not yet online" and sent
+   nothing. `connectivity="0"` is plex.tv failing to reach a server with no public port
+   mapping, which presence does not depend on. After the verdict the stream carries
+   `: -1` every 10 s.
+4. The pubsub request carries `User-Agent: PlexMediaServer-EventSourceClient/<version>`,
+   `Accept: */*` and the X-Plex identity, and no `Accept-Encoding`; the answer is nginx,
+   `text/event-stream; charset=utf-8`, `Connection: close`, no-cache. PMS's client gives up
+   on 20 s of silence and retries 15 s after a failure. Every other claim and registration
+   call carries the thirteen headers the cycle-44 announce does (`User-Agent:
+   PlexMediaServer/<version>`, `Accept: */*`, `Accept-Encoding: gzip`, the identity).
+5. **plex.tv gzips whenever asked.** The exchange and device-PUT answers came back
+   `content-encoding: gzip`. plexsim's announce has asked for gzip since cycle 44 and
+   parsed the raw bytes, so against the real plex.tv every heartbeat raised after its PUT
+   took effect, and the visibility check behind it never ran.
+6. A claimed restart: device PUT, `POST /servers.xml` twice, the pubsub host list, the
+   stream, the reachability check. No exchange.
+7. 1.42.2 sends all of this to `plex.tv`; the 1.43.4 recording (`outbound-announce.json`)
+   sends the announce and `servers.xml` to `servers.plex.tv`. Both are real.
+8. **Nothing else is periodic.** From 02:29 to 03:29 the probe sent plex.tv only the
+   account's watch-state reads (consent twice, services once, 87 scrobble pages): no
+   further `/servers.xml`, device PUT or connectivity check, one pubsub request and 360
+   keepalives. The record and the device row stayed put without renewal while the stream
+   was open.
+9. Not reproduced: the plex.direct certificate flow (plexsim serves a certificate it is
+   given, `--tls-cert`), the pubsub host list (used only to fall back from
+   `pubsub.plex.tv`), and the probe's own connections to the other owned servers'
+   plex.direct URIs.
 
 **4. Sharing: one owner claims, everyone else is shared — and the owner's Plex
 Pass covers them all.**
