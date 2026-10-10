@@ -17,9 +17,25 @@ fn unmatched_guid(row: &Value) -> bool {
 impl Runtime {
     /// The setting list an item of this type advertises, from the captured sidecar.
     fn item_pref_settings(&self, kind: &str) -> Vec<Value> {
-        load_json_sidecar(&self.catalog_path, "item_prefs.json")
-            .and_then(|value| value.get(kind).cloned())
-            .and_then(|value| value.as_array().cloned())
+        self.sidecar_setting_list("item_prefs.json", kind)
+    }
+
+    /// One `id`'s `value` from a sidecar's setting list, read in place: `show_pref` runs
+    /// for every episode of a listing, and copying the whole sidecar for each one was
+    /// most of a show library's listing time on fun (2026-10-10).
+    fn sidecar_setting_value(&self, sidecar: &str, kind: &str, name: &str) -> Option<String> {
+        shared_json_sidecar(&self.catalog_path, sidecar)?
+            .get(kind)?
+            .as_array()?
+            .iter()
+            .find(|setting| setting.get("id").and_then(Value::as_str) == Some(name))
+            .and_then(|setting| setting.get("value"))
+            .map(string_value)
+    }
+
+    fn sidecar_setting_list(&self, sidecar: &str, kind: &str) -> Vec<Value> {
+        shared_json_sidecar(&self.catalog_path, sidecar)
+            .and_then(|document| document.get(kind).and_then(Value::as_array).cloned())
             .unwrap_or_default()
     }
 
@@ -32,12 +48,8 @@ impl Runtime {
             .and_then(|prefs| prefs.get(name))
             .map(string_value);
         if stored.is_none() {
-            stored = self
-                .item_pref_settings(show.get("type").and_then(Value::as_str).unwrap_or(""))
-                .iter()
-                .find(|setting| setting.get("id").and_then(Value::as_str) == Some(name))
-                .and_then(|setting| setting.get("value"))
-                .map(string_value);
+            let kind = show.get("type").and_then(Value::as_str).unwrap_or("");
+            stored = self.sidecar_setting_value("item_prefs.json", kind, name);
         }
         if let Some(stored) = stored.filter(|value| value != "-1") {
             return stored;
@@ -49,14 +61,7 @@ impl Runtime {
         if let Some(value) = self.section_prefs.get(&(section, name.to_string())) {
             return value.clone();
         }
-        load_json_sidecar(&self.catalog_path, "section_prefs.json")
-            .and_then(|value| value.get("show").cloned())
-            .and_then(|value| value.as_array().cloned())
-            .unwrap_or_default()
-            .iter()
-            .find(|setting| setting.get("id").and_then(Value::as_str) == Some(name))
-            .and_then(|setting| setting.get("value"))
-            .map(string_value)
+        self.sidecar_setting_value("section_prefs.json", "show", name)
             .unwrap_or_else(|| "-1".to_string())
     }
 
@@ -76,12 +81,12 @@ impl Runtime {
         match object.get("type").and_then(Value::as_str) {
             Some("show") => {
                 // The projected row has lost its private `_prefs`; read the stored one.
-                let row = object
-                    .get("ratingKey")
-                    .map(string_value)
-                    .and_then(|key| self.catalog.get(&key).cloned())
-                    .unwrap_or_else(|| Value::Object(object.clone()));
-                if self.show_flattened(&row) {
+                let stored = object.get("ratingKey").map(string_value).and_then(|key| self.catalog.get(&key));
+                let flattened = match stored {
+                    Some(row) => self.show_flattened(row),
+                    None => self.show_flattened(&Value::Object(object.clone())),
+                };
+                if flattened {
                     object.insert("skipChildren".to_string(), json!(true));
                 } else {
                     object.shift_remove("skipChildren");
@@ -91,8 +96,8 @@ impl Runtime {
                 let show = object
                     .get("grandparentRatingKey")
                     .map(string_value)
-                    .and_then(|key| self.catalog.get(&key).cloned());
-                if show.as_ref().is_some_and(|show| self.show_flattened(show)) {
+                    .and_then(|key| self.catalog.get(&key));
+                if show.is_some_and(|show| self.show_flattened(show)) {
                     object.insert("skipParent".to_string(), json!(true));
                     object.shift_remove("parentRatingKey");
                     object.shift_remove("parentKey");
