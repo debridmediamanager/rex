@@ -156,6 +156,22 @@ class Identifier:
                 return ("show" if tmdb_kind == "tv" else "movie"), results[0]["id"]
         return None, None
 
+    def _season_only_tmdb_has(self, plex_answer, tmdb_kind, tmdb_id, tmdb_imdb, parsed):
+        """Plex and TMDB named different shows, and the release's season is one only
+        TMDB's has. Plex's matcher answers one show for a bare title: for
+        `The.Tom.and.Jerry.Show.S02E05` (zen, 2026-10-10) the 1975 series, one season
+        long, where TMDB's first hit is the 2014 one with five; every episode then sat
+        under a show with no such season, with no episode metadata."""
+        season = parsed.get("season")
+        if plex_answer["kind"] != "show" or tmdb_kind != "show" or not season or self.plex is None:
+            return False
+        if plex_answer.get("tmdb") == tmdb_id or (tmdb_imdb and plex_answer.get("imdb") == tmdb_imdb):
+            return False
+        if season > ((self.tmdb.details("tv", tmdb_id) or {}).get("number_of_seasons") or 0):
+            return False
+        plex_seasons = self.plex.children(plex_answer["guid"])
+        return bool(plex_seasons) and season not in plex_seasons
+
     def identify(self, name, info_hash=None, files=1):
         """`files`: how many video files the torrent holds. Several with no episode
         numbers and no single year are a series more often than not, so they are
@@ -198,6 +214,11 @@ class Identifier:
             if tmdb_id:
                 tmdb_imdb = self._tmdb_imdb(tmdb_kind, tmdb_id)
 
+        overruled = None
+        if plex_answer and tmdb_id and self._season_only_tmdb_has(plex_answer, tmdb_kind, tmdb_id,
+                                                                  tmdb_imdb, parsed):
+            overruled, plex_answer = plex_answer, None
+
         if plex_answer:
             identity.update(plex=plex_answer["guid"], imdb=plex_answer.get("imdb"),
                             tmdb=plex_answer.get("tmdb"), kind=plex_answer["kind"])
@@ -210,6 +231,9 @@ class Identifier:
         elif tmdb_id:
             identity.update(kind=tmdb_kind, tmdb=tmdb_id, imdb=tmdb_imdb,
                             confidence=SINGLE, source="tmdb")
+            if overruled:
+                identity["disputed"] = {"tmdb": overruled.get("tmdb"), "imdb": overruled.get("imdb"),
+                                        "kind": overruled["kind"]}
             # Plex did not match the name, but it knows the title by its id: without a
             # real `plex://` guid the Android app's detail page never loads (cycle 70).
             if self.plex is not None:

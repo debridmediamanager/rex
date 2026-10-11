@@ -1,0 +1,154 @@
+{
+ "plex": {
+  "[\"GET\", \"/library/metadata/5d9c07f3ec357c001f9a8767/children\", null]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "guid": "plex://season/5d9c0937ba2e21001f1954cd",
+      "index": 1
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"The.Tom.and.Jerry.Show.S02E05.One-Way.Cricket.1080p.AMZN.WEB.DL.DDP2.0.HEVC-Saon\", \"title\": \"The Tom and Jerry Show\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0130417"
+       },
+       {
+        "id": "tmdb://7842"
+       },
+       {
+        "id": "tvdb://76206"
+       }
+      ],
+      "guid": "plex://show/5d9c07f3ec357c001f9a8767",
+      "title": "The New Tom & Jerry Show",
+      "year": 1975
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"The.Tom.and.Jerry.Show.S02E17.Dragon.Down.the.Holidays.1080p.AMZN.WEB.DL.DDP2.0.HEVC-Saon\", \"title\": \"The Tom and Jerry Show\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0130417"
+       },
+       {
+        "id": "tmdb://7842"
+       },
+       {
+        "id": "tvdb://76206"
+       }
+      ],
+      "guid": "plex://show/5d9c07f3ec357c001f9a8767",
+      "title": "The New Tom & Jerry Show",
+      "year": 1975
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"excludeElements\": \"Media\", \"filename\": \"The.Tom.and.Jerry.Show.S03E18.Frown.and.Country.1080p.AMZN.WEB.DL.DDP2.0.HEVC-Saon\", \"title\": \"The Tom and Jerry Show\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt0130417"
+       },
+       {
+        "id": "tmdb://7842"
+       },
+       {
+        "id": "tvdb://76206"
+       }
+      ],
+      "guid": "plex://show/5d9c07f3ec357c001f9a8767",
+      "title": "The New Tom & Jerry Show",
+      "year": 1975
+     }
+    ]
+   }
+  },
+  "[\"POST\", \"/library/metadata/matches\", {\"guid\": \"tmdb://47480\", \"type\": 2}]": {
+   "MediaContainer": {
+    "Metadata": [
+     {
+      "Guid": [
+       {
+        "id": "imdb://tt3559124"
+       },
+       {
+        "id": "tmdb://47480"
+       },
+       {
+        "id": "tvdb://280446"
+       }
+      ],
+      "guid": "plex://show/5d9c0855170e24001f2a9b29",
+      "title": "The Tom and Jerry Show (2014)",
+      "year": 2011
+     }
+    ]
+   }
+  }
+ },
+ "source": "fun rex's unmatched shows and the IMDb ids DMM gave them, 2026-10-11",
+ "tmdb": {
+  "[\"search/tv\", [[\"query\", \"The Tom and Jerry Show\"]]]": {
+   "results": [
+    {
+     "id": 47480
+    },
+    {
+     "id": 7842
+    },
+    {
+     "id": 14705
+    },
+    {
+     "id": 4274
+    }
+   ]
+  },
+  "[\"tv/47480\", [[\"append_to_response\", \"credits,external_ids,content_ratings,release_dates\"]]]": {
+   "external_ids": {
+    "imdb_id": "tt3559124"
+   },
+   "imdb_id": null,
+   "number_of_seasons": 5
+  }
+ },
+ "torrents": [
+  {
+   "files": 1,
+   "hash": "e2326aad4745dde938ae0a6058b1a9b85bb1fa17",
+   "known": null,
+   "name": "The.Tom.and.Jerry.Show.S02E05.One-Way.Cricket.1080p.AMZN.WEB.DL.DDP2.0.HEVC-Saon",
+   "recorded": 47480,
+   "truth": 47480
+  },
+  {
+   "files": 1,
+   "hash": "0000000000000000000000000000000000000000",
+   "known": null,
+   "name": "The.Tom.and.Jerry.Show.S02E17.Dragon.Down.the.Holidays.1080p.AMZN.WEB.DL.DDP2.0.HEVC-Saon",
+   "recorded": 47480,
+   "truth": 47480
+  },
+  {
+   "files": 1,
+   "hash": "c6a15e8f39f29484ace527574488b79a032c4e75",
+   "known": null,
+   "name": "The.Tom.and.Jerry.Show.S03E18.Frown.and.Country.1080p.AMZN.WEB.DL.DDP2.0.HEVC-Saon",
+   "recorded": 47480,
+   "truth": 47480
+  }
+ ]
+}

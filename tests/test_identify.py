@@ -173,11 +173,33 @@ def episode_ids():
           arrow["imdb"] == "tt2193021", str(dict(arrow)))
 
 
+def season_decides():
+    """`fixtures/identify/tom_and_jerry.json`, recorded on zen 2026-10-11. Plex's matcher
+    answers `The.Tom.and.Jerry.Show.S02E05` with the 1975 series, one season long; TMDB's
+    first hit is the 2014 series, five seasons. Plex won the dispute and every episode sat
+    under a show that has no season 2 or 3."""
+    record = json.load(open(os.path.join(HERE, "fixtures", "identify", "tom_and_jerry.json")))
+    tmdb, plex = ReplayTmdb(record["tmdb"]), ReplayPlex(record["plex"])
+    identifier = identify.Identifier(tmdb=tmdb, plex=plex)
+    identities = [(t, identifier.identify(t["name"], files=t["files"])) for t in record["torrents"]]
+    check("every provider answer the identifier asked for is recorded",
+          not tmdb.missed and not plex.missed,
+          "tmdb %s plex %s" % (tmdb.missed[:2], plex.missed[:2]))
+    check("a season only TMDB's show has decides the dispute, with that show's Plex guid",
+          all(i["tmdb"] == t["truth"] and i["kind"] == "show"
+              and (i["plex"] or "").startswith("plex://show/") for t, i in identities),
+          str([(i["tmdb"], i["plex"]) for _t, i in identities]))
+    check("and the show Plex named is kept as the disputed one",
+          all((i.get("disputed") or {}).get("tmdb") == 7842 for _t, i in identities),
+          str([i.get("disputed") for _t, i in identities]))
+
+
 if __name__ == "__main__":
     parsing()
     corpus()
     exact()
     episode_ids()
+    season_decides()
     failed = results.count(False)
     print("\n%d/%d passed" % (len(results) - failed, len(results)))
     sys.exit(1 if failed else 0)

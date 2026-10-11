@@ -9,6 +9,8 @@ left unmatched although its source pushed an IMDb id (fun, 2026-10-11: 285 shows
 id DMM maps each hash to). Each is identified by that id alone, as the feed does, and
 every provider answer the identifier read is kept, trimmed to the fields it reads.
 `truth` is the show TMDB's /find names for the id: an episode's or a season's show_id.
+A release with no `imdb` is identified by its name, and its `truth` (a TMDB id) is
+taken from RELEASES.json.
 """
 import json
 import os
@@ -42,6 +44,8 @@ class RecordingTmdb(metadata.Tmdb):
         else:
             trimmed = {"imdb_id": answer.get("imdb_id"),
                        "external_ids": {"imdb_id": (answer.get("external_ids") or {}).get("imdb_id")}}
+            if "number_of_seasons" in answer:
+                trimmed["number_of_seasons"] = answer["number_of_seasons"]
         self.record[key(path, params)] = trimmed
         return trimmed
 
@@ -59,20 +63,25 @@ def main():
     def recording_call(method, path, body=None):
         answer = real_call(method, path, body) or {}
         rows = (answer.get("MediaContainer") or {}).get("Metadata") or []
-        trimmed = {"MediaContainer": {"Metadata": [
-            {"guid": row.get("guid"), "title": row.get("title"), "year": row.get("year"),
-             "Guid": [{"id": g.get("id")} for g in row.get("Guid") or []]}
-            for row in rows[:1]]}}
+        if path.endswith("/children"):
+            # A show's seasons, or a season's episodes: every row's index and guid.
+            trimmed = {"MediaContainer": {"Metadata": [
+                {"index": row.get("index"), "guid": row.get("guid")} for row in rows]}}
+        else:
+            trimmed = {"MediaContainer": {"Metadata": [
+                {"guid": row.get("guid"), "title": row.get("title"), "year": row.get("year"),
+                 "Guid": [{"id": g.get("id")} for g in row.get("Guid") or []]}
+                for row in rows[:1]]}}
         plex_record[json.dumps([method, path, body], sort_keys=True)] = trimmed
         return trimmed
 
     plex._call = recording_call
-    known = {r["hash"].lower(): r["imdb"] for r in releases}
+    known = {r["hash"].lower(): r["imdb"] for r in releases if r.get("imdb")}
     identifier = identify.Identifier(tmdb=tmdb, plex=plex, known=known)
     corpus = []
     for release in releases:
-        found = tmdb._get("find/" + release["imdb"], external_source="imdb_id")
-        truth = None
+        found = tmdb._get("find/" + release["imdb"], external_source="imdb_id") if release.get("imdb") else {}
+        truth = release.get("truth")
         for kind in FIND_KINDS:
             if found.get(kind):
                 row = found[kind][0]
@@ -81,7 +90,7 @@ def main():
         identity = identifier.identify(release["name"], info_hash=release["hash"],
                                        files=release["files"])
         corpus.append({"name": release["name"], "hash": release["hash"].lower(),
-                       "known": release["imdb"], "files": release["files"],
+                       "known": release.get("imdb"), "files": release["files"],
                        "truth": truth, "recorded": identity.get("tmdb")})
     json.dump({"source": "fun rex's unmatched shows and the IMDb ids DMM gave them, 2026-10-11",
                "torrents": corpus, "tmdb": tmdb.record, "plex": plex_record},

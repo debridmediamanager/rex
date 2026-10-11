@@ -442,6 +442,38 @@ pub struct Identifier<'a> {
 }
 
 impl Identifier<'_> {
+    /// Plex and TMDB named different shows, and the release's season is one only TMDB's
+    /// has. Plex's matcher answers one show for a bare title: for
+    /// `The.Tom.and.Jerry.Show.S02E05` (zen, 2026-10-10) the 1975 series, one season
+    /// long, where TMDB's first hit is the 2014 one with five; every episode then sat
+    /// under a show with no such season, with no episode metadata.
+    fn season_only_tmdb_has(
+        &self,
+        answer: &PlexAnswer,
+        tmdb_kind: Option<&str>,
+        tmdb_id: i64,
+        tmdb_imdb_id: Option<&str>,
+        parsed: &Parsed,
+    ) -> bool {
+        let (Some(t), Some(p), Some(season)) = (self.tmdb, self.plex, parsed.season.filter(|season| *season != 0)) else {
+            return false;
+        };
+        if answer.kind != "show" || tmdb_kind != Some("show") {
+            return false;
+        }
+        if answer.tmdb == Some(tmdb_id) || tmdb_imdb_id.is_some_and(|imdb| !imdb.is_empty() && answer.imdb.as_deref() == Some(imdb)) {
+            return false;
+        }
+        let seasons = tmdb_details(t, "tv", tmdb_id)
+            .and_then(|details| details.get("number_of_seasons").and_then(Value::as_i64))
+            .unwrap_or(0);
+        if season > seasons {
+            return false;
+        }
+        let plex_seasons = plex_children(p, &answer.guid);
+        !plex_seasons.is_empty() && !plex_seasons.contains_key(&season.to_string())
+    }
+
     /// `files`: how many video files the torrent holds. Several with no episode
     /// numbers and no single year are a series more often than not, so they are
     /// tried as a show first.
@@ -523,7 +555,7 @@ impl Identifier<'_> {
             return identity;
         }
         let parsed = &identity.parsed;
-        let plex_answer = self.plex.and_then(|p| {
+        let mut plex_answer = self.plex.and_then(|p| {
             plex_match_title(p, &identity.kind, &parsed.title, parsed.year, Some(name))
         });
         let (mut tmdb_kind, mut tmdb_id, mut tmdb_imdb_id) = (None, None, None);
@@ -533,6 +565,14 @@ impl Identifier<'_> {
                 tmdb_imdb_id = tmdb_imdb(t, kind, id);
             }
         }
+        let overruled = match (&plex_answer, tmdb_id) {
+            (Some(answer), Some(id))
+                if self.season_only_tmdb_has(answer, tmdb_kind.as_deref(), id, tmdb_imdb_id.as_deref(), parsed) =>
+            {
+                plex_answer.take()
+            }
+            _ => None,
+        };
 
         if let Some(answer) = plex_answer {
             let agree = (tmdb_id.is_some() && answer.tmdb == tmdb_id)
@@ -557,6 +597,11 @@ impl Identifier<'_> {
             identity.imdb = tmdb_imdb_id;
             identity.confidence = SINGLE;
             identity.source = Some("tmdb".to_string());
+            identity.disputed = overruled.map(|answer| Disputed {
+                tmdb: answer.tmdb,
+                imdb: answer.imdb,
+                kind: Some(answer.kind),
+            });
             // Plex did not match the name, but it knows the title by its id: without a
             // real `plex://` guid the Android app's detail page never loads (cycle 70).
             if let Some(p) = self.plex {

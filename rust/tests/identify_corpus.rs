@@ -269,3 +269,37 @@ fn episode_ids_name_their_show() {
     assert!(shows >= 270, "{shows} shows");
     assert!(missed.is_empty(), "{} of {shows} missed: {:?}", missed.len(), &missed[..missed.len().min(3)]);
 }
+
+/// Recorded on zen 2026-10-11. Plex's matcher answers `The.Tom.and.Jerry.Show.S02E05` with
+/// the 1975 series, one season long; TMDB's first hit is the 2014 series, five seasons.
+/// Plex won the dispute and every episode sat under a show with no season 2 or 3.
+#[test]
+fn a_season_only_tmdb_has_decides_the_dispute() {
+    let (corpus, tmdb, plex) = replay(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../tests/fixtures/identify/tom_and_jerry.json"
+    ));
+    let identifier = Identifier {
+        tmdb: Some(&tmdb),
+        plex: Some(&plex),
+        known: HashMap::new(),
+    };
+    for torrent in corpus["torrents"].as_array().unwrap() {
+        let identity = identifier.identify(
+            torrent["name"].as_str().unwrap(),
+            None,
+            torrent["files"].as_u64().unwrap() as usize,
+        );
+        assert_eq!(identity.tmdb, torrent["truth"].as_i64(), "{identity:?}");
+        assert!(
+            identity.kind == "show" && identity.plex.as_deref().is_some_and(|guid| guid.starts_with("plex://show/")),
+            "{identity:?}"
+        );
+        assert_eq!(identity.disputed.as_ref().and_then(|disputed| disputed.tmdb), Some(7842), "{identity:?}");
+    }
+    let (tmdb_missed, plex_missed) = (tmdb.missed.borrow(), plex.missed.borrow());
+    assert!(
+        tmdb_missed.is_empty() && plex_missed.is_empty(),
+        "requests the recording does not hold: tmdb {tmdb_missed:?} plex {plex_missed:?}"
+    );
+}
