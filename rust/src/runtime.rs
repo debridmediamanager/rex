@@ -1780,6 +1780,12 @@ impl Runtime {
     }
 
     fn section_rows(&self, key: &str) -> Vec<Value> {
+        self.section_row_refs(key).into_iter().cloned().collect()
+    }
+
+    /// `section_rows` by reference, for what only reads them: a copy of every movie of
+    /// the section per call was most of `/library/sections` and Related (fun, 2026-10-11).
+    fn section_row_refs(&self, key: &str) -> Vec<&Value> {
         self.catalog
             .items()
             .iter()
@@ -1790,7 +1796,6 @@ impl Runtime {
                         Some("movie" | "show")
                     )
             })
-            .cloned()
             .collect()
     }
 
@@ -2897,7 +2902,7 @@ impl Runtime {
             .get("type")
             .and_then(Value::as_str)
             .unwrap_or("movie");
-        let rows = self.section_rows(&key);
+        let rows = self.section_row_refs(&key);
         let newest = rows
             .iter()
             .filter_map(|row| row.get("addedAt").and_then(Value::as_i64))
@@ -12024,6 +12029,13 @@ impl Runtime {
             ("shared", "shared"),
             ("place", "place"),
         ];
+        // Once for every tag shelf, not once per shelf: each read scanned every tag of
+        // every row (fun, 2026-10-11).
+        let tag_rows = self.search_tag_rows(raw, query.get("contentDirectoryID").map(String::as_str));
+        let cap = query
+            .get("limit")
+            .and_then(|value| value.parse::<usize>().ok())
+            .unwrap_or(3);
         let hub_rows = hubs
             .into_iter()
             .map(|(identifier, kind)| {
@@ -12038,11 +12050,10 @@ impl Runtime {
                         | "country"
                 );
                 let mut directory_rows = if kind == "collection" {
-                    let mut values = self
-                        .search_tag_rows(raw, query.get("contentDirectoryID").map(String::as_str))
-                        .into_iter()
+                    let mut values = tag_rows
+                        .iter()
                         .filter(|(name, _)| name == kind)
-                        .map(|(_, row)| row)
+                        .map(|(_, row)| row.clone())
                         .collect::<Vec<_>>();
                     values.extend(
                         self.collections
@@ -12058,10 +12069,11 @@ impl Runtime {
                     );
                     values
                 } else if tag_kind {
-                    self.search_tag_rows(raw, query.get("contentDirectoryID").map(String::as_str))
-                        .into_iter()
+                    tag_rows
+                        .iter()
                         .filter(|(name, _)| name == kind)
-                        .map(|(_, mut row)| {
+                        .map(|(_, row)| {
+                            let mut row = row.clone();
                             if let Some(object) = row.as_object_mut() {
                                 let score = object
                                     .get("tag")
@@ -12117,8 +12129,13 @@ impl Runtime {
                 } else {
                     Vec::new()
                 };
-                let rows = matches(Some(kind))
+                // Only the rows the shelf keeps are projected: "the" projected every
+                // matching episode of fun's library to answer 30 (4.6 s).
+                let matched = matches(Some(kind));
+                let matched_total = matched.len();
+                let rows = matched
                     .into_iter()
+                    .take(cap)
                     .map(|row| {
                         let mut value = self.listing_row(row);
                         let title = row.get("title").and_then(Value::as_str).unwrap_or_default();
@@ -12172,11 +12189,11 @@ impl Runtime {
                 } else {
                     rows
                 };
-                let total = values.len();
-                let cap = query
-                    .get("limit")
-                    .and_then(|value| value.parse::<usize>().ok())
-                    .unwrap_or(3);
+                let total = if tag_kind || kind == "collection" || kind == "playlist" {
+                    values.len()
+                } else {
+                    matched_total
+                };
                 values.truncate(cap);
                 let key_name = if tag_kind { "Directory" } else { "Metadata" };
                 let hub = Map::from_iter([
@@ -14275,13 +14292,25 @@ impl Runtime {
                     return refusal;
                 }
             }
-            let mut rows = self.recently_added_rows(Some(type_id), query.get("sectionID"));
+            // The movie list by reference: it copied every movie to answer twelve.
+            use std::borrow::Cow;
+            let mut rows: Option<Vec<Cow<'_, Value>>> = if type_id == "1" {
+                Some(self.recent_movie_refs(query.get("sectionID")).into_iter().map(Cow::Borrowed).collect())
+            } else {
+                self.recently_added_rows(Some(type_id), query.get("sectionID"))
+                    .map(|rows| rows.into_iter().map(Cow::Owned).collect())
+            };
             if type_id == "2" {
                 // Cycle 54: the request's listing filters run over the episodes before
                 // the roll-up, and a value that does not parse is the filter's 500.
                 match self.filtered_tv_leaves(query, false) {
                     Ok(Some(leaves)) => {
-                        rows = Some(self.recently_added_tv(query.get("sectionID"), Some(leaves)));
+                        rows = Some(
+                            self.recently_added_tv(query.get("sectionID"), Some(leaves))
+                                .into_iter()
+                                .map(Cow::Owned)
+                                .collect(),
+                        );
                     }
                     Ok(None) => {}
                     Err(status) => return Response::error(status, "rex: bad request"),
@@ -14333,9 +14362,11 @@ impl Runtime {
             };
             // Measured: a movie or episode row here is the light projection; a show
             // row is the full one. Cycle 41: the TV type is a listing capped at 50
-            // that pages; the movie type is cut at twelve.
+            // that pages; the movie type is cut at twelve -- before the projection, which
+            // projected every movie of fun's library for those twelve (1.3 s).
             let projected = rows
                 .iter()
+                .take(if type_id == "2" { usize::MAX } else { 12 })
                 .map(|row| {
                     if row.get("type").and_then(Value::as_str) == Some("show") {
                         // Cycle 83 (kids), cycle 55 (zen): on the TV list the full show

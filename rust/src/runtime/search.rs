@@ -6,6 +6,7 @@
 
 use super::resume::int_param;
 use super::*;
+use std::borrow::Cow;
 use crate::hierarchy::{fold_query, fold_title};
 
 /// The seventeen hubs `/hubs/search` answers, in the reference's base order.
@@ -196,7 +197,16 @@ fn search_hub_rank(kind: &str, classes: &[i64]) -> i64 {
 }
 
 /// PMS's recovered unstable descending comparison sort (libc++ introsort), in place.
+/// Each row is scored once: the sort reads only the scores, so the order is the same,
+/// where scoring on every comparison folded each title's text again and again -- most
+/// of a search for "the" over fun's library (2026-10-11).
 pub(super) fn comparison_sort<T>(rows: &mut Vec<T>, score: &dyn Fn(&T) -> f64) {
+    let mut keyed = rows.drain(..).map(|row| (score(&row), row)).collect::<Vec<_>>();
+    comparison_sort_by(&mut keyed, &|pair: &(f64, T)| pair.0);
+    rows.extend(keyed.into_iter().map(|(_, row)| row));
+}
+
+fn comparison_sort_by<T>(rows: &mut Vec<T>, score: &dyn Fn(&T) -> f64) {
     fn before<T>(rows: &[T], score: &dyn Fn(&T) -> f64, left: usize, right: usize) -> bool {
         score(&rows[left]) > score(&rows[right])
     }
@@ -379,13 +389,16 @@ pub(super) struct TagEntry {
     count: usize,
 }
 
-type Typed = HashMap<String, Vec<Value>>;
+// Borrowed from the catalog unless search changed the row: copying every match --
+// every movie for "movie", thousands of episodes for "the" -- was most of a search on
+// fun (2026-10-11).
+type Typed<'a> = HashMap<String, Vec<Cow<'a, Value>>>;
 type Tags = HashMap<String, Vec<TagEntry>>;
 
 impl Runtime {
     /// The normal title pass (`Catalog.search`): word PREFIX, tokenised on whitespace,
     /// a one-character query equal to a title, a multi-word query in order or not.
-    fn catalog_search(&self, query: &str) -> Vec<Value> {
+    fn catalog_search(&self, query: &str) -> Vec<&Value> {
         let needle = fold_query(query).trim().to_string();
         if needle.is_empty() {
             return Vec::new();
@@ -403,7 +416,6 @@ impl Runtime {
                 .iter()
                 .filter(searchable)
                 .filter(|row| fold_query(text_of(row, "title")).trim() == needle)
-                .cloned()
                 .collect();
         }
         let hit = |text: &str| -> bool {
@@ -446,7 +458,6 @@ impl Runtime {
             .iter()
             .filter(searchable)
             .filter(|row| hit(text_of(row, "title")) || hit(text_of(row, "originalTitle")))
-            .cloned()
             .collect()
     }
 
@@ -504,8 +515,9 @@ impl Runtime {
         text: &str,
         limit: Option<usize>,
         tagged_items: bool,
-    ) -> (Typed, Tags) {
-        let mut rows = self.catalog_search(text);
+    ) -> (Typed<'_>, Tags) {
+        let mut rows: Vec<Cow<'_, Value>> =
+            self.catalog_search(text).into_iter().map(Cow::Borrowed).collect();
         let score_query = text.trim().to_string();
         let needle = score_query.to_lowercase();
         let needle_terms = words(&fold_query(text));
@@ -564,7 +576,7 @@ impl Runtime {
             Some(self.spelling_index())
         };
         if let Some(spelling) = &spelling {
-            let mut seen = rows.iter().filter_map(key_of).collect::<HashSet<_>>();
+            let mut seen = rows.iter().filter_map(|row| key_of(row)).collect::<HashSet<_>>();
             for row in self.catalog.items() {
                 if !matches!(
                     row.get("type").and_then(Value::as_str),
@@ -577,7 +589,7 @@ impl Runtime {
                     continue;
                 }
                 if spelling.metadata_matches(row, text) {
-                    rows.push(row.clone());
+                    rows.push(Cow::Borrowed(row));
                     seen.insert(key);
                 }
             }
@@ -668,8 +680,14 @@ impl Runtime {
                 tags.insert(hub.to_string(), kept);
             }
         }
+        let mut seen = if tagged_items {
+            rows.iter().filter_map(|row| key_of(row)).collect::<HashSet<_>>()
+        } else {
+            HashSet::new()
+        };
+        // Moved, not copied: every match was copied here and again below (fun, 2026-10-11).
         let mut typed: Typed = HashMap::new();
-        for row in &rows {
+        for row in rows {
             typed
                 .entry(
                     row.get("type")
@@ -678,13 +696,12 @@ impl Runtime {
                         .to_string(),
                 )
                 .or_default()
-                .push(row.clone());
+                .push(row);
         }
         if !playlist_rows.is_empty() {
-            typed.insert("playlist".to_string(), playlist_rows);
+            typed.insert("playlist".to_string(), playlist_rows.into_iter().map(Cow::Owned).collect());
         }
         if tagged_items {
-            let mut seen = rows.iter().filter_map(key_of).collect::<HashSet<_>>();
             for (hub, row, tag, _name, _tier) in &tag_matches {
                 let key = key_of(row).unwrap_or_default();
                 if seen.contains(&key) {
@@ -702,22 +719,15 @@ impl Runtime {
                             .to_string(),
                     )
                     .or_default()
-                    .push(reasoned);
+                    .push(Cow::Owned(reasoned));
                 seen.insert(key);
             }
         }
         for (kind, candidates) in typed.iter_mut() {
             if matches!(kind.as_str(), "movie" | "show" | "episode") {
-                let mut title_hits = candidates
-                    .iter()
-                    .filter(|r| r.get("_searchReason").is_none())
-                    .cloned()
-                    .collect::<Vec<_>>();
-                let associated = candidates
-                    .iter()
-                    .filter(|r| r.get("_searchReason").is_some())
-                    .cloned()
-                    .collect::<Vec<_>>();
+                let (mut title_hits, associated): (Vec<_>, Vec<_>) = std::mem::take(candidates)
+                    .into_iter()
+                    .partition(|r| r.get("_searchReason").is_none());
                 title_hits.sort_by(|a, b| {
                     let key = |row: &Value| {
                         (
@@ -733,7 +743,7 @@ impl Runtime {
                 *candidates = exact.into_iter().chain(rest).chain(associated).collect();
             }
             let query = score_query.clone();
-            comparison_sort(candidates, &|row: &Value| search_score_value(row, &query));
+            comparison_sort(candidates, &|row: &Cow<'_, Value>| search_score_value(row, &query));
             if let Some(limit) = limit {
                 candidates.truncate(limit);
             }
@@ -742,7 +752,7 @@ impl Runtime {
     }
 
     /// Drop the libraries Visibility excludes from global search (`hidden=2`).
-    fn searchable(&self, typed: Typed, tags: Tags) -> (Typed, Tags) {
+    fn searchable<'a>(&self, typed: Typed<'a>, tags: Tags) -> (Typed<'a>, Tags) {
         let hidden = self
             .catalog
             .sections
@@ -1725,7 +1735,7 @@ impl Runtime {
                 let body = if key_of(row).is_some_and(|key| self.catalog.get(&key).is_some()) {
                     self.grid_row(row, false, false, false)
                 } else {
-                    let mut plain = row.clone();
+                    let mut plain = row.clone().into_owned();
                     if let Some(object) = plain.as_object_mut() {
                         for name in [
                             "librarySectionID",

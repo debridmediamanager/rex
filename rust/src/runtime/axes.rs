@@ -196,7 +196,7 @@ impl Runtime {
         section_id: &str,
         query: &HashMap<String, String>,
         pairs: &[(String, String)],
-    ) -> Vec<Value> {
+    ) -> Vec<&Value> {
         let types = pairs
             .iter()
             .filter(|(name, _)| name == "type")
@@ -222,7 +222,7 @@ impl Runtime {
             if !raw.is_empty() {
                 return Vec::new();
             }
-            return self.section_rows(section_id);
+            return self.section_row_refs(section_id);
         };
         let mut rows = self
             .catalog
@@ -233,7 +233,6 @@ impl Runtime {
                     && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
                         == section_id
             })
-            .cloned()
             .collect::<Vec<_>>();
         if wanted == "season" || wanted == "episode" {
             let show_title = |row: &Value| -> String {
@@ -258,12 +257,12 @@ impl Runtime {
     }
 
     /// The listing grammar's filters over rows, or the status a real PMS refuses with.
-    pub(super) fn axis_filters(
+    pub(super) fn axis_filters<R: std::borrow::Borrow<Value>>(
         &self,
-        rows: Vec<Value>,
+        rows: Vec<R>,
         pairs: &[(String, String)],
         section: &Value,
-    ) -> Result<Vec<Value>, u16> {
+    ) -> Result<Vec<R>, u16> {
         let section_type = section
             .get("type")
             .and_then(Value::as_str)
@@ -482,7 +481,7 @@ impl Runtime {
             // non-ASCII punctuation keeps its own key.
             let mut counts: Vec<(String, i64)> = Vec::new();
             for row in rows {
-                let basis = self.first_character_basis(&row);
+                let basis = self.first_character_basis(row);
                 let title = basis
                     .get("titleSort")
                     .filter(|value| truthy(value))
@@ -565,15 +564,15 @@ impl Runtime {
 
     /// The row whose sort title the `firstCharacter` AXIS counts a row under: a
     /// season and an episode count under their SHOW (cycle 16).
-    fn first_character_basis(&self, row: &Value) -> Value {
+    fn first_character_basis<'a>(&'a self, row: &'a Value) -> &'a Value {
         let key = match row.get("type").and_then(Value::as_str) {
             Some("season") => row.get("parentRatingKey"),
             Some("episode") => row.get("grandparentRatingKey"),
-            _ => return row.clone(),
+            _ => return row,
         };
         key.map(string_value)
-            .and_then(|key| self.catalog.get(&key).cloned())
-            .unwrap_or_else(|| row.clone())
+            .and_then(|key| self.catalog.get(&key))
+            .unwrap_or(row)
     }
 
     /// The bucket a row falls in when the LISTING filters on it: the row's OWN
@@ -601,9 +600,10 @@ impl Runtime {
         query: &HashMap<String, String>,
         pairs: &[(String, String)],
     ) -> Response {
+        use std::borrow::Cow;
         let rows = self.axis_typed_rows(section_id, query, pairs);
-        let mut rows = match self.axis_filters(rows, pairs, section) {
-            Ok(rows) => rows,
+        let mut rows: Vec<Cow<'_, Value>> = match self.axis_filters(rows, pairs, section) {
+            Ok(rows) => rows.into_iter().map(Cow::Borrowed).collect(),
             Err(status) => return Response::error(status, "rex: bad filter"),
         };
         // Cycle 83, measured on kids and zen: a TAG-TABLE axis under any leaf-count
@@ -623,7 +623,7 @@ impl Runtime {
         }
         if leaf == "label" {
             // Cycle 15: a label written onto a COLLECTION is in this axis too.
-            rows.extend(self.collection_rows_for_axis(section_id));
+            rows.extend(self.collection_rows_for_axis(section_id).into_iter().map(Cow::Owned));
         }
         if matches!(leaf, "director" | "writer" | "producer")
             && section.get("type").and_then(Value::as_str) == Some("show")
@@ -636,7 +636,10 @@ impl Runtime {
                         row.get("type").and_then(Value::as_str),
                         Some("show" | "season")
                     ) {
-                        self.leaves(&key_of(&row).unwrap_or_default())
+                        self.leaves_refs(&key_of(&row).unwrap_or_default())
+                            .into_iter()
+                            .map(Cow::Borrowed)
+                            .collect::<Vec<_>>()
                     } else {
                         vec![row]
                     }
@@ -936,7 +939,7 @@ impl Runtime {
         self.axis_listing(
             section_id,
             section,
-            rows,
+            rows.into_iter().cloned().collect(),
             query,
             &format!("Start with '{wanted}'"),
             true,
@@ -958,7 +961,8 @@ impl Runtime {
     ) -> Option<Response> {
         let kind = lookup(AXIS_BUCKETS, leaf)?;
         let wanted = percent_decode(raw_key);
-        let mut rows = self.axis_typed_rows(section_id, query, pairs);
+        let mut rows: Vec<Value> =
+            self.axis_typed_rows(section_id, query, pairs).into_iter().cloned().collect();
         let title2;
         match kind {
             "tag" => {
@@ -1141,7 +1145,7 @@ impl Runtime {
         // (viewMode 65593).
         let view_group = if artist { Some("track") } else { (show && asked != own).then_some("episode") };
         let mut response = self.section_listing_response(
-            section_id, section, rows, query, "Unplayed", true, view_group, true,
+            section_id, section, rows.into_iter().cloned().collect(), query, "Unplayed", true, view_group, true,
         );
         if artist {
             if let Ok(mut body) = serde_json::from_slice::<Value>(&response.body) {

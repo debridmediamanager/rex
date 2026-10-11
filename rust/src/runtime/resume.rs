@@ -16,22 +16,22 @@ impl Runtime {
 
     /// `rows` without the libraries Edit Library > Visibility keeps off Home
     /// (cycle 58: `hidden=1` and `2` empty every Home shelf of that library).
-    pub(super) fn on_home(&self, rows: Vec<Value>) -> Vec<Value> {
+    pub(super) fn on_home<R: std::borrow::Borrow<Value>>(&self, rows: Vec<R>) -> Vec<R> {
         rows.into_iter()
             .filter(|row| {
                 self.section_visibility(&string_value(
-                    row.get("librarySectionID").unwrap_or(&Value::Null),
+                    row.borrow().get("librarySectionID").unwrap_or(&Value::Null),
                 )) < 1
             })
             .collect()
     }
 
     /// `rows` narrowed to the libraries `contentDirectoryID` named, off Home's hidden.
-    pub(super) fn in_directories(
+    pub(super) fn in_directories<R: std::borrow::Borrow<Value>>(
         &self,
-        rows: Vec<Value>,
+        rows: Vec<R>,
         wanted: &Option<HashSet<String>>,
-    ) -> Vec<Value> {
+    ) -> Vec<R> {
         let rows = self.on_home(rows);
         match wanted {
             None => rows,
@@ -39,7 +39,7 @@ impl Runtime {
                 .into_iter()
                 .filter(|row| {
                     wanted.contains(&string_value(
-                        row.get("librarySectionID").unwrap_or(&Value::Null),
+                        row.borrow().get("librarySectionID").unwrap_or(&Value::Null),
                     ))
                 })
                 .collect(),
@@ -82,29 +82,51 @@ impl Runtime {
         let mut order: Vec<String> = Vec::new();
         // References: copying every episode of the library here, once per call and three
         // calls per `/hubs`, was most of the home screen's 1.9 GB (fun, 2026-10-10).
-        let mut shows: HashMap<String, Vec<&Value>> = HashMap::new();
-        for row in self.catalog.items() {
-            if row.get("type").and_then(Value::as_str) == Some("episode") {
-                let show = string_value(row.get("grandparentRatingKey").unwrap_or(&Value::Null));
-                if !shows.contains_key(&show) {
-                    order.push(show.clone());
-                }
-                shows.entry(show).or_default().push(row);
+        // Only a show with a play or a resume point can have a row, so only those shows'
+        // episodes are grouped: grouping all of fun's 27k episodes, on every Home read
+        // (three times) and every item page, was most of their cost (2026-10-11).
+        let is_episode = |row: &Value| row.get("type").and_then(Value::as_str) == Some("episode");
+        fn show_of(row: &Value) -> std::borrow::Cow<'_, str> {
+            match row.get("grandparentRatingKey") {
+                Some(Value::String(text)) => std::borrow::Cow::Borrowed(text.as_str()),
+                other => std::borrow::Cow::Owned(string_value(other.unwrap_or(&Value::Null))),
             }
         }
-        let played_libraries: HashSet<String> = shows
-            .values()
-            .flatten()
-            .filter(|row| key_of(row).is_some_and(|key| self.viewed_in_session.contains(&key)))
-            .map(|row| string_value(row.get("librarySectionID").unwrap_or(&Value::Null)))
+        let active: HashSet<String> = self
+            .catalog
+            .items()
+            .iter()
+            .filter(|row| is_episode(row) && (truthy(row, "viewOffset") || truthy(row, "viewCount")))
+            .map(|row| show_of(row).into_owned())
             .collect();
+        let mut shows: HashMap<String, Vec<&Value>> = HashMap::new();
+        if !active.is_empty() {
+            for row in self.catalog.items() {
+                if is_episode(row) {
+                    let show = show_of(row);
+                    if !active.contains(show.as_ref()) {
+                        continue;
+                    }
+                    if !shows.contains_key(show.as_ref()) {
+                        order.push(show.to_string());
+                    }
+                    shows.entry(show.into_owned()).or_default().push(row);
+                }
+            }
+        }
+        let played_libraries: HashSet<String> = if self.viewed_in_session.is_empty() {
+            HashSet::new()
+        } else {
+            self.catalog
+                .items()
+                .iter()
+                .filter(|row| is_episode(row))
+                .filter(|row| key_of(row).is_some_and(|key| self.viewed_in_session.contains(&key)))
+                .map(|row| string_value(row.get("librarySectionID").unwrap_or(&Value::Null)))
+                .collect()
+        };
         for show in order {
             let mut episodes = shows.remove(&show).unwrap_or_default();
-            // A show with no play and no resume point has no row: skip it before the
-            // sort, which ran over every episode of the library on each call.
-            if !episodes.iter().any(|row| truthy(row, "viewOffset") || truthy(row, "viewCount")) {
-                continue;
-            }
             if !include_hidden && episodes.iter().any(|row| self.hidden_from_continue(row)) {
                 continue;
             }
@@ -388,11 +410,11 @@ impl Runtime {
     /// One shelf, capped at `count` with `more` saying whether it was cut.  `rows`
     /// are CATALOG rows; a show on a `mixed` shelf (or every row when `full`) is the
     /// full row and every other row the light grid one.
-    pub(super) fn hub(
+    pub(super) fn hub<R: std::borrow::Borrow<Value>>(
         &self,
         identifier: &str,
         title: &str,
-        rows: &[Value],
+        rows: &[R],
         count: Option<&String>,
         kind: &str,
         full: bool,
@@ -417,6 +439,7 @@ impl Runtime {
             .iter()
             .take(limit.max(0) as usize)
             .map(|row| {
+                let row = row.borrow();
                 if full || (full_shows && row.get("type").and_then(Value::as_str) == Some("show")) {
                     self.detail_row(row)
                 } else {
@@ -443,12 +466,12 @@ impl Runtime {
 
     /// One Home-screen shelf: `key`, `context` (the identifier with a trailing section
     /// id stripped), `style`, and `hubKey` naming the rows THIS shelf holds.
-    pub(super) fn home_hub(
+    pub(super) fn home_hub<R: std::borrow::Borrow<Value>>(
         &self,
         identifier: &str,
         title: &str,
         key: &str,
-        rows: &[Value],
+        rows: &[R],
         query: &HashMap<String, String>,
         kind: &str,
         style: &str,
@@ -676,25 +699,28 @@ impl Runtime {
     ) -> Option<Vec<Value>> {
         match type_id {
             Some("2") => Some(self.recently_added_tv(section_id, None)),
-            Some("1") => {
-                let mut rows = self
-                    .catalog
-                    .items()
-                    .iter()
-                    .filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
-                    .cloned()
-                    .collect::<Vec<_>>();
-                if let Some(section) = section_number(section_id) {
-                    rows.retain(|row| {
-                        string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                            == section.to_string()
-                    });
-                }
-                rows.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
-                Some(rows)
-            }
+            Some("1") => Some(self.recent_movie_refs(section_id).into_iter().cloned().collect()),
             _ => None,
         }
+    }
+
+    /// The movie half of `recently_added_rows` by reference: Home's shelf and the
+    /// movie list copied every movie to show twelve (fun, 2026-10-11).
+    pub(super) fn recent_movie_refs(&self, section_id: Option<&String>) -> Vec<&Value> {
+        let mut rows = self
+            .catalog
+            .items()
+            .iter()
+            .filter(|row| row.get("type").and_then(Value::as_str) == Some("movie"))
+            .collect::<Vec<_>>();
+        if let Some(section) = section_number(section_id) {
+            let section = section.to_string();
+            rows.retain(|row| {
+                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
+            });
+        }
+        rows.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
+        rows
     }
 
     /// The rows of a library's `tv/movie.recentlyadded` shelf: a show library's is its
@@ -753,23 +779,25 @@ impl Runtime {
             if *identifier == "home.playlists" && directories.is_some() {
                 continue;
             }
-            let rows: Vec<Value> = match *identifier {
-                "home.continue" => self.in_directories(self.resuming(), &directories),
+            use std::borrow::Cow;
+            let owned = |rows: Vec<Value>| rows.into_iter().map(Cow::Owned).collect::<Vec<_>>();
+            let rows: Vec<Cow<'_, Value>> = match *identifier {
+                "home.continue" => owned(self.in_directories(self.resuming(), &directories)),
                 "home.ondeck" => watching
                     .iter()
                     .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-                    .cloned()
+                    .map(Cow::Borrowed)
                     .collect(),
-                "home.movies.recent" => self.in_directories(
-                    self.recently_added_rows(Some("1"), None)
-                        .unwrap_or_default(),
-                    &directories,
-                ),
+                "home.movies.recent" => self
+                    .in_directories(self.recent_movie_refs(None), &directories)
+                    .into_iter()
+                    .map(Cow::Borrowed)
+                    .collect(),
                 "home.television.recent" => {
                     let leaves = self.filtered_tv_leaves(query, true).ok().flatten();
-                    self.in_directories(self.recently_added_tv(None, leaves), &directories)
+                    owned(self.in_directories(self.recently_added_tv(None, leaves), &directories))
                 }
-                "home.playlists" => self.recent_playlists(),
+                "home.playlists" => owned(self.recent_playlists()),
                 _ => Vec::new(),
             };
             hubs.push(self.home_hub(identifier, title, key, &rows, query, kind, style, true));
