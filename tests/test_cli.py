@@ -8,7 +8,7 @@ a flag are accepted; and with no `--web-root` the `webclient` folder beside the
 program is the client served at `/web`.
 
 Drives real server processes (`tests/server_command.py`), so it runs against the
-native binary by default and the Python oracle with `SIMPLEX_SERVER=python`.
+native binary by default and the Python oracle with `REX_SERVER=python`.
 
     python3 tests/test_cli.py
 """
@@ -27,8 +27,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 
 results = []
@@ -142,7 +142,7 @@ def main():
     # checkout's own when there is one; otherwise lay down a marker and remove it.
     webclient = os.path.join(ROOT, "webclient")
     made = not os.path.exists(webclient)
-    marker = b"<!doctype html><title>simplex test_cli marker</title>"
+    marker = b"<!doctype html><title>rex test_cli marker</title>"
     if made:
         os.makedirs(webclient)
         with open(os.path.join(webclient, "index.html"), "wb") as handle:

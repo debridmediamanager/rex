@@ -67,7 +67,7 @@ use resume::{
     hub_refusal, int_param, page_window, paging_values, unmatched_guid,
 };
 
-const VERSION: &str = "1.42.2.10156-simplex";
+const VERSION: &str = "1.42.2.10156-rex";
 const MEDIA_TAG_PREFIX: &str = "/system/bundle/media/flags/";
 const MEDIA_TAG_VERSION: i64 = 1_655_122_614;
 const MAX_HEADER_BYTES: usize = 256 * 1024;
@@ -130,7 +130,7 @@ const GDM_SEARCH: &[u8] = b"M-SEARCH * HTTP/1.1\r\n";
 const GDM_TTL_SECONDS: i64 = 180;
 
 fn configured_gdm_ports() -> Vec<u16> {
-    std::env::var("SIMPLEX_GDM_PORTS")
+    std::env::var("REX_GDM_PORTS")
         .ok()
         .map(|value| {
             value
@@ -240,7 +240,7 @@ impl Default for RuntimeOptions {
             host: "0.0.0.0".to_string(),
             part_mode: "proxy".to_string(),
             public_url: None,
-            token: std::env::var("SIMPLEX_TOKEN").ok(),
+            token: std::env::var("REX_TOKEN").ok(),
             assert_claimed: false,
             web_root: None,
             owner_email: "plexadmin@debridmediamanager.com".to_string(),
@@ -716,7 +716,7 @@ impl Runtime {
             .document
             .get("friendlyName")
             .and_then(Value::as_str)
-            .unwrap_or("simplex")
+            .unwrap_or("rex")
             .to_string();
         let started_at = now();
         // `main()` builds the claim after the catalog and before restoring `--state`.
@@ -856,7 +856,7 @@ impl Runtime {
 
     /// The state database (`store.rs`), or a legacy JSON state file, which is imported
     /// into a database at the same place -- the default's legacy name, `state.json`
-    /// beside the catalog, into `simplex.db` -- and kept aside as `<file>.migrated`.
+    /// beside the catalog, into `rex.db` -- and kept aside as `<file>.migrated`.
     fn load_state(&mut self) -> Result<(), String> {
         let Some(path) = self.state_path.clone() else {
             return Ok(());
@@ -2220,7 +2220,7 @@ impl Runtime {
     /// the same item's section listing row (tests/fixtures/c94_d_library_all_top.json): the
     /// LIGHT listing row plus the librarySection triple, `globalViewCount` and `userCount`
     /// (the writer places them after `updatedAt`/`deletedAt`) and `User` last -- no `Guid`,
-    /// `Rating` or `Location`, which the detail projection simplex answered carried. A show
+    /// `Rating` or `Location`, which the detail projection rex answered carried. A show
     /// or season drops the listing's per-user aggregate; a season gains `leafCount` and
     /// `viewedLeafCount`, which its listing row does not carry, before `addedAt`.
     fn top_row(&self, original: &Value, plays: i64, accounts: &BTreeSet<i64>) -> Value {
@@ -2765,7 +2765,7 @@ impl Runtime {
     /// `server.py` `section_base_settings`: a library's setting list before any write.
     /// A MUSIC library's is the Add Library form's list for type 8 and its own agent --
     /// measured on plexscratch42, an empty music library's `/prefs` equals that form row
-    /// for row and value for value; simplex answered an empty list.
+    /// for row and value for value; rex answered an empty list.
     fn section_base_settings(&self, section_key: &str, kind: &str) -> Vec<Value> {
         if kind == "artist" {
             let section = self.section(section_key).cloned().unwrap_or(Value::Null);
@@ -2917,7 +2917,7 @@ impl Runtime {
             .filter(|locations| !locations.is_empty())
             .cloned()
             .map(Value::Array)
-            .unwrap_or_else(|| json!([{"id": key.parse::<i64>().unwrap_or(1), "path": format!("/simplex/{key}")}]));
+            .unwrap_or_else(|| json!([{"id": key.parse::<i64>().unwrap_or(1), "path": format!("/rex/{key}")}]));
         let row = json!({
             "key": key,
             "type": kind,
@@ -3714,7 +3714,7 @@ impl Runtime {
         // either listing is a 400.
         // Cycle 40: the GROUP listing's query-only POST is Add Agent's create.
         if request.method == "POST" && segments.len() == 3 {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if segments.len() == 3 {
             if request.method == "GET" || request.method == "HEAD" {
@@ -3726,7 +3726,7 @@ impl Runtime {
                     // agent.  An empty value is every provider.
                     let parts = raw.split(',').collect::<Vec<_>>();
                     if !parts.iter().all(|part| int_param(part, Some(32))) {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                     let wanted = parts
                         .iter()
@@ -3754,7 +3754,7 @@ impl Runtime {
                     ),
                 );
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if segments.len() == 4 && segments[3] == "group" {
             // Measured on plexscratch (1.43.4, 2026-09-30): the group LISTING is a
@@ -3763,7 +3763,7 @@ impl Runtime {
             // bare OPTIONS and PATCH are the ordinary 404. This answered PUT and DELETE
             // with the 404 of a read-only route.
             if matches!(request.method.as_str(), "PUT" | "DELETE") {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             if request.method == "GET" || request.method == "HEAD" {
                 let rows = self.metadata_provider_groups();
@@ -3774,17 +3774,17 @@ impl Runtime {
             }
             if request.method == "POST" {
                 let Some(primary) = query.get("primaryIdentifier") else {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 };
                 if query.get("title").is_none() {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 let provider = self
                     .metadata_provider_rows()
                     .into_iter()
                     .find(|row| row.get("identifier").and_then(Value::as_str) == Some(primary));
                 let Some(provider) = provider else {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 };
                 let id = self.next_metadata_provider_group.to_string();
                 self.next_metadata_provider_group += 1;
@@ -3811,7 +3811,7 @@ impl Runtime {
                     json!({"MediaContainer": {"size": 1, "MetadataAgentProviderGroup": [row]}}),
                 );
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         // Cycle 44 (oracle), re-measured on kids and zen 2026-10-01: the per-id GETs are
         // real. `/media/providers/metadata/{id}` and `/media/providers/metadata/group/{id}`
@@ -3823,7 +3823,7 @@ impl Runtime {
         {
             let wanted = segments[segments.len() - 1];
             if wanted.is_empty() || !wanted.bytes().all(|byte| byte.is_ascii_digit()) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             let group = segments.len() == 5;
             let rows = if group {
@@ -3844,7 +3844,7 @@ impl Runtime {
                 })
                 .collect::<Vec<_>>();
             if picked.is_empty() {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             let key = if group { "MetadataAgentProviderGroup" } else { "MetadataAgentProvider" };
             return Response::json(
@@ -3860,7 +3860,7 @@ impl Runtime {
         }
         // Cycle 87, measured on plexscratch42 (fresh 1.42.2) against built-in provider 1,
         // nothing changing: `PUT /media/providers/metadata/{id}` is a 400 with no or an
-        // empty `uri` and a 500 with one PMS cannot reach (it fetches the provider; simplex
+        // empty `uri` and a 500 with one PMS cannot reach (it fetches the provider; rex
         // hosts none), and POST on the id is a 404.
         // Cycle 87, plexscratch42: a BUILT-IN provider cannot be deleted -- `DELETE
         // /media/providers/metadata/3` is a 400 and changes nothing, before and after its
@@ -3874,18 +3874,18 @@ impl Runtime {
                         row.get("id").map(|id| id.to_string()) == Some(wanted.to_string())
                     }));
             if !held || request.method == "POST" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             if request.method == "DELETE" {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             return match query.get("uri").filter(|uri| !uri.is_empty()) {
-                Some(_) => Response::error(500, "simplex: internal server error"),
-                None => Response::error(400, "simplex: bad request"),
+                Some(_) => Response::error(500, "rex: internal server error"),
+                None => Response::error(400, "rex: bad request"),
             };
         }
         let Some(group_id) = segments.get(4).copied() else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         // Cycle 87, plexscratch42: a BUILT-IN group takes the rename verb (its own title
         // answers the row; a different title is unmeasured, so the row is answered as
@@ -3918,7 +3918,7 @@ impl Runtime {
             if let Some(row) = built_in {
                 if segments.len() == 5 {
                     let Some(title) = query.get("title").cloned() else {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     };
                     // Measured: a different title is a real rename that the listing and
                     // `/group/{id}` keep; the provider row's own title does not change.
@@ -3937,7 +3937,7 @@ impl Runtime {
                     && segments[6].bytes().all(|byte| byte.is_ascii_digit())
                     && !segments[6].is_empty()
                 {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
             }
         }
@@ -3945,14 +3945,14 @@ impl Runtime {
         if !(segments.len() == 5 && matches!(request.method.as_str(), "GET" | "HEAD"))
             && !self.metadata_provider_groups.contains_key(group_id)
         {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if segments.len() == 5 && request.method == "PUT" {
             let Some(title) = query.get("title").cloned() else {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             };
             let Some(group) = self.metadata_provider_groups.get_mut(group_id) else {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             };
             group.title = title;
             let row = group.clone();
@@ -3968,21 +3968,21 @@ impl Runtime {
         }
         if segments.len() == 7 && segments[5] == "items" {
             if request.method == "PUT" {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             if request.method == "DELETE" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
         }
-        Response::error(404, "simplex: not found")
+        Response::error(404, "rex: not found")
     }
 
     fn route_library_tags(&self, query: &HashMap<String, String>) -> Response {
         let Some(raw_type) = query.get("type") else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         let Ok(type_number) = raw_type.parse::<i32>() else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         if type_number == 318 {
             let mut names = self
@@ -4105,7 +4105,7 @@ impl Runtime {
                     .chars()
                     .any(|character| !character.is_ascii_hexdigit()))
         {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let mut found = None;
         let mut rows = Vec::new();
@@ -4161,7 +4161,7 @@ impl Runtime {
             }
         }
         let Some(person) = found else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         if !media {
             return Response::json(
@@ -4197,11 +4197,11 @@ impl Runtime {
         };
         let rows = match self.filter_rows(rows, &pairs, section_type) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: bad request"),
+            Err(status) => return Response::error(status, "rex: bad request"),
         };
         let rows = match self.sort_rows(rows, Some("titleSort")) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: bad request"),
+            Err(status) => return Response::error(status, "rex: bad request"),
         };
         // The oracle's `_grid_row(_listing_row(row))`: the LIGHT grid row, which keeps
         // `Media` (Parts without Streams) and caps each tag family the way a grid does.
@@ -4237,7 +4237,7 @@ impl Runtime {
             return refusal;
         }
         if let Some(status) = listing::listing_refusals(query, &[]) {
-            return Response::error(status, "simplex: refused");
+            return Response::error(status, "rex: refused");
         }
         let pairs = query
             .iter()
@@ -4269,11 +4269,11 @@ impl Runtime {
             };
             let mut members = match self.filter_rows(members, &pairs, section_type) {
                 Ok(rows) => rows,
-                Err(status) => return Response::error(status, "simplex: bad request"),
+                Err(status) => return Response::error(status, "rex: bad request"),
             };
             if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
                 if self.sort_rows(Vec::<Value>::new(), Some(sort)).is_err() {
-                    return Response::error(500, "simplex: unsupported sort key");
+                    return Response::error(500, "rex: unsupported sort key");
                 }
             }
             if section_filter.is_none() {
@@ -4398,10 +4398,10 @@ impl Runtime {
 
     fn route_library_matches(&self, query: &HashMap<String, String>) -> Response {
         let Some(raw_type) = query.get("type") else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         let Ok(type_number) = raw_type.parse::<i32>() else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         let wanted = match type_number {
             1 => "movie",
@@ -6260,7 +6260,7 @@ impl Runtime {
         let decoded = percent_decode(uri);
         // Cycle 16, measured on plexscratch: a uri that is not this server's own
         // `server://<machine>/...` or a stored `library://` resolves to NOTHING -- a
-        // foreign machine and a scheme-less `/library/metadata/1` alike. simplex read
+        // foreign machine and a scheme-less `/library/metadata/1` alike. rex read
         // the ratingKey out of any uri shaped like one, so another server's item
         // silently queued its own.
         if !uri.is_empty() {
@@ -6373,7 +6373,7 @@ impl Runtime {
     /// episodes a player can play. Measured: a list over a show holds its episodes,
     /// never the show row -- a PUT of a show's uri answers `leafCountAdded` equal to
     /// its episode count, and each episode takes its own server-wide
-    /// `playlistItemID`. simplex stored the show itself, so every later list's item
+    /// `playlistItemID`. rex stored the show itself, so every later list's item
     /// ids ran short of the reference's by the episodes it never added.
     fn playable_rows_for_uri(&self, uri: &str) -> Vec<Value> {
         let mut out = Vec::new();
@@ -6460,7 +6460,7 @@ impl Runtime {
         };
         if tail.len() == 1 && tail[0] == "file" {
             let Some(url) = query.get("url").filter(|url| !url.is_empty()) else {
-                return Some(Response::error(400, "simplex: bad request"));
+                return Some(Response::error(400, "rex: bad request"));
             };
             let wanted = percent_decode(&url.replace("%2E", "."));
             let mine = columns
@@ -6469,7 +6469,7 @@ impl Runtime {
                 .is_some_and(|list| list.iter().any(|known| known.as_str() == Some(wanted.as_str())));
             return Some(match self.uploads.get(&wanted).cloned() {
                 Some((body, content_type)) if mine => serve(body, content_type, false),
-                _ => Response::error(404, "simplex: not found"),
+                _ => Response::error(404, "rex: not found"),
             });
         }
         if !(1..=2).contains(&tail.len()) || !matches!(tail[0], "poster" | "art" | "thumb") {
@@ -6485,7 +6485,7 @@ impl Runtime {
             .and_then(|url| self.uploads.get(&url).cloned());
         Some(match upload {
             Some((body, content_type)) if own && tail[0] != "art" => serve(body, content_type, true),
-            _ => Response::error(404, "simplex: not found"),
+            _ => Response::error(404, "rex: not found"),
         })
     }
 
@@ -6512,23 +6512,23 @@ impl Runtime {
     ) -> Response {
         if field == "clearLogos" || field == "themes" {
             if request.method != "GET" && request.method != "HEAD" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             // The oracle's `tag_container(size=0)`: the library identity triple.
             return Response::json(200, self.tag_container(Map::new()));
         }
         if field != "posters" && field != "arts" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let private = if field == "posters" { "_poster_url" } else { "_art_url" };
         if request.method == "POST" {
             // Cycle 36, measured on plexscratch and plexscratch42: a playlist and a
             // collection take an artwork UPLOAD exactly as an item does -- an EMPTY 200,
             // an `upload://{posters,art}/<sha1 of the bytes>` candidate, SELECTED, and ONE
-            // timeline frame of the list's own type. simplex keyed the upload on the
+            // timeline frame of the list's own type. rex keyed the upload on the
             // clock and refused a backdrop upload outright.
             if request.body.is_empty() {
-                return Response::error(406, "simplex: not acceptable");
+                return Response::error(406, "rex: not acceptable");
             }
             let target = if field == "posters" { "thumb" } else { "art" };
             let prefix = if field == "posters" { "upload://posters" } else { "upload://art" };
@@ -6561,7 +6561,7 @@ impl Runtime {
             };
             if is_collection {
                 let Some(collection) = self.collections.get_mut(id) else {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 };
                 reversion(&mut collection.extra);
                 if field == "posters" {
@@ -6573,7 +6573,7 @@ impl Runtime {
                 }
             } else {
                 let Some(playlist) = self.playlists.get(id).cloned() else {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 };
                 let columns = self.edits.entry(id.to_string()).or_default();
                 reversion(columns);
@@ -6587,7 +6587,7 @@ impl Runtime {
             return Response::empty(200);
         }
         if request.method != "GET" && request.method != "HEAD" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let mut entries = Vec::new();
         if field == "posters" {
@@ -6802,7 +6802,7 @@ impl Runtime {
             );
         }
         if segments.len() > 3 {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let mut rows = self
             .catalog
@@ -6846,7 +6846,7 @@ impl Runtime {
                 !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
             });
             if !parses {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             rows.clear();
         }
@@ -6861,7 +6861,7 @@ impl Runtime {
                 let first = spec.split(',').next().unwrap_or("");
                 let (key, modifiers) = first.split_once(':').unwrap_or((first, ""));
                 if key != "titleSort" && key != "taggingCreatedAt" {
-                    return Response::error(500, "simplex: unsupported sort key");
+                    return Response::error(500, "rex: unsupported sort key");
                 }
                 let descending = modifiers.split(':').any(|m| m == "desc");
                 if key == "titleSort" {
@@ -6949,11 +6949,11 @@ impl Runtime {
 
     pub fn route(&mut self, request: &Request) -> Response {
         if request.method == "PATCH" {
-            // Cycle 31, on plexscratch42 (1.42.2, the build simplex reports): PATCH is not
+            // Cycle 31, on plexscratch42 (1.42.2, the build rex reports): PATCH is not
             // in 1.42.2's method table at all -- a 500 with the 109-byte document on every
             // path, `/identity` and `/system` included, answered before any routing, so it
             // registers no device and carries no framework cookie.
-            return Response::error(500, "simplex: unknown method");
+            return Response::error(500, "rex: unknown method");
         }
         // `persist.py`: a client write is on disk before it is answered (cycle 73 lost
         // five writes to a SIGKILL under a coalesced save), and so is a client's first
@@ -7420,7 +7420,7 @@ impl Runtime {
             .split('&')
             .any(|part| !part.is_empty() && !part.contains('='))
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         // Empty path components are refused by the route table.  A finite
         // measured table of routes is the exception (cycle 50): the doubled
@@ -7465,12 +7465,12 @@ impl Runtime {
                 if path.starts_with("/system/") {
                     return Response::bare(404);
                 }
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
         }
         let resource_root_with_slash = path == "/:/resources/";
         if path == "/:/plugins/" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if path.len() > 1 && path.ends_with('/') && !path.starts_with("/web/") {
             path.pop();
@@ -7487,7 +7487,7 @@ impl Runtime {
                 && pieces[2] == "parts"
                 && !digits(&pieces[4])
             {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             if pieces.len() > 5
                 && pieces[1] == "library"
@@ -7495,7 +7495,7 @@ impl Runtime {
                 && pieces[4] == "composite"
                 && !digits(&pieces[5])
             {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             let padded = |text: &str| {
                 let rest = text.strip_prefix('+').unwrap_or(text);
@@ -7538,10 +7538,10 @@ impl Runtime {
                     match id.parse::<i64>() {
                         Ok(number) if (-2_147_483_648..=2_147_483_647).contains(&number) => {
                             if number < 0 {
-                                return Response::error(404, "simplex: not found");
+                                return Response::error(404, "rex: not found");
                             }
                         }
-                        _ => return Response::error(400, "simplex: bad request"),
+                        _ => return Response::error(400, "rex: bad request"),
                     }
                 }
             }
@@ -7589,10 +7589,10 @@ impl Runtime {
             // are refused before the token is even looked at.
             let refusal = gates::query_grammar_refusal(&request.method, &path, &query);
             if refusal != 0 {
-                return Response::error(refusal, "simplex: bad request");
+                return Response::error(refusal, "rex: bad request");
             }
             if gates::read_only_refusal(&request.method, &path) {
-                return Response::error(404, "simplex: not found -- read-only route");
+                return Response::error(404, "rex: not found -- read-only route");
             }
         }
         if !self.authorized(&path, &request, &query) {
@@ -7617,18 +7617,18 @@ impl Runtime {
                 .headers
                 .contains_key("x-plex-target-client-identifier")
             {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             // Cycle 59, measured on zen, kids and both copies: WITH an
             // `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
             // `PlexClient.sendCommand()` -- the server looks for that player to proxy
             // to and answers 404, for an unknown id, a listed device and an empty value
             // alike; only a bare command is the 400.
-            return Response::error(404, "simplex: no such player");
+            return Response::error(404, "rex: no such player");
         }
         if matches!(request.method.as_str(), "GET" | "HEAD") {
             if let Some(status) = self.structural_refusal(&path, &query) {
-                return Response::error(status, "simplex: bad request");
+                return Response::error(status, "rex: bad request");
             }
         }
         if resource_root_with_slash {
@@ -7662,7 +7662,7 @@ impl Runtime {
         {
             let route = path.trim_end_matches('/');
             if route == "/search" {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             let real_writer = matches!(
                 (request.method.as_str(), route),
@@ -7692,7 +7692,7 @@ impl Runtime {
                 || !digits.bytes().all(|b| b.is_ascii_digit())
                 || !query.contains_key("message")
             {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             // The web client posts its OWN errors here; they land in the log, where
             // Download Logs and a `filters=log` channel hand them back.
@@ -7718,14 +7718,14 @@ impl Runtime {
                     .collect::<Vec<_>>();
                 if parts.len() == 4 && parts[..2] == ["library", "metadata"] && parts[3] == "match"
                 {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 return match path.as_str() {
                     "/identity" => self.identity_response(&query),
                     "/hubs" | "/playlists" => Response::json(200, plugin_container(Vec::new())),
                     // Cycle 45: its own 400 to every verb.
-                    "/:/viewChange" => Response::error(400, "simplex: bad request"),
-                    _ => Response::error(404, "simplex: not found"),
+                    "/:/viewChange" => Response::error(400, "rex: bad request"),
+                    _ => Response::error(404, "rex: not found"),
                 };
             }
             return Self::preflight(request);
@@ -7840,7 +7840,7 @@ impl Runtime {
                 // one is redeemed with plex.tv by `handle_connection` once the lock is
                 // released (`finish_claim`), which answers the claimed /myplex/account.
                 match query.get("token").filter(|token| !token.is_empty()) {
-                    None => Response::error(400, "simplex: missing claim token"),
+                    None => Response::error(400, "rex: missing claim token"),
                     Some(token) => {
                         self.pending_claim = Some(token.clone());
                         Response::empty(200)
@@ -7858,7 +7858,7 @@ impl Runtime {
                 response.body = self.log_archive();
                 response.headers.push((
                     "Content-Disposition".to_string(),
-                    "attachment; filename=\"simplex-logs.zip\"".to_string(),
+                    "attachment; filename=\"rex-logs.zip\"".to_string(),
                 ));
                 response
             }
@@ -7868,21 +7868,21 @@ impl Runtime {
                 self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
             ),
             ("GET" | "HEAD", "/clients/profiles") => self.route_client_profiles(&query),
-            ("POST" | "PUT", "/search") => Response::error(400, "simplex: bad request"),
+            ("POST" | "PUT", "/search") => Response::error(400, "rex: bad request"),
             ("GET" | "HEAD", "/media/grabbers") => Response::json(200, self.media_grabbers()),
             ("GET" | "HEAD", "/media/providers") => {
                 let mut body = self.media_providers(&query, &request.headers);
                 home_theater_version(&mut body, &query, &request.headers);
                 Response::json(200, body)
             }
-            ("POST", "/media/providers") => Response::error(400, "simplex: bad request"),
-            ("POST", "/player/playback/play") => Response::error(400, "simplex: bad request"),
+            ("POST", "/media/providers") => Response::error(400, "rex: bad request"),
+            ("POST", "/player/playback/play") => Response::error(400, "rex: bad request"),
             ("GET" | "HEAD", "/player/timeline/poll") => {
-                Response::error(400, "simplex: bad request")
+                Response::error(400, "rex: bad request")
             }
-            ("GET" | "HEAD", "/system/proxy") => Response::error(400, "simplex: bad request"),
+            ("GET" | "HEAD", "/system/proxy") => Response::error(400, "rex: bad request"),
             ("GET" | "HEAD", "/video/:/transcode/universal/subtitles") => {
-                Response::error(400, "simplex: bad request")
+                Response::error(400, "rex: bad request")
             }
             // `OPTIONS` too: see `options_routed`.
             ("GET" | "HEAD" | "OPTIONS", "/photo/:/transcode") => {
@@ -7966,7 +7966,7 @@ impl Runtime {
             ("GET" | "HEAD", "/library/all/top") => self.route_top(&query),
             // Measured on kids (2026-09-30): the bare `/library/metadata` -- with or without
             // paging, GET and HEAD -- is the 85-byte Not Found document, not a 400.
-            ("GET" | "HEAD", "/library/metadata") => Response::error(404, "simplex: not found"),
+            ("GET" | "HEAD", "/library/metadata") => Response::error(404, "rex: not found"),
             ("GET" | "HEAD", "/library") => Response::json(
                 200,
                 self.container(
@@ -8008,7 +8008,7 @@ impl Runtime {
             ("GET" | "HEAD", "/devices") => self.route_devices(),
             ("GET" | "HEAD", "/accounts") => self.route_account(None),
             ("GET" | "HEAD", "/playlists") => self.route_playlists(&query),
-            ("GET" | "HEAD", "/library/collections") => Response::error(404, "simplex: not found"),
+            ("GET" | "HEAD", "/library/collections") => Response::error(404, "rex: not found"),
             ("GET" | "HEAD", "/statistics/bandwidth") => self
                 .statistics_refusal("bandwidth", &query)
                 .unwrap_or_else(|| self.route_bandwidth(&query)),
@@ -8094,7 +8094,7 @@ impl Runtime {
                 self.route_decision(&query, &request.headers)
             }
             ("GET" | "HEAD", "/subtitles/:/transcode/universal/start") => {
-                Response::error(400, "simplex: bad request")
+                Response::error(400, "rex: bad request")
             }
             ("GET" | "HEAD", "/hubs") => self.route_hubs(&query),
             ("GET" | "HEAD", "/hubs/search") => {
@@ -8113,7 +8113,7 @@ impl Runtime {
                         )
                         .is_none()
                 {
-                    Response::error(400, "simplex: bad request")
+                    Response::error(400, "rex: bad request")
                 } else {
                     self.hubs_search(&query)
                 }
@@ -8124,7 +8124,7 @@ impl Runtime {
         }
     }
 
-    /// `SimPlex.gated`: `--token`, or a REAL claim -- a claimed PMS always has its gate up;
+    /// `Rex.gated`: `--token`, or a REAL claim -- a claimed PMS always has its gate up;
     /// the opt-in default only spares the unclaimed instances the suites and probes drive
     /// (`--assert-claimed` is not a claim and leaves it down).
     fn gated(&self) -> bool {
@@ -8137,7 +8137,7 @@ impl Runtime {
                 .claimed()
     }
 
-    /// `SimPlex.token_admitted`: `--token`, or -- once claimed -- the server's own token or
+    /// `Rex.token_admitted`: `--token`, or -- once claimed -- the server's own token or
     /// one plex.tv lists for it. `handle_connection` has already re-read that list for an
     /// unknown token (`Access::admits`) before taking the runtime lock.
     /// ponytail: the transient tokens /security/token hands out are not admitted back; no
@@ -8321,10 +8321,10 @@ impl Runtime {
                 if number == 0 || number == 42 {
                     Some(number)
                 } else {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
             }
-            Some(_) => return Response::error(400, "simplex: bad request"),
+            Some(_) => return Response::error(400, "rex: bad request"),
         };
         // server.py's CLIENT_PROFILE_ORDER (the reference's own listing order, which
         // is not the sidecar's key order), or the seven local profiles for type=42;
@@ -8642,7 +8642,7 @@ impl Runtime {
     ) -> Option<Response> {
         for name in ["name", "type", "agent", "language"] {
             if !query.contains_key(name) {
-                return Some(Response::error(400, "simplex: Add Library without a field"));
+                return Some(Response::error(400, "rex: Add Library without a field"));
             }
         }
         let wanted_group = match query.get("metadataAgentProviderGroupId") {
@@ -8650,7 +8650,7 @@ impl Runtime {
             Some(value) => match value.parse::<i64>() {
                 Ok(number) => Some(number),
                 Err(_) => {
-                    return Some(Response::error(400, "simplex: group id is not a number"));
+                    return Some(Response::error(400, "rex: group id is not a number"));
                 }
             },
         };
@@ -8821,8 +8821,8 @@ impl Runtime {
         // Measured on plexscratch42 (1.42.2), a `type=artist` form with the music agent
         // and group 3: the library KEEPS what the form named -- agent, scanner, group and
         // folder read back as sent, stamped with the create time and `contentChangedAt`
-        // -1. simplex re-derived the movie agent, `Plex Movie`, group 1 and
-        // `/simplex/<n>`, so a music library read back as a movie one.
+        // -1. rex re-derived the movie agent, `Plex Movie`, group 1 and
+        // `/rex/<n>`, so a music library read back as a movie one.
         let agent = query.get("agent").cloned().unwrap_or_default();
         let system = load_json_sidecar(&self.catalog_path, "system_agents.json").unwrap_or(Value::Null);
         let builtin = system
@@ -8908,7 +8908,7 @@ impl Runtime {
         row.insert("hidden".to_string(), json!(0));
         row.insert(
             "Location".to_string(),
-            json!([{"id": 1, "path": if location.is_empty() { "/simplex" } else { location.as_str() }}]),
+            json!([{"id": 1, "path": if location.is_empty() { "/rex" } else { location.as_str() }}]),
         );
         // Measured: the create answers a BARE container, with none of the library
         // container's identifier, media-tag pair or allowSync -- and a `Location`
@@ -8961,7 +8961,7 @@ impl Runtime {
         let raw = query.get("type").map(String::as_str).unwrap_or("");
         let digits = raw.trim_start_matches(['+', '-']);
         if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         let wanted = match raw.trim_start_matches('+').parse::<i64>().unwrap_or(0) {
             1 => Some("movie"),
@@ -8975,7 +8975,7 @@ impl Runtime {
         // value in any of them is a 500.
         let tests = match Self::history_date_tests(query) {
             Ok(tests) => tests,
-            Err(status) => return Response::error(status, "simplex: internal error"),
+            Err(status) => return Response::error(status, "rex: internal error"),
         };
         let mut ids: HashMap<&str, f64> = HashMap::new();
         for name in ["accountID", "librarySectionID"] {
@@ -8990,7 +8990,7 @@ impl Runtime {
                     && fraction.bytes().all(|b| b.is_ascii_digit())
                     && body.matches('.').count() <= 1;
                 if !numeric {
-                    return Response::error(500, "simplex: internal error");
+                    return Response::error(500, "rex: internal error");
                 }
                 ids.insert(
                     name,
@@ -9157,7 +9157,7 @@ impl Runtime {
         // rows before the cap.
         if let Some(value) = query.get("unwatched") {
             if !bool_option(value) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             if value.trim_start_matches('+').trim_start_matches('0') == "1" {
                 dated.retain(|(_, row)| !watched_leaf(row));
@@ -9297,7 +9297,7 @@ impl Runtime {
             .get("type")
             .is_some_and(|value| !int_param(value, Some(32)))
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         // Cycle 28 (zen) and cycle 30 (plexscratch42): the FULL detail row minus
         // `Field` and `librarySectionKey`, led by `allowSync` and the section UUID.
@@ -9323,7 +9323,7 @@ impl Runtime {
             .collect::<Vec<_>>();
         let (page, paged, start, total) = match page_window(rows, query) {
             Ok(window) => window,
-            Err(status) => return Response::error(status, "simplex: bad container parameter"),
+            Err(status) => return Response::error(status, "rex: bad container parameter"),
         };
         let mut fields = Map::from_iter([
             ("Metadata".to_string(), Value::Array(page)),
@@ -9345,14 +9345,14 @@ impl Runtime {
         for name in ["accountID", "librarySectionID", "metadataItemID"] {
             if let Some(value) = query.get(name) {
                 if !int_param(value, None) {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
             }
         }
         // Cycle 54, measured on kids and zen: `offset` is an int32 here.
         if let Some(value) = query.get("offset") {
             if !int_param(value, Some(32)) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
         }
         let number = |value: &str| value.trim_start_matches('+').parse::<i128>().unwrap_or(0);
@@ -9368,7 +9368,7 @@ impl Runtime {
                 && !self.playlists.contains_key(&key)
                 && !self.collections.contains_key(&key)
             {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
         }
         // Cycle 54 corrected the keys: `viewedAt%3E=` is the key `viewedAt>` and it is
@@ -9380,7 +9380,7 @@ impl Runtime {
             if let Some(value) = query.get(key) {
                 let digits = value.strip_prefix('-').unwrap_or(value);
                 if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 time_tests.push((key, value.parse::<i64>().unwrap_or(0)));
             }
@@ -9393,7 +9393,7 @@ impl Runtime {
             for part in kind.split(',') {
                 let digits = part.trim_start_matches('-');
                 if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 parsed.push(part.parse::<i64>().unwrap_or(0));
             }
@@ -9457,7 +9457,7 @@ impl Runtime {
                 field.as_str(),
                 "viewedAt" | "historyKey" | "ratingKey" | "accountID" | "deviceID" | "title"
             ) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             let sort_key = |row: &Value| -> (bool, Value) {
                 match row.get(field.as_str()) {
@@ -9480,7 +9480,7 @@ impl Runtime {
         // `limit=-1` answers ZERO rows -- and `group=` is refused outright with a 400,
         // the empty form included.
         if query.contains_key("group") {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if let Some(raw) = query.get("limit") {
             let digits = raw.trim_start_matches('-');
@@ -9491,7 +9491,7 @@ impl Runtime {
         }
         let (page, paged, start, total) = match page_window(rows, query) {
             Ok(window) => window,
-            Err(status) => return Response::error(status, "simplex: bad container parameter"),
+            Err(status) => return Response::error(status, "rex: bad container parameter"),
         };
         let mut fields = Map::new();
         fields.insert("size".to_string(), json!(page.len()));
@@ -9506,7 +9506,7 @@ impl Runtime {
     /// The statistics endpoints' shared parameter grammar (the oracle's `statistics`),
     /// checked before any endpoint answers.
     fn statistics_refusal(&self, which: &str, query: &HashMap<String, String>) -> Option<Response> {
-        let refuse = || Some(Response::error(400, "simplex: bad request"));
+        let refuse = || Some(Response::error(400, "rex: bad request"));
         // Cycle 54/55, measured on kids and zen: `/statistics/media` parses `count`,
         // `offset` and `type` as int32 and `/statistics/bandwidth` `bytes` as int64 and
         // `offset` as int32; `offset` is an int32 on all THREE endpoints.
@@ -9555,7 +9555,7 @@ impl Runtime {
                 .values()
                 .any(|device| !device.platform.is_string())
         {
-            return Some(Response::error(500, "simplex: internal error"));
+            return Some(Response::error(500, "rex: internal error"));
         }
         // Cycle 55: the window is an int32; cycle 26/55: `limit=` is PARSED as one.
         for name in ["timespan", "limit"] {
@@ -9580,7 +9580,7 @@ impl Runtime {
         // 400, as on `/statistics/bandwidth`.
         for name in ["accountID", "deviceID"] {
             if query.get(name).is_some_and(|value| !int_param(value, None)) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
         }
         let spans = if let Some(value) = query.get("timespan") {
@@ -9833,7 +9833,7 @@ impl Runtime {
 
     fn route_pref_get(&self, query: &HashMap<String, String>) -> Response {
         let Some(id) = query.get("id") else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         let row = self
             .pref_rows(query, &HashMap::new())
@@ -9857,7 +9857,7 @@ impl Runtime {
                     ),
                 )
             }
-            None => Response::error(404, "simplex: not found"),
+            None => Response::error(404, "rex: not found"),
         }
     }
 
@@ -9865,7 +9865,7 @@ impl Runtime {
         if query.get("type").map(String::as_str) != Some("delegation")
             || query.get("scope").map(String::as_str) != Some("all")
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if self.gated() {
             let provided = request
@@ -9873,7 +9873,7 @@ impl Runtime {
                 .get("x-plex-token")
                 .or_else(|| query.get("X-Plex-Token"));
             if !provided.is_some_and(|value| self.token_admitted(value)) {
-                return Response::error(403, "simplex: forbidden");
+                return Response::error(403, "rex: forbidden");
             }
         }
         // Each call answers a DIFFERENT token, in server.py's `transient-<uuid4>` form.
@@ -9907,7 +9907,7 @@ impl Runtime {
             // Cycle 19/30: these two answer 403 on 1.42.2 and push no frame, even when
             // the value written is the one already stored.
             if matches!(key.as_str(), "PlexOnlineUrl" | "allowMediaDeletionLanOnly") {
-                return Response::error(403, "simplex: forbidden");
+                return Response::error(403, "rex: forbidden");
             }
         }
         let mut typed = Vec::new();
@@ -9933,7 +9933,7 @@ impl Runtime {
                         None if matches!(key.as_str(), "ButlerStartHour" | "ButlerEndHour") => {
                             continue
                         }
-                        None => return Response::error(500, "simplex: internal error"),
+                        None => return Response::error(500, "rex: internal error"),
                     }
                 }
                 "bool" => typed.push((
@@ -10025,13 +10025,13 @@ impl Runtime {
         empty_key_ok: bool,
     ) -> Result<Option<String>, Response> {
         let Some(raw) = query.get("key") else {
-            return Err(Response::error(400, "simplex: bad request"));
+            return Err(Response::error(400, "rex: bad request"));
         };
         if raw.is_empty() && !empty_key_ok {
-            return Err(Response::error(400, "simplex: bad request"));
+            return Err(Response::error(400, "rex: bad request"));
         }
         if query.get("identifier").is_none_or(String::is_empty) {
-            return Err(Response::error(400, "simplex: bad request"));
+            return Err(Response::error(400, "rex: bad request"));
         }
         if validate_first {
             if let Some(refusal) = validate.and_then(|check| check()) {
@@ -10039,7 +10039,7 @@ impl Runtime {
             }
         }
         if query.get("identifier").map(String::as_str) != Some("com.plexapp.plugins.library") {
-            return Err(Response::error(404, "simplex: no such item"));
+            return Err(Response::error(404, "rex: no such item"));
         }
         if !validate_first {
             if let Some(refusal) = validate.and_then(|check| check()) {
@@ -10051,7 +10051,7 @@ impl Runtime {
             .then(|| raw.parse::<i64>().ok())
             .flatten();
         if numeric_key && parsed.is_none() {
-            return Err(Response::error(500, "simplex: bad key"));
+            return Err(Response::error(500, "rex: bad key"));
         }
         let found = parsed.map(|number| number.to_string()).filter(|key| {
             self.catalog.get(key).is_some()
@@ -10059,7 +10059,7 @@ impl Runtime {
                 || self.playlists.contains_key(key)
         });
         if found.is_none() && !any_key {
-            return Err(Response::error(404, "simplex: no such item"));
+            return Err(Response::error(404, "rex: no such item"));
         }
         Ok(found)
     }
@@ -10128,7 +10128,7 @@ impl Runtime {
         let check = || {
             position
                 .is_none()
-                .then(|| Response::error(500, "simplex: bad time"))
+                .then(|| Response::error(500, "rex: bad time"))
         };
         let key = match self.keyed_row(query, Some(&check), true, true, false, false) {
             Ok(key) => key,
@@ -10386,7 +10386,7 @@ impl Runtime {
     fn route_scrobble(&mut self, query: &HashMap<String, String>, watched: bool) -> Response {
         let key = match self.keyed_row(query, None, false, false, false, false) {
             Ok(Some(key)) => key,
-            Ok(None) => return Response::error(404, "simplex: no such item"),
+            Ok(None) => return Response::error(404, "rex: no such item"),
             Err(refusal) => return refusal,
         };
         // `library.scrobble` returns the leaves it marked: a show's or season's
@@ -10553,11 +10553,11 @@ impl Runtime {
         let check = || {
             rating
                 .is_none()
-                .then(|| Response::error(400, "simplex: bad request"))
+                .then(|| Response::error(400, "rex: bad request"))
         };
         let key = match self.keyed_row(query, Some(&check), true, false, true, true) {
             Ok(Some(key)) => key,
-            Ok(None) => return Response::error(404, "simplex: no such item"),
+            Ok(None) => return Response::error(404, "rex: no such item"),
             Err(refusal) => return refusal,
         };
         let rating = rating.unwrap_or(-1.0);
@@ -10607,7 +10607,7 @@ impl Runtime {
             .or_else(|| query.get("X-Plex-Client-Identifier"))
             .or_else(|| headers.get("x-plex-client-identifier"))
             .cloned()
-            .unwrap_or_else(|| "simplex".to_string())
+            .unwrap_or_else(|| "rex".to_string())
     }
 
     fn decision_target(
@@ -10628,21 +10628,21 @@ impl Runtime {
         })
         .find(|name| self.decision_profiles.contains_key(name.as_str()));
         if profile.is_none() {
-            return Err(Response::error(400, "simplex: bad request"));
+            return Err(Response::error(400, "rex: bad request"));
         }
         let Some(path) = query.get("path") else {
-            return Err(Response::error(400, "simplex: bad request"));
+            return Err(Response::error(400, "rex: bad request"));
         };
         let Some(tail) = path.split("/library/metadata/").nth(1) else {
-            return Err(Response::error(400, "simplex: bad request"));
+            return Err(Response::error(400, "rex: bad request"));
         };
         let raw_key = tail.split(['/', '?']).next().unwrap_or_default();
         if raw_key.is_empty() || !raw_key.chars().all(|ch| ch.is_ascii_digit()) {
-            return Err(Response::error(400, "simplex: bad request"));
+            return Err(Response::error(400, "rex: bad request"));
         }
         let key = raw_key.to_string();
         let Some(row) = self.catalog.get(&key) else {
-            return Err(Response::error(400, "simplex: bad request"));
+            return Err(Response::error(400, "rex: bad request"));
         };
         let media = row
             .get("Media")
@@ -10650,7 +10650,7 @@ impl Runtime {
             .cloned()
             .unwrap_or_default();
         if media.is_empty() {
-            return Err(Response::error(400, "simplex: bad request"));
+            return Err(Response::error(400, "rex: bad request"));
         }
         let raw_index = query
             .get("mediaIndex")
@@ -10658,23 +10658,23 @@ impl Runtime {
             .unwrap_or_default();
         if media.len() > 1 {
             if raw_index.is_empty() || !raw_index.chars().all(|ch| ch.is_ascii_digit()) {
-                return Err(Response::error(400, "simplex: bad request"));
+                return Err(Response::error(400, "rex: bad request"));
             }
             let Ok(index) = raw_index.parse::<usize>() else {
-                return Err(Response::error(400, "simplex: bad request"));
+                return Err(Response::error(400, "rex: bad request"));
             };
             if index >= media.len() {
-                return Err(Response::error(400, "simplex: bad request"));
+                return Err(Response::error(400, "rex: bad request"));
             }
         }
         let selected = if media.len() > 1 {
             raw_index.parse::<usize>().unwrap_or(0)
         } else if raw_index.chars().all(|ch| ch.is_ascii_digit()) && !raw_index.is_empty() {
             let Ok(index) = raw_index.parse::<usize>() else {
-                return Err(Response::error(400, "simplex: bad request"));
+                return Err(Response::error(400, "rex: bad request"));
             };
             if index > 0 {
-                return Err(Response::error(400, "simplex: bad request"));
+                return Err(Response::error(400, "rex: bad request"));
             }
             0
         } else {
@@ -10694,7 +10694,7 @@ impl Runtime {
                     .ok()
                     .is_some_and(|index| index >= parts.len())
             {
-                return Err(Response::error(400, "simplex: bad request"));
+                return Err(Response::error(400, "rex: bad request"));
             }
         }
         Ok(key)
@@ -10719,7 +10719,7 @@ impl Runtime {
         .find(|name| self.decision_profiles.contains_key(name.as_str()))
         .cloned();
         let Some(profile_name) = profile_name else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         let path = query.get("path").cloned().unwrap_or_default();
         let key = path
@@ -10729,7 +10729,7 @@ impl Runtime {
             .unwrap_or("")
             .to_string();
         let Some(row) = self.catalog.get(&key).cloned() else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         let media_rows = row
             .get("Media")
@@ -10737,20 +10737,20 @@ impl Runtime {
             .cloned()
             .unwrap_or_default();
         if media_rows.is_empty() {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         let media_index_raw = query.get("mediaIndex").cloned().unwrap_or_default();
         let media_index = if media_rows.len() > 1 {
             let Ok(index) = media_index_raw.parse::<usize>() else {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             };
             if index >= media_rows.len() {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             index
         } else if let Ok(index) = media_index_raw.parse::<i64>() {
             if index > 0 {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             0
         } else {
@@ -10765,10 +10765,10 @@ impl Runtime {
         let part_raw = query.get("partIndex").cloned().unwrap_or_default();
         if parts.len() > 1 && part_raw != "-1" && !part_raw.is_empty() {
             let Ok(part_index) = part_raw.parse::<usize>() else {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             };
             if part_index >= parts.len() {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
         }
         let protocol = query
@@ -10854,7 +10854,7 @@ impl Runtime {
             if answer.outcome == decision::Outcome::Refuse {
                 // Xbox 360's one video target is an asf with no protocol, and both
                 // references answer a 400 for every row it cannot direct play.
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             if answer.outcome != decision::Outcome::DirectPlay {
                 refusal = answer.text;
@@ -10984,7 +10984,7 @@ impl Runtime {
                                     // Plex for Android's shapes): `subtitles=none` is
                                     // `decision: ignore` with no location, `sidecar` is
                                     // `location: sidecar-subs`. burn/auto/absent are 400s
-                                    // there with a subtitle selected; simplex answers them.
+                                    // there with a subtitle selected; rex answers them.
                                     let subtitle = stream_object.get("streamType").and_then(Value::as_i64)
                                         == Some(3);
                                     match subtitles_mode.as_deref() {
@@ -11091,7 +11091,7 @@ impl Runtime {
         // Cycle 54: the TV shelf runs the request's filters, and one that does not
         // parse refuses the page.
         if let Err(status) = self.filtered_tv_leaves(query, true) {
-            return Response::error(status, "simplex: bad request");
+            return Response::error(status, "rex: bad request");
         }
         Response::json(200, self.global_hubs(query))
     }
@@ -11104,7 +11104,7 @@ impl Runtime {
     /// metadata edits must immediately change the shelves.
     fn route_section_hubs(&self, section_key: &str, query: &HashMap<String, String>) -> Response {
         let Some(section) = self.section(section_key) else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         let include_guids = query.get("includeGuids").map(String::as_str) == Some("1");
         let is_show = section.get("type").and_then(Value::as_str) == Some("show");
@@ -11223,7 +11223,7 @@ impl Runtime {
                     added_tv = self.recently_added_tv(Some(&section_key.to_string()), Some(leaves))
                 }
                 Ok(None) => {}
-                Err(status) => return Response::error(status, "simplex: bad request"),
+                Err(status) => return Response::error(status, "rex: bad request"),
             }
             if content_directories(query).is_some_and(|wanted| !wanted.contains(section_key)) {
                 added_tv.clear();
@@ -11702,7 +11702,7 @@ impl Runtime {
     /// both copies over an empty library -- five shelves always, Recent Playlists under
     /// `includeLibraryPlaylists=1`, Stations under `includeStations=1` and New Releases
     /// on TIDAL under `includeExternalMetadata=1`, in that order after Recently Added.
-    /// simplex holds no music, so every shelf is the empty one. The two `random` shelves'
+    /// rex holds no music, so every shelf is the empty one. The two `random` shelves'
     /// parameters (the vault's period, the touring cutoff within the last day) are drawn
     /// once per process and held, as the sampled shelves are.
     fn music_section_hubs(&self, section_key: &str, section: &Value, query: &HashMap<String, String>) -> Response {
@@ -11809,7 +11809,7 @@ impl Runtime {
 
     fn route_continue_watching(&self, query: &HashMap<String, String>) -> Response {
         if !Self::valid_content_directory(query) {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         // Measured: this hub's identifier is `continueWatching`, its key its OWN items
         // endpoint, its style `hero`. Cycle 57: the rows are the MERGED list; cycle 53:
@@ -11840,7 +11840,7 @@ impl Runtime {
 
     fn route_continue_watching_items(&self, query: &HashMap<String, String>) -> Response {
         if !Self::valid_content_directory(query) {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         // Cycle 30: no resume list carries `Field`; cycle 53: `includedAt`.
         let rows = self
@@ -11870,14 +11870,14 @@ impl Runtime {
     /// (js:831397).  zen answers both spellings and resolves the url exactly as
     /// `/photo/:/transcode` does: no `url` a 400, an unresolvable one a 404, a server
     /// path that is not an image a 500, any image it serves a 200 with the four corner
-    /// colours.  simplex has no image decoder, so the VALUES are the row's own palette.
+    /// colours.  rex has no image decoder, so the VALUES are the row's own palette.
     fn route_ultrablur_colors(
         &mut self,
         request: &Request,
         query: &HashMap<String, String>,
     ) -> Response {
         let Some(url) = query.get("url").cloned() else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         let photo_query = HashMap::from([
             ("url".to_string(), url.clone()),
@@ -11934,7 +11934,7 @@ impl Runtime {
 
     fn route_section_continue_watching_items(&self, section_key: &str) -> Response {
         let Some(section) = self.section(section_key) else {
-            return Response::error(404, "simplex: no such section");
+            return Response::error(404, "rex: no such section");
         };
         let is_show = section.get("type").and_then(Value::as_str) == Some("show");
         let rows = self
@@ -11954,12 +11954,12 @@ impl Runtime {
 
     fn route_search(&self, query: &HashMap<String, String>) -> Response {
         let Some(raw) = query.get("query").or_else(|| query.get("term")) else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         if raw.is_empty() {
             return Response::error(
                 if query.contains_key("term") { 404 } else { 400 },
-                "simplex: bad request",
+                "rex: bad request",
             );
         }
         let needle = raw.to_lowercase();
@@ -12325,7 +12325,7 @@ impl Runtime {
             || identifier.starts_with("tv.inprogress.")
             || identifier == "home.playlists"
         {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let tail = identifier.rsplit_once('.').map(|(_, tail)| tail).unwrap_or("");
         let built = if (identifier.starts_with("movie.") || identifier.starts_with("tv."))
@@ -12364,7 +12364,7 @@ impl Runtime {
                 })
             });
         let Some(hub) = hub else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         let rows = hub
             .get("Metadata")
@@ -12383,10 +12383,10 @@ impl Runtime {
 
     fn route_library_search(&self, query: &HashMap<String, String>) -> Response {
         let Some(raw) = query.get("query") else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         if raw.is_empty() {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         let allowed_types = query
             .get("searchTypes")
@@ -12488,10 +12488,10 @@ impl Runtime {
 
     fn route_legacy_search(&self, query: &HashMap<String, String>) -> Response {
         let Some(raw) = query.get("query") else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         if raw.is_empty() {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         self.legacy_search_rows(raw)
     }
@@ -12503,7 +12503,7 @@ impl Runtime {
     fn route_playlists_on(&self, query: &HashMap<String, String>, listing_all: bool) -> Response {
         if let Some(value) = query.get("type") {
             let Ok(kind) = value.parse::<i64>() else {
-                return Response::error(500, "simplex: unsupported playlist type");
+                return Response::error(500, "rex: unsupported playlist type");
             };
             // `/playlists/all?type=42` is an ordinary empty type: the background list
             // answers on `/playlists` alone.
@@ -12543,7 +12543,7 @@ impl Runtime {
             );
         }
         if let Some(status) = listing::listing_refusals(query, &[]) {
-            return Response::error(status, "simplex: bad request");
+            return Response::error(status, "rex: bad request");
         }
         let mut rows = self
             .playlists
@@ -12633,7 +12633,7 @@ impl Runtime {
         } else if !spec.is_empty() {
             rows = match self.sort_rows(rows, Some(&spec)) {
                 Ok(rows) => rows,
-                Err(status) => return Response::error(status, "simplex: unsupported sort key"),
+                Err(status) => return Response::error(status, "rex: unsupported sort key"),
             };
         }
         let mut fields = Map::from_iter([("Metadata".to_string(), Value::Array(rows))]);
@@ -12745,12 +12745,12 @@ impl Runtime {
             // empty `type=` is that listing's unparseable type -- a 500.
             Some(value) => match value.parse::<i64>() {
                 Ok(number) => Some(number),
-                Err(_) => return Response::error(500, "simplex: bad collection type"),
+                Err(_) => return Response::error(500, "rex: bad collection type"),
             },
         };
         if let Some(limit) = query.get("limit") {
             if limit.parse::<usize>().is_err() {
-                return Response::error(500, "simplex: bad collection limit");
+                return Response::error(500, "rex: bad collection limit");
             }
         }
         let rows = if type_number == Some(18) {
@@ -12762,7 +12762,7 @@ impl Runtime {
                 query.get("sort").map(String::as_str),
             ) {
                 Ok(rows) => rows,
-                Err(status) => return Response::error(status, "simplex: unsupported sort"),
+                Err(status) => return Response::error(status, "rex: unsupported sort"),
             }
         } else {
             self.choose_rows(Some(section_key), type_number)
@@ -13138,22 +13138,22 @@ impl Runtime {
     ) -> Response {
         if segments.is_empty() {
             if request.method != "POST" {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             if query.get("type").is_none()
                 || (query.get("uri").is_none() && query.get("playlistID").is_none())
             {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             for name in ["shuffle", "repeat"] {
                 if let Some(value) = query.get(name) {
                     if !value.starts_with('+') && !value.chars().all(|ch| ch.is_ascii_digit()) {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                     if value.trim_start_matches('+').parse::<i64>().ok() != Some(0)
                         && value.trim_start_matches('+').parse::<i64>().ok() != Some(1)
                     {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                 }
             }
@@ -13252,16 +13252,16 @@ impl Runtime {
             .parse::<i64>()
             .map_or(true, |value| value > i32::MAX as i64)
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         let Some(mut queue) = self.queues.remove(id) else {
-            return Response::error(404, "simplex: no such play queue");
+            return Response::error(404, "rex: no such play queue");
         };
         for name in ["includeBefore", "includeAfter"] {
             if let Some(value) = query.get(name) {
                 if value != "0" && value != "1" {
                     self.queues.insert(id.to_string(), queue);
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
             }
         }
@@ -13269,7 +13269,7 @@ impl Runtime {
             && query.get("includeAfter") == Some(&"0".to_string())
         {
             self.queues.insert(id.to_string(), queue);
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         // Cycle 83, plexscratch42 (1.42.2): only a READ takes -- GET or HEAD with `own=1`
         // on the queue itself. The creator's own PUT with `own=1` (a move, the Plex Web
@@ -13297,7 +13297,7 @@ impl Runtime {
                     if uri.is_empty() && playlist_id.is_empty() {
                         // Measured: a bare refresh PUT with no uri is a 400.
                         self.queues.insert(id.to_string(), queue);
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                     let rows = if uri.is_empty() {
                         // Measured on a writable copy of the reference: `playlistID=`
@@ -13373,11 +13373,11 @@ impl Runtime {
                     }
                     self.queue_container(&queue, query)
                 }
-                _ => Response::error(404, "simplex: not found"),
+                _ => Response::error(404, "rex: not found"),
             }
         } else if segments.len() == 2 && (segments[1] == "shuffle" || segments[1] == "unshuffle") {
             if request.method != "PUT" || queue.last_added.is_some() {
-                Response::error(404, "simplex: not found")
+                Response::error(404, "rex: not found")
             } else {
                 // `server.py`: the order is rebuilt from the queue's NATURAL order (the
                 // one an unshuffle restores), the selected row first on a shuffle, and
@@ -13489,7 +13489,7 @@ impl Runtime {
                 }
                 response
             } else {
-                Response::error(404, "simplex: no such play queue item")
+                Response::error(404, "rex: no such play queue item")
             }
         } else if segments.len() == 4
             && segments[1] == "items"
@@ -13498,15 +13498,15 @@ impl Runtime {
         {
             let Some(item_id) = segments[2].parse::<i64>().ok() else {
                 self.queues.insert(id.to_string(), queue);
-                return Response::error(404, "simplex: no such play queue item");
+                return Response::error(404, "rex: no such play queue item");
             };
             let Some(index) = queue.items.iter().position(|item| item.id == item_id) else {
                 self.queues.insert(id.to_string(), queue);
-                return Response::error(404, "simplex: no such play queue item");
+                return Response::error(404, "rex: no such play queue item");
             };
             if query.get("after").is_some_and(String::is_empty) {
                 self.queues.insert(id.to_string(), queue);
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             if query
                 .get("after")
@@ -13514,7 +13514,7 @@ impl Runtime {
                 == Some(item_id)
             {
                 self.queues.insert(id.to_string(), queue);
-                return Response::error(404, "simplex: no such play queue item");
+                return Response::error(404, "rex: no such play queue item");
             }
             let item = queue.items.remove(index);
             let after = query
@@ -13546,7 +13546,7 @@ impl Runtime {
             queue.version += 1;
             self.queue_container(&queue, query)
         } else {
-            Response::error(404, "simplex: not found")
+            Response::error(404, "rex: not found")
         };
         self.queues.insert(id.to_string(), queue);
         response
@@ -13599,10 +13599,10 @@ impl Runtime {
             })
             .cloned();
         let Some(queue) = queue else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         if !matches!(request.method.as_str(), "GET" | "HEAD") {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if segments.len() == 1 {
             return Response::json(
@@ -13613,10 +13613,10 @@ impl Runtime {
         if segments.len() == 2 && segments[1] == "items" {
             return Response::json(200, json!({"MediaContainer": {"size": 0}}));
         }
-        Response::error(404, "simplex: not found")
+        Response::error(404, "rex: not found")
     }
 
-    /// server.py's `browse`: the Add Folder picker walking simplex's `/simplex` tree.
+    /// server.py's `browse`: the Add Folder picker walking rex's `/rex` tree.
     /// The bare path lists `/` and the mount point; a sub-path is its (strict) base64
     /// and answers its directories only with `includeFiles` PRESENT -- `=1` adds the
     /// files -- and a path that does not exist is an empty 200.
@@ -13635,29 +13635,29 @@ impl Runtime {
                    "title": title, "path": name})
         };
         if path == "/services/browse" {
-            let rows = vec![entry("/"), entry("/simplex")];
+            let rows = vec![entry("/"), entry("/rex")];
             return Response::json(200, json!({"MediaContainer": {"size": 2, "Path": rows}}));
         }
         let encoded = &path["/services/browse/".len()..];
         let Some(decoded) = plextv::b64decode(encoded, false)
             .and_then(|bytes| String::from_utf8(bytes).ok())
         else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         if !query.contains_key("includeFiles") || !decoded.starts_with('/') {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         let trimmed = decoded.trim_end_matches('/');
         let wanted = if trimmed.is_empty() { "/" } else { trimmed };
         let basename = |name: &str| name.rsplit('/').next().unwrap_or("").to_lowercase();
         let mut children = Vec::new();
         if wanted == "/" && !self.catalog.sections.is_empty() {
-            children.push("/simplex".to_string());
-        } else if wanted == "/simplex" {
+            children.push("/rex".to_string());
+        } else if wanted == "/rex" {
             let mut seen = HashSet::new();
             for section in &self.catalog.sections {
                 let child = format!(
-                    "/simplex/{}",
+                    "/rex/{}",
                     string_value(section.get("key").unwrap_or(&Value::Null))
                 );
                 if seen.insert(child.clone()) {
@@ -13727,7 +13727,7 @@ impl Runtime {
         }
         if path == "/:/viewChange" {
             // Cycle 45: a routed state-write leaf that answers its own 400 to every verb.
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if segments.len() == 4
             && segments[0] == "hubs"
@@ -13772,20 +13772,20 @@ impl Runtime {
                     | "/livetv/epg/lineupchannels"
                     | "/livetv/epg/channels"
             ) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             if matches!(
                 path,
                 "/livetv/epg" | "/livetv/epg/guide" | "/livetv/epg/search" | "/livetv/recordings"
             ) || (matches!(segments[1], "dvrs" | "sessions") && segments.len() > 2)
             {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return Response::json(200, json!({"MediaContainer": {"size": 0}}));
         }
         if path == "/security/resources" {
             // server.py: a 400 on every verb.
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if segments.len() > 1
             && segments[0] == "media"
@@ -13807,29 +13807,29 @@ impl Runtime {
                     && segments.len() == 3
                     && matches!(request.method.as_str(), "GET" | "HEAD")
                 {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 if !(segments[1] == "subscriptions" && segments[2] == "scheduled") {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
             }
             return Response::json(200, json!({"MediaContainer": {"size": 0}}));
         }
         if path == "/services/defaultLibraries" && matches!(request.method.as_str(), "GET" | "HEAD") {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if path == "/library/all" && !matches!(request.method.as_str(), "GET" | "HEAD") {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if path == "/actions/removeFromContinueWatching" {
             if request.method != "PUT" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             let Some(key) = query.get("ratingKey").map(|value| extract_key(value)) else {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             };
             if self.catalog.get(&key).is_none() {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             self.hidden_continue.insert(key);
             self.dirty = true;
@@ -13843,7 +13843,7 @@ impl Runtime {
             // Cycle 52: an extra segment after the account id is a 404; cycle 19: so is
             // a DELETE (and cycle 31 a POST); server.py answers the row to any other verb.
             if segments.len() > 2 || matches!(request.method.as_str(), "POST" | "DELETE") {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return self.route_account(Some(segments[1]));
         }
@@ -13854,7 +13854,7 @@ impl Runtime {
         if segments.first() == Some(&"activities") && segments.len() > 1 && request.method == "PUT"
         {
             // Cycle 19: a PUT to an activity is a 400, where its DELETE is a 404.
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if segments.len() >= 3 && segments[..3] == ["library", "metadata", "augmentations"] {
             // Cycle 52, kids and zen: the augmentation id is PARSED before the row is
@@ -13863,9 +13863,9 @@ impl Runtime {
                 .get(3)
                 .is_some_and(|id| id.is_empty() || !id.bytes().all(|b| b.is_ascii_digit()))
             {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         // Universal transcode is a routed family even though this native
         // server has no encoder.  The reference validates the playback
@@ -13876,7 +13876,7 @@ impl Runtime {
             && matches!(segments[0], "audio" | "music" | "subtitles")
             && segments[1..3] == [":", "transcode"]
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if segments.len() >= 4
             && segments[0] == "video"
@@ -13891,24 +13891,24 @@ impl Runtime {
                 };
                 let session = self.playback_session(query, &request.headers);
                 if !self.decided_sessions.contains(&(session, key)) {
-                    return Response::error(400, "simplex: no decision for this session");
+                    return Response::error(400, "rex: no decision for this session");
                 }
                 warning!(
                     "TRANSCODE REQUESTED -- client refused direct play: {}",
                     logging::py_opt(query.get("path"))
                 );
-                return Response::error(404, "simplex: no transcoder");
+                return Response::error(404, "rex: no transcoder");
             }
             if matches!(leaf, "ping" | "stop") {
                 if !query.contains_key("session") {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
-                return Response::error(404, "simplex: no transcoder");
+                return Response::error(404, "rex: no transcoder");
             }
             if leaf == "subtitles" {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
-            return Response::error(404, "simplex: no transcoder");
+            return Response::error(404, "rex: no transcoder");
         }
         if segments.first() == Some(&"resources") {
             if segments.len() == 2
@@ -13922,32 +13922,32 @@ impl Runtime {
                     self.container(Map::from_iter([("size".to_string(), json!(0))]), false),
                 );
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if segments.first() == Some(&"clients") && segments.get(1) == Some(&"profiles") {
             if segments.len() > 2 {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             if request.method != "GET" && request.method != "HEAD" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return self.route_client_profiles(query);
         }
         if segments.first() == Some(&"search") && segments.get(1) == Some(&"voice") {
             return if query.contains_key("query") {
-                Response::error(404, "simplex: not found")
+                Response::error(404, "rex: not found")
             } else {
-                Response::error(400, "simplex: bad request")
+                Response::error(400, "rex: bad request")
             };
         }
         if path == "/hubs/sections/home" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if segments.first() == Some(&"devices") && segments.len() == 2 {
             return if request.method == "GET" || request.method == "HEAD" {
                 self.route_device(segments[1])
             } else {
-                Response::error(404, "simplex: not found")
+                Response::error(404, "rex: not found")
             };
         }
         // server.py: `/channels/all` (a read-only route) and `/channels/recentlyViewed`
@@ -14001,7 +14001,7 @@ impl Runtime {
             {
                 return self.route_person(segments[2], true, query);
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if path == "/sync" || path == "/sync/" {
             return if matches!(request.method.as_str(), "GET" | "HEAD") {
@@ -14009,7 +14009,7 @@ impl Runtime {
                 info!("PLUGIN PATH {} /sync -- legacy dispatcher", request.method);
                 Response::json(200, plugin_container(Vec::new()))
             } else {
-                Response::error(404, "simplex: not found")
+                Response::error(404, "rex: not found")
             };
         }
         if path == "/services/browse" || path.starts_with("/services/browse/") {
@@ -14019,21 +14019,21 @@ impl Runtime {
             return self.library_shared(&segments, query);
         }
         if path == "/updater/check" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if path == "/updater/apply" {
             return if request.method == "PUT" {
                 warning!("UPDATER apply requested -- nothing downloaded");
-                Response::error(400, "simplex: bad request")
+                Response::error(400, "rex: bad request")
             } else {
-                Response::error(404, "simplex: not found")
+                Response::error(404, "rex: not found")
             };
         }
         if path == "/library/all/top" {
             return self.route_top(query);
         }
         if path == "/library/clean/bundles" && request.method == "PUT" {
-            // Measured on a writable copy, frame for frame; simplex has no bundles.
+            // Measured on a writable copy, frame for frame; rex has no bundles.
             self.notify_activity_run(
                 "general.bundle.clean",
                 "Cleaning bundles",
@@ -14050,7 +14050,7 @@ impl Runtime {
         }
         if path == "/library/optimize" {
             if request.method != "PUT" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             // Measured on the copy, frame for frame: started at 0 with an EMPTY
             // subtitle, updated at 0, 10, 40 and 60 with `Optimizing Database`,
@@ -14079,7 +14079,7 @@ impl Runtime {
             };
             let digits = value.strip_prefix('+').unwrap_or(value);
             if digits.is_empty() || !digits.chars().all(|character| character.is_ascii_digit()) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             return match digits.parse::<i64>().unwrap_or(-1) {
                 0 => Response::json(
@@ -14105,7 +14105,7 @@ impl Runtime {
                         false,
                     ),
                 ),
-                _ => Response::error(400, "simplex: bad request"),
+                _ => Response::error(400, "rex: bad request"),
             };
         } else if segments == ["playQueues", "1"]
             && matches!(request.method.as_str(), "GET" | "HEAD")
@@ -14142,7 +14142,7 @@ impl Runtime {
                 full != history_key && full.rsplit('/').next().unwrap_or_default() != history_key
             });
             if self.history.len() == before {
-                return Response::error(404, "simplex: no such history row");
+                return Response::error(404, "rex: no such history row");
             }
             info!("HISTORY delete {history_key}");
             self.dirty = true;
@@ -14160,7 +14160,7 @@ impl Runtime {
                 let full = string_value(row.get("historyKey").unwrap_or(&Value::Null));
                 full == requested || full.rsplit('/').next().unwrap_or_default() == requested
             }) else {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             };
             let mut projection = Map::new();
             for name in [
@@ -14198,9 +14198,9 @@ impl Runtime {
         if path == "/services/codecs" && matches!(request.method.as_str(), "GET" | "HEAD" | "OPTIONS")
         {
             // server.py, cycle 45: a 403 on kids and zen (both unclaimed copies 404 it,
-            // so it tracks claimed state, and simplex reports `claimed="1"`). Never
+            // so it tracks claimed state, and rex reports `claimed="1"`). Never
             // ported: this server answered the ordinary 404.
-            return Response::error(403, "simplex: forbidden");
+            return Response::error(403, "rex: forbidden");
         }
         if path == "/hubs/continueWatching/items" {
             return self.route_continue_watching_items(query);
@@ -14233,7 +14233,7 @@ impl Runtime {
                 // parses them -- kids answers `resolution=1` 200 at
                 // `contentDirectoryID=1` and 500 at `=2`.
                 if let Err(status) = self.filtered_tv_leaves(query, true) {
-                    return Response::error(status, "simplex: bad request");
+                    return Response::error(status, "rex: bad request");
                 }
             }
             return Response::json(200, self.promoted_hubs(query));
@@ -14284,14 +14284,14 @@ impl Runtime {
                         rows = Some(self.recently_added_tv(query.get("sectionID"), Some(leaves)));
                     }
                     Ok(None) => {}
-                    Err(status) => return Response::error(status, "simplex: bad request"),
+                    Err(status) => return Response::error(status, "rex: bad request"),
                 }
             }
             if let Some(personal) = query.get("personal") {
                 // Cycle 54: the 0/1 option; cycle 55: only the movie list (and the
                 // always-empty others) empties at 1, the TV list is unchanged.
                 if !bool_option(personal) {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 if personal.trim_start_matches('+').trim_start_matches('0') == "1" && type_id != "2"
                 {
@@ -14354,7 +14354,7 @@ impl Runtime {
                 let (page, paged, start, total) = match page_window(projected, query) {
                     Ok(window) => window,
                     Err(status) => {
-                        return Response::error(status, "simplex: bad container parameter")
+                        return Response::error(status, "rex: bad container parameter")
                     }
                 };
                 let mut fields = Map::from_iter([
@@ -14415,7 +14415,7 @@ impl Runtime {
                 None
             };
             let Some(row) = row else {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             };
             let section = row
                 .get("librarySectionID")
@@ -14482,10 +14482,10 @@ impl Runtime {
                 .trim_end_matches("/continueWatching/items")
                 .trim_end_matches('/');
             if section_key.is_empty() || self.section(section_key).is_none() {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             if !Self::valid_content_directory(query) {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return self.route_section_continue_watching_items(section_key);
         }
@@ -14496,10 +14496,10 @@ impl Runtime {
         {
             let section_key = segments[2];
             let Some(section) = self.section(section_key) else {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             };
             if request.method != "GET" && request.method != "HEAD" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             if let Some(raw_item) = query.get("metadataItemId") {
                 // Measured on both servers: naming an item -- even with an empty id --
@@ -14510,12 +14510,12 @@ impl Runtime {
                 // library -- is the 400, as are an empty value, a word, `1.5`, ` 1` and
                 // `2147483648`.
                 if !int_param(raw_item, Some(32)) {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 let item = raw_item.parse::<i64>().unwrap_or(0);
                 if item != -1 {
                     if self.catalog.get(&item.to_string()).is_some() {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                     return Response::json(
                         200,
@@ -14581,7 +14581,7 @@ impl Runtime {
             // the identifier, nothing else -- for a movie library, a show library and a
             // section id the server does not have alike.
             if !matches!(request.method.as_str(), "GET" | "HEAD") {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return Response::json(
                 200,
@@ -14602,7 +14602,7 @@ impl Runtime {
             if segments.len() == 3 && !section_key.is_empty() && !section_key.contains('?') {
                 return self.route_section_hubs(section_key, query);
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if path == "/hubs" && request.method == "PUT" {
             return Response::empty(200);
@@ -14632,7 +14632,7 @@ impl Runtime {
                 .get("type")
                 .and_then(|value| value.parse::<i64>().ok())
             else {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             };
             let agent = query.get("agent").map(String::as_str).unwrap_or("None");
             // The list depends on the type AND the agent; a legacy or unknown
@@ -14664,7 +14664,7 @@ impl Runtime {
         }
         if segments == ["library", "sections", "all", "refresh"] {
             if request.method != "GET" && request.method != "POST" && request.method != "DELETE" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             if request.method != "DELETE" {
                 // Measured on a writable copy: this scans EVERY library, one after another.
@@ -14699,7 +14699,7 @@ impl Runtime {
                     Some(_) => &["GET", "HEAD"],
                 };
                 if !allowed.contains(&request.method.as_str()) {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 if segments.get(3) == Some(&"composite")
                     && matches!(request.method.as_str(), "GET" | "HEAD")
@@ -14708,15 +14708,15 @@ impl Runtime {
                     // `/composite/{version}` answers, the version all digits (cycle 45)
                     // and inside int32 (cycle 36's guard, a 400 past it).
                     let Some(version) = segments.get(4).filter(|_| segments.len() == 5) else {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     };
                     if version.is_empty() || !version.bytes().all(|b| b.is_ascii_digit()) {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     if version.len() > 10 || version.parse::<u64>().unwrap_or(u64::MAX) >= 1 << 31 {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
-                    // A real PMS builds a 400x600 mosaic of the members' posters; simplex
+                    // A real PMS builds a 400x600 mosaic of the members' posters; rex
                     // has no imaging library, so it serves one member's own poster
                     // (`composite_for`) at the TMDB variant nearest the asked width, and
                     // a library with no artwork the generated tile.
@@ -14726,13 +14726,13 @@ impl Runtime {
                     // composite is the ordinary 404 -- with and without Plex Web's
                     // `width`, `height`, `rows`, `cols`, `border`, `media` and `repeat`,
                     // under every Accept -- and so is `/photo/:/transcode` of it. A
-                    // library with members is a jpeg (kids). simplex drew a generated
+                    // library with members is a jpeg (kids). rex drew a generated
                     // tile for it.
                     if !self.catalog.items().iter().any(|row| {
                         string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
                             == section_key
                     }) {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     let art = self
                         .catalog
@@ -14793,11 +14793,11 @@ impl Runtime {
                     }
                     if request.method == "DELETE" {
                         if self.catalog.sections.len() <= 1 {
-                            return Response::error(400, "simplex: bad request");
+                            return Response::error(400, "rex: bad request");
                         }
                         let title =
                             section.get("title").map_or_else(|| "None".to_string(), string_value);
-                        let uuid = format!("simplex-library-delete-{}", now());
+                        let uuid = format!("rex-library-delete-{}", now());
                         let activity = |event: &str, progress: i64| {
                             json!({"ActivityNotification": {
                                 "event": event,
@@ -14885,13 +14885,13 @@ impl Runtime {
                 }
                 if segments.len() == 4 && segments[3] == "onDeck" {
                     if request.method != "GET" && request.method != "HEAD" {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     // Cycle 20/55: `/onDeck` parses `type=` the way a listing does --
                     // `abc` and an empty value are 500s -- where the added subsets
                     // ignore it.
                     if let Err(status) = listing::parsed_type(query, 500, None) {
-                        return Response::error(status, "simplex: bad type");
+                        return Response::error(status, "rex: bad type");
                     }
                     // Cycle 28: the FULL detail row; cycle 55: ordered by the
                     // view-state write time, then index and id; cycle 30: no `Field`
@@ -14944,7 +14944,7 @@ impl Runtime {
                     let (page, paged, start, total) = match page_window(rows, query) {
                         Ok(window) => window,
                         Err(status) => {
-                            return Response::error(status, "simplex: bad container parameter")
+                            return Response::error(status, "rex: bad container parameter")
                         }
                     };
                     let is_show = kind == "episode";
@@ -14982,7 +14982,7 @@ impl Runtime {
                     // Cycle 45: an EMPTY container carrying `art`, `thumb` and `title1`
                     // and nothing else, for exactly four names.
                     if !matches!(segments[4], "genre" | "mood" | "style" | "decade") {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     let is_show = section.get("type").and_then(Value::as_str) == Some("show");
                     return Response::json(
@@ -15000,7 +15000,7 @@ impl Runtime {
                 }
                 if segments.len() == 4 && segments[3] == "arts" {
                     if request.method != "GET" && request.method != "HEAD" {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     return self.section_arts(section);
                 }
@@ -15017,7 +15017,7 @@ impl Runtime {
                     )
                 {
                     if request.method != "GET" && request.method != "HEAD" {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     let kind = section
                         .get("type")
@@ -15029,7 +15029,7 @@ impl Runtime {
                         return self.section_timeline_response(section_key, &section);
                     }
                     if leaf == "nearest" {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                     let is_show = kind == "show";
                     // `server.py` `section_leaf`: the resource art/thumb pair rides on every
@@ -15064,13 +15064,13 @@ impl Runtime {
                     }
                     if leaf == "computePath" {
                         let Some(start) = query.get("startID") else {
-                            return Response::error(400, "simplex: bad request");
+                            return Response::error(400, "rex: bad request");
                         };
                         let Some(end) = query.get("endID") else {
-                            return Response::error(400, "simplex: bad request");
+                            return Response::error(400, "rex: bad request");
                         };
                         if self.catalog.get(start).is_none() || self.catalog.get(end).is_none() {
-                            return Response::error(404, "simplex: not found");
+                            return Response::error(404, "rex: not found");
                         }
                         fields.shift_remove("allowSync");
                         fields.insert("size".to_string(), json!(0));
@@ -15091,7 +15091,7 @@ impl Runtime {
                         let mut rows = self.typed_section_rows(section_key, type_number);
                         if let Some(asked) = query.get("type") {
                             let Ok(number) = asked.parse::<i64>() else {
-                                return Response::error(500, "simplex: bad request");
+                                return Response::error(500, "rex: bad request");
                             };
                             rows.retain(|candidate| {
                                 let candidate_number =
@@ -15111,7 +15111,7 @@ impl Runtime {
                             .collect::<Vec<_>>();
                         rows = match self.filter_rows(rows, &filter_pairs, kind) {
                             Ok(rows) => rows,
-                            Err(status) => return Response::error(status, "simplex: bad request"),
+                            Err(status) => return Response::error(status, "rex: bad request"),
                         };
                         // A movie library's leaves default to titleSort; a show
                         // library's keep the show order they arrive in.
@@ -15124,7 +15124,7 @@ impl Runtime {
                             rows = match self.sort_rows(rows, sort) {
                                 Ok(rows) => rows,
                                 Err(status) => {
-                                    return Response::error(status, "simplex: bad request")
+                                    return Response::error(status, "rex: bad request")
                                 }
                             };
                         }
@@ -15134,14 +15134,14 @@ impl Runtime {
                             rows = match self.grouped(rows, group) {
                                 Ok(rows) => rows,
                                 Err(status) => {
-                                    return Response::error(status, "simplex: bad request")
+                                    return Response::error(status, "rex: bad request")
                                 }
                             };
                         }
                         // Measured on kids and zen: `limit=` applies here as on `/all`.
                         let rows = match listing::limited(rows, query) {
                             Ok(rows) => rows,
-                            Err(status) => return Response::error(status, "simplex: bad request"),
+                            Err(status) => return Response::error(status, "rex: bad request"),
                         };
                         let exclude_media = query
                             .get("excludeElements")
@@ -15197,7 +15197,7 @@ impl Runtime {
                     )
                 {
                     if request.method != "GET" && request.method != "HEAD" {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     let kind = section
                         .get("type")
@@ -15208,7 +15208,7 @@ impl Runtime {
                     // `type=`, while the recently-viewed-shows pair refuses it (500).
                     if matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
                         if let Err(status) = listing::parsed_type(query, 500, None) {
-                            return Response::error(status, "simplex: bad type");
+                            return Response::error(status, "rex: bad type");
                         }
                     }
                     let mut fields = Map::from_iter([
@@ -15287,7 +15287,7 @@ impl Runtime {
                             .collect::<Vec<_>>();
                         rows = match self.filter_rows(rows, &filter_pairs, kind) {
                             Ok(rows) => rows,
-                            Err(status) => return Response::error(status, "simplex: bad request"),
+                            Err(status) => return Response::error(status, "rex: bad request"),
                         };
                     }
                     if kind == "show" && matches!(leaf, "recentlyAddedGrandparents") {
@@ -15423,7 +15423,7 @@ impl Runtime {
                                 Ok((page, true, start, total)) => (page, Some(start), total),
                                 Ok((page, false, _, total)) => (page, None, total),
                                 Err(status) => {
-                                    return Response::error(status, "simplex: bad request")
+                                    return Response::error(status, "rex: bad request")
                                 }
                             }
                         } else {
@@ -15443,7 +15443,7 @@ impl Runtime {
                 }
                 if segments.len() == 4 && matches!(segments[3], "recentlyAdded" | "newest") {
                     if request.method != "GET" && request.method != "HEAD" {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     let mut rows = self
                         .section_rows(section_key)
@@ -15463,7 +15463,7 @@ impl Runtime {
                 }
                 if segments.len() == 4 && segments[3] == "allLeaves" {
                     if request.method != "GET" && request.method != "HEAD" {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     let section_kind = section
                         .get("type")
@@ -15472,7 +15472,7 @@ impl Runtime {
                     let type_number = if let Some(value) = query.get("type") {
                         match value.parse::<i64>() {
                             Ok(number) => Some(number),
-                            Err(_) => return Response::error(500, "simplex: bad request"),
+                            Err(_) => return Response::error(500, "rex: bad request"),
                         }
                     } else if section_kind == "show" {
                         Some(4)
@@ -15487,18 +15487,18 @@ impl Runtime {
                     }
                     rows = match self.filter_rows(rows, pairs, section_kind) {
                         Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "simplex: bad request"),
+                        Err(status) => return Response::error(status, "rex: bad request"),
                     };
                     rows = match self.sort_rows(rows, query.get("sort").map(String::as_str)) {
                         Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "simplex: bad request"),
+                        Err(status) => return Response::error(status, "rex: bad request"),
                     };
                     if let Some(group) = query.get("group") {
                         // Cycle 14: the section `allLeaves` takes `group=` too -- the
                         // same as the grid's `type=4&group=index`.
                         rows = match self.grouped(rows, group) {
                             Ok(rows) => rows,
-                            Err(status) => return Response::error(status, "simplex: bad request"),
+                            Err(status) => return Response::error(status, "rex: bad request"),
                         };
                     }
                     let mut rows = rows
@@ -15533,19 +15533,19 @@ impl Runtime {
                 }
                 if segments.len() == 5 && segments[3] == "query" && segments[4] == "parse" {
                     if request.method != "GET" && request.method != "HEAD" {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     if query
                         .get("type")
                         .is_some_and(|value| value.parse::<i64>().is_err())
                     {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                     if query
                         .get("limit")
                         .is_some_and(|value| value.parse::<i64>().is_err())
                     {
-                        return Response::error(500, "simplex: bad request");
+                        return Response::error(500, "rex: bad request");
                     }
                     let type_number = query
                         .get("type")
@@ -15595,7 +15595,7 @@ impl Runtime {
                     )
                     .ok();
                     if query.get("sort").is_some() && order.is_none() {
-                        return Response::error(500, "simplex: bad request");
+                        return Response::error(500, "rex: bad request");
                     }
                     // Cycle 20: a `sourceType` other than 1 brings the DEFAULT order with
                     // it (an explicit `sort=` still wins), and one that is not a whole
@@ -15604,7 +15604,7 @@ impl Runtime {
                         query.get("sourceType").map(String::as_str),
                     ) {
                         Ok(source) => source,
-                        Err(_) => return Response::error(500, "simplex: bad request"),
+                        Err(_) => return Response::error(500, "rex: bad request"),
                     };
                     let order = match order {
                         Some(order) if !order.is_empty() => Some(order),
@@ -15694,7 +15694,7 @@ impl Runtime {
                         if let Some(force) = query.get("force") {
                             let digits = force.trim_start_matches('-');
                             if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-                                return Response::error(400, "simplex: bad request");
+                                return Response::error(400, "rex: bad request");
                             }
                         }
                     }
@@ -15707,7 +15707,7 @@ impl Runtime {
                         _ => request.method == "PUT",
                     };
                     if !allowed {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     let section = section.clone();
                     let section_key = section_key.to_string();
@@ -15759,7 +15759,7 @@ impl Runtime {
                     }
                     if matches!(segments[3], "emptyTrash" | "analyze") {
                         let leaf = segments[3];
-                        info!("SECTION {leaf} {section_key} -- nothing to {leaf}, simplex owns no files");
+                        info!("SECTION {leaf} {section_key} -- nothing to {leaf}, rex owns no files");
                     }
                     return Response::empty(200);
                 }
@@ -15787,7 +15787,7 @@ impl Runtime {
                         .to_string();
                     let asked = match listing::parsed_type(query, 500, None) {
                         Ok(asked) => asked,
-                        Err(status) => return Response::error(status, "simplex: bad request"),
+                        Err(status) => return Response::error(status, "rex: bad request"),
                     };
                     let own = if kind == "show" { 2 } else { 1 };
                     let asked = asked.unwrap_or(own);
@@ -15815,12 +15815,12 @@ impl Runtime {
                         .collect::<Vec<_>>();
                     let rows = match self.filter_rows(rows, &filter_pairs, &kind) {
                         Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "simplex: bad request"),
+                        Err(status) => return Response::error(status, "rex: bad request"),
                     };
                     if let Some(sort) = query.get("sort") {
                         // Cycle 55: the leaf VALIDATES `sort=` and then ignores it.
                         if let Err(status) = self.sort_rows(Vec::<Value>::new(), Some(sort)) {
-                            return Response::error(status, "simplex: bad request");
+                            return Response::error(status, "rex: bad request");
                         }
                     }
                     let rows = self.sort_rows(rows, Some("titleSort")).unwrap_or_default();
@@ -15898,7 +15898,7 @@ impl Runtime {
                         .filter(|rows| !rows.is_empty())
                         .unwrap_or_else(|| {
                             vec![json!({
-                                "title": format!("/simplex/{section_key}"),
+                                "title": format!("/rex/{section_key}"),
                                 "key": section_key,
                                 "fastKey": format!("/library/sections/{section_key}/all?location={section_key}")
                             })]
@@ -15966,7 +15966,7 @@ impl Runtime {
                                     | "rating"
                             ));
                     if (bucketless && segments[4] != "top") || deep_bucket {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                 }
                 if matches!(request.method.as_str(), "GET" | "HEAD") {
@@ -16021,7 +16021,7 @@ impl Runtime {
                                 | "composite"
                                 | "stations"
                         ) {
-                            return Response::error(404, "simplex: not found");
+                            return Response::error(404, "rex: not found");
                         }
                     }
                 }
@@ -16151,7 +16151,7 @@ impl Runtime {
                         // Cycle 55: a signed 32-bit integer (`2147483648` is a 400, `+1`
                         // the movie list), measured on zen and kids.
                         if !int_param(value, Some(32)) {
-                            return Response::error(400, "simplex: bad request");
+                            return Response::error(400, "rex: bad request");
                         }
                         value.trim_start_matches('+').parse::<i64>().unwrap_or(0)
                     } else {
@@ -16268,7 +16268,7 @@ impl Runtime {
                         .get("type")
                         .is_some_and(|value| value.parse::<i64>().is_err())
                     {
-                        return Response::error(500, "simplex: bad request");
+                        return Response::error(500, "rex: bad request");
                     }
                     let section_type = section
                         .get("type")
@@ -16326,12 +16326,12 @@ impl Runtime {
                         .collect::<Vec<_>>();
                     let rows = match self.filter_rows(rows, &filtered_pairs, &section_type) {
                         Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "simplex: bad request"),
+                        Err(status) => return Response::error(status, "rex: bad request"),
                     };
                     let sort = query.get("sort").map(String::as_str).unwrap_or("titleSort");
                     let rows = match self.sort_rows(rows, Some(sort)) {
                         Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "simplex: bad request"),
+                        Err(status) => return Response::error(status, "rex: bad request"),
                     };
                     let projected = rows
                         .iter()
@@ -16356,7 +16356,7 @@ impl Runtime {
                         .get("type")
                         .is_some_and(|value| value.parse::<i64>().is_err())
                     {
-                        return Response::error(500, "simplex: bad request");
+                        return Response::error(500, "rex: bad request");
                     }
                     let section_type = section
                         .get("type")
@@ -16636,7 +16636,7 @@ impl Runtime {
                         .map(|(name, value)| (name.clone(), value.clone()))
                         .collect::<Vec<_>>();
                     if self.write_section_prefs(section_key, &kind, &writes).is_err() {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                     return Response::empty(200);
                 }
@@ -16725,7 +16725,7 @@ impl Runtime {
                 }
                 if segments[3] == "autocomplete" {
                     if request.method != "GET" && request.method != "HEAD" {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     }
                     return self.section_autocomplete(section_key, section, query, pairs);
                 }
@@ -16743,7 +16743,7 @@ impl Runtime {
                     warning!("UNKNOWN section leaf {leaf} on section {section_key}");
                 }
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if segments.starts_with(&["library", "metadata"]) && segments.len() >= 3 {
             let key = segments[2].to_string();
@@ -16752,7 +16752,7 @@ impl Runtime {
                     .keys()
                     .all(|name| name.starts_with("X-Plex-") || name == "includeExternalMedia")
                 {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 let keys = key
                     .split(',')
@@ -16760,7 +16760,7 @@ impl Runtime {
                     .map(str::to_string)
                     .collect::<Vec<_>>();
                 if keys.iter().any(|child| self.catalog.get(child).is_none()) {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 let pairs = Self::request_pairs(request);
                 return self.apply_edit(&keys, &pairs, false, "loading");
@@ -16781,7 +16781,7 @@ impl Runtime {
                         );
                     }
                 }
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             if key.contains(',')
                 && matches!(request.method.as_str(), "GET" | "HEAD")
@@ -16792,7 +16792,7 @@ impl Runtime {
                     .filter_map(|member| self.catalog.get(member).cloned())
                     .collect::<Vec<_>>();
                 if members.is_empty() {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 let first = members.first().cloned().unwrap_or(Value::Null);
                 let section_key =
@@ -16851,7 +16851,7 @@ impl Runtime {
                 // Cycle 45: a row the theme metadata leaf minted is readable at its own
                 // key, and only as a bare read.
                 if segments.len() > 3 || !matches!(request.method.as_str(), "GET" | "HEAD") {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 return Response::json(
                     200,
@@ -16903,11 +16903,11 @@ impl Runtime {
             if let Some(collection) = self.collections.get(&key).cloned() {
                 return self.route_collection_metadata(&collection, &segments[3..], query, request);
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if segments.starts_with(&["library", "streams"]) && segments.len() >= 3 {
             if segments.len() > 3 {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             let raw_id = segments[2];
             // Measured on both servers: `.srt` and `.vtt` are the sidecar extraction by
@@ -16924,9 +16924,9 @@ impl Runtime {
                 // is a DELETE of a NON-NUMERIC one -- `DELETE /library/streams/abc` is a
                 // 400 where `DELETE /library/streams/999999` is a 404.
                 if request.method == "PUT" || request.method == "DELETE" {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             };
             if request.method == "GET" || request.method == "HEAD" {
                 for row in self.catalog.items() {
@@ -16952,7 +16952,7 @@ impl Runtime {
                                     let Some(content) =
                                         stream.get("_content").and_then(Value::as_str)
                                     else {
-                                        return Response::error(501, "simplex: not implemented");
+                                        return Response::error(501, "rex: not implemented");
                                     };
                                     return Response {
                                         status: 200,
@@ -16968,7 +16968,7 @@ impl Runtime {
                         }
                     }
                 }
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             if request.method == "PUT" {
                 // Measured on a writable copy: a PUT to a stream it HAS is 200 with an
@@ -16999,7 +16999,7 @@ impl Runtime {
                 if known {
                     return Response::empty(200);
                 }
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             if request.method == "DELETE" {
                 let mut found = false;
@@ -17034,16 +17034,16 @@ impl Runtime {
                     }
                 }
                 if !found {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 if !uploaded {
-                    return Response::error(403, "simplex: forbidden");
+                    return Response::error(403, "rex: forbidden");
                 }
                 self.dirty = true;
                 self.save_if_dirty();
                 return Response::empty(200);
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if segments.starts_with(&["library", "parts"]) && segments.len() >= 3 {
             return self.route_part(&segments[2..], query, request);
@@ -17067,7 +17067,7 @@ impl Runtime {
             );
         }
         if path == "/library" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if path == "/system" || path.starts_with("/system/") {
             // Framework misses are deliberately bodyless.  The normal
@@ -17090,7 +17090,7 @@ impl Runtime {
             self.unknown.drain(..1000);
         }
         warning!("UNKNOWN {method} {path}");
-        Response::error(404, "simplex: not found")
+        Response::error(404, "rex: not found")
     }
 
     fn route_plugin_prefix(&self, path: &str) -> Option<Response> {
@@ -17202,7 +17202,7 @@ impl Runtime {
                 .get("sourceType")
                 .is_some_and(|raw| !int_param(raw, Some(32)))
         {
-            return Response::error(500, "simplex: bad sourceType");
+            return Response::error(500, "rex: bad sourceType");
         }
         // `server.py` `typed_rows`: repeated DISTINCT types AND, and a row has one type,
         // so they select nothing -- inside the ordinary listing container.
@@ -17228,13 +17228,13 @@ impl Runtime {
             if !int_param(value.trim(), Some(32)) {
                 return Response::error(
                     if request.method == "PUT" { 400 } else { 500 },
-                    "simplex: bad request",
+                    "rex: bad request",
                 );
             }
         }
         if let Some(value) = query.get("limit") {
             if value.parse::<i64>().is_err() {
-                return Response::error(500, "simplex: bad request");
+                return Response::error(500, "rex: bad request");
             }
         }
         if matches!(request.method.as_str(), "GET" | "HEAD") && tail.is_empty() {
@@ -17246,7 +17246,7 @@ impl Runtime {
                 .and_then(Value::as_str)
                 .map(|kind| if kind == "show" { "2" } else { "1" });
             if let Some(status) = listing::file_filter_refusal(query, false, default_type) {
-                return Response::error(status, "simplex: cannot filter on file");
+                return Response::error(status, "rex: cannot filter on file");
             }
         }
         if tail.first() == Some(&"refresh") {
@@ -17266,21 +17266,21 @@ impl Runtime {
                 "1"
             };
             if let Some(status) = listing::file_filter_refusal(query, false, Some(default_type)) {
-                return Response::error(status, "simplex: cannot filter on file");
+                return Response::error(status, "rex: cannot filter on file");
             }
         }
         if tail.first() == Some(&"collections") {
             if !matches!(request.method.as_str(), "GET" | "HEAD") {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return self.route_collections(query);
         }
         if !matches!(request.method.as_str(), "GET" | "HEAD" | "PUT") {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if request.method == "PUT" {
             let Some(type_number) = query.get("type").and_then(|v| v.parse::<i64>().ok()) else {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             };
             if query.keys().any(|name| {
                 name.starts_with("movie.")
@@ -17291,7 +17291,7 @@ impl Runtime {
                     || name.contains("<<")
                     || name.contains("!=")
             }) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             let selected = query.get("id").cloned().unwrap_or_default();
             if pairs.iter().filter(|(name, _)| name == "id").count() > 1 {
@@ -17364,14 +17364,14 @@ impl Runtime {
                 query.get("sort").map(String::as_str),
             ) {
                 Ok(rows) => rows,
-                Err(status) => return Response::error(status, "simplex: bad request"),
+                Err(status) => return Response::error(status, "rex: bad request"),
             };
             // `server.py`: the collections run through `listing_container` -- the
             // library's listing container, and the light projection of each row
             // (no librarySection fields, `Guid` only under `includeGuids`).
             let rows = match listing::limited(rows, query) {
                 Ok(rows) => rows,
-                Err(status) => return Response::error(status, "simplex: bad request"),
+                Err(status) => return Response::error(status, "rex: bad request"),
             };
             let rows = rows
                 .into_iter()
@@ -17397,7 +17397,7 @@ impl Runtime {
             let (page, paged, start, total) = match page_window(rows, query) {
                 Ok(window) => window,
                 Err(status) => {
-                    return Response::error(status, "simplex: bad container parameter")
+                    return Response::error(status, "rex: bad container parameter")
                 }
             };
             let kind = self
@@ -17485,12 +17485,12 @@ impl Runtime {
             .collect::<Vec<_>>();
         rows = match self.filter_rows(rows, &filtered_pairs, section_type) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: bad request"),
+            Err(status) => return Response::error(status, "rex: bad request"),
         };
         // Cycle 18/20: the listing refusals (`parentIndex`, a `resolution` outside the
         // enum, an unparseable `sourceType`).
         if let Some(status) = listing::listing_refusals(query, &[]) {
-            return Response::error(status, "simplex: bad request");
+            return Response::error(status, "rex: bad request");
         }
         // Cycle 55, measured on zen and kids: a `sourceType` other than 1 ORDERS the
         // grid by id; an explicit `sort=` still wins.
@@ -17569,20 +17569,20 @@ impl Runtime {
                 if let Some(key) = peek_unsupported_sort() {
                     warning!("UNSUPPORTED sort key {}", crate::filters::py_repr(&key));
                 }
-                return Response::error(status, "simplex: bad request");
+                return Response::error(status, "rex: bad request");
             }
         };
         let rows = if let Some(group) = query.get("group") {
             match self.grouped(rows, group) {
                 Ok(rows) => rows,
-                Err(status) => return Response::error(status, "simplex: bad request"),
+                Err(status) => return Response::error(status, "rex: bad request"),
             }
         } else {
             rows
         };
         let rows = match listing::limited(rows, query) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: bad request"),
+            Err(status) => return Response::error(status, "rex: bad request"),
         };
         let exclude_media = query
             .get("excludeElements")
@@ -17791,14 +17791,14 @@ impl Runtime {
         request: &Request,
     ) -> Response {
         if request.method != "GET" && request.method != "HEAD" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let kind = section
             .get("type")
             .and_then(Value::as_str)
             .unwrap_or("movie");
         let wanted_type = if kind == "show" { 4 } else { 1 };
-        let root = format!("/simplex/{section_key}/");
+        let root = format!("/rex/{section_key}/");
         let mut placed = Vec::<(Vec<String>, String, Value)>::new();
         for row in self.choose_rows(Some(section_key), Some(wanted_type)) {
             let Some(file) = row
@@ -17892,7 +17892,7 @@ impl Runtime {
         // alone and read an unparseable value as 0.
         let (page, paged, start, total) = match page_window(rows, query) {
             Ok(window) => window,
-            Err(status) => return Response::error(status, "simplex: bad request"),
+            Err(status) => return Response::error(status, "rex: bad request"),
         };
         let mut fields = Map::from_iter([
             ("Metadata".to_string(), Value::Array(page)),
@@ -17951,7 +17951,7 @@ impl Runtime {
         request: &Request,
     ) -> Response {
         if request.method != "GET" && request.method != "HEAD" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         // Measured: only the form with NO `type` is a 400, and (cycle 20) the
         // type has to PARSE -- `abc`, `1.5` and a single space are 400s.
@@ -17961,7 +17961,7 @@ impl Runtime {
             .unwrap_or_default();
         let digits = raw_type.strip_prefix('-').unwrap_or(&raw_type);
         if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         let type_number = raw_type.parse::<i64>().unwrap_or(0);
         let typed = match type_number {
@@ -18035,7 +18035,7 @@ impl Runtime {
             .collect::<Vec<_>>();
         rows = match self.filter_rows(rows, &filter_pairs, section_type) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: bad request"),
+            Err(status) => return Response::error(status, "rex: bad request"),
         };
         if query.get("sourceType").is_some_and(|value| value == "0") {
             // Cycle 55: `sourceType=0` orders the search box by id.
@@ -18050,7 +18050,7 @@ impl Runtime {
             // on every listing; only an unknown key refuses.
             rows = match self.sort_rows(rows, Some(sort)) {
                 Ok(rows) => rows,
-                Err(status) => return Response::error(status, "simplex: bad request"),
+                Err(status) => return Response::error(status, "rex: bad request"),
             };
         }
         let include_guids = query.get("includeGuids").is_some_and(|value| value == "1");
@@ -18156,13 +18156,13 @@ impl Runtime {
         request: &Request,
     ) -> Response {
         if request.method != "GET" && request.method != "HEAD" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let Some(type_number) = query
             .get("type")
             .and_then(|value| value.parse::<i64>().ok())
         else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         // server.py's `common_fields`: the fields the selected rows SHARE, the
         // differing ones named in `mixedFields` (a FIXED order, "" when none).
@@ -18201,7 +18201,7 @@ impl Runtime {
         };
         rows = match self.filter_rows(rows, &filter_pairs, &section_type) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: bad request"),
+            Err(status) => return Response::error(status, "rex: bad request"),
         };
         rows.retain(|row| row.get("type").and_then(Value::as_str) == Some(wanted));
         // An episode's copies of its show's Genre, studio, tagline and Country are
@@ -18480,7 +18480,7 @@ impl Runtime {
         request: &Request,
     ) -> Response {
         if request.method != "GET" && request.method != "HEAD" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let tag_number = match leaf {
             "genre" | "title" => Some(1),
@@ -18492,7 +18492,7 @@ impl Runtime {
             _ => None,
         };
         if !SECTION_TOP_KNOWN.contains(&leaf) {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if tag_number.is_none() {
             let section = self.section(section_key);
@@ -18697,12 +18697,12 @@ impl Runtime {
             }
             if request.method == "DELETE" {
                 if query.get("proxy").map(String::as_str) == Some("1") {
-                    // Delete Version: simplex has no optimized versions, and a real
+                    // Delete Version: rex has no optimized versions, and a real
                     // PMS answers 400 when there are none to delete.
-                    return Response::error(400, "simplex: no optimized versions");
+                    return Response::error(400, "rex: no optimized versions");
                 }
                 let Some(row) = self.catalog.get(key).cloned() else {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 };
                 // `library.delete`: the row AND its descendants go -- a season takes
                 // its episodes -- and removing a season's LAST episode removes the
@@ -18768,7 +18768,7 @@ impl Runtime {
                 return Response::empty(200);
             }
             if request.method != "GET" && request.method != "HEAD" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             // Apply private-source transformations before projecting the row.
             // `detail_row` deliberately strips every private `_` field and the artwork
@@ -18788,7 +18788,7 @@ impl Runtime {
                 "checkFileAvailability",
             ] {
                 if query.get(option).is_some_and(|value| !bool_option(value)) {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
             }
             let checks_requested = ["checkFiles", "asyncCheckFiles", "checkFileAvailability"]
@@ -18916,7 +18916,7 @@ impl Runtime {
         // MINTS a track row.
         if tail.len() == 3 && tail[0] == "theme" && tail[2] == "metadata" {
             if !matches!(request.method.as_str(), "GET" | "HEAD") {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return self.theme_metadata(key, tail[1]);
         }
@@ -18931,14 +18931,14 @@ impl Runtime {
             && !(tail.len() == 2
                 && matches!((tail[0], tail[1]), ("extras", "all") | ("users", "top")))
         {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if matches!(
             tail[0],
             "thumb" | "art" | "poster" | "banner" | "theme" | "clearLogo"
         ) && tail.len() > 2
         {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         // Cycle 45: the SINGULAR artwork leaf is routed for six names and answers its
         // own 400 to a PUT with no `url`.
@@ -18950,7 +18950,7 @@ impl Runtime {
             )
             && query.get("url").map_or(true, |url| url.is_empty())
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if request.method == "POST" && tail.len() == 1 {
             match tail[0] {
@@ -18961,11 +18961,11 @@ impl Runtime {
                 | "subtitles"
                     if request.body.is_empty() =>
                 {
-                    return Response::error(406, "simplex: not acceptable");
+                    return Response::error(406, "rex: not acceptable");
                 }
                 // Cycle 16: `/extras` is the one candidate list that refuses a POST
                 // with a 400 whatever the body.
-                "extras" => return Response::error(400, "simplex: bad request"),
+                "extras" => return Response::error(400, "rex: bad request"),
                 _ => {}
             }
         }
@@ -18978,9 +18978,9 @@ impl Runtime {
             "banners" | "thumbs" if tail.len() == 1 => {
                 // Cycle 14: two more candidate lists, 200 on kids AND zen: `banners`
                 // is empty on both and `thumbs` lists the media bundle's video
-                // thumbnails, which simplex has none of. Only GET and HEAD read them.
+                // thumbnails, which rex has none of. Only GET and HEAD read them.
                 if request.method != "GET" && request.method != "HEAD" {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 Response::json(200, self.tag_container(Map::new()))
             }
@@ -18990,11 +18990,11 @@ impl Runtime {
             "allLeaves" | "grandchildren"
                 if row.get("type").and_then(Value::as_str) == Some("clip") =>
             {
-                Response::error(404, "simplex: not found")
+                Response::error(404, "rex: not found")
             }
             "grandchildren" => {
                 if request.method != "GET" && request.method != "HEAD" {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
                 let mut rows = match kind {
@@ -19024,12 +19024,12 @@ impl Runtime {
                 if !filter_pairs.is_empty() {
                     rows = match self.filter_rows(rows, &filter_pairs, &section_type) {
                         Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "simplex: bad request"),
+                        Err(status) => return Response::error(status, "rex: bad request"),
                     };
                 }
                 if let Some(type_value) = query.get("type") {
                     let Ok(type_number) = type_value.parse::<i64>() else {
-                        return Response::error(500, "simplex: bad request");
+                        return Response::error(500, "rex: bad request");
                     };
                     rows.retain(|candidate| {
                         let candidate_type = match candidate.get("type").and_then(Value::as_str) {
@@ -19046,7 +19046,7 @@ impl Runtime {
                 if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
                     rows = match self.sort_rows(rows, Some(sort)) {
                         Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "simplex: bad request"),
+                        Err(status) => return Response::error(status, "rex: bad request"),
                     };
                 }
                 let section = self
@@ -19103,13 +19103,13 @@ impl Runtime {
                 // completed it.  Measured: rows only for an item with views, and a
                 // SEASON is a 500 on the reference.
                 if row.get("type").and_then(Value::as_str) == Some("season") {
-                    return Response::error(500, "simplex: top users unavailable");
+                    return Response::error(500, "rex: top users unavailable");
                 }
                 // Cycle 54: the viewedAt keys filter the history counted here too (a
                 // bad value is a 500); `accountID` does not.
                 let tests = match Self::history_date_tests(query) {
                     Ok(tests) => tests,
-                    Err(status) => return Response::error(status, "simplex: internal error"),
+                    Err(status) => return Response::error(status, "rex: internal error"),
                 };
                 // Unfiltered, the count is every completed view ever recorded (the
                 // oracle's `global_views`), which a deleted history row does not lower;
@@ -19159,7 +19159,7 @@ impl Runtime {
                     row.get("type").and_then(Value::as_str),
                     Some("movie" | "episode" | "clip" | "track")
                 ) {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 let section_key = string_value(row.get("librarySectionID").unwrap_or(&Value::Null));
                 let section_type = self
@@ -19209,13 +19209,13 @@ impl Runtime {
                 if !filter_pairs.is_empty() {
                     children = match self.filter_rows(children, &filter_pairs, section_type) {
                         Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "simplex: bad request"),
+                        Err(status) => return Response::error(status, "rex: bad request"),
                     };
                 }
                 if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
                     children = match self.sort_rows(children, Some(sort)) {
                         Ok(rows) => rows,
-                        Err(status) => return Response::error(status, "simplex: bad request"),
+                        Err(status) => return Response::error(status, "rex: bad request"),
                     };
                 }
                 let group = row.get("type").and_then(Value::as_str) == Some("show");
@@ -19362,7 +19362,7 @@ impl Runtime {
                     let mut leaves = self.leaves(key);
                     if let Some(value) = query.get("unwatched") {
                         if !bool_option(value) {
-                            return Response::error(400, "simplex: bad request");
+                            return Response::error(400, "rex: bad request");
                         }
                         if value.trim_start_matches('+').trim_start_matches('0') == "1" {
                             leaves.retain(|leaf| !watched_leaf(leaf));
@@ -19448,10 +19448,10 @@ impl Runtime {
             "nearest" => {
                 for (name, value) in query {
                     if name == "excludeParentID" && value.parse::<i32>().is_err() {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                     if name == "maxDistance" && value.parse::<f64>().is_err() {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                 }
                 // `tag_container(size=0)`: no `allowSync`.
@@ -19501,7 +19501,7 @@ impl Runtime {
                     row.get("type").and_then(Value::as_str),
                     Some("season" | "episode")
                 ) {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 let mut rows = self
                     .similar_rows(row)
@@ -19524,11 +19524,11 @@ impl Runtime {
             }
             "extras" => {
                 if tail.len() > 1 && tail[1] != "all" {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 // Cycle 16: a POST here is a 400 whatever the body.
                 if request.method == "POST" {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 // The oracle's `tag_container(allowSync=False)`: the identifier and
                 // media-tag pair ride along with an explicit `allowSync`.
@@ -19547,7 +19547,7 @@ impl Runtime {
                     // and with or without a region -- `en`, `EN`, `en-US` and `de` search,
                     // where `xx`, `eng` and an empty value are 500s.
                     let Some(language) = query.get("language") else {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     };
                     let code = language
                         .split('-')
@@ -19555,7 +19555,7 @@ impl Runtime {
                         .unwrap_or_default()
                         .to_lowercase();
                     if !SUBTITLE_LANGUAGES.contains(&code.as_str()) {
-                        return Response::error(500, "simplex: internal error");
+                        return Response::error(500, "rex: internal error");
                     }
                     // The oracle's `tag_container(size=0, Stream=[])`: the library
                     // identity without `allowSync`.
@@ -19572,15 +19572,15 @@ impl Runtime {
                 // With neither a title nor bytes the answer is 406, not the 500 a
                 // missing title gets on its own.
                 if request.body.is_empty() {
-                    return Response::error(406, "simplex: not acceptable");
+                    return Response::error(406, "rex: not acceptable");
                 }
                 // `upload_subtitle`: no title, or one with no `.`, is a 500; the stem is
                 // what `rpartition(".")` leaves, an empty one included.
                 let Some(title) = query.get("title").filter(|value| !value.is_empty()) else {
-                    return Response::error(500, "simplex: internal error");
+                    return Response::error(500, "rex: internal error");
                 };
                 let Some((stem, extension)) = title.rsplit_once('.') else {
-                    return Response::error(500, "simplex: internal error");
+                    return Response::error(500, "rex: internal error");
                 };
                 // `query.get("format") or extension`: an EMPTY format is the extension.
                 let format = query
@@ -19593,10 +19593,10 @@ impl Runtime {
                 // text file named `.txt` is accepted when the form says srt,
                 // while an upper-case SRT value is refused.
                 if !matches!(format, "psb" | "srt" | "ass" | "ssa" | "smi" | "txt") {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 if request.body.is_empty() || !request.body_complete {
-                    return Response::error(406, "simplex: not acceptable");
+                    return Response::error(406, "rex: not acceptable");
                 }
                 // Measured on the copy: the new stream's id is the next after the
                 // highest the server holds, and it is the Stream the reference writes:
@@ -19643,7 +19643,7 @@ impl Runtime {
                 stream_row.insert("_content".to_string(), json!(content));
                 let stream = Value::Object(stream_row);
                 let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 };
                 // Every part of every Media: the new track deselects the subtitle in all
                 // of them and joins the FIRST part, as `upload_subtitle` does.
@@ -19657,7 +19657,7 @@ impl Runtime {
                     .filter_map(Value::as_object_mut)
                     .collect::<Vec<_>>();
                 if parts.is_empty() {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 for part in parts.iter_mut() {
                     for existing in part
@@ -19688,30 +19688,30 @@ impl Runtime {
             "posters" | "arts" => {
                 match request.method.as_str() {
                     // Measured: the plural path is a 404 for a write.
-                    "PUT" => Response::error(404, "simplex: not found"),
+                    "PUT" => Response::error(404, "rex: not found"),
                     // Cycle 15: an empty upload body is a 406.
                     "POST" if request.body.is_empty() => {
-                        Response::error(406, "simplex: not acceptable")
+                        Response::error(406, "rex: not acceptable")
                     }
                     "POST" => {
                         let body = request.body.clone();
                         self.upload_artwork(key, tail[0], &body)
                     }
                     "GET" | "HEAD" => self.artwork_list(row, tail[0]),
-                    _ => Response::error(404, "simplex: not found"),
+                    _ => Response::error(404, "rex: not found"),
                 }
             }
             "thumbs" | "banners" | "themes" | "clearLogos" if request.method == "POST" => {
                 // Cycle 15: every candidate list answers a POST as an upload does.
                 if request.body.is_empty() {
-                    return Response::error(406, "simplex: not acceptable");
+                    return Response::error(406, "rex: not acceptable");
                 }
                 let body = request.body.clone();
                 self.upload_artwork(key, tail[0], &body)
             }
             "clearLogos" | "themes" => {
                 if request.method != "GET" && request.method != "HEAD" {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 // Measured: both are candidate lists in the tag container, EMPTY for an
                 // item with none.  Cycle 59: an UPLOAD is a candidate here, selected
@@ -19788,18 +19788,18 @@ impl Runtime {
                             .push(("Accept-Ranges".to_string(), "bytes".to_string()));
                         response
                     }
-                    _ => Response::error(404, "simplex: not found"),
+                    _ => Response::error(404, "rex: not found"),
                 }
             }
             "art" | "thumb" | "poster" => self.route_art(key, row, tail, query, request),
             "file" => {
                 if request.method != "GET" && request.method != "HEAD" {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 // Measured: without its `url` a 400; with a url naming one of this
                 // row's candidates it serves that image (cycle 17); otherwise a 404.
                 let Some(url) = query.get("url").filter(|url| !url.is_empty()) else {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 };
                 let wanted = percent_decode(&url.replace("%2E", "."));
                 match self.uploads.get(&wanted) {
@@ -19811,14 +19811,14 @@ impl Runtime {
                             .push(("Accept-Ranges".to_string(), "bytes".to_string()));
                         response
                     }
-                    None => Response::error(404, "simplex: not found"),
+                    None => Response::error(404, "rex: not found"),
                 }
             }
             "tree" => self.route_tree(row),
-            "userState" => Response::error(404, "simplex: not found"),
+            "userState" => Response::error(404, "rex: not found"),
             "merge" => {
                 if request.method != "PUT" && request.method != "POST" {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 // Measured on a writable copy: no `ids` is a 400, an id the server
                 // does not have a 404, a row of another type a 400.
@@ -19832,15 +19832,15 @@ impl Runtime {
                     })
                     .unwrap_or_default();
                 if ids.is_empty() {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 let mut others = Vec::new();
                 for other in &ids {
                     let Some(value) = self.catalog.get(other).cloned() else {
-                        return Response::error(404, "simplex: no such item");
+                        return Response::error(404, "rex: no such item");
                     };
                     if value.get("type") != row.get("type") {
-                        return Response::error(400, "simplex: bad request");
+                        return Response::error(400, "rex: bad request");
                     }
                     others.push((other.clone(), value));
                 }
@@ -19917,7 +19917,7 @@ impl Runtime {
             }
             "split" => {
                 if request.method != "PUT" && request.method != "POST" {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 self.route_split(key)
             }
@@ -19927,7 +19927,7 @@ impl Runtime {
                 // Measured: `GET .../refresh` and `/analyze` are 404s, and cycle 17:
                 // a POST on an item ACTION leaf is a 404 too -- only PUT runs it.
                 if request.method != "PUT" {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 }
                 let kind = row
                     .get("type")
@@ -19989,7 +19989,7 @@ impl Runtime {
             leaf => {
                 // Includes `/move`: ordering is done through the list that holds a row.
                 warning!("UNKNOWN item leaf {leaf} on {key}");
-                Response::error(404, "simplex: not found")
+                Response::error(404, "rex: not found")
             }
         }
     }
@@ -20002,14 +20002,14 @@ impl Runtime {
         request: &Request,
     ) -> Response {
         if request.method != "PUT" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
         if kind == "episode" {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if kind != "show" && kind != "season" && kind != "movie" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let valid = if kind == "show" {
             [
@@ -20040,10 +20040,10 @@ impl Runtime {
             .keys()
             .any(|name| name.starts_with("X-Plex-") || !valid.contains(&name.as_str()))
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if query.is_empty() {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if kind == "movie" {
             let unmatched = row
@@ -20055,17 +20055,17 @@ impl Runtime {
                         || value.starts_with("tv.plex.agents.none://")
                 });
             if unmatched {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
         }
         let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         let settings = object
             .entry("_prefs".to_string())
             .or_insert_with(|| Value::Object(Map::new()));
         let Some(settings) = settings.as_object_mut() else {
-            return Response::error(500, "simplex: internal error");
+            return Response::error(500, "rex: internal error");
         };
         for (name, value) in query {
             settings.insert(name.clone(), json!(value));
@@ -20183,7 +20183,7 @@ impl Runtime {
     /// episode index is left alone. Frames: every removed row state 9 untitled, then
     /// each changed episode state 3/5 under type -1.
     /// `composite_for`'s image: a real PMS builds a 400x600 mosaic of the members'
-    /// posters; simplex has no imaging library, so it serves the first member's own
+    /// posters; rex has no imaging library, so it serves the first member's own
     /// poster (else its backdrop) at the TMDB variant nearest the width -- one of the
     /// images that mosaic is made of -- fetched once the lock is released, and the
     /// generated tile only when no member has artwork.
@@ -20237,7 +20237,7 @@ impl Runtime {
     ///
     /// Shape measured on a real PMS: SearchResult rows of {guid, name, year, score,
     /// thumb, type, lifespanEnded, summary}. The guid each row carries is the one the
-    /// client sends straight back to `PUT .../match`, so it has to be a guid simplex can
+    /// client sends straight back to `PUT .../match`, so it has to be a guid rex can
     /// resolve again -- hence the candidate map, which remembers which TMDB id minted it.
     fn route_item_matches(&mut self, row: &Value, query: &HashMap<String, String>) -> Response {
         let Some(tmdb) = &self.tmdb else {
@@ -20424,7 +20424,7 @@ impl Runtime {
             .get("name")
             .filter(|_| matches!(request.method.as_str(), "PUT" | "POST"))
         else {
-            return Response::error(400, "simplex: match needs a name");
+            return Response::error(400, "rex: match needs a name");
         };
         let guid = query.get("guid").cloned().unwrap_or_default();
         let section = row
@@ -20630,14 +20630,14 @@ impl Runtime {
         // Cycle 52: the artwork read leaves take GET, HEAD, PUT and DELETE and answer
         // the ordinary 404 to every other verb.
         if !matches!(method, "GET" | "HEAD" | "PUT" | "DELETE" | "PATCH") {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         // And the VERSIONED path is not the write.
         if method == "PUT" && tail.len() >= 2 {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if matches!(method, "GET" | "HEAD") && !owns_artwork(row, leaf) {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if leaf == "thumb" && method == "DELETE" {
             leaf = "poster";
@@ -20652,18 +20652,18 @@ impl Runtime {
             }
             // Cycle 31: `DELETE .../{poster,thumb,art}` is a 404 on 1.42.2.
             if method == "DELETE" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
         }
         if method != "GET" && method != "HEAD" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let field = if leaf == "art" { "art" } else { "thumb" };
         if row.get(field).map_or(true, Value::is_null) {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         // `artwork_for`: the poster for `thumb`/`poster`, the backdrop (else the poster)
-        // for `art`. `thumb` is the leaf that carries the size: simplex cannot resize, so
+        // for `art`. `thumb` is the leaf that carries the size: rex cannot resize, so
         // it asks TMDB for the published variant nearest the width. The singular
         // `poster`/`art` read is the image the row points at, as stored.
         let url = if field == "thumb" {
@@ -21080,17 +21080,17 @@ impl Runtime {
             && ((tail.len() >= 2 && matches!(request.method.as_str(), "PUT" | "DELETE"))
                 || (tail.len() == 1 && request.method == "DELETE"))
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if tail.len() == 3 && tail[0] == "items" && tail[2] == "move" && request.method == "PUT" {
             let Some(item_id) = tail[1].parse::<i64>().ok() else {
-                return Response::error(404, "simplex: no such playlist item");
+                return Response::error(404, "rex: no such playlist item");
             };
             let Some(stored) = self.playlists.get_mut(&playlist.id) else {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             };
             let Some(index) = stored.item_ids.iter().position(|value| *value == item_id) else {
-                return Response::error(404, "simplex: no such playlist item");
+                return Response::error(404, "rex: no such playlist item");
             };
             // Measured: moving an item after ITSELF leaves the order alone (it
             // would otherwise read as an unknown `after` and go to the front).
@@ -21147,7 +21147,7 @@ impl Runtime {
             );
         }
         if tail.first() == Some(&"items") && request.method == "POST" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         // The metadata alias still resolves a playlist's `/prefs` spelling
         // through the ordinary item writer.  It is a malformed field write,
@@ -21155,17 +21155,17 @@ impl Runtime {
         // missing playlist endpoint (the `/playlists/{id}/prefs` spelling is
         // a different, unimplemented route).
         if tail.first() == Some(&"prefs") {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if (tail.first() == Some(&"items") || tail.first() == Some(&"children"))
             && (request.method == "GET" || request.method == "HEAD")
         {
             let type_filter = if let Some(value) = query.get("type") {
                 let Ok(value) = value.parse::<f64>() else {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 };
                 if value.fract() != 0.0 {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 Some(value as i64)
             } else {
@@ -21174,7 +21174,7 @@ impl Runtime {
             // Cycle 16, measured on plexscratch: a `type=` above the leaf reaches UP
             // from each member to the parents it belongs to -- a list of episodes
             // answers its show to `type=2` and its seasons to `type=3`, de-duplicated
-            // in member order -- the oracle's `_playlist_ancestry`. simplex reached
+            // in member order -- the oracle's `_playlist_ancestry`. rex reached
             // DOWN from a stored show instead, which only answered while a list could
             // hold a show at all.
             let wanted_kind = match type_filter {
@@ -21277,18 +21277,18 @@ impl Runtime {
                 .collect::<Vec<_>>();
             if let Some(year_filter) = query.get("year>>=") {
                 let Ok(year) = year_filter.parse::<i64>() else {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 };
                 rows.retain(|row| row.get("year").and_then(Value::as_i64).unwrap_or(0) >= year);
             }
             if let Some(sort) = query.get("sort") {
                 if sort != "" && sort != "titleSort" && sort != "titleSort:asc" {
-                    return Response::error(500, "simplex: bad request");
+                    return Response::error(500, "rex: bad request");
                 }
             }
             if let Some(limit) = query.get("limit") {
                 if limit.parse::<i64>().is_err() {
-                    return Response::error(500, "simplex: bad request");
+                    return Response::error(500, "rex: bad request");
                 }
             }
             // The container repeats the list's own identity.  Measured: its
@@ -21335,7 +21335,7 @@ impl Runtime {
         }
         if tail.first() == Some(&"composite") {
             if request.method != "GET" && request.method != "HEAD" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             let rows = self
                 .playlist_keys(playlist)
@@ -21380,7 +21380,7 @@ impl Runtime {
             // Cycle 16, measured on plexscratch: a list answers these two the way an
             // ITEM does -- 200 with an empty candidate container.
             if !matches!(request.method.as_str(), "GET" | "HEAD") {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return Response::json(
                 200,
@@ -21392,7 +21392,7 @@ impl Runtime {
         if tail == ["tree"] {
             // Cycle 16: a list has a `/tree` too, a single `MetadataItem` naming itself.
             if !matches!(request.method.as_str(), "GET" | "HEAD") {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return Response::json(
                 200,
@@ -21418,7 +21418,7 @@ impl Runtime {
             }
             let requested = keys.len();
             let Some(stored) = self.playlists.get_mut(&playlist.id) else {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             };
             let mut added = 0_i64;
             // Re-adding the whole library checks 40,000 rows against 40,000 members:
@@ -21509,9 +21509,9 @@ impl Runtime {
                     );
                 }
             }
-            return Response::error(404, "simplex: no such playlist item");
+            return Response::error(404, "rex: no such playlist item");
         }
-        Response::error(404, "simplex: not found")
+        Response::error(404, "rex: not found")
     }
 
     fn route_playlist_path(
@@ -21540,29 +21540,29 @@ impl Runtime {
         }
         if segments.len() == 1 && segments[0] == "all" {
             if request.method != "GET" && request.method != "HEAD" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return self.route_playlist_all(query);
         }
         if segments.len() == 1 && segments[0] == "upload" {
             if request.method != "POST" {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             let Some(section) = query.get("sectionID") else {
-                return Response::error(400, "simplex: sectionID required");
+                return Response::error(400, "rex: sectionID required");
             };
             let Some(path) = query.get("path") else {
-                return Response::error(400, "simplex: path required");
+                return Response::error(400, "rex: path required");
             };
             if self.section(section).is_none() {
-                return Response::error(400, "simplex: sectionID required");
+                return Response::error(400, "rex: sectionID required");
             }
             let _ = path;
-            return Response::error(500, "simplex: playlist importer unavailable");
+            return Response::error(500, "rex: playlist importer unavailable");
         }
         let id = segments[0];
         if id.parse::<i64>().is_ok_and(|value| value > i32::MAX as i64) {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if id == "39999" {
             if request.method == "GET" || request.method == "HEAD" {
@@ -21598,7 +21598,7 @@ impl Runtime {
                     );
                 }
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if request.method == "DELETE" && segments.len() == 1 {
             let title = self
@@ -21616,7 +21616,7 @@ impl Runtime {
             return if existed {
                 Response::empty(204)
             } else {
-                Response::error(404, "simplex: not found")
+                Response::error(404, "rex: not found")
             };
         }
         if request.method == "PUT" && segments.len() == 1 {
@@ -21647,9 +21647,9 @@ impl Runtime {
                 let numeric =
                     !segments[2].is_empty() && segments[2].bytes().all(|b| b.is_ascii_digit());
                 return if p.smart || numeric {
-                    Response::error(400, "simplex: bad request")
+                    Response::error(400, "rex: bad request")
                 } else {
-                    Response::error(404, "simplex: no such playlist item")
+                    Response::error(404, "rex: no such playlist item")
                 };
             }
             // Cycle 16, measured on plexscratch: a playlist's artwork lives under
@@ -21662,25 +21662,25 @@ impl Runtime {
                 ))
                 || matches!(segments.get(1), Some(&"thumbs" | &"banners" | &"tree"))
             {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return self.route_playlist_metadata(&p, &segments[1..], query, request);
         }
-        Response::error(404, "simplex: not found")
+        Response::error(404, "rex: not found")
     }
 
     fn create_playlist(&mut self, query: &HashMap<String, String>) -> Response {
         let Some(title) = query.get("title") else {
-            return Response::error(400, "simplex: title required");
+            return Response::error(400, "rex: title required");
         };
         let Some(kind) = query.get("type") else {
-            return Response::error(400, "simplex: type required");
+            return Response::error(400, "rex: type required");
         };
         if !matches!(kind.as_str(), "video" | "audio" | "photo") {
-            return Response::error(500, "simplex: unsupported playlist type");
+            return Response::error(500, "rex: unsupported playlist type");
         }
         let Some(uri) = query.get("uri") else {
-            return Response::error(400, "simplex: uri required");
+            return Response::error(400, "rex: uri required");
         };
         let source_rows = self.rows_for_uri(uri);
         let mismatch = kind == "audio"
@@ -21734,7 +21734,7 @@ impl Runtime {
         self.dirty = true;
         self.save_if_dirty();
         if mismatch {
-            return Response::error(400, "simplex: playlist type mismatch");
+            return Response::error(400, "rex: playlist type mismatch");
         }
         Response::json(
             200,
@@ -21786,10 +21786,10 @@ impl Runtime {
                 .iter()
                 .any(|name| !allowed.contains(&name.as_str()) && !name.starts_with("label["))
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         let Some(playlist) = self.playlists.get_mut(id) else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         if let Some(title) = query.get("title.value").or_else(|| query.get("title")) {
             playlist.title = title.clone();
@@ -21845,7 +21845,7 @@ impl Runtime {
             if stream_type == 3 {
                 let number = number.unwrap_or(0);
                 if number < -1 {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 wanted.push((3, (if number == -1 { 0 } else { number }).to_string()));
             } else {
@@ -21853,7 +21853,7 @@ impl Runtime {
                     continue;
                 };
                 if number == 0 || number < -1 {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 wanted.push((2, number.to_string()));
             }
@@ -21873,7 +21873,7 @@ impl Runtime {
                 })
         });
         let Some(owner_index) = owner_index else {
-            return Response::error(404, "simplex: no such part");
+            return Response::error(404, "rex: no such part");
         };
         if wanted.is_empty() {
             return Response::empty(200);
@@ -21923,7 +21923,7 @@ impl Runtime {
                 warning!(
                     "STREAM SELECT refused: {chosen} is not a type-{stream_type} stream of {owner_key}"
                 );
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
         }
         let all_parts = query.get("allParts").is_some_and(|value| value == "1");
@@ -21995,7 +21995,7 @@ impl Runtime {
             if matches!(request.method.as_str(), "PUT" | "POST") && segments.len() == 1 {
                 return self.select_stream(segments[0], query);
             }
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         // A terminated playback session is refused before the byte URL is
         // resolved.  PMS applies this gate to the complete `/parts/{id}/...`
@@ -22011,7 +22011,7 @@ impl Runtime {
                     "PART {} refused: session {session_id} terminated",
                     segments.first().copied().unwrap_or_default()
                 );
-                return Response::error(503, "simplex: session terminated");
+                return Response::error(503, "rex: session terminated");
             }
         }
         // Cycle 52: PMS's route table spells this leaf
@@ -22022,7 +22022,7 @@ impl Runtime {
             || (segments.len() == 3
                 && (segments[1].is_empty() || !segments[1].bytes().all(|b| b.is_ascii_digit())))
         {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let part_id = segments
             .first()
@@ -22060,21 +22060,21 @@ impl Runtime {
             }
         }
         let Some(part) = part else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         // Cycle 29: `download=` is one of the 0/1 options, anything else a 400.
         if query
             .get("download")
             .is_some_and(|value| !bool_option(value))
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         // The bytes are a source's (`source.rs`): a feed row names its source and path, a
         // catalog row's file is under a source's mount. With no source at all the read is
         // routed and its source unreachable -- the 502 a dead provider link was -- and a
         // file under no source's mount is no part anything can serve.
         let Some(file) = part.get("file").and_then(Value::as_str).filter(|file| !file.is_empty()) else {
-            return Response::error(404, "simplex: no such part");
+            return Response::error(404, "rex: no such part");
         };
         let Some((source, path)) = self.part_source(&owner, file) else {
             if self.sources.is_empty() || owner.get("_source").is_some() {
@@ -22083,9 +22083,9 @@ impl Runtime {
                     segments.first().copied().unwrap_or(""),
                     owner.get("_source").and_then(Value::as_str).unwrap_or("at all")
                 );
-                return Response::error(502, "simplex: upstream failed");
+                return Response::error(502, "rex: upstream failed");
             }
-            return Response::error(404, "simplex: no such part");
+            return Response::error(404, "rex: no such part");
         };
         // The Download context-menu entry is the same Part read with `download=1`; the
         // only difference a real PMS makes is the disposition header, which is what
@@ -22181,7 +22181,7 @@ impl Runtime {
                 .headers
                 .push(("Vary".to_string(), "Origin".to_string()));
         }
-        // Measured: every byte response from a real PMS carries BOTH validators. simplex
+        // Measured: every byte response from a real PMS carries BOTH validators. rex
         // owns no file to hash, so the ETag is a digest of what identifies these bytes
         // (part id, the row's addedAt, size) and Last-Modified is that stamp.
         let stamp = ["addedAt", "updatedAt"]
@@ -22249,7 +22249,7 @@ impl Runtime {
         let relative = relative.trim_end_matches('/');
         let assets = load_json_sidecar(&self.catalog_path, "resource_assets.json");
         let Some(assets) = assets.as_ref().and_then(Value::as_object) else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         if relative.is_empty()
             || assets
@@ -22269,7 +22269,7 @@ impl Runtime {
             };
         }
         let Some(asset) = assets.get(relative).and_then(Value::as_object) else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         let content_type = asset
             .get("type")
@@ -22304,7 +22304,7 @@ impl Runtime {
 
     fn route_web(&self, segments: &[&str], head: bool, trailing_slash: bool) -> Response {
         let Some(root) = &self.web_root else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         let relative = if segments.is_empty() {
             PathBuf::from("index.html")
@@ -22313,13 +22313,13 @@ impl Runtime {
         };
         let path = root.join(relative);
         let Ok(canonical_root) = fs::canonicalize(root) else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         let Ok(canonical) = fs::canonicalize(&path) else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         if !canonical.starts_with(&canonical_root) {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let mut response = if canonical.is_dir() {
             // Cycle 29: a DIRECTORY is an empty `application/octet-stream` 200 on both
@@ -22327,10 +22327,10 @@ impl Runtime {
             Response::bytes(200, "application/octet-stream")
         } else if trailing_slash && !segments.is_empty() {
             // Cycle 29: a trailing slash after a FILE is a 404.
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         } else {
             let Ok(body) = fs::read(&canonical) else {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             };
             let mut response = Response::bytes(200, content_type(path.to_string_lossy().as_ref()));
             // The envelope drops a HEAD's body and keeps its length.
@@ -22457,7 +22457,7 @@ fn take_error_note() -> Option<(u16, String)> {
 
 thread_local! {
     /// The sort key `_sorted` could not order by, for the request being answered: the
-    /// oracle's refusal names it (`simplex: unsupported sort key <key>`), where the
+    /// oracle's refusal names it (`rex: unsupported sort key <key>`), where the
     /// native sorters carry only the status back up.
     static UNSUPPORTED_SORT: std::cell::RefCell<Option<String>> =
         const { std::cell::RefCell::new(None) };
@@ -22565,7 +22565,7 @@ impl Response {
     fn error(status: u16, message: &str) -> Self {
         // Cycle 36, measured on kids and zen: every refusal on the surface answers the
         // reference's own `text/html` document (85 bytes for a 404, 89 for a 400), never
-        // a simplex sentence. The sentence is kept for the log only.
+        // a rex sentence. The sentence is kept for the log only.
         ERROR_NOTE.with(|note| *note.borrow_mut() = Some((status, message.to_string())));
         Self {
             status,
@@ -22659,7 +22659,7 @@ fn local_host_name() -> String {
     // within it on success.
     let status = unsafe { libc::gethostname(buffer.as_mut_ptr().cast(), buffer.len()) };
     if status != 0 {
-        return "simplex".to_string();
+        return "rex".to_string();
     }
     let end = buffer
         .iter()
@@ -22858,10 +22858,10 @@ fn start_gdm(runtime: SharedRuntime, mode: &str, port: u16) {
     // `server.py`: `auto` discovers only on the standard port. A test instance on any
     // other port stays off the wire, so its `/servers` lists itself alone rather than
     // whatever servers happen to share its LAN. The exception is an explicit
-    // `SIMPLEX_GDM_PORTS`: it moves the responder off the host's real udp/32410 and
+    // `REX_GDM_PORTS`: it moves the responder off the host's real udp/32410 and
     // udp/32414, so it cannot claim the host's one GDM identity -- the reason for the
     // gate -- and `test_native_gdm.py` runs `auto` on a test port exactly that way.
-    let explicit_ports = std::env::var("SIMPLEX_GDM_PORTS")
+    let explicit_ports = std::env::var("REX_GDM_PORTS")
         .map(|value| value.split(',').any(|p| p.trim().parse::<u16>().is_ok()))
         .unwrap_or(false);
     if mode.eq_ignore_ascii_case("auto") && port != 32400 && !explicit_ports {
@@ -23117,21 +23117,21 @@ fn start_state_saver(runtime: SharedRuntime) {
 }
 
 /// `server.py` `main()`'s state file. A real PMS keeps everything a client changes in
-/// its database, so a state database is the default: `simplex.db` beside a JSON
+/// its database, so a state database is the default: `rex.db` beside a JSON
 /// catalog, like `tmdb_cache.json` and `claim_state.json`, or the catalog's own
 /// database when the catalog is one (`build_catalog.py --out *.db`). `--no-state` (or an empty
-/// `SIMPLEX_STATE`) turns it off, which is what the test suites run with: their
+/// `REX_STATE`) turns it off, which is what the test suites run with: their
 /// checks assume a restart reloads the fixture. The default is the server's data
 /// directory, held by an advisory lock for the life of the process; a second server
 /// finding it held refuses to start, as a second PMS does. An explicit `--state` is
 /// taken as given.
 fn resolve_state_path(options: &RuntimeOptions) -> Option<PathBuf> {
     // `--state` and `--no-state` share one destination, so the last one given wins;
-    // `--no-state` (an empty path) and an empty `SIMPLEX_STATE` both mean none.
+    // `--no-state` (an empty path) and an empty `REX_STATE` both mean none.
     let named = options
         .state
         .clone()
-        .or_else(|| std::env::var_os("SIMPLEX_STATE").map(PathBuf::from));
+        .or_else(|| std::env::var_os("REX_STATE").map(PathBuf::from));
     if let Some(path) = named {
         return Some(path).filter(|path| !path.as_os_str().is_empty());
     }
@@ -23140,7 +23140,7 @@ fn resolve_state_path(options: &RuntimeOptions) -> Option<PathBuf> {
     let path = if store::is_sqlite(&catalog) {
         catalog.clone()
     } else {
-        directory.join("simplex.db")
+        directory.join("rex.db")
     };
     if !path.exists() {
         let _ = LEGACY_STATE.set(directory.join("state.json"));
@@ -23170,7 +23170,7 @@ fn resolve_state_path(options: &RuntimeOptions) -> Option<PathBuf> {
         // exits 1 at once. Running on without the file instead served clients whose
         // every write vanished at the next restart, or, when this server came back
         // first, the other server's writes in their place.
-        error!("state file {} is in use by another simplex", path.display());
+        error!("state file {} is in use by another rex", path.display());
         println!("Plex Media Server is already running. Will not start...");
         std::process::exit(1);
     }
@@ -23220,7 +23220,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         info!(
             "source {}: feed {}",
             source.name,
-            if source.token.is_some() { "on at /simplex/feed/" } else { "off (no token)" }
+            if source.token.is_some() { "on at /rex/feed/" } else { "off (no token)" }
         );
     }
     let runtime = Arc::new(Mutex::new(loaded));
@@ -23269,7 +23269,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
         }
     );
     info!(
-        "simplex on http://{}:{port}  machine={machine}  items={items}  parts={part_mode}",
+        "rex on http://{}:{port}  machine={machine}  items={items}  parts={part_mode}",
         hostname()
     );
     if announce.is_some() && part_mode == "proxy" {
@@ -23359,7 +23359,7 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
                     }
                 });
             }
-            Err(error) => eprintln!("simplex accept: {error}"),
+            Err(error) => eprintln!("rex accept: {error}"),
         }
     }
     Ok(())
@@ -23438,7 +23438,7 @@ fn note_live_request(request: &Request) {
     }
 }
 
-/// `/connections` -- simplex's own live connections, in PMS's line grammar.
+/// `/connections` -- rex's own live connections, in PMS's line grammar.
 fn connection_lines(owner: &str) -> String {
     let Ok(rows) = LIVE_CONNECTIONS.lock() else {
         return String::new();
@@ -23524,9 +23524,9 @@ fn handle_connection<S: Read + Write + PollRead>(
                 let mut response = Response::error(
                     status,
                     if status == 500 {
-                        "simplex: internal error"
+                        "rex: internal error"
                     } else {
-                        "simplex: bad request"
+                        "rex: bad request"
                     },
                 );
                 response.close = true;
@@ -23548,14 +23548,14 @@ fn handle_connection<S: Read + Write + PollRead>(
                 if !served_any {
                     return Ok(());
                 }
-                let response = Response::error(500, "simplex: internal error");
+                let response = Response::error(500, "rex: internal error");
                 write_response(&mut stream, &response, true)?;
                 continue;
             }
             // The oracle's `_unknown_method` answers through `_send`, whose connection
             // state is the REQUEST's like every other answer: a client that asked to
             // close (or spoke HTTP/1.0, or disabled pipelining) is told `close` and
-            // loses the socket. simplex kept every such socket open.
+            // loses the socket. rex kept every such socket open.
             let (_, raw_query) = split_target(&request.target);
             let pipeline_disabled = request
                 .headers
@@ -23573,7 +23573,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                     .map(|v| !v.eq_ignore_ascii_case("close"))
                     .unwrap_or(true)
                 && !pipeline_disabled;
-            let mut response = Response::error(500, "simplex: internal error");
+            let mut response = Response::error(500, "rex: internal error");
             response.close = false;
             write_response(&mut stream, &response, keep)?;
             if !keep {
@@ -23611,9 +23611,9 @@ fn handle_connection<S: Read + Write + PollRead>(
                     .is_some_and(|scheme_end| &request.target[..scheme_end] != "http")
         };
         let (request_path, request_query) = split_target(&request.target);
-        // The feed is simplex's own API, not an emulated PMS route: its source's token
+        // The feed is rex's own API, not an emulated PMS route: its source's token
         // admits it, never the Plex gate (`feed.rs`, `docs/feed-api.md`).
-        if request_path.starts_with("/simplex/feed/") {
+        if request_path.starts_with("/rex/feed/") {
             let keep = request.version == "HTTP/1.1"
                 && request
                     .headers
@@ -23748,11 +23748,11 @@ fn handle_connection<S: Read + Write + PollRead>(
             .is_some_and(String::is_empty);
         let mut part_plan = None;
         let mut response = if invalid_absolute_target || invalid_dot_path {
-            Response::error(400, "simplex: bad request")
+            Response::error(400, "rex: bad request")
         } else if malformed_query {
-            Response::error(400, "simplex: bad request")
+            Response::error(400, "rex: bad request")
         } else if empty_container_size {
-            Response::error(500, "simplex: bad request")
+            Response::error(500, "rex: bad request")
         } else {
             let mut guard = runtime
                 .lock()
@@ -23772,7 +23772,7 @@ fn handle_connection<S: Read + Write + PollRead>(
                 Ok(response) => response,
                 Err(_) => {
                     error!("handler failed for {} {}", request.method, request.target);
-                    Response::error(500, "simplex: internal error")
+                    Response::error(500, "rex: internal error")
                 }
             };
             part_plan = guard.pending_part.take();
@@ -23812,11 +23812,11 @@ fn handle_connection<S: Read + Write + PollRead>(
                 match refusal.filter(|(refused, _)| *refused == status) {
                     Some((_, detail)) => {
                         warning!("REFUSED {request_path}: {detail}");
-                        info!("{status} {} {request_path} -- simplex: {detail}", request.method);
+                        info!("{status} {} {request_path} -- rex: {detail}", request.method);
                     }
                     None => match unsupported.filter(|_| status == 500) {
                         Some(key) => info!(
-                            "{status} {} {request_path} -- simplex: unsupported sort key {key}",
+                            "{status} {} {request_path} -- rex: unsupported sort key {key}",
                             request.method
                         ),
                         None => info!("{status} {} {request_path} -- {sentence}", request.method),
@@ -23950,7 +23950,7 @@ fn handle_websocket<S: Read + Write + PollRead>(
     event_start: usize,
 ) -> Result<(), String> {
     let Some(key) = request.headers.get("sec-websocket-key") else {
-        let response = Response::error(400, "simplex: bad request");
+        let response = Response::error(400, "rex: bad request");
         write_response(stream, &response, false)?;
         return Ok(());
     };
@@ -24753,7 +24753,7 @@ fn parse_chunk_size(line: &str) -> Option<&str> {
     Some(token)
 }
 
-/// Cycle 31, on plexscratch42 (1.42.2, the build simplex reports): PATCH is not in
+/// Cycle 31, on plexscratch42 (1.42.2, the build rex reports): PATCH is not in
 /// the method table at all -- a 500 on every path, `/identity` included, exactly as
 /// `FROB` is. Cycle 15's routed PATCH was 1.43.4's.
 /// `server.py` `section_top`'s vocabulary: every name the server knows as a filter
@@ -24889,7 +24889,7 @@ fn write_response<S: Write>(stream: &mut S, response: &Response, keep: bool) -> 
 /// zen (1.42.2) answers movie 1098 -- two video streams, a selected and an unselected audio,
 /// a selected and four other subtitles -- with the FIRST video, the selected audio and the
 /// selected subtitle; plexscratch42 (1.42.2) answers a row whose two subtitles are both
-/// unselected with video and audio only, under every `subtitles` value. simplex listed every
+/// unselected with video and audio only, under every `subtitles` value. rex listed every
 /// stream of the file. An audio list with no selected track was not measured: left whole.
 fn decision_streams(streams: Vec<Value>) -> Vec<Value> {
     let kind = |stream: &Value| stream.get("streamType").and_then(Value::as_i64);
@@ -25666,7 +25666,7 @@ fn static_sidecar_response(catalog: &Path, name: &str, content_type: &str, head:
         .map(|root| root.join(name))
         .find_map(|path| fs::read(path).ok())
     else {
-        return Response::error(404, "simplex: not found");
+        return Response::error(404, "rex: not found");
     };
     Response {
         status: 200,
@@ -26442,7 +26442,7 @@ fn serve_remote_image(mut response: Response, url: &str) -> Response {
             response.content_type = content_type;
             response
         }
-        None => Response::error(404, "simplex: artwork unavailable"),
+        None => Response::error(404, "rex: artwork unavailable"),
     }
 }
 
@@ -26477,7 +26477,7 @@ fn serve_part_proxy<S: Write>(
     let mut headers: Vec<(&'static str, String)> = Vec::new();
     let want = match &plan.window {
         PartWindow::Unsatisfiable => {
-            info!("416 {} {} -- simplex: range not satisfiable", plan.method, plan.route);
+            info!("416 {} {} -- rex: range not satisfiable", plan.method, plan.route);
             let refusal = Response {
                 status: 416,
                 content_type: "text/html".to_string(),
@@ -26509,7 +26509,7 @@ fn serve_part_proxy<S: Write>(
         // answers for a part it cannot open (zen part 23595).
         Ok(refused) if refused.status == 404 => {
             error!("part {part_id} is unavailable upstream: {}", plan.path);
-            return refuse(stream, 404, "simplex: not found");
+            return refuse(stream, 404, "rex: not found");
         }
         Ok(refused) => {
             error!(
@@ -26517,11 +26517,11 @@ fn serve_part_proxy<S: Write>(
                 refused.status,
                 logging::py_opt(plan.range.as_ref())
             );
-            return refuse(stream, refused.status, "simplex: upstream refused");
+            return refuse(stream, refused.status, "rex: upstream refused");
         }
         Err(error) => {
             error!("PART {part_id} upstream failed: <urlopen error {error}>");
-            return refuse(stream, 502, "simplex: upstream failed");
+            return refuse(stream, 502, "rex: upstream failed");
         }
     };
     let length = match (&plan.window, want) {
@@ -26808,7 +26808,7 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
             }
             Ok(_) => None,
             Err(status) => {
-                *response = Response::error(status, "simplex: bad container parameter");
+                *response = Response::error(status, "rex: bad container parameter");
                 return;
             }
         }

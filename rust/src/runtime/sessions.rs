@@ -2,7 +2,7 @@
 //! ported from `sessions.py` and the `server.py` routes that read them.
 //!
 //! A session is created by `/:/timeline`, keyed by the playback session's identity
-//! (`X-Plex-Session-Identifier`, else the client identifier, else `simplex`), and
+//! (`X-Plex-Session-Identifier`, else the client identifier, else `rex`), and
 //! numbered by a server counter whose first key is 2.  Its `/status/sessions` row is
 //! projected from the LIVE catalog row when the list is read, so an edit made while it
 //! plays shows up on the next read.
@@ -336,7 +336,7 @@ impl Runtime {
         for (name, field) in [("accountID", "accountID"), ("deviceID", "deviceID")] {
             if let Some(value) = query.get(name) {
                 if !int_param(value, None) {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 }
                 let number = value.trim_start_matches('+').parse::<i64>().unwrap_or(0);
                 rows.retain(|row| row.get(field).and_then(Value::as_i64) == Some(number));
@@ -344,7 +344,7 @@ impl Runtime {
         }
         if let Some(lan) = query.get("lan") {
             if !matches!(lan.as_str(), "0" | "1") {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             let want = lan == "1";
             rows.retain(|row| row.get("lan").and_then(Value::as_bool) == Some(want));
@@ -372,7 +372,7 @@ impl Runtime {
             .values()
             .any(|device| device.platform.is_number())
         {
-            return Response::error(500, "simplex: internal error");
+            return Response::error(500, "rex: internal error");
         }
         let rows = self.statistics_devices();
         Response::json(
@@ -390,7 +390,7 @@ impl Runtime {
             .into_iter()
             .find(|row| row.get("id").map(string_value).as_deref() == Some(id))
         else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         Response::json(
             200,
@@ -416,7 +416,7 @@ impl Runtime {
         let identifier = plex_value(query, headers, "X-Plex-Client-Identifier").unwrap_or_default();
         let session_id = plex_value(query, headers, "X-Plex-Session-Identifier")
             .or_else(|| (!identifier.is_empty()).then(|| identifier.clone()))
-            .unwrap_or_else(|| "simplex".to_string());
+            .unwrap_or_else(|| "rex".to_string());
         if !self.sessions.contains_key(&session_id) {
             self.next_session_key += 1;
             self.sessions.insert(
@@ -695,7 +695,7 @@ impl Runtime {
         let rows = self.session_listing();
         let (page, paged, start, total) = match page_window(rows, query) {
             Ok(window) => window,
-            Err(status) => return Response::error(status, "simplex: bad container parameter"),
+            Err(status) => return Response::error(status, "rex: bad container parameter"),
         };
         let mut fields = Map::new();
         fields.insert("size".to_string(), json!(page.len()));
@@ -713,10 +713,10 @@ impl Runtime {
     /// live, and the kill is delivered through that session's NEXT timeline.
     pub(super) fn route_terminate(&mut self, query: &HashMap<String, String>) -> Response {
         let Some(session_id) = query.get("sessionId").filter(|value| !value.is_empty()) else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         if !self.sessions.contains_key(session_id) {
-            return Response::error(404, "simplex: no such session");
+            return Response::error(404, "rex: no such session");
         }
         let text = format!(
             "\"{}\" asked to stop your playback from this server: {}",
@@ -737,10 +737,10 @@ impl Runtime {
         let mut rating_key = query.get("ratingKey").cloned().unwrap_or_default();
         // `state` is the ONE required parameter, and a closed set.
         let Some(state) = query.get("state").filter(|value| !value.is_empty()).cloned() else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         if !["playing", "paused", "buffering", "stopped"].contains(&state.as_str()) {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         let digits = |value: &String| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit());
         let offset = query.get("time");
@@ -748,13 +748,13 @@ impl Runtime {
         if offset.is_some_and(|value| !digits(value))
             || duration.is_some_and(|value| !digits(value))
         {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         let offset_ms = offset.and_then(|value| value.parse::<i64>().ok()).unwrap_or(0);
         let duration_ms = duration.and_then(|value| value.parse::<i64>().ok());
         if let (Some(_), Some(total)) = (offset, duration_ms) {
             if total > 0 && offset_ms > total {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
         }
         // `duration=0` is "no usable duration", the same as sending none.
@@ -763,7 +763,7 @@ impl Runtime {
         let mut in_catalog = numeric_key && self.catalog.get(&rating_key).is_some();
         let mut listed = numeric_key && !in_catalog && self.playlists.contains_key(&rating_key);
         if !rating_key.is_empty() && !in_catalog && !listed {
-            return Response::error(404, "simplex: no such item");
+            return Response::error(404, "rex: no such item");
         }
         // The player reports which queue item it is on, and a real PMS MOVES the
         // queue's selection to it.
@@ -935,7 +935,7 @@ impl Runtime {
                 .is_some_and(|value| !int_param(value, Some(32)))
             {
                 self.save_if_dirty();
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
             if total > 0 {
                 playback_state = if progressed { "progress" } else { "ignore" };
@@ -993,7 +993,7 @@ impl Runtime {
             let session_pair = (
                 plex_value(query, headers, "X-Plex-Session-Identifier")
                     .or_else(|| plex_value(query, headers, "X-Plex-Client-Identifier"))
-                    .unwrap_or_else(|| "simplex".to_string()),
+                    .unwrap_or_else(|| "rex".to_string()),
                 key.clone(),
             );
             if self.decided_sessions.contains(&session_pair)

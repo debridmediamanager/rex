@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The server's memory stays near its library's, at the start and under the home screen.
 
-fun-simplex (2026-10-10), 19,600 rows: 3.5 GB resident and 1.5 GB swapped. heaptrack and
+fun-rex (2026-10-10), 19,600 rows: 3.5 GB resident and 1.5 GB swapped. heaptrack and
 `/proc` on a copy of its database found the start holding every row twice (the saved
 document beside the restored catalog, 1.58 GB) and requests copying whole libraries --
 a page of 50 shows +650 MB, an episode count +1.4 GB at peak, `/hubs` +1.9 GB -- kept
@@ -34,8 +34,8 @@ from server_command import server_command
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY", "PLEX_TOKEN"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY", "PLEX_TOKEN"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "perf-memory", "Accept": "application/json"}
@@ -150,7 +150,7 @@ def main():
     if not sys.platform.startswith("linux"):
         print("SKIP  reads /proc/<pid>/status (Linux only)")
         return
-    directory = tempfile.mkdtemp(prefix="simplex-perf-memory-")
+    directory = tempfile.mkdtemp(prefix="rex-perf-memory-")
     process = None
     try:
         path, seed, rows_mb = catalog(directory)

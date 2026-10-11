@@ -26,13 +26,13 @@ def check(name, ok, detail=""):
     print("%s  %s%s" % ("PASS" if ok else "FAIL", name, "" if ok else "  -- " + str(detail)))
 
 
-work = tempfile.mkdtemp(prefix="simplex-build-")
+work = tempfile.mkdtemp(prefix="rex-build-")
 try:
     document = json.load(open(os.path.join(HERE, "catalog_ui.json")))
     machine = document["machineIdentifier"]
     as_json = os.path.join(work, "catalog.json")
     json.dump(document, open(as_json, "w"))
-    as_db = os.path.join(work, "simplex.db")
+    as_db = os.path.join(work, "rex.db")
     catalogdb.write(as_db, document)
     check("a JSON catalog's machine is kept", build_catalog.existing_machine(as_json) == machine)
     check("a database catalog's machine is kept", build_catalog.existing_machine(as_db) == machine)

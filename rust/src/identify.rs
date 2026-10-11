@@ -336,7 +336,7 @@ pub struct PlexAnswer {
 
 /// The provider's own match for a release name, as a real PMS asks for it. plexlab's
 /// outbound capture (kids, 1.43.4) holds the body a scan sends, `type`, `title`,
-/// `year`, `filename` and the server's own file `hash`, which simplex, reading no
+/// `year`, `filename` and the server's own file `hash`, which rex, reading no
 /// file itself, cannot compute; without it 184 of 198 labelled movies still matched right.
 pub fn plex_match_title(
     p: &dyn PlexSource,

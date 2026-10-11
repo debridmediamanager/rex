@@ -8,7 +8,7 @@ plex.tv considers it present; a server that only ever PUTs once goes stale and
 silently vanishes from every client's server list.
 
 This re-announces once and then polls, recording the moment the resource
-disappears.  The gap is the heartbeat interval any simplex deployment has to
+disappears.  The gap is the heartbeat interval any rex deployment has to
 honour, and it is the reason "register at startup" is not enough.
 
     PLEX_TOKEN=... ./presence.py --url https://host:port --machine <id> --seconds 600
@@ -23,7 +23,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 
-def _get(url, token, client_id="simplex-presence", accept="application/json"):
+def _get(url, token, client_id="rex-presence", accept="application/json"):
     request = urllib.request.Request(
         url,
         headers={
@@ -54,7 +54,7 @@ def announce(token, machine, url, name):
             "X-Plex-Token": token,
             "X-Plex-Client-Identifier": machine,
             "X-Plex-Product": "Plex Media Server",
-            "X-Plex-Version": "1.43.3.6021-simplex",
+            "X-Plex-Version": "1.43.3.6021-rex",
             "X-Plex-Provides": "server",
             "X-Plex-Device-Name": name,
             "Accept": "application/xml",
@@ -89,7 +89,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--machine", required=True)
     parser.add_argument("--url", required=True)
-    parser.add_argument("--name", default="simplex-spike")
+    parser.add_argument("--name", default="rex-spike")
     parser.add_argument("--seconds", type=int, default=600)
     parser.add_argument("--interval", type=int, default=20)
     args = parser.parse_args()

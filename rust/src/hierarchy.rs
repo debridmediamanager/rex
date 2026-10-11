@@ -679,7 +679,7 @@ fn fill_real(rows: &mut [Value]) {
         if kind == "show" {
             let section = str_value(row, "librarySectionID").unwrap_or_default();
             row.entry("Location")
-                .or_insert(json!([{"path":format!("/simplex/{}/{}",section,rk)}]));
+                .or_insert(json!([{"path":format!("/rex/{}/{}",section,rk)}]));
         }
         if kind == "show" || kind == "movie" {
             let title = str_value(row, "title").unwrap_or_default();

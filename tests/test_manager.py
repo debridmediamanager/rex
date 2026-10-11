@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """manager.py: no server runs until one is started, and the manager keeps them running.
 
-Drives a real manager process on a temporary root, managing real simplex processes on
+Drives a real manager process on a temporary root, managing real rex processes on
 `tests/catalog_ui.json`: the native binary by default, the Python oracle with
-`SIMPLEX_SERVER=python` (through a two-line wrapper, since the manager takes one
-executable), or any executable `SIMPLEX_SERVER` names.
+`REX_SERVER=python` (through a two-line wrapper, since the manager takes one
+executable), or any executable `REX_SERVER` names.
 
     python3 tests/test_manager.py
 """
@@ -78,14 +78,14 @@ def get_json(port, path, headers=None):
 
 
 def server_binary(work):
-    configured = os.environ.get("SIMPLEX_SERVER")
+    configured = os.environ.get("REX_SERVER")
     if configured and configured.strip() != "python":
         return configured
     if configured is None:
-        native = os.path.join(ROOT, "rust", "target", "release", "simplex")
+        native = os.path.join(ROOT, "rust", "target", "release", "rex")
         if os.path.exists(native):
             return native
-    wrapper = os.path.join(work, "simplex-python")
+    wrapper = os.path.join(work, "rex-python")
     with open(wrapper, "w") as handle:
         handle.write('#!/bin/sh\nexec "%s" "%s" "$@"\n' % (sys.executable, os.path.join(ROOT, "server.py")))
     os.chmod(wrapper, 0o755)
@@ -153,7 +153,7 @@ print("built", out)
 
 
 def main():
-    work = tempfile.mkdtemp(prefix="simplex-manager-")
+    work = tempfile.mkdtemp(prefix="rex-manager-")
     root = os.path.join(work, "root")
     binary = server_binary(work)
     builder = os.path.join(work, "fake_build_catalog.py")
@@ -170,7 +170,7 @@ def main():
         check("no token is a 401", manager.api("GET", "/servers", token="")[0] == 401)
         check("a wrong token is a 401", manager.api("GET", "/servers", token="nope")[0] == 401)
         page = manager.api("GET", "/", token="")
-        check("the page loads without a token", page[0] == 200 and b"simplex manager" in page[1])
+        check("the page loads without a token", page[0] == 200 and b"rex manager" in page[1])
 
         a, b, c = free_port(), free_port(), free_port()
         status, made = manager.api("POST", "/servers", config("alpha", a, token="gate-secret",
@@ -187,7 +187,7 @@ def main():
         check("no key appears in the listing", "dummy-zurg" not in listed_text
               and "gate-secret" not in listed_text and "tmdb-secret" not in listed_text)
         check("the catalog is copied into the server's database",
-              os.path.exists(os.path.join(root, "servers", "alpha", "simplex.db")))
+              os.path.exists(os.path.join(root, "servers", "alpha", "rex.db")))
         for label, body, want in (
                 ("a duplicate name is a 409", config("alpha", c), 409),
                 ("a duplicate port is a 409", config("other", a), 409),
@@ -264,7 +264,7 @@ def main():
         status, refused = manager.api("POST", "/servers/keyed/start")
         check("it cannot start before its catalog is built",
               status == 409 and "build" in refused.get("error", "") and not answers(e), refused)
-        os.environ["SIMPLEX_MANAGER_BUILDER"] = builder
+        os.environ["REX_MANAGER_BUILDER"] = builder
         manager.stop()
         manager.start()
         status, job = manager.api("POST", "/servers/keyed/build", {"start": True})
@@ -276,7 +276,7 @@ def main():
         check("and the server starts on the catalog it built",
               identity and identity["MediaContainer"]["machineIdentifier"] == machine, identity)
         manager.api("DELETE", "/servers/keyed?purge=1")
-        os.environ.pop("SIMPLEX_MANAGER_BUILDER")
+        os.environ.pop("REX_MANAGER_BUILDER")
         manager.stop()
         manager.start()
 

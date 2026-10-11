@@ -9,7 +9,7 @@ shapes, not "equal to the other server" -- so the file passes on the oracle and 
 native build that has closed the gaps.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `SIMPLEX_SERVER=python`, any other build with `SIMPLEX_SERVER=/path`.
+the oracle with `REX_SERVER=python`, any other build with `REX_SERVER=/path`.
 
     python3 tests/test_parity_metadata.py
 """
@@ -309,10 +309,10 @@ def run(server):
 
 
 def main():
-    port = int(os.environ.get("SIMPLEX_TEST_PORT") or free_port())
-    env = dict(os.environ, SIMPLEX_PLEXTV_URL="http://127.0.0.1:9",
+    port = int(os.environ.get("REX_TEST_PORT") or free_port())
+    env = dict(os.environ, REX_PLEXTV_URL="http://127.0.0.1:9",
                PYTHONDONTWRITEBYTECODE="1")
-    for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+    for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
         env.pop(name, None)
     log = tempfile.TemporaryFile()
     proc = subprocess.Popen(

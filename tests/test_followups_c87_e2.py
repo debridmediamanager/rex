@@ -6,7 +6,7 @@
    `showOrdering=dvd` write and its undo -- seven captures, every one the same 40 frames
    (`tests/fixtures/show_cascade_order_s43.json`). The fixture is reduced to roles (the
    show, the n-th season, the m-th episode of it) and checked against a model of the rule;
-   the model is then applied to simplex's four-season show, whose seasons hold 1, 2, 1
+   the model is then applied to rex's four-season show, whose seasons hold 1, 2, 1
    and 4 episodes, and compared with what the server pushes. The media pass is left out
    of the comparison: it is state-dependent work on real files, none ran on the warm copy.
 2. Section `search?type=18&query=` (cycle 83: "finds an empty collection on plexscratch42;
@@ -27,7 +27,7 @@
    `--skip-race` leaves it out.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `SIMPLEX_SERVER=python`.
+the oracle with `REX_SERVER=python`.
 
     python3 tests/test_followups_c87_e2.py
 """
@@ -51,8 +51,8 @@ CATALOG = os.path.join("tests", "catalog_ui.json")
 ORDER_FIXTURE = os.path.join(HERE, "fixtures", "show_cascade_order_s43.json")
 SEARCH_FIXTURE = os.path.join(HERE, "fixtures", "section_search_collections.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "followups-c87-e2", "Accept": "application/json"}
@@ -68,8 +68,8 @@ def check(name, ok, detail=""):
 
 
 def free_port():
-    """A free port; from `SIMPLEX_TEST_PORTS=LO-HI` when it is set."""
-    configured = os.environ.get("SIMPLEX_TEST_PORTS")
+    """A free port; from `REX_TEST_PORTS=LO-HI` when it is set."""
+    configured = os.environ.get("REX_TEST_PORTS")
     candidates = range(*(int(p) + n for n, p in enumerate(configured.split("-")))) \
         if configured else [0]
     for candidate in candidates:
@@ -81,7 +81,7 @@ def free_port():
             continue
         finally:
             probe.close()
-    raise SystemExit("no free port in SIMPLEX_TEST_PORTS=%s" % configured)
+    raise SystemExit("no free port in REX_TEST_PORTS=%s" % configured)
 
 
 def request(port, method, path, headers=None):
@@ -260,7 +260,7 @@ def order_checks(port):
         children = json.loads(request(port, "GET", "/library/metadata/%s/children"
                                       % season["ratingKey"])[1])["MediaContainer"]
         counts.append(len(children.get("Metadata") or []))
-    check("simplex's show has four seasons of 1, 2, 1, 4 episodes", counts == [1, 2, 1, 4], counts)
+    check("rex's show has four seasons of 1, 2, 1, 4 episodes", counts == [1, 2, 1, 4], counts)
     for value in ("dvd", ""):
         status, frames = capture(port, "PUT", "/library/metadata/%s/prefs?showOrdering=%s"
                                  % (SHOW, value))
@@ -382,7 +382,7 @@ def race_catalog(directory):
 
 
 def race_checks():
-    directory = tempfile.mkdtemp(prefix="simplex-c87-e2-")
+    directory = tempfile.mkdtemp(prefix="rex-c87-e2-")
     try:
         process, port = start(race_catalog(directory))
         try:

@@ -2,7 +2,7 @@
 """The catalog's guids against Plex's own metadata agent. No server, no network.
 
 Cycle 70: the native Plex for Android app never loads a detail page's actions or a
-show's Seasons for an item whose `plex://` guid plex.tv does not know -- and simplex
+show's Seasons for an item whose `plex://` guid plex.tv does not know -- and rex
 minted every guid from a hash. `metadata.apply_plex_guids` relinks a built catalog to
 the agent's guids; this drives it from `tests/fixtures/provider/matches.json`, the
 agent's real answers (per-account `userState` stripped) for a movie match, a show

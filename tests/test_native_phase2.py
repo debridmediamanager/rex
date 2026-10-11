@@ -29,8 +29,8 @@ import metadata  # noqa: E402
 import xmlout  # noqa: E402
 
 
-BIN = os.environ.get("SIMPLEX_NATIVE_BIN",
-                     os.path.join(ROOT, "rust", "target", "debug", "simplex"))
+BIN = os.environ.get("REX_NATIVE_BIN",
+                     os.path.join(ROOT, "rust", "target", "debug", "rex"))
 
 
 def equivalent(left, right):

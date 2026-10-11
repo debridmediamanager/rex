@@ -174,7 +174,7 @@ mod tests {
         let legacy: Map<String, Value> = (0..1500)
             .map(|n| (key.replace("/movie/15173?", &format!("/movie/{}?", 900_000 + n)), value.clone()))
             .collect();
-        let dir = std::env::temp_dir().join(format!("simplex-tmdb-miss-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("rex-tmdb-miss-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join("tmdb_cache.json"), Value::Object(legacy).to_string()).unwrap();

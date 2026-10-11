@@ -1,5 +1,5 @@
 {
- "_provenance": "plexscratch42 (PMS 1.42.2.10156), 2026-10-01 01:xx UTC, cycle 83 B's python-plexapi 4.18.3 write chain (drive60s.py, /private/tmp/simplex-cycle83/B/run60s_s42.json), each step's requests as python-plexapi sent them, machine identifier and section uuid redacted. Section 3 is a show library: show 391 has 3 episodes, show 15 has 9.",
+ "_provenance": "plexscratch42 (PMS 1.42.2.10156), 2026-10-01 01:xx UTC, cycle 83 B's python-plexapi 4.18.3 write chain (drive60s.py, /private/tmp/rex-cycle83/B/run60s_s42.json), each step's requests as python-plexapi sent them, machine identifier and section uuid redacted. Section 3 is a show library: show 391 has 3 episodes, show 15 has 9.",
  "smart_show_collection": {
   "request": "/library/collections?sectionId=3&smart=1&title=C63B%20Smart&type=2&uri=server%3A%2F%2F<machine>%2Fcom.plexapp.plugins.library%2Flibrary%2Fsections%2F3%2Fall%3FincludeGuids%3D1%26limit%3D3%26sort%3Dshow.titleSort%26type%3D2%26episode.unwatched%3D1",
   "childCount": 2,

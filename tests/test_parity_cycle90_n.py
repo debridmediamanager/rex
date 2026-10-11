@@ -4,12 +4,12 @@
 An unseeded `sort=random` -- Plex Web's "Randomly", the Android app's grid, the music
 hubs -- is a fresh UNIFORM order per request on a real PMS. The fixture holds 60
 consecutive reads of the app's own grid request on two references, every order kept.
-simplex ordered by the CRC-32 of `<salt>/<ratingKey>` with a fresh salt: CRC is affine,
+rex ordered by the CRC-32 of `<salt>/<ratingKey>` with a fresh salt: CRC is affine,
 so a new salt only XORs every row's key with one mask, and six movies came out in 8 of
 720 orders -- the "reshuffled" grid repeated itself every few reads.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `SIMPLEX_SERVER=python`.
+default, the oracle with `REX_SERVER=python`.
 
     python3 tests/test_parity_cycle90_n.py
 """
@@ -29,8 +29,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "c90_n_unseeded_random_orders.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"Accept": "application/json", "X-Plex-Client-Identifier": "parity-c90n",
            "X-Plex-Product": "Plex for Android (Mobile)", "X-Plex-Version": "2026.9.0",

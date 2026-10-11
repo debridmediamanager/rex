@@ -199,10 +199,10 @@ impl Runtime {
     /// the body (cycles 15, 17, 29, 59, 61).
     pub(super) fn upload_artwork(&mut self, key: &str, kind: &str, body: &[u8]) -> Response {
         if body.is_empty() {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         let Some(mut row) = self.catalog.get(key).cloned() else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         // Cycle 83, plexscratch42 (1.42.2): a poster or backdrop upload is served
         // `image/jpeg` WHATEVER its bytes -- PNG and plain text alike, directly and
@@ -244,7 +244,7 @@ impl Runtime {
         let stamp = now();
         let rating_key = key.to_string();
         let Some(object) = row.as_object_mut() else {
-            return Response::error(500, "simplex: internal error");
+            return Response::error(500, "rex: internal error");
         };
         {
             let uploads = object
@@ -322,10 +322,10 @@ impl Runtime {
             .map(|value| percent_decode(value))
             .unwrap_or_default();
         if chosen.is_empty() {
-            return Response::error(400, "simplex: no url");
+            return Response::error(400, "rex: no url");
         }
         let Some(mut row) = self.catalog.get(key).cloned() else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         let field = if kind == "posters" { "thumb" } else { "art" };
         let private = if kind == "posters" {
@@ -336,7 +336,7 @@ impl Runtime {
         let placeholder = format!("/library/metadata/{key}/{field}/1");
         let stamp = now();
         let Some(object) = row.as_object_mut() else {
-            return Response::error(500, "simplex: internal error");
+            return Response::error(500, "rex: internal error");
         };
         if chosen == placeholder {
             object.shift_remove(private);

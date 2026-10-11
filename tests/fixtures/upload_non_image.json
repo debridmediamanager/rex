@@ -1,7 +1,7 @@
 {
  "_about": "PMS 1.42.2.10156-f737b826c (plexscratch42, a writable copy with no route out), 2026-09-30: POST /library/metadata/{item}/posters with 32 bytes of plain text (Content-Type application/octet-stream) on movie 5, then the reads below, then PUT /library/metadata/5/poster?url=upload://posters/<its earlier PNG upload> to put its poster back (the text candidate stays listed: a candidate cannot be removed). The text is stored like an image: an upload://posters/<sha1> candidate, selected, the row re-versioned, and served image/jpeg on the candidate and on the thumb path -- as every PNG upload on the copy is (items 3, 5 and 6 read back image/jpeg over PNG bytes). The transcoder decodes it: /photo/:/transcode and /services/ultrablur/colors over the new thumb are 500s. Dates dropped.",
  "version": "1.42.2.10156-f737b826c",
- "body": "simplex-non-image-upload-32bytes",
+ "body": "rex-non-image-upload-32bytes",
  "cells": [
   {
    "request": "POST /library/metadata/{item}/posters",

@@ -1,5 +1,5 @@
 {
- "_provenance": "Captured 2026-09-30 off zen (Plex Media Server 1.42.2, the build simplex reports) by GET only, each request with X-Plex-Container-Start/Size headers and Accept: application/json. `shows` is section 2 (TV) as `/library/sections/2/all?type=2` answered it, projected to ratingKey/type/title/leafCount/viewedLeafCount/viewCount; every other exchange keeps its container counts and either the answered ratingKeys (the 509-row show listings) or the projected rows. No row on zen carries its OWN viewCount on a show or season: its plays came through timelines. Token, machine identifier, artwork and summaries are dropped.",
+ "_provenance": "Captured 2026-09-30 off zen (Plex Media Server 1.42.2, the build rex reports) by GET only, each request with X-Plex-Container-Start/Size headers and Accept: application/json. `shows` is section 2 (TV) as `/library/sections/2/all?type=2` answered it, projected to ratingKey/type/title/leafCount/viewedLeafCount/viewCount; every other exchange keeps its container counts and either the answered ratingKeys (the 509-row show listings) or the projected rows. No row on zen carries its OWN viewCount on a show or season: its plays came through timelines. Token, machine identifier, artwork and summaries are dropped.",
  "partly_watched": [
   "11004",
   "13203",

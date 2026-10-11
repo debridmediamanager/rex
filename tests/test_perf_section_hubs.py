@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A library's Recommended page projects only the rows its shelves show (fun, 2026-10-11).
 
-fun-simplex, fed by zurg: 591 shows, 27,040 episodes and 3,346 movies. Plex for Mac's
+fun-rex, fed by zurg: 591 shows, 27,040 episodes and 3,346 movies. Plex for Mac's
 Recommended tab (`/hubs/sections/{id}?count=12`) took 12-37 s and the Library tab queued
 behind it on the runtime lock: every shelf copied the whole section and projected every
 row of it -- Recently Released all 27k episodes -- before keeping 12. A filtered shelf
@@ -91,7 +91,7 @@ def run(port):
 
 
 def main():
-    directory = tempfile.mkdtemp(prefix="simplex-perf-hubs-")
+    directory = tempfile.mkdtemp(prefix="rex-perf-hubs-")
     process = None
     try:
         path, _ = catalog(directory)

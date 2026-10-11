@@ -237,13 +237,13 @@ impl Runtime {
         // Measured: an unparseable `type=` is a 400 here and an empty one a 500.
         let type_number = match parsed_type(query, 400, None) {
             Ok(number) => number,
-            Err(status) => return Response::error(status, "simplex: bad type"),
+            Err(status) => return Response::error(status, "rex: bad type"),
         };
         if let Some(status) = listing_refusals(query, &[])
             .or_else(|| whole_library_refusal(query))
             .or_else(|| file_filter_refusal(query, true, None))
         {
-            return Response::error(status, "simplex: refused");
+            return Response::error(status, "rex: refused");
         }
         if type_number == Some(18) {
             // Cycle 14: every collection the SERVER holds, across libraries, in title
@@ -261,11 +261,11 @@ impl Runtime {
                 Some(query.get("sort").map(String::as_str).unwrap_or("titleSort")),
             ) {
                 Ok(rows) => rows,
-                Err(status) => return Response::error(status, "simplex: unsupported sort"),
+                Err(status) => return Response::error(status, "rex: unsupported sort"),
             };
             let (page, paged, start, total) = match page_window(rows, query) {
                 Ok(window) => window,
-                Err(status) => return Response::error(status, "simplex: bad container parameter"),
+                Err(status) => return Response::error(status, "rex: bad container parameter"),
             };
             // `_listing_row`: each row with its `Image` list.
             let page = page
@@ -305,7 +305,7 @@ impl Runtime {
             source.retain(|row| row.get("type").and_then(Value::as_str) == Some("show"));
         }
         if type_number == Some(2) && scoped("season", "index") {
-            return Response::error(500, "simplex: invalid scoped conjunction");
+            return Response::error(500, "rex: invalid scoped conjunction");
         }
         if type_number.is_none() {
             // Cycle 25: the UNTYPED query lists collections as well, sorted into the
@@ -354,24 +354,24 @@ impl Runtime {
         // prefix pass reads it here any more.
         let mut rows = match self.filter_rows(source, pairs, section_type) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: bad request"),
+            Err(status) => return Response::error(status, "rex: bad request"),
         };
         if let Some(group) = query.get("group") {
             // Cycle 29: `group=` is honoured here too, and refused as on a listing.
             rows = match self.grouped(rows, group) {
                 Ok(rows) => rows,
-                Err(status) => return Response::error(status, "simplex: cannot group"),
+                Err(status) => return Response::error(status, "rex: cannot group"),
             };
         }
         if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
             rows = match self.sort_rows(rows, Some(sort)) {
                 Ok(rows) => rows,
-                Err(status) => return Response::error(status, "simplex: unsupported sort key"),
+                Err(status) => return Response::error(status, "rex: unsupported sort key"),
             };
         }
         let rows = match limited(rows, query) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: bad limit"),
+            Err(status) => return Response::error(status, "rex: bad limit"),
         };
         let keep_guid = query.get("includeGuids").map(String::as_str) == Some("1");
         let rows = rows
@@ -425,37 +425,37 @@ impl Runtime {
         query: &HashMap<String, String>,
     ) -> Response {
         let Some(section) = self.section(section_key) else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         if !(rest.is_empty() || rest == ["all"]) {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if rest == ["all"] {
             if let Some(status) = listing_refusals(query, &["extraType"]) {
-                return Response::error(status, "simplex: refused");
+                return Response::error(status, "rex: refused");
             }
             if query.get("limit").is_some_and(|raw| {
                 let digits = raw.trim_start_matches('-');
                 digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit())
             }) {
-                return Response::error(500, "simplex: server error");
+                return Response::error(500, "rex: server error");
             }
             if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
                 if self.sort_rows(Vec::<Value>::new(), Some(sort)).is_err() {
-                    return Response::error(500, "simplex: unsupported sort key");
+                    return Response::error(500, "rex: unsupported sort key");
                 }
             }
             if let Err(status) = parsed_type(query, 500, None) {
-                return Response::error(status, "simplex: bad type");
+                return Response::error(status, "rex: bad type");
             }
             if query.contains_key("group") {
-                return Response::error(500, "simplex: server error");
+                return Response::error(500, "rex: server error");
             }
             if query.get("parent").is_some_and(|raw| {
                 let digits = raw.trim_start_matches('-');
                 digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit())
             }) {
-                return Response::error(500, "simplex: server error");
+                return Response::error(500, "rex: server error");
             }
             if query.keys().any(|key| {
                 matches!(
@@ -463,16 +463,16 @@ impl Runtime {
                     "duration" | "resolution" | "mediaSize" | "file"
                 )
             }) {
-                return Response::error(500, "simplex: server error");
+                return Response::error(500, "rex: server error");
             }
             if query.get("index").is_some_and(|raw| !int_param(raw, None)) {
-                return Response::error(500, "simplex: bad index");
+                return Response::error(500, "rex: bad index");
             }
             if query
                 .get("sourceType")
                 .is_some_and(|raw| !int_param(raw, Some(32)))
             {
-                return Response::error(500, "simplex: bad sourceType");
+                return Response::error(500, "rex: bad sourceType");
             }
         }
         let is_show = section.get("type").and_then(Value::as_str) == Some("show");
@@ -544,7 +544,7 @@ impl Runtime {
             .collect::<Vec<_>>();
         let rows = match self.filter_rows(rows, &pairs, if is_show { "show" } else { "movie" }) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: bad request"),
+            Err(status) => return Response::error(status, "rex: bad request"),
         };
         let rows = match self.sort_rows(
             rows,
@@ -557,15 +557,15 @@ impl Runtime {
             ),
         ) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: unsupported sort key"),
+            Err(status) => return Response::error(status, "rex: unsupported sort key"),
         };
         let rows = match limited(rows, query) {
             Ok(rows) => rows,
-            Err(status) => return Response::error(status, "simplex: bad limit"),
+            Err(status) => return Response::error(status, "rex: bad limit"),
         };
         let (page, paged, start, total) = match page_window(rows, query) {
             Ok(window) => window,
-            Err(status) => return Response::error(status, "simplex: bad container parameter"),
+            Err(status) => return Response::error(status, "rex: bad container parameter"),
         };
         fields.insert("size".to_string(), json!(page.len()));
         if paged {

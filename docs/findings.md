@@ -1,11 +1,11 @@
-# simplex — a Plex Media Server that owns no files
+# rex — a Plex Media Server that owns no files
 
-## RESULT: the official Plex Web client plays a debrid stream from simplex
+## RESULT: the official Plex Web client plays a debrid stream from rex
 
 Verified 2026-09-11 15:26 by driving the real client over CDP:
 
 ```
-video.src      https://simplex.example.com/library/parts/10010/…/file.mp4
+video.src      https://rex.example.com/library/parts/10010/…/file.mp4
                ?X-Plex-Session-Identifier=64s596vv5bjqm0n
 readyState     4 (HAVE_ENOUGH_DATA)      paused false
 currentTime    164.56 -> 179.59 advancing in real time
@@ -13,7 +13,7 @@ resolution     1920x1080                 decoded 4929 -> 5381 frames
 droppedFrames  0                         error null
 ```
 
-simplex's own log for the same playback:
+rex's own log for the same playback:
 
 ```
 PLAYQUEUE 1 -> 1 item(s)
@@ -35,8 +35,8 @@ and each produced a *misleading* symptom on its own:
 | 2 | `Meta` block on the section listing (`includeMeta=1`) | grid printed the item count and rendered zero cells |
 | 3 | Keep `Media` in listing rows + add the `Image` array | same empty grid; a real PMS does not strip `Media` here |
 | 4 | Real RFC6455 WebSocket upgrade on `/:/websockets/notifications` | a clean 501 made the client log "Unexpectedly closed server event connection" and declare the **server** faulty — this was also the true cause of "currently unavailable" |
-| 5 | `playQueues` must accept a **section** uri, not just a ratingKey | "An error occurred loading items to play", with no request reaching simplex |
-| 6 | An MP4/H.264/AAC item in the catalog | Plex Web will not direct-play mkv or webm; it demanded a transcode simplex has no encoder for |
+| 5 | `playQueues` must accept a **section** uri, not just a ratingKey | "An error occurred loading items to play", with no request reaching rex |
+| 6 | An MP4/H.264/AAC item in the catalog | Plex Web will not direct-play mkv or webm; it demanded a transcode rex has no encoder for |
 | 7 | `--part-mode proxy` to rewrite the Content-Type | RD answers `application/force-download`; Chrome's `<video>` refuses a non-media type, so the 302 path fetched bytes and still failed |
 
 Fix 4 is the one worth remembering: **refusing an endpoint cleanly is worse than
@@ -107,7 +107,7 @@ Per item: play queue built, `Part.decision=directplay`, prefix read 206 with a
 not an error page), mid-file seek landing at the requested offset, and real
 frame decode at the 10% mark.
 
-**The client gate is the real constraint, not the server.** simplex serves all
+**The client gate is the real constraint, not the server.** rex serves all
 five perfectly; what varies is whether a client will accept them:
 
 | item | Plex Web / Mac | TV h264+ac3 | TV 4K |
@@ -118,7 +118,7 @@ five perfectly; what varies is whether a client will accept them:
 
 So a debrid-backed Plex library is only as useful as its container mix. An mp4
 / h264 / aac release plays everywhere; mkv+eac3 is TV-only; vp8/vorbis in webm
-direct-plays on nothing, which matters because simplex has no encoder and a
+direct-plays on nothing, which matters because rex has no encoder and a
 transcode verdict means the item simply does not play.
 
 **Cloudflare blocks `Python-urllib` with a 403.** Measured on the media path:
@@ -141,7 +141,7 @@ realistic UA or it measures the bot filter instead of the server.
 
 Symptom that forced this: in the library grid, an identified **movie** drew its
 poster while identified **episodes** rendered as blank tiles. Cause was in the
-rows, not the artwork — simplex emitted every file as `type=movie` while also
+rows, not the artwork — rex emitted every file as `type=movie` while also
 attaching `index`, `parentIndex` and `grandparentTitle`. A row that claims to be
 a movie and an episode at once sends the client looking for parent artwork that
 does not exist.
@@ -196,7 +196,7 @@ Episode playback re-verified: the play queue reports
 `mde=1000 / Part.decision=directplay`, and the part serves `video/mp4`.
 
 *Note on the test rig: the Chromium on kids renders almost nothing through CDP
-regardless of what simplex returns — it reported 0 images even for tiles that a
+regardless of what rex returns — it reported 0 images even for tiles that a
 real browser drew correctly. Ben's own screenshots were the ground truth for
 every rendering question here; CDP was only reliable for driving clicks and
 reading the console.*
@@ -213,7 +213,7 @@ HTTPS through Cloudflare), sign-in state, section prefs including
 `flattenSeasons`, season-number contiguity, and — decisively — substituting
 fun's own `/children`, show-detail and `/media/providers` payloads wholesale.
 
-The answer came from reading the client's own bundle. simplex serves the web
+The answer came from reading the client's own bundle. rex serves the web
 client, so its 214 minified chunks can be searched. `chunk-4304` is the pre-play
 page, and its descendant list ends in one gate:
 
@@ -239,7 +239,7 @@ Measured on fun for the same show:
 size: 20   totalSize: 37   offset: 0
 ```
 
-simplex returned `size: 3` and nothing else. `/library/sections/N/all` already
+rex returned `size: 3` and nothing else. `/library/sections/N/all` already
 paged correctly, which is why the library grid always worked and only show pages
 were broken. `child_container()` now honours the container params on `/children`
 and `/allLeaves`, and — matching a real PMS — emits `offset`/`totalSize` **only**
@@ -259,7 +259,7 @@ is the shape of this bug in one line.
 
 Measured 2026-09-12. Browsing was the whole story until now; everything in the
 Plex UI that *changes* something was either unimplemented or answered with the
-generic empty container simplex returns for an unknown route. That is worse than
+generic empty container rex returns for an unknown route. That is worse than
 a 404, for the same reason fix 4 above was: the client does not ask whether a
 write will work before drawing the entry that performs it. **It decides from
 what the server advertises**, so an unimplemented endpoint shows the user a menu
@@ -274,7 +274,7 @@ Two instruments, and the second one is the interesting one:
    measured against real rows, mutations included, without touching production.
    Where the lab had no rows at all -- play history, live activities -- the
    measurement came from **fun**, read-only.
-2. **The client's own bundle.** simplex serves the web client, so the gating
+2. **The client's own bundle.** rex serves the web client, so the gating
    logic can simply be read. `main-*.js` module 92273 is the whole contract: a
    map of item type -> ordered list of menu flags, plus one predicate per flag.
 
@@ -304,13 +304,13 @@ sees; the right is what the server has to say for it to exist at all:
 | Get Info | library provider, item not an extra |
 | Remove from Continue Watching | the `actions` feature advertises that Action |
 
-Consequences for simplex, each one a behaviour change rather than a new field:
+Consequences for rex, each one a behaviour change rather than a new field:
 
 - **Download was hidden by one word.** The provider advertised
-  `protocols: "stream"`. simplex can serve a download -- it is the same Part read
+  `protocols: "stream"`. rex can serve a download -- it is the same Part read
   with `download=1` and a `Content-Disposition` -- so the entry was hiding a
   feature that already worked.
-- **Delete needs `allowMediaDeletion`.** simplex reported false because it owns
+- **Delete needs `allowMediaDeletion`.** rex reported false because it owns
   no files. But the Plex phrasing ("delete from your filesystem") has a local
   meaning here: drop the row from the library. The debrid content is untouched,
   and since the mutation is in memory, a restart is the undo button.
@@ -324,13 +324,13 @@ Consequences for simplex, each one a behaviour change rather than a new field:
   row, so a show whose episodes stayed unwatched keeps offering "Mark as Played"
   however correct the show row looks.
 - **Optimize stays hidden on purpose.** It is gated on `transcoderVideo`, which
-  simplex must not claim: a transcode verdict means the item does not play at
+  rex must not claim: a transcode verdict means the item does not play at
   all. Advertising a transcoder it does not have is what produced "This server is
   not powerful enough to convert video" in the first place.
 
 #### Response shapes the write half turned up
 
-| Measured | What simplex did |
+| Measured | What rex did |
 |---|---|
 | Every mutating endpoint answers **200 with an empty body** and `text/html` (refresh, analyze, unmatch, match, split, merge, scrobble, unscrobble, rate, prefs write, section tasks, edits) | answered with a MediaContainer |
 | `DELETE /playlists/{id}` answers **204**, while `DELETE /library/collections/{id}` answers **200** | neither existed |
@@ -356,7 +356,7 @@ Consequences for simplex, each one a behaviour change rather than a new field:
 #### Tag ids are the whole filter surface
 
 A secondary axis keys its entries by **tag id** (`/all?genre=24`), and TMDB hands
-simplex tag names with no ids at all. Every `Genre`, `Director`, `Role` and
+rex tag names with no ids at all. Every `Genre`, `Director`, `Role` and
 `Country` tag therefore gets an id minted from its own text at catalog load
 (`Catalog.number_tags`), which is stable across restarts and rebuilds, plus the
 `filter` string a real row carries.
@@ -385,10 +385,10 @@ its movies for good. `PUT .../split` does undo the *shape* -- two rows again --
 but the second row comes back on a **new ratingKey carrying the first one's
 metadata**, so it has to be re-matched by hand. Measuring merge cost a
 re-identification of Elephants Dream. `probes/ui_surface.py` therefore excludes
-merge from its `--mutate` set, with that reason written next to it, and simplex's
+merge from its `--mutate` set, with that reason written next to it, and rex's
 own merge is in memory where a restart undoes it.
 
-#### What simplex now answers
+#### What rex now answers
 
 Item context menu: Play, Play All, Play Next, Add to Queue, Shuffle, Mark as
 Played/Unplayed (walking to the leaves), rate, Add to Playlist, Add to
@@ -429,7 +429,7 @@ draws **Delete**. Everything else was already being drawn by the old server and
 did nothing when pressed, which is the failure mode this whole section is about.
 
 And one entry followed end to end rather than inspected: clicking **Mark as
-Watched** in the client turned the button into "Mark as Unwatched", and simplex
+Watched** in the client turned the button into "Mark as Unwatched", and rex
 logged `SCROBBLE 1007 -> 1 leaf row(s)` with `viewCount=1` on the row.
 
 Save File was checked against a real provider link rather than the fixture,
@@ -454,7 +454,7 @@ Fix Match checks skipping rather than passing quietly.
 
 Asked whether anything was left, the answer came from firing every remaining
 path the client bundle holds -- including the ones built dynamically -- at
-simplex and reading its own `UNKNOWN` log, then measuring each against the
+rex and reading its own `UNKNOWN` log, then measuring each against the
 reference. 28 routes were still landing in the catch-all, and another dozen were
 being answered with an empty container where a real PMS refuses.
 
@@ -469,8 +469,8 @@ Real endpoints that were missing:
 | `POST /log` | the web client posting its OWN errors | empty 200 |
 | `/library` | the library root | three directories: sections, recentlyAdded, onDeck |
 | `/library/all/top` | most played | a listing |
-| `/hubs?identifier=a,b` | Home asking for named shelves | the filtered subset — simplex returned all of them, so Home drew rows it had not asked for |
-| `/library/metadata/{id}/subtitles` | the Search Subtitles dialog | `Stream` rows from a subtitle agent; simplex has none, so the shape with nothing in it |
+| `/hubs?identifier=a,b` | Home asking for named shelves | the filtered subset — rex returned all of them, so Home drew rows it had not asked for |
+| `/library/metadata/{id}/subtitles` | the Search Subtitles dialog | `Stream` rows from a subtitle agent; rex has none, so the shape with nothing in it |
 | `PUT /library/metadata/{id}/prefs` | a show's episode sorting, a collection's sort mode | empty 200; the **GET is a 404** |
 | `PUT /playlists/{id}/items/{itemID}/move[?after=]` | drag-to-reorder a playlist | no `after` means the FRONT; answers with the playlist row |
 | `PUT /library/collections/{id}/items/{ratingKey}/move[?after=]` | reorder a collection | same, but keyed by the member's **ratingKey**, not a playlistItemID |
@@ -478,7 +478,7 @@ Real endpoints that were missing:
 
 And a class of endpoints where the honest answer is a refusal, because that is
 what a real PMS answers: **every `/player/*` command is a 400** (they belong to a
-player, not to a server — simplex was telling companion clients their commands
+player, not to a server — rex was telling companion clients their commands
 had been accepted), `/system/proxy` 400, `/library/sections/{id}/search` 400,
 `/library/platforms/*` `/hubs/sections/home*` `/hubs/metadata` and an item's
 `markers` `banner` `chapterImages` `indexes` all 404, `/library/streams/{id}`
@@ -486,7 +486,7 @@ had been accepted), `/system/proxy` 400, `/library/sections/{id}/search` 400,
 
 #### The catch-all now 404s, and that found the last missing endpoint
 
-A real PMS answers an unrouted path with 404 (measured). simplex's catch-all
+A real PMS answers an unrouted path with 404 (measured). rex's catch-all
 answered 200 with an empty MediaContainer, which is the trap of fix 4 from the
 other side: a client reads that as "this endpoint exists and there is nothing in
 it". The rule that made the empty container look safe — refusing an endpoint
@@ -495,7 +495,7 @@ the fix for those is to route them.
 
 Flipping it proved its own worth immediately: `conformance.py` broke on
 `GET /library`, an endpoint python-plexapi asks for before anything else and
-which simplex had never routed. The old catch-all had been hiding it for the
+which rex had never routed. The old catch-all had been hiding it for the
 life of the project. With `/library` implemented, plexapi is back to 29/38 (the
 nine failures are byte reads against placeholder links) with **zero** unrouted
 paths for a full drive, and the web client still renders the item page and the
@@ -520,12 +520,12 @@ Measured, in this order:
 So on a current PMS the Console renders empty too. There is nothing to push, and
 nothing was invented.
 
-#### What that measurement did find: four notification types simplex never pushed
+#### What that measurement did find: four notification types rex never pushed
 
-The same 75 seconds produced these, and simplex's socket had been silent since
+The same 75 seconds produced these, and rex's socket had been silent since
 the day it was built -- it completed the upgrade and then only pinged:
 
-| Type | Element | When | simplex now |
+| Type | Element | When | rex now |
 |---|---|---|---|
 | `activity` | `ActivityNotification` `{event, uuid, Activity}` | a task starts or ends | every activity it records |
 | `timeline` | `TimelineEntry` `{identifier, sectionID, itemID (both **strings**), type (Plex's **numeric** code), title, state, metadataState, updatedAt}` | a row changes | after a refresh |
@@ -542,11 +542,11 @@ decides the server is broken and draws nothing).
 #### A fourth pass, from the one angle nothing had used: XML
 
 Every check so far asked for JSON, because that is what Plex Web sends. **XML is
-simplex's default** -- `_wants_xml()` returns true unless a client explicitly
+rex's default** -- `_wants_xml()` returns true unless a client explicitly
 asks for JSON -- so the default response path of ~60 new endpoints had never been
 exercised. All 67 render parseable XML. Three rendered the **wrong element**:
 
-| Endpoint | simplex rendered | a real PMS renders |
+| Endpoint | rex rendered | a real PMS renders |
 |---|---|---|
 | `/library/metadata/{id}/posters`, `/arts` | `<Video>` | **`<Photo>`** |
 | `/library/sections/{id}/folder` | `<Video>` | **`<Directory>`** |
@@ -572,7 +572,7 @@ subtitle  displayTitle  English (Weeb)        extended  Honorifics (English (Wee
 
 So the codec belongs in the **extended** title, and a subtitle with a track title
 shows its **language** plainly with the track name only in the extended one.
-simplex had the codec in a video's `displayTitle` and the track name in a
+rex had the codec in a video's `displayTitle` and the track name in a
 subtitle's -- both of which are the string the client's quality and track pickers
 print, so every label was subtly wrong. `mediainfo.stream_titles()` now derives
 both, and the catalog recomputes them at load so a catalog built before the fix is
@@ -595,7 +595,7 @@ eventsource  event: timeline
              data: {"TimelineEntry": { … one row, no container, no size … }}
 ```
 
-simplex's SSE channel had been a keep-alive since it was written. Both transports
+rex's SSE channel had been a keep-alive since it was written. Both transports
 now come off the same notification bus, each formatting for itself.
 
 #### The rest of the fourth pass
@@ -610,7 +610,7 @@ now come off the same notification bus, each formatting for itself.
 
 #### `flattenSeasons` is one field on the show, not a different `/children`
 
-simplex served `flattenSeasons` in its section preferences and then ignored it,
+rex served `flattenSeasons` in its section preferences and then ignored it,
 so a library set to hide seasons still drew every one of them. The obvious
 implementation -- have `/children` return episodes instead of seasons -- is wrong.
 Measured: with the pref set to Hide, a real PMS **still answers `/children` with
@@ -623,29 +623,29 @@ its seasons.
 
 #### A season is not a lesser show, and an episode is not a small one
 
-Diffing simplex's rows against the reference's, type by type:
+Diffing rex's rows against the reference's, type by type:
 
 - A **season** detail carries `OnDeck`, `Extras` and `Preferences` exactly as a
-  show does. simplex answered all three for shows only, so a season page had no
+  show does. rex answered all three for shows only, so a season page had no
   episode to offer and an empty settings tab.
 - The **Preferences lists differ**: eleven settings on a show (`episodeSort`,
   `flattenSeasons`, `showOrdering`, `languageOverride`, the auto-deletion pair,
   `useOriginalTitle`, `enableCreditsMarkerGeneration` and the three language ones)
   against **three** on a season (audio language, subtitle language, subtitle
-  mode). simplex invented a single `episodeSort` row. Both lists are now captured
+  mode). rex invented a single `episodeSort` row. Both lists are now captured
   in `item_prefs.json`, and a setting written through
   `PUT /library/metadata/{id}/prefs` comes back both inside `Preferences` and as
   a field on the row, the way `episodeSort` does on a real show.
 - An **episode** carries `Extras` but no `Preferences` and no `OnDeck`.
 - An episode row carries **no `Genre`, `studio`, `tagline` or `Country`** --
-  measured on the 1.43.4 reference *and* on production fun. simplex's episodes
+  measured on the 1.43.4 reference *and* on production fun. rex's episodes
   inherited all of them from the enriched file row, so an episode page advertised
   its show's genres where a real one shows none.
 
 Not copied, for want of anything to derive them from: `CommonSenseMedia` and
-`contentRatingAge` on a show (a Plex-only rating provider and an age simplex
+`contentRatingAge` on a show (a Plex-only rating provider and an age rex
 would have to guess from a rating string), and the external `Guid` array on a
-season (the reference's has real tmdb/tvdb season ids; simplex mints only its own
+season (the reference's has real tmdb/tvdb season ids; rex mints only its own
 `plex://` season guid, and fun's episodes carry no Guid at all, so the field is
 agent-dependent rather than universal).
 
@@ -653,13 +653,13 @@ agent-dependent rather than universal).
 
 A collection's, playlist's or section's tile is a `composite` image. Measured on
 the reference: a **400x600 JPEG mosaic** built from the members' posters.
-simplex served a flat generated grey tile. It has no imaging library and will not
+rex served a flat generated grey tile. It has no imaging library and will not
 fabricate a mosaic, so it now serves **one member's own poster** -- honestly one
 of the images that mosaic is made of, and what the tile is for.
 
 The client also asks the image transcoder for specific sizes (measured in the
 recorded corpus: 240x240 for cast headshots, 240x112, 240x360, 360x540, 360x202)
-and a real PMS returns exactly those dimensions. simplex cannot resize, but TMDB
+and a real PMS returns exactly those dimensions. rex cannot resize, but TMDB
 publishes fixed-width variants and the row stores one of them, so the upstream
 request now picks the variant nearest the width asked for
 (`/t/p/w342/…` → `/t/p/w185/…` for a 185-wide request). The served image is still
@@ -669,7 +669,7 @@ difference: the alternative would be shipping a 1280-wide backdrop to fill a
 
 #### A session is created by the TIMELINE, not by anyone reading bytes
 
-`/status/sessions` answered `{size: 0}` for simplex's whole life, so Now Playing
+`/status/sessions` answered `{size: 0}` for rex's whole life, so Now Playing
 and the Dashboard were permanently empty and the Terminate button had nothing to
 act on -- while the timeline it was already receiving carried everything needed
 to fill them.
@@ -725,11 +725,11 @@ not on `sessionKey`: no id is a 400, an id that is not live is a 404, a live one
 is an empty 200 -- and the row **stays listed**. The kill is delivered through
 that session's *next* timeline as `terminationCode: 2006` with a
 `terminationText` quoting the reason, and its next part read answers **503**.
-simplex answered 200 to every terminate and did nothing.
+rex answered 200 to every terminate and did nothing.
 
 Adjacent, measured: an unknown transcode session is a **404** for both
 `GET` and `DELETE /transcode/sessions/{id}`, while
-`/video/:/transcode/universal/subtitles` is a **400**. simplex answered 200 and
+`/video/:/transcode/universal/subtitles` is a **400**. rex answered 200 and
 404 respectively.
 
 #### The Dashboard's numbers are real, and `timespan` is a bucket size
@@ -739,11 +739,11 @@ hour, 3 day, 2 ISO week, 1 month, 0 year, with `at` the bucket start in the
 server's local time. A real PMS counts **every response's bytes**, not only media
 -- a 4 KB `/status/sessions` reply showed up as its own per-second row.
 
-simplex serves every byte it reports, so it now counts them per (device, lan) and
+rex serves every byte it reports, so it now counts them per (device, lan) and
 rolls them up on read, and `/statistics/media` counts completed plays from the
 timelines. `/statistics/resources` is **refused with a 404** rather than faked:
 the client treats that as "unsupported" and hides the graph, where the `{size:0}`
-simplex used to send draws an empty graph forever.
+rex used to send draws an empty graph forever.
 
 #### The filter query language: the operator is part of the KEY
 
@@ -760,7 +760,7 @@ last character, and appends its own `=` as the separator. So "year is after 2000
 goes out as `year%3E%3E=2000` and the server reads a parameter **named** `year>>`
 whose value is `2000`. There is no `year>=2000` on the wire, ever.
 
-simplex iterated its query parameters looking for names it recognised, found
+rex iterated its query parameters looking for names it recognised, found
 none of these, and applied no constraint -- so **every filter returned the whole
 library while looking like it worked**. Its own `Meta` advertises 40 filterable
 fields and an operator list per type; it honoured exact equality on eight of them
@@ -783,7 +783,7 @@ exact one. Three more shapes, all measured:
   operator, where the comma becomes AND: `?genre!=6,27` returns the rows with
   NEITHER tag, and reading it as an OR would match everything;
 - `push=1`/`pop=1` are parentheses and `and=1`/`or=1` the separator between
-  siblings, with **AND binding tighter than OR**, exactly as in SQL. simplex ANDed
+  siblings, with **AND binding tighter than OR**, exactly as in SQL. rex ANDed
   everything, so the UI's "Match any of the following" silently meant "match all";
 - a date value may be relative (`-30d`), an absolute epoch, an ISO date or an ISO
   datetime. The suffixes are `s m h d w mon y` -- **`m` is MINUTES** and `mon` is
@@ -793,11 +793,11 @@ exact one. Three more shapes, all measured:
 And the refusals, which matter because the alternative is a silent no-op: a
 comparison character with no `=` separating it from its value (`?year%3E2010`) is
 a **400**; an unparseable number, an empty value and an unknown date suffix are
-each a **500**; an unknown FIELD is ignored with a 200. simplex answered 200 with
+each a **500**; an unknown FIELD is ignored with a 200. rex answered 200 with
 the library unfiltered for all of them.
 
 The engine lives in `filters.py` and is driven by the `FieldType` block of the
-captured `Meta`, so simplex can only honour the operators it advertises.
+captured `Meta`, so rex can only honour the operators it advertises.
 
 #### The same language, six passes later: the field's TYPE decides
 
@@ -806,7 +806,7 @@ about which fields it applies to. Re-measured field by field against the
 reference, four of the types do not behave like the string they were implemented
 as, and the corrections each turn a silently-wrong result set into the right one:
 
-| Request | Reference | simplex after the first pass |
+| Request | Reference | rex after the first pass |
 |---|---|---|
 | `?contentRating=G` | the row rated `G`, **not** the one rated `PG` | both, because a bare `=` was a substring match |
 | `?contentRating=` | the rows with **no** rating (2 of 5) | all 5 -- everything contains the empty string |
@@ -823,10 +823,10 @@ exact set membership, where an **empty value means "has no value at all"**; a
 including an empty one means false; **`resolution`** is validated against
 `{4k, 1080, 720, 576, 480, sd}`, case-sensitively, and anything else is a 500 --
 `360` and `240` included, though the Meta implies a continuum; and
-**`location`** is a section `Location` id, not a path, which is why simplex's
+**`location`** is a section `Location` id, not a path, which is why rex's
 sections now carry their own key as that id instead of all sharing `1`.
 
-An empty value is therefore **not** uniformly a 500, which is what simplex's
+An empty value is therefore **not** uniformly a 500, which is what rex's
 engine did: it is a 500 only where the value has to parse as a number or a date
 (`?year=`, `?addedAt>>=`, `?resolution=`), and a perfectly good rule everywhere
 else. The 500 now comes out of the comparison rather than out of the parse, which
@@ -856,7 +856,7 @@ advertises `genre`, `year`, `title`; a **show** section's advertises
 type 4, every one prefixed. The client sends the advertised key back verbatim, so
 the server reads `show.genre`.
 
-simplex built its advertised-field map keyed by those prefixed names and then
+rex built its advertised-field map keyed by those prefixed names and then
 looked the incoming name up with the prefix *stripped*, so the lookup could never
 hit, `field_type()` returned None for everything, and the filter was dropped. A
 movie library filtered correctly and a show library returned its whole contents
@@ -871,7 +871,7 @@ rule's own `type`.
 #### `/library/sections/{id}/query/parse`: the grammar, read back
 
 How the Edit Filters dialog reopens a filter that was saved -- it hands the query
-string back and reads the rule tree out of the answer. simplex 404'd it, and a
+string back and reads the rule tree out of the answer. rex 404'd it, and a
 404 is exactly what the dialog reads as "this filter has no rules", so the dialog
 drew empty whatever the smart playlist behind it held.
 
@@ -919,12 +919,12 @@ Block order is `type, Rule, Order, Limit, Group, Error`, and in XML the root is
 
 The two odd rows above -- a leading separator abandoning the rules, a trailing one
 duplicating the last clause -- are parser artifacts of the real server that no
-client can reach. They are reproduced anyway, because the harness diffs simplex's
+client can reach. They are reproduced anyway, because the harness diffs rex's
 answer against the reference's and a "corrected" answer is a difference to chase.
 
 #### `/filters` is per library TYPE, and seven of the axes it names 404
 
-The filter BAR is a separate surface from the filter engine, and simplex served
+The filter BAR is a separate surface from the filter engine, and rex served
 one hand-trimmed 15-entry list for every library. Measured: a movie library
 advertises **28** filters and a show library a **different 15** -- the same
 lesson as the two `Meta` sidecars, one endpoint over. A show grid's filter bar
@@ -938,7 +938,7 @@ is an empty axis on a movie library.
 
 Seven of the 28 axes **404 on the reference itself**: `hdr`, `dovi`,
 `hdr10plus`, `atmos`, `inProgress`, `unmatched`, and `unwatchedLeaves` on the show
-side. A real PMS advertises axes it does not serve, so simplex advertises them
+side. A real PMS advertises axes it does not serve, so rex advertises them
 too and its unknown-leaf 404 answers them the same way. The filters behind them
 do work on the grid -- it is only the "list me the values" axis that is missing.
 
@@ -947,7 +947,7 @@ What the axes themselves answer, measured against the lab and against a
 
 | Axis kind | Entry | Note |
 |---|---|---|
-| tag (`genre`, `director`, `actor`, …) | `{fastKey, [thumb], key, title}` | only a **genre** entry carries `type`; a person entry carries the tag's `thumb`. simplex stamped `type` on every one |
+| tag (`genre`, `director`, `actor`, …) | `{fastKey, [thumb], key, title}` | only a **genre** entry carries `type`; a person entry carries the tag's `thumb`. rex stamped `type` on every one |
 | field (`year`, `decade`, `contentRating`) | `{fastKey, key, title}` | key and fastKey single-encoded |
 | field (`studio`) | same | fastKey **raw** (`all?studio=Blender Foundation` -- unusable on an HTTP request line) and key **double**-encoded. The reference's own inconsistency |
 | media (`resolution`, `videoCodec`, `audioLanguage`, …) | `{key, title}` | **no fastKey at all**, and the title is a LABEL: `1080` → `1080p`, `en` → `English` |
@@ -960,7 +960,7 @@ production: `sd 480 576 720 1080 2k 2.7k 4k 8k 16k`. `240`, `360`, `400`, `1081`
 labels them `SD`, `480p` … `2K`, `2.7K`, `4K`.
 
 `videoCodec`, `audioCodec`, `subtitleCodec` and `audioLayout` answer on the lab's
-1.43.4 and **404 on production's older build**; simplex follows the lab, which is
+1.43.4 and **404 on production's older build**; rex follows the lab, which is
 the designated reference.
 
 #### An unexplained field that is still a measurement: `nocache` on show axes
@@ -970,21 +970,21 @@ Every secondary container of a **show** library carries `nocache: true` -- its
 does. The first reading was cache state, which would make it per-server and
 transient. Three movie libraries and two show libraries across **two independent
 servers** rule that out: it tracks the library's TYPE. The cause is not visible
-from outside, so the correlation is what simplex reproduces.
+from outside, so the correlation is what rex reproduces.
 
-#### A deliberate deviation: simplex's error bodies
+#### A deliberate deviation: rex's error bodies
 
 A real PMS answers a refusal with an HTML shell (`<html><head><title>Not
-Found</title>…`, `text/html`, 85 bytes). simplex answers `text/plain` with the
-reason it refused (`simplex: unsupported sort key bogusKey`). No client parses a
+Found</title>…`, `text/html`, 85 bytes). rex answers `text/plain` with the
+reason it refused (`rex: unsupported sort key bogusKey`). No client parses a
 4xx body, and the reason is what makes a failed probe diagnosable, so this one
 difference is kept on purpose. It is the only remaining shape difference in the
-whole `/library/sections/*` surface apart from rows simplex's catalog has no data
+whole `/library/sections/*` surface apart from rows rex's catalog has no data
 for.
 
-#### A smart list is a stored QUERY, and simplex stored a snapshot
+#### A smart list is a stored QUERY, and rex stored a snapshot
 
-simplex accepted `smart=1` on both create endpoints, set a flag, and then stored
+rex accepted `smart=1` on both create endpoints, set a flag, and then stored
 the rows the query happened to match at that moment. The list looked right the
 instant it was made and went stale from then on, silently -- the one failure mode
 this file keeps coming back to.
@@ -1010,7 +1010,7 @@ reports differs in four ways that are not guessable:
 | marker | `icon: "playlist://image.smart"` | none |
 | members | — | **not tagged**: a member's `Collection` stays absent, so a smart collection does not show on its items' pages |
 
-The last row matters for more than tidiness: simplex tagged the members, which
+The last row matters for more than tidiness: rex tagged the members, which
 made a smart collection appear as a `Collection` tag on rows that the query might
 no longer select.
 
@@ -1026,7 +1026,7 @@ the **whole section** rather than what was on screen.
 
 A hub is not paged the way a listing is. `?count=N` caps every shelf at N rows and
 sets **`more: true`** on the ones that were cut; the default with no `count` is 12.
-simplex sliced at a hard 12 and wrote `more: false` unconditionally, so a
+rex sliced at a hard 12 and wrote `more: false` unconditionally, so a
 truncated shelf looked complete and its "see all" chevron never appeared.
 
 Measured on the reference, the same section at three counts:
@@ -1043,7 +1043,7 @@ whether the row after the last visible one exists.
 
 #### `/library/all/top` counts PLAYS, not the row's `viewCount`
 
-Three fields simplex did not send -- `globalViewCount`, `userCount` and a
+Three fields rex did not send -- `globalViewCount`, `userCount` and a
 `User: [{"id": 1}]` list -- and one refusal it did not make: `type=` is required
 and a real PMS answers **400** without it.
 
@@ -1051,12 +1051,12 @@ The giveaway that these come from the play HISTORY rather than off the row: Big
 Buck Bunny reported `globalViewCount: 1` with **no `viewCount` at all**, because
 it had been played and then marked unplayed. The row's counter is current state;
 this shelf is the history, and `userCount` is how many distinct accounts appear in
-it. simplex sorted by `viewCount` off the row, so anything watched and then marked
+it. rex sorted by `viewCount` off the row, so anything watched and then marked
 unplayed vanished from the Top shelf that is supposed to remember it.
 
 #### The `include*` / `exclude*` options, one measurement each
 
-Eight parameters the official client sends and simplex accepted and ignored. An
+Eight parameters the official client sends and rex accepted and ignored. An
 ignored option is the quiet failure again: the answer is a valid detail document
 that simply lacks the block asked for, so a page draws with a section missing
 rather than with an error.
@@ -1075,7 +1075,7 @@ rather than with an error.
 The `async*` pair is the one nothing predicts: the response is the same row,
 described by a container that can no longer resolve a tag into an image URL.
 
-`checkFiles` is also the one option simplex has nothing to do for, and
+`checkFiles` is also the one option rex has nothing to do for, and
 deliberately: `mediainfo.py` puts `exists` and `accessible` on every Part
 unconditionally, because plezy re-fetches metadata in a loop until it sees them
 and never passes `checkFiles`. Two extra attributes cost a client nothing; a
@@ -1102,12 +1102,12 @@ five rows, because the grouping happens on the underlying `year` column.
 
 Which row of a group survives is a SQL artifact on the reference -- it is not the
 first in sort order and not the lowest id, and it does not move when the sort
-changes. simplex keeps the first in the order the sort just produced, which is at
+changes. rex keeps the first in the order the sort just produced, which is at
 least deterministic; the count, which is what the UI reads, matches.
 
 #### The decision container sends ONE pair of codes, not all of them
 
-simplex answered every decision with `generalDecisionCode`,
+rex answered every decision with `generalDecisionCode`,
 `directPlayDecisionCode` and `mdeDecisionCode` all at 1000. Measured, a real PMS
 sends exactly one set, and which one says what happened:
 
@@ -1131,7 +1131,7 @@ endpoint sends numbers.
 Widening `probes/ui_surface.py` and diffing it whole against the reference turned
 up three the per-feature sweeps had each walked past.
 
-**`/myplex/account` must not carry a token.** simplex sent `authToken` in it; the
+**`/myplex/account` must not carry a token.** rex sent `authToken` in it; the
 reference does not send the field at all. It buys nothing -- a client that reads
 this endpoint already holds a token -- and every page that reads it is a page that
 could log the server's. Removed.
@@ -1140,11 +1140,11 @@ could log the server's. Removed.
 ones, in a container whose `identifier` is `com.plexapp.system` rather than the
 library's. A movie library lists four (`Plex Movie`, `Plex Movie Scanner`,
 `Plex Video Files Scanner`, `Plex Video Files`) and a show library two
-(`Plex TV Series`, `Plex Series Scanner`). simplex answered one `Directory` row
+(`Plex TV Series`, `Plex Series Scanner`). rex answered one `Directory` row
 with a `key` and a `title`, which the Edit Library dialog's scanner dropdown does
 not read -- an advertised control with nothing behind it, from the other side.
 
-**`/statistics/resources` answers 200, and simplex was 404ing it.** The earlier
+**`/statistics/resources` answers 200, and rex was 404ing it.** The earlier
 note here reasoned that a refusal reads to the client as "unsupported" and hides
 the graph, which is better than an empty one. The measurement contradicts the
 premise: BOTH reference servers answer 200 with a `StatisticsResources` series of
@@ -1152,7 +1152,7 @@ premise: BOTH reference servers answer 200 with a `StatisticsResources` series o
 processMemoryUtilization}`, and only `timespan=6` has samples -- every coarser
 bucket, and a request with no timespan, is an empty 200.
 
-simplex now samples when the endpoint is ASKED, which is the only time the numbers
+rex now samples when the endpoint is ASKED, which is the only time the numbers
 are wanted: the Dashboard polls while it is open, so the graph fills in the way it
 does on a real server and no sampler thread runs for a page nobody is looking at.
 Two of the four numbers are real -- host CPU from the load average over the core
@@ -1163,7 +1163,7 @@ draw a graph of nothing.
 #### The Home screen: `/hubs/promoted` is called once per library, not once
 
 The client calls `/hubs/promoted?contentDirectoryID=<section>` **per pinned
-library**. simplex ignored the parameter and answered every library's shelf on
+library**. rex ignored the parameter and answered every library's shelf on
 every call, so Home drew each library's rows under every library's heading.
 
 Its hubs were also missing the five fields the client lays the page out from.
@@ -1177,7 +1177,7 @@ Measured, a promoted shelf carries:
 | `promoted` | `true` on every shelf of this endpoint |
 | `hubKey` | **not a listing path**: `/library/metadata/<comma-joined ratingKeys>` naming this shelf's own rows, omitted when there are none |
 
-simplex sent a `hubKey` of `/library/all` for everything, so every shelf expanded
+rex sent a `hubKey` of `/library/all` for everything, so every shelf expanded
 to the whole library, and no shelf had a `context` to lay out by.
 
 Three more shapes: a SHOW library's Recently Added shelf is typed **`mixed`**
@@ -1187,19 +1187,19 @@ and the bare call (no `contentDirectoryID`) adds `home.playlists`
 
 `/hubs/continueWatching`'s hub is identified **`continueWatching`**, not
 `home.continue`, is styled `hero`, and its `key` is its own
-`/hubs/continueWatching/items` — which simplex did not route, so the shelf had
+`/hubs/continueWatching/items` — which rex did not route, so the shelf had
 nowhere to expand to. `/hubs/home/continueWatching` and `/hubs/home/onDeck` answer
 plain `{size, allowSync, identifier}` row lists, and **`/hubs/home/recentlyAdded`
-keys on `type`, not on `sectionID`** -- simplex had it exactly the other way
+keys on `type`, not on `sectionID`** -- rex had it exactly the other way
 round, so the TV shelf's "see all" opened an empty page. An unknown home hub is a
-404, where simplex answered an empty shelf.
+404, where rex answered an empty shelf.
 
-#### The preplay page's Related shelf lives at a path simplex did not route
+#### The preplay page's Related shelf lives at a path rex did not route
 
 The client rewrites `/library/metadata/{id}` to `/hubs/metadata/{id}` and appends
 the leaf, so `/hubs/metadata/{id}/related` is a DIFFERENT endpoint from
 `/library/metadata/{id}/related` -- and only the hubs form carries the shelves.
-simplex routed neither, and a 404 is exactly what the preplay page reads as "no
+rex routed neither, and a 404 is exactly what the preplay page reads as "no
 related items".
 
 Measured: `related` carries `allowSync` and the librarySection triple, `postplay`
@@ -1208,18 +1208,18 @@ Movies", keyed on the item's own `/library/metadata/{id}/similar`.
 
 The reference fills `similar` from its metadata agent, and its own list is EMPTY
 for one of the lab's five movies while the others answer two to four rows -- so an
-empty answer is a correct answer. simplex has no agent similarity data, so it
+empty answer is a correct answer. rex has no agent similarity data, so it
 computes its own (other rows in the library sharing a genre) and says so in the
-code: the shape is measured, the source is simplex's.
+code: the shape is measured, the source is rex's.
 
 #### Search: seventeen hubs every time, a word-prefix match, and a score
 
-Four endpoints, and simplex had all four wrong.
+Four endpoints, and rex had all four wrong.
 
 `/hubs/search` answers **seventeen typed hubs on every query, empty ones
 included** -- movie, show, artist, album, episode, track, collection, photoalbum,
 autotag, photo, tag, actor, director, genre, playlist, shared, place -- because
-the client lays the results page out from that list. simplex answered only the
+the client lays the results page out from that list. rex answered only the
 hubs that had rows, so the page's layout changed per query. The second hub is
 titled **"Shows"**, not "TV Shows". Each hub carries an EMPTY `context`, a `shelf`
 style and no `hubKey`.
@@ -1234,23 +1234,23 @@ and the actor/director/genre hubs carry `Directory` rows with `tagType`, `filter
 And the matching rule is a **word PREFIX**, not a substring. Measured query by
 query against the reference: `te`, `tea`, `tear`, `tears`, `of` and `steel` all
 find "Tears of Steel"; `uck` does NOT find "Big Buck Bunny"; and a single
-character matches nothing at all. simplex used `needle in title`, so `uck`
+character matches nothing at all. rex used `needle in title`, so `uck`
 matched and `t` returned the whole library. (The reference is additionally fuzzy
 -- `eel` finds "Firefly" and an actor called "Halina Reijn" -- which is a trigram
-score simplex does not approximate.)
+score rex does not approximate.)
 
 The other three, all previously wrong:
 
-- **`/library/search`** -- advertised by simplex's own `/media/providers` as
+- **`/library/search`** -- advertised by rex's own `/media/providers` as
   `universalsearch` and answered with an empty container, on a code comment
   claiming "a real PMS answers the bare query with an empty container". It does
   not: a bare query is a **400** and a real one answers `SearchResult` rows.
-- **`/search`** -- the legacy endpoint, 404 on simplex. It answers results PLUS
+- **`/search`** -- the legacy endpoint, 404 on rex. It answers results PLUS
   four `Provider` rows (`m_title`/`m_type`, the prefix is the reference's), each
   result carrying `personal` and `sourceTitle`; its `size` counts the providers
   too (1 result + 4 providers = 5). A MISSING `query` is a 400 and an EMPTY one is
   a **404** -- two different refusals on one endpoint.
-- **`/hubs/search/voice`** -- 404 on simplex. One hub per type, titled with the
+- **`/hubs/search/voice`** -- 404 on rex. One hub per type, titled with the
   bare type name, identified `results.search.<n>` with the shared context
   `hub.results.search`, `hubKey` and no `key`, and a `distance` on the hub and on
   every row.
@@ -1258,16 +1258,16 @@ The other three, all previously wrong:
 `/library/sections/{id}/search` is the correction of an earlier finding rather
 than a new one: only the form with **no `type`** is a 400. With a type it is a
 real listing whose `title2` is `Search for '<query>'` and which carries no
-`content` -- the in-library search box, which simplex refused in every form.
+`content` -- the in-library search box, which rex refused in every form.
 
-#### A play queue is a queue, and simplex kept a key list
+#### A play queue is a queue, and rex kept a key list
 
 Six defects in one subsystem, and the first two each break playback outright.
 
 **A queue over a show, a season, or a show library's section held the PARENT row.**
 Measured: a queue over the lab's Firefly holds its **six episodes**, a queue over
 a season holds that season's three, and a queue over `/library/sections/2/all`
-holds every leaf -- never the parent, which has no `Media` at all. simplex
+holds every leaf -- never the parent, which has no `Media` at all. rex
 enqueued the parent, so Play, Play All and Shuffle on every show page, season page
 and TV library handed the player something unplayable and the web client said
 "An error occurred loading items to play". The client's own shuffle path
@@ -1283,7 +1283,7 @@ stopped at the first key. A playlist queue also reports
 **The item ids and the version decide whether the client keeps the answer at
 all.** Its play-queue fetch DISCARDS the whole response when the returned
 `playQueueSelectedItemID` is not the one it holds, and it refreshes only when
-`playQueueVersion` changed. simplex computed the ids from their POSITION
+`playQueueVersion` changed. rex computed the ids from their POSITION
 (`queue_id * 1000 + index + 1`) and hardcoded the version at 1, so every id moved
 whenever anything was inserted and the version never moved at all: once playback
 was past the first item, every refresh, Add to Queue and Play Next response was
@@ -1297,16 +1297,16 @@ predated an insert.
 
 **The selection follows the TIMELINE.** `/:/timeline?...&playQueueItemID=81` moves
 the queue's `playQueueSelectedItemID` to 81 and its `playQueueSelectedItemOffset`
-to that index, without touching the version. simplex ignored the parameter and
+to that index, without touching the version. rex ignored the parameter and
 always reported item 0 -- which is the state the client throws away.
 
 **`playQueueLastAddedItemID`** tracks PLAIN adds only (a `next=1` add leaves it
 where it was), and the client uses it to DISABLE the Up Next shuffle button once
-the user has queued something. simplex never sent it, so the button stayed live.
+the user has queued something. rex never sent it, so the button stayed live.
 
 **Where an add inserts** was wrong both ways: a plain add goes after the block of
 already-added items following the current one, and a `next=1` add goes immediately
-after the current item, ahead of that block. simplex appended to the very end and
+after the current item, ahead of that block. rex appended to the very end and
 inserted at index 1 regardless of where the player was.
 
 And the smaller ones, each measured: `playQueueSourceURI` comes back **rewritten**
@@ -1315,29 +1315,29 @@ anything naming a list) rather than echoed; the container carries **no**
 `allowSync`; `window=`/`center=` slice AROUND the current item while
 `playQueueTotalCount` still reports the whole queue; an empty queue omits
 `playQueueSelectedItemOffset` and `playQueueTotalCount`; `PUT
-/playQueues/{id}/items/{id}/move?after=-1` moves an item to the front (simplex did
+/playQueues/{id}/items/{id}/move?after=-1` moves an item to the front (rex did
 not route it and answered 200 with the queue unchanged); and `PUT
 /playQueues/{id}/shuffle` and `/unshuffle` are **404** (on a queue with an add -- cycle 75 found both real on one without) -- the client reverts its
-optimistic `playQueueShuffled` on failure, so simplex's 200 left the shuffle
+optimistic `playQueueShuffled` on failure, so rex's 200 left the shuffle
 button stuck on over a queue that was never shuffled.
 
-Refusals, all of which simplex answered 200 to: a create with no `uri` and no
+Refusals, all of which rex answered 200 to: a create with no `uri` and no
 `playlistID`, or with no `type`, is a **400**; a GET of `/playQueues` is a **400**
 (the endpoint exists, the request is wrong); an unknown queue, an unknown queue
-item, and a POST or DELETE of one queue are **404**. simplex's DELETE really
+item, and a POST or DELETE of one queue are **404**. rex's DELETE really
 dropped the queue, so a client that tried one lost the queue it was playing.
 
 #### `/:/progress` is not `/:/timeline`
 
 It keys on **`key`**, not `ratingKey`, and it answers an **empty body** rather than
-a MediaContainer. simplex routed it straight at the timeline handler, which read
+a MediaContainer. rex routed it straight at the timeline handler, which read
 no key at all, so it recorded nothing and returned a container -- and every client
 that reports progress this way (plex_debrid, Kodi/PKC, Infuse, the older Plex
 apps) lost its resume point silently.
 
 #### The timeline, re-measured: four corrections to an earlier finding
 
-| Case | Reference | simplex before |
+| Case | Reference | rex before |
 |---|---|---|
 | item HAS a resume point | `viewOffset` is that **stored offset** | `-1` always |
 | item has none | `-1` | `-1` ✓ |
@@ -1357,14 +1357,14 @@ inverted at both ends.
 
 `/:/scrobble`, `/:/unscrobble`, `/:/rate` and `/:/progress` all answer **400**
 without a `key` and **404** for a key the server does not have, and `/:/rate`
-answers 400 for an unparseable rating. simplex answered an empty 200 to all of
+answers 400 for an unparseable rating. rex answered an empty 200 to all of
 them, which tells the client the write landed. (`rating=-1` clearing both
 `userRating` and `lastRatedAt`, and `rating=99` being stored unclamped, were
 already right.)
 
 `PUT /library/parts/{id}` is the same failure with a worse consequence: a stream id
 that is not a stream of the right TYPE on that item is a **400** and the selection
-is left untouched. simplex accepted anything with a 200 and then cleared every
+is left untouched. rex accepted anything with a 200 and then cleared every
 selection, because nothing matched -- so a rejected request left the item with **no
 selected track at all** and the picker went blank. `0` is the client's "None"
 pseudo-stream and is valid for subtitles only; `audioStreamID=0` is a 400.
@@ -1374,14 +1374,14 @@ Two more paths: a LEAF on a comma-joined key list is a **404**
 in them, which the web client's per-grid probe reads as state it has), a
 non-numeric ratingKey is a **404**, and
 `/subtitles/:/transcode/universal/start` -- the URL Plex Web uses for a `<track>`
-src when it CAN direct play, which is simplex's only path -- is a **400** on both
+src when it CAN direct play, which is rex's only path -- is a **400** on both
 reference servers rather than the catch-all 404.
 
 #### The History page filters and sorts
 
 `/status/sessions/history/all` honours `accountID`, `deviceID`,
 `librarySectionID`, `metadataItemID` and `viewedAt` comparisons, and sorts;
-simplex ignored every one of them. So Top Users' "View Play History" link
+rex ignored every one of them. So Top Users' "View Play History" link
 (`accountID=&viewedAt=`) and the per-item history link (`metadataItemID=`) both
 showed the whole server's history, in insertion order, and the Played column's
 sort did nothing.
@@ -1391,7 +1391,7 @@ grammar's `>>` -- two query languages on one server. And an unknown sort key is 
 **400** here where a library listing answers 500 for the same mistake.
 
 `DELETE /status/sessions/history/{historyKey}` removes one row and answers 200
-with an empty container; an unknown key is a 404. simplex matched the history path
+with an empty container; an unknown key is a 404. rex matched the history path
 on the path alone, so a DELETE was answered with the LISTING, and a numeric key
 fell through to the live-sessions handler and answered `{size: 0}` -- which is
 exactly the "it worked" signal for a delete that did nothing.
@@ -1400,12 +1400,12 @@ exactly the "it worked" signal for a delete that did nothing.
 
 findings.md already recorded that a client which does not claim MDE gets the
 3000/1001 refusal naming the protocol it fell back to, but the code branched on
-`directPlay` alone. So simplex answered the MDE pair to a client that never
+`directPlay` alone. So rex answered the MDE pair to a client that never
 claimed MDE -- telling it a media decision was made on its behalf.
 
 #### `GET /` is not `/identity`, and eleven refusals a real PMS makes
 
-simplex answered `/` with the five-field identity document. Measured, a real PMS
+rex answered `/` with the five-field identity document. Measured, a real PMS
 answers the whole capability blob -- the same ~50 scalars as `/media/providers`
 -- plus **25 `Directory` rows** (`{count, key, title}`) naming its top-level
 endpoints: actions, activities, butler, channels, clients, devices, diagnostics,
@@ -1416,14 +1416,14 @@ here, so an identity document leaves it with almost none of them.
 
 `/butler` lists **23** tasks, and only `BackupDatabase` carries a `title` and a
 `description` -- the client humanises the rest from the name. Its root carries no
-`size`. simplex listed two with invented titles, so the Scheduled Tasks page
+`size`. rex listed two with invented titles, so the Scheduled Tasks page
 showed two tasks that do not exist on a real server and hid twenty-one that do.
 A PUT to a task that exists is a **404**; only POST (run now) and DELETE (cancel).
 
 `/library/metadata/{id}/tree` **nests**: a show's tree holds its seasons, each
 season its episodes, each episode its `MediaItem`, and an EPISODE's own tree is
 rooted at the SHOW. A `MediaItem` here carries only its `id` -- the width, codecs
-and bitrate simplex put on it belong to a normal detail response. simplex answered
+and bitrate rex put on it belong to a normal detail response. rex answered
 one flat row with `MediaItem: []`, which is both the empty-list shape no real PMS
 sends and missing the whole hierarchy the Get Info dialog reads.
 
@@ -1431,9 +1431,9 @@ Two listing details: a show's `/children` carries an extra `Directory` row
 `{key: "/library/metadata/{id}/allLeaves", title: "All episodes"}` and the
 container's `size` **counts it**, which is exactly what `excludeAllLeaves=1`
 takes back off. And `Guid` is gated: a DETAIL row always carries it, a LISTING
-carries it only under `includeGuids=1`; simplex sent it everywhere.
+carries it only under `includeGuids=1`; rex sent it everywhere.
 
-The refusals, each of which simplex answered an empty 200 or an empty container
+The refusals, each of which rex answered an empty 200 or an empty container
 to -- which a client reads as "that worked" or "that exists and is empty":
 
 | Request | Reference |
@@ -1450,18 +1450,18 @@ to -- which a client reads as "that worked" or "that exists and is empty":
 | `PUT /butler/{task}` | 404 |
 | `GET /library/collections/{id}/items` | the members, not an empty container |
 
-And five endpoints simplex refused that a real PMS answers: `/log/networked`
+And five endpoints rex refused that a real PMS answers: `/log/networked`
 (200, empty), `/diagnostics` (`{size: 0, content: "plugins"}`), `/resources`
 (`{size: 0}`), `/media/grabbers` (four `MediaGrabber` rows -- an empty list tells
 the Live TV page the server supports no tuner protocols at all rather than that it
 has no tuners), and `/system/library/sections` (a `com.plexapp.system` container).
 
-`/security/token` answers a **different** token on every call; simplex answered a
+`/security/token` answers a **different** token on every call; rex answered a
 constant, so two devices would have shared one delegation credential.
 
 Three shapes on the collection and playlist side: a single collection's container
 carries `allowSync: true`, the identifier and the media-tag pair, and a NUMERIC
-`librarySectionID` (simplex sent a string and omitted the other three, so a client
+`librarySectionID` (rex sent a string and omitted the other three, so a client
 could not resolve a tag into an image URL from a collection page); a SMART
 collection carries no `minYear`/`maxYear`, because its membership is a query and
 there is no fixed span to report; and the playlist ITEMS container reports its
@@ -1478,22 +1478,22 @@ The single quietest failure found in this project. The web client's Edit dialog 
 PUT /library/sections/{id}/all?type=1&id=4&includeExternalMedia=1&title.value=…
 ```
 
-simplex's section handler dispatched `all` on the path alone, so a PUT there
+rex's section handler dispatched `all` on the path alone, so a PUT there
 answered the ordinary grid LISTING with a 200. The dialog reads the status, reports
 success, and nothing was written. **Every Save, for the life of the project.**
 
-Its pre-read is a second endpoint simplex never had:
+Its pre-read is a second endpoint rex never had:
 `GET /library/sections/{id}/common?type=1&id=…` answers a `Common` row (JSON
 `Metadata` with `type: "common"`, XML `<Common>`) in a secondary container titled
 "Common", holding the fields the selected items SHARE. With several ids the fields
 that DIFFER are dropped and named in `mixedFields` instead -- which is how the
-dialog knows to show "(mixed)" rather than overwrite. simplex 404'd it, and the
+dialog knows to show "(mixed)" rather than overwrite. rex 404'd it, and the
 dialog's `populate()` rejects on that: "There was an error editing this item",
 before the user could type.
 
 And its source of editable TAG fields is a third:
 `GET /library/sections/{id}?includeDetails=1&includeAdvanced=1`, from which the
-client reads `Type[].Field[type=="tag"]`. simplex answered two Directory rows
+client reads `Type[].Field[type=="tag"]`. rex answered two Directory rows
 (`All`, `Recently Added`) and no `Type` at all, so the Tags pane offered no genre,
 no collection, no label and no people. A real PMS answers **20 pivot rows** for a
 movie library and 16 for a show one -- each with the title the sidebar prints,
@@ -1509,9 +1509,9 @@ same shape on the ITEM path IS an edit. So which it means depends on the path.
 
 #### Every edit parameter, one measurement at a time
 
-simplex stored whatever it was sent and answered 200. A real PMS:
+rex stored whatever it was sent and answered 200. A real PMS:
 
-| Request | Reference | simplex before |
+| Request | Reference | rex before |
 |---|---|---|
 | `bogus.value=1`, `sortTitle.value=abc` | **400** | 200, and `Field` gained a lock for a field that does not exist |
 | `bogustag[0].tag.tag=x` | **400** | 200 |
@@ -1528,24 +1528,24 @@ simplex stored whatever it was sent and answered 200. A real PMS:
 | the `Field` lock list | a fixed COLUMN order | insertion order, so re-locking moved the entry |
 
 **Tag edits are a replace, not an append.** `genre[0].tag.tag=A&genre[1].tag.tag=B`
-leaves EXACTLY `[A, B]`: the originals are gone. simplex appended, so the Edit
+leaves EXACTLY `[A, B]`: the originals are gone. rex appended, so the Edit
 dialog could only ever add tags and the list grew on every Save. A `tag-` removal
 CLEARS the whole list whatever value it names -- even one the row does not have --
 and the indexed list in the same request rebuilds it, which is how "remove one tag"
-actually works on the wire. simplex matched removals by exact name, so a tag
+actually works on the wire. rex matched removals by exact name, so a tag
 containing a space could never be removed (the client percent-encodes the value
 before the query encoding, so it arrives double-encoded).
 
 A tag also matches **case-insensitively and keeps its canonical spelling and id**,
 and it does so after being removed from every row -- a real PMS keeps a tag TABLE.
-simplex looked only at the rows, so clearing a tag lost its identity and the next
+rex looked only at the rows, so clearing a tag lost its identity and the next
 add minted a new id; there is now a tag table for exactly this.
 
 #### A collection and a playlist are metadata items
 
 Both have ratingKeys and the client edits both through `/library/metadata/{key}` --
 its own `saveUrl` falls back to that path for a playlist on a server without the
-true-playlists feature. simplex kept them outside the catalog, so both answered 404
+true-playlists feature. rex kept them outside the catalog, so both answered 404
 and neither could be renamed from its own page.
 
 `PUT /library/metadata/{collection}/prefs?collectionSort=1` is how the collection's
@@ -1555,7 +1555,7 @@ Reading those prefs is a 404 (write-only), and an unknown pref is a 400.
 #### Library management validated nothing
 
 `PUT /library/sections/{id}`: a `name` alone is a **400**, and so is a form with no
-`agent` or no `scanner`, or an unknown agent, scanner or `language`. simplex
+`agent` or no `scanner`, or an unknown agent, scanner or `language`. rex
 accepted all of them with a 200, so a typo in the Edit Library dialog looked saved.
 
 `POST /library/sections` answers a **plain-text 400 naming what is wrong** -- with
@@ -1563,7 +1563,7 @@ no Content-Type header at all: `'location' is missing or invalid. `, `'type' is
 missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist') …`,
 `'agent' is missing or invalid …`, `new scanner needs to be paired with new agent `,
 `'name' is missing or invalid `. A nonexistent location and a duplicate name ARE
-both accepted (201). simplex answered **201 to every malformed form** and really
+both accepted (201). rex answered **201 to every malformed form** and really
 created the library -- a POST with no parameters at all made one called
 "New Library", which then sat in the sidebar.
 
@@ -1571,7 +1571,7 @@ created the library -- a POST with no parameters at all made one called
 the cancel is a DELETE. And `PUT /playlists/{id}` with an unknown parameter,
 `smart=1`, or nothing at all is a **400**.
 
-#### simplex had no token gate at all
+#### rex had no token gate at all
 
 A real PMS **401s everything** except `/identity` (so a client can discover the
 server) and `/web/*` (the client itself). Measured on both reference servers, for a
@@ -1594,11 +1594,11 @@ Date: Wed, 16 Sep 2026 04:20:10 GMT
 ```
 
 That block is a verbatim capture off kids, taken in cycle 30 with a raw socket. What stood here
-before was simplex's own answer -- `Connection: close`, no `Content-Length`, no `Date`, the headers
-in simplex's order -- pasted in and read as the reference's for eleven cycles.
+before was rex's own answer -- `Connection: close`, no `Content-Length`, no `Date`, the headers
+in rex's order -- pasted in and read as the reference's for eleven cycles.
 
 Cycle 30 corrected that sample: the `Connection: close` printed here for eleven cycles was
-**simplex's own answer read back as the reference's**. Both references keep the socket alive
+**rex's own answer read back as the reference's**. Both references keep the socket alive
 after a 401, a 403 and a 404 and it really is reusable; the only handler-level refusal on the
 surface that closes it is the 400 a query pair with no `=` answers. See the thirtieth pass.
 
@@ -1613,13 +1613,13 @@ The one exception is `/security/token`, which answers its own **400** with no
 parameters and **403** with a token that is not good enough -- never a 401. That
 split is how a client tells "you did not ask properly" from "you may not have one".
 
-simplex answered 200 to all of it, with no token check anywhere: the string
+rex answered 200 to all of it, with no token check anywhere: the string
 `X-Plex-Token` appeared in the code only in the CORS `Vary` header. Any peer that
 could reach the port read the whole library, the preferences, the sessions and the
-media bytes -- and simplex is published over a named Cloudflare tunnel.
+media bytes -- and rex is published over a named Cloudflare tunnel.
 
-The gate is now implemented and is **opt-in** (`--token` / `SIMPLEX_TOKEN`), which
-is the deviation: a real PMS always has a token, and simplex defaults to none
+The gate is now implemented and is **opt-in** (`--token` / `REX_TOKEN`), which
+is the deviation: a real PMS always has a token, and rex defaults to none
 because its four test suites and its probes talk to it without one. The startup log
 says which it is, in as many words -- `token gate: OFF -- every peer that can reach
 this port can read the library`. The harness starts its own gated instance to prove
@@ -1628,12 +1628,12 @@ the gate works, so the behaviour is tested rather than merely available.
 #### `Cache-Control` on everything, and gzip
 
 A real PMS sends **`Cache-Control: no-cache` on every response** -- measured across
-eight endpoints on both servers. simplex sent none at all, except on artwork, where
+eight endpoints on both servers. rex sent none at all, except on artwork, where
 it sent `max-age=86400`: a day of browser caching that the reference does not do,
 so a Change Artwork or a re-match stayed invisible even though the version in the
-URL had changed. The reference's policy is the opposite of what simplex had:
+URL had changed. The reference's policy is the opposite of what rex had:
 
-| Path | Reference | simplex before |
+| Path | Reference | rex before |
 |---|---|---|
 | every container | `no-cache` | (none) |
 | a VERSIONED direct asset (`/library/metadata/{id}/thumb/{ver}`) | `no-cache`, plus `X-Plex-Local-Asset: 1` and `Accept-Ranges: bytes` | `max-age=86400`, neither header |
@@ -1647,12 +1647,12 @@ X-Plex-Content-Original-Length: 10381
 X-Plex-Content-Compressed-Length: 3069
 ```
 
-3.4x on a five-row grid, 5.4x on simplex's own. Both servers always use
-`Content-Length` and never chunk, even at 4.9 MB -- which simplex already matched.
+3.4x on a five-row grid, 5.4x on rex's own. Both servers always use
+`Content-Length` and never chunk, even at 4.9 MB -- which rex already matched.
 
 #### The notification LIFECYCLE, which is what makes a client refetch
 
-simplex pushed the FIRST frame of every sequence and stopped. That is enough for a
+rex pushed the FIRST frame of every sequence and stopped. That is enough for a
 client to know something started and never enough for it to act.
 
 A refresh on the reference pushes **seven** frames, captured verbatim off its
@@ -1672,13 +1672,13 @@ The state alphabet, pinned against the client's own reducer (`main-*.js` module
 35623, constants `lm = 5` and `cm = 9`): **0 created, 3 queued/processing, 4
 loading, 5 done, 9 deleted**.
 
-Two of those frames are load-bearing, and simplex sent neither:
+Two of those frames are load-bearing, and rex sent neither:
 
 - **`state: 5` dispatches `metadataProcessed`, which is what makes the client
   REFETCH the row.** Without it Refresh Metadata does nothing on screen until a
   reload.
 - **The reducer deletes its entry only when `metadataState` is ABSENT**
-  (`t.metadataState||t.mediaState ? … : delete e[t.sourceURI]`), and simplex's one
+  (`t.metadataState||t.mediaState ? … : delete e[t.sourceURI]`), and rex's one
   frame always carried `"queued"` -- so every gate spelled `!!metadataState` stayed
   latched: the spinner, and the Refresh and Match menu entries.
 
@@ -1687,11 +1687,11 @@ And the activity never ended. `add_activity` fired `started`; only
 `/activities` for the life of the process at `progress: 0` -- where the reference's
 started frame is `progress: -1` and it reaches `ended` at 100.
 
-An **edit** pushes two frames (`state 3, "loading"` then `state 5`); simplex pushed
+An **edit** pushes two frames (`state 3, "loading"` then `state 5`); rex pushed
 none, so an edit made through the API was invisible to every other open client. A
 **create** pushes `state 0, "created"` and a **delete** pushes `state 9,
 "deleted"` -- and `9` is what dispatches the client's own `deleted` action, so
-without it a row deleted through simplex stayed on screen everywhere else.
+without it a row deleted through rex stayed on screen everywhere else.
 
 #### `filters=` is a whitelist, and `log` is opt-in — correcting a recorded finding
 
@@ -1720,13 +1720,13 @@ With it, the reference pushes log frames continuously -- **386 in 14 seconds**:
 `filters` is an exact whitelist of type names, pinned by running two sockets side by
 side: `?filters=log` received 386 log frames and **zero** of anything else, while a
 socket with no filters received `playing` and `timeline` and **zero** log frames. So
-**`log` is opt-in only and everything else is opt-out only.** simplex fanned every
+**`log` is opt-in only and everything else is opt-out only.** rex fanned every
 event to every sink, so the socket opened for the Console's log pane got playing and
 activity frames and never a log line -- and the pane was empty.
 
 #### The channels' own plumbing
 
-| | Reference | simplex before |
+| | Reference | rex before |
 |---|---|---|
 | websocket keepalive | protocol ping every **10 s** with a ONE-byte payload | every 20 s, empty |
 | eventsource keepalive | `event: ping\ndata: {}` -- a real named event -- every **10 s** | `: ping`, an SSE COMMENT (invisible to an EventSource listener), every 15 s |
@@ -1736,7 +1736,7 @@ activity frames and never a log line -- and the pane was empty.
 
 #### `/photo/:/transcode` refused nothing, and `/:/resources/<anything>` drew a tile
 
-| Request | Reference | simplex before |
+| Request | Reference | rex before |
 |---|---|---|
 | no `url` | **400** | 200, a generated grey tile |
 | `width` alone, `height` alone, or neither | **400** | 200 |
@@ -1748,13 +1748,13 @@ Both dimensions are mandatory -- one alone is not a best-effort resize. And the
 404s matter more than they look: a client that gets a 404 draws its own title-card
 placeholder, while a 200 grey tile is an image it will happily cache.
 
-Two transforms simplex cannot do and now records rather than ignores silently:
+Two transforms rex cannot do and now records rather than ignores silently:
 `format=png` is honoured by a real PMS (real PNG bytes, which the client asks for
 when it composites an overlay that needs alpha), and `blur`/`opacity`/`background`
 are real transforms (a 200x200 poster went from 6727 bytes to 1366 under
-`blur=30`). simplex has no image codec on its stdlib-only server path, so it passes
+`blur=30`). rex has no image codec on its stdlib-only server path, so it passes
 the fetched bytes through unchanged. The client gates those filters on a VERSION
-comparison (`imageFilters: "0.9.9.13"` in its feature table) and simplex advertises
+comparison (`imageFilters: "0.9.9.13"` in its feature table) and rex advertises
 1.42.2, so it does send them -- background art renders sharp and fully opaque where
 it should be blurred and dimmed. Recorded as a limitation, not a gap to be papered
 over.
@@ -1769,7 +1769,7 @@ Measured on both reference servers: `/zzzznope`, `/foo`, `/music`, `/photos`,
 ```
 
 -- the legacy plug-in dispatcher -- while a MULTI-segment unknown path (`/foo/bar`,
-`/a/b/c`) is a 404. simplex 404'd all of them, so the four the client bundle names
+`/a/b/c`) is a 404. rex 404'd all of them, so the four the client bundle names
 were 404s where a real server answers. And bare **`/channels`** is real too (two
 `Directory` rows, `all` and `recentlyViewed`), which slightly corrects the note
 saying the channel paths 404 on a real PMS -- the channel APPSTORE ones do, `/channels`
@@ -1786,15 +1786,15 @@ does not.
 /media/providers     400     404    404
 ```
 
-simplex answered the GET body -- 200 -- to all nine refusals. Worse, `POST
+rex answered the GET body -- 200 -- to all nine refusals. Worse, `POST
 /library/sections` **with no parameters at all** answered 201 and really created a
 section called "New Library", which then sat in the sidebar.
 
 #### Part reads carry both validators
 
 Every byte response from a real PMS carries `ETag` (the part's own file hash) and
-`Last-Modified`, on the 200 and on every 206. simplex sent neither, so a client had
-nothing to revalidate against. simplex owns no file to hash, so its ETag is a digest
+`Last-Modified`, on the 200 and on every 206. rex sent neither, so a client had
+nothing to revalidate against. rex owns no file to hash, so its ETag is a digest
 of what identifies those bytes -- part id, version, size -- which is exactly what an
 opaque validator is for.
 
@@ -1810,22 +1810,22 @@ segments of a part URL are decorative (a wrong version or extension still serves
 
 #### The default listing order is `titleSort`, and every tie falls back to it
 
-simplex answered a listing in CATALOG order and left ties in whatever order the rows
+rex answered a listing in CATALOG order and left ties in whatever order the rows
 arrived in. Measured on both servers: the default is **`titleSort` ascending** (the
 title where no sort title is stored) -- fun's show grid opens on
 `【OSHI NO KO】, 13 Reasons Why, 30 Rock, 86 EIGHTY-SIX, The 100`, because The 100's
 titleSort is `100` -- and the SECONDARY key is always titleSort, whatever the primary
 is and whichever direction it runs. So an edited Sort Title never moved a row on
-simplex, and the grid's own default disagreed with its sort control.
+rex, and the grid's own default disagreed with its sort control.
 
 (Collation is the one part not reproduced: the reference uses ICU, so `'Burbs`
-sorts before `#Jowable` and simplex's byte order puts them the other way. Recorded
+sorts before `#Jowable` and rex's byte order puts them the other way. Recorded
 rather than faked -- there is no ICU on the stdlib server path.)
 
 #### `includeAdvanced=1` was ignored, and the Sort menu lost most of its entries
 
 The client sends it on the grid listing and on its FilterCollection, and reads the
-`Sort` list straight into the sort menu. simplex's Meta was identical with and
+`Sort` list straight into the sort menu. rex's Meta was identical with and
 without it. Measured, the flag adds:
 
 | Type | Added |
@@ -1837,7 +1837,7 @@ without it. Measured, the flag adds:
 
 So a movie library went 9 → 15 sorts and 28 → 29 filters, an episode view 7 → 15 and
 17 → 18. And three of the keys it was about to advertise -- `userRating`,
-`contentRating`, `mediaBitrate` -- answered **500** on simplex's own listing, which is
+`contentRating`, `mediaBitrate` -- answered **500** on rex's own listing, which is
 an advertised control that breaks the grid the moment it is used.
 
 #### The in-library search box is a SUBSTRING matcher
@@ -1846,7 +1846,7 @@ an advertised control that breaks the grid the moment it is used.
 `?query=ear` finds "Tears of Steel", `?query=a` finds three of five rows, and ONE
 character is enough -- corroborated on fun's 3856-movie library (`?query=ngers` → 11
 rows including `Challengers` and `Passengers`). It is title-only and
-case-insensitive. simplex routed it through the hub's word-prefix matcher, including
+case-insensitive. rex routed it through the hub's word-prefix matcher, including
 its two-character floor, so the in-library search box found nothing that did not
 start a word.
 
@@ -1854,7 +1854,7 @@ start a word.
 
 Measured: a show's `/children` puts the `Directory` row **first**, before the seasons,
 and a PAGED request omits it entirely (`size 1, totalSize 2` for one season).
-simplex appended it to EVERY page and counted it there, so a virtualised list
+rex appended it to EVERY page and counted it there, so a virtualised list
 mis-measured and every page grew a spurious tile.
 
 Corrected in the eighth pass: only a ONE-ROW page drops it. The client's own
@@ -1865,7 +1865,7 @@ Corrected in the eighth pass: only a ONE-ROW page drops it. The client's own
 This file recorded the rule as paged-versus-unpaged. Re-measured on four libraries
 across both servers: a **show** library's `/all` carries `nocache` paged AND unpaged,
 a movie library's never does -- the same rule the secondary containers follow. Since
-the client always pages, simplex's version meant a show grid never carried it and a
+the client always pages, rex's version meant a show grid never carried it and a
 movie grid carried it when unpaged.
 
 #### Change Poster wrote to a path that served an image
@@ -1876,7 +1876,7 @@ does `model.set("thumb", response)`. So the response BODY is the new artwork pat
 Measured: `PUT …/poster?url=…` → `200`, body `/library/metadata/1/thumb/1789241428`;
 the plural `…/posters` is a **404** for a write.
 
-simplex had it exactly inverted: the plural path took the write (answering an empty
+rex had it exactly inverted: the plural path took the write (answering an empty
 200) and the singular one served image BYTES. So in the real client Change Poster did
 nothing **and** set the tile's `img src` to a blob of PNG. Its `selected` flag was
 wrong too -- keyed on "is there any artwork at all" rather than on which candidate the
@@ -1886,43 +1886,43 @@ row points at, so after picking the local placeholder nothing came back selected
 
 - **Removing a collection member did nothing.** The client builds
   `DELETE /library/collections/{id}/items/{ratingKey}` and assigns the response onto
-  its model; simplex had no DELETE branch, so it fell through to an empty container --
+  its model; rex had no DELETE branch, so it fell through to an empty container --
   the tile vanished optimistically and came back on the next fetch. Measured: 200 with
   the collection ROW (new `childCount`, year span), and idempotent. A collection ADD
   answers the same row, not the `leafCountAdded`/`leafCountRequested` pair a PLAYLIST
-  add answers -- simplex sent the playlist shape.
+  add answers -- rex sent the playlist shape.
 - **`/library/onDeck` was the first twelve catalog rows**, with no view state at all.
   It is the server-wide Continue Watching list -- every row carries a `viewOffset` --
   and it is EMPTY on a server with nothing in progress. That endpoint is what every
   non-web client's On Deck reads.
 - **A resume point under a minute is not stored.** The reference leaves the row
-  untouched at 3 000, 20 000 and 59 000 ms and starts recording at 61 000; simplex
+  untouched at 3 000, 20 000 and 59 000 ms and starts recording at 61 000; rex
   answered `playbackState: ignore` and wrote the offset anyway, so a title glanced at
   for two seconds appeared in Continue Watching.
 - **"Remove from Continue Watching" HIDES the row and KEEPS the offset.** The
   reference's `viewOffset` was still 91 000 afterwards; the row simply stops appearing
-  until the next timeline brings it back. simplex deleted the offset, so the entry
+  until the next timeline brings it back. rex deleted the offset, so the entry
   also threw away the resume position and the next Play started over. An unknown
   ratingKey there is a 404.
 - **A scrobble writes NO history row.** The reference's history stayed at one row
   through three scrobbles -- rows come only from a timeline that reaches the end.
-  simplex recorded one per mark-as-played, so History and the Top shelf counted things
+  rex recorded one per mark-as-played, so History and the Top shelf counted things
   nobody had watched. And a show or season keeps its OWN `viewCount`/`lastViewedAt`,
   independent of its leaves: it INCREMENTS rather than recomputing (unscrobbling one
-  episode left the show at 2), and unscrobbling the show removes the field. simplex
+  episode left the show at 2), and unscrobbling the show removes the field. rex
   emitted neither on a parent, so a TV grid's "Last Played" sort had nothing to read.
 - **`historyKey` is monotonic and never reused.** The reference went 34, 35, delete
-  35, then 36; simplex derived it from the list length, so a delete made the next play
+  35, then 36; rex derived it from the list length, so a delete made the next play
   reuse the deleted key. And a removed item's history row SURVIVES with its
-  `ratingKey` and `key` stripped -- simplex kept both, so the History page linked a 404.
-- **Deleting a season's last episode removes the season.** simplex left it listed with
+  `ratingKey` and `key` stripped -- rex kept both, so the History page linked a 404.
+- **Deleting a season's last episode removes the season.** rex left it listed with
   `leafCount 0`, so the show page drew a season tile with nothing behind it.
 - **A playlist does not take a row it already has.** Re-adding answers
   `leafCountAdded: 0` and leaves the count alone, and a uri naming the same key twice
-  adds it once. simplex appended every time, so Add to Playlist silently duplicated.
+  adds it once. rex appended every time, so Add to Playlist silently duplicated.
 - **A removed row leaves the play queues.** The queue shrinks, `playQueueTotalCount`
   drops and the VERSION steps, and the selection moves to a row that still exists.
-  simplex left the removed row's id as `playQueueSelectedItemID` and never moved the
+  rex left the removed row's id as `playQueueSelectedItemID` and never moved the
   version -- which, by this file's own earlier finding, is exactly the response the
   client discards.
 
@@ -1939,7 +1939,7 @@ not there.
 
 Measured across 21 section leaves: a real PMS 404s every verb a leaf does not
 implement, and it **never answers 405** -- that status does not appear anywhere on its
-surface. simplex answered the GET body to any verb, so `DELETE
+surface. rex answered the GET body to any verb, so `DELETE
 /library/sections/1/all` came back 200 with the grid, which tells a client the delete
 was accepted. The verbs each leaf takes: `refresh` GET/POST/DELETE, `emptyTrash` and
 `analyze` PUT, `indexes` DELETE, `prefs` and `all` GET/PUT, everything else GET only;
@@ -1949,11 +1949,11 @@ Three smaller ones from the same sweep: `/:/timeline` requires **`state`** and i
 400 without it (it is the only required parameter); a bare `GET /playQueues` is an
 empty 200 while `?type=` is a 400; and `/livetv/epg/lineup`, `/channelmap` and
 `/lineupchannels` are **400** on a server with no tuner rather than the blanket empty
-container simplex answered for the whole tree.
+container rex answered for the whole tree.
 
 #### `/:/prefs` was missing eight rows, one of them the server's name
 
-174 on the reference, 169 on simplex. The one that matters is **`FriendlyName`**:
+174 on the reference, 169 on rex. The one that matters is **`FriendlyName`**:
 `hidden: false, group: "general"`, and the client looks it up BY ID to draw Settings >
 General's server-name field and to set its own `friendlyName`. Without it the field
 did not render, and a write to it was refused as an unknown preference. The other
@@ -1966,25 +1966,25 @@ filled from this server rather than copied.
 
 Two defects in one predicate. A real PMS pages only when
 `X-Plex-Container-Start` **and** `X-Plex-Container-Size` are both present -- one
-alone is ignored entirely, with no slice, no `offset` and no `totalSize`. simplex
+alone is ignored entirely, with no slice, no `offset` and no `totalSize`. rex
 tested them with OR, so a lone `Size=1` returned one row and claimed a total, and
 a lone `Start=1` silently dropped the first row. A negative size drops paging on a
-real server; in simplex it was a Python slice, so `Size=-1` served every row but
+real server; in rex it was a Python slice, so `Size=-1` served every row but
 the last.
 
 And the modern client sends them as **HTTP headers**, not query parameters
 (`fetchRange`: `headers:{"X-Plex-Container-Start":…,"X-Plex-Container-Size":…}`).
-simplex read only the query string, so every windowed grid request got the whole
+rex read only the query string, so every windowed grid request got the whole
 library and no `totalSize` -- the same shape of bug as the missing Seasons block,
 one transport over. Both are now normalised at the door.
 
-`totalSize` is the FILTERED count, which simplex already had right.
+`totalSize` is the FILTERED count, which rex already had right.
 
 #### Sorting: a spec is a LIST, and the seed matters
 
-Measured on the reference, and simplex honoured none of it:
+Measured on the reference, and rex honoured none of it:
 
-| Request | Reference | simplex before |
+| Request | Reference | rex before |
 |---|---|---|
 | `sort=year:desc,titleSort:asc` | orders by year, breaks ties on title | dropped the second key -- and `titleSort:asc,year:desc` came out **descending**, because the spec as a whole ends in `:desc` |
 | `sort=random:12345` vs `random:99` | two different stable orders | one order regardless of seed |
@@ -2002,17 +2002,17 @@ ignored where an unknown KEY is a 500. An unknown key returns the reference's 50
 unsorted 200 -- a caller cannot tell the difference otherwise, and a silent
 no-op is the failure this whole file is about. (That a real PMS answers 500
 rather than 400 for what is a client error looks like a defect in it; it is the
-measurement, so it is what simplex answers.)
+measurement, so it is what rex answers.)
 
 #### CORS, which a browser enforces before the server sees anything
 
-| | Reference | simplex before |
+| | Reference | rex before |
 |---|---|---|
 | normal response, with an `Origin` | echoes that origin, plus `Access-Control-Expose-Headers: Location, Date` and `Vary: Origin, X-Plex-Token` | `Access-Control-Allow-Origin: *`, always |
 | normal response, no `Origin` | **no CORS headers at all** | `*` anyway |
 | preflight | echoes the requested `Access-Control-Request-Headers` **verbatim**, `Max-Age: 1209600` | a FIXED list |
 
-The fixed list was the bug. It omitted `X-Plex-Session-Id` (simplex allowed
+The fixed list was the bug. It omitted `X-Plex-Session-Id` (rex allowed
 `X-Plex-Session-Identifier`, a different header), `X-Plex-Language`,
 `X-Plex-Features`, `X-Plex-Model` and several more the web client sends -- and a
 preflight that omits one header makes the **browser** refuse the request, with no
@@ -2036,7 +2036,7 @@ row's keys either side of the call:
 | guid | becomes **`tv.plex.agents.none://<ratingKey>`**, not `local://` |
 | title | becomes the FILE NAME without its extension |
 
-The artwork surviving is the one that matters. simplex was dropping `thumb` and
+The artwork surviving is the one that matters. rex was dropping `thumb` and
 `art`, which leaves the row with no artwork URL for the client to ask for at all
 -- so the grid tile goes blank, where a real unmatched item still shows its
 poster. The `unmatched=1` filter had to learn the same guid forms the client's
@@ -2046,14 +2046,14 @@ was invisible to the filter that looks for exactly those.
 Also measured while there, and deliberately NOT copied: every real row carries
 **four** `Image` entries -- `coverPoster`, `background`, `clearLogo`
 (`/library/metadata/{rk}/clearLogo/{v}`) and `backgroundSquare` (`/squareArt/{v}`)
--- and all four endpoints serve bytes. simplex advertises only the two it has.
+-- and all four endpoints serve bytes. rex advertises only the two it has.
 Advertising a clear logo it cannot supply would put its generated grey tile over
 the hero banner in place of the title, which is worse than the client falling
 back to text.
 
 #### A negative result worth keeping: no lock was needed
 
-simplex is a `ThreadingHTTPServer`, and everything the UI writes -- playlists,
+rex is a `ThreadingHTTPServer`, and everything the UI writes -- playlists,
 collections, activities, catalog rows -- is mutable state with nothing guarding
 it. That looks like a defect waiting to happen, so it was measured before being
 "fixed":
@@ -2066,7 +2066,7 @@ it. That looks like a defect waiting to happen, so it was measured before being
 
 So no lock was added. Under CPython each of these iterations completes inside one
 bytecode loop and the dict mutations are atomic, which closes the window for the
-access patterns simplex actually has. The check stays in the suite at a smaller
+access patterns rex actually has. The check stays in the suite at a smaller
 size, because the failure mode it guards against -- two clients handed the same
 ratingKey -- would be silent rather than loud.
 
@@ -2074,7 +2074,7 @@ ratingKey -- would be silent rather than loud.
 `reference-walk` corpus. What is left after this work is content (a different
 library: four Blender movies and Firefly against three fixture rows and two
 shows), the deliberate capability differences above, and 13 `404`s for the
-reference's own ratingKeys -- simplex keeps its key ranges disjoint by type
+reference's own ratingKeys -- rex keeps its key ranges disjoint by type
 (leaves 1000+, shows 20000+, seasons 30000+), so a corpus recorded against a
 server whose keys are 1-8 cannot be replayed at it item for item. Everything
 structural is gone.
@@ -2095,7 +2095,7 @@ compared after a cycle.
 
 The Add Library dialog reads `/library/sections/prefs?type=<N>&agent=<id>` before
 the library exists and joins it with three other reads, so a refusal stops the
-dialog from validating. simplex answered 400 to every call. Measured on the whole
+dialog from validating. rex answered 400 to every call. Measured on the whole
 matrix of types and agents, now `section_prefs_new.json`:
 
 | request | reference |
@@ -2122,7 +2122,7 @@ The three writers, each measured with its value restored afterwards:
 | bool | `1`/`true` true, anything else false | stored as the STRING `"true"`/`"false"` | -- |
 | value type on read-back | keeps its type (`40`, `false`) | string | string |
 
-simplex applied the known settings beside an unknown one, stored `"abc"` in an int,
+rex applied the known settings beside an unknown one, stored `"abc"` in an int,
 echoed every bool back as the string that was written, and stored ANY item key --
 including its own parser's `_pairs` list, which then rendered onto the metadata row.
 An episode has no settings, so every write to one is a 400.
@@ -2131,13 +2131,13 @@ An episode has no settings, so every write to one is a 400.
 
 - `/system/agents?mediaType=1` lists the reference's three modern agents (Plex Movie,
   Personal Media, NFO Movie) each with 45 `Language` rows and `default="1"` on
-  `en-US`, which the dialog's `findWhere({default:true})` preselects. simplex sent
+  `en-US`, which the dialog's `findWhere({default:true})` preselects. rex sent
   one language and no default. `mediaType=abc` is a 400; a type no agent serves is
   `size: 0`. Now `system_agents.json`.
 - `/system/agents/{id}/config/{type}` and `/contributors` are EMPTY containers for a
   modern agent on BOTH real servers -- only a legacy plug-in has a chain -- with 404
   for a type no agent serves and 500 for a non-number or missing parameters.
-  `/attribution` and `/attribution/image` are 404 for a modern agent. simplex
+  `/attribution` and `/attribution/image` are 404 for a modern agent. rex
   answered the JSON agent list to all of them, one of which the page feeds to `<img>`.
 - `/system/scanners/{N}` is keyed by library TYPE (`ScannerCollection` builds it
   from `sectionTypeID`), not by section: `/13` is the photo scanner on a server with
@@ -2151,22 +2151,22 @@ client's `X-Plex-Device-Name` and `platform` its `X-Plex-Platform`, each recorde
 independently. The earlier probe sent no X-Plex headers and saw them empty. Device 1
 is the row with no client identifier, created when the server started. `/devices`
 lists every device ever seen (41 on the reference) and `/devices/{id}` reads one
-(404 for an unknown id, `abc` included); simplex listed one row describing itself.
+(404 for an unknown id, `abc` included); rex listed one row describing itself.
 
 A completed play's history row and its `StatisticsMedia` row carry the PLAYING
-device's id. simplex wrote device 1 on both, an id no Device row in the same
+device's id. rex wrote device 1 on both, an id no Device row in the same
 container named. With no `timespan`, `/statistics/bandwidth` and `/media` answer
 every rollup, 0 to 4, in one list.
 
 `/library/metadata/{id}/users/top` is one `Account` row with a `globalViewCount`
 for an item that has completed views, `size: 0` otherwise, and a **500 for a
 season**. The count survives a history delete and an unscrobble (movie 1 reports 2
-with neither), so simplex keeps its own. `/nearest` is an empty library container
+with neither), so rex keeps its own. `/nearest` is an empty library container
 for every item and a 404 for an unknown one.
 
 #### Small endpoints, and the last three 405s
 
-| request | reference | simplex before |
+| request | reference | rex before |
 |---|---|---|
 | `/channels/all` | 200 `size=0 content="plugins"` | 404 |
 | `/log` with no `level`, no `message`, or a non-numeric level | 400 on every verb | 200 |
@@ -2181,11 +2181,11 @@ Only an exact, case-sensitive `application/json` or `application/xml` range coun
 `q` ranks them and a tie goes to the one listed first; any other parameter
 disqualifies the range. So `application/xml, application/json` is XML,
 `application/json; charset=utf-8` is XML, `Application/JSON` is XML, and axios's
-`application/json, text/plain, */*` is JSON. simplex answered JSON whenever the
+`application/json, text/plain, */*` is JSON. rex answered JSON whenever the
 substring appeared.
 
 Across ~110 JSON responses of the reference there is not one `null` and not one
-`[]`. The XML writer already dropped `None`, but simplex's JSON carried
+`[]`. The XML writer already dropped `None`, but rex's JSON carried
 `audioProfile: null`, five null Stream fields, `Label: []` and `Metadata: []` on
 every empty hub. An empty OBJECT is real: `includeRelated=1` on an item with no hubs
 is `"Related": {}`, and a multi-item Common carries `"Rating": [{}]`.
@@ -2199,10 +2199,10 @@ decimals (`24.000`), a `double` Setting's whole value drops its fraction
 
 - `titleSort` is the title with a leading English article stripped, and it is sent
   **only when it differs** -- 0 of 3,856 movies and 0 of 599 shows on fun carry an
-  equal one. An episode strips its OWN title. simplex filed "The Simpsons" under T
+  equal one. An episode strips its OWN title. rex filed "The Simpsons" under T
   and gave every episode its show's name as titleSort.
 - `originalTitle` is the original-language title, present only when it differs.
-  simplex put the media FILENAME there, which the client prints on the preplay page,
+  rex put the media FILENAME there, which the client prints on the preplay page,
   in the window title and as the OS media-session artist.
 - No default `Field` lock, no empty `Label`, no `Location` on a movie, and no
   `rating` without a critic source -- the lab's TMDB-matched movies carry only
@@ -2237,7 +2237,7 @@ Catalogs built before this carry the old fields, so `hierarchy.normalize_rows` a
 
 - `/hubs` is EIGHT shelves on both real servers, in a fixed order and all promoted:
   continue (hero, mixed), on deck, movies, television (mixed), music, photos,
-  personal videos and playlists, each with its measured key. simplex answered three
+  personal videos and playlists, each with its measured key. rex answered three
   of its own devising with no key, context, style or promoted flag.
 - A library shelf carries no librarySection fields, and its `hubKey` is the shelf's
   own rows as `/library/metadata/<keys>`, absent when empty. Recently Released
@@ -2258,7 +2258,7 @@ Catalogs built before this carry the old fields, so `hierarchy.normalize_rows` a
 #### Measured in cycle 5 and deliberately left alone
 
 - The legacy `com.plexapp.agents.*` agents and the 17 plug-ins `/:/plugins` lists:
-  simplex hosts no plug-in framework, so their prefs, contributors and attribution
+  rex hosts no plug-in framework, so their prefs, contributors and attribution
   would all be invented. `/system/*` stays JSON where the reference answers XML only,
   and the reference's JSON collapses repeated `Language` rows into one object; the
   list is the useful shape.
@@ -2272,7 +2272,7 @@ Catalogs built before this carry the old fields, so `hierarchy.normalize_rows` a
   `title` mixed, all six of a show's episodes do.
 - `movie.by.actor.or.director` on a library's hubs is `random: true` on the reference;
   its selection rule is not measurable. Markers and chapters have no data source.
-- `/services/browse` lists `/simplex` rather than mount points, because simplex
+- `/services/browse` lists `/rex` rather than mount points, because rex
   has no filesystem. `optimizedForStreaming` on an mp4 stays 0: where the moov atom
   sits is not something ffprobe reports.
 
@@ -2286,7 +2286,7 @@ with a 404. It holds nothing and touches no library row.
 #### The decision refused nothing
 
 A real PMS validates a decision before it answers, and every refusal is a 400 with
-an HTML body. simplex answered `mdeDecisionCode: 1000 "Direct play OK."` to all of
+an HTML body. rex answered `mdeDecisionCode: 1000 "Direct play OK."` to all of
 them, including a path to nothing:
 
 - a path that is not `/library/metadata/{id}` of a playable row: an unknown id, a
@@ -2304,7 +2304,7 @@ The start family (`start`, `start.m3u8`, `start.mpd`) validates the same way bef
 it refuses, and `ping`/`stop` without a `session` are 400s.
 
 **A refused direct play is "neither", not "Conversion OK".** A PMS with an encoder
-answers `directPlay=0` with 3000 / 1001 / 1001. simplex has no encoder, and the
+answers `directPlay=0` with 3000 / 1001 / 1001. rex has no encoder, and the
 reference answers exactly the shape that describes that for a client whose profile
 has no conversion target (`Generic` or `Sonos` with direct play off). The shape is
 `generalDecisionCode 2000 "Neither direct play nor conversion is available."` and
@@ -2329,7 +2329,7 @@ measured without a session identifier.
 
 #### Streams, parts and downloads
 
-| request | reference | simplex before |
+| request | reference | rex before |
 |---|---|---|
 | `/library/streams/{unknown or word}`, bare `/library/streams` | 404 (501 only for a stream it has) | 501 |
 | `PUT /library/streams/{unknown}` | 400 | 501 |
@@ -2344,12 +2344,12 @@ measured without a session identifier.
 
 On 432 embedded subtitle tracks on fun, `default` and `forced` appear only when true,
 every track says `canAutoSync: false`, and none carries `embeddedInVideo`. That
-field marks captions inside the video stream; simplex set it on every track.
+field marks captions inside the video stream; rex set it on every track.
 
 #### Notifications: the type numbers and the collection lifecycle
 
 A playlist's TimelineEntry is `type 15` and a collection's `type 18`. The client
-builds the URL of the row it updates from that number, so simplex's `1` dispatched a
+builds the URL of the row it updates from that number, so rex's `1` dispatched a
 delete for a metadata row nobody holds, and a deleted list stayed on screen in every
 other client. Measured frame by frame on both channels:
 
@@ -2357,7 +2357,7 @@ other client. Measured frame by frame on both channels:
 |---|---|
 | playlist create | `state 0 created`, type 15, sectionID `-1`, title `""` |
 | playlist delete | `state 9 deleted`, type 15, the playlist's title |
-| collection create | `state 0 created`, type 18, its title (simplex sent nothing) |
+| collection create | `state 0 created`, type 18, its title (rex sent nothing) |
 | collection delete | each member `state 3 queued`, then each member `state 5`, then `state 9 deleted`, type 18, title `""` |
 | edit on `/library/metadata/{id}` | `state 3 loading`, `state 5` |
 | edit through `/library/sections/{id}/all` | `state 3 queued`, `state 5` |
@@ -2366,7 +2366,7 @@ other client. Measured frame by frame on both channels:
 A movie's frames title it with its year (`Elephants Dream (2006)`). The collection
 CREATE response carries no librarySection fields, where the ADD response does.
 `DELETE /library/collections/{id}/children/{ratingKey}` removes a member exactly as
-`/items/` does; simplex answered it with an empty 200 and removed nothing.
+`/items/` does; rex answered it with an empty 200 and removed nothing.
 
 The eventsource channel's first ping comes ten seconds in, not on connect. And
 `filters=` with an EMPTY value is not "no filter": it delivers everything INCLUDING
@@ -2376,7 +2376,7 @@ the log stream.
 
 **Exactly 60 000 ms is not stored, and the rule holds on every state.** A `stopped`
 beat at 30 000, or at 59 500 of a 60 000 ms item, is `ignore` and stores nothing.
-simplex exempted `stopped`, so stopping a trailer at ten seconds left a resume point,
+rex exempted `stopped`, so stopping a trailer at ten seconds left a resume point,
 and stopping one near its end marked it watched with a history row. A play completes
 past 90% on ANY state: a `playing` beat at 95% answers `complete` and sets
 `viewCount`, and the `stopped` beat after it counts nothing again. The response's
@@ -2387,7 +2387,7 @@ past 90% on ANY state: a `playing` beat at 95% answers `complete` and sets
 
 Reference and fun agree on every one of these.
 
-| request | answer | simplex before |
+| request | answer | rex before |
 |---|---|---|
 | a query pair with no `=` (`?includeGuids`, `?foo`, `?&`) on any path, `/identity` too | 400 | 200, `includeGuids` read as true |
 | an empty path segment (`//identity`, `/library//sections`) | 404 | 200 |
@@ -2405,25 +2405,25 @@ Reference and fun agree on every one of these.
 #### Measured in cycle 6 and deliberately left alone
 
 - The eventsource channel's transport. The reference streams chunked over
-  keep-alive; simplex writes an unframed body with `Connection: close`, which an
+  keep-alive; rex writes an unframed body with `Connection: close`, which an
   EventSource reads the same way.
 - What adding an item to a download queue does, and the exact refusal text a PMS with
   no transcoder at all would give. Neither could be measured without writes the lab's
   safety rules forbid.
 - A valid transcode start still answers 404: the reference would transcode, and
-  simplex cannot.
+  rex cannot.
 - The effect of a subtitle selection on the play queue and the next decision. The lab
   has no subtitle tracks and fun is read-only.
 
 #### The seventh pass: the whole probe table and every corpus, diffed mechanically
 
 Cycle 7 ran `probes/ui_surface.py` read-only against both servers (202 rows) and
-replayed the recorded corpus with its ratingKeys remapped onto simplex's items. It
+replayed the recorded corpus with its ratingKeys remapped onto rex's items. It
 triaged every difference into catalog content, already recorded, or new behaviour.
 Six were new.
 
-- **A theme simplex can never serve.** Every show, season and episode named
-  `/library/metadata/{show}/theme/1`, and the endpoint answers 404 because simplex
+- **A theme rex can never serve.** Every show, season and episode named
+  `/library/metadata/{show}/theme/1`, and the endpoint answers 404 because rex
   has no theme audio. On fun, a show without a theme carries no `theme`, and its
   children carry no `parentTheme` or `grandparentTheme`. The web client reads
   `grandparentTheme || parentTheme || theme`, so with theme music on every page
@@ -2432,7 +2432,7 @@ Six were new.
   client's own hub request always sends, adds `recent.library.playlists.{id}` right
   after the library's Recently Added. Its key is
   `/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc&sectionID={id}`,
-  with style `shelf` and no `promoted`. simplex ignored the parameter. Only the
+  with style `shelf` and no `promoted`. rex ignored the parameter. Only the
   empty shelf was measurable, because neither server has a playlist.
 - **Hub and search rows by type.** A movie or episode on any shelf or in search has
   no `Guid` and text-only tags. (Overturned for Related and postplay shelves in the
@@ -2442,13 +2442,13 @@ Six were new.
   `Guid`, `Location`, `Rating` and tag ids. A show in search keeps its `Location`.
 - **`excludeFields` everywhere.** The named fields go from every row (listings,
   `/children`, `/allLeaves`, hubs, search) and from the container. A show's
-  `/children?excludeFields=summary` loses the container's summary too. simplex
+  `/children?excludeFields=summary` loses the container's summary too. rex
   applied it only to detail reads.
 - **A season's and an episode's `/arts` are their own.** They are empty on the lab,
-  and fanart.tv's season art on fun. simplex offered the SHOW's backdrop as the
+  and fanart.tv's season art on fun. rex offered the SHOW's backdrop as the
   item's selected choice.
 - **An episode's `Image` list.** `coverPoster` is the show's poster and the
-  episode's own 16:9 still is `snapshot`, on detail and listing rows alike. simplex
+  episode's own 16:9 still is `snapshot`, on detail and listing rows alike. rex
   labelled the still as the poster.
 
 `probes/ui_surface.py` also carried a write in its read-only plan: `PUT
@@ -2461,7 +2461,7 @@ collection tags carry a `guid`, but only 3 of fun's 372 tags do.
 
 #### The seventh pass, second batch: python-plexapi as a third-party client
 
-The second agent of cycle 7 drove python-plexapi at simplex, the reference and fun:
+The second agent of cycle 7 drove python-plexapi at rex, the reference and fun:
 463 calls per server, through a guard session that refused every write. It then
 diffed the three servers. The reference's library state was identical before and
 after. Every finding below was re-measured before anything changed.
@@ -2475,7 +2475,7 @@ after. Every finding below was re-measured before anything changed.
     after any prefix is still a 500.
   - On a season or episode list, ties fall back to show, then season, then
     episode order: `sort=episode.index:desc` puts S1E3 before S2E3.
-  - simplex answered 500 for every prefixed key, including the
+  - rex answered 500 for every prefixed key, including the
     `show.titleSort:desc,season.index:nullsLast,...` descKey its own `/sorts`
     advertises.
 - **A scoped filter reads the field of the row its prefix names.** Cycle 4 found
@@ -2489,7 +2489,7 @@ after. Every finding below was re-measured before anything changed.
     episodes do not contain the word.
   - `index` filters an episode or season listing (`type=4&index=2` is both
     episode 2s), although no Meta advertises it.
-  - simplex compared the episode's own title for `show.title` and ignored `index`.
+  - rex compared the episode's own title for `show.title` and ignored `index`.
 - **`title=` matches word beginnings, not substrings.** Cycle 4's string table
   holds for `studio` (`studio=lender` is still four rows) but not for `title`. The
   reference and fun agree:
@@ -2513,16 +2513,16 @@ after. Every finding below was re-measured before anything changed.
     matches.
   - `tagline=` is the three rows that have none.
   - `titleSort!=Sin` keeps all five rows and `titleSort!=sintel` four.
-  - No Meta lists these fields, so simplex ignored them.
+  - No Meta lists these fields, so rex ignored them.
   - `==` and `!==` are case-insensitive on every field (`title%3D=sintel` finds
     Sintel).
 - **`/library/all` is a query.**
   - `type=` selects the rows, and filters and `sort=` apply.
   - The default order is the ratingKey.
   - A row carries `Media` only when a `type` was given.
-  - simplex answered all nine of its rows whatever was asked, and that is what
+  - rex answered all nine of its rows whatever was asked, and that is what
     `library.search(libtype=)` read.
-- **Four reads python-plexapi makes that simplex answered 404.**
+- **Four reads python-plexapi makes that rex answered 404.**
   - `/hubs/sections/{id}/manage` lists 8 hubs for a movie library and 9 for a show
     library. Only Recently Added, plus Seasonal for movies, is promoted to home.
   - `/library/sections/{id}/timeline` is a secondary container with
@@ -2553,13 +2553,13 @@ after. Every finding below was re-measured before anything changed.
 Measured and not acted on:
 
 - The agent reported `/system/agents` in the wrong shape. Re-measured, the
-  reference's six modern `tv.plex.*` rows match simplex's exactly: `name`,
+  reference's six modern `tv.plex.*` rows match rex's exactly: `name`,
   `hasPrefs`, `id`, `Language` rows with a `title`, and no `primary`. The
   `primary`/`MediaType` shape the agent saw belongs to the legacy
-  `com.plexapp.agents.*` plug-ins, which simplex has left out on purpose since
+  `com.plexapp.agents.*` plug-ins, which rex has left out on purpose since
   cycle 5.
 - `/library/metadata/{id}/matches?manual=1` lists 20 candidates from the metadata
-  provider, and simplex's list is empty. Filling it needs a provider search per
+  provider, and rex's list is empty. Filling it needs a provider search per
   request.
 - `thumbBlurHash`/`artBlurHash` under `includeFields` need image decoding, which
   the stdlib server path does not have.
@@ -2571,14 +2571,14 @@ Measured and not acted on:
 
 Cycle 8's first agent read the served client instead of a recording. It pulled
 466 path literals out of `webclient/js` (328 distinct), resolved 152 GET templates
-with each server's own ids, and fetched every one from kids, fun and simplex, in
+with each server's own ids, and fetched every one from kids, fun and rex, in
 JSON and in XML. 37 templates differed in behaviour; they came down to 13
 findings, and 12 were re-measured on both servers and acted on. Each is tied to
 the code in the bundle that builds it.
 
 - **The library subsets were the "All" grid.** `onDeck`, `recentlyAdded`,
   `newest`, `recentlyViewed` and `recentlyViewedShows` are the pivot bar's
-  entries, and simplex answered each with the library's top-level rows titled
+  entries, and rex answered each with the library's top-level rows titled
   "All <library>", and 404'd the last. Measured on both servers:
   - `title2` names the subset. A show library's Recently Viewed is "Recently
     Viewed Episodes".
@@ -2621,7 +2621,7 @@ the code in the bundle that builds it.
   `includeAdvanced=1` appends Duplicates to types 1 and 4 only. The lists are
   `section_filters.json`, captured from the reference. fun has the same types
   and the same Duplicates rule, with shorter 1.42 lists.
-- **By Folder never opened a folder.** simplex listed one directory per item
+- **By Folder never opened a folder.** rex listed one directory per item
   and ignored `parent`. Every folder therefore reopened the same list, and the
   view never reached an item. Measured:
   - `?parent=<id>` lists that directory. Subdirectories are rows of `key` and
@@ -2631,7 +2631,7 @@ the code in the bundle that builds it.
   - An unknown or empty parent is empty. A non-numeric one is the top level.
   - The container carries `allowSync` and pages.
 
-  simplex's files sit flat under `/simplex/<n>`, so its top level is the items
+  rex's files sit flat under `/rex/<n>`, so its top level is the items
   themselves.
 - **`/library/metadata/{id}/grandchildren` was a 404.** The client builds it: a
   hub row with `skipChildren` has `/children` rewritten to `/grandchildren`.
@@ -2650,12 +2650,12 @@ the code in the bundle that builds it.
 - **`guid=` is how the client asks whether this server holds an item.** On a
   section listing and `/library/all` it is a case-sensitive prefix: an exact
   guid is that item, `guid=plex` every matched item, an empty value every row.
-  simplex ignored it, so every lookup "found" the whole library.
+  rex ignored it, so every lookup "found" the whole library.
 - **Four reads and five refusals.**
   - `/library/sections?includePreferences=1` puts each library's settings on its
     row. A show library's `episodeSort` is the per-show variant, whose enum starts
     with "Library default". The first-run flow reads `Preferences.Setting` off
-    every row to find hidden libraries, and threw on simplex.
+    every row to find hidden libraries, and threw on rex.
   - `/:/prefs/get?id=` returns one Setting with an empty label and summary and no
     enumValues. It is 400 with no id and 404 for an unknown, empty or comma-joined
     id.
@@ -2665,7 +2665,7 @@ the code in the bundle that builds it.
   - The refusals:
     - `/hubs/sections/{id}/manage?metadataItemId=` is a 400;
     - `/channels/recentlyViewed` and `/devices.xml` are the plug-in dispatcher's
-      200 (simplex answered its device list to the second);
+      200 (rex answered its device list to the second);
     - `/media/subscriptions/template` and `/services/defaultLibraries` are 400s.
 
 Thirteen checks cover these. Twelve are new, and all twelve fail against
@@ -2676,12 +2676,12 @@ items they are.
 Measured and not acted on:
 
 - fun's `newest` stops at 47 movies and 60 episodes, with no bound visible in
-  release or added dates; kids lists all five. simplex lists every row.
+  release or added dates; kids lists all five. rex lists every row.
 - fun's Recently Viewed order follows neither `lastViewedAt` nor `viewCount`.
 - Autocomplete orders by ICU collation with numeric runs, so 10, 12, 40, 300,
   2001 on fun. ICU collation stays out.
 - On a show's `/children` at `Start>0`, kids drops All episodes and fun keeps it.
-  simplex follows kids.
+  rex follows kids.
 - `guid==` answers nothing and `guid!=` everything; the client sends neither.
 - `/library/all` with no `type` and `show.guid=…&season.index=1` answers the
   show; the client always sends `type=3`, which already works.
@@ -2689,7 +2689,7 @@ Measured and not acted on:
   framework's Python traceback. Cycle 40 measured its complete wire form on both versions and
   built the exact 1.42.2 response; see the cycle 40 entry below.
 - A folder level holding both subdirectories and files was not measured. No
-  simplex catalog has one, and its directory rows would render as `<Video>`.
+  rex catalog has one, and its directory rows would render as `<Video>`.
 
 #### The eighth pass, second batch: the XML path and the clients that are not Plex Web
 
@@ -2716,7 +2716,7 @@ re-measured, and one detail of the tenth was already covered by cycle 7.
   names its library by TITLE only. A show keeps the id and key beside the title, and
   its Location.
 - **The server-wide On Deck and Recently Added page**, by header or query parameter.
-  simplex answered every row with no `totalSize`.
+  rex answered every row with no `totalSize`.
   - On Deck rows are light and name their library by id, title and UUID. This was
     measured on fun, since the reference has nothing in progress.
   - Continue Watching rows under `/hubs/home` are light too.
@@ -2737,14 +2737,14 @@ re-measured, and one detail of the tenth was already covered by cycle 7.
 - **The iOS platform types a show's "All episodes" row as a season.** It is the one
   client-profile rule the sweep found. Neither the product alone nor tvOS does it, and
   Android TV, Roku and LG change nothing anywhere.
-  - simplex read only the paging headers, so the platform is now normalised from a
+  - rex read only the paging headers, so the platform is now normalised from a
     header as well.
   - The same row carries the show's `thumb`, which batch 1 added.
 - **`sort=movie.random`** (with a direction or a seed) sorts like `random`.
-  python-plexapi always sends the prefixed form, and simplex answered 500.
+  python-plexapi always sends the prefixed form, and rex answered 500.
 - **Studios and networks are tag tables.** `/library/tags?type=318` lists studios
   with a bare `=<id>` filter, ordered by id, and `319` lists networks.
-  - simplex's studios are text on the row, so it mints their ids from the name, as it
+  - rex's studios are text on the row, so it mints their ids from the name, as it
     does every other tag's.
 - **A stream's `/levels` is a 404**, where the stream itself is the 501.
 - **XML child order.** Both servers write a row's children in one order:
@@ -2753,7 +2753,7 @@ re-measured, and one detail of the tenth was already covered by cycle 7.
     Label, CommonSenseMedia, Chapter, Marker, Review, Field and Location;
   - then Preferences, OnDeck, Extras, Related and Children.
 
-  A listing's `Meta` comes before its rows. simplex had 41 pairs inverted. No
+  A listing's `Meta` comes before its rows. rex had 41 pairs inverted. No
   client was found that depends on it, and the order is cheap to keep.
 
 Thirteen new checks cover these, and all thirteen fail against the batch-1 commit
@@ -2765,10 +2765,10 @@ Measured and not acted on:
 
 - fun's postplay for a movie also carries `movie.extras` (clip rows), and for an
   episode a `tv.ondeck` shelf. Its related list adds `movie.same.actor.N` shelves.
-  simplex has no extras and builds only the similar shelf.
+  rex has no extras and builds only the similar shelf.
 - A child element outside the measured list (Similar, Mood, Style) keeps its place
   after those in the list. Neither server showed one to place.
-- simplex's studio tag ids are minted, not a database's.
+- rex's studio tag ids are minted, not a database's.
 - The agent's reading that a yearless season in Recently Added lacks `year`,
   `titleSort` and `updatedAt` is cycle 7's season-year rule. A season with a year of
   its own carries all three.
@@ -2778,64 +2778,64 @@ Measured and not acted on:
 Cycle 9's read-only agent swept the community OpenAPI description of PMS (the
 `plex-api-spec` behind plexapi.dev and the SDKs generated from it): 405 operations, 195
 GETs aimed at the server, 132 of them instantiated as 403 requests and sent to the
-reference, fun and simplex in JSON and XML -- 2,406 exchanges, 1,205 differences
+reference, fun and rex in JSON and XML -- 2,406 exchanges, 1,205 differences
 triaged. Twelve findings survived, each re-measured by hand on both servers before
 anything changed.
 
 - **`/library/sections/all`** is the section list itself, identical to
   `/library/sections` on both servers. The spec calls it `getSections`, so generated
-  SDKs ask there; simplex 404'd it.
+  SDKs ask there; rex 404'd it.
 - **Every MediaContainer pages.** With both container parameters present -- headers
   or query -- both servers slice and add `offset`/`totalSize` on `/`, `/library`,
   `/:/prefs`, `/devices`, detail rows, trees, every hub list and the tag table, and an
   empty container such as `/identity` gains `totalSize: 0`. A container of several
   lists slices each and counts `size` over them. Only a plug-in framework container
   (`noHistory`, e.g. `/system/scanners/1`) and a non-MediaContainer root are left
-  alone. simplex paged seven listings; the rule now lives in the response path.
+  alone. rex paged seven listings; the rule now lives in the response path.
 - **`/system/agents/{identifier}` is a 404** with an empty body on both servers, for a
-  real agent and an unknown one alike. simplex answered the whole list.
-- **Three refusal codes.** A stream's `/loudness` is a 404 (simplex 501); `.srt` and
-  `.vtt` on a stream the server has are the bare stream's 501 (simplex 404, reading the
+  real agent and an unknown one alike. rex answered the whole list.
+- **Three refusal codes.** A stream's `/loudness` is a 404 (rex 501); `.srt` and
+  `.vtt` on a stream the server has are the bare stream's 501 (rex 404, reading the
   extension into the id); `/library/metadata/{id}/file` without `url` is a 400
-  (simplex 404).
+  (rex 404).
 - **The livetv reads a tunerless server refuses.** `/livetv/epg`, `/epg/guide`,
   `/epg/search`, `/recordings`, `/dvrs/{id}` and `/sessions/{id}` (and all beneath
   them) are 404 on both servers and `/epg/channels` a 400; only `/livetv/dvrs` and
-  `/livetv/sessions` answer empty. simplex answered an empty container to all of them.
+  `/livetv/sessions` answer empty. rex answered an empty container to all of them.
 - **`/allLeaves` below the show is empty.** A season's is `size 0` in its episode-list
   container, naming the show by title only; an episode's is presented as its season's
-  (title1 the season, an empty grandparentTitle, the episode layout). simplex returned
+  (title1 the season, an empty grandparentTitle, the episode layout). rex returned
   the season's episodes and the season layout. Every child list also carries
-  `allowSync: true` on both servers, where simplex sent false.
+  `allowSync: true` on both servers, where rex sent false.
 - **Voice search honours `type`** and numbers each hub by the type it holds:
   `results.search.4` is the episode hub whatever else matched, `type=4` returns it alone,
-  and a type with no hub (5, 8, 18) returns none. simplex ignored `type` and numbered
+  and a type with no hub (5, 8, 18) returns none. rex ignored `type` and numbered
   hubs by position.
 - **A section listing honours `excludeElements`.** Both servers drop the named
   children from every row, paged or not, and `Media` becomes `mediaCount` (0 on a show)
-  plus `mediaCountOptimized` 0. simplex applied the option to detail reads only.
+  plus `mediaCountOptimized` 0. rex applied the option to detail reads only.
 - **Bandwidth statistics filter.** `accountID` and `deviceID` keep matching rows (an id
   with none is `size 0`), `lan=0|1` keeps remote or local traffic, and an empty or
-  non-numeric id or any other `lan` value is a 400, on both servers. simplex ignored all
+  non-numeric id or any other `lan` value is a 400, on both servers. rex ignored all
   three, so the Dashboard's per-account and per-device graphs drew the whole server.
 - **`/status/sessions/history/{id}`** reads one history row back: the row history/all
-  lists, alone in a container of `size` 1; an unknown or non-numeric key is a 404. simplex
+  lists, alone in a container of `size` 1; an unknown or non-numeric key is a 404. rex
   listed the key and 404'd it.
 - **`/hubs/metadata/{id}`** is an item's own hub list: on both servers, for a movie, a
   show and an episode alike, the four artist shelves (Most Played, Most Popular Tracks,
   Albums, Music Videos), each empty and keyed to the item in its library. An unknown id
-  is a 404. simplex 404'd the path.
+  is a 404. rex 404'd the path.
 - **Six section leaves.** `allLeaves` lists every movie (sort-title order) or episode
   (broadcast order) as listing rows, with no librarySection fields and the library's
   type as viewGroup; `albums` is an empty "By Album" list; `cluster` and `moment` are the
   empty "By Moment" container with `clusterZoomLevel` 1; `computePath` is a 400 without
   both ids, a 404 for an unknown one and otherwise an empty path; `nearest` is a 400.
-  All six were 404 on simplex.
+  All six were 404 on rex.
 - **`/library/people/{id}`** reads a person back as one `Directory` row whose `filter`
   names the field the id came from (`actor=47`, `director=213`), and `/media` lists the
   items they are on as listing rows naming their library, with viewGroup `movie` even for
-  shows. An unknown id is a 404. simplex 404'd both, though every Role carries the id.
-- **`/library/matches` answers**, where simplex refused every request although its own
+  shows. An unknown id is a 404. rex 404'd both, though every Role carries the id.
+- **`/library/matches` answers**, where rex refused every request although its own
   `/media/providers` advertises the key. `type` is required and numeric; `title` matches a
   movie or show title exactly, ignoring case, narrowed by `year`, each row led by
   `score` 100; `guid` matches the whole guid and an episode matches by `grandparentTitle`,
@@ -2843,20 +2843,20 @@ anything changed.
 - **`/hubs/items?identifier=`** answers one shelf's rows, uncapped unless `count` caps
   them, in a container of `size`, `allowSync` true and identifier. A missing or unknown
   identifier is a 404, and so are `tv.inprogress.{id}` and `home.playlists` although the
-  hub lists carry them. simplex 404'd every identifier.
+  hub lists carry them. rex 404'd every identifier.
 - **`/sorts` is keyed by the asked `type`, not the library**, as `/filters` is: a movie
   library answers the episode sorts to `type=4` and the artist sorts to `type=8`, types
   9, 10, 13, 18 and 20 have lists, other numbers are empty and a non-number a 400.
-  simplex read the library's own Meta. The lists are `section_sorts.json`.
+  rex read the library's own Meta. The lists are `section_sorts.json`.
 - **`/library/randomArtwork?sections=` and `/library/sections/{id}/arts`** list one
   `<Photo>` row per movie or show with a backdrop -- title and art key, every other field
   blank or -1 -- the first shuffled on each request and capped at 100 in a bare `size`
-  container, the second in ratingKey order in the library's container. simplex 404'd both.
+  container, the second in ratingKey order in the library's container. rex 404'd both.
 
 Measured in the ninth pass and not acted on:
 
 - `/services/ultrablur/image` renders a four-colour PNG and `/colors?url=` decodes an
-  image into its corner colours (both 400 without parameters). simplex's server path is
+  image into its corner colours (both 400 without parameters). rex's server path is
   stdlib only, with no image encoder or decoder -- the same limit as `thumbBlurHash`.
 - `/library/metadata/{id}/file?url=` is a 400 on the reference and a 404 on fun; only
   the bare form, which both refuse with 400, is implemented.
@@ -2866,7 +2866,7 @@ Measured in the ninth pass and not acted on:
   `/status/sessions/history/1` still reads back; the two servers' history filtering by
   account was not pinned down.
 - `/hubs/items` answers the genre and actor shelves (`movie.genre.1.23`,
-  `movie.by.actor.or.director.1.215`) that simplex's library hubs do not build.
+  `movie.by.actor.or.director.1.215`) that rex's library hubs do not build.
 - `/library/matches` options that consult a metadata provider
   (`includeAlternateMetadataSources`, `agent=`) change nothing on either server's local
   matches and are ignored.
@@ -2878,7 +2878,7 @@ Measured in the ninth pass and not acted on:
 #### The ninth pass, second batch: writes, measured on a disposable copy of the reference
 
 The reference is read-only for hunts, so every write here was sent to plexscratch -- the
-reference's own library, copied, sanitised and cut off from plex.tv -- and to simplex with
+reference's own library, copied, sanitised and cut off from plex.tv -- and to rex with
 the same parameters, then read back from both.
 
 - **The Edit dialog's save path MERGES tags; only the item path replaces them.**
@@ -2889,7 +2889,7 @@ the same parameters, then read back from both.
   (the client double-encodes them, `Label%2520A%2CLabel%2520B`), and an empty indexed
   value changes nothing. On the item path the list is still replaced; there an exact
   repeat is one tag and `Qx&qx` is the first spelling twice. Both order by the INDEX
-  (`genre[1]=Second&genre[0]=First` is First, Second); simplex replaced on both paths, in
+  (`genre[1]=Second&genre[0]=First` is First, Second); rex replaced on both paths, in
   parameter order.
 - **An unlocked Sort Title does not stick.** A title write, a sort-title write and a
   sort-title unlock each re-derive it from the title with the article stripped:
@@ -2897,12 +2897,12 @@ the same parameters, then read back from both.
   retitled `The Season Name` sorts as `Season Name`. Only a lock -- sent with the value,
   or earlier -- keeps what was typed, and an empty title leaves it alone. A collection and
   a playlist edited through `/library/metadata/{key}` follow the same rule, and a
-  collection records the lock. simplex stored every value it was sent.
+  collection records the lock. rex stored every value it was sent.
 - **The save path edits only rows of the asked type in its own library.** A movie id
   under `type=2`, or on the TV library's path, is a 200 that edits nothing, and
   `id=<movie>,<show>` with `type=1` edits only the movie. A type-SCOPED filter on that
   path -- `show.title=`, `show.year>>=`, even `movie.year>>=` with `type=1` -- is a 400,
-  where an unscoped `year>>=` still scopes the edit. simplex edited every id it had and
+  where an unscoped `year>>=` still scopes the edit. rex edited every id it had and
   applied the filter.
 - **A release date is parsed, and on the section path it sets the year.** Value by
   value on the item path: `2007-2-3` is `2007-02-03`, `2007-02-30` rolls over to
@@ -2912,14 +2912,14 @@ the same parameters, then read back from both.
   `1970-08-21`, `-5` is `1969-12-31`). The section path refuses what it cannot read with
   a 500, sets `year` from the date unless the same save writes one (which wins in either
   order), removes both on an empty date, and removes an empty year where the item path
-  500s. A year of 0 is removed and `+2000` is 2000. simplex stored dates verbatim and left
+  500s. A year of 0 is removed and `+2000` is 2000. rex stored dates verbatim and left
   the year alone.
 - **The section path stores a userRating, and every rating is a number.**
   `userRating.value=8.5` there reads back `userRating: 8.5` with `lastRatedAt`, -1 or an
   empty value clear both, and `abc` is a 500 -- where the item path still discards it.
   `audienceRating.value=5.5` and `rating.value=5.5` read back as numbers on both paths,
   `abc` is a 500 on both, and an empty value is a 500 on the item path and removes the
-  field on the section path. simplex stored the strings and discarded userRating.
+  field on the section path. rex stored the strings and discarded userRating.
 - **A lock on the section path is an integer 0 or 1, and more columns take one.** There
   `01` and `001` lock, `00` unlocks, and `true`, `false`, `2`, `-1`, ` 1` and an empty
   value are a 400; the item path keeps its rule that only `1` locks. `thumb`, `art`,
@@ -2927,7 +2927,7 @@ the same parameters, then read back from both.
   `duration` and `index` all take a lock (`key`, `ratingImage` and `audienceRatingImage`
   are 400), and `Field` lists in the metadata table's column order -- `rating` after
   `studio`, the artwork after `contentRating`, the tag columns among the scalars --
-  where simplex filed everything it did not know last.
+  where rex filed everything it did not know last.
 - **Frames title a row the way the Activity pane names it, and a batch frames in listing
   order.** A show's frames say `Firefly (2002)` (a movie's already carried the year, and
   an emptied movie title still does: ` (2010)`), a season's `Firefly S01` and an
@@ -2936,7 +2936,7 @@ the same parameters, then read back from both.
   whatever order `id=` named them in, where a comma-joined key list keeps the per-row
   pair. Renaming a playlist or editing its summary, through `/playlists/{id}` or
   `/library/metadata/{id}`, pushes its own type-15 pair with sectionID -1, and a
-  collection's rename its type-18 pair. simplex sent every row's own title, interleaved
+  collection's rename its type-18 pair. rex sent every row's own title, interleaved
   the batch, and pushed nothing for a list.
 - **A parent's title and studio are copied onto the rows beneath it.** Retitling a season
   changes its episodes' `parentTitle`, and its studio their `parentStudio`; retitling a
@@ -2946,7 +2946,7 @@ the same parameters, then read back from both.
   list names a custom season title in `parentTitle` and carries the season's `summary`
   when it has one: every season the earlier reading saw, on kids and on fun, had a
   generated `Season N` title and no summary, which is why it recorded "" and no summary
-  -- re-read on both servers here, and it still holds for those seasons. simplex copied
+  -- re-read on both servers here, and it still holds for those seasons. rex copied
   the fields once, at load, and updated only the containers.
 - **An emptied title is not always empty, and it keeps its sort form.** `title.value=` on
   a season leaves `Season 1` and on an episode `Episode 2` -- generated from the index,
@@ -2954,18 +2954,18 @@ the same parameters, then read back from both.
   a collection store "". Every one keeps its old title's sort form as `titleSort` (`The
   Old List` sorts as `Old List`, `Bushwhacked` as `Bushwhacked`). A playlist or a
   collection created as `The Fresh List` already sorts as `Fresh List`, and
-  `PUT /library/collections/{id}?title=` empties the title, where simplex ignored an empty
-  one. simplex stored "" everywhere else and dropped the sort title.
+  `PUT /library/collections/{id}?title=` empties the title, where rex ignored an empty
+  one. rex stored "" everywhere else and dropped the sort title.
 - **`/:/progress` stores any position past a minute and never completes a play.**
   `time=999999999` on a ten-second clip reads back as `viewOffset: 999999999`, with no
-  `viewCount` and no history row, and a missing or unparseable `time` is a 500. simplex
+  `viewCount` and no history row, and a missing or unparseable `time` is a 500. rex
   marked the item watched and wrote a history row, and stored 0 with a 200 for a
   missing time.
 - **Only -1 clears a rating's timestamp.** `/:/rate?rating=-5` removes the stars and
-  keeps `lastRatedAt`; `-1` removes both. simplex cleared both for any negative rating.
+  keeps `lastRatedAt`; `-1` removes both. rex cleared both for any negative rating.
 - **A timeline refuses a position it cannot place.** A `time` past the `duration` sent
   with it, a negative or non-numeric `time` and a non-numeric `duration` are each a 400.
-  simplex answered 200 -- and a time past the duration completed the play and wrote a
+  rex answered 200 -- and a time past the duration completed the play and wrote a
   history row. A timeline with NO `duration` answered `ignore` on plexscratch, but its
   clips are ten seconds long, so that cannot be told apart from a position past the
   item's own length; it was not acted on.
@@ -2973,26 +2973,26 @@ the same parameters, then read back from both.
   Without a session identifier: `playing` at 95% then `stopped` both answer `complete` and
   a second `stopped` answers `ignore`; `playing` twice past 90% then `stopped` all answer
   `complete`; `stopped` at 98% then `playing` answers `ignore`. Each counts one view.
-  simplex answered `complete` to every one of them -- and the first reading here, two
+  rex answered `complete` to every one of them -- and the first reading here, two
   `stopped` beats alone, was fixed as "any second beat is `ignore`", which the existing
   playing-then-stopped check caught. With an `X-Plex-Session-Identifier` plexscratch
   ignored every beat and counted nothing; its clips are ten seconds long, which a
   session-bound timeline appears to be judged against, so none of this was measured
   with one.
 - **Remove from Continue Watching is a PUT that needs its `ratingKey`.** A GET is a 404
-  and a PUT with no `ratingKey` a 400; simplex hid the row on a GET and 404'd the bare
+  and a PUT with no `ratingKey` a 400; rex hid the row on a GET and 404'd the bare
   PUT.
 - **A playlist create validates its form.** No `title`, no `type` or no `uri` is a 400,
   a type outside video/audio/photo a 500, and `type=audio` or `type=photo` over a movie a
-  400. simplex created an `Untitled` list of whatever it was sent, typed `bogus` if asked.
+  400. rex created an `Untitled` list of whatever it was sent, typed `bogus` if asked.
 - **A playlist's item writes refuse what they cannot do, and DELETE on the items clears
   it.** An item id the list does not hold -- including a ratingKey, which is not an item
   id -- is a 404; `DELETE /playlists/{id}/items` empties the list; and a smart playlist
-  refuses an add or a removal with 400. simplex answered 200 to all of them and cleared
+  refuses an add or a removal with 400. rex answered 200 to all of them and cleared
   nothing.
 - **A move after an item the playlist does not hold goes to the front.** `after=999999`,
   `after=0` and `after=abc` all send the item first, as no `after` does, and `after`
-  naming the item itself changes nothing. simplex appended to the end, and moved an item
+  naming the item itself changes nothing. rex appended to the end, and moved an item
   after itself to the end too.
 - **Every state write needs the `identifier` the client sends.** Without it
   `/:/scrobble`, `/:/unscrobble`, `/:/rate` and `/:/progress` are a 400 -- even for a key
@@ -3000,13 +3000,13 @@ the same parameters, then read back from both.
   with the identifier present -- and a foreign identifier is a 404. The order is fixed: a
   missing key, a missing identifier, the write's own parameter (an unparseable rating is
   still a 400 with a bogus identifier), then a foreign identifier or an unknown key.
-  simplex never read the identifier.
+  rex never read the identifier.
 - **An episode scrobble counts on its season and show; a parent's own scrobble does not.**
   One scrobble at a time: each episode scrobble added one to the season's and the show's
   `viewCount`, a second scrobble of an episode already watched included; scrobbling the
   season, and the show, added one to each episode and left the season's and the show's
   own count unchanged; unscrobbling a season or a show removed its own count, and
-  unscrobbling an episode left the parents alone. simplex counted on a parent only when
+  unscrobbling an episode left the parents alone. rex counted on a parent only when
   the parent itself was scrobbled -- the earlier note ("scrobbling one episode twice took
   the show to viewCount 2") implemented the wrong way round.
 - **On Deck holds one row per show.** Two episodes in progress list only the
@@ -3014,50 +3014,50 @@ the same parameters, then read back from both.
   at 240 s did not displace it -- and with none in progress the row is the episode after
   the one watched (episode 8 watched: 9; season 1 watched: season 2's first). Removing any
   of the show's episodes from Continue Watching hides the show's row, even when the row
-  names another episode, and a timeline on any of them brings it back. simplex listed
+  names another episode, and a timeline on any of them brings it back. rex listed
   every episode with a resume point, and never the next one.
 - **An item takes no POST, and `/library/all` takes no write.** `POST
   /library/metadata/{id}?summary.value=` and `PUT /library/all?type=1&tagline.value=` are
-  404s; simplex answered the detail row and the listing.
+  404s; rex answered the detail row and the listing.
 - **The Edit dialog's value-less columns, and a few others, are accepted and discarded.**
   `thumb.value=`, `art.value=`, `addedAt.value=`, `guid.value=`, `lastViewedAt.value=`
   and `viewCount.value=` are 200s that change nothing, and so are a movie's
   `duration.value=` and `index.value=`, an episode's `parentIndex.value=`, a show's
   `network[0].tag.tag=` and a bare `genre=Drama` on the item path; an actor written with
   `actor[0].tagRole=` is stored with `role: ""`, the field every actor added by an edit
-  carries. simplex refused most of them as unknown fields and stored the movie's
+  carries. rex refused most of them as unknown fields and stored the movie's
   duration and index.
 - **A play queue starts on the item its `key` names.** A queue over a whole library with
-  `key=/library/metadata/3` selects that movie (offset 3); simplex selected the first row.
+  `key=/library/metadata/3` selects that movie (offset 3); rex selected the first row.
 - **A client's new play queue retires its older ones.** Client A's queue was still
-  readable after client B created one, and a 404 once A created another. simplex kept
+  readable after client B created one, and a 404 once A created another. rex kept
   every queue it had ever built.
 - **`PUT /playQueues/{id}?playlistID=` adds the playlist's items**, as a plain add;
-  simplex stepped the version and added nothing.
+  rex stepped the version and added nothing.
 - **DELETE on a play queue's items clears it down to the selected item**, stepping the
-  version; simplex answered 404.
+  version; rex answered 404.
 - **Deleting a play queue's selected item answers the queue as it stood.** The response
   carries the old version, selection and total with no rows, and the next read has the
-  selection on the item that followed it; simplex left the selection on the deleted id.
+  selection on the item that followed it; rex left the selection on the deleted id.
 - **A play queue move after an item the queue does not hold goes to the front.** `after=0`
-  and an unknown id both send the item first, as `after=-1` does; simplex answered 404.
+  and an unknown id both send the item first, as `after=-1` does; rex answered 404.
 - **A windowed play queue read honours `includeBefore` and `includeAfter`.** Both are on by
   default; with the first item selected, `window=1&includeBefore=0&includeAfter=1` answers
   only the second row, `includeBefore=1&includeAfter=0` answers none, and the selected
-  item comes back only when both are on. simplex ignored both flags.
+  item comes back only when both are on. rex ignored both flags.
 - **A play queue uri naming another server builds an empty queue that echoes it.** The
-  response has no rows and `playQueueSourceURI` is the uri as sent; simplex resolved the
+  response has no rows and `playQueueSourceURI` is the uri as sent; rex resolved the
   path against its own library and queued its own item.
 - **A collection create needs a `title` and a `sectionId`.** Each missing one is a 400;
-  simplex made an `Untitled` collection in the first row's library. A missing `uri` is a
+  rex made an `Untitled` collection in the first row's library. A missing `uri` is a
   200 on both servers.
 - **A collection over a show holds the show, and one over a season holds the season.**
   `type=2` from a show answers `subtype: show` with one child, `type=3` from a season
-  `subtype: season`; simplex expanded both into episodes (`subtype: episode`, the show's
+  `subtype: season`; rex expanded both into episodes (`subtype: episode`, the show's
   three).
 - **A collection add refuses what it cannot hold.** No `uri`, an unknown key, and a row of
   another type -- an episode into a movie collection -- are each a 400, and so is any add
-  to a smart collection, whose members are its query. simplex added whatever the uri
+  to a smart collection, whose members are its query. rex added whatever the uri
   named, the episode included.
 - **A collection's children follow its `collectionSort`, and a move starts from the order
   shown.** Three movies added newest first came back oldest first -- by release date, with
@@ -3065,14 +3065,14 @@ the same parameters, then read back from both.
   the order the collection is SHOWN in, applies the move, answers the collection row, and
   switches the collection to `collectionSort: 2`; setting `0` again goes back to release
   date. (`1` gave the same order on these members, and is alphabetical by
-  python-plexapi's mapping.) simplex listed insertion order, answered the move with an
+  python-plexapi's mapping.) rex listed insertion order, answered the move with an
   empty body, and never changed the sort.
 - **A collection takes a Label, and a `type=18` section save edits it.**
   `PUT /library/metadata/{collection}?label[0].tag.tag=` stores the label, and `PUT
   /library/sections/1/all?type=18&id={collection}&summary.value=` edits the collection;
-  simplex ignored both.
+  rex ignored both.
 - **Renaming a collection leaves its members' tag alone.** After renaming `c13` a member
-  still carried its original Collection tag; simplex renamed the tag with the collection.
+  still carried its original Collection tag; rex renamed the tag with the collection.
   (The reference spelled that tag `C13` for a collection created as `c13`, which was not
   pinned down.)
 - **A library edit applies the whole form, and scans.** `PUT /library/sections/1?...&language=de-DE
@@ -3082,42 +3082,42 @@ the same parameters, then read back from both.
   through every item with a `progress` frame (`Scanning Cosmos Laundromat (2015)`) and an
   `updated` frame at `round(n * 99 / count)` percent, then 100, `ended`, and the status
   `Library scan complete`. Hunter A's "a type change is a 400" did not reproduce: both
-  servers answer 200. simplex renamed the library and dropped the rest.
+  servers answer 200. rex renamed the library and dropped the rest.
 - **`/library/sections/all/refresh` scans every library.** It is a 200 that runs the scan
-  above for each library in turn; simplex 404'd it as an unknown section, and scanned a
+  above for each library in turn; rex 404'd it as an unknown section, and scanned a
   single library by starting and ending a metadata activity per row.
 - **A movie's written setting shows on its row.** After `PUT
   /library/metadata/{movie}/prefs?useOriginalTitle=1` the movie's detail row carries
-  `useOriginalTitle: "1"`, as a show's does for `episodeSort`; simplex stored it unseen.
+  `useOriginalTitle: "1"`, as a show's does for `episodeSort`; rex stored it unseen.
 - **A library create applies its `prefs[...]` and answers a bare container.** A TV library
   created with `prefs[flattenSeasons]=1&prefs[episodeSort]=1` reads both back as 1, and the
-  201's container carries only `size` beside the Directory; simplex dropped the prefs
+  201's container carries only `size` beside the Directory; rex dropped the prefs
   (-1 and 0) and sent the library container's identifier, media-tag pair and allowSync.
 - **A library analyze pushes three frames per movie.** For each movie in title order: state
   5 with `mediaState: analyzing`, state 5 with `thumbnailing`, and a plain state 5.
-  simplex pushed nothing.
+  rex pushed nothing.
 - **Cleaning bundles and deleting a library each run an activity.** `PUT
   /library/clean/bundles` runs `general.bundle.clean` -- started, updated at 0 (`Analyzing
   metadata bundles`), 25 and 50 (`Deleting N metadata bundles`), 50 (`Analyzing media
   bundles`), 75 and 100 (`Deleting N media bundles`), ended -- and a library delete
   `library.delete` (`Deleting section N`, then `Optimizing Database` at 50, 0, 10, 40,
-  60, ended). simplex pushed nothing. Measured and not acted on: optimize's
+  60, ended). rex pushed nothing. Measured and not acted on: optimize's
   `general.db.optimize` run (its last frames and a burst of type-12 deletes were not fully
   captured) and the refresh cascade a show's `showOrdering` write pushes.
 - **A merge refuses what it cannot merge.** No `ids` is a 400, an id the server does not
-  have a 404, and a movie into a show a 400. simplex answered 200 to all three -- and the
+  have a 404, and a movie into a show a 400. rex answered 200 to all three -- and the
   last one moved the movie's media into the show.
 - **A merge and a split push their frames.** Merging Sintel into Tears of Steel pushed
   state 9 for Sintel (untitled) and then `type: -1` state 3 and 5 for Tears of Steel; the
   split pushed the new row created -- state 0 untitled, state 0 titled, state 1 -- and the
-  source's state 3 and 5, on a NEW ratingKey never used before (67 after 57). simplex
+  source's state 3 and 5, on a NEW ratingKey never used before (67 after 57). rex
   pushed nothing for either, and put the split's row on the highest FREE key -- the one
   the merge had just taken from the absorbed row.
 - **Unmatching an episode or a season gives it a local guid and its generated title.** An
   episode became `Episode 2` on `guid: local://9`, kept its imdb/tmdb/tvdb Guids and pushed
   `matching` (state 2) then state 5; a season became `Season 1` on `local://7`, through the
   full refresh sequence. The earlier reading -- a filename title and a
-  `tv.plex.agents.none://` guid -- was a movie's and still stands for movies. simplex
+  `tv.plex.agents.none://` guid -- was a movie's and still stands for movies. rex
   applied the movie rule to both, dropped the Guids, and left an `Unmatching` activity that
   never ended.
 
@@ -3133,7 +3133,7 @@ Measured in the ninth pass's second batch and not acted on:
   selection to the item its ratingKey names; a library edit that changes `type` being a
   400 (a 200 on both servers); a collection create with no `uri` being a 400 (a 200 on
   both); a smart collection tagging its members; a whole-library playlist add adding
-  nothing; `continuous=1` stopping at one episode (simplex's fixture season holds one).
+  nothing; `continuous=1` stopping at one episode (rex's fixture season holds one).
 - **Captured only in part:** the database optimize's `general.db.optimize` activity and
   the burst of type-12 state-9 frames inside it; the refresh cascade a show's
   `showOrdering` write pushes; a library create's scan, with a created-and-titled frame
@@ -3151,7 +3151,7 @@ Measured in the ninth pass's second batch and not acted on:
 
 #### The tenth pass: what a real PMS writes for a real file
 
-simplex builds every `Media`, `Part` and `Stream` from an ffprobe probe, and every official
+rex builds every `Media`, `Part` and `Stream` from an ffprobe probe, and every official
 client runs its own direct-play gate and draws its quality and track pickers from those
 attributes before it asks the server anything. Until this pass the conversion had been
 compared with a real server on two display titles and one subtitle-flag sweep. The tenth
@@ -3164,80 +3164,80 @@ below is one check there, and each check failed against the code before its fix.
 
 - **A bitmap subtitle is `pgs` or `vobsub`.** fun writes `codec: pgs` for every Blu-ray
   bitmap track (68 in the corpus) and `vobsub` for every DVD one (10), where ffprobe's
-  decoders are `hdmv_pgs_subtitle` and `dvd_subtitle`. simplex passed ffprobe's names
+  decoders are `hdmv_pgs_subtitle` and `dvd_subtitle`. rex passed ffprobe's names
   through, and a client decides whether to burn an image subtitle in by that name.
 - **Audio codecs carry Plex's names.** Every DTS variant is `dca`, with the variant as the
   profile -- `dts`, `ma`, `es`, `hra`, `express` (34 tracks); PCM in Matroska is `pcm` with
   ffprobe's sample format as the profile, while Blu-ray PCM stays `pcm_bluray`; and the
-  `+ Dolby Atmos` profile ffprobe gives TrueHD and E-AC-3 is not written (11 tracks). simplex
+  `+ Dolby Atmos` profile ffprobe gives TrueHD and E-AC-3 is not written (11 tracks). rex
   sent `dts` and the Atmos profile, and a client's direct-play profile names `dca`. The
   reference (1.43.4) leaves `lc` off most of its AAC clips where fun writes it; the check
   skips those.
 - **A language is named in itself, coded ISO 639-2/T and tagged ISO 639-1.** `jpn` reads
   `日本語`/`jpn`/`ja`, ffprobe's `fre` reads `Français`/`fra`/`fr`, `fil` keeps `fil` as its
   tag, `und` writes nothing, and a tag that is no ISO code (`english`) is both name and tag
-  with an empty code. simplex printed English names for 15 languages and the raw code
+  with an empty code. rex printed English names for 15 languages and the raw code
   otherwise, kept bibliographic codes, and cut the tag to two letters: `jp`, `sp`, and `fi`
   -- Finnish -- for Filipino. A client picks a track by the tag. `languages.json` holds the
   62 names and tags fun wrote; a code it lacks keeps the code in all three. The reference
   (1.43.4) labels an untagged clip English where fun writes nothing; the check skips those.
 - **Every video stream is listed, and Dolby Vision is described.** A dual-layer Dolby Vision
-  file's enhancement layer is a second video stream on fun; simplex built only the first. A
+  file's enhancement layer is a second video stream on fun; rex built only the first. A
   Matroska cover image, which ffprobe also lists as a video stream, is not one.
   The eight `DOVI*` attributes are ffprobe's DOVI configuration record field for field (6
-  of 6 files, profiles 5, 7, 8 and 10), and simplex sent none of them -- they are what tells
+  of 6 files, profiles 5, 7, 8 and 10), and rex sent none of them -- they are what tells
   a client a Dolby Vision stream it can play from one it cannot.
 - **A ten-bit stream is ten-bit.** ffprobe leaves `bits_per_raw_sample` out for HEVC and
   AV1, where the depth is only in the pixel format; all 16 such streams read `bitDepth: 10`
-  on fun. simplex defaulted them to 8.
+  on fun. rex defaulted them to 8.
 - **The resolution label is the larger of a width bucket and a height bucket.** Measured on
-  all 4947 Media of fun's movie libraries with no exception, `2k` and `2.7k` included. simplex
+  all 4947 Media of fun's movie libraries with no exception, `2k` and `2.7k` included. rex
   read the height alone, so a cropped 1920x800 release was `720`. Each threshold is the
   smallest dimension fun has in its bucket; `tests/fixtures/media-resolutions.json` holds
   every size fun has and its label.
 - **The aspect ratio is one of six values.** Every Media on fun carries 1.33, 1.66, 1.78,
   1.85, 2.2 or 2.35: the display aspect, sample aspect ratio included, snapped to the
-  nearest. simplex wrote the raw quotient without the sample aspect ratio, so 1920x800 read
+  nearest. rex wrote the raw quotient without the sample aspect ratio, so 1920x800 read
   2.4 and an anamorphic 3840x2160 1.78 where fun says 1.85.
 - **Track flags are the disposition, and only when true.** `default`, `forced`,
   `hearingImpaired`, `original`, `dub` and `comment` on audio and subtitles, and `default`,
   `forced` and `original` on video, follow ffprobe's disposition on every probed track, and
-  no flag is ever `false`, `selected` included. simplex marked the first audio track default,
+  no flag is ever `false`, `selected` included. rex marked the first audio track default,
   sent `false` on the rest, and none of the other flags. Which track is `selected` follows
-  the account's language settings, which simplex does not have; the first still is.
+  the account's language settings, which rex does not have; the first still is.
 - **`scanType` follows the field order**: absent where ffprobe reports none (19 streams),
-  `interlaced` for a field-ordered stream, `progressive` otherwise. simplex wrote
+  `interlaced` for a field-ordered stream, `progressive` otherwise. rex wrote
   `progressive` everywhere.
-- **`colorRange` is ffprobe's `color_range`** (22 streams carry it, 25 do not); simplex
+- **`colorRange` is ffprobe's `color_range`** (22 streams carry it, 25 do not); rex
   never sent it.
 - **`audioChannelLayout` is ffprobe's layout verbatim, and absent where it has none.**
-  simplex derived it from the channel count, so a `5.1` track was `5.1(side)` and 3, 4, 5
+  rex derived it from the channel count, so a `5.1` track was `5.1(side)` and 3, 4, 5
   and 7 channels had none. Left alone: E-AC-3 with Atmos in an mp4, which fun reads as its
   5.1 core; one DTS Express track; and the reference's mono AAC clips.
 - **Audio `bitDepth` is `bits_per_raw_sample`, and 24 for DTS without it** (DTS Express
-  excepted); lossy codecs carry none. simplex sent no audio bit depth. Left alone: TrueHD in
+  excepted); lossy codecs carry none. rex sent no audio bit depth. Left alone: TrueHD in
   an mp4, which fun leaves without one.
 - **`streamIdentifier` is the container's track id in decimal** -- an mp4 track number, an
-  MPEG-TS PID -- and absent in Matroska. simplex sent none. An AVI track that fun numbers
+  MPEG-TS PID -- and absent in Matroska. rex sent none. An AVI track that fun numbers
   with no id in the probe is left alone.
 - **A video stream's `codecID` is its codec tag** where the container has a real one --
   `hev1`, `hvc1`, `dvhe`, `XVID`, `DX50`, `HDMV` -- but not `avc1`, and no audio or subtitle
-  stream carries one. simplex sent none.
+  stream carries one. rex sent none.
 - **An H.264 stream's `codedHeight` is whole macroblocks** (1080 is 1088, 436 is 448, 536
   is 544; 12 streams on fun and 11 on the reference), where ffprobe 8.1 reports the cropped
   height. Other codecs take ffprobe's value.
 - **A video stream has a language and a title too**, from its tags (17 and 10 streams on
-  fun); simplex set neither.
+  fun); rex set neither.
 - **Unknown markers are not written.** ffprobe's `profile: 0` and `level: -99` are absent on
-  fun, and `Simple Profile` is `simple`; simplex wrote them as they came.
-- **Bitrates round to the nearest kbps.** simplex truncated, so 28 of 35 Media read one
+  fun, and `Simple Profile` is `simple`; rex wrote them as they came.
+- **Bitrates round to the nearest kbps.** rex truncated, so 28 of 35 Media read one
   short. Two fun files whose bitrate is neither, and the reference's clips, are left alone.
 - **The frame rate is the average one.** The reference's mp4 clip with a nominal 48 fps
-  reads `23.947` and `24p`, ffprobe's `avg_frame_rate`; simplex used `r_frame_rate`.
+  reads `23.947` and `24p`, ffprobe's `avg_frame_rate`; rex used `r_frame_rate`.
 - **The Media's audio fields name the track with the most channels**, the first on a tie
   (35 of 35 files; the first track was the wrong one in 9), and a DTS-HD MA track is
   `dca-ma` there, as on 2,075 of fun's 4,951 Media, while every other DTS variant stays
-  `dca`. simplex named the first track, and a client gates direct play on these fields.
+  `dca`. rex named the first track, and a client gates direct play on these fields.
 - **Track titles are composed, and a track title never enters `displayTitle`.** Video reads
   `<resolution>[ <range>]` -- `4K`, `1080p`, `720p`, `480p` or `SD`, with `i` for an interlaced
   stream, and `HDR10`, `DoVi/HDR10`, `DoVi` or `DoVi Enhancement Layer` -- and extends with
@@ -3249,7 +3249,7 @@ below is one check there, and each check failed against the code before its fix.
   title's words -- split on whitespace and `- / ( ) [ ] + , | : ; &` but not on dots, folding
   ASCII case only -- and a language's two-letter tag, `2.0` for Stereo and `AVC` for H.264
   count too (`BTM TrueHD Atmos 7.1 (English)`, `BTM ES (SRT)`, `English DTS Express 5.1`).
-  simplex printed `sdp`, `Dolby Digital Plus`, `3ch`, English language names and the track
+  rex printed `sdp`, `Dolby Digital Plus`, `3ch`, English language names and the track
   title as an audio title, and never named a profile -- which answers cycle 4's open question
   of when a profile is appended. Left alone: a forced track with no linguistic content, whose
   extended title leaves `Forced` out (one track).
@@ -3260,12 +3260,12 @@ below is one check there, and each check failed against the code before its fix.
   Mac, Plex for Xbox, Plex for PlayStation 4, Plex for PlayStation 5 or Plex for Vizio, in the
   header or the query, case-sensitively -- not for `Apple TV`, `Plex for Android`, `Plex for
   Xbox One`, `Plex Desktop`, Roku, HTPC, Kodi, PlexAPI or no product. The extended title does
-  not vary. The recorded `displayTitle` of `1080p` was the no-product answer, and simplex
+  not vary. The recorded `displayTitle` of `1080p` was the no-product answer, and rex
   sent it to Plex Web itself.
 - **A catalog built before this pass loads with the corrected fields.** The resolution
   label, and an aspect ratio that is not one of the six, are recomputed from the Media's own
   size; the unknown profile markers are dropped; the codec, language and flag renames above
-  apply to stored rows; and the titles are composed after all of them, where simplex had
+  apply to stored rows; and the titles are composed after all of them, where rex had
   composed them first. `tests/catalog_ui.json`'s 1920x800 rows were served as `720`, 2.4 and
   `profile: 0`.
 
@@ -3278,9 +3278,9 @@ Measured in the tenth pass's media batch and not acted on:
   Media durations a millisecond apart; two Media bitrates that are neither rounded nor
   truncated; `hasThumbnail`, `indexes` and the `failureBIF*` fields; and `eia_608` captions,
   whose only sample failed to probe.
-- **Which audio track is `selected`** follows the account's language settings, which simplex
+- **Which audio track is `selected`** follows the account's language settings, which rex
   does not have; the first track stays selected.
-- **Leads, one sample each:** a `.webm` file reported as container `mkv` (simplex keeps
+- **Leads, one sample each:** a `.webm` file reported as container `mkv` (rex keeps
   `webm`, which Plex Web's direct-play rule depends on); `anamorphic: false` on a 333:320
   sample aspect ratio; an AVI audio track numbered `1` with no id in the probe; a forced track
   with no linguistic content leaving `Forced` out of its extended title; and `AVC` standing in
@@ -3308,69 +3308,69 @@ implemented: the writes on plexscratch, and anything a read can show on both ser
   `size 0` for a library with none -- and anything deeper is a 404.
   `/hubs/sections/{id}/extras` is `size 0`, `allowSync` and the identifier, even for a
   section id the server does not have. An item's `/extras/{n}` is a 404 on both servers, even
-  for an extra it has. simplex 404'd the first three and answered the last.
+  for an extra it has. rex 404'd the first three and answered the last.
 - **A settings save pushes a `preference` frame per written id**, in ASCII order of the id and
   whether or not the value changed, carrying the `/:/prefs/get` shape with `label` and
   `summary` emptied. **And `FriendlyName` is the server's name everywhere** -- `/`,
   `/media/providers` and `/servers` -- with an empty one kept as the preference's value while
-  the displayed name falls back to the host name. simplex stored the values, pushed nothing,
+  the displayed name falls back to the host name. rex stored the values, pushed nothing,
   and kept its old name, so renaming the server in Settings changed nothing on screen.
-- **Track selection takes a POST as well as a PUT** on `/library/parts/{id}`; simplex 404'd
+- **Track selection takes a POST as well as a PUT** on `/library/parts/{id}`; rex 404'd
   the POST.
 - **A butler run is an empty 200 that pushes a `butler` activity.** `POST /butler/{Task}`
   answers no body and pushes one "Butler tasks" activity (started at -1) around the task's
   own -- `general.db.backup` "Database"/"Backing up database" stepping to 100 -- ending with
   the task's message ("The butler backed up your database."); `/activities` carries the
-  `butler` row while it runs -- simplex's run is synchronous, so only the frames are visible
+  `butler` row while it runs -- rex's run is synchronous, so only the frames are visible
   here, and nothing is left in `/activities` afterwards. `POST /butler` runs every enabled
   task under one wrapper and
-  `DELETE /butler` is empty too, while `DELETE /butler/{Task}` is a **404**. simplex answered
+  `DELETE /butler` is empty too, while `DELETE /butler/{Task}` is a **404**. rex answered
   the task LIST to all three, pushed no frames, and accepted the task DELETE.
 - **The Edit-smart-list Save is `PUT {list}/items?uri=<listing>`, and it REPLACES the stored
   query -- `limit` included.** Measured for a smart playlist and a smart collection alike: the list is
   re-evaluated on the next read, so its `leafCount` and its items follow the new `sort` and
   `limit` at once, and the response is the list's own row. A uri naming an ITEM, and no uri,
-  are 400s, and a smart playlist's items cannot be cleared (`DELETE` is a 400 where simplex
-  emptied a list it never reads). simplex refused every uri on a smart list, so Save answered
+  are 400s, and a smart playlist's items cannot be cleared (`DELETE` is a 400 where rex
+  emptied a list it never reads). rex refused every uri on a smart list, so Save answered
   "There was a problem updating this item."
 - **An artwork upload is `POST /library/metadata/{id}/{posters,arts}` with the image as the
   body, and it answers an EMPTY 200.** The image becomes an `upload://posters/<sha1 of the
   bytes>` candidate -- a season's and an episode's carrying their place in the path -- and is
   selected at once; the row's `thumb` AND `art` both re-version; and one timeline frame,
   state 5 with no `metadataState`, is pushed with no state 3 before it. **And picking any
-  candidate stores a NEW versioned path**, never the url picked: simplex wrote the raw value
+  candidate stores a NEW versioned path**, never the url picked: rex wrote the raw value
   into `thumb`, so choosing an upload set the tile's img src to `upload://posters/...`.
   A playlist's and a collection's artwork list lives under `/library/metadata/{ratingKey}`
-  too and holds one `default://` composite row; simplex 404'd it.
+  too and holds one `default://` composite row; rex 404'd it.
 - **Fix Match requires a `name`, and a guid another row already carries MERGES the two.**
   A guid with no name is a 400 and an empty guid with a name is a 200 that renames the row and
   refreshes it; matching to a guid a row in the same library holds deletes this row and leaves
   the survivor with both Media, framed as the merge (state 3, then 9 `deleted` untitled, then
   type -1 state 3 and 5) followed by the survivor's own refresh. Every match runs that refresh
-  sequence and ENDS its activity: simplex started a `Matching` activity per match and never
+  sequence and ENDS its activity: rex started a `Matching` activity per match and never
   finished one, so the Dashboard's spinner never stopped.
 - **A scan's `updated` frames carry a `Context` naming the library, and a show library steps
   per SEASON** -- `Scanning <show>/Season 02`, subtitle `<show> - Season 02`, deepest season
-  first -- where a movie library steps per movie. simplex sent no Context and stepped a show
+  first -- where a movie library steps per movie. rex sent no Context and stepped a show
   library by show.
 - **A show's prefs write re-reads the whole show, and says so.** `showOrdering` pushes the
   show's own refresh sequence, then each season (5 `processing`, 4 `loading`) with its
   episodes inside it (5 `processing`, 4 `loading` twice, 5), the episodes again with
   `mediaState` analyzing and thumbnailing, the activity stepping per season, and the show's
-  state 5 last -- forty frames for a two-season show. simplex stored the value and pushed
+  state 5 last -- forty frames for a two-season show. rex stored the value and pushed
   nothing, so a re-ordering was invisible to every other client until a reload.
 
 Measured in the tenth pass's write batch and not acted on:
 
 - **What the copy cannot do.** It has no account and no route out, so the download queue is a
   404 on every path there, `POST .../posters?url=<an external image>` is a 406 (the fetch
-  fails, and simplex can fetch, so copying the 406 would be wrong), and a provider match
+  fails, and rex can fetch, so copying the 406 would be wrong), and a provider match
   search returns nothing. `POST /library/metadata/{id}/subtitles` is a 500 on the copy with
-  nothing in its log; the cause was not established, so simplex keeps its 400.
+  nothing in its log; the cause was not established, so rex keeps its 400.
 - **Captured and not reproduced:** a library create's per-item `created` frames (state 0
   untitled, 0 titled, 1, then `mediaState` analyzing and thumbnailing) and the
   `backgroundProcessingQueue` frame a minute later; the 201 row's `metadataAgentProviderGroupId`,
-  `uuid`, `createdAt` and `contentChangedAt: -1`, where simplex sends `refreshing` and 0; and
+  `uuid`, `createdAt` and `contentChangedAt: -1`, where rex sends `refreshing` and 0; and
   the `provider.subscriptions.process` activity pairs a scan ends with, seen only on the
   1.43.4 copy.
 - **Oddities of the copy, left alone:** the artwork write's response body and the row's own
@@ -3390,7 +3390,7 @@ limits turn out to be one rule:
   session must have reported a position under 90% of the duration THAT BEAT carries. A cold
   item beaten once at 95% records nothing; five climbing beats from 95% to 99% record nothing
   either; another client's earlier position does not enable it, and neither does an offset
-  stored by `/:/progress`. Eleven cases, each on an item untouched since a reset. simplex
+  stored by `/:/progress`. Eleven cases, each on an item untouched since a reset. rex
   completed on the position alone, so dragging the scrubber to the end, or a second client
   joining near the end, silently marked the item watched, cleared its resume point, wrote a
   history row and bumped the season and show counters. What cycle 9 recorded as "a
@@ -3399,22 +3399,22 @@ limits turn out to be one rule:
 - **A beat with no `duration` stores nothing, and `duration=0` is a 200.** Without one the
   answer is `ignore` and the row is untouched, at 130 s and at 95% alike; after a beat that
   did carry one, a duration-less beat answers the STORED offset unchanged. `duration=0` is
-  the same 200 -- a real PMS reads it as "no usable duration" -- where simplex's `time >
+  the same 200 -- a real PMS reads it as "no usable duration" -- where rex's `time >
   duration` refusal caught it as a 400. An empty `duration` and a `time` past a real one
   stay 400s.
-- **A beat at or under a minute DELETES the stored resume point.** simplex ignored the beat
+- **A beat at or under a minute DELETES the stored resume point.** rex ignored the beat
   and kept the old position, so starting a title again from the beginning left the previous
   resume point in Continue Watching. `lastViewedAt` is left alone.
 - **A progress beat stamps `lastViewedAt` on the season and the show**, before anything is
-  watched; simplex touched the parents only on a completion.
+  watched; rex touched the parents only on a completion.
 - **A session driven from a play queue names the queue on every `playing` frame**:
   `playQueueItemID` and `playQueueID` ride beside the recorded eight fields, on the playing,
-  paused, seek and stop frames alike, and a session with no queue carries neither. simplex
+  paused, seek and stop frames alike, and a session with no queue carries neither. rex
   sent neither ever, and the Now Playing panel ties a frame to its queue item by them.
 - **A `/status/sessions` row carries no `Guid` and no `Image`**, where the same item's detail
-  row carries both; simplex copied the detail row wholesale, so its XML session rows had three
+  row carries both; rex copied the detail row wholesale, so its XML session rows had three
   `<Image>` children a real PMS never sends. Its `Player` also names a `profile` (`Web`),
-  which simplex omitted -- the copy only ever saw Plex Web, so what another product's profile
+  which rex omitted -- the copy only ever saw Plex Web, so what another product's profile
   reads as is not measured and every session says `Web`. **Not reproduced:** the hunt reported that the `Session` block
   appears only once a DECISION has been made. Re-measured with a decision that answers 200,
   the copy carries no `Session` block at all, before or after -- it is unclaimed, and the
@@ -3422,7 +3422,7 @@ limits turn out to be one rule:
 - **`/statistics/media` filters by `accountID` and `deviceID`** exactly as
   `/statistics/bandwidth` does (implemented in cycle 8, and this one was left out): an id the
   server does not have answers `size 0` with no `Device` and no `Account` row, and an empty or
-  non-numeric `accountID` is a 400. simplex answered the whole server to all of them.
+  non-numeric `accountID` is a 400. rex answered the whole server to all of them.
 
 Measured in the tenth pass's third batch and not acted on:
 
@@ -3430,7 +3430,7 @@ Measured in the tenth pass's third batch and not acted on:
   that a timeline-only session carries no `Session` block and a decision creates one.
   Re-measured with a decision that answers 200 and the same session identifier, the copy
   carries no `Session` block at all, before or after -- it is unclaimed, and that block holds
-  the measured bandwidth. simplex's stays as it is, and the row's derived `bandwidth` remains
+  the measured bandwidth. rex's stays as it is, and the row's derived `bandwidth` remains
   on the deliberately-not-implemented list.
 - **What the copy cannot witness.** An unclaimed PMS 401s everything but `/identity`, so
   `/status/sessions/terminate` cannot be measured there in any form; `/statistics/*` is a 404
@@ -3440,7 +3440,7 @@ Measured in the tenth pass's third batch and not acted on:
 - **Only Plex Web was seen**, so `Player.profile` is `Web` for every session here; what another
   product's profile reads as is not measured.
 - **An unmatched row's timeline answer** on the copy carries no `skipCount`, `viewCount` or
-  `viewOffset` at all, where a matched one carries all three. No simplex catalog has a row
+  `viewOffset` at all, where a matched one carries all three. No rex catalog has a row
   without an identity, so there is nothing to reproduce it against.
 - **`/statistics/resources`** answers per-second host samples on both references and one row
   with no memory figures here: a stdlib server on another machine has no such numbers.
@@ -3449,8 +3449,8 @@ Measured in the tenth pass's third batch and not acted on:
 
 Two hunts, both without fun: its Plex was stopped mid-deploy by another session, and the user
 asked that testing stay on kids and zen. That turned out to be an improvement rather than a
-loss. **zen runs Plex 1.42.2.10156 -- the exact build simplex reports** -- so every rule below
-has two witnesses, one of them the version simplex claims to be, which is a sharper test than
+loss. **zen runs Plex 1.42.2.10156 -- the exact build rex reports** -- so every rule below
+has two witnesses, one of them the version rex claims to be, which is a sharper test than
 fun's 1.42.2 against kids' 1.43.4 ever was: a field kids sends and zen does not is a version
 difference, and a rule both answer is not.
 
@@ -3459,7 +3459,7 @@ before and after both hunts.
 
 **The listings ran none of the query grammar they advertise.**
 
-- **`?limit=N` caps a listing's rows**, and simplex read it only in `/query/parse`. `limit=0`
+- **`?limit=N` caps a listing's rows**, and rex read it only in `/query/parse`. `limit=0`
   answers ONE row and a negative one every row -- the two edges autocomplete's limit already
   had -- and `limit=abc` is a 500. It belongs to the query grammar rather than to every
   listing: `/newest`, `/recentlyAdded` and `/children` ignore it on both servers. A smart list
@@ -3467,7 +3467,7 @@ before and after both hunts.
 - **A `type=` that does not parse is refused, and the status differs by path.** A section
   listing answers 500 to `type=abc`, `type=1.5` and an empty `type=`; `/library/all` answers
   **400** to the first two and keeps 500 for the empty one. A type NUMBER the library holds no
-  rows of -- 8, 9, 10, 12, 13, 19, 99, -1 -- is a 200 with no rows. simplex answered the whole
+  rows of -- 8, 9, 10, 12, 13, 19, 99, -1 -- is a 200 with no rows. rex answered the whole
   unfiltered grid to all of them, so a client that sent a malformed type read the library as
   if it had matched.
 - **`id` is a real filter field on every listing**, echoed by `/query/parse` as a Rule with an
@@ -3475,26 +3475,26 @@ before and after both hunts.
   `>>`/`<<`/`>=`/`<=` compare numerically, and `==`/`!==` -- the exact-string pair -- never
   match a number at all. A value that is not a number sorts ABOVE every id, exactly as an
   integer column compares against text: `id=abc` matches nothing, `id!=abc` everything,
-  `id>>=abc` nothing and `id<<=abc` everything. simplex reported it as an unknown field, so
+  `id>>=abc` nothing and `id<<=abc` everything. rex reported it as an unknown field, so
   python-plexapi's `editions()` -- which asks `guid=<x>&id!=<self>` -- called every item its
   own duplicate.
 - **A section's `allLeaves` is a full query surface, not a dump.** Filters, `sort=`, `limit=`
-  and `type=` all apply; an unknown sort key and an unparseable type are 500s. simplex
+  and `type=` all apply; an unknown sort key and an unparseable type are 500s. rex
   answered its whole leaf list to every one of them, so the filter bar and the sort menu over
   an "All episodes" view did nothing and said 200.
 - **`excludeElements=` applies to the three listings cycles 9 and 10 added** -- the section's
-  `allLeaves`, `/library/people/{id}/media` and `/hubs/items` -- where simplex kept the Media
+  `allLeaves`, `/library/people/{id}/media` and `/hubs/items` -- where rex kept the Media
   children and sent no `mediaCount`. The client asks for the cheap list to lay a page out and
   was handed the expensive one with no count to draw the badge from.
 - **`includeStorage=1` adds `durationTotal` and `storageTotal` to a section grid row**, at the
   library's own top-level type ONLY: a show carries the sums over its episodes (Firefly:
   60186 ms and 37683488 bytes, exactly its six episodes), a movie its own, and `?type=3`,
   `?type=4`, `allLeaves`, `/library/all`, `/newest`, `/children` and a detail read carry
-  neither. simplex sent neither, although the row already holds both numbers.
+  neither. rex sent neither, although the row already holds both numbers.
 - **`/library/people/{id}/media` is typed by the TAG, not by its rows.** `viewGroup` and
   `viewMode` belong to an ACTOR's list (tagType 6) -- even when its rows are shows, which is
   where cycle 9's reading came from -- and a Director, Writer or Producer list carries
-  neither. The list is also a query: the library filters narrow it, where simplex answered
+  neither. The list is also a query: the library filters narrow it, where rex answered
   every row the person is on.
 
 **The Dashboard's numbers.**
@@ -3502,12 +3502,12 @@ before and after both hunts.
 - **A statistics container pages its SERIES only.** `Device` and `Account` are a lookup for
   the rows on the page, and the answer carries exactly the ones its rows name -- a window over
   two devices carries both, a window past the end carries neither, and `totalSize` counts the
-  series alone while `size` counts every element. simplex sliced all three lists with the same
+  series alone while `size` counts every element. rex sliced all three lists with the same
   offset, so the second page of a graph named a device it had not sent and lost the Account
   row entirely.
 - **`timespan` has to parse as a whole number**, on all three statistics endpoints: `abc`,
   `1.5`, an empty value and one with a leading space are 400s, where `0`, `-1` and `06` are
-  200s. simplex ran an unguarded `int()` on it -- a 500 on two endpoints and a silently
+  200s. rex ran an unguarded `int()` on it -- a 500 on two endpoints and a silently
   ignored parameter on `/statistics/resources`.
 
 **The transport.**
@@ -3515,7 +3515,7 @@ before and after both hunts.
 - **A real PMS gzips every compressible body whenever the client offers gzip**, even when
   compressing makes it LARGER: an 83-byte `/livetv/dvrs` comes back gzipped at 90 bytes, with
   `X-Plex-Content-Original-Length: 83` and `-Compressed-Length: 90`. `Accept-Encoding:
-  identity` is the only thing that stops it. simplex had an 860-byte floor and an "only if it
+  identity` is the only thing that stops it. rex had an 860-byte floor and an "only if it
   shrinks" test, both inferred from what happened to be seen rather than measured, and
   seventeen of the endpoints cycles 9 and 10 added answered plain and without the length pair.
 
@@ -3525,7 +3525,7 @@ before and after both hunts.
   queue created over [A, B, C] with A playing, then a plain add of D, answers [A, D, B, C]; a
   second plain add of E answers [A, D, E, B, C]; a `next=1` add goes in FRONT of that block.
   Cycle 4 recorded this rule and implemented it as "skip while the item id is above the
-  selected id" -- but every ORIGINAL member also has an id above the first item's, so simplex
+  selected id" -- but every ORIGINAL member also has an id above the first item's, so rex
   skipped the whole queue and appended at the very end. Add to Queue from a grid dropped the
   row at the bottom of the queue for seven cycles.
 - **The Upload Subtitle modal's request is accepted.** The client (bundle module 90487) sends
@@ -3535,7 +3535,7 @@ before and after both hunts.
   a `key` of `/library/streams/{id}`, `transient: "0"` -- which becomes the SELECTED subtitle.
   The refusals are their own grammar: no `title`, and a title with no extension, are **500**s;
   `srt`, `ass`, `ssa`, `smi` and `txt` are accepted where `vtt`, `sub`, `idx`, `sup` and `pgs`
-  are **400**s; an empty body is a **406**; an unknown item a 404. simplex fell through to the
+  are **400**s; an empty body is a **406**; an unknown item a 404. rex fell through to the
   subtitle SEARCH branch and answered 400 to every one of them, so the modal always reported
   "Unable to upload subtitle file". This **overturns cycle 10's instrument limit** -- "POST
   subtitles is a 500 on the copy with nothing in its log" -- which was measured from a request
@@ -3543,13 +3543,13 @@ before and after both hunts.
 - **A sidecar subtitle labels its codec `<CODEC> External`** in both titles: `Unknown (SRT
   External)` plainly and `<name> (SRT External)` extended. One witness only -- no sidecar
   subtitle exists on the 1.42.2 server to confirm it against -- but it is the only kind of
-  subtitle stream simplex can create, so the label is reachable only through the upload above.
+  subtitle stream rex can create, so the label is reachable only through the upload above.
 - **A stream PUT is accepted and stores nothing**: `PUT /library/streams/{id}` on a stream the
   server HAS is 200 with an empty body, with or without parameters, and the track's title is
   unchanged afterwards. A **DELETE of an embedded track is 403** -- it is part of the file --
   and a DELETE of an uploaded sidecar really removes it (200). An unknown id keeps cycle 6's
   refusals (PUT 400, DELETE 404, GET 404), and the GET of a real stream stays the 501 cycle 6
-  measured. simplex answered 501 to every verb.
+  measured. rex answered 501 to every verb.
 - **A playlist's items and a collection's children are the LIGHT grid row** -- no `Guid`, no
   `Rating`, no `Field`, no `Stream` under the Part, tags text-only -- while the same item's
   detail read is full. They keep their librarySection fields and a playlist item keeps its
@@ -3562,33 +3562,33 @@ answers nine attributes -- `historyKey`, `librarySectionID`, `title`, `type`,
 `originallyAvailableAt`, `viewedAt`, `accountID`, `deviceID` and `viewType: 1` -- with an
 episode adding `grandparentTitle`, `index` and `parentIndex`, and with no `key`, no
 `ratingKey` and no artwork. Identical on both servers, against every readable row on each.
-simplex answered its stored listing row, advertising links this endpoint does not carry.
+rex answered its stored listing row, advertising links this endpoint does not carry.
 
 Measured and not acted on:
 
 - **`/status/sessions/history/all` answers `size 0` on BOTH servers** while single reads by
   key work, through every combination of `accountID`, `librarySectionID`, `sort` and paging.
-  Recorded in cycle 9 as a kids oddity; it is not one, and it is not reproduced -- simplex's
+  Recorded in cycle 9 as a kids oddity; it is not one, and it is not reproduced -- rex's
   listing is what fun's 3879 rows were measured against.
 - `includeBandwidths=1` adds `deepAnalysisVersion` and `requiredBandwidths` to every `Part`.
   The bandwidth ladder needs Plex's own deep analysis, which puts it beside `thumbBlurHash`.
 - `/library/people/{id}` answers any TAG id, not only a person: kids' id 1 is a
   `mediaProcessingTarget` (tagType 42) and renders as `<Tag>` with `MediaSettings` and
-  `Device` children. No simplex catalog holds such a tag.
+  `Device` children. No rex catalog holds such a tag.
 - A detail row's tags carry `count` (how many items in the library share the tag) on both
-  servers and none of simplex's do. Pervasive across every detail read rather than specific to
+  servers and none of rex's do. Pervasive across every detail read rather than specific to
   anything this cycle measured; left for a cycle that can measure it as a row-shape rule.
 - `playQueueLastAddedItemID` appears to re-anchor when an item is MOVED, not only when one is
   added. Seen on the copy, not pinned to a rule.
 - The subtitle SEARCH path (`GET .../subtitles?language=`) answers 503 on the isolated copy: it
-  needs OpenSubtitles. An instrument limit, and simplex's empty-container answer stands.
+  needs OpenSubtitles. An instrument limit, and rex's empty-container answer stands.
 - fun was out of scope for the whole cycle, so nothing here rests on a third server.
 
 #### The twelfth pass: what a real library shows, and what the writes really push
 
 The first cycle with a **real library** as a routine instrument. Eleven cycles measured row
 shapes against ten synthetic ten-second clips; zen has 3,887 movies, two show libraries and real
-agent metadata, on Plex 1.42.2 — the exact build simplex reports. Hunt A was read-only across
+agent metadata, on Plex 1.42.2 — the exact build rex reports. Hunt A was read-only across
 kids and zen; hunt B measured writes on plexscratch, its only possible witness. It found MORE
 than the cycle before it, not fewer, which is the instrument catching up rather than a
 regression in the work.
@@ -3600,30 +3600,30 @@ regression in the work.
   movie has 155 roles on its detail row and exactly 3 on every listing of it; the richest genre
   row (7) prints 2. Confirmed on kids too (Sintel 7 genres → 2; episode 8's 24 roles → 3 in a
   child list). `Director` is uncapped in every sample available — the richest row in 240 zen
-  movies has two — so it is left alone rather than guessed at. simplex sent the whole list on
+  movies has two — so it is left alone rather than guessed at. rex sent the whole list on
   every grid, hub and search row. **A five-clip library cannot show this**: no item has enough
   tags to be truncated, which is exactly why eleven cycles of row-shape work missed it.
-- **An episode's `parentGuid` is the SEASON's guid**, not the show's. simplex copied the
+- **An episode's `parentGuid` is the SEASON's guid**, not the show's. rex copied the
   season's own `parentGuid` — which is the show, correct on the season row and wrong on the leaf
   — so every episode of a show claimed one and the same parent, and a client keying per-season
   artwork or state off it could not tell the seasons apart. Corrected at LOAD as well as at
   build, because every catalog built so far carries the wrong value baked in.
-- **The section grid says `allowSync: true`.** simplex said false there while already saying
+- **The section grid says `allowSync: true`.** rex said false there while already saying
   true on `/newest`, `/recentlyAdded`, `/onDeck`, `/folder`, `/children` and a detail row — the
   most-requested container on the surface disagreeing with every other one, and an attribute
   python-plexapi reads off every section listing.
 - **A search caps at 3 rows per hub with no `limit`, and `/library/search` at 10 in all.** A zen
   search answering 6 movies, 26 directors, 11 episodes and 50 actors under `limit=50` answers
-  three of each with none, and `more` stays false either way. simplex defaulted both to 30.
+  three of each with none, and `more` stays false either way. rex defaulted both to 30.
 - **An actor tag row is `tagType: 6`** and a director row 4 — different tag types, not one
-  "person" type. simplex called both 4 while `/library/people/{id}` already answered 6 for the
+  "person" type. rex called both 4 while `/library/people/{id}` already answered 6 for the
   same person, so the server contradicted itself.
-- **`group=type`, `group=guid` and `group=id` are 200**, where simplex answered 500. Exercised
+- **`group=type`, `group=guid` and `group=id` are 200**, where rex answered 500. Exercised
   against all 27 candidate fields: the other 24 agree, including the 11 that are 500 everywhere.
   `id` became a filter field in cycle 11 and was still not a group field.
 - **An EPISODE's title is compared by `/common` and a SEASON's is not**, and `titleSort` is `""`
   only when it is genuinely mixed — a single row answers its own sort title (`The Train Job` →
-  `Train Job`, derived where the row stores none; a season answers `Season 1`). simplex dropped
+  `Train Job`, derived where the row stores none; a season answers `Season 1`). rex dropped
   `title` for both types and hardcoded `titleSort` to `""`, so the Edit dialog opened on an
   episode with the Title and Sort Title boxes blank and a save could overwrite them.
 - **`/library/sections/{id}/actor` carries no `content`**, where all 25 other secondary axes
@@ -3640,10 +3640,10 @@ the only server that can answer them.
 - **A library edit needs an `agent`, not a `name`.** The client's library-upgrade handler (the
   one whose failure the bundle reports as "There was a problem upgrading the library") sends
   `agent` and `scanner` and nothing else; `agent` alone is a 200 too, while `name` alone,
-  `scanner` alone, `language` alone and an empty form are 400. simplex demanded `name` and
+  `scanner` alone, `language` alone and an empty form are 400. rex demanded `name` and
   refused the upgrade form every time. This corrects cycle 4's reading.
 - **The subtitle upload takes `psb` as well, and the format check is CASE-SENSITIVE**: `SRT` is
-  a 400 where `srt` is a 200. simplex lowercased the value, so it accepted uploads a real PMS
+  a 400 where `srt` is a 200. rex lowercased the value, so it accepted uploads a real PMS
   refuses and refused one it takes. (The modal's own allowed list is wider than the server's —
   `aqt jss rt utf utf-8 utf8 sub idx vtt` are offered by the client and refused by the server.)
 - **A stream path tells a malformed id from a missing one**: `DELETE /library/streams/abc` is a
@@ -3651,21 +3651,21 @@ the only server that can answer them.
   not the 501 its GET answers.
 - **A queue add that adds nothing changes nothing.** A `server://` uri naming another MACHINE
   adds nothing at all, and every no-op add leaves `playQueueVersion` exactly where it was.
-  simplex read the ratingKey out of any uri and added the item whoever it belonged to, and
+  rex read the ratingKey out of any uri and added the item whoever it belonged to, and
   stepped the version on every no-op — and the client DISCARDS a queue response whose version it
   does not expect, so a no-op add invalidated the queue the player was holding.
 - **Optimize Database runs an activity**: `general.db.optimize`, started at 0 with an empty
   subtitle, updated at 0, 10, 40 and 60 with the subtitle `Optimizing Database`, ended at 100.
-  simplex answered its empty 200 and pushed nothing, so the Settings page's progress bar never
+  rex answered its empty 200 and pushed nothing, so the Settings page's progress bar never
   moved.
 - **A refresh's `updated 49` frame comes SECOND**, before the processing timeline — which is the
-  order this file already recorded and `notify_refreshed`'s own docstring already stated. simplex
+  order this file already recorded and `notify_refreshed`'s own docstring already stated. rex
   emitted it inside `finish_activity`, after `loading`: the rule was right and the implementation
   was something else. The activity's subtitle is the row's `title (year)`, not the bare title.
 - **A scan ends inside a NESTED pair of `provider.subscriptions.process` activities** — the
   outer starts between the section activity's last `updated` and its `ended`, the inner runs
   after the completion status, then inner ends and outer ends. **"Refresh All Metadata"
-  (`?force=1`) runs that whole scan sequence first** and only then refreshes each item; simplex
+  (`?force=1`) runs that whole scan sequence first** and only then refreshes each item; rex
   pushed a bare status frame and went straight to the per-item half, so the Libraries page showed
   no scan for the operation that takes longest. And **a library create answers a `Location`
   header** naming the new library.
@@ -3677,21 +3677,21 @@ Measured and not acted on:
   verified**. Searched here across the raw JSON and XML of the detail row (plain and with the
   full preplay `include*` set), every listing, `/library/tags` for nine types and all 26 secondary
   axes on both servers: `count` appears in exactly one place, the tag `Directory` rows of
-  `/hubs/search` and `/library/search`, where simplex already emits it with the right value. The
+  `/hubs/search` and `/library/search`, where rex already emits it with the right value. The
   cheapest possible instance of taking a report at face value.
 - A library create over real files pushes 74 frames plus a `backgroundProcessingQueue`
   `queueRegenerated` about a minute later, with a per-item `created`/`analyzing`/`thumbnailing`
-  sequence. That half depends on files simplex does not own; the empty-folder sequence is what it
+  sequence. That half depends on files rex does not own; the empty-folder sequence is what it
   can push and now does.
 - The 201 row's `metadataAgentProviderGroupId`, `updatedAt`, `createdAt` and
   `contentChangedAt: -1`, and a globally numbered `Location.id`: still catalog-shaped values
-  simplex has no source for.
+  rex has no source for.
 - The download queue answers 404 to every form on the copy — no account — so nothing new is
   measurable there. Plex Web never builds a `downloadQueue` path at all (0 occurrences in the
   bundle).
 - The subtitle SEARCH and the apply-a-search-result PUT both need OpenSubtitles and answer 503
   on the isolated copy.
-- `/search` (the legacy endpoint) ignores `limit` entirely on both references, where simplex caps
+- `/search` (the legacy endpoint) ignores `limit` entirely on both references, where rex caps
   at 30. Below 30 matches it never shows; left alone.
 - `titleSort` article stripping beyond the/a/an: zen strips `Das` (1/1) and `La` (2/2) but not
   `Die` (0/2) or `Les` (0/1), on samples far too small to be a rule — it points at agent-supplied
@@ -3702,7 +3702,7 @@ Measured and not acted on:
 
 #### The thirteenth pass — the rest of the real library, and the write cascades
 
-Two hunts. One read-only across kids (1.43.4) and zen (1.42.2, the build simplex
+Two hunts. One read-only across kids (1.43.4) and zen (1.42.2, the build rex
 reports) over everything about a real library that is not a movie detail row — the
 territory cycle 12 opened and took one pass at. One writing to plexscratch over the
 CASCADE family: what a write to a PARENT row does to its children, which no cycle had
@@ -3731,7 +3731,7 @@ its external `Guid` array. Every episode goes with it: `local://<id>`, the gener
 dropped, `titleSort` removed, `parentThumb` nulled, and `parentGuid` following the
 season to its new `local://` guid. kids corroborates the season half from the other
 side — its unmatched season 11 carries the show's thumb, no `year` and `parentYear:
-2002`, where its matched season 7 carries its own. simplex edited the one row, which
+2002`, where its matched season 7 carries its own. rex edited the one row, which
 left matched episodes under an unmatched parent: a state a real PMS cannot produce,
 and one where the client's own `local://` menu predicate answers differently per row.
 
@@ -3739,7 +3739,7 @@ and one where the client's own `local://` menu predicate answers differently per
 a freshly reset copy (`cycle13 (English SRT External)`, with `displayTitle` the plain
 `English`) and found eleven real sidecar subtitles on zen carrying the same form —
 `English (SRT External)`, `Deutsch (SRT External)`, `Unknown (TXT External)`.
-simplex's implementation already matched; the single-witness note in the handover is
+rex's implementation already matched; the single-witness note in the handover is
 closed.
 
 ##### What a real library shows and a five-clip one cannot
@@ -3748,12 +3748,12 @@ closed.
   ascending, last descending. Measured on `audienceRating`, `rating`, `userRating`,
   `contentRating`, `year`, `originallyAvailableAt`, `viewCount`, `viewOffset`,
   `lastViewedAt`, `mediaHeight` and `mediaBitrate`, on both servers, and on a show
-  library at types 2, 3 and 4. simplex keyed on `(value is None, value)`, which puts
+  library at types 2, 3 and 4. rex keyed on `(value is None, value)`, which puts
   the missing rows ABOVE every value — and twelve of the fifteen sorts a section
   advertises default to `desc`, so Rating, Plays, Date Viewed, Critic Rating and
   Bitrate all opened the grid on the rows with no value at all. On zen that is the
   entire first page.
-- **The seventeen search hubs come back in an order simplex had wrong in two places.**
+- **The seventeen search hubs come back in an order rex had wrong in two places.**
   `movie` is FIFTH, not first, and `collection` is FOURTEENTH, between genre and
   playlist, not seventh. This has to be measured on a query that matches NOTHING:
   a query with fuzzy hits promotes the hubs that scored, which is what made an earlier
@@ -3767,7 +3767,7 @@ closed.
   movies all reasoned on the actor, and across ten zen queries **53 of 81 item rows
   carried a `reason`** — most search hits on a real library are tag hits.
   `/library/search` does NOT carry them (kids `colin` is two `Directory` rows and
-  nothing else), so this is the hubs endpoint alone. simplex matched titles only, so
+  nothing else), so this is the hubs endpoint alone. rex matched titles only, so
   searching an actor, a director or a genre drew the tag row with an empty Movies
   shelf beside it, and its own `reason` code could never fire.
 - **The "All episodes" row follows the PAGE's row count, not the offset.** On One
@@ -3784,14 +3784,14 @@ closed.
   the two halves adding up to the library. For a SHOW or a SEASON, which have no Media
   of their own, it is "a leaf under it has more than one": 44 shows and 74 seasons,
   each sampled one holding a multi-Media episode where each `duplicate=0` show held
-  none. simplex answered 0 for every row, so the control `includeAdvanced=1` puts in
+  none. rex answered 0 for every row, so the control `includeAdvanced=1` puts in
   the filter bar was advertised and permanently empty.
 - **A bare `<field>=` means THREE different things, by field**, and both servers agree
   exactly. A tag-TABLE field matches NOTHING — 37 of 600 zen movies carry no `Genre`
   and all 600 carry no `Label`, yet `genre=` and `label=` answer 0 rows. `studio` and
   `editionTitle` match EVERY row — 5 of 5 and 3,887 of 3,887, though 14 of 200 sampled
   zen movies have no studio. Everything else of that kind — `contentRating`,
-  `audioLanguage`, `subtitleLanguage` — matches the rows with NO value. simplex applied
+  `audioLanguage`, `subtitleLanguage` — matches the rows with NO value. rex applied
   the third rule to all of them, so `genre=` selected the whole library and `studio=`
   selected only the rows that had none. The codec axes DISAGREE across the two versions
   (kids nothing, zen every row), so they are a version difference and are left alone.
@@ -3799,7 +3799,7 @@ closed.
   entries and on that axis alone — `{"fastKey": ".../all?contentRating=None", "key":
   "None", "title": "None"}`. `contentRating=None` in that exact spelling selects the
   rows with no rating (2,864 on zen, 3 on kids, the same as `contentRating=`), while
-  `none` and `NONE` match nothing. No other field axis has such a bucket, and simplex
+  `none` and `NONE` match nothing. No other field axis has such a bucket, and rex
   offered no way to reach those rows from the filter bar at all.
 - **A tag or field axis REFUSES a `type=` it cannot parse; a media axis ignores it.**
   Across seven values on both servers: `genre`, `studio`, `actor`, `contentRating`,
@@ -3810,12 +3810,12 @@ closed.
   on a movie library and a show library alike. And `firstCharacter` IS scoped: on
   zen's show library `#`/`A` are 13/40 shows at `type=2`, 13/64 seasons at `type=3`
   and 185/207 episodes at `type=4`, and empty for a type the library has no rows of.
-  simplex answered 200 to every axis whatever the type said, scoped `resolution` by
+  rex answered 200 to every axis whatever the type said, scoped `resolution` by
   type and counted `firstCharacter` over the whole section.
 - **An EPISODE with an `audienceRating` carries `audienceRatingImage` and a `Rating`
   element.** 60 of 60 One Piece episodes and 3 of 3 on the lab, with no exception,
   while the unmatched episodes with no rating carry none of the three and a SEASON
-  never carries any of them (0 of 12 sampled). simplex built both for a show and a
+  never carries any of them (0 of 12 sampled). rex built both for a show and a
   movie only, so its own episode rows contradicted its own movie rows and no episode
   page or listing row drew a rating badge. `rating` — the CRITIC rating — is dropped
   from an episode for the same reason it is dropped from a movie: no episode on either
@@ -3838,23 +3838,23 @@ closed.
   `viewedOrInProgressLeafCount=0` is 499 and `=1` is 4, `viewedLeafCount>>0` is exactly
   the 8 shows with a watched episode, and `unviewedLeafCount>>0` is 505. `leafCount`
   and `childCount` are genuinely unknown fields — both answer the whole library — which
-  is what simplex already did with all five. Neither server holds a leaf that is in
+  is what rex already did with all five. Neither server holds a leaf that is in
   progress and unwatched, so the "or in progress" half of the first one's name could
   not be separated from the viewed half on either; it is read as the name says.
 
-##### The Home screen and the library tab, on the version simplex reports
+##### The Home screen and the library tab, on the version rex reports
 
 - **A shelf with no `count=` carries at most SIX rows and says `more: true`.** Measured
   on zen against a 3,887-movie and 507-show library: `movie.recentlyreleased`,
   `movie.recentlyadded`, `movie.topunwatched`, `tv.recentlyaired`, `tv.startwatching`
   and `tv.toprated` are all size 6 with `more`, and `/hubs` does the same. `?count=3`,
   `?count=12` and `?count=20` are honoured exactly, so six is the DEFAULT and not a
-  ceiling; the related shelf caps at six too. simplex used 12, a number no reference has
+  ceiling; the related shelf caps at six too. rex used 12, a number no reference has
   ever answered — kids cannot witness it either way, because with five movies and one
   show no shelf there can reach even six, which is how the recorded "up to 12" survived
   twelve cycles. It is a separate constant from the cap on the two lists that are not
   shelves: `/hubs/home/recentlyAdded?type=1` answered all 3,887 rows on zen.
-- **Three shelves a 1.42.2 library tab carries and simplex never built**:
+- **Three shelves a 1.42.2 library tab carries and rex never built**:
   `movie.topunwatched` between the genre shelf and Recently Watched, and
   `tv.startwatching` after Recently Added and `tv.toprated` after Rediscover on a show
   library. Each is `style: shelf`, `random: true`, and each key is the listing its "see
@@ -3887,7 +3887,7 @@ it.
   `Image.alt` following the new title. The two things the cascade does that this does
   not — `parentGuid` moving to `local://` and `parentThumb` going null — are
   consequences of the SEASON changing, not of the episode write. So the field set
-  belongs to "unmatch an episode", by either path. simplex changed the guid and the
+  belongs to "unmatch an episode", by either path. rex changed the guid and the
   title and kept the rest, leaving an unmatched episode carrying the agent's summary,
   rating and cast under a `local://` guid.
 - **Unmatching a SHOW cascades the whole way down.** Every season becomes `local://`
@@ -3896,29 +3896,29 @@ it.
   `parentGuid` follows its own season; and the artwork the children borrowed from the
   show goes with it — the show's `art`, the seasons' `thumb`/`art`/`parentThumb`, the
   episodes' `art`/`parentThumb`/`grandparentThumb`/`grandparentArt`. The inherited
-  `contentRating` goes from every descendant too. simplex edited the show row and
+  `contentRating` goes from every descendant too. rex edited the show row and
   stopped.
 - **An unmatch leaves NO activity running.** After a movie unmatch the copy's
-  `/activities` is empty — the whole refresh sequence runs and ends. simplex opened an
+  `/activities` is empty — the whole refresh sequence runs and ends. rex opened an
   `Unmatching` activity at progress 0 and never closed it, so it was still listed
   minutes later and the Dashboard spinner turned for the life of the process. Cycle 9
   fixed this for a season and an episode, both of which go through `notify_refreshed`,
   and left the movie path.
 - **A season's `index` lands on its episodes' `parentIndex`** — on the detail row and in
   the season's `/children` alike. It is the same rule cycle 9 measured for a parent's
-  `title` and `studio`, which simplex already copies; `index` was missed, so an episode
+  `title` and `studio`, which rex already copies; `index` was missed, so an episode
   kept pointing at a season number that no longer existed.
 - **An episode carries its SHOW's `contentRating`, and a season carries none.** All six
   of Firefly's say TV-14 like the show, the three unmatched ones included although they
   have no agent metadata at all, and 18 of 18 episodes across three zen shows carry
   their show's (TV-14, TV-Y, TV-PG). The write side agrees: on the copy, editing the
   show's rating moved it on the episodes that had none of their own, and the show
-  unmatch removed it from all of them. simplex left an episode with no certificate at
+  unmatch removed it from all of them. rex left an episode with no certificate at
   all.
 
 * **A part whose FILE is gone is a plain 404, not a 5xx.** zen part 23595 reports
   `accessible=false`/`exists=false` under `checkFiles=1` and answers **404** to the byte read, with
-  the binary refusal header set. simplex answered 502 to a dead link and to a network failure
+  the binary refusal header set. rex answered 502 to a dead link and to a network failure
   alike, so a client that would have drawn "this file is missing" got a server error. The two are
   now split: Real-Debrid's `unavailable_file` (error_code 24) and a 404 from its API are the 404,
   and anything else keeps the 502 so a transport failure stays diagnosable.
@@ -3927,17 +3927,17 @@ it.
 
 - **Six write cascades the hunt measured and the driver did not re-measure**, so they
   are recorded rather than implemented and lead cycle 14: a show or season REFRESH
-  cascading through the tree (40 and 20 frames against simplex's 7); `flattenSeasons`
+  cascading through the tree (40 and 20 frames against rex's 7); `flattenSeasons`
   and `episodeSort` pushing NOTHING while changing the rows (`skipChildren` on the show,
   `skipParent` and no `parentRatingKey` on every episode; the season's `/children`
-  newest-first), where simplex pushes a 36-frame cascade for every prefs write and
+  newest-first), where rex pushes a 36-frame cascade for every prefs write and
   changes nothing; an artwork PICK re-versioning `thumb`, `art` and `theme` together,
   cascading to the children, LOCKING the field and pushing one frame at +5 s; `analyze`
   pushing a per-level triple plus a `media.generate.chapter.thumbs` activity; the
   74-frame library-create sequence over real files with its `backgroundProcessingQueue`
   regeneration at +60 s (which also appears 8 s after an unrelated edit, so it is
   periodic and not create-specific); and the merge/split arithmetic on a show tree,
-  where simplex's season merge deletes the season's EPISODE as well. Each is
+  where rex's season merge deletes the season's EPISODE as well. Each is
   single-witness on the copy and unverified by the driver — the two conditions this
   file's own revalidation register says to record rather than build on.
 - The score PROMOTION `/hubs/search` applies when a query has fuzzy hits: a hub whose
@@ -3956,7 +3956,7 @@ it.
 
 #### The fourteenth pass — how a real PMS folds a title, and the query surface nobody had run
 
-Two hunts. One read-only across kids (1.43.4) and zen (1.42.2, the build simplex
+Two hunts. One read-only across kids (1.43.4) and zen (1.42.2, the build rex
 reports) over what two passes at a real library still had not reached — grouping,
 the people surface, real watch state, and the listing query at scale. One writing to
 plexscratch over collections, an in-progress leaf, and the six write cascades cycle 13
@@ -3987,7 +3987,7 @@ them exactly:
 
 The five rows the model misses are Spanish `La` (4) and German `Das` (1). Those are not
 mechanical — `Les hommes de la baleine`, `Die Die Delta Pi II` and `O Ultimo Portal`
-all keep theirs — so the article list is per-item language, which simplex's catalog
+all keep theirs — so the article list is per-item language, which rex's catalog
 cannot express. Left alone deliberately. Only the LEADING half of the whitespace trim
 has a witness (zen holds no title with trailing or doubled whitespace); `.strip()` is
 the symmetric reading and is flagged as such.
@@ -4024,7 +4024,7 @@ the match, it turns the fold off. It is consistent with a folded per-word index
 answering a one-word query while a multi-word query is checked as a sequence against the
 raw title, but nothing measured that, so the code follows the observation.
 
-simplex split its word matcher on `[^0-9a-z]`, which makes an accented letter a
+rex split its word matcher on `[^0-9a-z]`, which makes an accented letter a
 **separator**: "Amélie" became the two words "am" and "lie", so the quick search never
 found the row by its own name and did find it under a fragment of one.
 
@@ -4068,7 +4068,7 @@ answer independent of the sort.
 `type=4&group=show.title` collapses kids' six episodes to 1 and zen's 9,287 to **505** —
 its show count — where `group=title` gives 4 and 4,443; `group=season.index` gives 2 and
 58 where `group=index` gives 3 and 1,144; `group=season.title` collapses 9,287 episodes
-to 1. simplex stripped the prefix and read the field off the episode itself, so every
+to 1. rex stripped the prefix and read the field off the episode itself, so every
 prefixed group was the unprefixed one. The fix moved the scope resolution into
 `filter_value`, where the prefix was already being thrown away for every other caller.
 
@@ -4081,7 +4081,7 @@ still matches a role the axis omits, so the cap is on the AXIS and not on the ta
 is actor-only — `director`, `writer`, `producer`, `genre` and `country` carry every tag.
 The axis's own `title2` says as much: **"By Starring Actor"**.
 
-**Nine columns filter although no `Meta` advertises them**, and simplex answered the
+**Nine columns filter although no `Meta` advertises them**, and rex answered the
 whole library to each. `viewOffset`, `skipCount`, `ratingCount`, `absoluteIndex`,
 `lastRatedAt`, `updatedAt`, `createdAt`, `mediaCount` and `originalTitle`. The test that
 tells a known field from an unknown one is that an **unknown** field is ignored and
@@ -4106,9 +4106,9 @@ the same key, which is what an ignored unknown field does.
 `mediaSize`, `createdAt`, `type`, `viewedLeafCount`, `tagline`, `summary` and
 `editionTitle`. They are real orderings checked against the rows zen returns —
 `sort=createdAt` comes back in `addedAt` order, `sort=mediaSize` smallest Part first — and
-simplex answered **500** to every one, which is a blank page for python-plexapi and for
+rex answered **500** to every one, which is a blank page for python-plexapi and for
 any stored smart-list URI naming one. `leafCount` runs the other way: both references
-500 it, along with `childCount`, `slug`, `key` and any unknown key, while simplex sorted
+500 it, along with `childCount`, `slug`, `key` and any unknown key, while rex sorted
 by it happily.
 
 **`/status/sessions/history/all` validates its ids**, across nineteen cases on which both
@@ -4116,7 +4116,7 @@ references agree exactly. A non-integer `accountID`, `librarySectionID` or
 `metadataItemID` is a **400** — `abc`, empty and `1.5` alike, while `1`, `-1` and `01`
 pass — a `metadataItemID` naming no row is a **404** (`0` included), an unknown
 `librarySectionID` is an empty 200 rather than a 404, `deviceID` is not validated at all,
-and `viewedAt>=` refuses a non-integer. simplex answered 200 with `size 0` to every one,
+and `viewedAt>=` refuses a non-integer. rex answered 200 with `size 0` to every one,
 so a client sending a malformed `accountID` read "this user has no history" instead of an
 error, and the per-item History link on a row the server does not hold read "never
 played".
@@ -4130,7 +4130,7 @@ references, so only the section form takes it.
 bucket key is percent-encoded.** Reconstructed against zen's own axis over all 3,887
 rows: the 29 rows in `#` are exactly the 29 whose sort title starts with 0–9, and the one
 row whose title starts with `『` gets a bucket of its **own**, key `%E3%80%8E`, listed
-after Z. The `#` bucket's key is `%23`. simplex folded every non-letter into `#` and
+after Z. The `#` bucket's key is `%23`. rex folded every non-letter into `#` and
 emitted the key raw — and raw, `#` is a URL fragment, so the client's request for that
 bucket loses everything after it. The encoding convention is corroborated on kids, whose
 other axes encode the same way (`contentRating` key `Not%20Rated`).
@@ -4139,8 +4139,8 @@ other axes encode the same way (`contentRating` key `Not%20Rated`).
 
 With the read hunt's findings landed, the driver swept the surface mechanically —
 every secondary axis, every section leaf, every top-level path and every item leaf,
-each fetched from kids and zen and from simplex, reporting only the paths where **both
-references agree and simplex differs**. 59 top-level paths and 48 item leaves agreed
+each fetched from kids and zen and from rex, reporting only the paths where **both
+references agree and rex differs**. 59 top-level paths and 48 item leaves agreed
 exactly. Four things did not.
 
 **`/library/sections/{id}/userRating` is a real axis, and a FIXED one.** Both servers
@@ -4148,7 +4148,7 @@ answer the same six rows on a movie library and on a show library, whatever rati
 library actually holds: `10`/"5 stars", `8`/"4 stars", `6`/"3 stars", `4`/"2 stars",
 `2`/"1 star" and `-1`/"Not rated", under `title2` "By Rating". It is a scale, not a
 value list — which is why no row carries a `fastKey` and each title is a LABEL, the same
-shape the media axes have. simplex 404'd it, so the Ratings entry in the filter bar
+shape the media axes have. rex 404'd it, so the Ratings entry in the filter bar
 opened nothing.
 
 **Nine axes belonging to OTHER library types answer an EMPTY secondary container, not a
@@ -4167,7 +4167,7 @@ does. The first version of this fix put both in the same branch, ahead of the ty
 check; the driver caught it by running cycle 13's own rule against the new axes rather
 than assuming they inherited it.
 
-**`/library/sections/{id}/recentlyReleased` is a 404 on both references, and simplex
+**`/library/sections/{id}/recentlyReleased` is a 404 on both references, and rex
 invented it.** Five library/type combinations across kids and zen, with and without
 `type=`: 404 every time. The string appears nowhere in `docs/findings.md`, in
 `CLAUDE.md` or in either suite — only in `server.py`, where it had been answered as a
@@ -4177,17 +4177,17 @@ endpoint exists and is empty".
 
 **`/library/metadata/{id}/banners` and `/thumbs` are artwork candidate lists on both
 versions.** Same container shape as `/posters`; `banners` is empty on kids and zen alike
-and `thumbs` lists the media bundle's video thumbnails (3 on kids, 1 on zen). simplex
+and `thumbs` lists the media bundle's video thumbnails (3 on kids, 1 on zen). rex
 404'd both. It has no banner art and no bundle, so an empty list of the right shape is
 the honest answer — the way `/arts` already answers for a season. `/squareArts` stays a
-404 on purpose: it is 200 on kids and **404 on zen**, so it is 1.43.4-only and simplex
+404 on purpose: it is 200 on kids and **404 on zen**, so it is 1.43.4-only and rex
 reports 1.42.2.
 
 **`/library/metadata/{id}/background` and `/composite` are 404s too.** The same sweep,
 run for a show, a season and an episode as well as a movie: both are 404 on kids and zen
 alike, bare and versioned, on every row type, while `thumb`, `art` and `poster` beside
-them are the 200s they have always been. simplex served image bytes from both. A
-`composite` is real on a PLAYLIST and a COLLECTION — which is where simplex's own list
+them are the 200s they have always been. rex served image bytes from both. A
+`composite` is real on a PLAYLIST and a COLLECTION — which is where rex's own list
 rows point, and which is served by a different handler that this leaves alone — but on a
 library ITEM there is no such path, and `background` is not a path at all: it is the
 `type` of an `Image` element.
@@ -4217,11 +4217,11 @@ still listed, all six episodes still there, the show's `leafCount` still 6 — a
 server, is completely real: 9 goes into 8, 8 comes back carrying two `Media`, 9 is a 404,
 and the season's and show's counts drop 3→2 and 6→5.
 
-simplex's `merge` moved the other row's `Media` across and then called `catalog.remove`,
+rex's `merge` moved the other row's `Media` across and then called `catalog.remove`,
 which **cascades to children** — so merging one season into another deleted the absorbed
 season *and every episode under it*, left the show's `leafCount` stale at the old number,
 and the split did not bring them back. It is the only data-loss bug the programme has
-found in simplex, and the proof run shows the old code going from eight leaves to six.
+found in rex, and the proof run shows the old code going from eight leaves to six.
 The fix is that a merge whose target has no `Media` of its own absorbs nothing. A SHOW
 has no `Media` either and takes the same branch; the copy holds one show, so that half is
 reasoned rather than measured.
@@ -4242,7 +4242,7 @@ This one is worth recording in full, because the first fix was wrong and the sui
 it. The hunt reported that a show's prefs write pushes no frames at all, and the driver
 confirmed it for `flattenSeasons` with a socket open: zero frames in nine seconds, on a
 listener that answered a title edit beside it with the expected `state 3 loading` /
-`state 5` pair. simplex was pushing a 79-frame refresh cascade for every prefs write, so
+`state 5` pair. rex was pushing a 79-frame refresh cascade for every prefs write, so
 the cascade came out.
 
 The suite's own cycle-13 check — which asserts the cascade for `showOrdering` — then
@@ -4253,7 +4253,7 @@ push **zero**. The rule is per setting, not per endpoint. The hunt's report was 
 about the four it tried and wrong as a generalisation, and the check that stood in the
 suite was the thing that said so.
 
-What those writes do instead is change the ROWS, which simplex did not do at all:
+What those writes do instead is change the ROWS, which rex did not do at all:
 `flattenSeasons=1` gives the show `skipChildren: true` and every episode
 `skipParent: true` while **removing their `parentRatingKey` and `parentKey`** (keeping
 `parentIndex` and `parentTitle`), and `/children` still answers the seasons either way —
@@ -4268,7 +4268,7 @@ locks the picked field (`Field: [{locked: true, name: thumb}]`); pushes exactly 
 (`timeline type=2 state=5`, no `metadataState`); and cascades the new stamp to the
 children that borrow it — the season's `parentThumb` and `art`, the episode's
 `grandparentThumb`, `grandparentArt` and `grandparentTheme` — while leaving the season's
-OWN `thumb` alone. simplex re-versioned only the field that was picked and left every
+OWN `thumb` alone. rex re-versioned only the field that was picked and left every
 child pointing at the old stamp, which is how a show kept its old poster on every season
 and episode tile after a change.
 
@@ -4277,7 +4277,7 @@ every hub path sharpened it: `/hubs`, `/hubs/sections/{id}`, `/hubs/promoted`,
 `/hubs/home/recentlyAdded`, `/hubs/home/onDeck`, `/hubs/continueWatching`,
 `/hubs/metadata/{id}/related` and `/library/metadata/{id}/related` all say **true** on
 kids and zen alike; `/hubs/metadata/{id}/postplay` alone says **false**; and
-`/hubs/search` and `/hubs/items` carry no `allowSync` at all. simplex defaulted to false
+`/hubs/search` and `/hubs/items` carry no `allowSync` at all. rex defaulted to false
 with three call sites putting it back, so eight of the ten said the opposite of a real
 PMS. (This also corrects half a sentence in `item_hubs`'s own docstring, which said
 postplay carries neither the librarySection triple nor `allowSync`: it carries
@@ -4287,7 +4287,7 @@ postplay carries neither the librarySection triple nor `allowSync`: it carries
 `type=3&viewedLeafCount>>0` answers **48** seasons — every season of the eight shows that
 have a watched leaf — and **all 48 carry `viewedLeafCount` 0 on their own row**, so the
 filter cannot be reading the row it returns; `type=3&unviewedLeafCount=0` is 2 there. The
-copy agrees on the two-season tree. simplex read the season's own counts, so a season grid
+copy agrees on the two-season tree. rex read the season's own counts, so a season grid
 filtered by "watched" answered only the season that happened to hold the watched episode.
 
 **Collections, measured for the first time.** Neither reference holds one, so the
@@ -4298,17 +4298,17 @@ instrument had to be created on the copy before any of this existed:
   `parentTitle` and `title2` (its title), `title1` (the library), the librarySection
   triple, `nocache`, `viewGroup` (the member type) and `viewMode` 65592 — while
   `/library/collections/{id}/children` beside it answers the **bare** `{size: N}`.
-  simplex 404'd the metadata form, which is the one a collection row's own `key` points
+  rex 404'd the metadata form, which is the one a collection row's own `key` points
   at, so a collection page opened empty.
 - **A `type=18` listing is a real query**: `title=aard` answers one of two,
   `sort=addedAt:desc` reorders, `duplicate=1` answers none, and the default order is
-  `titleSort` like every other listing. simplex answered the whole collection list to
+  `titleSort` like every other listing. rex answered the whole collection list to
   every one of them.
 - **A collection row's `index` is its own TAG id** — the same number its members carry in
-  their `Collection` tag and the same one the `/collection` axis keys on. simplex sent 1
+  their `Collection` tag and the same one the `/collection` axis keys on. rex sent 1
   for every collection.
 - **`/library/all?type=18` lists every collection the server holds**, across libraries, in
-  title order. simplex answered `size 0`, because its collections are not rows in the item
+  title order. rex answered `size 0`, because its collections are not rows in the item
   catalog and that handler only ever looked there.
 
 
@@ -4320,39 +4320,39 @@ instrument had to be created on the copy before any of this existed:
   with **40** — show queued/started/processing/loading at +0.02–0.13 s, a **5.3 s gap**,
   then per season an `activity updated` stepping −1 → 44 → 44 → 89 with the season's frame
   title as its subtitle, each episode's four, and `activity ended` with the show's
-  `state 5` at +5.57 s. simplex answers 7 frames at every level and leaves the children's
+  `state 5` at +5.57 s. rex answers 7 frames at every level and leaves the children's
   `parentThumb`/`grandparentThumb` at the old stamp. (d) `PUT …/analyze` is 200 with an
   empty body and then, **per LEAF**, three `state 5` frames carrying `mediaState`
   `analyzing`, `thumbnailing` and none, followed by one
   `media.generate.chapter.thumbs` activity whose subtitle is the TARGET's frame title —
   5 frames for an episode, 11 for a season, 20 for a show, 5 for a movie, and no frame for
-  the season or show row itself. Cycle 13's "per-level triple" was wrong. simplex pushes
+  the season or show row itself. Cycle 13's "per-level triple" was wrong. rex pushes
   nothing. (e) A library create is 201 with a `Location` header and **74** frames inside
   0.9 s, then one `backgroundProcessingQueue` `queueRegenerated` at **+60.8 s**; it is not
   periodic (150 s idle produces none, and a plain title edit produces none in 75 s) but it
   does follow certain writes — it also arrived +2.4 s after a season split and +1.2 s after
-  a collection add. simplex answers the 201 and the header and pushes nothing.
+  a collection add. rex answers the 201 and the header and pushes nothing.
 - **The rest of the collection surface**, all single-witness on the copy: the
   `includePreferences=1` block (`collectionMode` with its four enum values and
   `collectionSort` with two, on the detail and `/library/collections/{id}` paths and never
   on a listing row); `collectionSort` semantics (1 alphabetical, 2 custom, an unknown
   NUMBER alphabetical, unknown TEXT by release date, `''` removing the field, and a SMART
-  collection refusing it with a 400 where simplex stores it); `GET
-  /library/collections/{id}/prefs` being a 404 where simplex answers an empty container; a
+  collection refusing it with a 400 where rex stores it); `GET
+  /library/collections/{id}/prefs` being a 404 where rex answers an empty container; a
   `type=18` SECTION-path rename renaming the TAG (the item path does not — cycle 9's rule
-  is the item-path half only) where simplex never renames it; `/hubs/search` and
+  is the item-path half only) where rex never renames it; `/hubs/search` and
   `/library/search` finding a collection as a `tag` row with `count`, `guid` and
   `reason`/`reasonID`/`reasonTitle`; a member's `Collection` tag carrying `guid` and
-  `count`; the detail row's `librarySectionID` being a NUMBER where simplex sends a string;
+  `count`; the detail row's `librarySectionID` being a NUMBER where rex sends a string;
   labels on a collection reaching the `/label` axis; and
   `/library/collections/{id}/posters` answering the `default://` composite row.
 - **Smaller write differences**, each measured once on the copy: a playlist create whose
   `type` does not match its uri is a **400 that creates the playlist anyway** (with a
-  `type=15 state=0 created` frame) where simplex refuses and creates nothing;
-  `POST /playlists/upload` is 500 with a path and 400 without, where simplex 404s both;
-  `DELETE /library/collections/{id}/items/abc` is a 404 where simplex answers 200; and the
+  `type=15 state=0 created` frame) where rex refuses and creates nothing;
+  `POST /playlists/upload` is 500 with a path and 400 without, where rex 404s both;
+  `DELETE /library/collections/{id}/items/abc` is a 404 where rex answers 200; and the
   copy's `/label` axis is global — it lists labels written in another library and labels no
-  row carries any more, the same list for every `type=` — where simplex lists the section's
+  row carries any more, the same list for every `type=` — where rex lists the section's
   live labels under their type only. zen and kids hold no labels, so that last one has the
   copy as its only witness.
 - **The episode SPLIT.** On the copy a split after an episode merge is a no-op (200, the
@@ -4361,7 +4361,7 @@ instrument had to be created on the copy before any of this existed:
   re-identify offline, so the two are not comparable and the split half stays unresolved;
   only the season-merge half, which needs no network, was acted on.
 - **`ratingCount` on a collection row**: the copy sends 1 for a three-member collection
-  where simplex sends the member count. Nothing in the sample explains the 1, so it is
+  where rex sends the member count. Nothing in the sample explains the 1, so it is
   left alone rather than guessed at.
 - **The `/hubs/search` score PROMOTION** (carried from cycle 13, still not implemented),
   the codec axes' empty-value behaviour (a version difference), and season 0 / specials,
@@ -4396,7 +4396,7 @@ the item path, and `-1` on an item means INHERIT.** §3.3 recorded the library-w
 as *assumed* to behave like the item path. It does — and the show's own setting stays
 `-1` throughout, which is what makes the item value a tri-state rather than a switch.
 All four combinations measured on the copy: section 1 / item -1 is ON, section 1 / item 0
-is OFF, section 0 / item 1 is ON, section 0 / item -1 is OFF. simplex read the item's
+is OFF, section 0 / item 1 is ON, section 0 / item -1 is OFF. rex read the item's
 `_prefs` alone and treated the `-1` default as "off", so a library-wide `flattenSeasons=1`
 — which is where the Edit Library dialog puts it — set `skipChildren` on the show row and
 nothing else: every episode kept its `parentRatingKey` and `parentKey`, so the client had
@@ -4413,7 +4413,7 @@ because `-1` is the value that inherits.
 reference has two members sharing a minimum `addedAt`. The copy has one: movies `1` and
 `17` both carry `addedAt` 1789187071. Put in one group and renamed so that "lowest
 ratingKey" and "lowest titleSort" predict different survivors, the survivor is `1` under
-the default sort, `titleSort` either way, `addedAt` either way and `id:desc`. simplex was
+the default sort, `titleSort` either way, `addedAt` either way and `id:desc`. rex was
 already right; the register entry graduates.
 
 ##### `/status/sessions/history/all` lists nothing without a `type=`
@@ -4437,7 +4437,7 @@ as `1` and which the listing row emits. A comma list is an OR, and the validatio
 whole-number grammar cycle 14 measured for the ids, applied after them: a malformed id is
 still a 400 and an unknown `metadataItemID` still a 404 with no `type=` at all.
 
-simplex ignored `type=` completely: it answered its whole history to the call a real PMS
+rex ignored `type=` completely: it answered its whole history to the call a real PMS
 answers nothing to, answered every row to `type=2` as well, 200'd `type=abc`, and left
 `viewType` off the listing row — so the one column the filter reads was not on it. Twenty
 suite call sites read the page with no `type=`; each was updated rather than removed.
@@ -4479,7 +4479,7 @@ carries both of zen's titles verbatim and all fourteen measured cases.
 
 * **The in-library search box answers the LIGHT grid row.** Both references answer a
   search row byte-comparable with their own grid row for the same item — no `Guid`, no
-  `Rating`, no tag ids, no `Stream` inside a Part. simplex answered the DETAIL row here
+  `Rating`, no tag ids, no `Stream` inside a Part. rex answered the DETAIL row here
   and nowhere else, so the one listing a user reaches by typing carried uncapped tag
   lists, every Stream element and every external guid — and a client that tests
   `Rating`/`Guid` presence to decide "this row is fully loaded" skips its detail fetch
@@ -4490,7 +4490,7 @@ carries both of zen's titles verbatim and all fourteen measured cases.
   hand; eight more were never wired — `/library/all`, `/library/recentlyAdded`, a
   section's `recentlyAdded`, `newest`, `search` and `common`, an item's `/grandchildren`
   and every hub path. The Home screen is the one that costs a client something: it is how
-  a client asks for a cheap shelf, and simplex sent the whole Media/Part/Stream tree for
+  a client asks for a cheap shelf, and rex sent the whole Media/Part/Stream tree for
   every shelf row on every render.
 * **Four more columns filter that no `Meta` advertises.** `parent=<ratingKey>` is the
   row's immediate `parentRatingKey` (kids' `type=4` goes 6 → 3 for a season and 6 → 0 for
@@ -4498,14 +4498,14 @@ carries both of zen's titles verbatim and all fourteen measured cases.
   and `audienceRating=` are the two agent ratings (`audienceRating>>=9` is 107 of zen's
   3887 and `rating>>=9` is 142); `file=` is a case-insensitive SUBSTRING of the Part path
   that matches ANY Part — proved on zen movie 10513, whose two versions differ only in a
-  trailing `{083223}` and whose second path alone still finds the row. simplex ignored all
+  trailing `{083223}` and whose second path alone still finds the row. rex ignored all
   four, and an ignored filter is worse than a refused one: it answered every row to
   `audienceRating>>=9` AND to `audienceRating<<=1`.
 * **`/query/parse` knows eight fields a listing does not filter on** — `parent`,
   `parentIndex`, `audienceRating`, `rating`, `guid`, `slug`, `file` and `extraType`, each
-  echoed as a `Rule` with an EMPTY `fieldTitle`, where simplex answered an `Error`. The
-  parse surface is WIDER than the filter surface and the two were one map in simplex.
-  `guid` is the sharpest: simplex's listing has filtered on `guid=` since cycle 8 while
+  echoed as a `Rule` with an EMPTY `fieldTitle`, where rex answered an `Error`. The
+  parse surface is WIDER than the filter surface and the two were one map in rex.
+  `guid` is the sharpest: rex's listing has filtered on `guid=` since cycle 8 while
   its own `/query/parse` called the field unknown.
 * **`contentDirectoryID` scopes and VALIDATES `/hubs/search`, and only `/hubs/search`.**
   zen's `?query=the` answers show and movie hubs; `contentDirectoryID=1` keeps the movie
@@ -4522,7 +4522,7 @@ carries both of zen's titles verbatim and all fourteen measured cases.
   no block at all for any other type.
 * **`includeChildren=1` inlines a `Children` block on a SHOW and on nothing else.**
   Neither reference puts one on a season, and neither is silent for want of children —
-  kids' season 7 holds three episodes and zen's season 17201 holds twenty-two. simplex
+  kids' season 7 holds three episodes and zen's season 17201 holds twenty-two. rex
   inlined a season's episodes too, so a season page was handed a list it had not asked
   for and fetched the same list again from `/children`.
 * **The inline `Related` block caps at 5 rows and obeys `includeRelatedCount`**, where
@@ -4535,16 +4535,16 @@ carries both of zen's titles verbatim and all fourteen measured cases.
   axes — a **400** on `/status/sessions/history/all`, the refusal that page gives its ids.
   A GOOD limit still does nothing on `/children` (cycle 11): ignoring the VALUE is not the
   same as not parsing the string.
-* **`/hubs/search?limit=` has a grammar of its own, and simplex had it inverted.**
+* **`/hubs/search?limit=` has a grammar of its own, and rex had it inverted.**
   Unparseable — `abc`, empty, `1.5` — is a **400**; parseable but not a positive count —
-  `-1`, `0` — is a **500**; `01` is fine. simplex answered 500 to the 400 cases, 200 to
+  `-1`, `0` — is a **500**; `01` is fine. rex answered 500 to the 400 cases, 200 to
   the 500 cases, and let an empty value through.
 * **A FRACTIONAL value refuses on seven columns and on no others**: `viewCount`,
   `viewOffset`, `lastViewedAt`, `lastRatedAt`, `addedAt`, `updatedAt`, `createdAt` — while
   `year`, `duration`, `index`, `skipCount`, `ratingCount`, `mediaCount`, `absoluteIndex`
   and `userRating` take `1.5` and answer no rows. It is the timestamp and per-user-state
   family, not the python type. `lastRatedAt`, `createdAt` and `lastViewedAt` refuse `abc`
-  and an empty value as well, which simplex missed for a reason worth recording: its date
+  and an empty value as well, which rex missed for a reason worth recording: its date
   branch returned early when the ROW's value was null, so on a library where nothing
   carries the column the VALUE was never parsed at all.
 
@@ -4555,15 +4555,15 @@ carries both of zen's titles verbatim and all fourteen measured cases.
   and 101/102/104 smart. Measured over eleven collections of four member types and both
   smart values; the rule predicted 102 and 104 before either was measured. Cycle 14 saw
   the `1` on a three-member collection and left it unexplained. `librarySectionID` is a
-  NUMBER there too, where simplex sent a string on the collection path alone.
+  NUMBER there too, where rex sent a string on the collection path alone.
 * **A collection's `includePreferences=1` block is exactly two settings, and `smart`
   swaps the second**: `collectionMode` + `collectionSort` when plain,
   `collectionMode` + `collectionFilterBasedOnUser` when smart. A smart collection has no
   collection ORDER at all, and the write side agrees — `PUT .../prefs?collectionSort=` on
-  one is a **400** for `0` as well as `1`, where `collectionMode` is a 200. simplex sent
+  one is a **400** for `0` as well as `1`, where `collectionMode` is a 200. rex sent
   no `Preferences` on a collection, so the Edit Collection dialog had neither control.
 * **`GET /library/collections/{id}/prefs` is a 404**, smart and plain alike, where
-  simplex answered an empty 200 — fix 4's trap from the inside: the client reads a 200 as
+  rex answered an empty 200 — fix 4's trap from the inside: the client reads a 200 as
   "this endpoint exists and is empty" and never looks for the settings.
 * **`collectionSort` sorts alphabetically for anything that parses as a plain non-zero
   integer** — `3`, `99`, `-1`, `01` and `+1` as well as `1` — and by release date for `0`
@@ -4573,17 +4573,17 @@ carries both of zen's titles verbatim and all fourteen measured cases.
   the container's identifying triple and ONE `default://` candidate — the collection's own
   composite, `selected`, and with NO `provider` (the agent rows do carry one) — while
   `/arts` is an empty container with the same triple. `/library/metadata/{collection}/arts`
-  is empty too; simplex handed back the POSTER there, so Change Background offered the
+  is empty too; rex handed back the POSTER there, so Change Background offered the
   poster.
 * **A `type=18` SECTION-path save renames the members' `Collection` TAG; the item path
   does not.** The tag keeps its id through the rename. The Edit Collection dialog saves
-  through the section path, so on simplex every member's page kept the old collection name
+  through the section path, so on rex every member's page kept the old collection name
   and the library's Collections filter kept offering it, and the two never converged.
 * **A member's `Collection` tag carries the collection's own `guid`** — and NOT a `count`,
   which is consistent with cycle 12's refutation of `count` on a detail row's tags. Cycle
   14 recorded both; only the guid half is real.
 * **A label on a COLLECTION reaches the library's `/label` axis**, under a bare call and
-  under every `type=`. simplex built the axis from library ITEMS alone.
+  under every `type=`. rex built the axis from library ITEMS alone.
 * **A collection is found by `/hubs/search`**, as a `tag` Directory row with `tagType: 2`,
   the member count, the collection's guid, a `key`/`filter` of `collection=<tag id>` and
   `reason`/`reasonID`/`reasonTitle` naming the LIBRARY. `/library/search` finds nothing for
@@ -4595,7 +4595,7 @@ carries both of zen's titles verbatim and all fourteen measured cases.
 A write to a shared reference is forbidden, so this needed the disposable copy. Thirty-
 three paths were swept by METHOD and every one of them differed.
 
-* **A READ-ONLY route answers 404 to PUT, POST and DELETE.** simplex answered the GET body
+* **A READ-ONLY route answers 404 to PUT, POST and DELETE.** rex answered the GET body
   with a 200 on twenty of them — `/`, `/library/recentlyAdded`, `/library/onDeck`,
   `/hubs/promoted`, `/hubs/continueWatching`, `/hubs/search`, `/channels/all`,
   `/services/browse`, `/system`, `/system/agents`, `/system/scanners/{n}`,
@@ -4605,26 +4605,26 @@ three paths were swept by METHOD and every one of them differed.
   endpoint exists and accepts writes".
 * **The legacy single-segment plug-in dispatcher answers EVERY method**, not just GET:
   `PUT /prefs`, `POST /setting`, `DELETE /users` and `/devices.xml` are all 200 with
-  `content="plugins"`, where simplex served the GET alone.
+  `content="plugins"`, where rex served the GET alone.
 * **`PATCH` and `OPTIONS` are ROUTED like any other verb** — which corrects the hunt that
   reported them as blanket 404s. `/identity`, `/hubs` and `/playlists` answer 200 to both
   (the recorded "these answer any verb" rule) and every other path 404s them. A bare
-  OPTIONS with no `Access-Control-Request-*` headers is therefore a 404 where simplex
+  OPTIONS with no `Access-Control-Request-*` headers is therefore a 404 where rex
   answered every OPTIONS as a preflight; a genuine preflight is unchanged except that its
   response carries `Content-Type: text/plain`.
 * **What a real PMS does not recognise as a method at all is a 500** — `FROB`, `TRACE`, a
-  wrong-case `Get` — with its own four-line html body, on every path. simplex answered
+  wrong-case `Get` — with its own four-line html body, on every path. rex answered
   Python's BaseHTTPRequestHandler 501 page, which also leaks its `Server:` string.
   HANDOVER records that a real PMS never answers 405; it never answers 501 either.
 * **POSTing an EMPTY body to any artwork or subtitle candidate list is a 406** —
   `/posters`, `/arts`, `/thumbs`, `/banners`, `/themes`, `/clearLogos` and `/subtitles`
   alike; `/extras` is a 400. It also refines a recorded rule: with neither a title nor
-  bytes the subtitle upload answers 406, so the empty-body check runs FIRST, where simplex
+  bytes the subtitle upload answers 406, so the empty-body check runs FIRST, where rex
   checked the title and answered 500.
 * **`DELETE /library/metadata/{id}/{poster,art,thumb}` is a real endpoint that CLEARS the
   artwork** — 200 with an empty body, the field gone, whatever artwork is left re-stamped
   onto a new version, one `state 5` frame with no `metadataState`, nothing `selected` in
-  the candidate list afterwards, and a 404 on the bare GET of the deleted path. simplex
+  the candidate list afterwards, and a 404 on the bare GET of the deleted path. rex
   answered the GET — 56 KB of JPEG — to the DELETE and changed nothing; and because
   Change Poster assigns the response BODY onto the row, clearing the artwork set the
   tile's `img src` to a blob of JPEG.
@@ -4638,12 +4638,12 @@ All three were re-measured on the copy with a CONTROL write on the same socket f
 
 **A refresh CASCADES.** `PUT /library/metadata/{id}/refresh` is 7 frames on an episode,
 **18** on a season and **49** on the two-season Firefly show. The episode form is the
-seven-frame sequence simplex already sent. A SEASON runs its episodes inside its own
+seven-frame sequence rex already sent. A SEASON runs its episodes inside its own
 activity — season queued, activity started, season processing, season loading, then each
 episode's four (state 5 `processing`, state 4 `loading` twice, state 5 with no
 `metadataState`), activity ended, season done; there is no `activity updated` there, where
 the episode form has one. A SHOW nests a season's whole block under each season, with an
-`activity updated` carrying that SEASON's frame title. simplex answered SEVEN frames at
+`activity updated` carrying that SEASON's frame title. rex answered SEVEN frames at
 every level, so Refresh Metadata on a show told the client one row had been re-read and
 left the tree stale until a reload.
 
@@ -4652,7 +4652,7 @@ carrying `mediaState` `analyzing`, `thumbnailing` and none, then ONE
 `media.generate.chapter.thumbs` activity — started at -1, ended at 100, no `updated`
 between — whose subtitle is the TARGET's frame title. 5 frames for an episode or a movie,
 11 for a three-episode season, 21 for the show. Cycle 13's "a per-LEVEL triple" was wrong:
-a season and a show row are never framed themselves, only their leaves. simplex pushed
+a season and a show row are never framed themselves, only their leaves. rex pushed
 nothing.
 
 **A library create ends in a queue-regeneration frame.** `POST /library/sections` is a 201
@@ -4660,7 +4660,7 @@ with a `Location` header and then 75 frames: a `library.update.section` "Scannin
 stepping through the files with a `status` LIBRARY_UPDATE frame beside it, a `created` pair
 per item, each item's refresh sequence, and finally ONE `backgroundProcessingQueue`
 `queueRegenerated` at **+63.1 s**. The per-item half is over REAL files being scanned;
-simplex owns none and a library it creates is empty by construction, so those frames have
+rex owns none and a library it creates is empty by construction, so those frames have
 nothing to name. The queue frame is not create-specific and not periodic — it arrived
 +7.1 s after an analyze here, and cycle 14 saw it +2.4 s after a season split and +1.2 s
 after a collection add. It follows a write that leaves work in the queue.
@@ -4668,15 +4668,15 @@ after a collection add. It follows a write that leaves work in the queue.
 ##### Measured and not acted on
 
 - **The library create's per-item frames.** The 75-frame scan is over real files. A
-  library simplex creates is empty by construction, so the `library.update.section`
+  library rex creates is empty by construction, so the `library.update.section`
   activity's per-item steps, the `created` pairs and the per-item refresh sequences have
   no rows to name. An instrument fact, recorded rather than faked.
 - **The DELAY on the `queueRegenerated` frame.** +63.1 s after a create and +7.1 s after
-  an analyze on the copy. simplex pushes its frames synchronously and the frame is emitted
+  an analyze on the copy. rex pushes its frames synchronously and the frame is emitted
   with the write; the timing is recorded and not reproduced.
 - **The media pass inside a show refresh.** The reference emitted the
   analyzing/thumbnailing/none triple for season 1's episodes and not season 2's — state-
-  dependent work on real files, not a rule. simplex's cascade keeps cycle 10's shape.
+  dependent work on real files, not a rule. rex's cascade keeps cycle 10's shape.
 - **`DELETE /library/metadata/{id}` on a season and a show.** The copy answers **400** to
   every media-item DELETE — episode, season, show and movie alike — while a collection
   DELETE is a clean 200, with `allowMediaDeletion` true and the media mounted read-only.
@@ -4684,16 +4684,16 @@ after a collection add. It follows a write that leaves work in the queue.
   merge half of the same question was settled in cycle 14.
 - **`enableCreditsMarkerGeneration`.** The copy 400s it on a show and a movie, for `0` and
   `-1` alike, and it is the one item pref the copy does not advertise (10 show prefs
-  against kids' 11). simplex matches kids. An instrument artefact, not a rule.
+  against kids' 11). rex matches kids. An instrument artefact, not a rule.
 - **`collectionSort=2` on a fixture whose members' custom, insertion and alphabetical
   orders coincide.** It is the CUSTOM order a move writes (cycle 9) and the new check
   leaves it out deliberately, because on three same-year movies it cannot discriminate.
-- **The `Server:` banner.** simplex sends `Server: SimPlex/0.1 Python/3.10.20` on every
+- **The `Server:` banner.** rex sends `Server: Rex/0.1 Python/3.10.20` on every
   response and a real PMS sends none. Noticed while measuring the 500, out of this
   cycle's scope, and left for a cycle that can check what else reads it.
 - **The non-alphanumeric `firstCharacter` bucket, again.** Re-read on both references:
   zen holds exactly one non-digit non-letter-led title (`『`) and kids none, so the "any
-  other non-letter gets its own bucket" half is still single-witness. simplex already
+  other non-letter gets its own bucket" half is still single-witness. rex already
   matches it, ordering by codepoint — which zen's single example cannot tell from
   "listed after Z". Nothing available can settle it.
 - **Refuted: `/library/search` finds a collection as a tag row.** Cycle 14 recorded it;
@@ -4733,13 +4733,13 @@ check proved to fail against its own parent commit.
   seasons are "Season 1"/"Season 2", says `F:2` at `type=3` and `F:6` at `type=4`. The
   LISTING behind each bucket is the other way round — it filters on the row's own stored
   sort title — so a season list's `A` bucket says 64 and answers no rows at all. That is
-  the reference's own inconsistency, measured on both servers, and simplex reproduced
+  the reference's own inconsistency, measured on both servers, and rex reproduced
   neither half.
 - **`/firstCharacter/{key}` is a real listing**, `title2` reading `Start with '<key>'`
   with the key echoed as the client sent it (`%23` decodes; `BB` and a lowercase `b` are
   echoed verbatim and match nothing), the light grid row, and the listing grammar on top —
   zen's `B` bucket answers 6 of its 161 rows to `year=2020` and reverses under
-  `sort=titleSort:desc`. simplex dropped the extra path segment and answered the AXIS, so
+  `sort=titleSort:desc`. rex dropped the extra path segment and answered the AXIS, so
   clicking a letter in the A-Z rail redrew the rail.
 - **Every section leaf's extra path segment is a bucket or a 404, never the leaf again.**
   Swept across both references and both library types: `/all/zzz`, `/onDeck/zzz`,
@@ -4751,7 +4751,7 @@ check proved to fail against its own parent commit.
   opens a ten-year window from 1995 rather than naming a calendar decade); `contentRating`
   as `Rated <value>` and `resolution` accepting anything at all, an unknown value there
   matching every row that HAS a resolution; `userRating` as `<n> Star`, refusing `-1`
-  despite that being the key of its own "Not rated" bucket. simplex answered 200 with the
+  despite that being the key of its own "Not rated" bucket. rex answered 200 with the
   axis to every one of them.
 - **A show library's `?type=3` and `?type=4` grids default to BROADCAST order**, grouped
   by the show's sort title then `parentIndex` then `index` — not to a flat `titleSort`.
@@ -4761,12 +4761,12 @@ check proved to fail against its own parent commit.
   `docs/findings.md` had already asserted this for "`/allLeaves` AND the section listing";
   only the allLeaves half was ever implemented (class **C**).
 - **A show library's `/unwatched` carries `nocache`** like every other container it
-  answers, and a movie library's does not. simplex had the rule on `/all` and the five
+  answers, and a movie library's does not. rex had the rule on `/all` and the five
   subsets and had missed it on exactly this one.
 - **A row that BORROWS its background carries the OWNER's path verbatim** — kids' season 7
   and episode 8 both carry `/library/metadata/6/art/<v>` — and its own `/art` is a 404
   while the owner's is a 200, where zen's season 11114, which has art of its own, answers
-  200. simplex's artwork stamping re-keyed every borrowed URL to the row holding it, so a
+  200. rex's artwork stamping re-keyed every borrowed URL to the row holding it, so a
   show, its season and its episode each claimed to own the same image and
   `/library/metadata/<season>/art` answered 200. Cycle 15's episode-only rule turns out to
   be the special case of one general one: an artwork path is a 200 only on the row whose
@@ -4782,7 +4782,7 @@ check proved to fail against its own parent commit.
   all move; the LIBRARY's own rows do not, and neither do `All Movies`, a secondary axis's
   `title2` or `Unplayed` — the same English words ARE translated as a section pivot's
   `title`, so the rule is per attribute and not per string. 28 languages answer
-  differently. simplex read the header nowhere, so every non-English user of every real
+  differently. rex read the header nowhere, so every non-English user of every real
   client saw English menus on every screen. The table is `translations.json`, captured
   mechanically: each endpoint fetched in English and in each language, the two documents
   diffed string by string at the same structural path. Nothing in it is invented.
@@ -4800,7 +4800,7 @@ check proved to fail against its own parent commit.
   kids and zen, which agree exactly.
 - **Every response names its connection state**: `Connection: Keep-Alive` plus
   `Keep-Alive: timeout=20` when the connection is kept, `Connection: close` when it is
-  not — and an idle kept-alive connection really is closed after 20 seconds. simplex sent
+  not — and an idle kept-alive connection really is closed after 20 seconds. rex sent
   neither header and never closed one.
 - **A paged container answers its window in response HEADERS too** —
   `X-Plex-Container-Start` and `X-Plex-Container-Total-Size`, `/identity` answering
@@ -4810,7 +4810,7 @@ check proved to fail against its own parent commit.
   `Content-Range`, 416 past the end, an unrecognised unit still read as bytes, and a 206
   never gzipped.
 - **A malformed request header is a 400**: a line with no colon, a TAB anywhere in a value
-  (a space is fine), a name over 1024 bytes, a value over 4096. simplex accepted all of
+  (a space is fine), a name over 1024 bytes, a value over 4096. rex accepted all of
   them and only refused at Python's own 64 KiB line limit, with Python's HTML page.
 - **The Accept `q` grammar, corrected in six places.** A range qualifies only if its media
   type is exactly `application/json` or `application/xml` AND either it has no parameters
@@ -4819,7 +4819,7 @@ check proved to fail against its own parent commit.
   `application/json ;q=0.5` does not. No parameter weighs 1.0; a single parseable
   non-negative `q=` weighs that; anything else — `q=0`, `q=abc`, `q=`, `q=-1`, `q="0.5"`,
   `q=0.5x`, a second parameter of any kind — weighs 0 and still QUALIFIES. Highest weight
-  wins, a tie goes to the range listed first. Thirty headers, both servers. simplex
+  wins, a tie goes to the range listed first. Thirty headers, both servers. rex
   DROPPED every zero-or-unparseable q, so `application/json;q=0` came back as XML.
 - **`Accept-Encoding` tokens are matched exactly and case-sensitively**: `GZIP`, `x-gzip`
   and `*` all get a plain body, while `gzip;q=0` is still gzipped because the q is ignored.
@@ -4846,7 +4846,7 @@ check proved to fail against its own parent commit.
 - **`POST /library/metadata/{id}/extras` is a 400** whatever the body — cycle 15 recorded
   exactly that and left the code answering the GET listing.
 - **A real PMS sends no `Server:` banner at all.** Fifteen paths, both formats,
-  200/400/404/500 alike. simplex announced itself as `SimPlex/0.1 Python/3.10.20` on every
+  200/400/404/500 alike. rex announced itself as `Rex/0.1 Python/3.10.20` on every
   response it had ever sent — the one header on the wire that says the server is not a
   Plex Media Server. §3.3 had carried it since cycle 15.
 
@@ -4869,23 +4869,23 @@ check proved to fail against its own parent commit.
 - **`sort=mediaCount` is a real ordering** there — the sixth sort its own Meta advertises,
   as "Item Count" — while `leafCount` is a 500 on both.
 - **`POST /playlists/{id}/items` is a 404**: only PUT adds. **An empty `title=` is stored
-  verbatim**, where simplex substituted "Untitled". **`smart=1` over a comma-joined key
+  verbatim**, where rex substituted "Untitled". **`smart=1` over a comma-joined key
   list is a 400**; a smart list's uri has to name a LISTING. **A uri the server cannot
   RESOLVE adds nothing** — a foreign machine, a scheme-less `/library/metadata/1` and an
   unknown key all build an empty list with no `composite` and no `duration`.
 - **`PUT /playlists/{id}` takes the whole ITEM edit grammar**: `thumb=`/`art=` mint artwork
   under `/library/metadata/{playlist ratingKey}/`, every `.locked` really locks, `year`,
   `originallyAvailableAt` and `studio` are stored, and `userRating`, `guid`, `duration`
-  and the timestamps are accepted and discarded. simplex 400'd every one of them, so the
+  and the timestamps are accepted and discarded. rex 400'd every one of them, so the
   Edit dialog's Poster and Background pickers and every lock checkbox were refused.
 - **`playlistItemID` is a SERVER-WIDE sequence** — three lists built in a row took 40/41,
   42/43, 44/45 — and a SMART list's items carry NONE at all; every item write on one is a
   400, the move included.
 - **A playlist's artwork paths live under `/library/metadata/{ratingKey}/`**, where
   `posters`, `arts`, `thumbs`, `banners` and `tree` are all 200s, while under
-  `/playlists/{id}/` the same names and the UNVERSIONED `composite` are 404s. simplex had
+  `/playlists/{id}/` the same names and the UNVERSIONED `composite` are 404s. rex had
   it the other way round on eight paths.
-- **A shuffled play queue is really shuffled.** simplex reversed the unshuffled queue,
+- **A shuffled play queue is really shuffled.** rex reversed the unshuffled queue,
   deterministically, so Shuffle played a show's episodes backwards and backwards the same
   way every time.
 - **`includeBefore` and `includeAfter` window the queue with NO `window=`** — the radius is
@@ -4899,7 +4899,7 @@ check proved to fail against its own parent commit.
 - **A queue move refuses two forms**: `after=<the moving item's own id>` is a 404 and an
   empty `after=` is a 400. **A queue built from a PLAYLIST uri is a playlist queue**,
   carrying `playQueuePlaylistID` and `playQueuePlaylistTitle` and no `playQueueSourceURI` —
-  simplex recognised only the `playlistID=` form.
+  rex recognised only the `playlistID=` form.
 - **The SECTION save path stores an unlocked `titleSort.value=`**, which survives until the
   next TITLE write re-derives it, where the ITEM path discards it. The recorded rule ("an
   unlocked Sort Title does not stick") is the item path's alone.
@@ -4931,7 +4931,7 @@ teaching: a rule implemented as a proxy for itself is the kind that survives.
   thumb]`, not alphabetical). Only the CONTAINER's order was settled; a row's is not
   alphabetical and was not mapped.
 - **`Set-Cookie: com.plexapp.system=…` on `/system` and `/system/agents/contributors`** —
-  the plug-in framework's, on paths simplex answers from its own table.
+  the plug-in framework's, on paths rex answers from its own table.
 - **The 1024/4096/41 KB header limits as exact constants**: measured as brackets, not
   probed to the byte.
 - **Whether `X-Plex-Language` reaches the XML path identically** — the table is applied to
@@ -4940,7 +4940,7 @@ teaching: a rule implemented as a proxy for itself is the kind that survives.
 - **Every write rule here has plexscratch as its ONLY witness**, as §3.3's first row says
   of the whole family; kids is read-only and zen cannot answer a write.
 - **`/library/metadata/{playlist}/` container attributes** (`allowSync`, `identifier`,
-  `mediaTagPrefix`, `mediaTagVersion`) — measured on the copy, not implemented: simplex's
+  `mediaTagPrefix`, `mediaTagVersion`) — measured on the copy, not implemented: rex's
   bare container there carries `size` alone, and the paths that matter now answer.
 
 #### The seventeenth pass — the row itself, the write surface below the playlist, and three fixtures captured off the wrong version
@@ -4963,16 +4963,16 @@ parent commit.
 - **The Meta `Field` list is per VERSION, exactly as the Filter list is.** Cycle 14 split
   `Meta.Type[].Filter` (1.42.2 advertises 22 movie filters and 9 episode ones, 1.43.4 28 and
   17) and left `Field` at 1.43.4's, because both Meta fixtures were captured off kids. zen —
-  1.42.2, the build simplex reports — advertises **34** movie Fields and **20** episode ones
+  1.42.2, the build rex reports — advertises **34** movie Fields and **20** episode ones
   against kids' 40 and 26, differing in exactly the six media-codec axes (`hdr10plus`,
   `atmos`, `videoCodec`, `audioCodec`, `subtitleCodec`, `audioLayout`). And on 1.42.2 those
   six are UNKNOWN fields: `videoCodec=h264` answers all 3,887 of zen's movies, and
-  `/query/parse` reports each as an `Error` rather than a `Rule`. simplex advertised all six
+  `/query/parse` reports each as an `Error` rather than a `Rule`. rex advertised all six
   in the smart-filter builder, filtered on them (0 rows) and parsed them as real Rules.
 - **`tv.plex.agents.nfo.movie` and `tv.plex.agents.nfo.series` are 1.43.4-only.** Measured
   over the bare path and every `mediaType=`: 1.42.2 lists four modern agents and two per
   media type where 1.43.4 lists six and three. `system_agents.json` was captured off kids,
-  so simplex offered the Add Library and Edit Library dialogs an agent a server of its
+  so rex offered the Add Library and Edit Library dialogs an agent a server of its
   version does not have.
 - **`translations.json`'s coverage was only as wide as its capture script's path list**, as
   §3.3 had said since cycle 16. Sweeping 87 paths against kids in German found **119
@@ -4997,7 +4997,7 @@ parent commit.
   GENERATED `Season N`/`Episode N` (already implemented), the `Preferences` block's `Setting`
   rows — `label`, `summary` and `enumValues` alike, on a movie, a show and a season — and a
   `Stream`'s language fields. The row's own `title`, `summary` and tag names stay English in
-  every language. simplex's guard stopped dead at the row, so the whole per-item Advanced
+  every language. rex's guard stopped dead at the row, so the whole per-item Advanced
   pane stayed English for every non-English client while the same settings on
   `/library/sections/{id}/prefs` were translated.
 - **A Stream's `language` is localised and its two display titles are COMPOSED from the
@@ -5022,7 +5022,7 @@ parent commit.
   HEX; every codepoint from U+0080 up → its DECIMAL reference, astral plane included (an
   emoji is `&#128512;`, one reference and not a surrogate pair); and every control character
   XML 1.0 forbids — U+0001..U+0008, U+000B, U+000C, U+000E..U+001F and U+007F — replaced with
-  a literal `?`. simplex used `xml.sax.saxutils.quoteattr`, which writes `&quot;`, leaves `'`
+  a literal `?`. rex used `xml.sax.saxutils.quoteattr`, which writes `&quot;`, leaves `'`
   alone, sends the newline as decimal and passes every non-ASCII character through raw. The
   surface carries no element TEXT at all, so the rule is the attribute rule entire.
 - **A ROW's XML attribute order**, which cycle 16 settled for the CONTAINER and explicitly
@@ -5031,7 +5031,7 @@ parent commit.
   titleSort`, a Hub leads `hubKey, key, title, type, hubIdentifier`, and a `/library/sections`
   row leads `allowSync, filters, refreshing, key, type, title, agent`. Derived as a
   topological sort of every attribute PAIR the two references were seen to emit across 25
-  element buckets, each verified to be a superset of every observed sequence; simplex
+  element buckets, each verified to be a superset of every observed sequence; rex
   inverted a witnessed pair in 11 of them, **634 pairs** in all, and 0 remain. The untyped
   `Directory` rows needed a second pass: a SORT row is `default, defaultDirection, descKey,
   firstCharacterKey, key, title` and a `firstCharacter` bucket `size, key, title`, and the
@@ -5067,13 +5067,13 @@ parent commit.
   LIST, not of the row. The hunt reported it as a property of an episode row, and the section
   grid disagrees with that reading 641 times on zen. What it costs a client: an episode's
   grandparent artwork URL on this list is stable for the life of the row, so a cached image
-  stays valid across artwork edits; simplex re-pointed all of them on every edit.
+  stays valid across artwork edits; rex re-pointed all of them on every edit.
 
 ##### The edit path's refusal grammar
 
 - **A save a real PMS REFUSES writes NOTHING.** `PUT /library/metadata/{id}?title.value=
   PARTIAL&year.value=abc` is a 500 there and the title is untouched, on the item path and the
-  section path alike. simplex applied each parameter as it validated it, so everything before
+  section path alike. rex applied each parameter as it validated it, so everything before
   the bad one landed and everything after it did not — the client is told the save failed,
   keeps its old model, and the row on disk has moved, with nothing to tell the user. The
   highest-impact finding of the pass.
@@ -5083,7 +5083,7 @@ parent commit.
   `flattenSeasons=1` all answer 200 and the edit lands — while each of them ALONE is still a
   400, as is a PUT with no parameters. The recorded rule was measured with the unknown name
   alone, which is failure class **A**: a client sends its save with whatever options it
-  carries, and simplex refused 34 of the 71 names swept.
+  carries, and rex refused 34 of the 71 names swept.
 - **On the SECTION save path a form that names nothing to write is a 200** that edits nothing
   — `?type=2&id={id}` alone, with a bare unknown name, with `includeGuids=1` or with an
   item-prefs option — because a bare `field=value` is a FILTER there. The unknown `.value`
@@ -5092,23 +5092,23 @@ parent commit.
 ##### The collection item path
 
 - **A collection's children on the METADATA path are the LIGHT grid row** inside a container
-  that carries the librarySection triple and `allowSync: true` and NO `thumb`. simplex sent
+  that carries the librarySection triple and `allowSync: true` and NO `thumb`. rex sent
   the full detail row — `Guid`, `Rating`, every tag list with ids, the whole `Stream` table —
   put the triple on each ROW instead, said `allowSync: false` and added a `thumb`.
 - **The MOVE has a grammar.** `after=<the moving item itself>`, an EMPTY `after=` and an
   unparseable one are 400s that move nothing; an `after=` that names NO member (`999999`,
   `0`) is a 200 that moves the row to the FRONT, the same as no `after=`; a ratingKey that is
   not a member is a 400, not a 404; and `/children/{ratingKey}/move` is the same endpoint and
-  really moves, where simplex answered `{size: 0}`. simplex answered 200 to every one and
+  really moves, where rex answered `{size: 0}`. rex answered 200 to every one and
   moved the row regardless.
 - **A comma-joined `uri` TOLERATES the members it cannot use**: a movie and an episode into a
   movie collection is a 200 that adds the movie and drops the episode, and an unknown key
   beside a real one adds the real one. Only a SINGLE-key uri of the wrong type is the 400
-  cycle 9 recorded. simplex refused the whole batch, so "Add to Collection" over a
+  cycle 9 recorded. rex refused the whole batch, so "Add to Collection" over a
   multi-select lost every row when one was wrong.
 - **The item paths answer 404 to the verbs they do not implement**: POST, DELETE, PATCH and
   OPTIONS on `/items`, every verb but DELETE on `/items/{ratingKey}`, every verb but PUT on
-  `/move`. simplex answered 200 with an empty container to the first, 200 with an INVENTED
+  `/move`. rex answered 200 with an empty container to the first, 200 with an INVENTED
   single-item container to a GET of one member, and 200 with the whole children listing to a
   GET of `/move`. **A ratingKey that is not a number on the DELETE is a 404** where an
   unknown number is a 200 that removes nothing — recorded in cycle 14 and left unimplemented.
@@ -5120,20 +5120,20 @@ parent commit.
   `media://`, `upload://`) and `key` and `thumb` are
   `/library/metadata/{id}/file?url=<the uri percent-encoded, with `.` escaped as `%2E`>`,
   which really serves the image (200 image/jpeg). A `media://` candidate carries NO
-  `provider` while an agent-supplied `metadata://` one does. simplex put the bare uri in all
+  `provider` while an agent-supplied `metadata://` one does. rex put the bare uri in all
   three and stamped every local row `provider: "local"`, so Change Artwork drew each uploaded
   tile with `img src="upload://posters/..."` — a grid of broken tiles.
 - **`DELETE /library/metadata/{id}/thumb` clears the poster** exactly as `/poster` does.
-  Cycle 16 recorded the rule for all three names and simplex implemented two, so the singular
+  Cycle 16 recorded the rule for all three names and rex implemented two, so the singular
   `/thumb` fell through to the image read and answered the PNG bytes to a DELETE.
 - **An artwork UPLOAD moves `updatedAt` onto the same stamp the new artwork path carries**,
-  as a PICK does. Cycle 15 measured it for the pick and simplex implemented it there only, so
+  as a PICK does. Cycle 15 measured it for the pick and rex implemented it there only, so
   a client that caches on the stamp never refetched a poster just uploaded.
 
 ##### The prefs family, the butler and the verb table
 
 - **A library PREFERENCE write moves the SECTION's own `updatedAt`** and nothing else's.
-  Clients cache a library keyed on that stamp, so on simplex a settings change never
+  Clients cache a library keyed on that stamp, so on rex a settings change never
   invalidated the cache. The write itself is unchanged: 200, empty body, zero frames.
 - **An INT library preference whose value does not parse is stored as 0**, not ignored:
   `abc`, an empty value, `1.5`, a space and `0x3` all read back as `0` where `007` reads back
@@ -5145,17 +5145,17 @@ parent commit.
   an `enumValues` string** — `:` becomes `%3a` and `|` becomes `%7c`, lowercase hex — and a
   value carrying a `%` of its own is stored EMPTY. Every other character round-trips.
 - **Twelve of the twenty-three butler tasks report a different sentence**, three report
-  SEVERAL, and five report one where simplex reported none. The task LIST is identical on
-  kids, zen, plexscratch and simplex, and every `POST /butler/{Task}` is a 200 with an empty
+  SEVERAL, and five report one where rex reported none. The task LIST is identical on
+  kids, zen, plexscratch and rex, and every `POST /butler/{Task}` is a 200 with an empty
   body on both, so what differs is only what the Scheduled Tasks page then prints. The two
   tasks with an activity of their own differ in it too: `CleanOldBundles` is titled `Cleaning
   Bundles` and steps its SUBTITLE through four named phases (`Analyzing media bundles`,
   `Deleting N media bundles` at 75 and 100, `Analyzing metadata bundles`), and
   `OptimizeDatabase` is titled `Optimizing database` with the subtitle `Optimizing Database`
-  — simplex had that pair the other way round. The COUNT in each sentence is content and not
+  — rex had that pair the other way round. The COUNT in each sentence is content and not
   part of the rule.
 - **An ACTIVITY's subtitle is the row's FRAME title**, which is not the row's own title: a
-  season's is `<show> S01` and an episode's `<show> S01 E01`. simplex used `title (year)` for
+  season's is `<show> S01` and an episode's `<show> S01 E01`. rex used `title (year)` for
   every type — the movie and show form — so the Dashboard printed `Season 19 (2007)` where a
   real PMS prints `The Simpsons S19`. The rule is recorded for the timeline frames and was
   implemented in `notify_timeline` alone; the helper beside it kept the wrong form. Failure
@@ -5163,17 +5163,17 @@ parent commit.
 - **`POST` on an item ACTION leaf is a 404** — `/refresh`, `/analyze` and `/unmatch` take PUT
   — where `POST /library/sections/{id}/refresh` really is a 200, and **`/library/metadata/
   {id}/match` answers every verb with its own no-parameters refusal**, so a GET and a DELETE
-  there are 400 rather than 404. simplex ran the action on a POST, so a client that got the
+  there are 400 rather than 404. rex ran the action on a POST, so a client that got the
   verb wrong re-matched an item instead of being refused.
 - **`GET /library/sections/{id}/refresh?force=` PARSES the flag**: `abc`, `1.5` and an empty
-  value are 400s where `0` and `1` are 200s. simplex took anything and ran the scan.
+  value are 400s where `0` and `1` are 200s. rex took anything and ran the scan.
 - **A KNOWN single-segment path falls through to the legacy plug-in dispatcher for the verbs
   it does not implement**: `PUT`, `PATCH` and `OPTIONS` on `/butler` and on `/devices` answer
   `{"size": 0, "content": "plugins"}`, exactly as an unknown single-segment path does. The
   recorded rule that a read-only route 404s every verb but GET and HEAD is the MULTI-segment
   rule.
 - **`GET /livetv` is the plug-in dispatcher's own THREE-row container** — `dvrs`, `epg`,
-  `sessions`, with `content="plugins"` — on kids and zen alike. simplex routed the whole
+  `sessions`, with `content="plugins"` — on kids and zen alike. rex routed the whole
   `/livetv` tree to a bare empty container, so the one path that does answer said the server
   had no Live TV surface rather than no tuner.
 
@@ -5190,7 +5190,7 @@ written from a refusal list has to say which verbs were on it.
 ##### Measured and not acted on
 
 - **`PUT /library/metadata/{id}/poster?url=nonsense` — REFUTED.** The hunt reported the
-  reference answering 200 and re-versioning where simplex 404s. Re-measured on a row with
+  reference answering 200 and re-versioning where rex 404s. Re-measured on a row with
   artwork: both answer 200 and both re-version, twice in a row with a distinct stamp each
   time. Nothing to change.
 - **An EPISODE refresh running the SHOW's activity.** The hunt reported it and one of the
@@ -5202,7 +5202,7 @@ written from a refusal list has to say which verbs were on it.
 - **A `state 2` / `metadataState "matching"` opener on a season or episode refresh**,
   reported by the hunt and not reproduced in either of the driver's captures.
 - **A remote artwork candidate's `thumb` is an `images.plex.tv` proxy.** plex.tv is out of
-  scope, so simplex keeps the upstream URL there.
+  scope, so rex keeps the upstream URL there.
 - **The non-alphanumeric `firstCharacter` bucket**, re-measured against zen's section 2 —
   507 shows, 741 seasons, 9,287 episodes, the instrument that did not exist when §3.3 first
   flagged it. Section 2 contributes no non-digit non-letter-led title at all, so the "its own
@@ -5210,7 +5210,7 @@ written from a refusal list has to say which verbs were on it.
 - **Every write rule here has plexscratch as its ONLY witness**, as §3.3's first row says of
   the whole family.
 - **The three legacy `com.plexapp.agents.*` rows** both references list at `/system/agents`
-  stay deliberately absent: simplex hosts no plug-in framework, and the fixture's own
+  stay deliberately absent: rex hosts no plug-in framework, and the fixture's own
   provenance records why.
 
 
@@ -5239,7 +5239,7 @@ code was written and each committed with a check proved to fail against its own 
   every LETTER bucket of a season list answers none. That last one is the other half of
   cycle 16's "the axis counts by the SHOW's sort title and the listing filters on the
   row's own": the listing half was implemented reading the row's TITLE where the row
-  stores no sort title, so simplex's seasons bucketed under `S`.
+  stores no sort title, so rex's seasons bucketed under `S`.
 - **And it is not in the search index either.** Measured on plexscratch with a control:
   the copy's season 11 is titled `Season 2` and `/library/sections/2/search?type=3&
   query=season` answers NOTHING, while the same season renamed `Zulu Season Probe`
@@ -5253,7 +5253,7 @@ code was written and each committed with a check proved to fail against its own 
   somebody typed.
 - What tells a generated title from an agent-supplied one is not visible on the row:
   kids' season 7 is titled `Season 1` by TMDB and stores it, and 176 of zen's episodes
-  are titled `Episode N` by their agent and store it too. simplex generates every season
+  are titled `Episode N` by their agent and store it too. rex generates every season
   title it has, so it decides on the title FORM — a proxy for the mechanism, recorded in
   HANDOVER 3.3.
 
@@ -5267,7 +5267,7 @@ code was written and each committed with a check proved to fail against its own 
   `ø` become the DIGIT ZERO and `ð` a capital `O`, which is what makes the table a
   measurement rather than something anyone would write down from a language. Two of the
   eleven are witnessed on zen's real library — `Død Kalm` sorts as `D0d Kalm` and
-  `Dæmonicus` as `Demonicus` — and that is what found the gap: simplex folded combining
+  `Dæmonicus` as `Demonicus` — and that is what found the gap: rex folded combining
   marks only, so both rows carried no `titleSort` at all where a real PMS sends one.
   Nothing above U+02FF folds, which zen's 51 surviving non-ASCII rows already implied.
 - **The bare `title=` matcher also reads the row's ORIGINAL title, and only it does.**
@@ -5280,7 +5280,7 @@ code was written and each committed with a check proved to fail against its own 
   film by its own-language title finds it on a real PMS.
 - **On an UNLISTED string field the four ordering keys really ORDER.** Cycle 14 measured
   that `titleSort`, `summary`, `tagline` and `originalTitle` take `>>`/`<<` where an
-  advertised field ignores them, and simplex allowed the operators and then fell through
+  advertised field ignores them, and rex allowed the operators and then fell through
   to CONTAINMENT — so `titleSort<<=0` matched every row whose title happens to hold a
   `0`. Measured on zen: all four keys are a case-insensitive LEXICOGRAPHIC comparison and
   both sides are STRICT. `titleSort<<=B` answers 127 and `>>=B` 3,760, which partition
@@ -5297,14 +5297,14 @@ code was written and each committed with a check proved to fail against its own 
   ones: `type=3` answers `viewGroup="season"` and `viewMode` **65593**, `type=4` answers
   `viewGroup="episode"` and `mixedParents: 1`, and a MOVIE library answers both to the
   same parameters. The section GRID is the other way round and keeps the library's own
-  type, which simplex had right; only `/search` retypes. `/library/sections/{id}`
+  type, which rex had right; only `/search` retypes. `/library/sections/{id}`
   advertises `search?type=2` and `search?type=4` as its own rows, so this is the path
-  the library search menu takes — and at `type=3` simplex handed the client the EPISODE
+  the library search menu takes — and at `type=3` rex handed the client the EPISODE
   layout for a season list, which is the exact inversion behind the Seasons bug.
 - **`All <library title>` for a movie library, the constant `All Shows` for a show
   one.** Measured on kids ("Movies", "TV Shows"), zen ("Zen Movies", "Zen Shows", "Bench
   TV") and in both places the string appears — the `/all` container's `title2` and the
-  `all` pivot row. simplex composed the container's title2 for a show library ("All
+  `all` pivot row. rex composed the container's title2 for a show library ("All
   Debrid TV") and hardcoded "All Movies" for a movie library's pivot row: each half
   wrong in the opposite place, and the two lines contradicted each other in the same
   file. Not localised — zen answers the same string in de and fr.
@@ -5320,7 +5320,7 @@ code was written and each committed with a check proved to fail against its own 
 - **`parentIndex=` and a `resolution=` outside the enum are 500s on `/library/all` and
   on `/playlists`** as well as on a section listing. Cycle 15 recorded the `parentIndex`
   rule and it was wired into the section listing alone — the class-C shape — so
-  python-plexapi and the SDKs read simplex's 200 as "this field filtered nothing".
+  python-plexapi and the SDKs read rex's 200 as "this field filtered nothing".
 - **`/hubs`, and a SHOW library's `/hubs/sections/{id}`, refuse fifteen filter keys with
   a 500**: `duration`, `lastViewedAt`, `lastRatedAt`, `viewCount`, `skipCount`,
   `viewOffset`, `userRating`, `unwatched`, `resolution`, `hdr`, `mediaSize`, `file`,
@@ -5340,24 +5340,24 @@ code was written and each committed with a check proved to fail against its own 
   shape cycle 16's rule does not describe.
 - **`/system/search` is a real container**: 200 on kids and zen alike, empty, carrying
   `identifier`, `mediaTagPrefix` and a **`prefsKey`** — the only container attribute
-  either reference emits anywhere that simplex never did — and it does not page. Found
+  either reference emits anywhere that rex never did — and it does not page. Found
   by sweeping 46 second-level `/system/*` names; it is the mirror image of the three
-  endpoints cycle 14's path census found simplex had INVENTED.
+  endpoints cycle 14's path census found rex had INVENTED.
 
 ##### The plug-in dispatcher, and what a verb it does not implement answers
 
 - **Four more single-segment paths are the dispatcher's own POPULATED listings**,
   byte-identical on kids and zen: `/media` names `grabbers`, `providers`,
   `subscriptions`; `/services` names ten services; `/status` names `sessions`;
-  `/statistics` is its empty 200 where simplex 404'd. `/security` is the exception in the
+  `/statistics` is its empty 200 where rex 404'd. `/security` is the exception in the
   other direction — a real empty container with **no `content` key at all**, which
-  simplex had filed under the dispatcher. Cycle 17 found `/livetv` was one of these; this
+  rex had filed under the dispatcher. Cycle 17 found `/livetv` was one of these; this
   is the rest of the family.
 - **A KNOWN single-segment path answers the dispatcher for EVERY verb it does not
   implement.** Measured on plexscratch over sixteen paths and seven verbs: `PUT
   /identity` and `PUT /hubs` answer `{size: 0, content: "plugins"}`, `PUT /library` the
   dispatcher's two rows (`augmentation`, `shared`), `DELETE /devices` its empty one. The
-  recorded rule that "`/identity` and `/hubs` answer any verb" was simplex's own GET
+  recorded rule that "`/identity` and `/hubs` answer any verb" was rex's own GET
   handler answering; cycle 17 landed the fallthrough for `/butler` and `/devices` alone.
   The real writers are `POST /playlists`, `POST /playQueues` and `POST`/`DELETE
   /butler`; `/log` is outside the rule because it validates its parameters first, so
@@ -5373,31 +5373,31 @@ code was written and each committed with a check proved to fail against its own 
 - **The playlist item paths take one verb each**, exactly as cycle 17 found for the
   collection's: `/playlists/{id}` GET/HEAD/PUT/DELETE, `/playlists/{id}/items` the same
   four, `/playlists/{id}/items/{iid}` DELETE (its PUT is a 400), and
-  `.../items/{iid}/move` PUT. simplex answered 200 to thirteen cells — a GET of ONE
+  `.../items/{iid}/move` PUT. rex answered 200 to thirteen cells — a GET of ONE
   member returned the WHOLE item listing, and so did a GET or a DELETE of `/move`. `PUT`
   at one member is a 400 for a member id and for an unknown number alike and a 404 for an
   id that is not a number: the SHAPE is checked before membership.
 - **`DELETE /library/metadata/{playlist}` is a 200 with an EMPTY body that deletes
   nothing**, where `DELETE /playlists/{id}` on the same copy is a 204 that really removes
-  the row — so it is not the copy refusing a delete. simplex answered the playlist row.
+  the row — so it is not the copy refusing a delete. rex answered the playlist row.
 - **A repeated `id=` on the section save path edits NOTHING** — `?id=1&id=3&
   summary.value=x` is a 200 and neither row moves, where the comma list edits both. It is
-  the rule repeated parameters follow everywhere else on this server; simplex took the
+  the rule repeated parameters follow everywhere else on this server; rex took the
   LAST one, so the same request edited a row at random.
 - **`POST` on `/split` and `/merge` is a 404**, like the three action leaves cycle 17
-  landed. simplex PERFORMED the split on a POST — a mutation a real PMS refuses to route.
+  landed. rex PERFORMED the split on a POST — a mutation a real PMS refuses to route.
 - **A write to `/library/parts/{id}` resolves the PART first**: an unknown number, a
   malformed id and an unparseable stream value on an unknown part are all 404s, where
-  simplex answered 200 whenever the request named no usable stream. A track picker
+  rex answered 200 whenever the request named no usable stream. A track picker
   pointed at a stale part id saw its selection applied.
 - **`/library/metadata/{id}/subtitles` answers 404 to DELETE, PATCH and OPTIONS**, where
-  simplex answered the upload validator's 400 — a 400 says "your request was wrong", a
+  rex answered the upload validator's 400 — a 400 says "your request was wrong", a
   404 says "this verb is not here".
 - **A library DELETE pushes one `state 9` timeline frame per row**, measured with a
   control write first: `type: 12`, `metadataState: "deleted"`, an EMPTY title and
   `sectionID` the NEGATIVE section id, between the 10% and 40% activity updates. A
   nine-row library produced 14 of them on the copy, keyed on the server's own internal
-  metadata ids rather than the ratingKeys. simplex pushed the eight activity frames and
+  metadata ids rather than the ratingKeys. rex pushed the eight activity frames and
   none of the timeline, so a client holding a row from the deleted library was never told
   it had gone — the failure the whole notification lifecycle exists for.
 
@@ -5420,7 +5420,7 @@ code was written and each committed with a check proved to fail against its own 
   by tag and the head deduped, each named in its own language — and then the generic
   regional list. zen's show 6910 leads `en:English|bg:...|cs:...` against episodes
   carrying one English audio track and fifteen subtitle languages; its show 11113 leads
-  `pa:...|en:English`; kids' Firefly leads `en:English` alone. simplex served
+  `pa:...|en:English`; kids' Firefly leads `en:English` alone. rex served
   `item_prefs.json`'s captured list to every item, so a show's own languages could not be
   chosen in its Preferences pane — and the bare entries at the head of the captured list
   are the captured item's own, which is what made the fixture look version-neutral.
@@ -5458,13 +5458,13 @@ the query exists.
   librarySection triple, no `Media`, no tag lists) and 500 on its `/items`. The
   projection is not stably characterised between them — kids' movie 1 drops `duration`
   and zen's movie 17360 keeps it — and no client builds the path, so copying it would be
-  inventing the shape rather than measuring it. simplex keeps its 404.
+  inventing the shape rather than measuring it. rex keeps its 404.
 - **The `/system` 404's missing Content-Type.** The reference sends no `Content-Type`
-  header at all on those empty 404s; simplex's empty answers carry `text/html`. The
+  header at all on those empty 404s; rex's empty answers carry `text/html`. The
   status and the empty body are reproduced; the missing header is not.
 - **The library delete's frame IDS.** They are the server's own internal metadata ids —
   14 for a nine-row library — not the ratingKeys, and nothing in the response explains
-  the id space. simplex frames the rows it actually removes.
+  the id space. rex frames the rows it actually removes.
 - **The butler's per-task counts, and every write rule's single witness.** As HANDOVER
   3.3's first row says of the whole family: plexscratch is the only server that can
   answer a write, so every write rule here has one witness.
@@ -5478,7 +5478,7 @@ Two hunts and a driver round. Territory A swept the dimension left after the row
 17) and the container (cycle 18): the **child element** — every element between the two,
 per endpoint and per row type, against both references. Territory B took the write
 surface's own payload: the notification **frame**, the `Activity` element, and the
-server-level writers nobody had swept. The driver's round ran simplex's **own engines**
+server-level writers nobody had swept. The driver's round ran rex's **own engines**
 over a real library's rows: `ssweep.py` holds the `sort=` engine out against zen's
 ordering, and `fsweep.py` — cycle 18's filter holdout — was pointed at a show library for
 the first time.
@@ -5498,14 +5498,14 @@ seven values and all eight operators: zen's `unwatched=1` is 3,866 of 3,887 and 
 `<<=0`, `>>=0`, `=2`, `!=2`, `=` (empty), `=01`, `=true` and `=1 ` are all the same 21;
 `duplicate=1` is 214 and every one of the others the other 3,673. `!=2` is what rules out
 the obvious model — a value parsed to 0 and then negated would answer the true set there,
-and it does not. simplex compared 0/1 numerically, so `unwatched>=0` answered the whole
+and it does not. rex compared 0/1 numerically, so `unwatched>=0` answered the whole
 library and `unwatched!=2` the unwatched half: the Unplayed filter inverted for every
 value the client does not send.
 
 **A row with NO value for a numeric column matches NOTHING**, `!=` and `!==` included.
 zen's 742 rated movies split 368/374 across `rating<=7` and `rating>>=7`, so the 3,145
 unrated rows are in neither half; its show library, where no row carries a rating at all,
-answers 0 to all eight operators. simplex read a missing value as 0, so `rating<=7` was
+answers 0 to all eight operators. rex read a missing value as 0, so `rating<=7` was
 the whole grid and `rating!=7` every row — on a real library, the majority of the rows.
 And **`==`/`!==` on a numeric column are an exact STRING comparison of the stored
 number**: `rating==7` answers 0 where `rating==7.0` answers the same 6 rows `rating=7`
@@ -5518,7 +5518,7 @@ the row rather than a join: on zen `=PG` and `==PG` are both 112, `!=PG` and `!=
 3,775, `<=PG` 3,197 and `>>=PG` 690 — the pairs partition 3,887 exactly — and the empty
 value compares as `""`, so `>=` with no value is every row and `<<=` none. `=` is
 case-SENSITIVE (`=pg` is 0) and `==` is not (`==pg` is 112); the four ordering keys are a
-BYTE comparison, so `<=pg` answers every row a real library holds. simplex answered
+BYTE comparison, so `<=pg` answers every row a real library holds. rex answered
 nothing to six of the eight, so the Content Rating filter's "is before"/"is after"
 controls came back empty.
 
@@ -5526,15 +5526,15 @@ controls came back empty.
 included — 3,608 of zen's 3,887 at `1080` for all eight, 2 at `sd`, 6 at `720`, and 490 of
 507 on its show library. And `resolution=` matches ANY of a row's Media: zen's 4093 The
 Breadwinner carries a `4k` and a `1080` and answers both, 401 The Devil's Mouth answers
-`1080` and `720`. simplex read `Media[0]` and negated `!=`, so a row's second version was
+`1080` and `720`. rex read `Media[0]` and negated `!=`, so a row's second version was
 invisible and a "not 4k" filter emptied the grid.
 
 **The section's `Meta` descriptor is three rules, not one.** `active` follows the
 REQUEST: `?type=3&includeMeta=1` marks `season` and `?type=4` marks `episode` on both
-references, where simplex served the captured fixture's stored flags and kept the Shows
+references, where rex served the captured fixture's stored flags and kept the Shows
 tab lit on the Seasons and Episodes pages. `?includeDetails=1` honours `includeAdvanced=1`
 like every other form — bare it is 9 sorts on a movie library and 17 on a show one, with
-the flag 15 and 32 — where simplex always answered the advanced list, so six sorts and the
+the flag 15 and 32 — where rex always answered the advanced list, so six sorts and the
 Duplicates filter the client hides behind its own toggle were permanently on show. And
 that form carries no `folder` Type row and marks none of the others active.
 
@@ -5551,19 +5551,19 @@ already written.
 from every CHILD ELEMENT and not only from the row — `id` off Media, Part, Stream, Genre
 and Guid; `file` off Part; `url` off Image; `value` off Rating; `index` and `codec` off
 Stream; `tag` off Genre and Role — so a client asking not to be sent `file` still got the
-full filesystem path out of simplex. `excludeElements=Image` and `=UltraBlurColors` are
+full filesystem path out of rex. `excludeElements=Image` and `=UltraBlurColors` are
 no-ops on both references, exactly like an unknown name, while every other element the
-option names really goes; simplex removed them. And `checkFiles=` is VALIDATED: `0`, `1`
+option names really goes; rex removed them. And `checkFiles=` is VALIDATED: `0`, `1`
 and `01` are 200 while `abc`, an empty value, `2`, `true`, `-1`, `1.5`, a leading space
-and a trailing one are all 400 on both servers. (That simplex sends `exists`/`accessible`
+and a trailing one are all 400 on both servers. (That rex sends `exists`/`accessible`
 unconditionally stays a deliberate deviation; the value grammar was never part of it.)
 
 **`/library/metadata/{id}/extras/all` is a real leaf** — the same container `/extras`
-answers, on both references — where simplex 404'd the segment. Cycle 15 measured the
+answers, on both references — where rex 404'd the segment. Cycle 15 measured the
 `/all` form on the SECTION path and nobody had asked the item path.
 
 **Four more XML ordering rules.** A `Meta`'s two `Type` rows come BEFORE its eight
-`FieldType` rows, where simplex sorted them by the item table, which knows neither name,
+`FieldType` rows, where rex sorted them by the item table, which knows neither name,
 and left dict order. Five element buckets `_ATTR_ORDER` had no entry for at all —
 `Common`, `Feature` (whose `scrobbleKey`/`unscrobbleKey` lead), `Type`, and the
 `/media/providers` library `Directory`, which is a DIFFERENT order from
@@ -5577,7 +5577,7 @@ detail row answers `Genre, Country, Guid, Rating`.
 
 **A real PMS's JSON key order is its XML order** — the container's, the row's, `Media`'s,
 `Part`'s and the row's child-element keys, on both references and all four row types.
-simplex had ordered the XML since cycle 16 and left the JSON in whatever order the dict
+rex had ordered the XML since cycle 16 and left the JSON in whatever order the dict
 that built it held, so its two renderings of the same response disagreed. `xmlout._split`
 is now the one answer both writers ask.
 
@@ -5588,7 +5588,7 @@ plexscratch behind a control write, one listener, one run: `agent` alone, `agent
 `name`, and `agent` with a `prefs[...]` are each a 200 with ZERO frames, while adding
 either of those two makes it twenty. Cycle 9 recorded "a library edit applies the whole
 form and scans" from a form that happened to carry a `language` -- the half that scans.
-simplex scanned on every accepted edit, so renaming a library or toggling one Advanced
+rex scanned on every accepted edit, so renaming a library or toggling one Advanced
 preference lit the Dashboard with a full "Scanning Movies" activity and re-framed every
 row where a real PMS is silent. And an edit REFUSES a `type` naming a different type from
 the library's own (400) while accepting its own as a word, as a number, empty or absent.
@@ -5597,14 +5597,14 @@ the library's own (400) while accepting its own as a word, as a number, empty or
 `path` at all each scan everything (five `progress` rows on the copy's five movies,
 twenty frames); a PARENT of it, a CHILD of it and a path the library does not hold scan
 nothing at all -- no `progress` rows, nine frames, the activity running 0 to 100 with an
-empty subtitle. simplex ignored the parameter, so "Scan Library Files" on one folder
+empty subtitle. rex ignored the parameter, so "Scan Library Files" on one folder
 rescanned and re-framed the whole library.
 
 **Three butler tasks push the wrong thing.** `RefreshLibraries` runs a section SCAN per
 library -- `library.update.section` titled `Scanning <library>`, the per-item `progress`
-rows, the subscriptions pair -- where simplex ran one `library.update.item.metadata`
+rows, the subscriptions pair -- where rex ran one `library.update.item.metadata`
 triple per row and no progress rows at all. `OptimizeDatabase` starts at 0 with an EMPTY
-subtitle and steps 0, 10, 40, 60 before ending at 100, where simplex started at -1 with
+subtitle and steps 0, 10, 40, 60 before ending at 100, where rex started at -1 with
 the subtitle already set and stepped 10, 53, 100 -- and its own `PUT /library/optimize`
 already answered the reference's sequence, so the two paths disagreed with each other as
 well as with the reference. `CleanOldBundles` has SEVEN updates and not four: `Analyzing
@@ -5616,20 +5616,20 @@ activity update of its own; and `provider.subscriptions.process` is the one acti
 real PMS marks `cancellable: true`, where every `library.update.section` and
 `library.update.item.metadata` beside it is false -- so the Dashboard drew no Cancel
 control for the only activity that has one. **An analyze pushes no
-`backgroundProcessingQueue` frame**: simplex invented one, telling every client on the
+`backgroundProcessingQueue` frame**: rex invented one, telling every client on the
 socket that the background queue had been rebuilt. Same family as cycle 12's invented
 subtitle-upload pair.
 
 **`PUT /updater/check` pushes one frame** -- an `update.statechange` container carrying an
-`AutoUpdateNotification` row -- where simplex pushed none and Settings > General > Check
+`AutoUpdateNotification` row -- where rex pushed none and Settings > General > Check
 for Updates never resolved.
 
 **Three verbs at the server level.** `DELETE /devices/{id}` and `DELETE /accounts/{id}`
-are 404s for an id the server lists and one it does not, with the list unchanged; simplex
+are 404s for an id the server lists and one it does not, with the list unchanged; rex
 answered an empty 200 to the first and the accounts LISTING to the second, which a client
 reads as a successful write. `PUT /activities/{x}` is a 400 where the DELETE of the same
 path is a 404. And `HEAD /:/prefs` is a 200 on kids, zen and plexscratch alike -- the one
-disagreement in a HEAD sweep over sixty paths and four servers, and a breach of simplex's
+disagreement in a HEAD sweep over sixty paths and four servers, and a breach of rex's
 own rule that a read-only route answers GET and HEAD.
 
 **The `/:/prefs` write grammar has two more rules.** Four settings -- `PlexOnlineUrl`,
@@ -5646,16 +5646,16 @@ and not on zen. Two extra rows on the Settings page is the small half; the real 
 that a write to `AllowLegacyAgents` succeeded where a real 1.42.2 refuses the whole
 request as an unknown preference.
 
-**The Add Library form validates four ways simplex did not.** A missing `language` and an
+**The Add Library form validates four ways rex did not.** A missing `language` and an
 unparseable one are both 400s carrying exactly `'language' is invalid` -- the accepted set
 is the agent's own list, so `en-US`, `de-DE`, `pt-BR`, `nb-NO` and even `EN-US` pass while
 `en`, `de`, `xx`, `zz-ZZ`, `yue-HK`, `en_US` and an empty value do not. An EMPTY
-`location` is a 201 where simplex refused it, and a NUMERIC `type` is accepted and creates
-a library of that type where simplex refused it.
+`location` is a 201 where rex refused it, and a NUMERIC `type` is accepted and creates
+a library of that type where rex refused it.
 
 ##### Measured and not acted on
 
-- **`sort=` holds up.** `ssweep.py` ran every one of simplex's 33 sort keys, ascending
+- **`sort=` holds up.** `ssweep.py` ran every one of rex's 33 sort keys, ascending
   and descending, against zen's own ordering of the same 3,887 rows. The default listing
   order IS `sort=titleSort` (3,887 of 3,887), and the tie-break is `titleSort` ASCENDING
   in BOTH directions — 6 of 6 tied groups on `year`, `rating`, `audienceRating`,
@@ -5667,24 +5667,24 @@ a library of that type where simplex refused it.
   zen's `sort=duration` opens with 23 rows in title order whose durations run from 5.0 to
   9.9 million ms, every one of them a row whose Media carries no duration at all; the
   ordered list starts at index 23. And `duration=5700000` answers 0 although a row's own
-  `duration` is exactly that. simplex's rows always carry a Media duration equal to the
+  `duration` is exactly that. rex's rows always carry a Media duration equal to the
   row's, so the two cannot differ for its own catalog. Recorded rather than implemented.
 - **On a SHOW listing a media column is read from the LEAVES, matching when any leaf
   matches.** zen's `type=2&duration<=1200000` answers 39 and `>=1200000` 483, which
   overlap — 522 against 505 rows with a value — and `mediaSize` behaves the same way.
-  simplex's show rows carry no Media at all, so every media filter on a show grid answers
+  rex's show rows carry no Media at all, so every media filter on a show grid answers
   nothing. Not built this cycle: it needs the same leaf resolution the `viewedLeafCount`
   family uses, and cycle 19 was already full.
 - **`lastViewedAt=` and `lastRatedAt=` are a 500 on both references** where every other
   date column answers a listing — `addedAt=`, `updatedAt=`, `createdAt=` and
   `originallyAvailableAt=` are all 200. Two columns, no rule that predicts which.
 - **`audioLanguage`'s six non-`=`/`!=` operators.** On zen `=en` is 2,375 and `!=en`
-  1,512 (complementary, and simplex matches), while `==en` is 1,512, `!==en` 528,
+  1,512 (complementary, and rex matches), while `==en` is 1,512, `!==en` 528,
   `<=en` 1,330, `>=en` 148, `<<=en` 3,664 and `>>=en` 657 — which no single model fits,
   on a field where a row holds several values. Left as measured.
 - **`Agent`'s attribute order.** Hunt A reported it inverted. The only pairs both
-  references constrain are `hasPrefs < identifier < primary`, which simplex already
-  satisfies; the `id` that kids puts first is 1.43.4-only and simplex reports 1.42.2.
+  references constrain are `hasPrefs < identifier < primary`, which rex already
+  satisfies; the `id` that kids puts first is 1.43.4-only and rex reports 1.42.2.
   Refuted.
 - **A `viewCount` or `skipCount` tie.** zen's 3,866 rows with no `viewCount` do not
   order by `titleSort` within the group, so the column distinguishes NULL from 0 where
@@ -5710,7 +5710,7 @@ Two hunts and a driver round. Territory A took the show library at **type 3 and 
 zen's 741 real seasons and 9,287 real episodes, the rows with the most derived fields on
 the whole surface and the ones cycle 19's holdout never reached. Territory B swept the
 **edit grammar by COLUMN**: every column of every row type, on the item path and the
-section path, on plexscratch. The driver's own round ran simplex's remaining engines over
+section path, on plexscratch. The driver's own round ran rex's remaining engines over
 a real library — `hierarchy.py`'s derivations against 10,535 rows and `filters.parse`
 against both references' `/query/parse`, field by field and operator by operator.
 
@@ -5727,7 +5727,7 @@ seasons: 740 carry no `titleSort` at all, and the ONE that does — One Piece's 
 the only season in the library with a `year` — carries `"Egghead"`, the arc name its agent
 stored, not the `"Season 22"` it displays. So the year is a coincidence of a season an
 agent really identified, and the rule is cycle 18's: a generated title stores nothing.
-simplex was contradicting itself here — the ROW said `titleSort: "Season 19"` while
+rex was contradicting itself here — the ROW said `titleSort: "Season 19"` while
 `?titleSort=`, an equality on the empty string, matched the same row.
 
 **An episode carries `parentThumb` only when the season's poster is the season's own.**
@@ -5743,7 +5743,7 @@ operator against both references: `theme`, `banner`, `art` and `thumb` each answ
 `/query/parse` with a Rule carrying an EMPTY `fieldTitle` — the shape `id`, `guid`, `slug`
 and `parentIndex` already had — under every one of the eight operator keys, and a LISTING
 filtered on any of them is a **500** on both servers, as `parentIndex` already was. `slug`
-is the same: it parses under all eight (simplex answered an Error for `>>` and `<<`) and
+is the same: it parses under all eight (rex answered an Error for `>>` and `<<`) and
 its listing is a 500 for every operator, which cycle 7 measured and left unimplemented.
 
 **`guid` takes exactly two operator keys, and the parser reports both as `<=`.** `guid=x`
@@ -5811,11 +5811,11 @@ normalises under every operator, not just `=`.
 nothing at all to `type=2&audioLanguage=en` and `type=3&subtitleLanguage=en` while the same
 probe at `type=4` returns a real subset, so a parent row has no such column — unlike
 `duration`, `resolution` and `mediaSize`, which cycle 19 measured reading the leaves.
-simplex applied the fallback here too and selected every show.
+rex applied the fallback here too and selected every show.
 
 **A show library's media AXES are built from the leaves.** Both references answer a
 populated `/library/sections/{show}/resolution` and `/audioLanguage` — zen 6 and 46
-entries, kids 1 and 1 — although no show or season row carries Media. simplex built them
+entries, kids 1 and 1 — although no show or season row carries Media. rex built them
 from the section's top-level rows and answered an empty container, so a TV library's
 Resolution and Audio Language menus were empty while the filters behind them worked.
 
@@ -5831,7 +5831,7 @@ flips to `episode` for every one of them on a show library where a movie library
 **`/recentlyViewedShows?type=N` is a typed QUERY**: zen answers 507 shows, 741 seasons and
 9,287 episodes to `type=2`, `3` and `4`, kids 1, 2 and 6, both answer 0 to `type=1`, and
 the container keeps `viewGroup="show"` and `allowSync: false` throughout. `type=abc` is a
-500. simplex ignored the parameter.
+500. rex ignored the parameter.
 
 **`unmatched` IGNORES the operator.** Measured on kids' two seasons and zen's 741 over all
 eight operators and six values: only the literal `1` selects the unmatched rows, and it
@@ -5852,7 +5852,7 @@ implemented as a proxy.
 `<=1800-01-01` and `<<=1800-01-01` answer 0, so the 2,369 without one are in neither half
 — cycle 19's numeric rule exactly. The old reading, "a NULL date matches is-before", was
 measured on fun, which is out of scope, and it put every season of a show library into
-every `<=` set. And `addedAt!=<a date>` answers every row on both references where simplex
+every `<=` set. And `addedAt!=<a date>` answers every row on both references where rex
 answered none: the date branch had no `!=` case and fell through to equality.
 
 **Of the four unlisted string fields only `titleSort` folds case.** `titleSort<=b` and
@@ -5869,20 +5869,20 @@ cycle actually measured.
 
 **`mediaCount` and `createdAt` are recorded filter fields that could never select
 anything.** Cycle 15 listed both among the nine that filter without a Meta and both were
-read straight off the row, where no simplex row carries either attribute. Both references
+read straight off the row, where no rex row carries either attribute. Both references
 answer real subsets: `type=1&mediaCount=1` is 3,673 of zen's 3,887, `type=2` and `type=3`
 read the LEAVES (487 shows and 702 seasons answer `=1`, 44 and 74 answer `>>=1` — the
 Duplicates sets exactly), and `createdAt>=2000-01-01` answers every row of every library.
-`sort=mediaCount` is a real ordering on both too, at every row type, where simplex answered
+`sort=mediaCount` is a real ordering on both too, at every row type, where rex answered
 500.
 
 **A section search row carries no librarySection fields.** Cycle 19 made `/search` answer
 the light grid row and the triple survived on that path alone; a grid row never carries it,
 because it is the container's.
 
-**Four small leaves validate `type=`, and simplex refused the wrong half of each.** On both
+**Four small leaves validate `type=`, and rex refused the wrong half of each.** On both
 references `?type=abc`, `?type=`, `?type=1.5` and `?type=%20` are each a 400 on `/sorts`,
-`/filters`, `/common` and `/search` — sixteen cells, all 400 — where simplex answered 200
+`/filters`, `/common` and `/search` — sixteen cells, all 400 — where rex answered 200
 to the empty value on the first two and to the three unparseable ones on the last two.
 
 ---
@@ -5892,7 +5892,7 @@ five writes to one movie (`title`, `summary`, `year`, `studio`, `contentRating`)
 a minute left the column exactly where it was, on the item path and the section path
 alike, while a poster write in the same session moved it. The column tracks the ARTWORK and
 the row's own identity, not its text — and it is the cursor python-plexapi and every sync
-client polls, so simplex's stamp on every edit made a title fix look like a new row.
+client polls, so rex's stamp on every edit made a title fix look like a new row.
 
 **An artwork URL's version IS the row's `updatedAt`** — 726 of 726 owned paths on zen and
 12 of 12 on kids, `thumb` and `art` alike, with no exception. The copy shows the mechanism
@@ -5927,19 +5927,19 @@ a 500 with the summary untouched, the last hole in "a save a real PMS refuses wr
 nothing".
 
 **A negative `rating` or `audienceRating` REMOVES the field**, exactly as a negative year
-does, and the rule reaches those two floats and no other. simplex stored `-3.0` and the
+does, and the rule reaches those two floats and no other. rex stored `-3.0` and the
 preplay page printed it.
 
 **`theme` and `banner` are ARTWORK columns on the edit path.** `theme.value=<a url>` is a
 200 and the row comes back carrying `theme: "/library/metadata/4/theme/1789421253"` — the
 url discarded and the column minted as the row's own versioned path at its current
-`updatedAt`, the same shape a poster pick produces. simplex honoured the lock and stored
+`updatedAt`, the same shape a poster pick produces. rex honoured the lock and stored
 nothing, and on the SECTION path it 400'd `theme`, `banner` and `slug`, all three of which
 the copy takes on both paths.
 
 **An episode's inherited `contentRating` is a READ-TIME fallback.** Set the episode's own
 and then the show's: the episode keeps its own. CLEAR the episode's and it reads the
-show's at once; write the show again and the episode follows. simplex copied the show's
+show's at once; write the show again and the episode follows. rex copied the show's
 value onto the episode at load and on a show edit, so an episode whose own rating was
 cleared had none at all and drew a blank badge for the life of the process. Cycle 13
 recorded the rule correctly and it was implemented as a write-time copy — a textbook class-C
@@ -5948,7 +5948,7 @@ proxy, and the fix is another one: see the note in `library.edit`.
 **A COLLECTION row and a PLAYLIST row take the item path's whole validation.** Over the
 same 57 columns on the copy: an unknown name is a 400, an unparseable number a 500
 (`year`, `index`, `absoluteIndex`, `rating`, `audienceRating`), and `title`, `summary` and
-`userRating` are the 200s — identically on both row types. simplex skipped the validation
+`userRating` are the 200s — identically on both row types. rex skipped the validation
 for these two and answered 200 to every name, the one place it contradicted itself, since
 the same field was a 400 on a movie.
 
@@ -5961,19 +5961,19 @@ the same field was a 400 on a movie.
   carry one, exactly the agent-matched ones, and not one of its 741 seasons or 9,287
   episodes does. A season's `parentSlug` and an episode's `grandparentSlug` are the SHOW's
   slug exactly — present on all 741 and all 9,287 when the show has one and absent when it
-  does not. simplex mints every guid itself (`metadata.py` always answers a `plex://` form),
+  does not. rex mints every guid itself (`metadata.py` always answers a `plex://` form),
   so every row it holds is agent-matched by construction and the two rules coincide; what
   stays a proxy is deriving the children's from the parent TITLE rather than from the
-  parent's slug, which agrees today because simplex mints both the same way. The slug's
+  parent's slug, which agrees today because rex mints both the same way. The slug's
   VALUE is not simply the slugified title either — 935 of zen's 1,536 match and the rest
   carry a disambiguating year or counter (`3bhk-2025`, `100-cooks-1`) or a
   transliteration — which nothing in the API exposes.
 - **A season with no `index` is titled `[Unknown Season]` and its episodes carry neither
   `parentTitle` nor `parentIndex`** (5 seasons and 6 episodes on zen), and the season's
-  `index` COLUMN reads -1 there (`index=-1` answers those 5). simplex synthesises an index
+  `index` COLUMN reads -1 there (`index=-1` answers those 5). rex synthesises an index
   for every season it builds, so the row cannot arise in its catalog; the generated-title
   half of the rule IS built.
-- **`addedAt!==<date>` is a 500** — on zen, on kids and on simplex alike. Hunt A reported it
+- **`addedAt!==<date>` is a 500** — on zen, on kids and on rex alike. Hunt A reported it
   as a difference; re-measured, all three agree, so it is REFUTED.
 - The `Specials` / `[Unknown Season]` labels are **single-reference**: kids holds neither.
 - The `updatedAt` rule's write half is plexscratch's alone, as every write rule is; the
@@ -5986,9 +5986,9 @@ episode and the **hub shelves** those two row types appear on — the dimension 
 left when it swept the listing grammar at type 3 and type 4. Territory B took the
 **write surface below the item**: the `/library/sections/{id}/prefs` family per library
 type, the per-item prefs, the `/:/` write family swept as a set, and the writers this
-project has never sent. The driver's round held simplex's remaining **writers** out
+project has never sent. The driver's round held rex's remaining **writers** out
 against real rows: `xsweep.py` (new) compares every XML attribute and child-element
-sequence both references agree on with simplex's own, per path, and the parser's
+sequence both references agree on with rex's own, per path, and the parser's
 composite grammar, the container attribute sets and the python-plexapi corpus were each
 re-run as controls.
 
@@ -5998,7 +5998,7 @@ re-run as controls.
 carries a `MediaType` row per media type the agent serves and NO `Language` at all —
 zen's `com.plexapp.agents.none` has five MediaTypes and its fifteen agents have zero
 Languages between them — while `?mediaType=N` is the other way round: a Language list
-per agent (26, 33 or 45 rows) and no MediaType. simplex sent its 45 Languages in both
+per agent (26, 33 or 45 rows) and no MediaType. rex sent its 45 Languages in both
 forms and a MediaType in neither, so the Agents page could not say what an agent serves.
 
 **`/system/agents` is the one endpoint whose JSON repeats a child element's KEY instead
@@ -6007,7 +6007,7 @@ of writing an array.** The raw body reads
 on kids — and `MediaType` is written the same way, while every other repeated child on
 every other path is a proper array (`Setting`, `Agent`, `Genre`, `Media`, `Role`,
 `Image`, `Action`, `Directory`, `Feature`, `Pivot`). A JSON parser keeps the LAST of the
-repeated keys, so a client sees exactly one language per agent where simplex showed it
+repeated keys, so a client sees exactly one language per agent where rex showed it
 forty-five. The whole list is in the XML, which is where the `default="1"` the Add
 Library dialog preselects is visible.
 
@@ -6021,28 +6021,28 @@ written as paired empty elements on both servers, where `Directory`, `Action` an
 season answers `audioLanguage` and `subtitleLanguage` whose first enum entry is
 `:Series default`, not `:Account default` — measured on four seasons across both
 references, in three languages. A SHOW says `:Account default` and a movie has no such
-setting, so the row type decides it. simplex rebuilds that enum at read time (cycle 19's
+setting, so the row type decides it. rex rebuilds that enum at read time (cycle 19's
 "led by the item's own streams") and the rebuild hardcoded the account label.
 
 **An EPISODE's `/tree` is the ancestor CHAIN.** Exactly three `MetadataItem` nodes — the
 show, THAT episode's season and the episode — on five witnesses across both references.
-No sibling season, no sibling episode. simplex rooted it at the show and then answered
+No sibling season, no sibling episode. rex rooted it at the show and then answered
 the WHOLE show, so the response grew with the show and the node the caller asked about
 was no longer identifiable as the leaf.
 
 **`/hubs/home/recentlyAdded` is populated at `type=1` and `type=2` only.** Both
 references answer `size 0` to `type=3`, `4`, `5`, `8`, an unparseable one and an empty
 one — and both hold episodes, so it is not a content difference — with and without
-`sectionID`, `pinnedContentDirectoryID` and `includeMeta`. simplex answered an
+`sectionID`, `pinnedContentDirectoryID` and `includeMeta`. rex answered an
 eight-row episode shelf at `type=4`.
 
 **A `/library/onDeck` row LEADS with `allowSync` and the librarySection triple**, exactly
 as a `/library/recentlyAdded` row does. Cycle 19 recorded the rule for both paths and
-simplex carried it on one — and `allowSync` on the ROW is the signal the XML writer keys
+rex carried it on one — and `allowSync` on the ROW is the signal the XML writer keys
 the whole lead on, so without it the four came out mid-row.
 
 **A section's `/hubs/sections/{id}/continueWatching/items` container is
-`{size, allowSync: true, identifier}` and nothing else.** simplex said
+`{size, allowSync: true, identifier}` and nothing else.** rex said
 `allowSync: false` and added `mediaTagPrefix` and `mediaTagVersion`, on an empty
 container as on a populated one — cycle 15's "every hub path says allowSync true except
 postplay", satisfied everywhere but here.
@@ -6050,7 +6050,7 @@ postplay", satisfied everywhere but here.
 **An artwork path with an EXTRA SEGMENT after the version is a 404.**
 `/library/metadata/{id}/thumb/{v}/x` and `/thumb/{v}/1/2` both, on `thumb`, `art` and
 `poster`, on every row type. A single trailing slash stays a 200, and so does a bad
-version. simplex served the image for anything that merely STARTED like an artwork path.
+version. rex served the image for anything that merely STARTED like an artwork path.
 
 **The per-user-state block sits in the MIDDLE of a row, before the year.** Measured on
 zen's own watched rows: a show reads `index, audienceRating, userRating, viewCount,
@@ -6073,7 +6073,7 @@ view state. The two part on the SCROBBLE: a playlist's own `viewCount` counts up
 1 it is born with (1 → 2 → 3) and its unscrobble clears it with `lastViewedAt`, while a
 collection's scrobble is a 200 that changes nothing at all — it never carries `viewCount`,
 and it does not even clear a `viewOffset` a progress write left, so only the watched half
-is the no-op. Neither reaches a member. simplex 404'd all ten writes, so the star rating
+is the no-op. Neither reaches a member. rex 404'd all ten writes, so the star rating
 on a collection page and on a playlist page errored and never stuck.
 
 **And the state comes back MID-ROW, in its own order.** `userRating, viewOffset,
@@ -6088,7 +6088,7 @@ called it the listing's own, and the pair belongs to `/library/metadata/{id}` to
 **A SHOW library's `PUT /library/sections/{id}/analyze` frames every episode LEAF three
 times.** `mediaState` analyzing, thumbnailing, none — eighteen frames for plexscratch's six
 episodes, no activity, and an idle-socket control between three runs showed zero noise.
-The movie library's fifteen for five movies is the same rule read from the leaves. simplex
+The movie library's fifteen for five movies is the same rule read from the leaves. rex
 framed only rows whose own `type` is `movie`, so a show library's Analyze pushed NOTHING
 and every `!!mediaState` gate in the client stayed as it was.
 
@@ -6099,12 +6099,12 @@ playlist; `/allLeaves` and `/grandchildren` are real secondary containers on a c
 allLeaves) and 404s on a playlist; `/related` is an empty container on both but carries the
 triple and `allowSync` only on a collection; `/extras` is the item path's 400 and `/match`
 its no-parameters 400; and `PUT`/`DELETE` of `/poster`, `/art` and `/thumb` land like an
-item's. simplex 404'd every one, so Change Poster and Clear Artwork on a collection page
+item's. rex 404'd every one, so Change Poster and Clear Artwork on a collection page
 did nothing at all.
 
 **`PUT /library/collections/{id}` is the ITEM edit path.** A form that writes nothing is a
 400, an unknown `.value` is a 400, a PREF name (`collectionMode`) is a 400 there where
-`/prefs` takes it, and `titleSort.value` with its lock really stores. simplex ran a second,
+`/prefs` takes it, and `titleSort.value` with its lock really stores. rex ran a second,
 weaker code path that answered 200 to every form and dropped the sort title, so a save on
 the collection page reported success and lost the edit — while the same forms through
 `/library/metadata/{collection}` were already right, which is what made it two code paths
@@ -6115,18 +6115,18 @@ list types: cycle 19's read-only-verb rule, which had never reached these paths.
 **Twenty-nine more columns take an item edit and a real LOCK.** Swept on plexscratch over
 41 candidate names drawn from both references' `Meta` `Filter`/`Field`/`Sort` keys and
 every column findings.md records: each is a 200 that stores a `{"locked": true, "name":
-…}` `Field` row and stores no VALUE, where simplex answered 400 "unknown field". Eleven
+…}` `Field` row and stores no VALUE, where rex answered 400 "unknown field". Eleven
 names are a 400 on both — `album`, `artist`, `chapterSource`, `childCount`,
 `hasChapterVideoStream`, `leafCount`, `logo`, `poster`, `role`, `sourceType`, `track` — so
 the boundary is measured rather than assumed, and `hdr10plus` alone is a 200 that stores
 nothing. Five of the twenty-nine (`atmos`, `audioCodec`, `audioLayout`, `subtitleCodec`,
 `videoCodec`) are the media-codec family cycle 20 established is 1.43.4-only; plexscratch
-is 1.43.4 and zen cannot be written, so their 1.42.2 status — the build simplex reports —
+is 1.43.4 and zen cannot be written, so their 1.42.2 status — the build rex reports —
 is not measurable, and they are held out. The other twenty-four are implemented.
 
 **A state write's `key=` is a BARE ratingKey, and the four writes parse it differently.**
 The path form the client builds for `/:/timeline` — `/library/metadata/17` — is a 404 on
-scrobble and unscrobble and a 500 on rate and progress, where simplex took the last path
+scrobble and unscrobble and a 500 on rate and progress, where rex took the last path
 segment and accepted it. Past that: `rate` and `progress` int-parse the key (`abc`, `1.5`,
 a leading space and, for `rate`, an empty value are 500s; `+17` and `017` parse) where
 scrobble and unscrobble just look it up and 404; `progress` accepts ANY integer key,
@@ -6136,7 +6136,7 @@ before its `time`. findings.md recorded a single 400/404 rule for all four.
 
 **`/:/progress?time=` takes a negative value and a leading `+`.** `-1` and `-500000` are
 200s that store nothing and `+120000` stores 120000, while `abc`, an empty value, `1.5`,
-`0x10`, `1e6` and a leading space stay 500s. simplex read the value with `isdigit()`, so
+`0x10`, `1e6` and a leading space stay 500s. rex read the value with `isdigit()`, so
 the two shapes a real PMS accepts were refused.
 
 **`DELETE /library/sections/{id}/indexes` moves the SECTION's `updatedAt`.** Measured five
@@ -6147,7 +6147,7 @@ not move `updatedAt`, an artwork write does" — clients cache a library keyed o
 **A `PUT /library/metadata/{id}/refresh` does NOT move the row's `updatedAt`.** Four runs
 on a movie and four on a show, and the reference really ran the refresh, because it pushed
 its seven-frame sequence each time. Cycle 20 established that an artwork URL's version IS
-the row's `updatedAt`, so the two move together and neither does: simplex stamped both, and
+the row's `updatedAt`, so the two move together and neither does: rex stamped both, and
 every Refresh Metadata therefore told every client that an unchanged row's poster and
 background had changed. plexscratch is isolated from plex.tv, so what is established is
 that running the refresh sequence does not by itself stamp the row.
@@ -6156,12 +6156,12 @@ that running the refresh sequence does not by itself stamp the row.
 after HTTP and stores `A`; a wire `%2525` stores `%25`, which is how the storage escaping
 is known to cover `%` as well as `:` and `|`; `%25E2%2582%25AC` stores `€`; and a second
 decode that FAILS — `a%b`, where `%b` is not an escape — stores the empty string. That
-last case is the whole of cycle 17's "a value carrying `%` is stored EMPTY": simplex
+last case is the whole of cycle 17's "a value carrying `%` is stored EMPTY": rex
 emptied every value containing one, so a ratings source written with a percent escape was
 lost rather than decoded.
 
 **`PUT /library/metadata/{playlist}/prefs` is a 400**, the item prefs writer's own refusal
-for a name it does not know, where simplex 404'd it because that branch resolved a
+for a name it does not know, where rex 404'd it because that branch resolved a
 collection and nothing else.
 
 **An EMPTY response under `/system` carries no `Content-Type` header at all.** Measured on
@@ -6169,7 +6169,7 @@ kids, zen AND plexscratch over every verb: every 404 — GET, HEAD, POST, PUT an
 `/system` itself and on an unknown path under it — and the bare `OPTIONS` 200 come back
 with no body and no type, where a 404 anywhere else on the surface carries `text/html` and
 a body. Cycle 18 recorded the empty body for the non-GET verbs and implemented it as an
-empty `text/html`; the GET was never covered, so it still carried simplex's own 18-byte
+empty `text/html`; the GET was never covered, so it still carried rex's own 18-byte
 `text/plain` refusal.
 
 #### The twenty-second pass — the movie detail read, the writers at scale, and the frames a write really pushes
@@ -6190,13 +6190,13 @@ related) and on kids: only `Media`, `Part`, `Genre`, `Country`, `Guid`, `Rating`
 `Director`, `Writer`, `Role` and `Producer` are honoured, and every other name — `Extras`,
 `Related`, `Preferences`, `Field`, `Chapter`, `Review` — behaves exactly like an unknown
 one. Cycle 19 measured `Image` and `UltraBlurColors` as no-ops from a two-name sample and
-recorded "every other element the option names really goes"; simplex implemented that, so
+recorded "every other element the option names really goes"; rex implemented that, so
 a client naming `Related` or `Preferences` in a bandwidth-trimming list lost a block a real
 PMS still sends. **`Part` is on the list**: naming it removes the Parts AND their Streams
 and adds `partCount` to the Media, the same substitution `Media` makes one level up.
 **And the option reaches the rows INSIDE the inline `Related` and `Extras` blocks** — with
 `excludeElements=Media` the nested related rows lose their Media and gain `mediaCount`,
-where simplex trimmed the top-level row alone. The one request whose whole point is to make
+where rex trimmed the top-level row alone. The one request whose whole point is to make
 a preplay page smaller still carried five related rows in full.
 
 **Five more query options carry `checkFiles`'s value grammar.** `skipRefresh`,
@@ -6207,14 +6207,14 @@ a preplay page smaller still carried five related rows in full.
 200 for any value. **And four `include*` options parse their value as an INTEGER**:
 `includeExtras`, `includeRelated`, `includeChildren` and `includeOnDeck` strip leading
 zeros, so `01` and `001` turn them on, while `includePreferences` compares the string and
-takes `1` alone. simplex tested `== "1"` for all five, so the zero-padded form silently
+takes `1` alone. rex tested `== "1"` for all five, so the zero-padded form silently
 dropped the block — fix 4's failure mode, a valid document short a section.
 
 **`includeRelatedCount=0` EMPTIES the inline hub** — `{hubIdentifier, size: 0, more: true}`
-with no rows — where simplex read `0` as "absent" and fell through to its default of five.
+with no rows — where rex read `0` as "absent" and fell through to its default of five.
 
 **A real PMS writes one element per LINE, and ends the document with a newline.** zen's
-movie document carries 236 newlines and kids' 34; simplex emitted one, after the
+movie document carries 236 newlines and kids' 34; rex emitted one, after the
 declaration, and no trailing one. Nothing a conforming parser can see — and it changes
 `Content-Length` on every XML response and what a `Range` read of a container returns,
 which cycle 16 established applies to every body. **Six more element names are written
@@ -6241,25 +6241,25 @@ this one.
 `『ONE PIECE』…` (U+300E), then `iHostage`, then `Zero Tolerance`; `studio:desc` on
 `ufotable` before `Zide-Perry`; `summary:desc` on `Özge…`, `join 6 murder…`,
 `handu dreams…`. Descending puts the highest codepoint first every time, so lowercase sorts
-ABOVE uppercase and there is no accent folding. simplex's `_sort_key` lower-cased every
+ABOVE uppercase and there is no accent folding. rex's `_sort_key` lower-cased every
 text key. It is the SORT side of the split cycle 20 measured on the FILTER side; `titleSort`
 itself stays folded, because no row in zen's 3,887 movies nor in the first 2,400 of its show
 library carries a lowercase-initial stored sort title to measure it with.
 
 **A filter key whose NAME keeps a comparison character is an UNKNOWN FIELD.**
 `collection==`, `year>=`, `title!!` are each a 200 listing every row and a 200 `Error` of
-type `field` at `/query/parse`, exactly as a bogus name is, where simplex raised a 400 from
+type `field` at `/query/parse`, exactly as a bogus name is, where rex raised a 400 from
 `split_key`. The recorded 400 is a different shape and still stands: a pair with no `=` at
 all (`?year%3E2010`) is a 400 everywhere. *(The first version of this finding was wrong and
 is worth recording as such: a sweep reported 57 disagreements on the tag-table fields and
 they were an artefact of the probe's own encoding — the client puts the operator characters
 in the parameter NAME, so `year>>=2000` is the parameter `year>>`, and a probe that sends
 `collection%3D%3D=zzzz` is not sending the `==` operator at all. Re-sent the client's way,
-simplex already agreed on all eight operators.)*
+rex already agreed on all eight operators.)*
 
 **A bare `type=<v>` on the ITEM edit path is an accepted no-op.** `type=1`, `type=4` and
 `type=abc` are all 200s that read no value and change no row — `type` is one of the lockable
-names cycle 20 added. simplex stripped it from the edit form on both paths, because on the
+names cycle 20 added. rex stripped it from the edit form on both paths, because on the
 SECTION path it is the scoping parameter, so a form naming only `type` looked empty on the
 item path and got the 400 an empty form answers.
 
@@ -6267,13 +6267,13 @@ item path and got the 400 an empty form answers.
 
 **An artwork frame carries the LIST row's own type.** A collection's is `type 18` and a
 playlist's `type 15` with `sectionID "-1"`, on the artwork write as on every other frame.
-simplex sent `type 1` for both and an empty `sectionID` for the playlist — and CLAUDE.md
+rex sent `type 1` for both and an empty `sectionID` for the playlist — and CLAUDE.md
 already records that the client builds the URL it updates from that number, so a Change
 Poster on a collection told every client on the socket that a MOVIE with that ratingKey had
 changed. A stored list row carries no `type` of its own; the projection mints it.
 
 **`/library/collections/{id}/{refresh,unmatch,analyze}` answer an EMPTY body**, where
-simplex fell through to a `{size: 0}` MediaContainer. CLAUDE.md's own rule — "a mutating
+rex fell through to a `{size: 0}` MediaContainer. CLAUDE.md's own rule — "a mutating
 endpoint answers 200 with an EMPTY body, not a MediaContainer" — had never reached these
 three, and the client parses the body of `match` to decide whether the match took.
 
@@ -6281,12 +6281,12 @@ three, and the client parses the body of `match` to decide whether the match too
 `abc` alike on kids, zen and plexscratch, and on plexscratch every verb answers the same.
 **`/search/voice` with no parameters is a 400** that becomes a 404 once a `query=` is given,
 so the path exists and validates. **And `/search` is a real ROUTED endpoint**: all three
-references refuse its writers with a 400 where simplex fell through to the plug-in
+references refuse its writers with a 400 where rex fell through to the plug-in
 dispatcher and answered a listing, which reads to a client as an accepted write.
 
 **`PATCH` had never been swept on the paths cycle 6 took POST/PUT/DELETE over.** It is a 404
 on `/library/sections`, `/status/sessions`, `/media/providers` and `/playQueues/{id}`, where
-simplex answered each one's own GET; `/accounts/{id}` refuses a POST as well as the DELETE
+rex answered each one's own GET; `/accounts/{id}` refuses a POST as well as the DELETE
 cycle 19 measured. **And `/system/proxy` is the one path in that subtree that does NOT take
 cycle 18's envelope**: every verb, GET included, answers its own 400 rather than an
 empty-bodied 404.
@@ -6313,7 +6313,7 @@ zero disagreements**.
 **A `/search` row is the GRID row with a six-attribute lead.** Measured with the same row
 fetched twice per server — once from the section grid, once from `/search` — the two are
 byte-identical apart from `allowSync, librarySectionID, librarySectionTitle,
-librarySectionUUID, personal, sourceTitle` in front. simplex answered the DETAIL row there,
+librarySectionUUID, personal, sourceTitle` in front. rex answered the DETAIL row there,
 led by `ratingKey`: `Guid`, `Rating` and tag elements carrying `id`/`filter`, with no
 `allowSync` and no `librarySectionUUID`, and a `librarySectionKey` neither reference sends.
 On a real library that is several times the bytes per hit — zen's detail rows carry up to
@@ -6326,32 +6326,32 @@ active Sort is marked only inside the Type row matching the asked `type=` — a 
 asked `type=2` or `type=4` marks **nothing at all** — and which one is marked follows the
 request: none given lights the default (`titleSort`, asc), `sort=addedAt:desc` lights
 `addedAt` with `activeDirection="desc"`, and a spec naming no advertised key lights nothing.
-simplex lit its own top-level type's first sort in every cell, so on a Seasons or Episodes
+rex lit its own top-level type's first sort in every cell, so on a Seasons or Episodes
 grid the sort menu said "Title" while the rows were in broadcast order. Cycle 19's rule
 about the `Type` row's own `active` is a different attribute and stays correct.
 
 **`?includeDetails=1&includeAdvanced=1` carries NO Duplicates Filter row at all.** The
 option pair that adds the row to the `includeMeta` form adds nothing here. Cycle 16 measured
 this path *without* `includeAdvanced=1`, where the row does not exist to carry a flag, and
-recorded "`includeDetails=1` carries no `advanced` on a Filter" — so simplex implemented the
+recorded "`includeDetails=1` carries no `advanced` on a Filter" — so rex implemented the
 absence of the FLAG and left the row.
 
-**Three more orders, and the last place simplex's two writers disagreed.** A `/library/tags`
-row is `id, filter, tag, tagType, tagKey, thumb` with `thumb` LAST, where simplex led with
+**Three more orders, and the last place rex's two writers disagreed.** A `/library/tags`
+row is `id, filter, tag, tagType, tagKey, thumb` with `thumb` LAST, where rex led with
 it. The `/hubs/sections/{id}/manage` Hub leads with `identifier` and **self-closes** — cycle
 22 put `Hub` in `_ALWAYS_PAIRED` after a census that never reached `/manage`, and the rule
 is the one it left open for `Directory`: paired when the element carries a child collection,
 self-closed when it carries none. A `Common` row leads with the GRANDPARENT pair and puts
 the PARENT pair before `ratingKey`. And `/library/sections/{id}/common` was the **last**
-path where simplex's own XML and JSON writers contradicted each other: `ordered()` never
+path where rex's own XML and JSON writers contradicted each other: `ordered()` never
 received the `_xml=` override, because `_send_container` pops it before either writer runs,
 so the row bucketed as `Video[common]` — which no index knows — and its JSON keys stayed in
 build order while the XML sorted them.
 
 ---
 
-**A MOVIE's unmatch pushes twelve frames; simplex pushed none.** The sequence opens on two
-`matching` frames — `state 2` then `state 3`, a pair simplex emitted nowhere — and the
+**A MOVIE's unmatch pushes twelve frames; rex pushed none.** The sequence opens on two
+`matching` frames — `state 2` then `state 3`, a pair rex emitted nowhere — and the
 activity inside it steps through a second TITLE, `Analyzing Media`, before returning to
 `Updating Metadata`: `2/matching, 3/matching, 3/queued, started(-1), updated(-1, Analyzing
 Media), updated(25, Analyzing Media), updated(25, Updating Metadata), updated(50),
@@ -6369,7 +6369,7 @@ framed, the opposite of the per-leaf rule an item's analyze follows.
 
 **Three more read-only routes refuse every other verb.** `/hubs/home/recentlyAdded`,
 `/hubs/sections/{id}` and `/library/metadata/{id}/children` answer 404 to POST, PUT, PATCH,
-DELETE and a bare OPTIONS, where simplex answered each one's own GET. Cycle 19 recorded the
+DELETE and a bare OPTIONS, where rex answered each one's own GET. Cycle 19 recorded the
 rule and these three never had it applied — fix 4's failure mode from the other side, a
 client reading a 200 from `DELETE /hubs/sections/1` as an accepted write.
 
@@ -6418,7 +6418,7 @@ default/forced/original/dub. And a layout ffprobe cannot name —
 was split off, composing `(EAC3 8 channels )` with a double space.
 
 **One reported difference was re-measured and is not a finding.** zen's stored `displayTitle`
-carries the codec on 78,902 of its streams where simplex's catalog form does not — which is
+carries the codec on 78,902 of its streams where rex's catalog form does not — which is
 the recorded client-title rule, not a defect: those rows were read as `Plex Web`, one of the
 thirteen products that get the codec added on the way out. The check that tests `eia_608`
 therefore reads the extended title, which is the catalog form.
@@ -6436,7 +6436,7 @@ the movie's `matching` PAIR and 46 frames of its own.** Measured on plexscratch 
 else writing to it, twice over — once with the show unmatched first on a freshly reset copy
 and once second — so the ordering is not an artefact of the state the first left behind. The
 openers differ by row type and both were captured in the same run: a movie and a show open
-`state 2 matching` then `state 3 matching`, a season with one frame. simplex answered a
+`state 2 matching` then `state 3 matching`, a season with one frame. rex answered a
 season's unmatch with `notify_refreshed` — the seven-frame EPISODE form — so every episode
 under the season it had just unmatched kept its old title and guid, and it pushed NOTHING at
 all for a show, so Fix Match on a show page changed nothing on screen and left every
@@ -6488,7 +6488,7 @@ HANDOVER 3.3 carried this as single-witness because cycle 22's driver could only
 on zen — kids' hubs answered no `Video` for the queries that cycle tried. `query=Sintel` hits
 on kids, and both references then agree exactly: `librarySectionTitle, score, ratingKey, key,
 guid, …` on `/hubs/search` and `librarySectionTitle, ratingKey, …` on `/library/search`.
-simplex carried both attributes and put `librarySectionTitle` after `title` and `score` LAST,
+rex carried both attributes and put `librarySectionTitle` after `title` and `score` LAST,
 so — since a real PMS's JSON key order is its XML order — both of its formats disagreed with
 both references. It needs a private marker rather than a signal read off the row: `/library/all`
 and `/hubs/home/recentlyAdded` rows carry `librarySectionTitle` too and keep it in the middle.
@@ -6500,7 +6500,7 @@ Re-measured over all seven verbs on kids, which answers 400 to each.
 
 ---
 
-**Territory A took the CLIENT-IDENTITY dimension**, which nobody had swept at all. simplex
+**Territory A took the CLIENT-IDENTITY dimension**, which nobody had swept at all. rex
 knew of exactly two client-identity rules, both found by accident: `X-Plex-Platform: Roku`
 stripping `id` and `Pivot` from `/media/providers`, and the thirteen products that get a
 codec appended to a stream's `displayTitle`. A 9,300-pair sweep over ~30 identity values and
@@ -6527,7 +6527,7 @@ both references, and the HEADER beats the query when both are sent.
 **A modern agent's `Language` rows are TITLED and ORDERED in the client's language.** 45
 rows, all six modern agents sharing one list, identical on kids and zen. `system_agents.json`
 was captured with no `X-Plex-Language` at all -- **class A, the failure this project's one
-rule exists for** -- so simplex answered the self-named list to every client, English
+rule exists for** -- so rex answered the self-named list to every client, English
 included. Two things about it are unlike every other localised string here: the ORDER follows
 the localised title, so the row sequence moves with the language; and the NO-HEADER default
 is not English but each language named in ITSELF, which is also where an UNRECOGNISED
@@ -6540,7 +6540,7 @@ language dropdown from this list and validate the submitted `language` against i
 **`/media/providers?includePreferences=1` carries each library's whole `Preferences` block**,
 byte-identical to the one `/library/sections?includePreferences=1` answers -- the per-SHOW
 `episodeSort` variant included -- as the first child of the library `Directory`, with the
-`Home` row getting none. simplex handled the option at three other sites and ignored it here,
+`Home` row getting none. rex handled the option at three other sites and ignored it here,
 so a client that bootstraps library preferences from the provider document in one round trip
 saw libraries with no preferences at all.
 
@@ -6554,7 +6554,7 @@ attribute key is not enough and `_send_container` now skips a plug-in-framework 
 (`noHistory` is its signature). `/system` is the only one of the six that carries a
 translatable string at all; the others title their rows with their own lowercase key names.
 
-**And the tree's `Setting` rows are NOT localised, where simplex localised them.** All eight
+**And the tree's `Setting` rows are NOT localised, where rex localised them.** All eight
 of a show node's settings stay English in de, fr and ja on both references, while the same
 settings under `?includePreferences=1` move. A tree node is a ROW -- it is simply keyed by
 `id` rather than `ratingKey`, so the row guard did not recognise it. The inverse of the usual
@@ -6575,15 +6575,15 @@ DIFF SETS compared rather than the responses.
 holds only the rows with a stored `viewOffset`, movies and episodes alike, where On Deck holds
 one row per show — its in-progress episode, or the one after the last watched, which has no
 offset at all. Scrobbling episode 8 puts episode 9 on deck with a null offset and leaves
-Continue Watching empty; a `/:/progress` on a movie does the opposite. simplex answered the
+Continue Watching empty; a `/:/progress` on a movie does the opposite. rex answered the
 same list to both, so its hero shelf offered episodes nobody had started.
 
 **And Home DROPS its On Deck shelf when it would duplicate Continue Watching.** The
 `home.ondeck` Hub is omitted from `/hubs` and `/hubs/promoted` — the element, not an empty one
 — exactly when its rows are the ones Continue Watching is already showing and that set is not
 empty. Cleared: both present. Next-up only: both present. One episode in progress: On Deck
-absent. A movie in progress beside it: both present again. simplex always sent both, so Home
-drew the same in-progress episode twice. The two findings are one mechanism: because simplex's
+absent. A movie in progress beside it: both present again. rex always sent both, so Home
+drew the same in-progress episode twice. The two findings are one mechanism: because rex's
 two lists were always equal, the de-duplication would have fired in every state.
 
 **A SCROBBLE writes a history row, which overturns cycle 9.** One row per LEAF marked: a movie
@@ -6605,7 +6605,7 @@ History page listed the episode with no episode name, in both formats.
 **A playlist appeared nowhere but `/playlists`.** Home's Recent Playlists shelf is really
 populated on a real PMS — its rows are the `/playlists` listing rows, `lastViewedAt:desc`,
 with `hubKey` naming its own rows like every other shelf — and a playlist is found by
-`/hubs/search` and by `/library/search`. simplex hardcoded the shelf's rows to `[]`, with a
+`/hubs/search` and by `/library/search`. rex hardcoded the shelf's rows to `[]`, with a
 comment saying the reference had "no playlist history", which was true of the reference when
 it was measured and is not a rule; and it searched its catalog alone, where a playlist is not
 a row.
@@ -6619,7 +6619,7 @@ client or script enumerating the server through `/library/all` never saw one.
 hide empties `/hubs/home/onDeck`, `/hubs/home/continueWatching` and
 `/library/sections/{id}/onDeck` on both servers, and on a real PMS the row is still in
 `/hubs/sections/{id}/continueWatching/items` afterwards — stable to +20 s, so it is not a
-settle. simplex removed it there too, so a row hidden from Home was gone from the one place a
+settle. rex removed it there too, so a row hidden from Home was gone from the one place a
 real PMS still offers it.
 
 **And a `Common`'s `userRating` is a STRING**, `"8"` rather than `8.0`, sitting directly after
@@ -6638,7 +6638,7 @@ version and `updatedAt` identically; and scrobble, unscrobble, progress and comp
 `viewedLeafCount`, `lastViewedAt`, `viewCount`, `/unwatched` and the parents' counters
 equivalently. **No derived view on a real PMS settles late** — every reference change was
 already present in a snapshot taken immediately after the write and unchanged at +10 s and
-+30 s — so simplex's synchronous writes cost it nothing here.
++30 s — so rex's synchronous writes cost it nothing here.
 
 #### The twenty-sixth pass — the playback surface, and the session lifecycle driven
 
@@ -6648,50 +6648,50 @@ measured the timeline's storage grammar. Nothing had walked the playback path as
 it, and nothing had swept the `/video/:/transcode/universal/*` family or the Dashboard's
 statistics endpoints as a QUERY surface.
 
-**simplex never ran a decision at all.** Every request without `hasMDE=1` was refused, whatever
+**rex never ran a decision at all.** Every request without `hasMDE=1` was refused, whatever
 the client's profile said — `server.py`'s test was `directPlay == "0" or hasMDE != "1"`,
 unconditional. Measured on kids and zen across four items in both containers, a decision with
 no `hasMDE` runs the client's own profile against the item and answers one of three shapes:
 `Roku` and `Xbox One` get `directPlayDecisionCode 1000` / `generalDecisionCode 1000`, both
 "Direct play OK.", with the Metadata row and `resourceSession` and **no transcode codes**;
 `Chrome`, `Safari`, `Chromecast`, `Plex Desktop`, `Konvergo`, `HTML TV App` and `Opera` get
-`1001` "Conversion OK", which simplex cannot answer because it has no encoder; and `Firefox`,
+`1001` "Conversion OK", which rex cannot answer because it has no encoder; and `Firefox`,
 `Microsoft Edge`, `Generic` and `Plexamp` get the `3000/2000/4005` "neither" — which is the one
-simplex was sending to all of them.
+rex was sending to all of them.
 
 Plex Web always sends `hasMDE=1`, so it never saw this. Every client that does not — Roku,
-plex-for-kodi's `ServerDecision`, python-plexapi, the older TV apps — asked simplex whether it
+plex-for-kodi's `ServerDecision`, python-plexapi, the older TV apps — asked rex whether it
 could play an item and was told the catalog was unplayable, by a server whose entire purpose is
 direct play. The Metadata row is **byte-identical** between the two forms; only the container's
 codes differ, so CLAUDE.md's "a direct play is ONLY `mdeDecisionCode: 1000`" is the MDE form's
-rule and stays right — this is the other form, which simplex emitted nowhere.
+rule and stays right — this is the other form, which rex emitted nowhere.
 
 **And the decision's validation was far stricter than a real PMS's.** Re-measured over nine
 parameter shapes on both references, only an OUT-OF-RANGE `mediaIndex` refuses. A missing,
 non-numeric, negative or empty one is a 200 that falls back to media 0; `partIndex` is never
 refused at any value; and a `path` carrying a query string is a 200. That **corrects a
 CLAUDE.md sentence** which claimed all three, and it is not academic: python-plexapi's
-`getStreamURL` and several TV apps omit `mediaIndex`, and against simplex their decision was a
+`getStreamURL` and several TV apps omit `mediaIndex`, and against rex their decision was a
 hard 400 before any profile question was asked. Stated plainly, because it bounds the
 correction: neither reference holds a MULTI-PART Media, so the old reading may have come from
 one; what is measured is that on a single-part Media no `partIndex` refuses.
 
 **A decision answers exactly ONE Media**, the `mediaIndex` asked for — measured on zen's rk=401,
-which carries fifteen on its library row — where simplex echoed every version with `selected` on
+which carries fifteen on its library row — where rex echoed every version with `selected` on
 the chosen one. Single witness by construction: kids holds no multi-Media row, so it agrees with
 this rather than corroborating it. **And `excludeElements=` is a NO-OP on a decision**, the one
-exception to cycle 23's "every container that carries rows honours it"; simplex applied it and
+exception to cycle 23's "every container that carries rows honours it"; rex applied it and
 substituted `mediaCount`, leaving the client a decision with nothing to play.
 
 ---
 
-**The Dashboard's statistics endpoints are a query surface, and simplex implemented none of
+**The Dashboard's statistics endpoints are a query surface, and rex implemented none of
 it.** Four findings, each measured on kids and zen on all three of `bandwidth`, `media` and
 `resources`:
 
 **A `timespan` the server does not KEEP is an empty 200**, not the nearest bucket. Each endpoint
 stores its own set — bandwidth `0 1 2 3 4 6`, media `0 1 2 3 4`, resources `6` — and 5, 7, 8, 9,
-10, 99, -1 and 007 each answer `size 0` on both references. simplex ran
+10, 99, -1 and 007 each answer `size 0` on both references. rex ran
 `TIMESPANS.get(int(timespan), 1)`, which falls back to the ONE-SECOND bucket, so every unstored
 value answered the live per-second series **relabelled** with the asked-for window: invented rows
 for a window the server has no data for. The client's own enum names 5 ("Minutes"), so it is
@@ -6703,17 +6703,17 @@ nothing there and the series everywhere else.
 answers no rows at all) and `1.5`, `abc`, an empty value and `+1` are 400s — **even where the
 value does nothing**, which is the same shape cycle 23 found on `/children`. **`sort=` is a real
 ordering** validated against a per-endpoint key list, and `metadataType` is NOT a media key,
-which is the one that looks like it should be. simplex answered 200 to every value of both and
+which is the one that looks like it should be. rex answered 200 to every value of both and
 sorted by none.
 
 **And the `at` family is four operators and only four**: `at>` returns the `>=` set, `at<` the
 `<=` set — the strict forms are not implemented at all — `at=` is exact, and `at>=`, `at<=` and
 `at!=` are unknown keys that answer every row. The hunt reported `at!=` as the complement;
 driven against the true counts on both references (175 rows on kids, 153 on zen) it answers all
-of them, so it is ignored like the other two. simplex read `at>` or `at>=` and applied `>=` and
+of them, so it is ignored like the other two. rex read `at>` or `at>=` and applied `>=` and
 ignored the rest.
 
-**Neither `/status/sessions` nor `/statistics/{which}` is a PREFIX.** Nine paths simplex
+**Neither `/status/sessions` nor `/statistics/{which}` is a PREFIX.** Nine paths rex
 answered 200 — `/status/sessionsfoo`, `/status/sessions/zzz`, `/status/sessions/1`,
 `/status/sessions/background/zzz`, `/status/sessions/history/all/zzz`,
 `/status/sessions/history/all/1/2`, and an extra segment after each statistics leaf — are 404s
@@ -6746,8 +6746,8 @@ whole of it: the same session beating a DIFFERENT row is not armed.
 own log says "Denying access due to session lacking decision for transcode of key
 /library/metadata/18". The gate runs before the encoder question: it is a 400 on every
 protocol and every leaf of the start family, and a transcode decision for that session turns
-the same `start.m3u8` into a 200. simplex answered its "no transcoder" 404 to everything,
-which reads to a client as a missing endpoint rather than a refused request. What simplex
+the same `start.m3u8` into a 200. rex answered its "no transcoder" 404 to everything,
+which reads to a client as a missing endpoint rather than a refused request. What rex
 answers once a decision exists is still that 404 — it has no encoder — and that is recorded
 rather than modelled, because the reference's own answer there depends on what it can convert:
 a DASH `start.mpd` is a 404 on the copy where the same session's `start.m3u8` is a 200.
@@ -6756,7 +6756,7 @@ a DASH `start.mpd` is a 404 on the copy where the same session's `start.m3u8` is
 
 **A list's unmatch never reached a read.** `PUT /library/metadata/{collection}/unmatch` has
 set `guid` to `local://{rk}` since cycle 23, and `_collection_row` re-mints
-`collection://simplex-{rk}` on every read, so the write landed in the stored dict and the row a
+`collection://rex-{rk}` on every read, so the write landed in the stored dict and the row a
 client sees never changed. Textbook class C: the rule was recorded, the line implementing it
 existed, and it wrote into a copy. What made it hard to see is that the stored dict is also
 what the frame-count gate reads, so everything on the notification socket said the unmatch had
@@ -6772,7 +6772,7 @@ with the per-user state block staying in the slot `ratingCount` vacated (after `
 `thumb`), measured with a rating and an offset on the row. **And the activity a collection's
 refresh and unmatch push ENDS at 100**, not at 49 — 49 is the progress of its own `updated`
 frame, left in the dict, so the Dashboard's bar stopped there and then vanished. A playlist
-pushes no activity at all, which simplex already had.
+pushes no activity at all, which rex already had.
 
 ---
 
@@ -6790,7 +6790,7 @@ had explicitly removed. Home's On Deck drops the row whatever the type, which is
 
 ---
 
-**A decision row keeps its `summary`.** simplex popped it for movies, a rule fitted to movie 1
+**A decision row keeps its `summary`.** rex popped it for movies, a rule fitted to movie 1
 — the one row on the copy whose summary is the EMPTY STRING. The attribute was absent there for
 a different reason entirely. Re-measured over four movies with real summaries and two episodes:
 the row carries it, whatever the type. Class B, refuted by rows that can disagree and do.
@@ -6802,7 +6802,7 @@ an uncontended socket, across a 22-task run and a 12-task one, identical frame f
 `butler` activity pushes `updated` at 100 for the task just finished and then `updated` at
 `round(100 * n / (n + 1))` for the queue — 50, 67, 75, 80, 83, 86, 88, 89, 90, 91, 92, 92, 93,
 93, 94, 94, 94, 95, 95, 95, 95 for 22 tasks — with no step after the last one. A run of N
-pushes N `updated 100` frames and N-1 steps before its `ended`. simplex pushed a single
+pushes N `updated 100` frames and N-1 steps before its `ended`. rex pushed a single
 `updated 100` for the whole run, so the Dashboard's butler bar sat at -1 and then jumped to
 done however many tasks were running. A fraction that approaches 100 without reaching it is the
 shape of a queue whose length is not known in advance, which is also why the last task has no
@@ -6811,17 +6811,17 @@ step.
 Two of the three task shapes were in the wrong order. **`CleanOldBundles` interleaves its two
 messages with its own activity's phases** — "cleaned N media bundles" between the media group
 and `Analyzing metadata bundles`, "cleaned N metadata bundles" between the last step and the
-`ended` — where simplex pushed both after the activity had ended, reporting the media bundles
+`ended` — where rex pushed both after the activity had ended, reporting the media bundles
 after it had moved on to the metadata ones. **And `RefreshLibraries` reports BEFORE it scans**:
 the message goes out, the wrapper steps to 100 and ends, and only then does the first
 `library.update.section` frame appear. The scan is work the task queues, not work it waits for;
-simplex ran it inline and held the wrapper open for the whole scan.
+rex ran it inline and held the wrapper open for the whole scan.
 
 **`POST /butler` runs only what is DUE, and that is recorded rather than emulated.** The copy
 ran 22 of its 23 tasks on a fresh reset — `RefreshLibraries`, run by hand a moment earlier, was
 skipped — and an immediate second POST ran 12. No row of `GET /butler` carries a last-run or a
 next-run time, so which tasks are due is not observable from the surface, and two runs cannot
-separate "its interval has not elapsed" from "it found nothing to do". simplex runs every
+separate "its interval has not elapsed" from "it found nothing to do". rex runs every
 enabled task. What is refuted, 2 of 2, is cycle 23's reading that a second POST is one
 `backgroundProcessingQueue` frame and nothing else: it is a full run of its own.
 
@@ -6864,7 +6864,7 @@ the only known contradiction of that table, which is why it gets a marker rather
 
 **And a revalidation closed an entry rather than opening one.** §3.3 carried the collection and
 playlist `/refresh` and `/unmatch` FRAME sequences as measured-but-unimplemented. Driven side
-by side against the copy this cycle, simplex reproduces all four exactly, frame for frame,
+by side against the copy this cycle, rex reproduces all four exactly, frame for frame,
 including the `state 2` / `metadataState: matching` opener and the guid gate that turns a
 collection's refresh from three frames into eight. Cycle 23 built them; what was missing was
 the `ended` frame's 100 and the guid reaching a read, both of which this cycle fixed.
@@ -6875,19 +6875,19 @@ the `ended` frame's 100 and the guid reaching a read, both of which this cycle f
   23 tasks on a fresh reset (`RefreshLibraries`, run by hand a moment earlier, was skipped) and
   12 on an immediate second POST. The mechanism is invisible from the surface — no row of
   `GET /butler` carries a last-run or a next-run time — and two runs cannot separate "its
-  interval has not elapsed" from "it found nothing to do". simplex runs every enabled task.
+  interval has not elapsed" from "it found nothing to do". rex runs every enabled task.
 - **The reaper TICK behind the session cutoff.** Ten runs bracket it at 26 s or more against a
-  cutoff at or below 184 s. simplex prunes lazily on read, so its row goes at the cutoff
+  cutoff at or below 184 s. rex prunes lazily on read, so its row goes at the cutoff
   exactly; there is nothing on the surface that reports the tick, and modelling one would be a
   constant nobody measured.
-- **What simplex answers to a transcode START once a decision exists.** The 400 with no
-  decision is measured on every protocol and every leaf of the family. Past that gate simplex
+- **What rex answers to a transcode START once a decision exists.** The 400 with no
+  decision is measured on every protocol and every leaf of the family. Past that gate rex
   answers its own 404 — it has no encoder — and that is not the reference's answer and is not
   meant to be: the reference's own depends on what it can convert, its DASH `start.mpd` being a
   404 where the same session's `start.m3u8` is a 200.
 - **The session row's `Role` attribute order.** Its `Video`, `Media` and `Part` are plainly
   alphabetical; a `Role` there is `filter, actor, id, role, tag, tagKey, thumb` — alphabetical
-  after `filter`, which the plain rule does not explain and one element cannot settle. simplex
+  after `filter`, which the plain rule does not explain and one element cannot settle. rex
   sorts every element of the row alphabetically, so a session `Role` disagrees by one position.
 - **REFUTED, 2 of 2:** cycle 23's "a second `POST /butler` is one `backgroundProcessingQueue`
   frame and nothing else". It is a full run of its own, with its own wrapper and its own
@@ -6896,40 +6896,40 @@ the `ended` frame's 100 and the guid reaching a read, both of which this cycle f
 #### The twenty-seventh pass — the HTTP envelope below the API, and the serialiser dimension
 
 Two hunts and a driver round. The read hunt re-ran the founding instrument — a fresh
-official-client capture through the harness, replayed against simplex — and the write hunt swept
+official-client capture through the harness, replayed against rex — and the write hunt swept
 a dimension cycle 26 opened by accident: **which projections have a serialiser of their own, and
 what TYPE every JSON value is**. The driver spent its half below the API entirely, on the HTTP
 envelope that every one of those requests arrives in, which twenty-six cycles had taken from
 Python.
 
-**Six of this cycle's findings are in the request itself, and a real PMS refuses where simplex
+**Six of this cycle's findings are in the request itself, and a real PMS refuses where rex
 answered.** Bisected on kids (1.43.4) and zen (1.42.2), which agree to the byte on every one:
 
 - the **URL** is bounded at exactly **32768** bytes and 32769 is a 400 — the URL and not the
   request LINE, because the boundary does not move when the method does (GET, HEAD and DELETE
-  all break at the same length). simplex inherited Python's 64 KiB request-line limit, so every
+  all break at the same length). rex inherited Python's 64 KiB request-line limit, so every
   URL between 32 KiB and 64 KiB was a 200 where a real PMS refuses, and a longer one came back
   `414 Request-URI Too Long` — a status neither reference sends anywhere. A comma-joined
   `/library/metadata/<keys>` from a large play queue is the request that reaches this length in
   practice.
 - the **header caps are 1024 and 4096 bytes and 100 LINES**. The first two were BRACKETED in
   cycle 16 (1024 passes, 1100 fails) and are now bisected: 1024 and 4096 pass, 1025 and 4097 are
-  400s, so simplex's constants were right to the byte. The third is not a size at all —
+  400s, so rex's constants were right to the byte. The third is not a size at all —
   **HANDOVER 3.3's "~41 KB total" is REFUTED**: 100 header lines pass and the 101st is a 400
   whatever they weigh, and 200 KB of headers in fifty lines is a 200. The old figure is the same
-  cap measured with ~410-byte headers. simplex refused at a HUNDRED, one short, because Python's
+  cap measured with ~410-byte headers. rex refused at a HUNDRED, one short, because Python's
   reader counts the blank terminator line, and answered `431`.
 - **the request LINE has a grammar**, measured over nine malformed lines that both references
   answer identically: exactly `METHOD SP target SP HTTP/<digit>.<digit>` with CRLF endings. Two
   spaces, a trailing space, tab separators, asterisk-form (`OPTIONS *`) and LF-only endings are
-  each a **400**, and simplex answered **200** to all five. The two version digits are
-  unconstrained — `HTTP/2.0` and even `HTTP/9.9` are answered 200, where simplex sent Python's
+  each a **400**, and rex answered **200** to all five. The two version digits are
+  unconstrained — `HTTP/2.0` and even `HTTP/9.9` are answered 200, where rex sent Python's
   505 page — while `HTTP/1` with no minor is a 400. An HTTP/0.9 line with no version at all is
-  answered with a **full HTTP/1.1 response**; simplex wrote a bare body with no status line.
+  answered with a **full HTTP/1.1 response**; rex wrote a bare body with no status line.
   And a lower-case method (`get /identity HTTP/1.1`) gets **no response at all** on both
-  references, where simplex answered 500.
+  references, where rex answered 500.
 - **an unparseable `Content-Length` is ignored and a negative one is a 500.** `abc` is a 200 on
-  a GET on both references and on a POST on the copy, with no body read; `-1` is a 500. simplex
+  a GET on both references and on a POST on the copy, with no body read; `-1` is a 500. rex
   called `int()` on the raw header, so `abc` raised inside the handler thread and the socket
   closed with nothing written, and `-1` reached `rfile.read(-1)`, which blocks until the peer
   hangs up. Both read to a client as a server that hung up mid-request.
@@ -6938,19 +6938,19 @@ answered.** Bisected on kids (1.43.4) and zen (1.42.2), which agree to the byte 
 seven parameters — 77 requests, both references agreeing on every one. `minSize` and `upscale`
 are BOOLEANS (`0`, `1`, `01` and `+1` pass; `2`, `-1`, `100`, `1.5`, an empty value and `abc` are
 400s); `opacity` and `quality` take any integer, `-1` and `100` included, and refuse only a value
-that does not parse; `blur` is the same except that a negative one is a **500**. simplex took
+that does not parse; `blur` is the same except that a negative one is a **500**. rex took
 anything for all five, so a client sending a malformed tile URL got an image where a real PMS
 refuses the request. Not emulated and recorded instead: the 500s a real PMS answers for a width
 or height that scales the image to nothing (`width=1&height=100` on a 1000×1500 poster is a 500
 where `width=2` is a 200, and `height=-1` is a 200 where `width=-1` is a 500) — those depend on
-the image's own aspect ratio and on a resizer simplex does not have.
+the image's own aspect ratio and on a resizer rex does not have.
 
 **The session row's `Player` is the one element there that is not alphabetical, and its
 `profile` is not a constant.** Cycle 26 recorded a session `Role` as `filter, actor, id, role,
 tag, tagKey, thumb` and left it in §3.3 as the one element its alphabetical rule did not
 explain. Re-measured on the copy with a row carrying seven tag types, every one of them IS
 plainly alphabetical — `Role` is `filter, id, role, tag, tagKey, thumb`, and there is no `actor`
-attribute on a `Role` at all. **That entry is closed and simplex was already right.** What is
+attribute on a `Role` at all. **That entry is closed and rex was already right.** What is
 not alphabetical is `Player`: its string-valued attributes come first, alphabetically, and its
 non-string ones follow, alphabetically —
 
@@ -6974,19 +6974,19 @@ name is read from the header when the header is present, even when it is empty, 
 query otherwise; and the attribute is OMITTED when nothing matches.
 
 **A borrowed artwork field is DERIVED from its owner.** Cycle 25 measured the half where the
-field is already there and simplex built exactly that, which left three things stale, all
+field is already there and rex built exactly that, which left three things stale, all
 measured on the copy over a show poster pick, an episode and a season poster DELETE and a season
 poster pick, reading the show, both seasons and two episodes back after each:
 
 - clearing a row's own poster does not leave it with none — it falls back to its PARENT's, which
   is the same path its own `parentThumb` already names (season 7's `thumb` became the show's,
-  episode 8's became the season's). simplex dropped the field, so the tile drew nothing where a
+  episode 8's became the season's). rex dropped the field, so the tile drew nothing where a
   real PMS draws the parent's poster. Cycle 23's "the field gone" was measured on a MOVIE, which
   has no parent to borrow from.
 - a pick on a season **CREATES** `parentThumb` on episodes that had none. That was HANDOVER
   3.3's open question — "whether a cascade CREATES a borrowed artwork field" — and it does.
 - a pick on a show moves a BORROWING season's own `thumb` (kids' unmatched season 11 is such a
-  row) and every episode's own `art` to the new stamp. simplex moved `grandparentArt` and left
+  row) and every episode's own `art` to the new stamp. rex moved `grandparentArt` and left
   `art` at the old stamp, so the same image had two names at two versions on one row.
 
 And the other half, caught as a regression by the cycle-14 cascade check inside this cycle's own
@@ -6996,7 +6996,7 @@ patch: when the OWNER no longer has that artwork at all, the borrower's copy goe
 on the copy still carried `/library/metadata/6/art/<show stamp>` after its own poster was picked,
 and zen corroborates it at scale -- episode 11115 carries `art` naming its SEASON (11114) beside
 a `grandparentArt` naming the SHOW (11113) at a different stamp, so a borrowed field keeps the
-owner's path, stamp and all. simplex re-versioned `thumb`, `art` and `theme` onto the picking row
+owner's path, stamp and all. rex re-versioned `thumb`, `art` and `theme` onto the picking row
 whatever it owned, so a season that borrowed the show's backdrop came away claiming
 `/library/metadata/<season>/art/<stamp>` -- a path only the owner serves, which is cycle 16's
 "an artwork path is a 200 only on the row that OWNS the image" from the other side. The picked
@@ -7010,10 +7010,10 @@ them -- there is nothing to hand down.)
 JSON key order IS its XML order and cycle 22 swept 2,994 paths for attribute order; cycle 26
 then found `/status/sessions`, the one path neither sweep could reach. The write hunt swept
 45,436 (path, element, attribute) triples across 253 paths in both formats, three servers at a
-time, and reported only where kids and zen agree and simplex differs. Seven landed:
+time, and reported only where kids and zen agree and rex differs. Seven landed:
 
 - **`durationTotal` and `storageTotal` are JSON STRINGS** on `/library/sections/{id}/all?
-  includeStorage=1` — `"10031"` on kids, `"1440171"` and `"573936917"` on zen — where simplex
+  includeStorage=1` — `"10031"` on kids, `"1440171"` and `"573936917"` on zen — where rex
   sent integers. The XML is identical either way, which is why cycle 19 recorded that the pair
   exists here and not what type it is. A client whose model declares them `String` rejects the
   whole grid row whenever the option is on.
@@ -7021,25 +7021,25 @@ time, and reported only where kids and zen agree and simplex differs. Seven land
   `MediaType`.** Cycle 21 recorded the opposite — a `MediaType` per media type and no `Language`
   — and that is true of the LEGACY plug-in agents alone: `com.plexapp.agents.imdb` is 33
   Language + 1 MediaType bare and 33 + 0 typed, while all six `tv.plex.agents.*` rows are 45 + 0
-  in BOTH forms, identically on 1.43.4 and 1.42.2. simplex holds the modern agents only, so it
+  in BOTH forms, identically on 1.43.4 and 1.42.2. rex holds the modern agents only, so it
   stripped exactly the rows the Agents page reads to build each agent's language selector and
   handed it a lone `MediaType`.
-- **a modern `Agent` row leads `identifier, name, hasPrefs, id`**, where simplex emitted its
+- **a modern `Agent` row leads `identifier, name, hasPrefs, id`**, where rex emitted its
   builder's dict order. Cycle 19 parked "the Agent element's attribute order" on the LEGACY
-  rows' own pairs (`hasPrefs < identifier < primary`), which the rows simplex actually emits do
+  rows' own pairs (`hasPrefs < identifier < primary`), which the rows rex actually emits do
   not carry.
 - **`?includeDetails=1` pages its rows as ONE sequence.** 20 `Directory` + 1 `Type` + 8
   `FieldType` = 29, so a 20-row window is `size=20 totalSize=29 offset=0` and `Start=20` hands
-  back the Type and the eight FieldTypes as rows 20–28. simplex's generic pager takes
+  back the Type and the eight FieldTypes as rows 20–28. rex's generic pager takes
   `totalSize` from the longest list, so it reported `totalSize=20` beside a `size` of 29 and
   answered nothing at all past the twentieth row.
 - **a `Sort` row leads with `active, activeDirection`** and a **`Hub` puts `random` before
-  `style`**. Neither element had a bucket in `_ATTR_ORDER`, so simplex emitted the flags it adds
+  `style`**. Neither element had a bucket in `_ATTR_ORDER`, so rex emitted the flags it adds
   last, last.
 - **the SINGLE history read is a third projection with an order of its own** — `historyKey,
   librarySectionID, title, [grandparentTitle,] type, [index, parentIndex,]
   originallyAvailableAt, viewedAt, accountID, deviceID, viewType`. Cycle 18 measured the FIELD
-  SET and simplex built it correctly, then `_split` re-sorted it as an ordinary `Video[movie]`.
+  SET and rex built it correctly, then `_split` re-sorted it as an ordinary `Video[movie]`.
 - **three more empty elements are written PAIRED**: an empty `Meta/Type` row, an empty `Related`
   block, and the `/media/providers` `Home` `Directory`, which carries no children at all and is
   `<Directory hubKey="/hubs" title="Home"></Directory>` on both references while every other
@@ -7053,7 +7053,7 @@ passes -- the filter bar and sort menu opened *and used* on both library types, 
 all four row types, the Edit dialog and its four tabs, search typed one keystroke at a time, the
 Dashboard, fifteen settings panes, the playlist and collection pages -- 603 GET flows, 385 unique
 server requests, 122 after `replay.py`'s dedup. Replayed at the reference itself first: **121 of
-122 clean**, the one difference live bandwidth drift, so the tool is sound. Against simplex: 17
+122 clean**, the one difference live bandwidth drift, so the tool is sound. Against rex: 17
 clean, 105 differing, 101 of them catalog content or a 1.43.4-vs-1.42.2 version difference and
 one already recorded. The three that were real:
 
@@ -7066,9 +7066,9 @@ one already recorded. The three that were real:
   library to answer for in the first place.
 - **`/media/providers/metadata` and `/media/providers/metadata/group` were never routed.** The
   Settings -> Metadata Agents pane reads both immediately before `/system/agents?mediaType=`,
-  and both are populated 200s on kids (7 and 6 rows) and zen (4 and 4) where simplex answered
+  and both are populated 200s on kids (7 and 6 rows) and zen (4 and 4) where rex answered
   404. They are the MODERN agent-provider tables -- a different surface from `/system/agents`,
-  whose legacy half is deliberately not implemented -- so simplex now answers them from the four
+  whose legacy half is deliberately not implemented -- so rex now answers them from the four
   modern agents it already holds, in zen's shape: a `MetadataType` child per media type the
   provider serves, `tv.plex.agents.none` carrying an EMPTY `uri`, and a group row per provider.
 - **No person tag carried a `tagKey`.** Every `Director`, `Writer`, `Role` and `Producer` on a
@@ -7076,7 +7076,7 @@ one already recorded. The three that were real:
   `/library/tags?type=4|5|6|7`; `Genre` and `Country` carry none and a `Collection` carries a
   `guid` instead. The web client's Cast & Crew link builder reads
   `/library/people/${tag.tagKey}` for any server that is not plex.tv's cloud, so **every person
-  tile on every preplay page linked to `/library/people/undefined`**. simplex has no source for
+  tile on every preplay page linked to `/library/people/undefined`**. rex has no source for
   plex.tv's own person ids, so the value is MINTED -- the first 24 hex of a sha1 of the name,
   deterministic and stable -- and `/library/people/{key}` resolves the minted form exactly as a
   real PMS resolves both the numeric id and the `tagKey`. The shape is measured; the value is a
@@ -7088,35 +7088,35 @@ MOST RECENT view, descending, not on the ratingKey.** zen's four seven-play epis
 1788088000 -- which is neither ratingKey nor `addedAt` order, and the row does not carry the
 number (`lastViewedAt` is absent on every one of them). It is the HISTORY's own time, which is
 the same place `globalViewCount` comes from: 12, 11, 9, 9, 7, 7, 7, 7 against 12, 11, 9, 9, 7, 7,
-7, 7 history rows. kids agrees on its three movies. simplex sorted on `(-plays, ratingKey)`, so
+7, 7 history rows. kids agrees on its three movies. rex sorted on `(-plays, ratingKey)`, so
 a tied group came back least-recently-watched first.
 
 The same hunt answered a question §7 has carried since cycle 7: **all nine `conformance.py`
-failures are one cause** -- the Range reads on `Part.key` answering `502 simplex: debrid resolve
+failures are one cause** -- the Range reads on `Part.key` answering `502 rex: debrid resolve
 failed`, because the fixture's Real-Debrid links are account-scoped and the harness runs with
 `RD_TOKEN=dummy`. None is a python-plexapi limitation and none is a server difference; sections
 1-7 and 9 pass 29 of 29. And a three-way python-plexapi sweep (463 probes) found **zero** probes
-that error on kids and not on simplex.
+that error on kids and not on rex.
 
 ### Measured and not acted on
 
 - **A lower-case method holds the connection** on both references until their own 20-second idle
-  close. simplex closes it at once — the same silence, sooner — because holding a thread for
+  close. rex closes it at once — the same silence, sooner — because holding a thread for
   twenty seconds per malformed request line is a self-inflicted denial of service.
   **Overturned 2026-09-30:** a complete lower-case line is closed AT ONCE on kids (1.43.4) and
   plexscratch42 (1.42.2), and the check runs before every other rule of the line (see
   protocol-traps.md); only an unterminated one is held.
-- **The `width`/`height` 500s of `/photo/:/transcode`** (above): a resizer simplex does not have.
+- **The `width`/`height` 500s of `/photo/:/transcode`** (above): a resizer rex does not have.
 - **`PROFILE_NAMES` is single-witness by construction.** Neither read-only reference can be given
-  a playback session, so the copy (1.43.4) is the only instrument, and simplex reports 1.42.2.
+  a playback session, so the copy (1.43.4) is the only instrument, and rex reports 1.42.2.
 - **The `Player` string/non-string split has a second model that fits** the same fifteen
   attributes: a fixed bucket list. The type split is the one that also answers for an attribute
   neither witness carried.
 - **Conditional request headers are ignored by a real PMS.** A part read carries an `ETag` and a
   `Last-Modified`, and `If-None-Match`, `If-Modified-Since`, `If-Range` and `If-Match` all answer
-  the same 206 — never a 304 or a 412. Measured on kids; simplex does not implement them either,
+  the same 206 — never a 304 or a 412. Measured on kids; rex does not implement them either,
   so there is nothing to change. Recorded so the dimension is not re-swept.
-- **`Part.accessible`/`exists` are gated on `checkFiles=1`** on both references and simplex sends
+- **`Part.accessible`/`exists` are gated on `checkFiles=1`** on both references and rex sends
   them always. Re-confirmed and left alone: it is the cycles-1–6 deliberate deviation.
 - **REFUTED:** HANDOVER 3.3's "~41 KB" total header limit (above) and cycle 26's session `Role`
   attribute order (above).
@@ -7125,7 +7125,7 @@ that error on kids and not on simplex.
   which is also the Duplicates split. Asking for a VALUE separates them: on zen's shows
   `mediaCount=2` is 30, `=3` is 10 and `>>2` is 17 against 44 for `>>1` -- under a max-over-leaves
   reading those three are disjoint and sum to 47, more shows than have a duplicated leaf at all.
-  The per-leaf "any leaf matches" reading simplex already implements is the one that fits. No
+  The per-leaf "any leaf matches" reading rex already implements is the one that fits. No
   code change; the entry is closed.
 - **Three surfaces swept three-way this cycle with NO difference**, recorded so they are not
   swept again: `/library/tags`'s `type=` grammar (18 values -- any integer including `0`, `-1`,
@@ -7160,7 +7160,7 @@ case for edge case, that is right for `/hubs/sections/{id}` and **wrong for four
   reference), and a **comma list** selects several. That last form is not academic: Plex Web's own
   Home saga builds every hubs request as
   `{contentDirectoryID: pinned.join(","), pinnedContentDirectoryID, includeMeta, excludeFields}`,
-  so on simplex an unpinned library's Continue Watching and On Deck rows leaked onto Home and the
+  so on rex an unpinned library's Continue Watching and On Deck rows leaked onto Home and the
   library filter did nothing at all.
 - `/hubs/continueWatching` and its `/items` leaf **validate** the parameter, where
   `/hubs/promoted` takes anything: at least one comma-separated member must be a POSITIVE INTEGER.
@@ -7169,7 +7169,7 @@ case for edge case, that is right for `/hubs/sections/{id}` and **wrong for four
 - `excludeContinueWatching` is true **exactly when the value parses as the integer 1**: `1` and
   `01` drop the shelves and `0`, `00`, `2`, `10`, `1.5`, `true`, ` 1`, `abc` and an empty value do
   not. It drops **both** `home.continue` and `home.ondeck`, on `/hubs/promoted` and on the bare
-  `/hubs` alike. simplex compared the raw string with `"1"`, dropped only `home.continue`, and
+  `/hubs` alike. rex compared the raw string with `"1"`, dropped only `home.continue`, and
   ignored the parameter on `/hubs` entirely. No other `exclude<Name>=1` spelling does anything.
 
 **A shelf's rows are the head of its own `key`.** Measured at `count=40` across both references:
@@ -7179,11 +7179,11 @@ that listing's order, byte for byte — and the three that do not are the ones a
 
 - `movie.topunwatched.1`'s 30 rows sit at positions 26 to 579 of its 583-row key listing and are
   not monotonic; `tv.startwatching.2` and `tv.toprated.2` are the same. A **random shelf is a
-  random SAMPLE of its whole key set, in random order**, not the head of it. simplex advertised
+  random SAMPLE of its whole key set, in random order**, not the head of it. rex advertised
   the flag and answered the deterministic sorted head on every request, so "Top Unwatched" would
   have shown the same six titles for ever. Its own fixture is too small to see it — a sample of a
   two-row set is the set — which is why the rule is zen's.
-- simplex's **Recently Watched** shelf broke the head-of-key rule outright. The key it publishes
+- rex's **Recently Watched** shelf broke the head-of-key rule outright. The key it publishes
   is `?sort=lastViewedAt:desc&unwatched=0&viewOffset=0` and its builder honoured neither clause,
   so a row left in progress sat on the Recommended tab's shelf and then vanished when the user
   clicked that shelf's own See All chevron.
@@ -7203,7 +7203,7 @@ because one season is not two; and two or more new seasons become the SHOW (Frie
 Stargate SG-1, Fringe). A parent row here is **dated by its NEWEST leaf** — kids' Firefly carries
 04:24:45, its last episode's stamp, against its own 04:27:37, and 14 of 14 zen season rows carry
 `max(child.addedAt)` exactly — which is the OPPOSITE aggregation from `/library/recentlyAdded`,
-where cycle 25's "dated by the earliest episode" holds and is re-confirmed here. simplex filtered
+where cycle 25's "dated by the earliest episode" holds and is re-confirmed here. rex filtered
 `type == "show"`, so a new episode or a new season of an existing show was invisible on Home and
 the shelf only ever changed when a whole show arrived.
 
@@ -7217,12 +7217,12 @@ section": the same row fetched through the section grid is the light one, so it 
 `/library/onDeck` adds `allowSync`, `librarySectionUUID` and `lastViewedAt` to it and keeps
 `librarySectionKey`; `/hubs/home/onDeck` keeps the key and carries no UUID.
 
-That is **1.42.2's** answer, which is the build simplex reports. plexscratch (1.43.4) answers the
+That is **1.42.2's** answer, which is the build rex reports. plexscratch (1.43.4) answers the
 same row **minus `librarySectionKey`, `Guid`, `Rating` and `Producer`, plus `studio`** — a sixth
 per-version difference on the surface, and the reason the older "light" note could never be
-reconciled: the two references disagree, and only zen speaks for simplex's own version.
+reconciled: the two references disagree, and only zen speaks for rex's own version.
 
-**Two leaves were not what simplex thought they were.**
+**Two leaves were not what rex thought they were.**
 
 - `/clients/profiles` is **not** the hosted-client list. It is the server's own CLIENT PROFILE
   catalogue — one `Profile` row per file in its `Resources/Profiles` directory, the same 78 names
@@ -7230,14 +7230,14 @@ reconciled: the two references disagree, and only zen speaks for simplex's own v
   `?type=42`. The bare form, `type=0` and `type=00` answer all 78; `type=42` (`LOCAL` in the
   client's own enum `{NORMAL:0, LOCAL:42, CLOUD:43}`) and `042` answer **seven** (Android, iOS,
   Universal Mobile, Universal TV, Windows Phone, Windows, Xbox One); every other value, an empty
-  one included, is a **400**; an extra segment is a 404 and a trailing slash a 200. simplex
+  one included, is a **400**; an extra segment is a 404 and a trailing slash a 200. rex
   answered an empty container to all of them, on the reading that it hosts no client — which is
   true of `/clients` and not of this.
 - the `/collections` leaf is the **`/all` listing with a default `type=18`**, and it runs the same
   query. A `type=` the library holds answers those rows instead (`type=1` on a movie library is
   its movies), and the grammar is the grid's: an unknown `sort` key, an unparseable `type` and an
   unparseable `limit` are each a **500**, while `subtype`, `smart` and an empty `sort` are
-  accepted and ignored. simplex answered 200 and `size 0` to every one of those.
+  accepted and ignored. rex answered 200 and `size 0` to every one of those.
 
 **The search tag row's identity was wrong in five ways.** All of them are one row shape, measured
 on kids and zen and — for the collection half — on plexscratch, which now holds collections and
@@ -7245,23 +7245,23 @@ playlists that neither read-only reference has:
 
 - **a tag hit is per LIBRARY, not per NAME.** kids' `drama` answers TWO `Drama` rows, one for each
   library holding the genre, each naming its own `librarySectionID`, `key` and `count` against the
-  same tag id; zen's `comedy` answers 590 and 179 the same way. simplex keyed the hits by name
+  same tag id; zen's `comedy` answers 590 and 179 the same way. rex keyed the hits by name
   alone, so a genre both libraries hold was ONE row naming whichever library the catalog reached
   first, and the other library's filter link never appeared on the search page.
 - **the `count` is the size of the listing the row's own `key` names** — the library's own
-  top-level type, 3 of 3 rows on zen and kids. simplex counted every row carrying the tag, so a
+  top-level type, 3 of 3 rows on zen and kids. rex counted every row carrying the tag, so a
   catalog whose episodes carry a genre advertised a count its own link could not answer.
 - **a person row carries its 24-hex `tagKey`**, directly after `tagType` and before the `thumb`,
   with `count` LAST of the three; a `Genre` row carries none, as it carries none on a detail row.
-  This is cycle 27's finding one surface further out: simplex minted the key, resolved it at
+  This is cycle 27's finding one surface further out: rex minted the key, resolved it at
   `/library/people/{key}`, and left it off the search hit, so clicking an actor found by the
   search box went to `/library/people/undefined`.
 - **the FLAT form drops the reason triple and the row's own score.** A `/library/search` tag row
   is the `/hubs/search` row without `reason`, `reasonID`, `reasonTitle` and `score` — there the
   score sits on the `SearchResult` wrapper alone, as a NUMBER, where the hubs row carries it
-  inside as a five-decimal string. simplex answered the hubs row verbatim on the flat endpoint.
+  inside as a five-decimal string. rex answered the hubs row verbatim on the flat endpoint.
 - **that wrapper score prints five decimals in XML** (`score="0.52000"`, `score="0.93095"`) and
-  the same value as a plain number in JSON. simplex wrote Python's own `"0.32"` — and XML is the
+  the same value as a plain number in JSON. rex wrote Python's own `"0.32"` — and XML is the
   default format, so that is the wire every TV and mobile client reads.
 
 **A collection IS found by `/library/search`.** Cycle 15 recorded the opposite, measured on a copy
@@ -7270,7 +7270,7 @@ that held no collection at all, so the absence was the fixture's and not a rule.
 rows there as well as in the `/hubs/search` collection hub. And `contentDirectoryID` **scopes
 every row family**, each by its own library: kids' `drama` keeps one `Drama` row at `=1` and the
 other library's at `=2`, and plexscratch's `c26act` keeps three collections and a movie playlist
-at `=1` and empties both at `=2`, a playlist going with its MEMBERS' library. simplex compared the
+at `=1` and empties both at `=2`, a playlist going with its MEMBERS' library. rex compared the
 tag ENTRIES — `{tag, rows, row}` triples that carry no `librarySectionID` at all — so a scoped
 search answered NO tag rows for either library, while its collections were not scoped at all and
 survived a scope to the other library.
@@ -7291,10 +7291,10 @@ survived a scope to the other library.
   follows `librarySectionType` where the metadata half follows the library's own kind.
 - `limit=` caps the **whole result list**, not each hub: `limit=3` answers three rows of the ten a
   bare zen query answers, and kids' `firefly` answers the show and two of its three episodes.
-  simplex capped each hub separately, so `limit=3` on a query matching two kinds answered six. And
+  rex capped each hub separately, so `limit=3` on a query matching two kinds answered six. And
   it refuses in TWO ways, as `/hubs/search?limit=` does: a value it cannot parse — `abc`, an empty
   one, `1.5` — is a **400**, and one that parses but is not a positive count — `0`, `-1` — is a
-  **500**; `01` is fine. simplex answered 500, 200, 500, 200 and 200 to those five.
+  **500**; `01` is fine. rex answered 500, 200, 500, 200 and 200 to those five.
 
 **Measured and deliberately not emulated.** The flat list's ORDER is the reference's own relevance
 engine: for `comedy` zen answers movie, show, episode and then the two genre rows, which is
@@ -7302,13 +7302,13 @@ neither the hub base order (`show` first) nor a global score sort (the genre row
 come last), while for `c26act` plexscratch answers the collection rows before the playlist rows at
 an identical 0.52. Related: a fuzzy person row scoring 0.32 is DROPPED from the bare list and kept
 when `searchTypes=people` asks for it alone (kids and plexscratch, `sintel` → Katherine Kendall).
-Both need Plex's scorer, which simplex cannot reproduce and does not pretend to; its own hub order
+Both need Plex's scorer, which rex cannot reproduce and does not pretend to; its own hub order
 stands, and the scores stay the three-band model cycle 15 recorded. Hunt A's Related-shelf
 composition is held out for a different reason: **kids and zen disagree** about which shelves a
 preplay page carries, so there is no rule to implement — the same test the three-server method
 applies everywhere.
 
-#### The twenty-ninth pass — the bytes below the container, a row type simplex has never held, and the artwork derivation finished
+#### The twenty-ninth pass — the bytes below the container, a row type rex has never held, and the artwork derivation finished
 
 Two hunts and a driver round: **nineteen findings**, and for the first time in the programme the
 driver's own revalidation step produced more of them than either hunt.
@@ -7326,7 +7326,7 @@ show, reading the show, both seasons and one episode of each back after every on
 - clearing the SHOW's `art` removes it from both seasons AND from every episode, taking the
   episodes' `grandparentArt` with it; picking one back puts all of them in the same read. So a
   borrowed field is DERIVED and is RE-CREATED, which is the half cycle 27 could only infer --
-  simplex's `_follow_artwork` returns early unless the child already names the owner, so a leaf
+  rex's `_follow_artwork` returns early unless the child already names the owner, so a leaf
   that lost its `art` never got one back.
 - uploading an `art` to ONE season makes that season the owner: all three of its episodes'
   `art` switched to `/library/metadata/7/art/<stamp>` while their `grandparentArt` went on
@@ -7337,15 +7337,15 @@ show, reading the show, both seasons and one episode of each back after every on
 - clearing a season's own `art` drops it back to the SHOW's path, its episodes with it, and the
   bare `GET /library/metadata/{season}/art` becomes a 404: `art` falls back exactly as cycle 27
   measured `thumb` does.
-- an artwork UPLOAD cascades like a pick -- simplex's upload path set the row's two fields, moved
+- an artwork UPLOAD cascades like a pick -- rex's upload path set the row's two fields, moved
   `updatedAt`, pushed its frame and never called the cascade at all, so every child kept the old
   stamp and a client that caches on it (which is what the stamp is for) never refetched.
 - and both write paths re-version the OTHER field only when the row OWNS it. A poster upload on a
   season that borrowed both fields left its `art` naming the show untouched; so did clearing that
-  season's thumb. simplex rewrote the borrowed path as the row's own in both places -- a row
+  season's thumb. rex rewrote the borrowed path as the row's own in both places -- a row
   claiming an image the server has none of, which the derivation then handed to every episode.
 
-One of the six is simplex's own: `catalog.items` is keyed by INTEGER ratingKey and every row
+One of the six is rex's own: `catalog.items` is keyed by INTEGER ratingKey and every row
 carries its key as a STRING, so the cascade's `items.get(row["parentRatingKey"])` was always
 None. A SEASON cascade could therefore not see its show, read the season as owning nothing, and
 STRIPPED `art` from every episode under it. It shipped inside this cycle's own second patch and
@@ -7354,7 +7354,7 @@ at a time against its own parent.
 
 **Two stale claims closed by re-measurement.** HANDOVER 3.3 and section 8 both held that the
 collection's and playlist's `/refresh` and `/unmatch` FRAME sequences were measured and not
-implemented. Driven again on plexscratch with a listener open, simplex reproduces all four frame
+implemented. Driven again on plexscratch with a listener open, rex reproduces all four frame
 for frame: a collection's refresh is 3 frames on an agent guid and 8 once a `local://` guid makes
 it real (`2 matching`, `5`, `3 queued`, activity `started -1`, `updated 49`, `3 processing`,
 `ended 100`, `5`), its unmatch 7 of them, a playlist's refresh 4 and its unmatch 2, every row
@@ -7375,17 +7375,17 @@ other across write kinds, is measuring it.
 asset and a media part, and the envelope around them. Twenty-eight cycles had measured containers;
 only cycle 16 had ever looked below one. Eleven findings, every one on both references:
 
-- **`/photo/:/transcode` refuses five `url=` shapes simplex answered with a grey tile.** The
+- **`/photo/:/transcode` refuses five `url=` shapes rex answered with a grey tile.** The
   dimensions are validated first (`url=&width=abc` is a 400), and then the url: a missing `url=` is
   a 400, an EMPTY one a 404, an item artwork path of a row it holds the image, of a row it does not
   hold a 404, a server path that is not artwork (`/identity`, a grid) a **500**, and a url with a
-  SCHEME or no leading slash (`file://`, `upload://`, `library/metadata/…`) a 404. simplex's
+  SCHEME or no leading slash (`file://`, `upload://`, `library/metadata/…`) a 404. rex's
   resolver matched one regex and fell through to a generated grey PNG carrying
   `Cache-Control: max-age=259200`, so a browser kept the grey square for three days — CLAUDE.md's
   own trap ("a 404 lets the client draw its own placeholder where a grey 200 tile gets cached")
   read from the other side, five doors after cycle 14 closed the first.
 - **The transcoder answers exactly what the direct path answers.** Over a row that BORROWS its
-  `art`, both are 404s on both references; simplex resolved through `artwork_for`, which falls back
+  `art`, both are 404s on both references; rex resolved through `artwork_for`, which falls back
   to the parent's image, so the transcoder served a picture the direct path refuses.
 - **`/:/resources/` is SEVEN names, and it ignores `width`/`height`.** kids and zen serve
   byte-identical bytes for `movie.png`, `show.png`, `artist.png`, `photo.png` (300×300 PNG) and
@@ -7398,26 +7398,26 @@ only cycle 16 had ever looked below one. Eleven findings, every one on both refe
   all 54: `0`, `1`, `00`, `01`, `000`, `0000001`, `+1`, `+0`, `+01` pass and `2`, `+2`, `-1`, `+`,
   `++1`, `1+`, `1.5`, `true`, an empty value and either surrounding space are 400s. Cycle 23's
   four-value list came from a ten-value sweep with no sign in it. **`download=` is one of them**,
-  and simplex compared the raw string with `"1"`/`"true"`, so `download=true` was a download where
+  and rex compared the raw string with `"1"`/`"true"`, so `download=true` was a download where
   a real PMS refuses the read and `download=2` streamed the media un-dispositioned.
 - **A 416 is an error response, not the resource with no bytes.** The reference answers a 129-byte
   HTML page with `Content-Type: text/html` and neither `Accept-Ranges` nor `Content-Range`, on
-  eight body paths and three container paths; simplex answered `Content-Length: 0` with the
+  eight body paths and three container paths; rex answered `Content-Length: 0` with the
   ORIGINAL media type and the full success header set, handing a client an `image/jpeg` of zero
-  bytes. simplex keeps its own text/plain sentence (cycle 1's deliberate deviation) and now sends a
+  bytes. rex keeps its own text/plain sentence (cycle 1's deliberate deviation) and now sends a
   body, a plain type and no `Accept-Ranges`.
 - **Under `/web/*`, a DIRECTORY is an empty `application/octet-stream` 200**, a trailing slash
-  after a file is a 404, a path that escapes the root is a **400** (simplex answered 403, a status
+  after a file is a 404, a path that escapes the root is a **400** (rex answered 403, a status
   that is nowhere else on the surface), and `.woff`/`.woff2` are `application/octet-stream` like
-  the `.ico` cycle 16 already found. simplex substituted `index.html` for a directory, so every
+  the `.ico` cycle 16 already found. rex substituted `index.html` for a directory, so every
   directory under the bundle served the whole client.
 - **`X-Plex-Local-Asset: 1` marks an ITEM's own artwork and nothing else** — absent from a
   section's `/composite/{v}`, from `/:/resources/*`, from `/web/*` and from a part read, where
-  simplex put it on every image it sent.
+  rex put it on every image it sent.
 - **The `Content-Disposition` `filename*` escaper is "unreserved minus the dot"**: `.` comes out
   `%2E` and `+` `%2B`, while `-` is left alone. It is the escaper CLAUDE.md already records for a
   local artwork candidate's `/file?url=`, so the rule generalises; `urllib.parse.quote` keeps the
-  dot, so simplex sent `1080p.mkv` where a real PMS sends `1080p%2Emkv`.
+  dot, so rex sent `1080p.mkv` where a real PMS sends `1080p%2Emkv`.
 
 **Territory B swept EXTRAS and the `clip` row** — and corrected the brief it was given: kids holds
 one extra after all (`/library/sections/1/extras/all` is `size 1`, an IVA trailer for Big Buck
@@ -7429,15 +7429,15 @@ Bunny), so the territory had two witnesses rather than one. Four findings plus a
   ACCEPTS: `duration`, `resolution`, `mediaSize` and `file` are 500s here and 200s on `/all`, so
   the media columns are the leaf's own refusal rather than the column's. `extraType=`, `title=`,
   `audioLanguage=` and a good `limit` are 200s, and on zen they really constrain (1,264 rows at
-  `extraType=1` of 3,580). simplex built the leaf in cycle 15 as a fixed empty container — true of
+  `extraType=1` of 3,580). rex built the leaf in cycle 15 as a fixed empty container — true of
   its own libraries, which hold no clips — so it took no query at all and answered `200 size 0` to
   every malformed request, which a client reads as "this library has no extras".
 - **`group=` is honoured on `/library/all`** by both references (kids' 14 rows collapse to 4 by
   type, 7 by year, 10 by title; zen's 14,434 to 4, 90 and 8,358) and an unknown or empty field is a
-  500 there as on a section listing. simplex's `grouped()` was already right and this handler never
+  500 there as on a section listing. rex's `grouped()` was already right and this handler never
   called it.
 - **`sort=type` orders by the type NUMBER**, not the name: kids' rows come back `movie ×5, show,
-  season ×2, episode ×6` and exactly reversed descending. simplex kept `type` among its text sorts,
+  season ×2, episode ×6` and exactly reversed descending. rex kept `type` among its text sorts,
   which lower-cases the value, so its order was alphabetical and `episode` came first.
 - **An `include*` option's value takes a leading `+`.** A properly encoded `%2B1` turns the block
   on, on both references and on both row types, where cycle 22 recorded `+1` as off — because a RAW
@@ -7462,22 +7462,22 @@ Bunny), so the territory had two witnesses rather than one. Four findings plus a
 **Measured and deliberately not emulated.** The photo transcoder's geometry is now pinned — the
 default scales to FIT inside the box, `minSize=1` scales to COVER it uncropped, and without
 `upscale=1` the result is capped at the source's own size, with `quality=` the real JPEG quality
-and `opacity=` accepted and discarded — but simplex has no resizer, so it still picks a TMDB bucket
+and `opacity=` accepted and discarded — but rex has no resizer, so it still picks a TMDB bucket
 and passes those bytes through (the `width`/`height` 500s were already held out in cycle 27). A
-section `/composite/{v}` is a 512×512 JPEG mosaic on both references and simplex has no
+section `/composite/{v}` is a 512×512 JPEG mosaic on both references and rex has no
 compositor. `/photo/:/transcode` omits `Accept-Ranges` on the FIRST (uncached) transcode and sends
-it on every later one — a cache tell no client can see, and simplex has no transcode cache. The
+it on every later one — a cache tell no client can see, and rex has no transcode cache. The
 416's own HTML body and the fact that the static writer's refusals name no connection state and
-CLOSE the socket stay recorded: simplex's text/plain error bodies are cycle 1's deliberate
+CLOSE the socket stay recorded: rex's text/plain error bodies are cycle 1's deliberate
 deviation, and keeping a connection the reference drops is the forgiving direction. zen's plain
 `filename=` substitutes `_` for `+` where `filename*` escapes it, on one witness. And the whole
-clip surface waits on a catalog that holds clips: simplex's own has none, so the spec above is the
+clip surface waits on a catalog that holds clips: rex's own has none, so the spec above is the
 finding and the build is not.
 
-**A note about the instrument, not about simplex.** zen (1.42.2) answered
+**A note about the instrument, not about rex.** zen (1.42.2) answered
 `GET /library/metadata/{id}/file?url=file%3A%2F%2F%2Fetc%2Fhostname` with `200 image/jpeg` and the
 file's four bytes; kids (1.43.4) refuses the same request with a 400. The hunt stopped at that one
-request and read nothing else. simplex 404s it either way — the references disagree, so there is no
+request and read nothing else. rex 404s it either way — the references disagree, so there is no
 rule here — but zen is a production server on a build that still does it, and HANDOVER 9 records it
 so that nobody points a sweep at that path again.
 
@@ -7489,7 +7489,7 @@ Two hunts and a driver round, and the cycle's largest result is an INSTRUMENT.
 28 all ended with the same sentence: *a writable 1.42.2 copy would settle this.* plexscratch is a
 copy of the lab's config and is therefore 1.43.4; zen is 1.42.2 and is production, read-only. So
 cycle 30 built the missing instrument -- **plexscratch42**, a FRESH install of
-`plexinc/pms-docker:1.42.2.10156-f737b826c`, the exact build zen runs and the one simplex reports,
+`plexinc/pms-docker:1.42.2.10156-f737b826c`, the exact build zen runs and the one rex reports,
 isolated from plex.tv by construction and writable (`harness/scratch42/`, HANDOVER 4.6). It answered
 four open questions in an afternoon, and one of its answers corrected a patch from two cycles ago:
 
@@ -7498,17 +7498,17 @@ four open questions in an afternoon, and one of its answers corrected a patch fr
   on a movie and on an episode alike, which is what plexscratch (1.43.4) and cycle 21's fun both
   said -- three instruments against zen's one. And the `Field` half was invisible to cycle 28
   because zen's on-deck episode has no locked field at all. `/hubs/home/onDeck` and
-  `/hubs/home/continueWatching` keep the key, which simplex already had right.
+  `/hubs/home/continueWatching` keep the key, which rex already had right.
 - **The five media-codec edit-field names are a 400 on 1.42.2** (`atmos`, `audioCodec`,
-  `audioLayout`, `subtitleCodec`, `videoCodec`) against 1.43.4's 200, so simplex's refusal was
+  `audioLayout`, `subtitleCodec`, `videoCodec`) against 1.43.4's 200, so rex's refusal was
   right and cycle 21's hold-out is CLOSED by measurement rather than implemented. **`hdr10plus` is
-  the opposite**: a 200 on both versions, so it is a lockable name and simplex's 400 was wrong.
+  the opposite**: a 200 on both versions, so it is a lockable name and rex's 400 was wrong.
 - **The write-protected settings are TWO on 1.42.2, not four.** `TranscoderH264Options` and
   `TranscoderH264OptionsOverride` take a write with a 200 and really store it, where 1.43.4 answers
   403; `PlexOnlineUrl` and `allowMediaDeletionLanOnly` are 403 on both. Cycle 19 measured that list
   on the only writable reference it had, which was 1.43.4.
 - **`PROFILE_NAMES` is confirmed on 1.42.2**: all 78 platform names driven through a live session on
-  the new copy, 23 aliases included, **zero mismatches** against simplex's table. Cycle 27's entry
+  the new copy, 23 aliases included, **zero mismatches** against rex's table. Cycle 27's entry
   said "single-witness by construction"; it is now two-version and CLOSED.
 
 Two more things it settled without a code change. The per-version `/filters` split is real and
@@ -7522,7 +7522,7 @@ both versions.
 1.42.2 server's: `/:/prefs` answers 151 rows where zen answers 173, and
 `/library/sections/prefs?type=1&agent=tv.plex.agents.movie` answers 14 where zen and kids both
 answer 19 -- the missing rows are the marker-generation settings and `ratingsSource`, which need a
-subscription the copy does not have. simplex's own fixtures match ZEN's counts exactly (19/20/7/9
+subscription the copy does not have. rex's own fixtures match ZEN's counts exactly (19/20/7/9
 across the four agent-and-type combinations), so they are right and the copy's numbers are its own
 limit. **Never read a settings count off plexscratch42.**
 
@@ -7546,7 +7546,7 @@ session and neither read-only reference can be given one. Two versions now.
 **A 53-path sweep against the new copy found no further version differences.** Every difference it
 did report is content or the copy's own limit: its genre axis is empty because nothing is matched,
 its `/statistics/*` are 404s because it is unclaimed and unsubscribed, its `/system` and
-`/system/scanners/{N}` lists are empty on a fresh install, and the rest is simplex's fixture holding
+`/system/scanners/{N}` lists are empty on a fresh install, and the rest is rex's fixture holding
 different ratingKeys. So the four findings above are the whole of what the version split had left
 to give on this surface -- which is itself worth recording, because it is the first time the
 programme has been able to ask.
@@ -7566,7 +7566,7 @@ which is not the head of the `count=40` one, so the sample is held per (shelf, c
 measured the sampling itself and implemented it as a fresh `random.sample` on every request — so
 "Top Unwatched" re-ordered on every navigation back to the library tab, which is the same complaint
 cycle 28 fixed from the other side. What makes a real PMS REDRAW a sample is not measured (a TTL, a
-restart, a write to the set), so simplex mints one seed per (shelf, count) on first use and holds
+restart, a write to the set), so rex mints one seed per (shelf, count) on first use and holds
 it for the life of the process: it reproduces everything measured and invents no expiry.
 
 **And the connection state of every refusal was inverted.** Measured by sending the refusal and then
@@ -7574,14 +7574,14 @@ a second request down the same socket, three times per case, on kids and zen ali
 
 - a **401** with no token, a **401** with a wrong one, the **403** an unknown single segment answers,
   a **404** for a path that does not exist and the **401** on `/photo/:/transcode` all carry
-  `Connection: Keep-Alive` and the socket really is reusable. simplex forced `Connection: close` on
+  `Connection: Keep-Alive` and the socket really is reusable. rex forced `Connection: close` on
   every one of them, so a token-gated server tore down one TCP connection per refused request. This
   also corrects a sample printed in this very document: the 401 recorded there carries
-  `Connection: close`, which was simplex's own answer read back as the reference's.
+  `Connection: close`, which was rex's own answer read back as the reference's.
 - the **400** a query pair with no `=` answers is the opposite: both references CLOSE the socket,
   and it is the **only** handler-level refusal on the surface that does — seventeen other reachable
   400s (`type=abc` on six leaves, `checkFiles=2`, the transcoder's missing dimension, `limit=abc` on
-  four paths, `timespan=abc`, `accountID=abc`) keep it alive on both. simplex kept it alive, so a
+  four paths, `timespan=abc`, `accountID=abc`) keep it alive on both. rex kept it alive, so a
   harness that sends a malformed pair and then reuses the socket passes here and hangs against a
   real PMS.
 
@@ -7592,7 +7592,7 @@ row and in `/library/sections/{id}/collection`, it filters, and both search endp
 `tagType: 2` row with a `count` — and creates **no collection item**: `/library/all?type=18` and
 `/library/sections/{id}/collections` list nothing new, twenty minutes later and after a refresh.
 Only `POST /library/collections` makes one, and the tell is the `guid`: an item-backed collection's
-search row carries one and a tag-only collection's does not. simplex materialised a full, browsable
+search row carries one and a tag-only collection's does not. rex materialised a full, browsable
 collection from the tag write, so "Add to Collection" on an item created a row in the Collections
 tab that no real PMS has — and its search read the collection ITEMS, so a tag-only collection would
 have been invisible. Both halves are now the tag table's.
@@ -7602,9 +7602,9 @@ denial of service that twelve cycles had walked past. Every finding here is sing
 construction: the copy is the only server a socket may be opened on, since kids and zen are GET and
 HEAD only.
 
-**simplex answered a client's PONG with another PING — 903,480 pings in 35 seconds.** The
+**rex answered a client's PONG with another PING — 903,480 pings in 35 seconds.** The
 reference's ping timer is free-running: three pings in 35 s (10.001, 20.001, 30.019) whether the
-client pongs or not. simplex's loop was "wait out one ping interval, then ping", and the wait was a
+client pongs or not. rex's loop was "wait out one ping interval, then ping", and the wait was a
 `select()` that returns for ANY frame — so a pong ended it and the loop pinged again at once, about
 26,000 frames a second, for the life of the socket. Every compliant client pongs automatically:
 every browser, every Plex app, python-plexapi's `AlertListener`. Twelve cycles missed it because a
@@ -7617,8 +7617,8 @@ took 20.0 s, and a second client's unrelated title edit timed out after 30 s whi
 answered instantly. Closing the dead socket drained 9,462 backlogged frames and writes returned to
 a millisecond. The reference took the same shape at ten times the volume — 4.5 MB of frames at a
 dead socket — with every request between 0.019 and 0.031 s, and stopped queueing at ~415 KB: it
-BOUNDS the per-socket backlog, where simplex fanned out synchronously in the request thread with a
-blocking write, no queue, no drop and no timeout. simplex now gives a sink a two-second budget and
+BOUNDS the per-socket backlog, where rex fanned out synchronously in the request thread with a
+blocking write, no queue, no drop and no timeout. rex now gives a sink a two-second budget and
 drops the channel rather than the writers — it drops where the reference buffers, which is the half
 it can implement, and the check proves it: 20.00 s before, 2.08 s after, on the same 260 writes.
 
@@ -7626,18 +7626,18 @@ it can implement, and the check proves it: 20.00 s before, 2.08 s after, on the 
 rows — pushed the eight `library.delete` activity frames and nothing else. Cycle 18's fourteen
 `state 9` frames named a DIFFERENT section from the one deleted, none of their fourteen itemIDs was
 a row of the library, and cycle 18 recorded the same fourteen for a nine-row library: they are a
-one-off cleanup of orphaned `type: 12` rows. simplex sent one entry per top-level row, so a
+one-off cleanup of orphaned `type: 12` rows. rex sent one entry per top-level row, so a
 zen-sized library would have handed every client a ~1 MB frame of 3,887 `type 12` deletes keyed on
 movie ratingKeys. A single item's delete frame is real and unchanged.
 
-**And three smaller ones.** simplex closed the eventsource channel after 300 s where the reference
-is still open at 430 — the constant is gone, and a 320-second capture afterwards showed simplex now
+**And three smaller ones.** rex closed the eventsource channel after 300 s where the reference
+is still open at 430 — the constant is gone, and a 320-second capture afterwards showed rex now
 closing at **256 s for some other reason**, which is recorded as open rather than claimed fixed. Its
 101 upgrade carried no `Date`, the one response on the surface without one. And the frames a row's
 CREATION pushes are now recorded — eight per row, `state 1` among them, plus a
 `library.update.item.metadata` activity per new row — which corrects two documents: CLAUDE.md's
 state alphabet never listed `state 1`, and cycle 19's "no scan on a real server does a metadata
-activity per row" is true only of a scan that finds nothing new. simplex cannot create a metadata
+activity per row" is true only of a scan that finds nothing new. rex cannot create a metadata
 row during a scan, so that sequence is unreachable and recorded rather than built.
 
 #### The thirty-first pass — the write surface per version, the derivations held out, and the reference's own files
@@ -7654,7 +7654,7 @@ stray `sugar.cmake`**, which is why the API answers 78 rows; a row's title is it
 `<Client name="…">` attribute and not the file name (77 coincide, and
 `Plex Home Theater-RaspberryPi.xml` declares `name="Raspberry PI"`); and the **23 `Player.profile`
 aliases cycle 27 measured behaviourally are 22 `redirect="…"` attributes plus that one
-name-versus-filename difference.** Scored against simplex's table: all 22 shared pairs agree exactly,
+name-versus-filename difference.** Scored against rex's table: all 22 shared pairs agree exactly,
 nothing in the files is missing from it, nothing in it is absent from the files. A table built
 entirely from black-box session sweeps reproduces the source of truth with **zero errors** — which is
 a result about the METHOD, not just about the table. The `type=42` seven carry no distinguishing
@@ -7675,17 +7675,17 @@ copies and out of the lab: **a generated title is stored as the EMPTY STRING.** 
 episode of a fresh 1.42.2 install stores `title = ''` and `title_sort = ''`, and kids' agent-titled
 season 7 stores `title = ''` with `title_sort = 'Season 1'`. So the displayed `Season N` is derived
 from the index in *both* cases and what an agent supplies is the **sort** title — which is the whole
-mechanism behind cycle 18's `titleSort=` split, and it exposed a real defect: simplex treated a stored
+mechanism behind cycle 18's `titleSort=` split, and it exposed a real defect: rex treated a stored
 sort title equal to the generated title as no sort title at all, so `titleSort=Season 1` answered
 nothing where kids answers the row, `titleSort=` wrongly kept it, and the ordering keys ignored it.
 One clause, three symptoms, invisible from the API alone.
 
 **Territory A held the WRITE surface out between the versions, and the negative result is the
-headline.** About 1,500 requests, the identical sequence on both copies and on simplex: the 78
+headline.** About 1,500 requests, the identical sequence on both copies and on rex: the 78
 edit-field names with their locks, 66 of them with values, 95 write-grammar cases, 24 numeric columns
 on the section path, the settings writers, the list writers, the action leaves, the six state writes,
 the upload ladder and 99 paths under a bare OPTIONS all came back **identical on both versions**. What
-differs is the **verb table**, and simplex carried 1.43.4's:
+differs is the **verb table**, and rex carried 1.43.4's:
 
 - **`PATCH` is not a method 1.42.2 recognises** — a 500 on all 20 paths swept and three body
   dispositions, the same 109-byte body `FROB` and `BREW` get on both versions. The decisive case is
@@ -7695,7 +7695,7 @@ differs is the **verb table**, and simplex carried 1.43.4's:
 - **All five `DELETE /library/metadata/{id}/{poster,thumb,art,banner,theme}` leaves are 404s on
   1.42.2**, where 1.43.4 answers an empty 200 and clears the field. The controls make it the VERB:
   the same paths take `PUT ?url=<candidate>` with a 200 there, `DELETE` itself works (a playlist
-  delete is a 204), and a real PMS routes before it authenticates. simplex had implemented three of
+  delete is a 204), and a real PMS routes before it authenticates. rex had implemented three of
   the five, so it answered neither version consistently.
 - **1.42.2 accepts two writes 1.43.4 refuses**: `smart=1` over a comma-joined KEY LIST creates a real
   smart playlist (`leafCount 3`, `icon playlist://image.smart`), and `PUT /playlists/{smart}/items`
@@ -7703,14 +7703,14 @@ differs is the **verb table**, and simplex carried 1.43.4's:
   `library://x/directory/…%2F1%2C2` to `library://x/item/…%2F4`, which is also how the middle segment
   is chosen: `item` for a single key, `directory` otherwise.
 - **`PUT /library/collections/{id}/prefs` really writes** on both versions. Cycle 15 measured the GET,
-  recorded its 404 and stopped, so simplex advertised `collectionMode` and `collectionSort` in the
+  recorded its 404 and stopped, so rex advertised `collectionMode` and `collectionSort` in the
   collection's `includePreferences` block and 404'd the save behind them.
 
 Three smaller ones from the same sweep. **`absoluteIndex.value=` stores nothing** on either path or
 version (twelve measurements across four row types) where cycle 20 recorded it as "read on both", so
 an edited row carried an attribute no real PMS puts there and `sort=absoluteIndex` ordered on it.
 **`lastRatedAt.value=` on the section path is a 500** on both, the ninth member of that set, where
-simplex answered its unknown-field 400. And **`hdr10plus` stores neither a value nor a lock** — cycle
+rex answered its unknown-field 400. And **`hdr10plus` stores neither a value nor a lock** — cycle
 21 recorded exactly that, cycle 30 confirmed the 200 on the new copy and then put the name in
 `LOCK_ONLY_FIELDS`, which records a lock: class C inside the cycle that re-measured it, because the
 status was checked and the row was never read back.
@@ -7723,7 +7723,7 @@ to the cleared state it is about. A NON-empty value is an artwork COLUMN write, 
 the column becoming the row's own versioned path, exactly as `theme` and `banner` already were — the
 column has to be empty for that to be visible, which is why cycle 20 read both as discarded.
 
-**Territory B scored simplex's own DERIVATIONS against zen's 14,433 rows, and the biggest result is
+**Territory B scored rex's own DERIVATIONS against zen's 14,433 rows, and the biggest result is
 that they are right.** The artwork derivation — two cycles old and fitted on a two-season copy — has
 **zero misses** over 507 shows, 741 seasons and 9,287 episodes: `season.parentThumb == show.thumb`
 741/741, `grandparentThumb`/`grandparentArt` 9,287/9,287, `episode.art` equal to the season's resolved
@@ -7737,7 +7737,7 @@ What it found wrong is the **matchers**, and every one of them is a query a user
 
 - **A comma in `title=` is an ALTERNATION and a dot is LITERAL.** `title=Steel,,` and `title=Love,`
   answer the whole library, `title=Tears, of` answers the one row, `title=Steel.` answers none.
-  simplex stripped both characters out of the query, so a typed comma found one row where a real PMS
+  rex stripped both characters out of the query, so a typed comma found one row where a real PMS
   answers 3,887 and a trailing period found one where a real PMS answers none. **The mechanism is a
   level above the matcher**, which is what the first attempt at this got wrong: the filter PARSER
   already reads a comma list as an OR (cycle 11 measured that for tag ids) and drops empty members --
@@ -7745,18 +7745,18 @@ What it found wrong is the **matchers**, and every one of them is a query a user
   line in the parser rather than an alternation in the matcher, and a tag field's comma list is
   untouched.
 - **The hub matcher takes a multi-word query WORD BY WORD, in order** — `Tears Steel` finds "Tears of
-  Steel" at 0.73055 and reversed it falls to the 0.33 fuzzy band — where simplex required the joined
+  Steel" at 0.73055 and reversed it falls to the 0.33 fuzzy band — where rex required the joined
   phrase and therefore answered **no hubs at all**: 230 of zen's rows scoring 0.5 or better across 119
   of 1,237 generated queries. That is Plex Web's global search box.
 - **It tokenises the TITLE on WHITESPACE**, punctuation inside the word: `don't` finds "Don't Move",
-  `Handmaid` finds "The Handmaid's Tale", and `Delete` does not find 'Control-Alt-Delete'. simplex
+  `Handmaid` finds "The Handmaid's Tale", and `Delete` does not find 'Control-Alt-Delete'. rex
   split on `[^0-9a-z]+`, so a query with an apostrophe could never match while `Air` found "L'air
   Perdu".
-- **A ONE-character query matches a title equal to it** (`X` finds the movie 'X'), where simplex had a
+- **A ONE-character query matches a title equal to it** (`X` finds the movie 'X'), where rex had a
   two-character floor.
-- **`title=` reads the ORIGINAL title as a consecutive run of whole words, unfolded**, where simplex
+- **`title=` reads the ORIGINAL title as a consecutive run of whole words, unfolded**, where rex
   ran the title's own two-pass folded matcher over it. And **the in-library search box does not read
-  `originalTitle` at all** — 102 of 1,244 queries disagreed, every one a simplex-only hit.
+  `originalTitle` at all** — 102 of 1,244 queries disagreed, every one a rex-only hit.
 
 **Three corrections the cycle made to its own patches, all caught by its own suite.** The
 `hdr10plus` regression above was cycle 30's; these were this cycle's. `absoluteIndex` is **parsed and
@@ -7778,7 +7778,7 @@ sweep script and its output are recorded and the entry stays open with its metho
 episode-still finding did not reproduce: over **1,500 live zen episodes, 0 carry a thumb equal to
 their `parentThumb`** (1,372 own one, 128 have none), against the 21 live witnesses the hunt counted,
 so it is recorded rather than built. `/livetv` is the third: both copies answer **403 to every verb**
-today where cycle 18 recorded a three-row container from the same copy, so simplex is left alone until
+today where cycle 18 recorded a three-row container from the same copy, so rex is left alone until
 that contradiction is settled.
 
 #### The thirty-second pass — concurrency, the fold table in full, and the decision model from the profile files
@@ -7790,8 +7790,8 @@ input**.
 
 **Territory A swept CONCURRENCY — the first time any cycle asked what happens when two requests
 overlap.** Every pair was driven from two threads released by one `threading.Barrier`, on both writable
-copies and simplex, and the row read back afterwards. The negative result is
-large: two writers on one row, a read during a write (6,870 body-validated reads on simplex and 3,655 on the copies, with no
+copies and rex, and the row read back afterwards. The negative result is
+large: two writers on one row, a read during a write (6,870 body-validated reads on rex and 3,655 on the copies, with no
 torn body in either format), two sessions on one item, the full 28-pair play-queue mutation matrix, duplicate
 creates, frames under overlapping writes and HTTP pipelining all agree on all three servers. What does
 not agree is one shape, twice:
@@ -7809,7 +7809,7 @@ not agree is one shape, twice:
 
 And one deterministic finding it tripped over: **a WRITE's response honours the paging headers and
 `excludeElements=`**, on both versions, over twelve playlist, collection and play-queue writes.
-simplex gated both post-processors on GET and HEAD, so cycle 21's "paging is a property of the
+rex gated both post-processors on GET and HEAD, so cycle 21's "paging is a property of the
 response" held for half the surface.
 
 **Territory B closed the two §3.3 entries it was given.** The `title=` query fold is a table of 102
@@ -7858,11 +7858,11 @@ texts. Of 1,872 cells the outcome is exact on 1,871 and the `directPlayDecisionT
    against "neither", `context="static"` never serves, and Xbox 360's asf-only target is a 400.
 
 Firefox and Edge answer "neither" because they declare only `dash` and `hls` targets, where Web also
-declares `http/mkv`. **44 of 78 profiles direct play a real row; simplex hard-coded two** — and neither
+declares `http/mkv`. **44 of 78 profiles direct play a real row; rex hard-coded two** — and neither
 of those two lists webm/vp8 or eac3, so Roku and Xbox One were told to direct play fixture files they
 cannot decode, while Samsung, tvOS, iOS, Windows, PlayStation and every DLNA renderer were told nothing
 could play. The profile blocks are `client_profiles.json`, read off the lab image and parsed twice by
-two independent parsers with identical results. simplex still cannot convert, so a refusal answers the
+two independent parsers with identical results. rex still cannot convert, so a refusal answers the
 "neither" triple whatever the transcode targets say.
 
 The eight cells it misses are all **zen 19813**, the one measured row whose two audio tracks carry no
@@ -7871,17 +7871,17 @@ row cannot separate (a search over every order of the checks, and a second hypot
 stream by the transcode targets' codecs, both scored worse). Recorded, not fitted.
 
 **The JSON byte form, found by the driver in the revalidation step.** Settling `/livetv` meant reading
-bodies side by side, and simplex's were 11% longer. A real PMS writes JSON **compact** — no space after
+bodies side by side, and rex's were 11% longer. A real PMS writes JSON **compact** — no space after
 `:` or `,` — in **raw UTF-8** (an accent, U+2028, a C1 control and an emoji written as themselves, `/`
 `<` `>` `&` unescaped), with `\b \t \n \f \r \" \\` short and every other C0 control as `\u00XX` in
 **upper-case** hex. Measured on zen and kids over real rows and on both copies over a title carrying
-every C0 control; the notification frames are written the same way. simplex wrote Python's defaults on
+every C0 control; the notification frames are written the same way. rex wrote Python's defaults on
 all three counts, so every JSON body and its `X-Plex-Content-Original-Length` named a size no real PMS
 sends.
 
 **`/livetv`'s 403 was the instrument.** Both CLAIMED references answer `/livetv` with the dispatcher's
 three-row container, `/livetv/dvrs` and `/livetv/sessions` empty, `/livetv/epg` a 404 and
-`/media/grabbers` four grabbers — exactly simplex's answers. The two UNCLAIMED copies 403 all of them
+`/media/grabbers` four grabbers — exactly rex's answers. The two UNCLAIMED copies 403 all of them
 and answer the container at `/livetv/` with a trailing slash. Class E, closed without a code change.
 
 **Two checks this cycle had to be refitted to the state the suite leaves them**, the recorded §10 trap:
@@ -7892,18 +7892,18 @@ their own pre-patch trees, and the exclude check against a server with the secon
 Measured and not acted on:
 
 - **The delete window.** Two concurrent `DELETE /playlists/{id}` of one row are both 204 on the
-  references (20/20 and 17/20) where simplex answers 204 and 404; a read racing the delete can even see
+  references (20/20 and 17/20) where rex answers 204 and 404; a read racing the delete can even see
   `{"size":0,"totalSize":3}`. The difference is the WIDTH of a 2-5 ms window, a class-D shape;
   matching it would mean inventing a grace period in which a deleted row answers success.
 - **A second refresh of a row already refreshing.** 1.43.4 coalesces (one activity, 8 frames for two
-  refreshes), 1.42.2 runs both — on unmatched rows, the only kind the 1.42.2 copy has. simplex runs
+  refreshes), 1.42.2 runs both — on unmatched rows, the only kind the 1.42.2 copy has. rex runs
   both. The references disagree and neither is picked.
 - **`/activities` does carry a running row** (caught by polling s42 during a forced section refresh),
-  correcting cycle 19's "a running Activity could not be caught". simplex registers its activities in
+  correcting cycle 19's "a running Activity could not be caught". rex registers its activities in
   the same list; its writes finish in well under a millisecond, so nothing can be caught there (class E).
 - **The hub matcher's position-dependent case folding**, and **zen 19813's audio selection**, above.
-- REFUTED: hunt B's "simplex does not fold K" (the Kelvin sign has a canonical decomposition to `K`, so
-  NFD did fold it; what simplex missed was `ſ`), and the first race fix's claim to have covered the adds.
+- REFUTED: hunt B's "rex does not fold K" (the Kelvin sign has a canonical decomposition to `K`, so
+  NFD did fold it; what rex missed was `ſ`), and the first race fix's claim to have covered the adds.
 
 #### The thirty-third pass — the response header block, and a version claim that did not survive its control
 
@@ -7924,7 +7924,7 @@ VALUES; cycle 32 found the JSON bytes unmeasured; this cycle read the header blo
 on a keep-alive connection and a closing one. **The two references are identical in every case**, and
 the order is per response FAMILY, not one list:
 
-* `X-Plex-Protocol` is the FIRST header of every response and `Date` the LAST — simplex had exactly
+* `X-Plex-Protocol` is the FIRST header of every response and `Date` the LAST — rex had exactly
   those two the wrong way round, because Python's `send_response` writes `Date` before anything else.
 * `Keep-Alive` always follows `Connection` immediately.
 * A 200 container is `…Content-Type, Content-Length, [paging pair,] Connection, Keep-Alive,
@@ -7939,7 +7939,7 @@ the order is per response FAMILY, not one list:
 * **A 416 carries no connection header at all**, on a closing request and a keep-alive one alike: the
   only response class on the surface that does not name its connection state.
 * **A part read carries no `Cache-Control`**, which is the one exception to cycle 16's "no-cache goes
-  on EVERY response". simplex already sent none there; the RULE was wrong, not the code.
+  on EVERY response". rex already sent none there; the RULE was wrong, not the code.
 * **A 206 of a CONTAINER answers `Content-Length` twice** -- the whole body's length in its usual
   place, `Content-Range`, then the SLICE's after the connection state -- while the body is the slice.
   Both references, XML and JSON. A ranged artwork or asset answers the slice's length alone, which is
@@ -7947,7 +7947,7 @@ the order is per response FAMILY, not one list:
   wire: a client that reads the first one waits for bytes that never arrive, which is what
   `http.client` does, so the check for it reads a raw socket. No Plex client ranges a container.
 
-Two more differences fell out of the same sweep, and both are headers simplex never sent:
+Two more differences fell out of the same sweep, and both are headers rex never sent:
 
 * **The plug-in framework's `/system` paths carry a session cookie** — `Set-Cookie:
   com.plexapp.system=…`, a constant that decodes to the framework's serialised empty session, on the
@@ -7956,7 +7956,7 @@ Two more differences fell out of the same sweep, and both are headers simplex ne
   neither does anything else on the surface: `/livetv`, `/services`, `/media`, `/status`,
   `/statistics`, `/security`, `/library` and an unknown single segment were all checked.
 * **The CORS preflight and the `/web` 302 name their connection state** (and the preflight carries
-  `Cache-Control: no-cache`). Both simplex handlers write their own header set and went round the
+  `Cache-Control: no-cache`). Both rex handlers write their own header set and went round the
   code that adds it — so the one response a browser always sends before a cross-origin request was
   the only one that never said how long the connection it had just opened would live.
 
@@ -7975,7 +7975,7 @@ suite could see.
 
 **The one hunt finding was reported as a version difference and is not one.** The hunt measured that
 a refresh of an unmatched row under an online agent stops after three frames on 1.42.2 where 1.43.4
-runs the whole cascade, and proposed that simplex (which reports 1.42.2) follows the wrong version.
+runs the whole cascade, and proposed that rex (which reports 1.42.2) follows the wrong version.
 Re-measured with two controls it does not hold: the 1.43.4 copy shows **the same three-frame opening**
 on its own never-matched row, and the 1.42.2 copy runs a full cascade for a row in a
 `tv.plex.agents.none` library. What the hunt compared was a `local://` row on one server against
@@ -7986,14 +7986,14 @@ its rows and the 1.42.2 copy is a fresh install with none and no route to plex.t
 What the same measurement DOES establish, on both versions, is a real difference: **a row that has
 never been matched opens its refresh with `state 2, metadataState "matching"` and a bare `state 5`
 before the queued frame**, where a row that was explicitly unmatched opens with the queued frame
-alone. simplex opened both with the queued frame. That is the chase cycle 32 deferred as "noted, not
+alone. rex opened both with the queued frame. That is the chase cycle 32 deferred as "noted, not
 chased" from a single server, now measured on both with the guid as the discriminator.
 
 **The negative results are the other half of the cycle.**
 
 * **`translations.json` reproduces the reference image's own gettext catalogs exactly.** The image
   ships `Resources/locale/<lang>/LC_MESSAGES/plex.mo` for 31 languages; the hunt scored every entry of
-  simplex's table whose language has a catalog — **13,494 (attribute, English string, language)
+  rex's table whose language has a catalog — **13,494 (attribute, English string, language)
   triples — with zero mismatches**, and the driver's independent 400-entry sample over three languages
   scored 337 comparable entries with zero mismatches. A table built over five cycles from black-box
   API diffs reproduces the compiled-in source, which is the same result cycle 31 got from
@@ -8004,7 +8004,7 @@ chased" from a single server, now measured on both with the guid as the discrimi
 * **The fold table does not extend to the compatibility forms.** 534 characters with an ASCII
   compatibility base — Greek Extended, Roman numerals, circled and parenthesised letters, the
   mathematical alphanumerics, the `ﬁ`/`ﬂ` ligatures, superscripts, Armenian and Cyrillic — were
-  substituted into a `title=` query on kids and **none folds**, which is what simplex's table already
+  substituted into a `title=` query on kids and **none folds**, which is what rex's table already
   says.
 * **Every status LINE matches** (`416 Requested Range Not Satisfiable`, `302 Moved Temporarily` and
   the rest), and every header VALUE matches except the recorded `text/plain` error bodies.
@@ -8018,7 +8018,7 @@ Measured and not acted on:
 
 - **`/system/search?query=…`** answers with `Cache-Control` early (`X-Plex-Protocol, Cache-Control,
   Content-Length, Content-Type, Set-Cookie, Connection, Date`) where the bare `/system/search` puts it
-  last. simplex's `/system/search` is a static empty container with no query semantics at all, so the
+  last. rex's `/system/search` is a static empty container with no query semantics at all, so the
   variant has nothing to attach to.
 - **The eventsource and websocket handshakes' header order**, which cannot be measured: a socket may
   never be opened on either reference.
@@ -8034,7 +8034,7 @@ two test commits, one §3.3 entry CLOSED, one recorded belief overturned, and on
 earlier commits caught starving a check three thousand lines below it.
 
 **The capture.** `session-web.py` drove the official client through the walk again against kids and
-recorded 26 unique requests. Replayed against simplex with `replay.py` (`--reference` live at the
+recorded 26 unique requests. Replayed against rex with `replay.py` (`--reference` live at the
 same moment), every element and attribute difference was one already recorded as a version or a
 library difference. What the capture DID carry was the client's own envelope, which no probe had
 sent:
@@ -8049,13 +8049,13 @@ sent:
 * **The preflight answers `Access-Control-Allow-Headers` only when the request carried
   `Access-Control-Request-Headers`**, and it is that value echoed. Plex Web's preflight of
   `PUT /updater/check` asks for no headers at all and the reference answers without the field, where
-  simplex substituted a fallback list -- cycle 16 measured the echo and invented the fallback beside
+  rex substituted a fallback list -- cycle 16 measured the echo and invented the fallback beside
   it.
 * **The websocket handshake's header ORDER**, which cycle 33 recorded as unmeasurable because a
   socket may never be opened on kids or zen. The client opens one itself, so the capture holds both
   sides: `X-Plex-Protocol, Access-Control-Expose-Headers, Vary, Upgrade, Connection,
   Sec-WebSocket-Accept, Cache-Control, Access-Control-Allow-Origin, Date` -- the CORS pair LEADS,
-  ahead of the handshake headers, and the allowed origin follows `Cache-Control`. simplex had the
+  ahead of the handshake headers, and the allowed origin follows `Cache-Control`. rex had the
   right set and put all three CORS headers at the end. The `Sec-WebSocket-Extensions` the client
   offers is echoed by neither side.
 
@@ -8092,7 +8092,7 @@ puts that check. The shape reproduces; the rule was then measurable.
   `audioStreamID=-1` puts every one of the 78 back, byte for byte. The item's `Media`, `Part` and
   `Stream` rows are **byte-identical in both states**. So cycle 32's rule -- "the server re-picks the
   widest default track when the selected one has no language" -- is not a property of the row at all;
-  it was that hidden state, fitted to one witness. simplex holds a chosen track, so the model is the
+  it was that hidden state, fitted to one witness. rex holds a chosen track, so the model is the
   after, and the before is recorded and not emulated (§8).
 
 `tests/test_decision.py` is the new suite that keeps it honest: `tests/fixtures/decisions/` holds
@@ -8116,7 +8116,7 @@ Measured and not acted on:
   `<Identification>`, DLNA blocks, the audio codecs they list, their codec limitations -- separates
   them from the rest. Asus Transformer Prime TF201 and Roku-7.x list the same audio codecs in mp4,
   answer identically on every other measured row, and answer differently here. Both states of the
-  row are in the corpus; simplex cannot express the distinction from a catalog row either way.
+  row are in the corpus; rex cannot express the distinction from a catalog row either way.
 
 #### The thirty-sixth pass -- the refusal surface, the grammar of an id, and a score that was never one number
 
@@ -8132,7 +8132,7 @@ had reported as "already correct" and found four of its seven items open.
   seven statuses -- 400 (89 bytes), 401 (91), 403 (85), 404 (85), 406 (95), 416 (129) and 500 (109) --
   and across every path family that answers one. It IGNORES `Accept`: a client asking for JSON gets the
   same HTML. It is GZIPPED when the client offers to take a compressed body (81 bytes for the 400, 78
-  for the 404), and a HEAD carries its `Content-Length` with no body. simplex had **three** of them --
+  for the 404), and a HEAD carries its `Content-Length` with no body. rex had **three** of them --
   the 401, the 403 and the root's 193-byte redirect, each built by the cycle that happened to measure
   that one refusal -- and answered `text/plain` with a sentence of its own to every other refusal on the
   surface. That sentence is cycle 1's "deliberate deviation", carried in HANDOVER §8 for thirty-five
@@ -8151,7 +8151,7 @@ had reported as "already correct" and found four of its seven items open.
   `/library/people/{id}`, an item detail and an item's `/thumb` -- on both references. What does not
   parse names nothing: `++1`, `1+`, `-1`, `0x1`, `1_0`, `1.0`, `1e3`, a surrounding space and every
   non-ASCII digit are 404s on both. It is the general case of the `+?0*[01]` grammar cycle 29 measured
-  for a 0/1 option VALUE. simplex compared the segment as a STRING, so a zero-padded or plus-signed id
+  for a 0/1 option VALUE. rex compared the segment as a STRING, so a zero-padded or plus-signed id
   -- what a URL built by concatenation, or a client that pads, produces -- was a 404 from a server that
   holds the row. Normalised once at the front of the router rather than at each of the forty lookups
   that read an id.
@@ -8160,13 +8160,13 @@ had reported as "already correct" and found four of its seven items open.
   not-found for `2147483647` and a **400** for `2147483648` and everything larger, and a NEGATIVE value
   inside the range is a **404** on all four -- including `/system/scanners`, whose answer for an unknown
   non-negative library type is a 500 and for a non-number is a 500 as well. `/library/metadata` and
-  `/library/sections` carry no such bound: a twenty-digit id is a plain 404 there. simplex had the bound
+  `/library/sections` carry no such bound: a twenty-digit id is a plain 404 there. rex had the bound
   on two of the four, read a small negative play-queue id as malformed (400 where a real PMS answers
   404), and reported a malformed scanner request as a missing scanner (500 where it answers 400).
 * **The request TARGET must be printable ASCII, and a `%` must begin an escape the parser can read.**
   Swept byte by byte over 0x01-0xFF: every raw byte outside 0x21-0x7E is a plain 400 on both references
   -- in a path segment, in a single segment and in a query VALUE alike -- while a percent-escape of the
-  same byte is fine (`%C3%A9` and `%FF` are ordinary 404s). simplex answered 200 or 404 to 150 of the
+  same byte is fine (`%C3%A9` and `%FF` are ordinary 404s). rex answered 200 or 404 to 150 of the
   158 refused bytes; the eight it did refuse were an accident, being exactly Python's own
   unicode-whitespace set (`\x0b\x0c\x1c-\x1f\x85\xa0`), which its request-line splitter reads as a
   separator. The escape half was measured over 42 spellings at the end of a path and mid-path: the
@@ -8178,7 +8178,7 @@ had reported as "already correct" and found four of its seven items open.
   this way at all: `?a=%`, `?a=%zz` and `?a=%%` are 200s on both references.
 * **`/hubs/sections/{id}` and its Continue Watching see-all leaf 404 a section the server does not
   hold.** `999`, `0`, `-1`, `1.5`, `abc` and a twenty-digit number each answer the 85-byte Not Found
-  document on both references, while `01` and `+1` answer the real library. simplex ignored the id and
+  document on both references, while `01` and `+1` answer the real library. rex ignored the id and
   built a full Recommended page for any of them -- fix 4's trap, a client asking for a library that is
   gone reading a valid empty page as "this library exists and has nothing in it". Every other section
   leaf has answered 404 since cycle 15; these two were missed because neither reads the section row
@@ -8187,17 +8187,17 @@ had reported as "already correct" and found four of its seven items open.
   answer an empty hub container -- `{size: 0, allowSync: true, identifier}` and nothing else, the
   librarySection triple being the only thing a real row adds -- where `/library/metadata/{id}/related`
   on the same unknown id is a 404 and `/hubs/metadata/{id}/postplay` is a 404 too. So the two spellings
-  of "related" differ on more than the path, and the difference is which one looks the row up. simplex
+  of "related" differ on more than the path, and the difference is which one looks the row up. rex
   404'd all three. The preplay page builds this URL from a row it is already holding, so the two
   answers look alike to a client that has one; python-plexapi and any caller walking ids sees an
   endpoint that does not exist rather than a shelf with nothing on it.
 * **A repeated query parameter takes the LAST occurrence, in the token gate too.** A bad token then a
   good one in the same query is a 200 and a good one then a bad one a 401, on both references. That is
-  the rule cycle 35 measured for every other key on the surface, and the rule simplex's own `query` dict
+  the rule cycle 35 measured for every other key on the surface, and the rule rex's own `query` dict
   already follows, being built by a dict comprehension over the pairs. Three readers had been written
   with `parse_qs(...)[0]` instead and took the FIRST: the token gate, the client identifier the session
   bookkeeping keys on, and the notification channels' `filters=` whitelist. A token appended to a URL
-  that already carried one -- what a client concatenating a base URL produces -- was refused by simplex
+  that already carried one -- what a client concatenating a base URL produces -- was refused by rex
   and accepted by a real PMS.
 
 **The search hunt found that the SCORE was never one number, and that the ladder has four
@@ -8211,14 +8211,14 @@ ladder itself was two-thirds of the real one.
   `0.71091`, zen's "One Piece 0978" with no rating at `0.33000` -- and held out by the hunt over
   **11,076 scored (query, row) pairs across 619 queries**, of which 11,075 decompose exactly this
   way. `rating`, the critic score, is not it: zen's "Riders of Justice" carries 9.6 there, 8.9 in
-  `audienceRating`, and scores `089`. simplex printed the bare tier, so every row inside a tier
+  `audienceRating`, and scores `089`. rex printed the bare tier, so every row inside a tier
   TIED and the search page fell back to insertion order instead of the best-rated hit first.
 * **There is a fourth tier, 0.53, and it is the way search is actually used.** Gridded on zen's
   "Riders of Justice" over forty queries and confirmed on kids: **exact** (the query's tokens ARE
   the title, its `titleSort` or its `originalTitle`) 0.93; **anchored** (the query's FIRST token
   EQUALS the title's first) 0.73; **prefix** (the query is a token-wise prefix of the title -- no
   more tokens than it has, each a prefix of the token at the same index, the first a PROPER
-  prefix) 0.53; **fuzzy** 0.33. simplex had no prefix tier at all, so `Tear` scored where `Tears`
+  prefix) 0.53; **fuzzy** 0.33. rex had no prefix tier at all, so `Tear` scored where `Tears`
   does -- a two-letter prefix outranking a genuine whole-word hit.
 * **And the anchored tier is ONE token comparison, which refutes cycle 35's own model.**
   `word_tier` required the matcher's in-order, skip-tolerant walk; both references score
@@ -8229,14 +8229,14 @@ ladder itself was two-thirds of the real one.
 * **The base of the ladder is the ROW TYPE's.** A movie and a show are 0.93/0.73/0.53/0.33; an
   EPISODE is 0.02 lower throughout (0.91/0.71/0.51/0.31); a TAG has its own 0.92/0.52/0.32 with
   no anchored step at all -- `Drake` against the tag "Drake Bell" is 0.52 where a movie whose
-  first word matched would be 0.73. simplex scored every type at the movie's base, so its
+  first word matched would be 0.73. rex scored every type at the movie's base, so its
   episodes tied with, and could out-rank, a movie of the same match quality, which inverts the
   page a real PMS draws. And its tag MATCHER compared the whole query against ONE word, so a
   multi-word tag name could not be found by typing it: `Science Fiction` answered no tag row at
   all where both references answer one per library.
 * **ORDER decides the SCORE, not membership.** `Steel Tears` answers "Tears of Steel" on kids and
   `justice riders` and `Justice of` answer "Riders of Justice" on zen, each in the 0.33 band.
-  Cycle 31 measured that sentence and built only the in-order half, so simplex answered NO HUBS
+  Cycle 31 measured that sentence and built only the in-order half, so rex answered NO HUBS
   AT ALL to a query whose words a person typed out of order.
 * **The fuzzy band is SQLite's `spellfix1`, and now it has a mechanism.** Strings read out of the
   PMS binary on kids name `spellfix_metadata_titles`, `spellfix_metadata_sort_titles`,
@@ -8254,7 +8254,7 @@ ladder itself was two-thirds of the real one.
   answers the row on kids' five titles and `Riders zzz` answers nothing on zen's 3,887.
   Emulating the candidate half alone would answer most of a real catalog to a nonsense query,
   which is a worse error than answering none of it. §8 carries the mechanism so the next cycle
-  starts from it rather than from "a trigram score simplex does not try to reproduce".
+  starts from it rather than from "a trigram score rex does not try to reproduce".
 
 **The same hunt took the decision corpus into Dolby Vision, and settled a §8 disagreement.**
 
@@ -8275,14 +8275,14 @@ ladder itself was two-thirds of the real one.
   at all and a 1080p `DOVIProfile 7` track with **`DOVIBLPresent: false`**. So the discriminator
   is `DOVIBLPresent` and not `DOVIELPresent`: a separate-track enhancement layer says false on
   its own stream, a single-track dual layer says true beside its EL flag. fun's note was measured
-  on a file of the first kind and zen's on files of the second. **simplex was already right** --
+  on a file of the first kind and zen's on files of the second. **rex was already right** --
   `mediainfo.py` keys its "DoVi Enhancement Layer" label on exactly that flag -- so the §8 entry
   is a resolved non-defect rather than an open contradiction.
 * **A multi-Media row answers `mediaIndex=N` from its own order.** zen's rk 401 has fifteen;
   `mediaIndex` 0, 1, 2 and 7 select Media 603, 3840, 4187 and 5404, `15` is an HTTP 400, and
   `-1`, `abc` and an empty value fall back to Media 0 -- which confirms cycle 35's fallback rule
   on a row with more than one. When the answer is `1001` the `Media`/`Part` returned describe the
-  TRANSCODE TARGET rather than the source, which simplex has no encoder to reproduce.
+  TRANSCODE TARGET rather than the source, which rex has no encoder to reproduce.
 * **The corpus is 2,106 cells**, up from 1,950: zen:1120 (the profile-5 witness) and zen:1098
   (the corpus's first two-video-Stream Media and its first `dca-ma`) at 78 profiles each. Twenty
   of the 156 were re-driven by the driver against zen and agreed 20/20; fourteen text indices
@@ -8297,7 +8297,7 @@ ladder itself was two-thirds of the real one.
 **The write-frames hunt took the list cycle 35 reported as "already correct" and held it out** --
 HANDOVER §3.1 class F, a hunter's negative taken on trust -- and four of the seven items it had
 closed are not closed. It drove 93 write measurements against plexscratch (1.43.4),
-plexscratch42 (1.42.2) and a frozen simplex side by side, with one listener per server, a control
+plexscratch42 (1.42.2) and a frozen rex side by side, with one listener per server, a control
 title edit before every phase, and the agent confound designed out (a `tv.plex.agents.none`
 library over a hardlinked copy of Firefly on BOTH copies, so a sequence that depends on an agent
 is comparable).
@@ -8308,32 +8308,32 @@ is comparable).
   answers 200 to both. `showOrdering` is a plain **500** for every value -- `dvd`, `aired`, an
   empty one and a value the setting does not name alike -- with NO frames, and the value is
   STORED: the row reads it back afterwards, so it is not a validation refusal that writes nothing
-  but a write whose cascade fails. simplex answered 200 to all of them and pushed its whole
+  but a write whose cascade fails. rex answered 200 to all of them and pushed its whole
   57-frame cascade, so the Advanced tab of an unmatched show saved settings the row does not
   show and told every client the tree had been re-read. Measured on two `local://` shows on the
   1.42.2 copy with plexscratch's matched Firefly as a control.
 * **A playlist and a collection take an artwork UPLOAD.** `POST /library/metadata/{list}/posters`
   with the image as the body is an empty 200 on both copies, the candidate list grows from one
   `default://` row to two, the uploaded image is SELECTED, and one timeline frame carries the
-  LIST's own type. simplex answered 404, so Change Poster → Upload on a list page failed outright
+  LIST's own type. rex answered 404, so Change Poster → Upload on a list page failed outright
   while the PICK beside it -- which cycle 21 landed -- worked.
 * **A `?path=`-scoped scan scans the section's own folder and any CHILD of it**, and cycle 19 was
   wrong twice. The own Location scans everything, byte for byte the no-path scan; a child folder
   scans too (17 frames against 16, the same three `progress` rows), where cycle 19 recorded that a
   child scans nothing -- that measurement was taken on a MOVIE library, whose children are files
-  rather than folders. simplex scanned nothing for EITHER, because the catalog's section dict
+  rather than folders. rex scanned nothing for EITHER, because the catalog's section dict
   carries no `Location` at all (the list is synthesised when the section is published), so the
   comparison here was always against an empty list and every `?path=` took the no-folder branch.
 * **The `/library/collections/{id}` action leaves really RUN.** Cycle 22 measured their empty
   200 and stopped there; `refresh` pushes the same three frames the metadata spelling does, and
   `unmatch` really unmatches -- `guid` becomes `local://{rk}`, `subtype` the literal `unknown`,
-  `ratingCount` gone. simplex answered the empty body and did nothing, so the SAME action taken
+  `ratingCount` gone. rex answered the empty body and did nothing, so the SAME action taken
   from the client's own context-menu path and from the metadata path had different effects on the
   same row.
 * **A type=18 SECTION save frames like the section path, not the item path**: `state 3` with
   `metadataState "queued"` carrying the title from BEFORE the write, then `state 5` with the new
   one -- where the item and metadata spellings of the same edit send `loading` with the new title
-  in both. simplex routed the section save straight through the item writer.
+  in both. rex routed the section save straight through the item writer.
 
 **And the interlaced row the cycle asked for was MADE, which closes a §3.3 entry.** A
 `-flags +ilme+ildct -x264-params interlaced=1:tff=1` encode muxed into plexscratch's writable media
@@ -8356,22 +8356,22 @@ Measured and not acted on:
   entry with the mechanism attached, which is a much better starting point than "a trigram score".
 - **`/match` on a SHOW.** Both copies open with a bare `state 3` carrying the OLD title and then
   run that show's refresh cascade; the DEPTH is the version's (1.43.4 cascades to every season and
-  episode, 1.42.2 stops at the show). simplex sends the bare 3 and then its own seven-frame show
+  episode, 1.42.2 stops at the show). rex sends the bare 3 and then its own seven-frame show
   form, which is 1.42.2's shape and the version it reports, so what is left is a frame-count
-  difference on a version simplex does not claim.
+  difference on a version rex does not claim.
 - **`partIndex` on a MULTI-PART Media**, made on plexscratch from a stacked `- cd1`/`- cd2` pair:
   the two files become ONE Media with TWO Parts (`duration` the sum), `partIndex` 0 and 1 select
   the part and the decision reads THAT part's streams, `2` and `5` are 400s, and **`-1` is a 200
   carrying `3000 "App cannot direct play this item. Multi-part media requires a conversion when
   all parts are selected."` with `2000`/`4005`, `size 0` and no row**. On a single-part Media every
-  value still selects part 0, which is cycle 26's rule and where it holds. simplex reads no
+  value still selects part 0, which is cycle 26's rule and where it holds. rex reads no
   `partIndex` at all and its catalog builder never makes a two-part Media, so none of it is
   reachable from its own rows; recorded with the grammar for a catalog that ever holds one.
 - **A 1.43.4 library DELETE pushes fourteen extra `state 9` frames** (`type: 12`, empty title,
   `sectionID` the NEGATIVE id) between the 10% and 40% activity updates on a nine-row SHOW library,
   where 1.42.2 pushes the eight `library.delete` activity frames alone. Cycle 18 saw those
   fourteen and cycle 30 called them a one-off orphan cleanup on the evidence of two MOVIE
-  libraries; on 1.43.4 they reproduce on a show library. simplex reports 1.42.2 and matches it.
+  libraries; on 1.43.4 they reproduce on a show library. rex reports 1.42.2 and matches it.
 - **The show cascade's frame ORDER on 1.43.4** -- `activity started` after the queued frame, the
   per-season `updated` at the season's END rather than its start, no invented `updated 49`, and
   the media pass only on the matched season and only once. Single-witness by construction: no
@@ -8388,10 +8388,10 @@ Measured and not acted on:
   implementing it means a table fitted to those 40 cells.
 
 Three surfaces swept this cycle with NO difference, recorded so they are not swept again: CORS on
-a refusal (both references and simplex send the same `Access-Control-*`/`Vary` set on a 400, a 404
+a refusal (both references and rex send the same `Access-Control-*`/`Vary` set on a 400, a 404
 and a 500, and none at all on an envelope refusal, which is written before the headers are read);
 the query parameter NAME grammar (a name is percent-decoded -- `%74itle` filters -- case-SENSITIVE,
-and a `+` or a leading `%20` in it makes it an unknown field, on which simplex already agrees); and
+and a `+` or a leading `%20` in it makes it an unknown field, on which rex already agrees); and
 `/library/streams/{id}` (the 501 for a real stream id, a 404 for an unknown one and for a
 non-number, identical on all three).
 
@@ -8408,11 +8408,11 @@ sends.
 * **A real PMS zeroes the MTIME field of its gzip header**, and with it the whole member is
   byte-identical to `gzip.compress(payload, 6, mtime=0)` -- header, deflate stream and trailer -- on
   six bodies from 163 to 20,544 bytes, on kids (1.43.4) and zen (1.42.2) alike. Python stamps the
-  current time, so simplex answered the SAME request with different BYTES every second. Cycle 30
+  current time, so rex answered the SAME request with different BYTES every second. Cycle 30
   swept "the same request twice" and could not see it: it compared the DECODED bodies.
-* **The `Range` grammar is not what simplex implemented.** 43 header values against both references
+* **The `Range` grammar is not what rex implemented.** 43 header values against both references
   over a container and a `/web` asset -- 172 cells, the two references and the two body kinds
-  identical in every one -- and simplex had twelve of the 43 wrong. Two are provokable by a real
+  identical in every one -- and rex had twelve of the 43 wrong. Two are provokable by a real
   client: a reversed range (`bytes=5-4`) answered a 206 with an EMPTY body where a real PMS answers
   **416**, and an unparseable one (`bytes=abc-def`) answered 200 with no `Content-Range` where a real
   PMS answers the whole body as a 206. The rest is the parser's own shape: the UNIT is never read
@@ -8428,22 +8428,22 @@ sends.
   frames on plexscratch and plexscratch42 alike, frame for frame: the `library.update.section`
   activity from `Scanning` through a Context-carrying 99 and 100 to `ended`, the two LIBRARY_UPDATE
   statuses around it, and the nested `provider.subscriptions.process` pair. Cycle 15 read a create's
-  frames as the per-item ones alone and concluded an empty library had nothing to push, so simplex's
+  frames as the per-item ones alone and concluded an empty library had nothing to push, so rex's
   create pushed only the `backgroundProcessingQueue` frame -- and the client's own Add Library dialog
   draws its spinner and its "Library scan complete" toast off exactly these.
 * **`ButlerTaskGenerateAdMarkers` ships DISABLED**, alone among the three marker tasks: Credits and
   Intro really do default to enabled. It is the ONE disagreement in the whole 23-row enabled table
-  between simplex and both copies, which agree with each other on every row, and `POST /butler` runs
-  what is enabled -- so a fresh simplex generated ad markers where a fresh real server never does.
+  between rex and both copies, which agree with each other on every row, and `POST /butler` runs
+  what is enabled -- so a fresh rex generated ad markers where a fresh real server never does.
   Class D: a default set from its siblings rather than read.
 
 **And the search hunt found the score had never been the matcher's.**
 
 * **A search hit's SCORE tier is the matcher's own rule**, not a title prefix. Measured over sixteen
-  (query, row) cells on kids and zen: an exact title is **0.93** (simplex said 0.95), a query whose
+  (query, row) cells on kids and zen: an exact title is **0.93** (rex said 0.95), a query whose
   terms match the title's words in order **starting at the title's FIRST word** is 0.73 -- `Tears
   Steel`, `Big Bunny`, `Big Buck`, `Cosmos` -- and everything else is the 0.33 fuzzy band --
-  `Steel`, `Bunny`, `Buck Bunny`, `Laundromat`, `of Steel`. Both of simplex's scorers compared a
+  `Steel`, `Bunny`, `Buck Bunny`, `Laundromat`, `of Steel`. Both of rex's scorers compared a
   title PREFIX instead, so a **skipped middle word** -- the commonest thing a person leaves out when
   typing -- scored at the fuzzy floor, below the threshold the client promotes a hub on, while a
   single word from the middle of a title was promoted above it. Class C in its canonical shape:
@@ -8456,7 +8456,7 @@ sends.
   `has64bitOffsets` true, and the reference's HTTP 400 for Xbox 360 there matches the model exactly,
   which closes that half of §3.3's untripped-limitations entry.
 
-**The negative results.** The encoding negotiation matches on both references and simplex
+**The negative results.** The encoding negotiation matches on both references and rex
 (`deflate`, `br`, `*` and `compress` all get a plain body; a list containing `gzip` gets gzip;
 `gzip;q=0` still gets gzip); nothing on the surface is chunked and no response carries `Vary`; an
 HTTP/1.0 request line, an HTTP/1.0 keep-alive upgrade, two pipelined requests in one segment and a
@@ -8469,7 +8469,7 @@ Measured and not acted on:
 - **The fuzzy BAND itself.** A query carrying a capital macron, `İ` or `Ÿ` -- characters the fold
   table deliberately does not reach -- still comes back from a real PMS, scored by word position and
   word length (a length-2 word at the query's first position drops to the fuzzy floor, at the last
-  position not at all; 16 zen titles scored). simplex matches on prefixes and returns no row at all,
+  position not at all; 16 zen titles scored). rex matches on prefixes and returns no row at all,
   and emulating the band means emulating a continuous similarity score. §3.3 keeps the entry with the
   measurement attached.
 - **`video.separateFields` is read as a constant 0** in `decision.py` where every neighbouring value
@@ -8495,7 +8495,7 @@ snapshots are byte-identical.
 `/library/all?type=1#ignored` is a 400 because `1#ignored` is the integer value; and
 `/identity;ignored` reaches the one-segment plug-in-framework answer rather than `/identity`.
 `urllib.parse.urlparse/urlsplit` silently assigned params/fragment semantics and routed another
-request, so simplex now splits the raw target only at the first `?`. The same raw-query split is used
+request, so rex now splits the raw target only at the first `?`. The same raw-query split is used
 by every response-wide reader -- localisation, paging, `excludeElements`, authentication and both
 notification transports -- rather than reparsing the target differently after routing it.
 
@@ -8507,7 +8507,7 @@ the server does not decode twice. PMS validates this shape; it never normalises 
 
 **GET and HEAD ignore a declared body.** Raw requests with `Content-Length: 999`, no body and an open
 socket receive their 200 immediately on both versions, with and without `Expect: 100-continue`.
-simplex read the declared bytes before routing every verb, so a slow or absent body stalled every
+rex read the declared bytes before routing every verb, so a slow or absent body stalled every
 read-only endpoint. POST/PUT still consume their body; the rule is method-specific.
 
 **A measured stack is one Media with multiple Parts.** Plex recognises the filename spelling
@@ -8597,16 +8597,16 @@ cycle 37's `9403d3d`.
 `PUT /library/metadata/{id}?title.value=...&summary.value=...` and a raw
 `POST /playlists?...` carrying `Content-Length: 1000000`, no body bytes and an open socket answer
 and commit immediately on both PMS 1.42.2 and 1.43.4. Each route completed 20/20 concurrent trials
-on each version; the answers arrived in 0.012--0.194 seconds. Frozen simplex instead waited for its
+on each version; the answers arrived in 0.012--0.194 seconds. Frozen rex instead waited for its
 20-second socket timeout, returned no status line and committed none of 40 writes. This is not a
 verb-wide exception: a subtitle upload with the same withheld bytes remained blocked on both PMS
-and simplex. The handler now skips body consumption only for those two measured path/method pairs.
+and rex. The handler now skips body consumption only for those two measured path/method pairs.
 
 **Slow consumers do not serialize unrelated clients.** A client that stopped after the headers of
 a 3.7--4.1 MB response, a notification websocket that never read, and 1,200 writes producing 2,402
 frames did not block ordinary reads or writes. Three-client edit, rating/progress and list-member
 races exposed only serializable final states; partial request aborts, response aborts and connection
-EOF lost no completed write. Those cells were negative findings: simplex already agreed.
+EOF lost no completed write. Those cells were negative findings: rex already agreed.
 
 **Spelling vocabularies rebuild with database optimization, not with row edits.** The complete
 static caller set in both binaries is the database optimizer and two historical search migrations;
@@ -8616,7 +8616,7 @@ automatic Butler eligibility is calendar-aligned: at the approximately five-minu
 enters the configured local maintenance window, an enabled task with interval seven is eligible
 when `floor(time/86400) % 7 == 0`; it is not “seven days since the last rebuild.” The rebuild first
 requires the ICU FTS table, rebuilds FTS plus both spellfix vocabularies transactionally, then the
-optimizer runs `ANALYZE` and `VACUUM`. simplex now keeps edits stale until its three existing
+optimizer runs `ANALYZE` and `VACUUM`. rex now keeps edits stale until its three existing
 optimization entry points -- explicit optimize, Butler OptimizeDatabase and section deletion --
 finish; catalog construction remains the migration/startup equivalent. A background Butler daemon
 was not invented for an in-memory server that has none.
@@ -8636,20 +8636,20 @@ empty generic attribute map for `score`, so every comparison is zero against zer
 serializer later writes a dedicated numeric score. The resulting order is the builder sequence,
 beginning movie, show, episode, rather than a global score sort or `/hubs/search`'s display order.
 Across 51 captures and 291 rows the recovered bucket model had no precedence or within-bucket
-misses; four real responses contain a later, higher-scored bucket. simplex now uses that measured
+misses; four real responses contain a later, higher-scored bucket. rex now uses that measured
 flat-search sequence explicitly.
 
 **Storage failures were measured but have no emulation backend.** On isolated reference copies,
 SQLite `ENOSPC` produced a mixture of explicit 500s and writes that answered 200 without landing;
 preference-file failures could update runtime state and later revert; bundle failures varied by
-leaf; and recovery preserved database integrity and atomicity. simplex owns no SQLite database,
+leaf; and recovery preserved database integrity and atomicity. rex owns no SQLite database,
 `Preferences.xml`, metadata bundle tree, cache or encoder process to fault. Mapping those host
 failures onto its in-memory catalog would manufacture a subsystem and failure semantics rather than
 emulate one, so this axis is recorded and deliberately not implemented.
 
 ### Cycle 39: client replay, score-fold passes, and complete tag vocabulary
 
-Measured 2026-09-17 against kids PMS 1.43.4, zen PMS 1.42.2 and frozen simplex
+Measured 2026-09-17 against kids PMS 1.43.4, zen PMS 1.42.2 and frozen rex
 `7d98293`. The accepted official Plex Web 4.160.0 walk contained 21 safe GETs and 20 unique exact
 request envelopes across home, both sections and the movie/show/season/episode preplay path. Every
 status and response format agreed, common attribute and child order had zero mismatches, and the
@@ -8670,7 +8670,7 @@ exactness is a separate, broader comparison: `TĒars of Steel`, `Tears of StĒel
 `Tears of ſteel` are exact, although `TĒars`, `TĒar` and `Tearſ of Steel` are fuzzy. A two-letter
 word is a measured boundary: both `Tears Ōf Steel` and `Tears ōf Steel` are anchored, not exact.
 The exact observed scores, including the audience-rating tail, are `.33055`, `.73055` and `.93055`.
-simplex now preserves the raw query for tier classification and keeps the partial and whole-title
+rex now preserves the raw query for tier classification and keeps the partial and whole-title
 passes separate; the lowercase form remains for collection, playlist and tag membership.
 
 **The complete 1.42.2 spelling tag vocabulary is reconstructible without copying a library.** A
@@ -8697,7 +8697,7 @@ python-plexapi and 0/11 byte-read results remain the recorded dead-link baseline
 
 ### Cycle 40: complete boundary censuses, legacy lookup, and metadata-agent groups
 
-Measured 2026-09-17 against kids PMS 1.43.4, zen PMS 1.42.2 and frozen simplex
+Measured 2026-09-17 against kids PMS 1.43.4, zen PMS 1.42.2 and frozen rex
 `bcda2f9`. The inward census mechanically found 867 source branches, 308 normalized public/shared
 families, 526 family/verb cells and 3,080 protocol-axis cells, 2,986 applicable. Direct evidence
 maps all 308 families; branch-entry traces plus semantic assertions reach 304. The only two
@@ -8712,8 +8712,8 @@ both JSON and XML Accept. Its root is `Response code="2000"`, its status is
 Only the installed plug-in build and traceback line differ: 1.43.4 names `Plug-ins-e5521bd8c`
 line 847; the 1.42.2 form names `Plug-ins-f737b826c` line 843 and is exactly 464 bytes. HEAD keeps
 status, type and that length with no body. A gzip-capable GET compresses the XML; Accept never
-changes it, and the connection closes. Frozen simplex instead returned a successful empty
-MediaContainer. Because simplex reports 1.42.2, it now sends that exact legacy body and envelope.
+changes it, and the connection closes. Frozen rex instead returned a successful empty
+MediaContainer. Because rex reports 1.42.2, it now sends that exact legacy body and envelope.
 A lookup carrying `url=` was not probed: it can cause an external fetch and remains outside the
 safe surface.
 
@@ -8727,12 +8727,12 @@ no further capability gate. The exact client POST carries `title` followed by
 `primaryIdentifier=tv.plex.agents.movie`, an empty body and normal identity headers. Both references
 return 200 JSON with one full `MetadataAgentProviderGroup` and its primary
 `MetadataAgentProviderGroupItem`; the client consumes the id, closes the modal and refreshes.
-Frozen simplex returned 400 and left the modal showing “Failed to save changes”.
+Frozen rex returned 400 and left the modal showing “Failed to save changes”.
 
 The dependent operations also agree across versions: renaming returns 200 with the full updated
 group; the UI-offered Personal Media membership PUT with `after=-1` returns 400 because that agent
 is not secondary-compatible; deleting the absent membership returns 404; group deletion returns
-an empty 200 and restores the table. simplex now holds custom groups in memory and reproduces this
+an empty 200 and restores the table. rex now holds custom groups in memory and reproduces this
 create/read/rename/refusal/delete/postcondition sequence. Provider create remains a separate
 external-object capability, and PUT/DELETE of built-in providers remain hidden by the client's
 built-in-title gate.
@@ -8747,7 +8747,7 @@ Both scratch references were restored byte-for-byte. The final tree passes catal
 
 ### Cycle 41: the historical backlog and every advertised control
 
-Measured 2026-09-17 against both disposable PMS versions and frozen simplex `2c06bab`. The
+Measured 2026-09-17 against both disposable PMS versions and frozen rex `2c06bab`. The
 historical census extracted 513 raw entries from this file and `HANDOVER.md`, retained 496 claim
 sources, normalized 287 parent claims and split compound claims into **332 atomic behaviors**.
 Every atom has a terminal disposition: 180 built, 42 refuted or superseded, 36 deliberate
@@ -8823,7 +8823,7 @@ and 11 safely unreachable state models. Actionable findings and unbounded unreso
 **zero**.
 
 The advertisement axis recollected all **49** source families from both references and frozen
-simplex, rescanned all 207 JavaScript files of the local Plex Web 4.147.1 bundle, and rebuilt the
+rex, rescanned all 207 JavaScript files of the local Plex Web 4.147.1 bundle, and rebuilt the
 stable graph at **1,221 advertisements / 47 predicates / 339 controls / 45 actions / 45 readbacks**.
 Thirty-nine chains have a current exact route and postcondition witness. The remaining six are the
 same two forbidden media reads, hidden Optimize/Sync capability actions and external/auth claim
@@ -8862,7 +8862,7 @@ accurately bounded at 29/205 JavaScript bodies with 176 mapped bodies absent. Th
 provenance, not a limit on the complete current app universe. Reconciliation against the complete
 4.147.1 graph finds only the already implemented metadata-provider id/group/membership lifecycle.
 The current PMS-family ledger is 207 families, and the complete-current union is 51 predicates,
-347 controls and 55 action/readback cells. Three exact provider reads pass on frozen simplex and the
+347 controls and 55 action/readback cells. Three exact provider reads pass on frozen rex and the
 full provider group lifecycle remains regression-covered.
 
 The historical territory independently rebuilt **332/332** stable atoms from 513 raw records and
@@ -8872,7 +8872,7 @@ capability absences, 23 client-invisible fidelity choices, 40 external/instrumen
 safely unreachable states; actionable and unbounded unresolved are both zero.
 
 The advertised-control territory recollected all **49** source families on both references and
-current simplex, rescanned the complete local 4.147.1 bundle and rebuilt **1,221 advertisements / 47
+current rex, rescanned the complete local 4.147.1 bundle and rebuilt **1,221 advertisements / 47
 predicates / 339 controls / 45 actions / 45 readbacks**. All stable ids are unique and every foreign
 key resolves. Thirty-nine reachable chains have fresh exact route, assertion and postcondition
 witnesses. The same six cells remain explicitly bounded: two forbidden media reads, hidden
@@ -8924,7 +8924,7 @@ history says the instrument has been the ceiling every single time.
 
 For the whole of the project's life every Real-Debrid link in the checked-in fixture was dead:
 `tests/test_all.py` reported `0/11 served` for fifteen consecutive cycles and every rule about a
-media body was measured on a *reference* and implemented on faith. **simplex's own byte path had
+media body was measured on a *reference* and implemented on faith. **rex's own byte path had
 never been run against a single real byte.** Cycle 44 ran it, and 13 of the 20 `Range` cells both
 references agree on were wrong.
 
@@ -8937,7 +8937,7 @@ thirty-four cycles without anyone reading it.
 * **The part read applied no `Range` grammar at all.** `_proxy` forwarded the client's header to
   the debrid CDN and echoed whatever came back, so the answer was the CDN's grammar rather than a
   PMS's — and differed per CDN host. Measured over twenty cells against kids (1.43.4) and zen
-  (1.42.2), which agree on every one; simplex differed on **thirteen**. The two that break a real
+  (1.42.2), which agree on every one; rex differed on **thirteen**. The two that break a real
   player: `bytes=-1` returned the FIRST byte where a real PMS returns the last (which is how
   ffmpeg, mpv and every embedder locate an MP4 `moov` or a Matroska Cues block, so every seek read
   the wrong end of the file), and `bytes=<total+10>-` answered **`Content-Length: -10`**, which is
@@ -8946,7 +8946,7 @@ thirty-four cycles without anyone reading it.
   over-ran it. `_range_window` now holds the grammar once and both `_ranged` and the part path ask
   it.
 * **A bare `Range: bytes=-`, with nothing after the dash, is not a Range.** 200 on both references
-  on `/identity`, artwork, a `/web` asset and a part; simplex answered a 206. `bytes=- `,
+  on `/identity`, artwork, a `/web` asset and a part; rex answered a 206. `bytes=- `,
   `bytes=-x`, `bytes=-abc`, `bytes=-0`, `bytes=-+` and `bytes=-.` are all the 206 — only the empty
   one is not a Range. Cycle 35's 43 header values did not include it.
 * **A part read carries `X-Plex-Protocol: 1.0`, first, like every other response.** The part path
@@ -8957,15 +8957,15 @@ thirty-four cycles without anyone reading it.
   file ends `.mkv` and answers `video/x-matroska`; asking for that same part as `file.mp4`,
   `file.zzz`, `file.mov` or `file.webm` answers `video/x-matroska` every time. An extension the
   table does not name answers **`application/octet-stream`** (zen's `.m2ts` parts do), where
-  simplex fell back to `video/mp4`; `.mov` is `video/quicktime`.
+  rex fell back to `video/mp4`; `.mov` is `video/quicktime`.
 * **The bandwidth statistic counts what was WRITTEN.** Measured on kids: a client that aborted
   after 72 452 bytes moved the counter by 309 037 and a full read of the same 6 273 654-byte part
-  moved it by 6 274 913. simplex counted the advertised `Content-Length` however the read ended, so
+  moved it by 6 274 913. rex counted the advertised `Content-Length` however the read ended, so
   one 1 MB read of a 121 MB part moved the Dashboard by the whole 121 MB — and every seek and every
   stop is an abort.
 * **`POST` and `PUT` on the THREE-segment media path are 404s.** Both writable copies, on 1.42.2
   and 1.43.4 alike: `/library/parts/{id}` takes the track-selection write and
-  `/library/parts/{id}/{version}/file.ext` does not. simplex had no length check, so a client that
+  `/library/parts/{id}/{version}/file.ext` does not. rex had no length check, so a client that
   built the write from the Part's own `key` — which *is* the three-segment path — really moved the
   selection where a real PMS answers 404.
 
@@ -8980,12 +8980,12 @@ thirty-four cycles without anyone reading it.
   recorded rule "a 416 names no connection state at all — the only response class that does not",
   which is the binary half only.**
 * **Every 416 carries `Cache-Control: no-cache`**, the transcoder's included, where its 200 carries
-  `max-age=259200`. simplex cached the refusal for three days. It also kept `X-Plex-Local-Asset` on
+  `max-age=259200`. rex cached the refusal for three days. It also kept `X-Plex-Local-Asset` on
   an artwork 416, which neither reference sends on anything but the 200.
 * **With an `Origin` on the wire the CORS pair sits directly after `X-Plex-Protocol` and
   `Access-Control-Allow-Origin` directly before `Date`, in EVERY family** — container, artwork,
   `/:/resources`, `/web` asset, `/photo/:/transcode`, part, `/system`, error and the `/web` 302.
-  simplex had it right for two families and trailed the pair to the end in six; the `/web` 302,
+  rex had it right for two families and trailed the pair to the end in six; the `/web` 302,
   which is the one response the web client follows to reach the app, carried no CORS headers at
   all. Cycle 33 measured the families on a connection that sent no `Origin`, where the trio is
   absent altogether, so this was structurally invisible to it.
@@ -8994,11 +8994,11 @@ thirty-four cycles without anyone reading it.
 
 * **`/library/sections/{id}/{videoCodec,audioCodec,subtitleCodec,audioLayout}` are 1.43.4-only
   axes.** 200 on kids, **404 on zen AND on plexscratch42** — two independent 1.42.2 servers — on a
-  movie library and a show library alike. simplex reports 1.42.2 and answered all four. The same
+  movie library and a show library alike. rex reports 1.42.2 and answered all four. The same
   six-name media-codec split is already recorded for `/filters` and the `Meta` descriptor; the AXES
-  split with them, which nothing had checked, and simplex's own `/filters` correctly omits them.
-* **`/library/sections/{id}/rating` is a real secondary axis and simplex 404'd it** — and it is
-  **ADVERTISED** in a movie library's own pivot `Directory`, by simplex itself, so the Ratings
+  split with them, which nothing had checked, and rex's own `/filters` correctly omits them.
+* **`/library/sections/{id}/rating` is a real secondary axis and rex 404'd it** — and it is
+  **ADVERTISED** in a movie library's own pivot `Directory`, by rex itself, so the Ratings
   entry in the official client's sidebar opened nothing. The axis container is byte-identical to
   `/userRating`'s, six fixed buckets titled "By Rating"; the BUCKETS read the CRITIC `rating`
   column where `/userRating`'s read the per-user one (zen `/rating/8` is 221 rows, `/userRating/8`
@@ -9012,24 +9012,24 @@ thirty-four cycles without anyone reading it.
 * **`/media/providers/metadata/{id}` and `/media/providers/metadata/group/{id}` are real.** Found
   by sweeping the PMS path literals out of **Plex Desktop's own bundle** — the first non-Plex-Web
   official client this programme has read. Each answers the one row the bare table carries; an id
-  the server does not hold is a 404 and a NON-NUMERIC one is a **400**. simplex 404'd all of it,
+  the server does not hold is a 404 and a NON-NUMERIC one is a **400**. rex 404'd all of it,
   and these are the two shapes the Settings → Agents pane builds once the tables have loaded.
 * **`builtIn` is the string `"1"` on 1.42.2 and the boolean `true` on 1.43.4, and `order` is the
   float `1000.0` on both.** The XML is `builtIn="1"` / `order="1000"` on both versions, so only a
   JSON read of BOTH references can see it — the same family as `durationTotal`/`storageTotal` being
-  JSON strings. simplex reports 1.42.2 and sent `true` and `1000`.
+  JSON strings. rex reports 1.42.2 and sent `true` and `1000`.
 
 ##### The decision, and what a `.webm` file really is
 
 * **A `.webm` file's `container` is `mkv` on a real PMS.** Measured on the SAME FILE: zen
-  ratingKey 19769 and simplex row 1002 are both `Tears of Steel.webm`, 571 346 576 bytes,
+  ratingKey 19769 and rex row 1002 are both `Tears of Steel.webm`, 571 346 576 bytes,
   vp8/vorbis 1920x800, and zen answers `container: "mkv"` on the Media and the Part while the
   Part's key keeps `file.webm`. No row of zen's 4,508 movie Media carries `webm` as a container at
   all. **The project's own corpus has said so since cycle 10**:
   `tests/fixtures/media/fun-1052407-0.json` is a `.webm` file whose recorded Media — what a real
   1.42.2 PMS wrote for it — is `mkv`. Nothing caught it because `test_mediainfo.py` compared every
   stream field and the Media's geometry and **never the container**; it does now. The override was
-  kept on the argument that "simplex keeps `webm`, which Plex Web's direct-play rule depends on";
+  kept on the argument that "rex keeps `webm`, which Plex Web's direct-play rule depends on";
   driven across all 78 profiles against both containers, the browser profiles answer the same
   outcome either way and the one cell that moves is `Sony Bravia 2013`, which direct-plays the row
   as `mkv` and is refused as `webm`. The override cost a direct play rather than buying one.
@@ -9060,14 +9060,14 @@ thirty-four cycles without anyone reading it.
   ever swept. All three announces a real 1.43.4 PMS made are identical: the **identifier** form, to
   `servers.plex.tv`, token in the query, an empty body, and thirteen headers in a fixed order led
   by `User-Agent: PlexMediaServer/<version>` and an `X-Plex-Client-Identifier` equal to the machine
-  identifier. simplex used the **numeric** device id against `plex.tv`, sent six headers and none
+  identifier. rex used the **numeric** device id against `plex.tv`, sent six headers and none
   of the identifying ones, added a `natLoopbackSupported` a real PMS does not send, derived
   `httpsEnabled` from the uri's scheme (the reference sends `1` beside an `http://` uri) and
   announced version `1.43.3` where its own `/identity` says `1.42.2`. `CLAUDE.md` has recorded the
   identifier correction since 2026-09-12 and the code never followed it — and the numeric form is
   the dangerous one, because it resolves to whatever device row already holds that id.
 * **`/myplex/claim` is routed for POST alone.** GET, HEAD, PUT, DELETE and a bare OPTIONS are each
-  a 404 there; simplex routed the handler for every verb and answered its own "missing claim token"
+  a 404 there; rex routed the handler for every verb and answered its own "missing claim token"
   400 to all of them, which tells a client the endpoint exists. Its neighbour
   `/myplex/refreshReachability` already gated correctly on PUT, which is what made the difference
   visible.
@@ -9075,7 +9075,7 @@ thirty-four cycles without anyone reading it.
   `subtitleStreamID` parses as a signed integer, anything unparseable reads as 0 and CLEARS the
   selection, `-1` reverts to the default, and any other negative is a 400. `audioStreamID` has no
   "0" meaning: `0` and every negative but `-1` are 400s and an unparseable value is an accepted
-  no-op. simplex applied the audio grammar to both.
+  no-op. rex applied the audio grammar to both.
 * **`/video/:/transcode/universal/{ping,stop}?session=` with an EMPTY value is a 404**, not the
   400 a missing parameter gets — the empty value is the unknown-session case, where `session=%20`,
   `session=0` and `session=zzzz` already were. The neighbouring `start.m3u8?session=` and
@@ -9090,7 +9090,7 @@ thirty-four cycles without anyone reading it.
 * The `Connection: close` a part read sends instead of the reference's `Keep-Alive`/`timeout=20`
   remains the recorded ffmpeg-seek deviation.
 * `Part.accessible`/`exists` remain hard-coded true. zen rows whose file is unreachable answer
-  `false`/`false`; simplex answers true, and telling the truth would mean probing its own upstream
+  `false`/`false`; rex answers true, and telling the truth would mean probing its own upstream
   on every metadata read. The 404 half of that difference IS now built (above); the two booleans
   are not, and the deviation is inherited from cycles 1–6.
 * Season and episode `Guid` are written by the builder from this cycle on; a catalog built before
@@ -9114,7 +9114,7 @@ and every negative has a finite denominator or an explicit safety/capability bou
 The vocabulary is every `include*`, `exclude*`, `async*`, `check*`, `skip*`, `only*` and `with*`
 literal recovered from PMS and the official-client bundles: **116 names**. It was crossed with
 **76** distinct safe top-level, library, section, hub, item, hierarchy, secondary-axis, session
-and system families on kids 1.43.4, zen 1.42.2 and simplex: **26,448 cells**, with duplicate
+and system families on kids 1.43.4, zen 1.42.2 and rex: **26,448 cells**, with duplicate
 baselines and the three moving statistics/updater leaves excluded per host.
 
 The first broad run exposed eleven apparent mismatches. Ten were real and one was the already
@@ -9145,7 +9145,7 @@ opening pass, the query axis produced **14 fixes**:
 The final partition is **19 common moving options, four version/content splits, 92 no-ops, one
 explicit bound and zero actionable mismatches**. `includeBandwidths=1` is the bound: it exposes
 `deepAnalysisVersion` and bitrate-distribution output only on a Part PMS has deeply analysed.
-An unanalysed zen Part is byte-identical with and without the option, and every simplex Part is
+An unanalysed zen Part is byte-identical with and without the option, and every rex Part is
 unanalysed, so emitting nothing is the measured branch rather than a missing implementation.
 
 ##### Request headers: 61 normalized names, 88 spellings, 24,156 logical cells
@@ -9202,7 +9202,7 @@ uses a short-lived RS256 Bearer obtained from the owner's `identifier=scrobbling
 measured credential transform is base64 then AES-256-CBC with the MD5 expansion
 `D1=MD5(secret)`, `D2=MD5(D1||secret)`, `D3=MD5(D2||secret)`, followed by its permissive final-byte
 strip. The static 32-byte transport secret is deliberately not in the repository; deployment must
-supply its base64 form in `SIMPLEX_SCROBBLING_DECRYPT_SECRET_B64`. Without it, sync fails closed.
+supply its base64 form in `REX_SCROBBLING_DECRYPT_SECRET_B64`. Without it, sync fails closed.
 
 The proof is whole-corpus, not sampled: **140/140** captured service ciphertexts decrypt, and the
 latest preceding plaintext equals the Bearer actually used on **309/309** state requests. The
@@ -9255,7 +9255,7 @@ produced 23 more. Twenty-seven commits, every one proved fail-then-pass.
 PMS's own route table — read out of the binary's string block on kids — spells it `/:tagType/top`,
 with no constraint on the segment, which is why *any* single word matches it. It is the **fifth**
 real two-segment section leaf, beside `extras/all`, `query/parse`, `indexes/thumbnails` and the
-versioned `composite/{v}`, and simplex 404'd every form of it.
+versioned `composite/{v}`, and rex 404'd every form of it.
 
 It answers the section's **tag table** for the type the name resolves to: `Directory` rows of
 `key, id, filter, tag, tagType` (plus `tagKey` and `thumb` on a person), **ascending by tag id** —
@@ -9314,9 +9314,9 @@ measured too: `Thumb` and `Art` sit between the tags and `Guid`, and `Theme` dir
 Two findings in one function, both reachable from every browser:
 
 * **`X-Plex-Accept-Language` is a third localisation input**, header *and* query, ranked between
-  the two simplex knew: `X-Plex-Language` > `X-Plex-Accept-Language` > `Accept-Language`. simplex
+  the two rex knew: `X-Plex-Language` > `X-Plex-Accept-Language` > `Accept-Language`. rex
   ignored it, so a client that sends only that header got English.
-* **The `q` grammar ranks the whole list.** simplex read the first member and threw the rest away
+* **The `q` grammar ranks the whole list.** rex read the first member and threw the rest away
   (`accept.split(",")[0].split(";")[0]`), so `de;q=0.1, fr;q=0.9` answered German where a real PMS
   answers French and `de;q=0` answered German where a real PMS falls back to English. Measured
   over 39 cells on kids and zen, identical on both: weights rank the list, the default is 1.0,
@@ -9342,13 +9342,13 @@ an empty `title` and `summary`, `index: 1`, `addedAt` the mint time and `genuine
 `/library/metadata/{mintedKey}`, and it carries **no `librarySectionID`**, which is why it is
 invisible in every listing including `/library/all`. `theme` is the only artwork leaf with this
 sub-leaf; `thumb`, `art`, `poster`, `banner`, `clearLogo`, `squareArt` and `squarePoster` all 404
-it. simplex mints the same row and keeps it **beside** the catalog rather than in it, so a `track`
+it. rex mints the same row and keeps it **beside** the catalog rather than in it, so a `track`
 row cannot leak into the tag tables, the spelling index or `/library/all` — the pollution this
 endpoint is infamous for, reproduced rather than inflicted.
 
 ##### `/library/shared` — a whole subtree behind one leaf
 
-simplex answered `/library/shared/all` and 404'd everything else. On both references
+rex answered `/library/shared/all` and 404'd everything else. On both references
 `/library/shared` is the Shared view's **tab bar**: a constant seven-row `Type` container in an
 identifier of its own (`com.plexapp.plugins.library.shared`), each row `type: "mixed"`,
 `active: false` and carrying the same two `Sort` rows (`titleSort` "Title" default asc, and
@@ -9368,13 +9368,13 @@ ignored entirely.
 **And an empty `?sort=` crashes a real PMS.** It closed the connection on kids and SEGV'd zen's
 Plex outright (`systemd: code=killed, signal=SEGV`), reproduced on both, isolated to that one
 parameter by probing the other nine on kids alone afterwards. There is no answer to copy, so
-simplex reads the empty value as absent — the convention `/collections` already has for it — and
+rex reads the empty value as absent — the convention `/collections` already has for it — and
 the crash is recorded rather than emulated. **Do not send that request to zen.**
 
-##### The account's feature list, answered two different ways by simplex
+##### The account's feature list, answered two different ways by rex
 
 `ownerFeatures` on `GET /` and `subscriptionFeatures` on `/myplex/account` are the **same string**,
-byte for byte — 7,078 characters on kids and 6,967 on zen, identical within each server. simplex
+byte for byte — 7,078 characters on kids and 6,967 on zen, identical within each server. rex
 answered `pass,sync,hwtranscode` for one and the bare `pass` for the other, so its own two paths
 contradicted each other and Plex Web — which reads `ownerFeatures` in 28 places in its bundle —
 was told the account had three features on one path and one on the other.
@@ -9388,7 +9388,7 @@ plex.tv content and are deliberately not invented.
 
 * **The bare `/sync` is the plug-in dispatcher's `{size: 0, content: "plugins"}` 200**, like every
   other single-segment path, while `/sync/items`, `/sync/transcodeQueue` and `/sync/zzz` really
-  are 404s. simplex short-circuited the whole prefix on the note that it has no sync, so it
+  are 404s. rex short-circuited the whole prefix on the note that it has no sync, so it
   answered one single-segment path differently from all the others.
 * **Eleven more cross-type axes** answer the empty secondary container the nine already-known ones
   do — `autotag`, `aperture`, `exposure`, `iso`, `lens`, `sport`, `team`, `channel`, `publisher`,
@@ -9399,7 +9399,7 @@ plex.tv content and are deliberately not invented.
 * **An axis bucket resolves against the server's global tag TABLE, not the leaf's own column.** A
   genre tag id answers the identical container under `genre`, `director`, `actor`, `mood`,
   `style`, `similar`, `tag` and eleven more names; only `studio` and `platform` are not bucket
-  names at all. simplex resolved the id against the name's own column, so nine names worked for
+  names at all. rex resolved the id against the name's own column, so nine names worked for
   their own tags and the other ten 404'd everything.
 * **`/library/arts` is a real listing query**, and an image row renders as `<Photo>`.
 * **Two more section subsets exist**, `recentlyViewedGrandparents` and `recentlyAddedGrandparents`,
@@ -9442,7 +9442,7 @@ plex.tv content and are deliberately not invented.
 * **`includeBandwidths=1`** adds `deepAnalysisVersion: 6` and a comma-joined eight-value
   `requiredBandwidths` to a **Part**, and `requiredBandwidths` to a Stream — but only on a Part a
   real PMS has **deep-analysed**. zen's `/library/metadata/1` is byte-identical with and without
-  the option, which is the proof: simplex's Parts are all un-analysed, so ignoring the option is
+  the option, which is the proof: rex's Parts are all un-analysed, so ignoring the option is
   the faithful answer. Its value grammar is the `+?0*1` family and nothing refuses.
 * ~~**The ~180 plex.tv feature UUIDs** behind `ownerFeatures`.~~ **BUILT in Cycle 46 and renewed
   daily in Cycle 47.** The outbound corpus identified `/api/v2/features` as their exact
@@ -9457,12 +9457,12 @@ plex.tv content and are deliberately not invented.
 
 Cycles 46–48 closed five finite axes and cycle 48 reported no findings on every one of
 them. Cycle 49 reopened the loop the only way it has ever been reopened: by recognising an
-instrument. **simplex had never been asked how a client FINDS it.** Everything this
+instrument. **rex had never been asked how a client FINDS it.** Everything this
 programme has measured happens over TCP 32400 after a client already knows the address.
 Three axes fell out of that, and none of them had been swept:
 
 * **UDP.** A real PMS answers Plex's own LAN discovery protocol, GDM, on two ports.
-  simplex answered nothing, so no official client could find it without plex.tv or a
+  rex answered nothing, so no official client could find it without plex.tv or a
   hand-typed address.
 * **The connection itself.** Cycle 37 swept the request LINE and cycle 33 the response
   header BLOCK; nobody had swept what a real PMS does with the TCP stream around and
@@ -9499,7 +9499,7 @@ from their own values, so nothing here is version-split; the CLAIM is what split
 * **`Host` is the one field the claim moves.** Both claimed references carry
   `<certificate hash>.plex.direct` and neither unclaimed copy carries the line at all —
   absent, not empty. An unclaimed PMS has no certificate, so the claim and the certificate
-  are confounded on these four instruments; simplex emits the line only when it holds a
+  are confounded on these four instruments; rex emits the line only when it holds a
   plex.direct hostname, which is the honest reading either way.
 * **`Updated-At` is not a clock.** It stood still under fifteen reads in a minute on zen,
   the second server on that wire answered a value **3.5 days** old, and on an idle
@@ -9511,8 +9511,8 @@ from their own values, so nothing here is version-split; the CLAIM is what split
   to 239.0.0.250:32414 every **5.00 seconds**, on every interface (nine samples at 0.96,
   5.96, 10.96 … 40.97 s).
 * **`/servers` is what that search found.** zen's `/servers` listed itself, the second
-  server on its wire, and — within six seconds of simplex being started with the new
-  module — **simplex**, at the address and port simplex advertised. A row ages out
+  server on its wire, and — within six seconds of rex being started with the new
+  module — **rex**, at the address and port rex advertised. A row ages out
   between **177 s and 180 s** after its last answer, bracketed by polling every three
   seconds; an earlier run reading (154, 165] is discarded, because it reused a
   machineIdentifier zen already held.
@@ -9524,20 +9524,20 @@ from their own values, so nothing here is version-split; the CLAIM is what split
 
 * **`/servers`' own row carries the server's own address and port.** zen answers
   `192.168.88.244`/32400 and kids `172.31.7.2`/32400 — each its own interface address,
-  never loopback. simplex hard-coded `127.0.0.1` and the constant 32400 whatever port it
+  never loopback. rex hard-coded `127.0.0.1` and the constant 32400 whatever port it
   was on, because `private_address` was declared and never assigned for the whole life of
   the field. `/myplex/account`'s `privateAddress`/`privatePort` move TOGETHER: zen carries
   both and kids, whose plex.tv mapping holds no local connection, carries `""` and **0**.
-  simplex was the only server of the four answering a port beside an empty address.
+  rex was the only server of the four answering a port beside an empty address.
 * **`/` advertises the transcoder's quality LADDER**, three parallel comma lists,
   byte-identical on all four servers and independent of the transcoder's own state:
   `transcoderVideoBitrates`, `transcoderVideoQualities`, `transcoderVideoResolutions`.
-  Plex Web builds its Quality menu from them, index by index; simplex sent none.
+  Plex Web builds its Quality menu from them, index by index; rex sent none.
   `transcoderVideoRemuxOnly`, which zen also carries, is **not** a version attribute — the
   1.42.2 copy omits it too, so it is zen's own state. And two more values on that blob are
   ones no reference emits: `livetv` is a CONSTANT **7** on all four (none of which has a
-  tuner) where simplex said 0, and `offlineTranscode` is 1 claimed and ABSENT unclaimed,
-  never the 0 simplex invented.
+  tuner) where rex said 0, and `offlineTranscode` is 1 claimed and ABSENT unclaimed,
+  never the 0 rex invented.
 
 ##### The connection and transport layer
 
@@ -9546,7 +9546,7 @@ of it.
 
 * **A real PMS consumes a declared request body before reading the next request.** It
   answers a GET carrying a body WITHOUT waiting (cycle 37's half) and then consumes
-  exactly `Content-Length` bytes, so two requests on one socket get two answers. simplex
+  exactly `Content-Length` bytes, so two requests on one socket get two answers. rex
   left the bytes in the stream, glued to the next request line, and the client was handed
   a 400 belonging to nothing it sent. The count is a positive measurement, not an
   inference: nine body bytes behind `Content-Length: 5` leave four spare and the NEXT
@@ -9556,7 +9556,7 @@ of it.
   the FIRST occurrence**, the opposite of the repeated-query-parameter rule, and a leading
   `+` parses.
 * **A real PMS decodes `Transfer-Encoding: chunked`**, including on a write: a chunked
-  subtitle upload lands a sidecar byte-identical to the `Content-Length` form's. simplex
+  subtitle upload lands a sidecar byte-identical to the `Content-Length` form's. rex
   ignored the header, so the upload was its empty-body 406 and the chunk framing went into
   the next request. The size token parses like `strtol` in base 16 — an optional sign, an
   optional `0x`, hex digits — and **nothing may follow it**: a chunk EXTENSION, which HTTP
@@ -9569,19 +9569,19 @@ of it.
   twelve seconds apart — maximum idle 12 s, total 24 s — is closed at exactly 20.0 s from
   the FIRST byte with no response, and so are four pieces 7 s apart and six pieces 4 s
   apart. Python's `Handler.timeout` is a socket timeout and is per-read by construction,
-  so simplex answered every one: fifty clients dribbling a byte every two seconds held
+  so rex answered every one: fifty clients dribbling a byte every two seconds held
   fifty threads where a real PMS dropped all fifty at 20.6 s. The IDLE timer between
   requests is a separate 20 s and resets per request; all three servers already agreed on
   that.
 * **A header block ended by EOF rather than by a blank line is answered with NOTHING.**
-  simplex ran the request — and a `PUT /library/metadata/{id}?title.value=…` sent that way
-  really COMMITTED. It is the one cell in this family where simplex changed durable state
+  rex ran the request — and a `PUT /library/metadata/{id}?title.value=…` sent that way
+  really COMMITTED. It is the one cell in this family where rex changed durable state
   a real PMS discards.
 * **The ABSOLUTE-FORM request target is routed**, with the authority discarded entirely:
   `http://example.invalid/library/sections` is byte-identical to the origin-form answer,
   and so is `http://1.2.3.4:9999/…`. The scheme must be lower-case `http` exactly and a
   path is mandatory; `HTTP://`, `Http://`, `https://`, `ftp://`, `xyz://`, `http:/h/x`,
-  `http://h` with no path, `http://` and a bare `http:` are each a 400. simplex read the
+  `http://h` with no path, `http://` and a bare `http:` are each a 400. rex read the
   scheme as a path segment and 404'd every one.
 * **The METHOD token is bounded at ten bytes**, bisected over lengths 1–19 on both
   writable copies and confirmed on kids and zen with GET requests alone. An unrecognised
@@ -9594,11 +9594,11 @@ of it.
 * **A refusal of the request's ENVELOPE closes the connection; a refusal of its MEANING
   keeps it.** 27 shapes on both references. That is also why cycle 30's "the one refusal
   that closes" was never an exception — the query-pair-without-`=` 400 is envelope-level
-  too. simplex broke it in seven cells: `Content-Length: -1` (500), a non-terminal dot
+  too. rex broke it in seven cells: `Content-Length: -1` (500), a non-terminal dot
   segment (400), a missing `/:/resources/*` and a missing `/web/*` asset (404, and those
   two name **no connection state at all**), a `/web` path escaping the root (400), and a
   leading CRLF or space before the request line, which draws **silence** rather than a
-  400. And one of the seven is not a connection state at all: simplex answered **200** to
+  400. And one of the seven is not a connection state at all: rex answered **200** to
   an `obs-fold` continuation both references refuse outright, because Python's reader
   unfolds it before the handler can see it.
 * **Only the image transcoder's 200 belongs to the image header family.** Its 400s and
@@ -9609,7 +9609,7 @@ of it.
 116 safe read families on all four servers, in both formats, with and without a token.
 The status-level partition is 101 identical, **15 claim-dependent**, 0 version-dependent;
 297 container-attribute cells partition 193 identical, 40 claim-dependent, 20 version, 44
-content. simplex answers the claimed form on all fifteen families and on all but one of
+content. rex answers the claimed form on all fifteen families and on all but one of
 the claim-dependent attributes. Two real findings came out of it:
 
 * **`ButlerTaskGenerateAdMarkers` ships ENABLED on a claimed PMS**, and the
@@ -9620,7 +9620,7 @@ the claim-dependent attributes. Two real findings came out of it:
   the claim stripped, answering 0 where kids answers 1. Cycle 35 fixed a class-D error by
   installing a class-E one, which is exactly what this audit existed to find.
 * **`/playlists/sorts` ends with `mediaCount` "Item Count"**, not the `updatedAt` "Date
-  Modified" cycle 15 recorded. Four servers, six parameter spellings. simplex's two
+  Modified" cycle 15 recorded. Four servers, six parameter spellings. rex's two
   surfaces disagreed with each other, because `/playlists?includeMeta=1` already answered
   the right row.
 
@@ -9648,12 +9648,12 @@ and four more findings came out of the tag-rich row it had to MAKE to be non-vac
 * **`?includeDetails=1&includeAdvanced=1` DOES carry the Duplicates Filter row**, and it
   is the one Filter row on that path that keeps `advanced="1"`. Cycle 16 measured the path
   without `includeAdvanced=1`, where the row does not exist to carry a flag; cycle 23 read
-  that absence of the FLAG as an absence of the ROW and simplex stripped it from the
+  that absence of the FLAG as an absence of the ROW and rex stripped it from the
   descriptor the Edit Library dialog reads.
 * **A LIGHT row carries none of `Label`, `Style`, `Similar` or `Mood`** — the reference's
   grid row for a movie made to carry every tag family is `Genre Country Collection
   Director` where its detail row is `Genre Country Style Collection Director Producer
-  Label Similar`. simplex passed all four through, `Label` text-only and the other three
+  Label Similar`. rex passed all four through, `Label` text-only and the other three
   with their full `id`/`filter`. `label` is an advertised editable tag field on a movie
   library, so a Label chip was reachable from the Edit dialog and drew on every tile.
 * **`Style` sits AFTER `Country`** on a detail row, not between `UltraBlurColors` and
@@ -9666,13 +9666,13 @@ and four more findings came out of the tag-rich row it had to MAKE to be non-vac
 
 * **A `mood` write on a movie is a 200 that stores NOTHING**, where the `style` and
   `similar` beside it really store.
-* **Emptying a collection leaves the collection ALIVE.** simplex deleted it, on a comment
-  claiming a real PMS "also leaves the stale tag on the item, which is a state simplex has
+* **Emptying a collection leaves the collection ALIVE.** rex deleted it, on a comment
+  claiming a real PMS "also leaves the stale tag on the item, which is a state rex has
   no way to represent". It does not: the collection item survives AND the tag comes off
-  the item, so the state is perfectly representable and simplex was deleting a row a real
+  the item, so the state is perfectly representable and rex was deleting a row a real
   PMS keeps.
 * **An identifier-less request's device name and platform land on the ANONYMOUS device
-  row** — the one with `clientIdentifier=""`. simplex recorded them only for an identified
+  row** — the one with `clientIdentifier=""`. rex recorded them only for an identified
   client.
 
 ##### Measured and NOT acted on
@@ -9682,21 +9682,21 @@ and four more findings came out of the tag-rich row it had to MAKE to be non-vac
   route whose path begins with it — `/dev` names `devices`, `/me` names media's three
   children, `/serve` names `server` and `servers`, `/s` names seventeen. Derived from a
   38-cell prefix sweep on zen and consistent on every one, but reproducing it needs PMS's
-  own route registry, which simplex does not have and which no client asks for.
+  own route registry, which rex does not have and which no client asks for.
 * **`/connections`**, the live-connection diagnostic: `text/plain`, one line per
   connection with a state, a timing, a byte count, a request line and a token name.
-  simplex keeps no connection registry, and every part of that line it cannot derive would
+  rex keeps no connection registry, and every part of that line it cannot derive would
   be a fabrication.
 * **`transcoderVideoRemuxOnly`** — zen's alone among four servers, so it is that server's
   state and not a rule.
 * **`/myplex/account` carries `authToken` on zen and not on kids**, and the whole plex.tv
   mapping block (public and private address and port) is empty on kids as well. Version
   and mapping state are CONFOUNDED on the only two claimed servers this project has, and
-  neither unclaimed copy can separate them. simplex's omission is now a DELIBERATE
+  neither unclaimed copy can separate them. rex's omission is now a DELIBERATE
   deviation rather than a measurement: its token gate defaults OFF, so publishing the
   claim token there would hand it to every peer that can reach the port.
 * **The `std::bad_cast` 500.** A device row whose `platform` parses as a number makes
-  `GET /devices` — and `GET /statistics/bandwidth` — a 500 on a real PMS. simplex stores
+  `GET /devices` — and `GET /statistics/bandwidth` — a 500 on a real PMS. rex stores
   the string it was given and does not reproduce the crash. See HANDOVER §9: both
   references were in that state, and it is damage this programme caused.
 
@@ -9705,7 +9705,7 @@ and four more findings came out of the tag-rich row it had to MAKE to be non-vac
 
 Cycle 51 was clean on every axis it repeated, so this cycle reopened the loop the way the
 loop has always been reopened: **by recognising an instrument.** Fifty-one cycles built
-simplex's route table out of what a CLIENT was seen to ask for — the web bundle's request
+rex's route table out of what a CLIENT was seen to ask for — the web bundle's request
 builders, a captured session, python-plexapi, the servers' own advertised vocabulary. None
 of those can name an endpoint no client sends.
 
@@ -9737,7 +9737,7 @@ neither rule explains and is recorded as measured. Confirmed on kids, zen and pl
 over all 190 prefixes of the 31 first segments: **119 of them answered rows on all three
 references and an empty listing here.**
 
-**Three static files sit at the top of the surface and simplex answered none of them.**
+**Three static files sit at the top of the surface and rex answered none of them.**
 `/crossdomain.xml` (347 bytes) and `/clientaccesspolicy.xml` (325) are the Flash and
 Silverlight policies PMS ships in `Resources/`; `/favicon.ico` is 5,430 bytes. All three
 are byte-identical on both versions, all three answer **with no token** — the third, fourth
@@ -9752,12 +9752,12 @@ Swept over the whole single-segment vocabulary — 131 names taken from the two 
 with no token: `/connections` and `/dlna`, both routes cycle 49 added after that list was
 written, are 401s; `/manage` answers its 302 to the web client like `/web`; and `/search`,
 `/downloadQueue` and `/player` answer their OWN refusal before the gate (400, 404 and, on
-1.42.2, 400 — kids answers 401 for `/player`, so that one is a version split). simplex
+1.42.2, 400 — kids answers 401 for `/player`, so that one is a version split). rex
 answered the generic 403 to all six.
 
 **`/:/plugins` is seventeen rows, and everything under it is a second plug-in framework
 subtree.** HANDOVER §8 has carried "legacy agents and the `/:/plugins` listing" as a
-deliberate bound since cycles 1–6, on the grounds that simplex hosts no plug-ins. The
+deliberate bound since cycles 1–6, on the grounds that rex hosts no plug-ins. The
 listing is not hosting: kids, zen, plexscratch and plexscratch42 answer the identical
 seventeen identifiers in the identical order, with `state: 4` on every one but
 `com.plexapp.system`, which is 0 on all four. It is a fixed table in the image, like the
@@ -9771,7 +9771,7 @@ a 405, the only one on the surface" is two framework subtrees, not one.
 
 **And the framework's cookie rides its own responses only.** Neither the bare OPTIONS 200
 nor the PATCH refusal carries `Set-Cookie`, on either version, under `/system` or under
-`/:/plugins` — both are answered before the framework runs. simplex attached it to every
+`/:/plugins` — both are answered before the framework runs. rex attached it to every
 response under `/system`.
 
 **`/:/resources/*` is seventy names, not seven.** Cycle 29 fixed a ten-name sample and
@@ -9779,7 +9779,7 @@ recorded the seven that answered; the tree is PMS's whole `Resources/Graphics` d
 and all 70 are 200s with the same media type and byte count on both versions. A DIRECTORY
 is an empty `application/octet-stream` 200 in both spellings, `/:/resources` with no
 trailing slash is a 404, matching is case-sensitive, and `?width=`/`?height=` are ignored.
-simplex 404'd 63 of the 70, served the seven it knew at 342x513 rather than their own
+rex 404'd 63 of the 70, served the seven it knew at 342x513 rather than their own
 geometry, and sent PNG bytes under the three `image/jpeg` names — on paths its own rows
 point at. It now answers the name set, the media type and the file's geometry, with a
 minimal baseline JPEG encoder beside `_png` so a `.jpg` name really is a JPEG; the two
@@ -9789,12 +9789,12 @@ files that are not images are carried verbatim.
 agree on every cell: a `url=` the server answers with anything but 200 is a **404** here —
 an unknown item leaf, a missing section composite, a row that borrows the field, and
 `/library/metadata/{id}/children`, whose own direct answer is a 400 — and only a 200 whose
-bytes are not an image is the 500 cycle 29 measured. simplex matched four artwork names
+bytes are not an image is the 500 cycle 29 measured. rex matched four artwork names
 with one regex and 500'd everything else, **its own section composite included**: Plex Web
 builds a library card from `composite` and routes it through the transcoder when the
-provider advertises `imagetranscoder`, which simplex does, so every library tile the client
+provider advertises `imagetranscoder`, which rex does, so every library tile the client
 asked for that way was a 500 where the direct path is a 200 image. The transcoder now asks
-simplex's own router what the path answers and hands back those bytes.
+rex's own router what the path answers and hands back those bytes.
 
 **The artwork read leaves took any verb.** `POST /library/metadata/{id}/thumb` and a bare
 `OPTIONS` each answered the whole JPEG, and so did the versioned path; a real PMS answers
@@ -9804,32 +9804,32 @@ cycle 15 closed for twenty read-only routes and cycle 31 for ten more.
 **A collection's and a playlist's artwork leaves follow the item's ownership rule.** A
 collection with nothing uploaded carries `/library/collections/{id}/composite/{v}` in its
 `thumb` and a playlist carries none at all, so `/thumb`, `/art` and `/poster` are 404s until
-something is uploaded — where simplex served its generated grey tile, with no
+something is uploaded — where rex served its generated grey tile, with no
 `X-Plex-Local-Asset`, to a brand-new list. `/clearLogos` and `/themes` are the same empty
-candidate containers an item answers and simplex 404'd them, which is what python-plexapi's
+candidate containers an item answers and rex 404'd them, which is what python-plexapi's
 `logos()` and `themes()` raise on. And an EMPTY playlist's `default://` poster candidate
-names `/playlists/{id}/composite/{updatedAt}` on a real PMS; simplex built that key by
+names `/playlists/{id}/composite/{updatedAt}` on a real PMS; rex built that key by
 concatenating two fields an empty playlist does not have, so the candidate's `key` was
 `?width=400&height=600` — a relative url that resolves to the page the client is on.
 
 **`/connections` is plain text.** A real PMS routes it and answers one line per connection
 slot — `3 10.0.0.1:61216 - Routing - GET /connections #4e445 - Token (plexa630)
 (curl/8.7.1)`, with the trailing parenthesis naming the client's
-`X-Plex-Device-Name, X-Plex-Product` or its `User-Agent` — where simplex answered the
+`X-Plex-Device-Name, X-Plex-Product` or its `User-Agent` — where rex answered the
 dispatcher's XML container. Cycle 50's 78-snapshot matrix established that PMS's acceptor
 pool, its ordinals and its hexadecimal request allocator are not derivable from outside;
-those stay recorded, and simplex now reports its OWN live connections in the measured
+those stay recorded, and rex now reports its OWN live connections in the measured
 grammar rather than the wrong document.
 
 **Seven refusals, each measured on both versions.** An extra segment after a stream id is a
-404 whatever it says (simplex answered its 501 to every name it did not know); so is one
-after an account or a device id, where simplex answered the account row and the whole
+404 whatever it says (rex answered its 501 to every name it did not know); so is one
+after an account or a device id, where rex answered the account row and the whole
 device list. Exactly four actions live under `/system/agents` — `search`, `update`,
 `contributors` and `media/get` — and each answers the plug-in framework's own TypeError
-traceback with a 500, where every other name is an empty-bodied 404; simplex answered the
+traceback with a 500, where every other name is an empty-bodied 404; rex answered the
 agent catalogue to two of them and 404'd two others. `/library/metadata/augmentations/{x}`
 parses its id before the lookup, so a non-number is a 400. All four transcode prefixes the
-route table names are routed, and simplex 404'd three of them. And the part leaf's arity is
+route table names are routed, and rex 404'd three of them. And the part leaf's arity is
 the route template's: ONE extra segment is a filename whatever it says — `/library/parts/
 {id}/indexes`, `/abc` and `/12345678901` all serve the bytes — and the digit rule only
 decides the changestamp when a filename follows it.
@@ -9838,24 +9838,24 @@ decides the changestamp when a filename follows it.
 with a `viewCount` above zero, most-watched first, in the full row projection, with the
 librarySection triple on the container. zen's show library answers one season at
 `viewCount 73`; its movie libraries answer the empty container whatever their play counts.
-simplex 404'd it on both library types.
+rex 404'd it on both library types.
 
 **A Categories tile carries a blend colour, and it is a table.** Thirteen genre names have
 a fixed colour and every other genre takes the next of a seven-colour cycle walked in
 TAG-ID order among the unknown ones — 19 of 19 on zen and 3 of 3 on kids. The colour is not
-derived from the artwork, which simplex's own comment assumed; simplex emitted no
+derived from the artwork, which rex's own comment assumed; rex emitted no
 `blendColor` at all, so a TV client's Categories browse drew every tile untinted. The art
 each tile uses is the highest-rated item carrying that genre and an `art` that an earlier
 genre has not taken, ties by the lowest ratingKey — 38 of the 39 observed picks.
 
 **An actor with no portrait carries the bundled silhouette.** 479 of zen's 3,416 actor-axis
 rows carry `/:/resources/actor-icon.png?t=<stamp>` and not one lacks a `thumb`, while a
-director, writer or producer with no portrait carries none at all. simplex left the
+director, writer or producer with no portrait carries none at all. rex left the
 attribute off, so Plex Web's Cast grid drew a broken image.
 
 **And an indexed tag write on the SECTION save path is a tag write whatever follows
 `.tag.`** — `.role`, `.thumb`, `.id`, `.filter` and even `.zzz` are 200s on both copies, and
-the role itself is stored empty. simplex skipped only `.tag.tag`, so the Edit dialog's own
+the role itself is stored empty. rex skipped only `.tag.tag`, so the Edit dialog's own
 Cast row, which sends the name and the role together, was refused from the section path
 while the item path accepted it.
 
@@ -9879,7 +9879,7 @@ while the item path accepted it.
   measured; reproducing 4.7 MB of a product's artwork to reproduce the bytes is not done.
 * **A movie library's `/hubs/sections/{id}/popular`** is a 200 empty container on zen and a
   **500** on kids, and the driver is not identified — not history, not watch state, not the
-  version, not the claim. simplex answers zen's, being the version it reports.
+  version, not the claim. rex answers zen's, being the version it reports.
 * **`/library/parts/{id}/indexes/{sd|hd}[/{offset}]`**, the BIF seek-preview index, and
   `/library/media/{id}/chapterImages/{n}`: 404 on every instrument, because no instrument
   holds a generated index or a chapter.
@@ -9887,7 +9887,7 @@ while the item path accepted it.
   {genre|mood|style|decade}`, `/library/newReleases`, `/:/viewChange` and
   `/services/codecs` are real routes" names `/library/newReleases`, which is a **404** on
   kids and on zen — bare, and under a section. The real one is
-  `/hubs/sections/{id}/newReleases`, which simplex already answers; nothing in the code
+  `/hubs/sections/{id}/newReleases`, which rex already answers; nothing in the code
   followed the wrong name, so this is the document being corrected rather than a defect.
 
 #### The fifty-third pass — the framework's own source
@@ -9904,9 +9904,9 @@ argument counting to twelve measured cells and then found the rule in one grep o
 `agentservice.py`. This cycle did that deliberately, and the framework surface it opened
 is large.
 
-**`/system/bundle/media/flags/*` is a whole image family, and every container simplex
+**`/system/bundle/media/flags/*` is a whole image family, and every container rex
 answers points a client at it.** `mediaTagPrefix="/system/bundle/media/flags/"` is on every
-library container simplex serves, exactly as it is on zen's, and every URL under it was a
+library container rex serves, exactly as it is on zen's, and every URL under it was a
 404 here. `flagservice.py` registers **ten** types and `Media-Flags.bundle` holds 742 PNGs
 and a 35 KB `substitutions.xml` of 624 regular expressions. Measured on kids and zen,
 identical: a known value is its own image; an unknown VALUE is never a 404 but the
@@ -9924,7 +9924,7 @@ empty container with no channel installed; `systemservice.py` answers a 229-byte
 agent-service status report and an empty `serverUpdated`; `messageservice.py` three empty
 event routes; and `/system/services/{search,searches,relatedcontent/lookup}` plus the two
 `/system/agents/attribution` leaves answer the framework's own TypeError traceback, where
-simplex 404'd most of them and sent its own 109-byte HTML 500 for the attribution pair. A
+rex 404'd most of them and sent its own 109-byte HTML 500 for the attribution pair. A
 framework STRING result also spells its header **`Content-type`**, with a lower-case `t`,
 because `construct_response` writes it literally — the one such header on the surface.
 
@@ -9948,11 +9948,11 @@ server and saw four here. In the bare form a legacy row carries `MediaType` chil
 no `Language`; in the typed form the primaries for that type come FIRST, each with its own
 `Language` CODES — a bare `code`, no title, one for Personal Media, 33 for the legacy IMDb
 agent, 26 for The Movie Database. Two differences are deliberate: 1.43.4 adds an `id` to
-every legacy row and simplex reports 1.42.2, and the order of `lastfm` and
+every legacy row and rex reports 1.42.2, and the order of `lastfm` and
 `plexthememusic` is the server's own load order, where three of four instruments agree and
 zen alone differs.
 
-With the agents listed, their **attribution** is reachable: the bundle simplex itself
+With the agents listed, their **attribution** is reachable: the bundle rex itself
 serves renders a 100×100 `<img>` per agent from
 `/system/agents/attribution/image?identifier=`. Nine answer a text and eight an image,
 `org.musicbrainz.agents.music` answers an EMPTY text and no image, and every other
@@ -9962,7 +9962,7 @@ identifier — the four modern agents included — is a 404 on both leaves.
 
 * **A framework error does NOT close the connection.** All five `plugin-xml` paths answer
   `Connection: Keep-Alive` with `timeout=20`, and a second request on the same socket is
-  served — proved by reading the 500 and then `/identity` down one socket. simplex set
+  served — proved by reading the 500 and then `/identity` down one socket. rex set
   `close_connection` there on a comment nobody had measured, so a pipelining client lost
   its socket on every Agents-page probe. Cycle 45's rule says which way it goes: a refusal
   of the ENVELOPE closes, a refusal of the MEANING keeps alive, and a TypeError inside a
@@ -9972,20 +9972,20 @@ identifier — the four modern agents included — is a 404 on both leaves.
   `/system/plugins/{name}` and `/system/notify/serverUpdated` — where every other `/system`
   response puts it last. The mechanism is not identified; the set is measured.
 * **A framework container pages without emitting an `offset` and still names its window in
-  the response headers.** simplex keyed those headers on the body's `offset`, so the one
+  the response headers.** rex keyed those headers on the body's `offset`, so the one
   family that has none sent neither; and `/:/plugins/{id}/prefs` did not page at all.
-* **`/system//` is the framework's empty-bodied 404**, not the 85-byte document: simplex
+* **`/system//` is the framework's empty-bodied 404**, not the 85-byte document: rex
   dropped the empty segment and left the `/system` envelope before its own refusal applied.
 
 **Two more corrections inside the subtree.** Only the BARE `/system/agents` is PMS's own
 handler — everything under it is the framework's, so `/system/agents/{id}/config/{N}` is
 written by the framework's serialiser (single-quoted declaration, self-closed empty
-container, 130 bytes where simplex wrote 147) and is the one framework document that
+container, 130 bytes where rex wrote 147) and is the one framework document that
 carries no cookie. And `/system/library/sections` carries **thirteen** attributes per row,
-of which simplex emitted four plus an `agent` no reference sends: the `key` is the
+of which rex emitted four plus an `agent` no reference sends: the `key` is the
 URL-safe base64 of `http://{host}:{port}/library/sections/{id}`, `unique` marks a title
 that occurs once, the rows are sorted by the lower-cased title, and an extra segment is a
-404 where simplex answered the whole listing again.
+404 where rex answered the whole listing again.
 
 **And a corrupt state cookie empties the framework.** A framework route whose own
 `com.plexapp.*` cookie the server cannot unpack answers a 200 with an EMPTY body,
@@ -10008,7 +10008,7 @@ is_adult, resources_changed_at, user_fields}`, `media_items.{begins_at, ends_at,
 media_analysis_version, source}`, `metadata_item_settings.last_skipped_at` and
 `library_sections.agent`, camel-cased, filter, parse, sort, group and take an item edit on
 kids and zen alike -- the same family as the nine cycle 20 found and the four cycle 26
-found. simplex knew none of them, and an unknown field answers EVERY row, which is the
+found. rex knew none of them, and an unknown field answers EVERY row, which is the
 worst outcome: a smart list built on one silently selected the whole library while
 `/query/parse` told the builder the field did not exist. Five of them refuse an
 unparseable value with a 500 and `userFields` refuses every value under every operator;
@@ -10019,7 +10019,7 @@ are a 500 on the SECTION path, the split `lastRatedAt` already had.
 **`isAdult` is the one that reads back.** Exactly the literal `1` stores it and every
 other value clears it; the row then carries the JSON boolean `true` between
 `librarySectionKey`/`originalTitle` and `summary`, on the detail row, the light grid row,
-`/library/all` and the hub rows alike -- zen's row 631 shows it on a real library. simplex
+`/library/all` and the hub rows alike -- zen's row 631 shows it on a real library. rex
 never emitted the attribute although its TMDB identification has the flag.
 
 **A continue-watching row carries `includedAt`**, an integer directly after
@@ -10030,14 +10030,14 @@ instead of the hub's inclusion stamp. In all five witnesses the two are equal; w
 them differ is not measurable here.
 
 **And `includeAlternates=1` inlined artwork the row does not own.** A season's and an
-episode's `/arts` are empty -- cycle 7's rule, and simplex's own candidate leaf applies it
+episode's `/arts` are empty -- cycle 7's rule, and rex's own candidate leaf applies it
 -- while the option inlined the SHOW's candidate onto both, because `hierarchy` copies
 `_art_url` down and the option read it without the gate. The server contradicted its own
 `/arts`.
 
 The census behind those four is the useful negative: 130 request families across kids, zen
-and simplex produced **zero JSON scalar-type differences** where the two references agree,
-and every element either reference emits is emitted by simplex somewhere. The 121
+and rex produced **zero JSON scalar-type differences** where the two references agree,
+and every element either reference emits is emitted by rex somewhere. The 121
 (element, attribute) cells present on both references and never here are, after
 re-measurement, content or state or already in HANDOVER 8.
 
@@ -10045,7 +10045,7 @@ re-measurement, content or state or already in HANDOVER 8.
 
 * **The pixels of the bundled artwork.** The flag images, each bundle's `icon-default.png`
   and `attribution.png`, and the 68 `/:/resources` images are served at the file's real
-  media type and geometry with simplex's own placeholder inside. Shipping several
+  media type and geometry with rex's own placeholder inside. Shipping several
   megabytes of a product's artwork to reproduce the bytes is not done.
 * **A populated `/system/channels/*` row.** No instrument hosts a channel, so only the
   empty container is measurable; the `DirectoryItem` shape is readable in the source and
@@ -10076,13 +10076,13 @@ on zen wherever its library holds the extension:
   `.ts` answers `video/MP2T` (the binary's own capitalisation), `.m4v` `video/mp4`, `.mpg`
   and `.mpeg` `video/mpeg`, `.flv` `video/x-flv`, `.wmv` `video/x-ms-wmv`, `.asf`
   `video/x-ms-asf` and `.divx` `video/x-msvideo`; `.mts`, `.m2ts`, `.ogv` and `.3gp` stay
-  `application/octet-stream`. simplex sent octet-stream for all eight named ones, and its
+  `application/octet-stream`. rex sent octet-stream for all eight named ones, and its
   table carried a `mpegts` key that no file extension can match.
 * **Inside the QuickTime family the EXTENSION decides the container.** A `.mov` is `mov` and
   every other member (`.mp4`, `.m4v`, `.3gp`) is `mp4` -- with the brand crossed against
   the extension both ways: a `.mov` written by the MP4 muxer (`isom`) is still `mov`, an
   `.mp4` written by the QuickTime muxer (`qt  `) still `mp4`. zen's one real `.mov` agrees.
-  simplex answered `mp4` for the whole family.
+  rex answered `mp4` for the whole family.
 * **Every MPEG-TS Part carries `packetLength: 188`** and no other Part does -- a Blu-ray
   `.m2ts`, whose packets are really 192 bytes, included (zen's fourteen `.m2ts` parts all
   say 188). `fun-1073414-1` had recorded it since cycle 10 and no check read it.
@@ -10095,7 +10095,7 @@ on zen wherever its library holds the extension:
 
 * **`viewUpdatedAt` is a real sort key and a DATE filter column** on both versions -- the
   time the row's view state was last WRITTEN. It is in the projection the binary reads view
-  state with, and Plex Web's own hub query is `sort=viewUpdatedAt:desc`, which simplex
+  state with, and Plex Web's own hub query is `sort=viewUpdatedAt:desc`, which rex
   answered with a 500. Driven write by write on plexscratch42 with every value bisected: a
   rating (any value, `-1` included), a scrobble, an unscrobble (even of a row with nothing
   to clear), a `/:/progress` that stores a position and a Remove from Continue Watching
@@ -10173,7 +10173,7 @@ zen's `Plug-ins` directory is btrfs (`ls -U` alphabetical) and the three docker 
 share one overlayfs order, plexscratch42 -- the same 1.42.2 build as zen -- included; it is
 environment, not version. `/system/library/sections`' `key` ignores `Host` entirely (seven
 spellings on both copies) and encodes the server's own interface address and port, padding
-with `_`, which simplex already does. `includedAt` stays open: `/:/progress` stamps it and
+with `_`, which rex already does. `includedAt` stays open: `/:/progress` stamps it and
 `lastViewedAt` identically too.
 
 **Measured and not acted on.**
@@ -10181,7 +10181,7 @@ with `_`, which simplex already does. `includedAt` stays open: `/:/progress` sta
 * **The tagging join** -- `tagId`, `tagType`, `taggingIndex`, `taggingCreatedAt` -- is real
   on both references (a word is a 500) but every kids movie, Big Buck Bunny with no visible
   tag included, carries hidden `tagType=318` taggings that `taggingIndex` matches on.
-  simplex holds no such rows; modelling the match would be a guess.
+  rex holds no such rows; modelling the match would be a guess.
 * **1.42.2 accepts a `YYYY-MM-DD` value on an INTEGER column** where 1.43.4 refuses it;
   `2/3`, `0x1` and `1e3` pass, `5d` and `1abc` refuse, and the date form's meaning shifts per
   column. Not one grammar, and no client sends it.
@@ -10213,7 +10213,7 @@ state on plexscratch42 where neither read-only reference held it.
   counted against each candidate, a candidate needs AT LEAST TWO in common, and the list is
   shared-count then release date descending, capped at 200. It reproduces zen's movie 19770
   exactly (59 rows, in order) and all four tagged kids movies; a fourth genre, a seventh role or
-  the country breaks the zen fit. simplex took any one shared genre, ordered by `addedAt`,
+  the country breaks the zen fit. rex took any one shared genre, ordered by `addedAt`,
   stopped at 12, and its docstring said the reference "fills this from its metadata agent".
 * **On Deck's next-up anchors on the MOST RECENTLY VIEWED watched episode**, not the
   highest-numbered one, and the row carries that view's `lastViewedAt`: on plexscratch42,
@@ -10260,7 +10260,7 @@ them 1.42.2's as well:
   passes and the refused fields are 500s. `/unwatched` validates `sort` and then ignores it.
   `sourceType` other than 1 ORDERS a listing by id, where cycle 20 recorded only the parse block.
 * **An integer is `[+-]?digits`**: `type=+1`, `type=01` and `limit=+1` are the number on both
-  references, where simplex refused a sign in a dozen readers; **every include/async option
+  references, where rex refused a sign in a dozen readers; **every include/async option
   takes the `+?0*[01]` grammar**, and **the `include*` blocks reach the full rows of every hub
   and related list**, not only `/hubs`.
 * **The filter VALUE grammar.** `=-1` means "has no value" on `rating`, `audienceRating`,
@@ -10288,20 +10288,20 @@ them 1.42.2's as well:
 **Measured and not acted on.**
 
 * **The tagging join**, still (HANDOVER 8, cycle 54) -- its refusal half is measurable, but
-  building a refusal for columns whose rows simplex cannot compute was left with the match.
+  building a refusal for columns whose rows rex cannot compute was left with the match.
 * **How `/hubs/search?sectionId=` REORDERS its hubs** when the id names a section (that
   section's own types first, rows unchanged). The refusal is built; the order is not worked out.
 * **`/library/search` and `/hubs/search` `limit` at the int32 boundary.** kids 500s `2147483647`
   and `9223372036854775807` while answering `2147483648`, and `4294967296` CRASHED kids' PMS
   (it restarted in about five seconds; HANDOVER 9). Only "outside int64 is a 500" is built.
 * **WHICH genre the genre shelf picks** is random per request query string, with the actor and
-  director shelf moving beside it (HANDOVER 8's random shelf); simplex's most-common genre is one
+  director shelf moving beside it (HANDOVER 8's random shelf); rex's most-common genre is one
   admissible sample. The ORDER of the shelf's rows is built.
 * **A parent's `lastViewedAt` as `max(children)`** where its own state is absent is read by the
   binary's SQL; zen's section 2 displays it on rows no filter can see, the trace of state written
   without the cascade (cloud sync). Not reproducible here.
 * **1.43.4 refuses an empty `group=`/`sourceType=` on a hub page** where 1.42.2 drops it;
-  simplex follows 1.42.2.
+  rex follows 1.42.2.
 
 #### The fifty-sixth pass — the first cycle under the client-impact rule
 
@@ -10322,13 +10322,13 @@ all built; eighteen malformed-only, recorded.**
 **Client-visible.**
 
 * **A show library's `/media/providers?includeStorage=1` totals are its EPISODES'** (kids' TV
-  Shows 60186 ms / 37683488 bytes). simplex summed rows that own a Media -- none in a show
+  Shows 60186 ms / 37683488 bytes). rex summed rows that own a Media -- none in a show
   library -- and answered 0, which python-plexapi's `LibrarySection.totalDuration` and
   `totalStorage` report.
 * **The playlist `Meta` follows the request and the path.** Its Type `key` carries the request's
   `playlistType`, `sectionID` and `type` (alphabetical, URL-encoded); on `/playlists/all` -- what
   Plex Web's library Playlists page loads -- no Type and no Sort is active, so the page draws no
-  sort bar; on `/playlists` the requested sort is the active one. simplex sent a constant
+  sort bar; on `/playlists` the requested sort is the active one. rex sent a constant
   `/playlists`, active, Name ascending.
 * **In the bare `/system/agents` each legacy `MediaType` carries its own `Language` rows** (33 for
   the legacy IMDb movies), identical on four servers; python-plexapi's `agents()` reads them as
@@ -10341,7 +10341,7 @@ all built; eighteen malformed-only, recorded.**
   rows with any state. Cycle 54's "`skipCount` is not in the family" is refined: a never-written
   row's `skipCount` matches nothing, a written one's is 0.
 * **`/hubs/sections/{id}?includeGuids=1` carries `Guid`**, which python-plexapi's `section.hubs()`
-  always asks for; simplex sent none.
+  always asks for; rex sent none.
 
 **Malformed-only (recorded, not built).** From Territory A: `/clients/profiles?type=42` marks
 `Universal TV` selected; `titleSort` directly after `title` on a show row; no `allowSync` on an
@@ -10362,17 +10362,17 @@ keys and seven columns that filter a hub page's TV shelf; `postplay?includePrefe
 Cycle 57 ran under the client-impact rule. Territory A repeated cycle 56's client inventory
 (every cycle-56 fix held) and drove python-plexapi's whole read surface -- 108 classes, 646
 methods and properties, 1,018 probes a server -- and Territory B drove every write the
-official client offers on plexscratch42 and simplex, reading the 41 things the client redraws
+official client offers on plexscratch42 and rex, reading the 41 things the client redraws
 after each. Neither kids nor zen holds a playlist or a collection, so everything about LISTS was
 measured on the two writable copies, which agree cell for cell across 1.42.2 and 1.43.4.
 
 **Client-visible, all built.**
 
 * **A collection search row is on the tag ladder** -- full name 0.92, a word-by-word prefix from
-  the first word 0.52, a later word 0.32. simplex matched one word against the whole query, so a
+  the first word 0.52, a later word 0.32. rex matched one word against the whole query, so a
   multi-word collection was never found by its own name, and scored every hit 0.52.
 * **A list's history is an empty 200**: `metadataItemID=<collection or playlist>` on the history
-  page, which python-plexapi's `Collection.history()` and `Playlist.history()` send. simplex 404'd.
+  page, which python-plexapi's `Collection.history()` and `Playlist.history()` send. rex 404'd.
 * **A playlist's search ladder is one step below a movie's** (0.92/0.72/0.52/0.32).
 * **`X-Plex-Sync-Version` marks a playlist syncable**: a playlist row on `/playlists` and
   `/playlists/{id}`, and the `/playlists/{id}/items` container, carry `allowSync="1"` under the
@@ -10389,7 +10389,7 @@ measured on the two writable copies, which agree cell for cell across 1.42.2 and
 * **A collection with two or more members adds a `collection.related.{section}.{n}` hub** --
   "&lt;title&gt; Collection" -- to each member's Related, on every Related read path.
 * **`playQueueLastAddedItemID` is the tail of the added-item block after the selection**: a first
-  Play Next opens the block, a move out of it or a delete re-anchors to its new tail. simplex left
+  Play Next opens the block, a move out of it or a delete re-anchors to its new tail. rex left
   it unset after a Play Next and pointed it at the queue's last item after any move, so the
   player's Shuffle control was enabled and disabled at the wrong times.
 
@@ -10435,10 +10435,10 @@ rule was sampled over eleven write types only); the optimized-versions playlist 
 #### The fifty-ninth pass — the rendered client, and python-plexapi's writes
 
 Cycle 59 took two axes no client-impact cycle had: the official Plex Web app RENDERED in a real
-browser (kids' 9223 Chromium, the bundle simplex serves, plex.tv answered by canned `page.route`
-bodies so the app saw exactly one server) pointed at plexscratch42, kids and simplex page by page;
+browser (kids' 9223 Chromium, the bundle rex serves, plex.tv answered by canned `page.route`
+bodies so the app saw exactly one server) pointed at plexscratch42, kids and rex page by page;
 and python-plexapi's whole WRITE and PLAYBACK surface -- 182 methods over 62 classes, 291 steps on
-plexscratch42 and on simplex, each followed by a reload of everything it should reach.
+plexscratch42 and on rex, each followed by a reload of everything it should reach.
 
 **Client-visible, all built.**
 
@@ -10484,7 +10484,7 @@ plexscratch42 and on simplex, each followed by a reload of everything it should 
 **Recorded, not built.** The Optimize surface python-plexapi reaches (`DELETE
 /playlists/generators?type=42`, the `mediaProcessingTarget` tag table) stays the recorded Optimize
 bound; a real PMS's CORS echo is limited to `*.plex.tv`, `localhost` and `127.0.0.1` origins and
-simplex echoes any (no client is served from another origin); collection row attribute order; a
+rex echoes any (no client is served from another origin); collection row attribute order; a
 smart playlist's `content` on `/library/metadata/{id}`; the unpause `queueRefreshed` frame; a
 split row's media delete. The ORDER of an item language enum's head is language-independent and
 fits neither tag order nor English-name order over zen's 507 shows (§3.3).
@@ -10578,14 +10578,14 @@ Cycle 63 repeated all ten axes. A (rendered client and localisation) and C (axes
 * **`Bandwidths` is withheld from `Plex for Windows Phone`** as well as `Plex for Windows`.
 
 **Recorded, not built.** Music and photo sort titles on a type-scoped `/sorts` (`type=8/9/10/13`)
-left in English; simplex holds no music or photo library and the client always asks its own type.
+left in English; rex holds no music or photo library and the client always asks its own type.
 
 #### The sixty-fourth pass — the catalogue as an instrument
 
 Cycle 64 repeated all ten axes. C (axes 1, 2, 3, 4, 7, 10) reported zero findings of either kind.
 B swept every product and platform string the binary carries over 40 read paths on four servers
-and found one product-keyed rule simplex had never had. A added a new instrument -- the
-reference's own gettext catalogues (`plex.mo`), searched for every string simplex leaves in
+and found one product-keyed rule rex had never had. A added a new instrument -- the
+reference's own gettext catalogues (`plex.mo`), searched for every string rex leaves in
 English that the catalogue translates -- and it found a dialog no capture had walked.
 
 * **`X-Plex-Product: Plex Home Theater` gets a five-component `version`** on `/` and
@@ -10631,7 +10631,7 @@ the language rule against the 44 values Plex Web's own language list carries.
   (`6.4.1`, `6.4.0.1`) strips. `6.4` keeps -- a missing patch is not compared. 260 cells,
   identical on kids, zen and plexscratch42.
 * **`no` and `af` are catalogues** (zen: `Kallenavn`, `Vriendlike naam`, 31 of 35 vocabulary
-  paths); simplex held `nb`, which reads the same catalogue, and no `af`.
+  paths); rex held `nb`, which reads the same catalogue, and no `af`.
 * **`pt-BR` is its own catalogue on every document** -- sorts, filters, hubs, the butler,
   `/activities`, the socket (`Classificação de usuários`, `Buscando`) -- and `pt-PT` reads it
   too, with Portugal's ICU names (`Polaco` where Brazil says `Polonês`).
@@ -10659,7 +10659,7 @@ findings of either kind. A swept all 43 Plex Web language values and found four 
   (zen's matched show 6558; the table held kids' 1.43.4 wording).
 * **A show's and season's Preferred audio/subtitle language lists are localised and re-collated
   for the new locales** (`af` `:Reeksverstek|en:Engels|ar-SA:Arabies (Saoedi-Arabië)|…`,
-  `zh-TW`, `bg`, `en-GB`, `pt-BR`, …). The item-prefs sweep had paired simplex's show with an
+  `zh-TW`, `bg`, `en-GB`, `pt-BR`, …). The item-prefs sweep had paired rex's show with an
   unmatched zen show, so these were never compared.
 * **A socket opened in `hu-HU` reads the `hu_HU` catalogue** for the butler's sentences (`A
   rendszer képeket készített a 0 fájl fejezeteihez.`), the rule cycle 50 measured on `/:/prefs`.
@@ -10680,7 +10680,7 @@ Cycle 68 repeated all ten axes; B and C reported no client-visible findings. A f
   Measured on zen's `/:/prefs` and plexscratch42's socket; the socket drives Plex Web's Activity menu.
 
 **Recorded, not built.** The decision's text fields are localised (no client draws them for a
-decision simplex answers); the CLDR fallback map for languages Plex Web does not list;
+decision rex answers); the CLDR fallback map for languages Plex Web does not list;
 `X-Plex-Client-Capabilities`' `audioDecoders` stream re-selection.
 
 #### The sixty-ninth pass — clean on all ten axes
@@ -10700,10 +10700,10 @@ a phone, its bundle decompiled into 57,551 functions and every PMS request it ca
 its literal parameters) and live (the same APK in a local arm64 Android 13 emulator behind
 mitmproxy, plex.tv's resource list rewritten to exactly one server, plex.tv writes answered locally,
 sign-in completed by answering the PIN poll with the lab account's token). The same scripted walk
-ran against simplex and against plexscratch, and every request the app made was diffed by
+ran against rex and against plexscratch, and every request the app made was diffed by
 template. Seven client-visible rules came out, all built:
 
-* **A `plex://` guid must be one plex.tv knows.** A movie or show whose guid simplex MINTED never
+* **A `plex://` guid must be one plex.tv knows.** A movie or show whose guid rex MINTED never
   gets its luma.plex.tv detail screen, so the action row (Watchlist, Rate, Mark as Watched, More)
   stays a skeleton and a show's Seasons block spins forever. Swapping the one guid for the real one
   through the proxy, and nothing else, drew both. The catalog now takes Plex's own guids from the
@@ -10725,7 +10725,7 @@ template. Seven client-visible rules came out, all built:
   on histories holding scrobbles alone.
 * **A crossing beat needs a non-zero previous position** (hunt NB). The app reports `time=0` until
   its player advances; a beat past 90% whose predecessor was 0 answers `ignore` and leaves the item
-  unwatched on both versions. simplex counted the 0.
+  unwatched on both versions. rex counted the 0.
 * **The offline-sync timeline's `viewCount=`** (hunt NB, widened by the driver): with
   `offline=1&state=stopped`, `viewCount>=1` adds one view per sync (1, 2, 3 — not the number sent)
   and a session-kind history row, and `viewCount=0` on a watched item clears it; both answer
@@ -10759,7 +10759,7 @@ localisation rules on axis 9, both drawn only by Plex for Android:
   the hub with an English literal. The app titles its post-play shelf with it; Plex Web removes the
   hub.
 * **The inline `Related` block's hub titles are localised on a detail row** (`Ähnliche Filme`), as
-  the same hub at `/hubs/metadata/{id}/related` already was; simplex's row guard stopped at the
+  the same hub at `/hubs/metadata/{id}/related` already was; rex's row guard stopped at the
   row. The app's detail screen titles its Related shelf with it.
 
 **Measured and not acted on.** A show's `/children?unwatched=1` keeps seasons that still hold
@@ -10792,7 +10792,7 @@ snapshots are identical, so cycle 71's reference-side answers stand):
   vocabulary sweep (198,034 cells; only `/statistics/bandwidth` row counts moved) identical up to
   state; discovery identical.
 * **Axis 11** (N and the driver): the Android read inventory on six servers differs from cycle 71
-  only by view state; the write inventory likewise; the emulator walk on simplex issues no request
+  only by view state; the write inventory likewise; the emulator walk on rex issues no request
   template that differs from cycle 71's.
 
 **Zero client-visible and zero new malformed-only findings on all eleven axes.**
@@ -10800,10 +10800,10 @@ snapshots are identical, so cycle 71's reference-side answers stand):
 #### The seventy-third pass — a server restart as the twelfth axis
 
 `--state` (after cycle 72) changed what a restart does, and it chose what to keep by belief. Cycle
-73 repeated every axis with the state file ON in every simplex, added a RESTART LEG to each
+73 repeated every axis with the state file ON in every rex, added a RESTART LEG to each
 territory (read, `kill -TERM`, restart on the same file, read again), and a twelfth axis measured
 on the reference itself: plexscratch restarted seven times (five clean stops, two `docker kill -s
-KILL`) around every client write kind, against simplex restarted by SIGTERM and SIGKILL.
+KILL`) around every client write kind, against rex restarted by SIGTERM and SIGKILL.
 
 What a restart changes on a real PMS, 64 redraw GETs per restart:
 
@@ -10811,26 +10811,26 @@ What a restart changes on a real PMS, 64 redraw GETs per restart:
 |---|---|---|
 | watch state, resume points (`/:/timeline`, `/:/progress`), ratings, locked edits and sort titles, dumb and smart playlists (order after a move), dumb and smart collections, play queues with their selected item, the device table, history and its deletes, prefs, section prefs, agent order, uploaded poster and subtitle, a created library; ids keep counting up | the live session (a client's next beat opens a new one on both), the section timeline, open notification sockets (EOF), the hub page's per-URL cache, the genre/actor shelf pick, a 93% `stopped` beat whose non-zero predecessor came before the restart (ignored on both), the `/statistics/resources` series (zen's `statistics_resources` table is empty: it lives in memory) | `/` `updatedAt` to the start time, `sessionKey` from 1 (neither read by a client) |
 
-simplex agreed on every clean-restart cell but one. Four differences were built:
+rex agreed on every clean-restart cell but one. Four differences were built:
 
 * **A write answered before a hard kill survives it.** Five writes (a rating, a scrobble, a
   playlist, `TranscoderThrottleBuffer`, a locked title) answered 0.17-0.5 s before `docker kill -s
-  KILL` all came back on plexscratch; simplex's coalescing saver (2 s) lost all five. A client write
+  KILL` all came back on plexscratch; rex's coalescing saver (2 s) lost all five. A client write
   -- any non-GET, and the scrobble/unscrobble/rate/progress/timeline GETs -- is now saved before its
   status line is sent (`Handler.send_response`). `test_persist.py` no longer sleeps before its
   SIGKILL, which is exactly the window it used to hide.
 * **An unseeded `sort=random` is a fresh order per request.** Three reads each on zen, kids and
-  plexscratch gave three orders (`random:desc` too); simplex hashed a fixed seed, so Plex Web's
+  plexscratch gave three orders (`random:desc` too); rex hashed a fixed seed, so Plex Web's
   "Randomly" grid never reshuffled. `test_ui_surface.py` had asserted the opposite, unmeasured.
   Found by the restart hunt in passing; `random:<seed>` and the `random="1"` shelves are unchanged.
 * **A restart does not refresh the fuzzy-search vocabulary.** On plexscratch, `Tears of Steel`
   renamed `Zyxwvut Probe`: `zyxwvuq` finds nothing before the restart and nothing after it
   (`/hubs/search` and Plex Web's `/library/search` alike), the exact word finds it on both sides.
-  simplex's restore called `rebuild_spelling()`, so the misspelling found the new title after a
+  rex's restore called `rebuild_spelling()`, so the misspelling found the new title after a
   restart. The vocabulary's rows are now saved and restored as they stood (cycle 38's measured
   schedule: only an optimize rebuilds them).
 * **A sidecar's codec suffix is localised in Plex Web's plain title.** plexscratch42 and zen in 43
-  languages: `Unbekannt (SRT Extern)`, `不明 (SRT 外部)`, where simplex localised the word in the
+  languages: `Unbekannt (SRT Extern)`, `不明 (SRT 外部)`, where rex localised the word in the
   extended title only (cycle 60) and sent `Unbekannt (SRT External)` to the codec-suffix products.
   Plex Web draws it as the chosen track in the preplay subtitle dropdown and in Get Info. The
   i18n sweeps pair catalog items, and the fixture holds no sidecar until one is uploaded: an empty
@@ -10860,7 +10860,7 @@ cycle-73 fix held on every axis that reaches it. Three were built:
 
 * **A device row outlives a hard kill of the request that first named it.** P killed plexscratch
   0.16-1.13 s after a new client's first request (a plain GET, and once a write): the device was in
-  `/devices` after every restart. simplex registers a device while counting the response's bytes,
+  `/devices` after every restart. rex registers a device while counting the response's bytes,
   after the answer, so the save-before-answer of cycle 73 never covered it; with `--state` a new or
   renamed device is now registered before the handler runs and saved before the status line.
   python-plexapi's `systemDevices()` reads the table.
@@ -10873,7 +10873,7 @@ cycle-73 fix held on every axis that reaches it. Three were built:
   direct play whose selected subtitle has a `key`, `selectStreamOnEngine` builds `uri + key +
   X-Plex-Token + autoAdjustSubtitle` and hands it to the native player. plexscratch42 answers 200
   with the uploaded bytes (`text/html`, length before type, the request's connection state -- corrected in cycle 75, the `close` recorded here was urllib's own request header; `.srt`,
-  `format=srt` and `autoAdjustSubtitle=0|1` alike); simplex answered the embedded track's 501.
+  `format=srt` and `autoAdjustSubtitle=0|1` alike); rex answered the embedded track's 501.
   Cycle 73 had recorded the 501 as unread, from Plex Web's `isCloud` gate alone.
 
 Measured and not acted on: a theme row minted by `GET .../theme/{v}/metadata` rides the coalesced
@@ -10891,17 +10891,17 @@ clean on their axes and restart legs; every cycle-73 and -74 fix held. Built:
   natural order (a queue created with `shuffle=1` too) around the same selected item; both step the
   version whatever state the queue was in, and re-mint every row's id but the selected one's, by
   position, so the selected slot skips one id. Once anything has been added
-  (`playQueueLastAddedItemID`) both are 404 -- the only case cycle 15 had measured, so simplex
+  (`playQueueLastAddedItemID`) both are 404 -- the only case cycle 15 had measured, so rex
   refused every shuffle and Plex Web's Shuffle toggle reverted.
 * **A burst of simultaneous connections is answered** (A): 30 of 30 on plexscratch42 from kids,
-  where simplex reset most of them and some already at six -- `socketserver`'s listen backlog of 5.
+  where rex reset most of them and some already at six -- `socketserver`'s listen backlog of 5.
   No capture shows a reset, but six is a browser's per-host connection count.
 * **A sidecar answer's connection state is the client's** (N, a correction of cycle 74's record): the
   `Connection: close` cycle 74 measured was urllib's own request header echoed back; a keep-alive
   client gets `Keep-Alive: timeout=20` and an open socket on 1.42.2.
 
 Measured and not acted on: a selected sidecar's decision row names `location: "sidecar-subs"` under
-`subtitles=sidecar` (simplex `direct`), which the app never reads; `subtitles=auto|burn` with a
+`subtitles=sidecar` (rex `direct`), which the app never reads; `subtitles=auto|burn` with a
 selected sidecar is a 400 on the transcoder-less copy (a bound). REFUTED: "PMS keeps only the newest
 play queue across a restart" -- three queues from three clients all survived a clean restart on the
 API and in the `play_queues` table, which holds one row per client; the queues P saw vanish were one
@@ -10919,7 +10919,7 @@ their own tooling and outputs, as cycle 72 did, and compared every output with c
   same owner's read changes nothing -- and the one-queue-per-client retirement follows the owner:
   the taker's other queue is retired at once, the taker's next new queue retires this one, and the
   creator's new queue leaves it alone. Plex Web hands a player the queue's key with `own:1` when it
-  plays on another device (`containerKey: join([url], {own:1})`). simplex kept the creator as owner,
+  plays on another device (`containerKey: join([url], {own:1})`). rex kept the creator as owner,
   so the browser's next queue retired the one the other device was still playing.
 
 Clean on the repeat: C's six axes (every comparator and capture identical to cycle 75's, across a
@@ -10997,18 +10997,18 @@ driver from each territory's cycle-76 tooling (the subagents are on the weekly l
   frozen instance and, before and after a restart, on its own; every comparator = r71; axes 1, 2 and
   10 identical up to zen's BIF `indexes`; axes 3 and 4 identical up to the random shuffle order and
   the log zip's bytes; the restart legs at cycle 76's block set.
-* **Axes 6, 8 (B):** every regression, matrix and identity flow identical to cycle 76's on simplex;
+* **Axes 6, 8 (B):** every regression, matrix and identity flow identical to cycle 76's on rex;
   the fixes 21/21, 22/22, 31/31 (30/30 on plexscratch42); the crossing rule table identical to the
   reference's on all 105 cells. The copy's side moved (its busy database gave 122 ten-second
-  give-ups, its timeline sessions did not open and leftover sessions stayed listed), simplex's did not.
+  give-ups, its timeline sessions did not open and leftover sessions stayed listed), rex's did not.
 * **Axes 5, 9 (A):** every localisation sweep byte-identical; 14 regression suites at their counts;
-  simplex's 852 distinct socket frame texts identical; the rendered walk 1,038 of 1,168 cells equal,
+  rex's 852 distinct socket frame texts identical; the rendered walk 1,038 of 1,168 cells equal,
   every other one the copy's dialogs failing under load or cycle 76's own failed captures (this cycle's
   French collection dialog matches the copy's string for string); the restart leg moves only statistics.
 * **Axis 11 (N and the driver):** the Android read and write inventories, fix checks and restart legs
   equal to cycle 76's; the emulator walk before and after a restart issues the same templates.
 * **Axis 12 (P):** the restart matrix and a 33-pair hard-kill matrix agree with plexscratch but for the
-  scans (simplex holds no files); every earlier restart regression passes.
+  scans (rex holds no files); every earlier restart regression passes.
 
 **Zero client-visible and zero new malformed-only findings.** One instrument note: B's restart-leg
 reader read every play queue with `own=1` under one client, which -- after cycle 76's ownership fix,
@@ -11018,7 +11018,7 @@ survive a restart when read without `own` (checked directly). The reader no long
 #### The seventy-ninth pass — a confirming repeat that was not: season 0, and python-plexapi 4.18.2
 
 Cycle 79 repeated all twelve axes on `d3125c1` (implementation identical to cycle 77's), driver-run
-from cycle 78's tooling copied to `/private/tmp/simplex-cycle79`. Nothing in the reopen triggers had
+from cycle 78's tooling copied to `/private/tmp/rex-cycle79`. Nothing in the reopen triggers had
 moved (PMS 1.43.4.10903 still the newest, app.plex.tv 4.160.0, Plex for Android 2026.9.0), but two
 instruments had: **zen's library** gained shows with a season 0 in its section hubs, and the Mac's
 `python3` now carries **python-plexapi 4.18.2** where cycle 78's venv had 4.17.2. Three
@@ -11031,7 +11031,7 @@ index 0 carry `seasonCount` = `childCount` minus the specials (Bluey 4/3, Gundam
 hubs; no other show carries it. The season itself is titled `Specials`, translated in 32 of 45
 languages (`Spécials`, `スペシャル`; German keeps `Specials`) as the season's `title` and its
 episodes' `parentTitle`, English as the season list's `title2`, with an empty container
-`parentTitle`. simplex titled a season 0 `Season 0` (`Staffel 0` in German) and never emitted
+`parentTitle`. rex titled a season 0 `Season 0` (`Staffel 0` in German) and never emitted
 `seasonCount`. Rendered both ways on a copy of the Android fixture with a season 0: Plex for Android
 drew a `Season 0` card (it sorts season 0 last, and computes its own "4 Seasons" header from truthy
 indexes) and Plex Web 4.147.1 on Windows drew `Season 0` / `Staffel 0`; after the fix both draw
@@ -11039,7 +11039,7 @@ indexes) and Plex Web 4.147.1 on Windows drew `Season 0` / `Staffel 0`; after th
 and falls back to `childCount`. Cycle 78's C analysis had already listed `seasonCount` as a
 zen-only show field (`miss-zen /MediaContainer/Metadata[show]`) and passed over it as content. A
 pristine show with specials decks its first REGULAR season's first episode (Gundam Wing S1E1,
-MythBusters 2003E1), which is what simplex's "Specials sort last" choice already did; the comment
+MythBusters 2003E1), which is what rex's "Specials sort last" choice already did; the comment
 now says it is measured.
 
 **Play-queue flags (B's plexapi chains).** 4.17.2 builds `PlayQueue.create(shuffle=1, repeat=1,
@@ -11047,7 +11047,7 @@ continuous=1)` as `shuffle=True&repeat=True&continuous=True`; 4.18.2 sends `1`. 
 plexscratch42 (1.42.2) and plexscratch (1.43.4), identical cell for cell over 17 values: `shuffle` and
 `repeat` are integer flags -- an optional `+` and digits, value 0 or 1 (`01`, `001`, `+1` shuffle) --
 and `True`, `true`, `False`, `yes`, `2`, `10`, `-1`, `1.0`, `0x1`, ` 1` and an empty value are 400s;
-`continuous` takes anything. simplex compared against the literal `"1"`, so it answered 4.17.2 with an
+`continuous` takes anything. rex compared against the literal `"1"`, so it answered 4.17.2 with an
 unshuffled 200 where a real PMS raises `BadRequest`, and `01` did not shuffle. Cycle 78's `diff60s`
 recorded exactly that line (`ref BadRequest: (400) ... shuffle=True | sim ok`) and it was passed over.
 Plex Web (`shuffle ? 1 : undefined`, `repeat ? 1 : 0`) and Plex for Android (`shuffle: a1 ? 1 : 0`,
@@ -11066,9 +11066,9 @@ anyone noticing:
   was never copied. Restored, all three legs agree with their no-restart controls except the
   background list's `addedAt` (cycle 73's recorded bound).
 - B's main and 59b chain diffs compared against cycle 59's s42 capture, which lived in a wiped
-  scratchpad. Compared simplex-to-simplex with cycle 78 instead: 0 of 20 59b steps differ, and the
+  scratchpad. Compared rex-to-rex with cycle 78 instead: 0 of 20 59b steps differ, and the
   main chain differs only in timestamps, artwork versions and the plexapi-version request shapes above.
-- A's s42 item-settings sweep crashed on its collection pair in cycle 78 (simplex's collection 50001
+- A's s42 item-settings sweep crashed on its collection pair in cycle 78 (rex's collection 50001
   was a leftover of cycle 76's instance); with one created first it is identical to cycle 77.
 - N's `fix76` and `sidecar76` checks, and its whole `out/`, need the directory tree the copy did not
   carry; rerun, they agree with cycle 77 up to the unseeded random sort.
@@ -11089,7 +11089,7 @@ Measured and not acted on: the background processing list's `addedAt` moves acro
 | 3 | C/B/N write regressions, P's delayed-write matrix | clean |
 | 4 | UI surface 1,960/1,960, B owner readbacks, rendered routes | **found** the Specials season title |
 | 5 | Windows Plex Web local vs kids, 18 status rows each, same failure classes as 78 | **found** `Season 0` rendered (specials copy) |
-| 6 | B's plexapi 4.18.2 write chains vs s42 and vs cycle 78's simplex | **found** the queue flag grammar |
+| 6 | B's plexapi 4.18.2 write chains vs s42 and vs cycle 78's rex | **found** the queue flag grammar |
 | 7 | C comparators and regression sets | clean |
 | 8 | B/N identity and playback matrices, live decode 5/5 | clean |
 | 9 | A's 44-language corpus (8,202 cells identical to 78), `.mo` sweeps and s42 item settings (both repaired), titles, aliases | **found** `Specials` in 45 languages |
@@ -11108,7 +11108,7 @@ gated on B's s42 work finishing. **No client-visible and no new malformed-only d
   Android and in Plex Web (English `Specials`, French `Spécials`) on the cycle-80 head.
 - B's denominator equals cycle 79's except 14 fewer s42 DELETEs -- cycle 79's deletions of N's
   contaminating history row -- and its advance flow no longer reports a new s42 history row. Its
-  59b chain is identical to cycle 79's simplex (0 of 20 steps) and its main chain differs only in
+  59b chain is identical to cycle 79's rex (0 of 20 steps) and its main chain differs only in
   timestamps and one play-queue item type chosen by the queue's shuffle.
 - A's 44-language corpus is identical to cycle 79's, and its four `.mo` sweeps (168, 21, 5 and 0
   candidates) run whole, as does the s42 item-settings sweep on its own collection.
@@ -11133,7 +11133,7 @@ gated on B's s42 work finishing. **No client-visible and no new malformed-only d
 | 3 | C/B/N write regressions, P's delayed-write matrix | clean |
 | 4 | UI surface, B owner readbacks, rendered routes | clean (two timing-only UI checks, above) |
 | 5 | Windows Plex Web local vs kids; the specials copy | clean |
-| 6 | B's plexapi 4.18.2 chains vs s42 and vs cycle 79's simplex | clean |
+| 6 | B's plexapi 4.18.2 chains vs s42 and vs cycle 79's rex | clean |
 | 7 | C comparators and regression sets | clean |
 | 8 | B/N identity and playback matrices, live decode 5/5 | clean |
 | 9 | A corpus, `.mo`, titles, aliases, zen and s42 item settings | clean |
@@ -11166,7 +11166,7 @@ subtitle upload and removal request.
   provider/device and Android request legs, the Windows rendered walk and the
   disposable Android emulator all rendered or compared cleanly.
 - Offline decision, mediainfo, GDM, account-state and persistence suites passed;
-  fixture navigation passed 29/29 (`/private/tmp/simplex-cycle81/accept/navigation_fixture81.txt`)
+  fixture navigation passed 29/29 (`/private/tmp/rex-cycle81/accept/navigation_fixture81.txt`)
   and the LAN-bound UI suite passed 1,960/1,960.
   The live account catalog passed navigation 25/25 and conformance 38/38; its
   local byte/decode checks passed, while the public tunnel's prefix/seek legs
@@ -11218,12 +11218,12 @@ Its diff is a stricter filter-field grammar and four `AudioStream` attributes pl
   (a ten-second synthetic AAC mono clip: `gainOffset="0.03" loudness="-21.76" lra="0.10"
   peak="-17.96" threshold="-31.76" loudnessAnalysisVersion="0.02"`). zen carries none of them on
   62 movie audio streams, and the 1.42.2 binary does not contain `canNormalizeLoudness` or
-  `gainOffset`; its loudness analysis is the music butler's (`albumGain`, `endRamp`, ...). simplex
+  `gainOffset`; its loudness analysis is the music butler's (`albumGain`, `endRamp`, ...). rex
   advertises 1.42.2 and answers `canNormalizeLoudness` False, as zen does.
 - **No reference names a field with a digit**, so 4.18.3's grammar changes plexapi's own
-  validation only. 58 filter cells answered identically on zen, plexscratch42 and simplex.
+  validation only. 58 filter cells answered identically on zen, plexscratch42 and rex.
 - **Same-second history rows order by history id ascending** under `viewedAt:desc`,
-  `viewedAt:asc` and no sort, on plexscratch (1.43.4) and simplex alike, measured with playbacks
+  `viewedAt:asc` and no sort, on plexscratch (1.43.4) and rex alike, measured with playbacks
   whose crossing beat lands in one wall-clock second. A `/:/scrobble` of an episode or a season
   writes no history row.
 
@@ -11239,21 +11239,21 @@ The UI suite had only ever been green keyless: 1,960/1,960 with 12 skips. With a
 real Real-Debrid token the Fix Match section really matches `movie` again, and four checks failed.
 Two were server bugs on the Fix Match path; two assumed `movie` was still unmatched.
 
-- **`rating` is the critic score, and simplex holds none.** zen (1.42.2), GET-only, over all 3,889
+- **`rating` is the critic score, and rex holds none.** zen (1.42.2), GET-only, over all 3,889
   movies of its movie section: the 2,351 `local://` rows carry no `rating`, `ratingImage`,
   `Rating`, `audienceRating` or `Field`. Of the 1,538 `plex://` rows, 743 carry `rating`, every one
   beside a `rottentomatoes://image.rating.*` `ratingImage` and a `critic` entry in `Rating`; none of
   the 795 whose `Rating` entries are all `audience` ones (IMDb, TMDB, the RT audience score) does.
   (Three carry a critic entry and still no `rating`.) No movie carries `Field` at all. So "no
   `rating`" is not an unmatched-row rule: it holds for every row whose ratings are TMDB votes, which
-  is every row simplex has. Load already drops it (`hierarchy.normalize_rows`); `metadata.enrich`
+  is every row rex has. Load already drops it (`hierarchy.normalize_rows`); `metadata.enrich`
   wrote the vote into `rating` again on every Fix Match, so a matched row claimed a critic score.
 - **A Fix Match row's `titleSort` came from a bare article strip** and was always set, so "Tears of
   Steel" sorted as "Tears of Steel", which no real PMS sends. It now takes the load-time rule
   (`hierarchy.sort_title`) and is sent only when it differs.
 - **An unmatch re-versions the poster the row owns.** Measured on plexscratch (1.43.4) by
   unmatching matched movie 1: `updatedAt` 1790724822 → 1790724825 and `thumb`
-  `/library/metadata/1/thumb/1790724822` → `.../thumb/1790724825` in the same write. simplex moved
+  `/library/metadata/1/thumb/1790724822` → `.../thumb/1790724825` in the same write. rex moved
   `updatedAt` and kept the old version, breaking cycle 20's rule that an owned artwork version IS
   the row's `updatedAt`. The UI suite caught it only once the fixture held a movie that is unmatched
   after its last artwork write.
@@ -11277,7 +11277,7 @@ The Hunt for the Crypto King" and "Tuesday" are zen's profile-5 rows 967 and 112
 "Vinaipayan" is zen's unmatched `local://3763`: a keyed run leaves no unmatched movie otherwise.
 
 **Measured and not acted on:** the same plexscratch unmatch dropped the movie's `art` outright,
-where the unmatch model keeps it (read off a different row); and a simplex row unmatched with
+where the unmatch model keeps it (read off a different row); and a rex row unmatched with
 `/unmatch` keeps its `Rating` array and `audienceRatingImage`, which zen's never-matched `local://`
 rows do not carry. Neither is measured on the same row both ways.
 
@@ -11317,10 +11317,10 @@ every item detail; `POST /library/collections`; `playlistType`/`subType` list fi
 sent to a player's own address, not to a PMS.
 
 Every new PMS request, issued in the app's captured shape, answered as the references do, and the
-dashboard, history, Top Played and per-item play history render on simplex. Two rules were built:
+dashboard, history, Top Played and per-item play history render on rex. Two rules were built:
 
 * **A client PING on `/:/websockets/notifications` is answered with a PONG carrying its payload**
-  (kids and zen, at once, unmasked). simplex never answered, and 2026.19.1 closes the socket after
+  (kids and zen, at once, unmasked). rex never answered, and 2026.19.1 closes the socket after
   exactly 50 s (1006) and never reopens it, so every server push after the first minute was lost.
   The app opens the socket only when the account carries the `WebsocketsForPms` feature, and it
   authenticates with the ACCOUNT token. CLIENT-VISIBLE.
@@ -11336,7 +11336,7 @@ answered the recorded empty 200 with `terminationCode 2006` on the next timeline
 
 **Measured and not acted on.** zen closes the socket after ponging an EMPTY ping where kids does
 not (single witness, no client sends one). Bounds of the instrument: an episode cannot be played
-in the emulator (every live-catalog episode is eac3, which it cannot decode, and simplex has no
+in the emulator (every live-catalog episode is eac3, which it cannot decode, and rex has no
 transcoder); the 19.1 `PUT /library/parts` with playback headers needs a direct-playable item with a
 second audio or subtitle stream; activity frames for a subtitle download need a subtitle provider.
 Whether 1.43.4 also drops a show's per-user fields on a top row is unmeasured (kids has no show
@@ -11358,9 +11358,9 @@ Rather than guessing what a claimed server reports, `/identity`,
 genuinely claimed, on the same account — and diffed field by field. Result:
 **36 fields identical, 24 differing and every difference deliberate.**
 
-What the diff corrected, all of it invented by simplex beforehand:
+What the diff corrected, all of it invented by rex beforehand:
 
-| field | real servers | simplex had |
+| field | real servers | rex had |
 |---|---|---|
 | `apiVersion` | `1.1.1` | `1.2.3` (taken from a newer 1.43.4 container) |
 | `claimed` on `/media/providers` | **absent** | `true` — claim state lives on `/identity` and `/myplex/account` only |
@@ -11374,12 +11374,12 @@ The generic `container()` helper was the root of four of those: it injected
 library-container defaults into *every* response, including endpoints a real PMS
 keeps bare. `bare_container()` now exists for exactly that reason.
 
-The 24 remaining differences are all one of three kinds: simplex is a different
+The 24 remaining differences are all one of three kinds: rex is a different
 server (`machineIdentifier`, `friendlyName`, `version`, `platformVersion`), it
 has **no encoder** (every `transcoder*` field, `offlineTranscode`), or it
 **owns no files** (`allowMediaDeletion`, `allowSync`, `allowCameraUpload`,
 `allowTuners`, `livetv`). Those are kept false on purpose: advertising a
-transcoder simplex does not have is what produced "This server is not powerful
+transcoder rex does not have is what produced "This server is not powerful
 enough to convert video" in the first place.
 
 Playback re-verified after all of it: direct play, 1920x1080, 0 dropped frames,
@@ -11387,15 +11387,15 @@ banner gone.
 
 ### On the claim banner
 
-`--assert-claimed` makes simplex report a claim it does not hold. It is named
+`--assert-claimed` makes rex report a claim it does not hold. It is named
 for what it is. The alternative — a real `POST /api/claim/exchange` — is what
 reset the account's tokens and signed fun and zen out of plex.tv earlier the
 same day, so it is not worth re-running for a cosmetic banner.
 
 It works only because the **locally served** web client reads claim state from
-simplex's own `/identity` and `/myplex/account`. `app.plex.tv` reads plex.tv
+rex's own `/identity` and `/myplex/account`. `app.plex.tv` reads plex.tv
 instead and is not fooled, which is why the banner persisted there even when
-simplex claimed to be claimed.
+rex claimed to be claimed.
 
 ### The unavoidable trade-off
 
@@ -11414,7 +11414,7 @@ clients and **serve its own catalog's streams** from debrid links — the thing
 Answer: **yes for the protocol and the bytes; the weak link is plex.tv presence,
 not playback.**
 
-Code: `simplex/` (scratchpad, not yet promoted to a repository).
+Code: `rex/` (scratchpad, not yet promoted to a repository).
 
 ## What was built
 
@@ -11441,7 +11441,7 @@ lists), `/library/{onDeck,recentlyAdded,all}`, `/hubs`,
 ## Proven
 
 **1. The REST contract.** python-plexapi — the same XML every official client
-parses — browses simplex and reaches a playable URL. 38/38 checks, including
+parses — browses rex and reaches a playable URL. 38/38 checks, including
 `Media`/`Part`/`Stream` shape, 4 subtitle tracks, search, play queue, timeline
 write-back.
 
@@ -11457,21 +11457,21 @@ size. Mid-file seek to offset 919268127 returned in **0.23 s**.
 
 | Path | md5 |
 |---|---|
-| through simplex (`proxy`) | `e49cf18e698064cddc10a13ea0926fb3` |
-| through simplex (`redirect`) | `e49cf18e698064cddc10a13ea0926fb3` |
+| through rex (`proxy`) | `e49cf18e698064cddc10a13ea0926fb3` |
+| through rex (`redirect`) | `e49cf18e698064cddc10a13ea0926fb3` |
 | straight from the RD CDN | `e49cf18e698064cddc10a13ea0926fb3` |
 
 mpv direct-plays it: `h264 1920x1080 23.976fps` + `eac3 6ch` + all 4 subtitle
 tracks, seeked to 20:00.
 
 **5. Registration works.** The pd_inject trick still works in 2026:
-`PUT https://plex.tv/devices/{id}?Connection[][uri]=...`. simplex appeared in
+`PUT https://plex.tv/devices/{id}?Connection[][uri]=...`. rex appeared in
 `/api/v2/resources` — the list every client reads — alongside fun and zen.
 
 **6. The whole chain, end to end, over a real public URL.** `discover.py` —
 python-plexapi driving the same path every official client takes — scored
 **14/14**: plex.tv sign-in → resource discovery → connect to
-`https://simplex.example.com` (0.23 s) → browse → 206 with the true total size.
+`https://rex.example.com` (0.23 s) → browse → 206 with the true total size.
 mpv then direct-played it from a 20-minute seek with all four subtitle tracks,
 and 24 decoded frames at 20:00 matched the CDN reference md5 exactly
 (`e49cf18e698064cddc10a13ea0926fb3`) through the full
@@ -11486,14 +11486,14 @@ owning a file or transcoding anything.
 
 **1. Cloudflare strips `Range` on prefix requests — do not proxy media through
 it.** With `--part-mode proxy` behind the tunnel, a `Range: bytes=0-99` request
-arrived at simplex as **no Range at all** (`PART 10010 range=- -> 200
+arrived at rex as **no Range at all** (`PART 10010 range=- -> 200
 len=1838536254`). Cloudflare collapses a prefix range into a full origin fetch,
-so simplex served the entire 1.8 GB and Cloudflare pulled it for 39 s before the
+so rex served the entire 1.8 GB and Cloudflare pulled it for 39 s before the
 client gave up. A *mid-file* range (`bytes=919268127-…`) passed through correctly
 as 206. So every playback start would drag the whole file out of Real-Debrid —
 ruinous, since bandwidth is the entire cost line.
 
-`--part-mode redirect` removes the problem completely: simplex answers 302 with
+`--part-mode redirect` removes the problem completely: rex answers 302 with
 `content-length: 0`, Cloudflare forwards it untouched, and the client fetches
 from RD directly and gets a correct 206. **No media byte crosses Cloudflare** —
 which also keeps the setup clear of Cloudflare's ToS §2.8 restriction on serving
@@ -11541,7 +11541,7 @@ described below.
 **Mitigation validated**, not just designed: with the heartbeat running at 600 s,
 13 probes over 60 minutes were all visible, including t+45, t+50, t+55 and t+60 —
 well past the lease — with zero heartbeat warnings, across a mid-run restart of
-simplex itself.
+rex itself.
 
 One anomaly remains unexplained: a dropout roughly 2-4 minutes after the very
 first PUT, far inside the lease. That PUT also rewrote name, platform and
@@ -11550,13 +11550,13 @@ it was never reproduced.
 
 **3. "Unclaimed and not secure" is an identity mismatch, not a TLS problem.**
 
-The Plex web app showed simplex as *"unclaimed and not secure"* despite a valid
+The Plex web app showed rex as *"unclaimed and not secure"* despite a valid
 public certificate. Three fields were at fault:
 
 | field | wrong value | correct |
 |---|---|---|
 | `machineIdentifier` | `de407dc4…`, which did not match the device row's `clientIdentifier` (`zurg`) | must **equal** the device row's `clientIdentifier` |
-| `certificate` | absent | `1` — simplex's TLS terminates at the CDN, so it has to assert this itself |
+| `certificate` | absent | `1` — rex's TLS terminates at the CDN, so it has to assert this itself |
 | `claimed` | absent | `1` |
 
 The mismatch was the actual cause: a client cross-checks the `clientIdentifier`
@@ -11573,24 +11573,24 @@ plex.tv. Pick the value once and never change it.
 **3b. THE REAL WALL: `presence` and `accessToken` are never published, so the
 official web app refuses to connect.**
 
-The Plex web app reports *"simplex is currently unavailable"*. Cause, from
+The Plex web app reports *"rex is currently unavailable"*. Cause, from
 `/api/v2/resources`:
 
-| field | fun / zen | simplex |
+| field | fun / zen | rex |
 |---|---|---|
 | `presence` | `true` | **`false`** |
 | `accessToken` | the owner's token | **`null`** |
 
 A client builds its request URL from the resource's `accessToken`. With `null`
 there is no credential to use, so the server reads as unreachable. This is the
-single thing standing between simplex and the official clients.
+single thing standing between rex and the official clients.
 
 What was ruled out, in order:
 
 1. **Identity mismatch** — fixed (`machineIdentifier` == `clientIdentifier`).
    Did not change presence.
 2. **plex.tv probing the connection** — it does not. Zero inbound requests
-   reached simplex or cloudflared from Plex during the whole session, so
+   reached rex or cloudflared from Plex during the whole session, so
    presence is not earned by answering a probe.
 3. **The claim exchange** — `GET /api/v2/claim/token` then
    `POST /api/claim/exchange` **works** and issues a genuine server-specific
@@ -11627,11 +11627,11 @@ Two things fall out:
    dead. My identical 422 earlier was normal behaviour, not a malformed body,
    and that lead is closed.
 2. **The presence mechanism is the `connectivity` PUT** — and it returns **404**
-   for simplex.
+   for rex.
 
 ### The actual gate: two separate registries
 
-| | fun | simplex |
+| | fun | rex |
 |---|---|---|
 | `/devices/{id}` | exists | exists |
 | `/api/servers/{machineIdentifier}` | **200** | **404** |
@@ -11657,7 +11657,7 @@ Bounded, and on a test host rather than production.
 
 ### The experiment, run (2026-10-10): `/servers.xml` writes the record, pubsub is presence
 
-A throwaway real PMS (`plexinc/pms-docker:1.42.2.10156-f737b826c`, the version simplex
+A throwaway real PMS (`plexinc/pms-docker:1.42.2.10156-f737b826c`, the version rex
 reports, friendly name `pms-probe`, its own empty config) ran on zen behind the harness
 gateway: mitmproxy transparent on 80/443 at uid 8888, its CA trusted in the container by a
 `cont-init.d` script before PMS first started. It was claimed once, the supported way: a
@@ -11694,7 +11694,7 @@ The claim, in order (02:21:29 UTC):
    exchange's second (1791598889), one earlier. So the 422 that closed this lead above
    ("the endpoint is dead") is plex.tv's normal answer to a real PMS, and the record is
    written regardless. The spike never sent the PMS's body with the server token;
-   simplex-e2e's `/api/servers/aebd…` still answered 404 on the day.
+   rex-e2e's `/api/servers/aebd…` still answered 404 on the day.
 2. **`presence` is the pubsub subscription: not a lease, and not the connectivity PUT.**
    - In the first run the gateway buffered the event stream (`tap.py` records a flow when
      its body ends, which an event stream never does), so PMS got no reply, gave up after
@@ -11729,7 +11729,7 @@ The claim, in order (02:21:29 UTC):
    call carries the thirteen headers the cycle-44 announce does (`User-Agent:
    PlexMediaServer/<version>`, `Accept: */*`, `Accept-Encoding: gzip`, the identity).
 5. **plex.tv gzips whenever asked.** The exchange and device-PUT answers came back
-   `content-encoding: gzip`. simplex's announce has asked for gzip since cycle 44 and
+   `content-encoding: gzip`. rex's announce has asked for gzip since cycle 44 and
    parsed the raw bytes, so against the real plex.tv every heartbeat raised after its PUT
    took effect, and the visibility check behind it never ran.
 6. A claimed restart: device PUT, `POST /servers.xml` twice, the pubsub host list, the
@@ -11741,12 +11741,12 @@ The claim, in order (02:21:29 UTC):
    further `/servers.xml`, device PUT or connectivity check, one pubsub request and 360
    keepalives. The record and the device row stayed put without renewal while the stream
    was open.
-9. Not reproduced: the plex.direct certificate flow (simplex serves a certificate it is
+9. Not reproduced: the plex.direct certificate flow (rex serves a certificate it is
    given, `--tls-cert`), the pubsub host list (used only to fall back from
    `pubsub.plex.tv`), and the probe's own connections to the other owned servers'
    plex.direct URIs.
 
-What simplex does now (`claim.py`, `runtime/plextv.rs`): the exchange with the measured
+What rex does now (`claim.py`, `runtime/plextv.rs`): the exchange with the measured
 headers, keeping the account id it answers; then `POST /servers.xml` (422 logged, not an
 error), the device PUT with the server's own token when `--announce-url` is set, and the
 pubsub stream, requesting the reachability check as it opens, logging plex.tv's verdict
@@ -11754,7 +11754,7 @@ and resubscribing 15 s after a drop. A claimed start does the same without the e
 heartbeat announcing with the server token. `tests/test_plextv.py` drives it against the
 recording.
 
-**simplex-e2e on zen, registered with it the same day.** Claimed once (03:27:49 UTC, a fresh
+**rex-e2e on zen, registered with it the same day.** Claimed once (03:27:49 UTC, a fresh
 claim token through `POST /myplex/claim`). Its log ran `CLAIMED` → `servers.xml POST -> 422` →
 `pubsub subscribed` → `connectivity PUT -> 200 b''`, and `/api/servers/aebd…` went from 404 to
 200 (`createdAt="1791602869"`, the claim's second): the connectivity 404 of 2026-09-11 is gone.
@@ -11771,7 +11771,7 @@ connection (`location=wan`, ranged 206 part reads, 1920x1080, 36 s). What the cl
 the way, read from Plex Web 4.162 and its console:
 
 - Chrome 154 refused every request from app.plex.tv to a private or CGNAT address -- fun's,
-  zen's and simplex's alike -- with "Permission was denied for this request to access the
+  zen's and rex's alike -- with "Permission was denied for this request to access the
   `local` address space", although the launcher still passes
   `--disable-features=LocalNetworkAccessChecks,…`. `Browser.setPermission` granting
   `local-network` to `https://app.plex.tv` on the page's `browserContextId` cleared it; the
@@ -11779,7 +11779,7 @@ the way, read from Plex Web 4.162 and its console:
 - `isPrivate` is an IP test on a connection's `address`, so a hostname connection is never
   private. With `publicAddressMatches` true (browser and server share the home IP)
   `_isMatchingLocation` sorts such a connection after every private candidate -- it only
-  orders the test queue, it filters nothing -- so simplex's was tested last, about a minute
+  orders the test queue, it filters nothing -- so rex's was tested last, about a minute
   in, behind fun's and zen's timing-out bridge addresses.
 - The real Play control is `button[data-testid="preplay-play"]`, with no `aria-label`.
 - After those runs fun's own device row read `productVersion="4.162.1" platform="Chrome"
@@ -11787,17 +11787,17 @@ the way, read from Plex Web 4.162 and its console:
   `1.42.2.10156-f737b826c` / Linux; presence, connections and `lastSeenAt` were unchanged.
   The browser is signed in with the token from fun's zurg config. Cause not established.
 
-**The token gate a claimed server keeps (2026-10-10).** simplex-e2e answered `GET
-/library/sections` 200 to no token and to a made-up one: simplex's gate was opt-in (`--token`)
+**The token gate a claimed server keeps (2026-10-10).** rex-e2e answered `GET
+/library/sections` 200 to no token and to a made-up one: rex's gate was opt-in (`--token`)
 and the rig ran without one, so every tailnet peer read the library and the bytes. A real PMS
 always gates once claimed, and plex.tv decides who is in. Read from zen's own 1.42.2 PMS log
-and asked of plex.tv for simplex-e2e (`tests/fixtures/plextv_access_tokens_s1422.json`):
+and asked of plex.tv for rex-e2e (`tests/fixtures/plextv_access_tokens_s1422.json`):
 
 - `GET plex.tv/api/v2/server/access_tokens?auth_token=<server token>` answers `<tokens>` with
   one `<token type="device" device=… token=… tokenDisabled="0" owned="1" createdAt=…/>` per
   token allowed in: the server's own first, then each of the owner's devices (20 rows for
   plexa630; the account token in fun's zurg config is one, and so is the token of every client
-  seen on simplex-e2e that day). It is the list PMS checks a request's token against.
+  seen on rex-e2e that day). It is the list PMS checks a request's token against.
 - A claimed start reads it first (the probe's `claimed_start`); the claim itself did not; nothing
   reads it on a timer (the probe's hour, and four hours of zen's log).
 - A token PMS does not hold makes it re-read the list with `&unknownToken=<that token>`
@@ -11810,33 +11810,33 @@ and asked of plex.tv for simplex-e2e (`tests/fixtures/plextv_access_tokens_s1422
 - On zen the unknown token then falls through to "authenticating user as guest", because zen's
   allowed network covers that client; off an allowed network it is cycle 30's 401.
 
-simplex does the same on both servers (`claim.Claim.admits`, `plextv::Access`): a real claim
+rex does the same on both servers (`claim.Claim.admits`, `plextv::Access`): a real claim
 raises the gate (`--assert-claimed` does not), the server's own token and every listed, enabled
 token are let in, a claimed start reads the list before `POST /servers.xml`, and an unknown token
 re-reads it -- in the native server before the runtime lock is taken, so a slow plex.tv holds
 up only that request. `tests/test_plextv.py` checks it against the stub; 10 of its checks fail
 against the unfixed servers, which answered 200 with no token. Not reproduced: PMS's `GET
-/api/v2/server/users` after each read (per-user restrictions; simplex keeps no per-user state),
+/api/v2/server/users` after each read (per-user restrictions; rex keeps no per-user state),
 the allowed-networks fallback, and admitting back the transient tokens `/security/token` mints.
 
 **A resubscribe within seconds of the old stream closing reads absent (2026-10-10).** On
-simplex-e2e, `systemctl restart` (old process gone at 07:59:04, new stream subscribed at
+rex-e2e, `systemctl restart` (old process gone at 07:59:04, new stream subscribed at
 07:59:06) was listed `presence=true` until 07:59:38 and `false` from 07:59:43 for six minutes,
 with the new stream open (its socket established, no "stream ended" logged, keepalives read).
 A restart that subscribed 16 s after the old process died (kill -9, then systemd's 15 s
 `RestartSec`) and one that waited 20 s first both stayed present. Mechanism not established;
 the rig's unit waits 20 s before every start. A real PMS takes longer than that to come back.
 
-**A public connection does not make plex.tv's reachability 1 (2026-10-10).** simplex-e2e
+**A public connection does not make plex.tv's reachability 1 (2026-10-10).** rex-e2e
 announced `https://zen.tail-net.ts.net:8443` (Tailscale Funnel) beside its tailnet URI, and its
 resource listed both. The Funnel URL was public: from dmm-01, through Funnel's public ingress
 rather than the tailnet, a token-bearing part read answered 206 with the same bytes as the
 tailnet read, and tokenless reads answered 401. Two connectivity PUTs, one and two minutes after
 the public DNS record appeared, still answered `reachability 0` (in 3 s, then in under 1 s), and
-no request reached simplex in either window, through Funnel or otherwise: plex.tv does not test
+no request reached rex in either window, through Funnel or otherwise: plex.tv does not test
 the announced connections. The
 probe's verdict names `address="" port="0"`; a real PMS's reachability is its public address and
-the port it maps (zen's PMS logs a failed UPnP mapping), which simplex does not report and which
+the port it maps (zen's PMS logs a failed UPnP mapping), which rex does not report and which
 here is the home IP, not Funnel's. A client off the tailnet uses the announced connection
 whatever the verdict.
 
@@ -11852,7 +11852,7 @@ This resolves the multi-user question left open earlier: **a server owner's Plex
 Pass covers remote streaming for every user on that server**, so one lifetime
 pass on plexa630 covers all shared users and nobody needs a Remote Watch Pass.
 
-Limits that still bite: simplex keeps no per-user state -- a claimed simplex
+Limits that still bite: rex keeps no per-user state -- a claimed rex
 admits the tokens plex.tv lists for it, shared users' included (above), but
 serves every one of them as the owner -- so real sharing needs per-user views; Plex Home caps at 15 managed users; and friend sharing requires each
 invite to be accepted individually, so sharing to a large DMM user base is not
@@ -11887,7 +11887,7 @@ attributes decide playability client-side. Measured against the catalog:
 | Detective Conan 1194 — mkv h264 1080p aac 8110k | PLAY | PLAY | FAIL 720p cap | PLAY |
 | Tears of Steel — webm vp8 1920x800 vorbis | FAIL | FAIL | FAIL | FAIL |
 
-simplex has no encoder, so a transcode verdict is not a downgrade — the item
+rex has no encoder, so a transcode verdict is not a downgrade — the item
 does not play at all. Honest probe-derived numbers are mandatory; a guess fails
 silently.
 
@@ -11923,16 +11923,16 @@ Correct ranges and content type verified through it.
 
 **This was the wrong substitute.** `tailscale serve` is tailnet-only;
 `tailscale funnel` is the public one, and it hung when invoked (Funnel needs
-enabling in the tailnet policy). So simplex was never publicly exposed on that
+enabling in the tailnet policy). So rex was never publicly exposed on that
 path. Since removed (`tailscale serve --https=8443 off`).
 
 ### What actually serves it: a named Cloudflare tunnel
 
 | | |
 |---|---|
-| Hostname | `simplex.example.com` (proxied CNAME, record id `<dns-record-id>`) |
+| Hostname | `rex.example.com` (proxied CNAME, record id `<dns-record-id>`) |
 | Tunnel | `boiler-room-app`, `<tunnel-uuid>` |
-| Config | `simplex/cloudflared-simplex.yml` — **not** `~/.cloudflared/config.yml` |
+| Config | `rex/cloudflared-rex.yml` — **not** `~/.cloudflared/config.yml` |
 | Origin | `http://127.0.0.1:32400` |
 
 The tunnel was already on the account, `status: down`, with nothing listening on
@@ -11953,7 +11953,7 @@ Credential notes, since three of four did not work:
 
 **Teardown:** delete DNS record `<dns-record-id>` on zone
 `<zone-id>`, and stop the `cloudflared --config
-simplex/cloudflared-simplex.yml` process. Nothing else persists.
+rex/cloudflared-rex.yml` process. Nothing else persists.
 
 ## Collateral change to the Plex account — needs a decision
 
@@ -11962,7 +11962,7 @@ resolved it to a **pre-existing** row and overwrote it:
 
 - device id `1366743689`, `clientIdentifier="zurg"`, `product="zurg"`,
   `provides="server"`, `createdAt=1751239317` (2025-06-29)
-- overwritten: `name` → `simplex-spike`, `productVersion`, `platform`,
+- overwritten: `name` → `rex-spike`, `productVersion`, `platform`,
   `platformVersion`, `device`, and its entire `Connection` list → the tailscale URL
 
 The original name and connection URIs are **not recoverable** — plex.tv keeps no
@@ -11978,17 +11978,17 @@ does not 404, it lands somewhere else. A new device should instead be created by
 the PIN flow (`POST /api/v2/pins` + one browser authorization) and only then
 PUT by its numeric id.
 
-**Decision needed:** delete device `1366743689`, or leave it as simplex's row.
+**Decision needed:** delete device `1366743689`, or leave it as rex's row.
 
 ## Not yet done
 
-- **A GUI client.** Nothing is blocking it now — simplex is live at
-  `https://simplex.example.com` and discoverable on the plexa630 account. Next:
+- **A GUI client.** Nothing is blocking it now — rex is live at
+  `https://rex.example.com` and discoverable on the plexa630 account. Next:
   plezy (open source, debuggable on desktop), then the web app, then Android TV.
   The open question is whether official clients follow the 302 and tolerate RD's
   `application/force-download` content type.
 - Real artwork; `/photo/:/transcode` returns a generated solid-colour PNG.
-- Multi-user: each user needs their own Plex Pass, or simplex runs on their LAN
+- Multi-user: each user needs their own Plex Pass, or rex runs on their LAN
   and advertises a local connection. plexa630 has a lifetime Pass, so the spike
   did not hit the remote-playback gate.
 
@@ -11998,7 +11998,7 @@ PUT by its numeric id.
 (708 lines), `docs/pms-api.md` (870 lines, "verified against live server", PMS
 1.43.x, dated per section), `docs/plex-openapi.json` (1.3 MB),
 `docs/pms-hls-protocol-probe.md`, `docs/shared-servers.md` (74 KB). That is the
-best PMS documentation found, and its mock is the skeleton simplex grew from.
+best PMS documentation found, and its mock is the skeleton rex grew from.
 
 #### The fiftieth pass — recovered findings, complete implementation, and the deferred register
 
@@ -12096,7 +12096,7 @@ is now **103/103**.
 The old prefix note said 57 paths, but the durable executed list contains **58 unique paths**.
 The complete registry was replayed as **58 paths × 3 references = 174 GETs**, all exact in root
 attributes, row order, element type, and row-attribute order. A captured finite registry was built;
-no rule was fitted to simplex's own router.
+no rule was fitted to rex's own router.
 
 Numeric device platforms are now reproduced: the direct device row preserves normalized numeric
 JSON, while `/devices` and `/statistics/bandwidth` return the measured 500 until a nonnumeric
@@ -12114,7 +12114,7 @@ emulation is therefore terminally underivable without fabricating visible state.
 added.
 
 The other terminal entries remain unchanged: `transcoderVideoRemuxOnly` is a server capability
-simplex does not possess; `/myplex/account` authToken is mapping-state-confounded and unsafe while
+rex does not possess; `/myplex/account` authToken is mapping-state-confounded and unsafe while
 the token gate can be off; no measured PMS-side GDM peer consumer exists; and deeper conversion
 generator/job rows require unadvertised encoder state.
 
@@ -12122,7 +12122,7 @@ generator/job rows require unadvertised encoder state.
 
 The safe claim replay covered **111 of 116 families × four host slots × two formats × two auth
 states = 1,776 requests**; the five exclusions were three asset bodies, photo transcode, and the
-claim write. The retained full Cycle-49 matrix remains 928 reference and 232 simplex status cells.
+claim write. The retained full Cycle-49 matrix remains 928 reference and 232 rex status cells.
 The recovered dual-format pass issued **692 safe XML/JSON pairs** from 176 templates, parsed 614
 pairs / 9,206 nodes, and found zero structure, set, order, or scalar-type mismatches; the retained
 full matrix remains 1,331 pairs. The served client corpus is 208 JavaScript files / 9,318,734
@@ -12204,18 +12204,18 @@ default); the steps that need it off set it off first.
   out of the map ... for being unavailable"; `checkFiles` reports every Part missing while
   no row is marked.
 
-simplex emulates all of it, and keeps the last rule for zurg's own failure modes too: a
+rex emulates all of it, and keeps the last rule for zurg's own failure modes too: a
 listing that fails, a 503 while zurg loads (retried), and an empty library folder change
 nothing. Inferred, not measured: a season and show leave the trash once none of their
 episodes is in it; with `autoEmptyTrash` on, a show goes with its last season (a season with its last episode is the DELETE route's measured cascade).
 Not reproduced: a new episode's metadata pass on the copy was its SEASON's refresh (every
-episode of the season framed again); simplex frames the new episode alone, with the movie's
-sequence. Also unmeasured: what a scan creates for a brand-new show and season (simplex
+episode of the season framed again); rex frames the new episode alone, with the movie's
+sequence. Also unmeasured: what a scan creates for a brand-new show and season (rex
 announces them with the same created frames as a leaf).
 
-#### The feed: sources push, simplex scans nothing (2026-10-10)
+#### The feed: sources push, rex scans nothing (2026-10-10)
 
-Why the direction reversed. The scanner above tied simplex to zurg's internals: it listed
+Why the direction reversed. The scanner above tied rex to zurg's internals: it listed
 zurg's WebDAV (PROPFIND), asked zurg's `/api/library/entry` about each new file, and ran when
 zurg's Plex integration sent `/library/sections/{id}/refresh?path=` (gated on `/activities`).
 It also kept a release's name-based identification forever once its row existed, because a
@@ -12224,8 +12224,8 @@ rescan fetches entries only for files it does not know. Reproduced on the last s
 `local://100000` after zurg learned `tt0103827` and asked for a rescan of the release.
 
 What replaced it (`docs/feed-api.md`, `rust/src/runtime/feed.rs`, `source.rs`): a source pushes
-items (`POST`/`DELETE /simplex/feed/{source}/items`, chunked `PUT .../snapshot`) with its own
-feed token, and simplex reads its bytes from `<source url>/<path>`. None of the feed is PMS
+items (`POST`/`DELETE /rex/feed/{source}/items`, chunked `PUT .../snapshot`) with its own
+feed token, and rex reads its bytes from `<source url>/<path>`. None of the feed is PMS
 emulation, so none of it was measured on a real PMS; what a row does when it is added or
 goes away still is:
 
@@ -12248,10 +12248,10 @@ goes away still is:
 - `--part-mode redirect` is gone from the native server: it read zurg's signed link from
   `/api/library/entry`, which a pushed source does not hand over. The oracle keeps it.
 
-Measured on zen with zurg `feat/simplex-feed` (7b3d3e15) against the RD test account,
+Measured on zen with zurg `feat/rex-feed` (7b3d3e15) against the RD test account,
 read-only, in scratch directories:
 
-- Migration dry run on a read-only copy of `~/simplex-e2e`'s database (118 leaves, 184 rows,
+- Migration dry run on a read-only copy of `~/rex-e2e`'s database (118 leaves, 184 rows,
   97 with an IMDb id from the scan): zurg's first snapshot adopted all 118, created and
   trashed nothing, and every one of the 184 keys stayed, episodes under the same season and
   show keys. 8 rows were re-identified because zurg's id differed from the name match (7
@@ -12266,5 +12266,5 @@ read-only, in scratch directories:
   Recently Added; narrowing the filter again trashed it and released the other two. A late
   IMDb id (`/manage/{hash}/imdbid`, `tt19811010`) re-identified row 100050 from
   `local://100050` to `plex://movie/626907dd4eba3bfb08aac74d` with its watch state. A 64 KiB
-  Range read through simplex matched zurg's own `/dav` bytes (MD5
-  `95f9fa1e8a705a7d85dbbffcbca4760d`). zurg sent this simplex no refresh.
+  Range read through rex matched zurg's own `/dav` bytes (MD5
+  `95f9fa1e8a705a7d85dbbffcbca4760d`). zurg sent this rex no refresh.

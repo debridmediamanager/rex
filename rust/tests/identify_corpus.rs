@@ -12,7 +12,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use simplex::identify::{Identifier, Identity, PlexSource, TmdbSource, AGREED};
+use rex::identify::{Identifier, Identity, PlexSource, TmdbSource, AGREED};
 use serde_json::{json, Value};
 
 type TmdbKey = (String, Vec<(String, String)>);

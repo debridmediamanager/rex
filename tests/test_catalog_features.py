@@ -9,7 +9,7 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.environ.get("SIMPLEX_TEST_ROOT", os.path.dirname(HERE))
+ROOT = os.environ.get("REX_TEST_ROOT", os.path.dirname(HERE))
 sys.path.insert(0, ROOT)
 
 import server  # noqa: E402
@@ -24,10 +24,10 @@ def main():
         if not condition:
             failures.append(name)
 
-    fixture = os.environ.get("SIMPLEX_CATALOG_FEATURES",
+    fixture = os.environ.get("REX_CATALOG_FEATURES",
                              os.path.join(HERE, "catalog_features.json"))
     catalog = server.Catalog(fixture)
-    sim = server.SimPlex(catalog, assert_claimed=True)
+    sim = server.Rex(catalog, assert_claimed=True)
 
     def matches(query, tagged=False):
         typed, tags = sim.search_matches(query, 100, tagged_items=tagged)
@@ -274,7 +274,7 @@ def main():
     # rebuild from explicit optimization, the Butler task, and section-deletion
     # completion; ordinary title edits do not maintain it row by row.
     rebuild_catalog = server.Catalog(fixture)
-    rebuild_sim = server.SimPlex(rebuild_catalog, assert_claimed=True)
+    rebuild_sim = server.Rex(rebuild_catalog, assert_claimed=True)
 
     def rebuilt_movies(query):
         typed, _tags = rebuild_sim.search_matches(query, 100)
@@ -313,7 +313,7 @@ def main():
           catalog.items[101]["Media"][0]["duration"] == 333000
           and [p["duration"] for p in catalog.items[101]["Media"][0]["Part"]]
           == [111000, 222000])
-    zurg = server.Zurg("http://zurg.invalid", mount="/simplex")
+    zurg = server.Zurg("http://zurg.invalid", mount="/rex")
     check("each Part reads its own file from zurg",
           zurg.dav_path(sim.resolve_part(1010)[0]) == "/dav/1/Stacked Feature - cd1.mkv"
           and zurg.dav_path(sim.resolve_part(1011)[0]) == "/dav/1/Stacked Feature - cd2.mkv")
@@ -684,9 +684,9 @@ def main():
     original_a = mixed_a.get("Media")
     original_b = mixed_b.get("Media")
     mixed_a["Media"] = [{"id": 4103, "Part": [{"id": 4103,
-                                                "file": "/simplex/1/A/direct.mkv"}]}]
+                                                "file": "/rex/1/A/direct.mkv"}]}]
     mixed_b["Media"] = [{"id": 4104, "Part": [{"id": 4104,
-                                                "file": "/simplex/1/A/B/deep.mkv"}]}]
+                                                "file": "/rex/1/A/B/deep.mkv"}]}]
     mixed_folder = sim.folder_view("1", catalog.section("1"), {"parent": "1"})
     mixed_body = mixed_folder["MediaContainer"]
     mixed_elements = mixed_body.pop("_xml", None)
@@ -814,7 +814,7 @@ def main():
     # legacy limit/count parameters are present; the shared 12-row shelf cap does
     # not apply to this See All endpoint.
     cap_catalog = server.Catalog(fixture)
-    cap_sim = server.SimPlex(cap_catalog, assert_claimed=True)
+    cap_sim = server.Rex(cap_catalog, assert_claimed=True)
     for number in range(55):
         show_key = str(25000 + number)
         season_key = str(35000 + number)
@@ -863,7 +863,7 @@ def main():
     # add-history measurement on both writable copies: one new episode remains an
     # episode; adding a sibling under the same season replaces it with that season.
     roll_catalog = server.Catalog(fixture)
-    roll_sim = server.SimPlex(roll_catalog, assert_claimed=True)
+    roll_sim = server.Rex(roll_catalog, assert_claimed=True)
     roll_show = {
         "ratingKey": "24901", "key": "/library/metadata/24901",
         "guid": "local://24901", "type": "show", "title": "Rollup Show",
@@ -906,7 +906,7 @@ def main():
     # beside Threefold's played one -- so cycle 58's gate is the LIBRARY's play history, not
     # the show's. A show in a library with no session play keeps its scrobble mark.
     gate_catalog = server.Catalog(fixture)
-    gate_sim = server.SimPlex(gate_catalog, assert_claimed=True)
+    gate_sim = server.Rex(gate_catalog, assert_claimed=True)
     def gate_show(show_key, season_key, first_key, section, title):
         rows = [{"ratingKey": show_key, "key": "/library/metadata/%s" % show_key,
                  "type": "show", "title": title, "librarySectionID": section},
@@ -1015,7 +1015,7 @@ def main():
             self.touches += 1
 
     gdm_catalog = server.Catalog(fixture)
-    gdm_sim = server.SimPlex(gdm_catalog, assert_claimed=True)
+    gdm_sim = server.Rex(gdm_catalog, assert_claimed=True)
     gdm_stamp = _DiscoveryStamp()
     gdm_sim.discovery = gdm_stamp
     quiet_answers = [
@@ -1090,7 +1090,7 @@ def main():
     localiser = Localiser()
     for legacy in (False, True):
         label = "a catalog written before the rule" if legacy else "a fresh build"
-        specials_sim = server.SimPlex(specials_catalog(legacy), assert_claimed=True)
+        specials_sim = server.Rex(specials_catalog(legacy), assert_claimed=True)
         shows = {row.get("title"): row for row in specials_sim.catalog.items.values()
                  if row.get("type") == "show"}
         wrong_titles, wrong_counts = [], []

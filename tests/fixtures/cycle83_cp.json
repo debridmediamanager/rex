@@ -1,5 +1,5 @@
 {
- "_source": "Measured 2026-10-01. agents_paged: zen (PMS 1.42.2, the version simplex reports), a GET with the X-Plex-Container-* request headers and no Accept, so XML. playlist and play_queue: plexscratch42 (a fresh 1.42.2) through cycle 83's C/P follow-up probes; ids are placeholders, updatedAt zeroed, no machine identifier kept.",
+ "_source": "Measured 2026-10-01. agents_paged: zen (PMS 1.42.2, the version rex reports), a GET with the X-Plex-Container-* request headers and no Accept, so XML. playlist and play_queue: plexscratch42 (a fresh 1.42.2) through cycle 83's C/P follow-up probes; ids are placeholders, updatedAt zeroed, no machine identifier kept.",
  "agents_paged": {
   "request": {
    "method": "GET",

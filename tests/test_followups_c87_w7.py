@@ -6,10 +6,10 @@ the header order of paged and gzipped answers.
    traceback only when no `url` argument is given. With one -- empty, relative, a non-URL,
    an http URL, a YouTube link -- plexscratch42, kids and zen answer a 404 with an EMPTY,
    untyped body and the framework cookie, under every Accept, gzip offer, paging and HEAD.
-   simplex answered the traceback to all of them.
+   rex answered the traceback to all of them.
 2. `tests/fixtures/c87_w7_peer_paging.json`: the ten `/system/{channels,plugins}/{name}`
    peer directories page: a full window adds `totalSize="0"` and both
-   `X-Plex-Container-*` headers. simplex served the unpaged document whatever was asked.
+   `X-Plex-Container-*` headers. rex served the unpaged document whatever was asked.
 3. `tests/fixtures/c87_w7_header_order.json`: the header NAMES in wire order for every
    `/system` family and four core containers, plain, paged, gzipped and both. The window
    headers sit after the type (core) or the cookie (`/system`), not after
@@ -19,7 +19,7 @@ Every request is replayed on a raw keep-alive socket, because `Connection: close
 the header block (it drops `Keep-Alive`) and the order is what item 3 measures.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `SIMPLEX_SERVER=python`.
+default, the oracle with `REX_SERVER=python`.
 
     python3 tests/test_followups_c87_w7.py
 """
@@ -38,8 +38,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURES = os.path.join(HERE, "fixtures")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 
 results = []

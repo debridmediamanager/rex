@@ -1,14 +1,14 @@
 //! Sources: where a Part's bytes come from, and who may push items (`feed.rs`).
 //!
-//! simplex reads no media itself. A source is any HTTP server that answers a Range GET
+//! rex reads no media itself. A source is any HTTP server that answers a Range GET
 //! with a file's bytes -- zurg's WebDAV is one -- plus the feed token it pushes its items
 //! with. A row the feed made names its source and the file's path under the source's url
 //! (`_source`, `_path`); a catalog row with neither reads from the source whose `mount`
 //! holds its Part's `file`, which is how parts were read before there was a feed.
 //!
-//! `--sources FILE` (or `$SIMPLEX_SOURCES`) names them, as `docs/feed-api.md` describes.
+//! `--sources FILE` (or `$REX_SOURCES`) names them, as `docs/feed-api.md` describes.
 //! Without one, `ZURG_URL` (+`ZURG_USER`/`ZURG_PASSWORD`) is the source `zurg`, read at
-//! `$ZURG_URL/dav` under `--zurg-mount`, pushing with `$SIMPLEX_FEED_TOKEN`.
+//! `$ZURG_URL/dav` under `--zurg-mount`, pushing with `$REX_FEED_TOKEN`.
 
 use super::upstream;
 use super::*;
@@ -142,11 +142,11 @@ impl Source {
     }
 }
 
-/// The sources: the file's (`--sources` / `$SIMPLEX_SOURCES`), then `ZURG_URL`'s as
+/// The sources: the file's (`--sources` / `$REX_SOURCES`), then `ZURG_URL`'s as
 /// `zurg` unless the file names one. A file that cannot be read or parsed stops the start.
 pub(crate) fn load(file: Option<&Path>, zurg_mount: &str) -> Result<Vec<Arc<Source>>, String> {
     let mut sources = Vec::new();
-    let from_env = std::env::var("SIMPLEX_SOURCES").ok().filter(|path| !path.is_empty()).map(PathBuf::from);
+    let from_env = std::env::var("REX_SOURCES").ok().filter(|path| !path.is_empty()).map(PathBuf::from);
     if let Some(path) = file.map(Path::to_path_buf).or(from_env) {
         let text = fs::read_to_string(&path).map_err(|error| format!("cannot read sources {}: {error}", path.display()))?;
         let document: Value =
@@ -178,7 +178,7 @@ pub(crate) fn load(file: Option<&Path>, zurg_mount: &str) -> Result<Vec<Arc<Sour
             "zurg",
             &format!("{}/dav", url.trim_end_matches('/')),
             auth,
-            std::env::var("SIMPLEX_FEED_TOKEN").ok(),
+            std::env::var("REX_FEED_TOKEN").ok(),
             Some(zurg_mount),
         )));
     }
@@ -197,7 +197,7 @@ mod tests {
         assert_eq!(path, "movies/A+B (2020)/A+B.mkv");
         assert_eq!(source.default_file(&path), file);
         assert_eq!(source.url(&path), "http://127.0.0.1:9999/dav/movies/A%2BB%20%282020%29/A%2BB.mkv");
-        assert_eq!(source.path_under_mount("/simplex/1/movie.mkv"), None);
+        assert_eq!(source.path_under_mount("/rex/1/movie.mkv"), None);
         assert_eq!(source.path_under_mount("/mnt/zurgish/x.mkv"), None);
         let bare = Source::new("nas", "https://nas/media", None, Some("t".into()), None);
         assert_eq!(bare.default_file("a/b.mkv"), "/a/b.mkv");

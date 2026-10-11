@@ -12,7 +12,7 @@ and cycle 34's 78 cells on a row MADE to carry two audio tracks with no language
 All 44 it misses are zen 19813's cells, and they are a state rather than a shape: a row
 whose tracks name no language answers differently before any client has chosen a track
 (41 profiles refuse it as "not the first audio stream") and after one has, with the
-item's `Stream` rows byte-identical either way. simplex carries a chosen track, so the
+item's `Stream` rows byte-identical either way. rex carries a chosen track, so the
 model is the after; the before is measured in docs/findings.md and not emulated.
 
 In order, each refusal naming itself in the reference's own words:
@@ -97,7 +97,7 @@ def evaluated_audio(media):
     property of the row at all: the same bytes answer 41 of 78 profiles "not the first
     audio stream" before any client has chosen a track and answer every one of the 78
     from the visible row afterwards, with `Stream` byte-identical either way. See the
-    module docstring; the selection simplex holds is the one a client has made.
+    module docstring; the selection rex holds is the one a client has made.
     """
     audio = [s for s in _streams(media) if s.get("streamType") == 2]
     if not audio:
@@ -285,7 +285,7 @@ def direct_play(profile, media):
     # subtitle is not first (zen 11901, 2157, 2925, 4969) the selected AUDIO is not first
     # either, so the audio refusal fires above and masks it -- HANDOVER.md §3.1 class B,
     # a sample that cannot disagree. It is reachable the moment a client uses its
-    # subtitle picker: simplex told all three profiles "Direct play OK." for a row they
+    # subtitle picker: rex told all three profiles "Direct play OK." for a row they
     # will not render, which is cycle 26's failure mode from the other side.
     if subtitle is not None and not subtitle.get("key") and not can_select:
         embedded = [s for s in streams

@@ -3,7 +3,7 @@
 
 The request list is not invented. It is the set of server endpoints reachable
 from the official web client's own code -- `webclient/js` (Plex Web 4.147.1, the
-bundle simplex serves at /web) -- with the parameter sets that code builds:
+bundle rex serves at /web) -- with the parameter sets that code builds:
 
   * the item context menu, `main-*.js` module 92273: one flag list per item
     type (movie/show/season/episode/collection/playlist) plus the predicate that
@@ -15,7 +15,7 @@ bundle simplex serves at /web) -- with the parameter sets that code builds:
     Plugins).
 
 Run it against a real PMS first -- that is the measurement -- then against
-simplex and diff the two tables:
+rex and diff the two tables:
 
     python3 probes/ui_surface.py --base http://kids:32400 --token $TOK > ref.txt
     python3 probes/ui_surface.py --base http://127.0.0.1:32400 > sim.txt
@@ -39,8 +39,8 @@ import urllib.request
 # else: Cloudflare 403s `Python-urllib/*` on the media path, and a PMS refuses
 # POST /playQueues without X-Plex-Client-Identifier.
 HEADERS = {
-    "User-Agent": "Plex Web/4.147.1 (simplex ui_surface probe)",
-    "X-Plex-Client-Identifier": "simplex-ui-surface",
+    "User-Agent": "Plex Web/4.147.1 (rex ui_surface probe)",
+    "X-Plex-Client-Identifier": "rex-ui-surface",
     "X-Plex-Product": "Plex Web",
     "X-Plex-Version": "4.147.1",
     "X-Plex-Platform": "Chrome",
@@ -280,7 +280,7 @@ def steps(ids, machine, mutate):
         ("browse", "GET", "/library/sections/%s/location" % movie_section),
         ("browse", "GET", "/library/sections/%s/unwatched" % movie_section),
         # Advertised in /filters and 404 on the reference itself -- the probe
-        # records that, so a simplex that starts answering them shows up.
+        # records that, so a rex that starts answering them shows up.
         ("browse", "GET", "/library/sections/%s/hdr" % movie_section),
         ("browse", "GET", "/library/sections/%s/inProgress" % movie_section),
         ("browse", "GET", "/library/sections/%s/unmatched" % movie_section),
@@ -343,7 +343,7 @@ def steps(ids, machine, mutate):
 
     # -- the item pages, each with the params the client actually sends ---
     # Each include/exclude option on its own, because their effects are separable
-    # and each one simplex ignored showed up as a valid document with a block
+    # and each one rex ignored showed up as a valid document with a block
     # missing -- not as an error.
     options = ("includeChildren=1", "includeRelated=1", "includePreferences=1",
                "excludeFields=summary", "excludeElements=Media", "checkFiles=1",
@@ -412,7 +412,7 @@ def steps(ids, machine, mutate):
         ("menu:analyze", "PUT", "/library/metadata/%s/analyze" % movie),
         ("menu:edit", "PUT",
          "/library/metadata/%s?titleSort.value=%s&titleSort.locked=1"
-         % (movie, quote("simplex probe"))),
+         % (movie, quote("rex probe"))),
         ("menu:edit", "PUT", "/library/metadata/%s?titleSort.value=&titleSort.locked=0" % movie),
         ("menu:split apart", "PUT", "/library/metadata/%s/split" % movie),
         ("menu:remove from cw", "PUT", "/actions/removeFromContinueWatching?ratingKey=%s" % movie),
@@ -431,9 +431,9 @@ def steps(ids, machine, mutate):
         ("playqueue", "POST", "/playQueues?type=video&shuffle=0&repeat=0&own=1&uri=%s"
                               % quote(uri_for(machine, movie), safe="")),
         ("playlist", "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"
-                             % (quote("simplex probe"), quote(uri_for(machine, movie), safe=""))),
+                             % (quote("rex probe"), quote(uri_for(machine, movie), safe=""))),
         ("collection", "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
-                               % (quote("simplex probe"), movie_section,
+                               % (quote("rex probe"), movie_section,
                                   quote(uri_for(machine, movie), safe=""))),
         ("library", "PUT", "/library/sections/%s/emptyTrash" % movie_section),
         ("library", "PUT", "/library/sections/%s/analyze" % movie_section),
@@ -494,13 +494,13 @@ def main():
                     ("GET", "/playlists/%s/items" % key),
                     ("PUT", "/playlists/%s/items?uri=%s"
                             % (key, urllib.parse.quote(uri_for(machine, ids["movie"]), safe=""))),
-                    ("PUT", "/playlists/%s?title=simplex+probe+2" % key),
+                    ("PUT", "/playlists/%s?title=rex+probe+2" % key),
                     ("DELETE", "/playlists/%s/items/1" % key),
                     ("DELETE", "/playlists/%s" % key)]
         else:
             tail = [("GET", "/library/collections/%s" % key),
                     ("GET", "/library/collections/%s/children" % key),
-                    ("PUT", "/library/collections/%s?title=simplex+probe+2" % key),
+                    ("PUT", "/library/collections/%s?title=rex+probe+2" % key),
                     ("DELETE", "/library/collections/%s" % key)]
         for method, path in tail:
             status, content_type, body = request(args.base, args.token, method, path)

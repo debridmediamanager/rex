@@ -37,7 +37,7 @@ non-ASCII letter only in its own case -- `actor=ARINZé KENE` finds Arinzé Kene
 `ARINZÉ KENE` nothing (SQLite's NOCASE). Both servers compared names exactly.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `SIMPLEX_SERVER=python`.
+the oracle with `REX_SERVER=python`.
 
     python3 tests/test_parity_cycle88_b.py
 """
@@ -70,8 +70,8 @@ POSTER_PNG = base64.b64decode(
     "rQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0B"
     "rQGtAe0CHaQCfFnVhS0AAAAASUVORK5CYII=")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "parity-cycle88-b", "Accept": "application/json"}

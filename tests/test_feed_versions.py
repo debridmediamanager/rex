@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Two releases of one title are one row with two Media, as a real PMS makes them.
 
-fun-simplex listed 127 Hours twice on 2026-10-11: two releases in one zurg, each pushed
+fun-rex listed 127 Hours twice on 2026-10-11: two releases in one zurg, each pushed
 as its own item, identified to the same Plex guid, made two movies (407 movies and
 ~1,370 episodes doubled across the library). A real PMS's movie agent makes every file
 of one title one item and offers them as versions. This drives the feed with zurg's
 real entries for both releases (`fixtures/feed/duplicate_releases.json`), then starts
-on the two rows fun-simplex actually held, which a restart must fold.
+on the two rows fun-rex actually held, which a restart must fold.
 
     python3 tests/test_feed_versions.py
 """
@@ -33,7 +33,7 @@ def item(index, path=None):
 
 
 def catalog(work, items=()):
-    json.dump({"machineIdentifier": "00000000000000000000000000000000000000fd", "friendlyName": "simplex-versions",
+    json.dump({"machineIdentifier": "00000000000000000000000000000000000000fd", "friendlyName": "rex-versions",
                "sections": LEGACY["sections"], "items": list(items)}, open(os.path.join(work, "catalog.json"), "w"))
     json.dump(FIXTURE["tmdb"], open(os.path.join(work, "tmdb_cache.json"), "w"))
     json.dump(FIXTURE["plex"], open(os.path.join(work, "plex_cache.json"), "w"))
@@ -68,7 +68,7 @@ def main():
     bytes_port = serve(source.handler())
 
     # -- live: the second release joins the first ------------------------------------
-    work = tempfile.mkdtemp(prefix="simplex-versions-")
+    work = tempfile.mkdtemp(prefix="rex-versions-")
     catalog(work)
     server = Server(work, bytes_port)
     try:
@@ -115,8 +115,8 @@ def main():
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
 
-    # -- restart: the two rows fun-simplex held are folded ----------------------------
-    work = tempfile.mkdtemp(prefix="simplex-versions-")
+    # -- restart: the two rows fun-rex held are folded ----------------------------
+    work = tempfile.mkdtemp(prefix="rex-versions-")
     # They were fun's `rd` source's; the test's source is `zurg`.
     catalog(work, [dict(row, _source="zurg") for row in FIXTURE["rows"]])
     server = Server(work, bytes_port)
@@ -124,7 +124,7 @@ def main():
         old = [row["ratingKey"] for row in FIXTURE["rows"]]
         listed = movies(server)
         row = server.row(old[0])
-        check("fun-simplex's two 127 Hours rows start as one movie on the older key",
+        check("fun-rex's two 127 Hours rows start as one movie on the older key",
               [r.get("ratingKey") for r in listed] == [old[0]] and len(row.get("Media") or []) == 2
               and server.request("/library/metadata/%s" % old[1])[0] == 404,
               ([(r.get("ratingKey"), len(r.get("Media") or [])) for r in listed], old))
@@ -138,7 +138,7 @@ def main():
         shutil.rmtree(work, ignore_errors=True)
 
     # -- a save cut short: the survivor written, the absorbed row not yet deleted ------
-    work = tempfile.mkdtemp(prefix="simplex-versions-")
+    work = tempfile.mkdtemp(prefix="rex-versions-")
     survivor, absorbed = [dict(row, _source="zurg") for row in FIXTURE["rows"]]
     tag = lambda row: dict(row["Media"][0], _source="zurg", _sid=row["_sid"], _path=row["_path"])
     catalog(work, [dict(survivor, Media=[tag(survivor), tag(absorbed)]), absorbed])
@@ -157,7 +157,7 @@ def main():
 
 
 if __name__ == "__main__":
-    if os.environ.get("SIMPLEX_SERVER") == "python":
-        print("the feed is simplex's own API; the Python oracle has none, so this suite is native only")
+    if os.environ.get("REX_SERVER") == "python":
+        print("the feed is rex's own API; the Python oracle has none, so this suite is native only")
         sys.exit(0)
     sys.exit(main())

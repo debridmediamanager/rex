@@ -1,5 +1,5 @@
 {
- "_provenance": "Captured 2026-09-28 off zen (Plex 1.42.2.10156) by GET only: every show of section 2 with a season of index 0, and one without, as the show detail row (JSON key order and XML attribute order), its /children titles, and the Specials season's own /children container and first episode, per X-Plex-Language over simplex's LOCALISED_LANGUAGES. Artwork/theme paths and summaries are dropped; nothing else is edited.",
+ "_provenance": "Captured 2026-09-28 off zen (Plex 1.42.2.10156) by GET only: every show of section 2 with a season of index 0, and one without, as the show detail row (JSON key order and XML attribute order), its /children titles, and the Specials season's own /children container and first episode, per X-Plex-Language over rex's LOCALISED_LANGUAGES. Artwork/theme paths and summaries are dropped; nothing else is edited.",
  "shows": [
   {
    "ratingKey": "11004",

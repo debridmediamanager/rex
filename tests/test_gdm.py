@@ -65,14 +65,14 @@ def main():
         probe.bind(("127.0.0.1", 0))
         free.append(probe.getsockname()[1])
         probe.close()
-    disco = gdm.Discovery(name="simplex-test", port=32400, machine="m" * 40,
-                          version="1.42.2.10156-simplex", ports=tuple(free))
+    disco = gdm.Discovery(name="rex-test", port=32400, machine="m" * 40,
+                          version="1.42.2.10156-rex", ports=tuple(free))
     disco.updated_at = 1789000000
     assert disco.start(), "GDM responder did not bind"
     try:
         time.sleep(0.2)
-        want = gdm.build_response(name="simplex-test", port=32400, machine="m" * 40,
-                                  version="1.42.2.10156-simplex", updated_at=1789000000)
+        want = gdm.build_response(name="rex-test", port=32400, machine="m" * 40,
+                                  version="1.42.2.10156-rex", updated_at=1789000000)
         for port in free:
             for label, payload, expect_reply in (
                     ("client query", b"M-SEARCH * HTTP/1.1\r\n", True),

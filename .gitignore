@@ -28,8 +28,8 @@ rust/target/
 state.pickle.*
 state.json
 state.json.*
-simplex.db
-simplex.db*
+rex.db
+rex.db*
 *.db
 *.db-wal
 *.db-shm

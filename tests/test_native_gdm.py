@@ -60,7 +60,7 @@ def main():
     catalog = os.path.join(HERE, "catalog_ui.json")
     catalog_document = json.load(open(catalog, encoding="utf-8"))
     machine = catalog_document["machineIdentifier"]
-    friendly = catalog_document.get("friendlyName", "simplex")
+    friendly = catalog_document.get("friendlyName", "rex")
     gdm_ports = free_udp_ports()
     tcp = 32597
     proc = start(catalog, tcp, gdm_ports)
@@ -76,7 +76,7 @@ def main():
             b"Port: %d\r\n" % tcp
             + b"Resource-Identifier: " + machine.encode() + b"\r\n"
         )
-        expected_version = b"Version: 1.42.2.10156-simplex\r\n"
+        expected_version = b"Version: 1.42.2.10156-rex\r\n"
         for port in gdm_ports:
             for label, payload, answer in (
                 ("proper query", b"M-SEARCH * HTTP/1.1\r\n", True),
@@ -144,7 +144,7 @@ def start(catalog, tcp, gdm_ports, extra=()):
                        "--assert-claimed", *extra, root=ROOT),
         cwd=ROOT,
         env=dict(os.environ, 
-                 SIMPLEX_GDM_PORTS=",".join(str(port) for port in gdm_ports)),
+                 REX_GDM_PORTS=",".join(str(port) for port in gdm_ports)),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )

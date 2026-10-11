@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A show is "unplayed" by its LEAVES on two lists, and by its own counter everywhere else.
 
-Measured on zen (PMS 1.42.2, the build simplex reports, 2026-09-30, GET only) and checked
+Measured on zen (PMS 1.42.2, the build rex reports, 2026-09-30, GET only) and checked
 in as `tests/fixtures/unwatched_zen.json`. Its TV section holds 509 shows: six PARTLY
 watched (0 < viewedLeafCount < leafCount), two fully watched, and not one show or season
 carrying a `viewCount` of its own (its plays came through timelines).
@@ -17,12 +17,12 @@ carrying a `viewCount` of its own (its plays came through timelines).
   fully watched shows included, and `unwatched=0` none. (Plex Web's TV "Unwatched" filter
   sends `unwatchedLeaves=1`, the Filter the show Meta advertises, not `unwatched=1`.)
 
-simplex read the row's own `viewCount` on both lists, and an episode scrobble stamps one
+rex read the row's own `viewCount` on both lists, and an episode scrobble stamps one
 on its season and show, so one watched episode took the show off `/unwatched` and a
 partly watched season off `/children?unwatched=1`.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `SIMPLEX_SERVER=python`.
+the oracle with `REX_SERVER=python`.
 
     python3 tests/test_followups_fd.py
 """
@@ -41,8 +41,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "unwatched_zen.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"Accept": "application/json", "X-Plex-Client-Identifier": "followups-fd",
            "X-Plex-Product": "Plex Web", "X-Plex-Version": "4.147.1",

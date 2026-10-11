@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The feed: a source pushes its items, simplex lists and queries nothing.
+"""The feed: a source pushes its items, rex lists and queries nothing.
 
 `docs/feed-api.md` is the contract. The source here is zurg as its producer describes
 itself: items whose id and path are `<directory>/<release>/<file>`, whose `file` is that
@@ -15,7 +15,7 @@ pushed without ids stays unmatched until a later push names it.
 The migration leg starts from rows the old WebDAV scanner really made
 (`fixtures/feed/legacy_scan_rows.json`, recorded by `probes/legacy_scan_fixture.py`).
 
-Native only: the feed is simplex's own API, and the Python oracle has none.
+Native only: the feed is rex's own API, and the Python oracle has none.
 
     python3 tests/test_feed.py
 """
@@ -179,13 +179,13 @@ class Server:
         sources = {"zurg": {"url": "http://127.0.0.1:%d/dav" % bytes_port, "bearer": BYTES_TOKEN,
                             "token": FEED_TOKEN, "mount": MOUNT}}
         json.dump(sources, open(os.path.join(work, "sources.json"), "w"))
-        env = dict(os.environ, TMDB_KEY="fake", PLEX_TOKEN="fake", SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
-        for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "ZURG_URL", "SIMPLEX_SOURCES", "SIMPLEX_FEED_TOKEN"):
+        env = dict(os.environ, TMDB_KEY="fake", PLEX_TOKEN="fake", REX_PLEXTV_URL="http://127.0.0.1:9")
+        for name in ("REX_STATE", "REX_TOKEN", "ZURG_URL", "REX_SOURCES", "REX_FEED_TOKEN"):
             env.pop(name, None)
         self.log = open(os.path.join(work, "server.log"), "ab")
         self.process = subprocess.Popen(
             server_command("--port", self.port, "--catalog", os.path.join(work, catalog),
-                           "--state", os.path.join(work, "simplex.db"), "--sources",
+                           "--state", os.path.join(work, "rex.db"), "--sources",
                            os.path.join(work, "sources.json"), "--assert-claimed", "--gdm", "off", root=ROOT),
             cwd=ROOT, env=env, stdout=self.log, stderr=subprocess.STDOUT)
         for _ in range(160):
@@ -212,7 +212,7 @@ class Server:
         headers = {"Content-Type": "application/json"}
         if token:
             headers["Authorization"] = "Bearer " + token
-        return self.request("/simplex/feed/%s/%s" % (source, leaf), method, body, headers)
+        return self.request("/rex/feed/%s/%s" % (source, leaf), method, body, headers)
 
     def rows(self, path):
         status, body = self.request(path)
@@ -236,14 +236,14 @@ class Server:
 
 def catalog(work, items=(), name="catalog.json", next_key=None):
     document = {"machineIdentifier": "00000000000000000000000000000000000000fe",
-                "friendlyName": "simplex-feed", "sections": LEGACY["sections"], "items": list(items)}
+                "friendlyName": "rex-feed", "sections": LEGACY["sections"], "items": list(items)}
     json.dump(document, open(os.path.join(work, name), "w"))
     for cache, rows in (("tmdb_cache.json", CACHE["tmdb"]), ("plex_cache.json", CACHE["plex"])):
         json.dump(rows, open(os.path.join(work, cache), "w"))
 
 
 def main():
-    work = tempfile.mkdtemp(prefix="simplex-feed-")
+    work = tempfile.mkdtemp(prefix="rex-feed-")
     source = Bytes()
     for kind in ("movie", "episode", "new"):
         source.files.add("/dav/" + item(kind)["path"])
@@ -257,7 +257,7 @@ def main():
         check("a push without a token is refused 401", status == 401, status)
         status, _ = server.feed("POST", "items", {"items": [movie]}, token="wrong")
         check("a push with another token is refused 401", status == 401, status)
-        status, _ = server.request("/simplex/feed/zurg/items", "POST", {"items": [movie]},
+        status, _ = server.request("/rex/feed/zurg/items", "POST", {"items": [movie]},
                                    {"X-Plex-Token": FEED_TOKEN, "Content-Type": "application/json"})
         check("the feed token as a Plex token is refused 401", status == 401, status)
         status, _ = server.feed("POST", "items", {"items": [movie]}, source="nobody")
@@ -414,7 +414,7 @@ def main():
         # -- snapshot: chunks, reconcile, the guards ---------------------------------------
         everything = [item("movie"), item("episode"), item("new")]
         status, body = server.feed("PUT", "snapshot", {"session": "s1", "part": 1, "items": everything[:1]})
-        check("a chunk of a session simplex does not hold is refused 409", status == 409, (status, body))
+        check("a chunk of a session rex does not hold is refused 409", status == 409, (status, body))
         status, body = server.feed("PUT", "snapshot", {"session": "s1", "part": 0, "items": everything[:1]})
         status2, body2 = server.feed("PUT", "snapshot", {"session": "s1", "part": 1, "complete": True,
                                                          "items": everything[1:]})
@@ -460,7 +460,7 @@ def main():
         server.stop()
 
         # -- migration: rows the old scanner made keep their keys -------------------------
-        legacy_work = tempfile.mkdtemp(prefix="simplex-feed-legacy-")
+        legacy_work = tempfile.mkdtemp(prefix="rex-feed-legacy-")
         catalog(legacy_work, LEGACY["items"])
         server = Server(legacy_work, bytes_port)
         legacy_keys = {row["ratingKey"]: row for row in LEGACY["items"]}
@@ -519,7 +519,7 @@ def main():
 
 
 if __name__ == "__main__":
-    if os.environ.get("SIMPLEX_SERVER") == "python":
-        print("the feed is simplex's own API; the Python oracle has none, so this suite is native only")
+    if os.environ.get("REX_SERVER") == "python":
+        print("the feed is rex's own API; the Python oracle has none, so this suite is native only")
         sys.exit(0)
     sys.exit(main())

@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 
 from claim import plextv_url
 
-logger = logging.getLogger("simplex.accountstate")
+logger = logging.getLogger("rex.accountstate")
 
 DEFAULT_INTERVAL = 1800
 ACCOUNT_REFRESH_INTERVAL = 86400
@@ -28,7 +28,7 @@ ACCOUNT_FEATURE_DELAY = 11
 CONSENT_URL = "https://servers.plex.tv/api/v2/server/users/%s/view_state_sync"
 STATE_URL = "https://scrobbles.plex.tv/state/%s"
 SERVICES_URL = "https://servers.plex.tv/api/v2/server/users/services"
-DECRYPT_SECRET_ENV = "SIMPLEX_SCROBBLING_DECRYPT_SECRET_B64"
+DECRYPT_SECRET_ENV = "REX_SCROBBLING_DECRYPT_SECRET_B64"
 
 
 class AccountRefresh:
@@ -84,7 +84,7 @@ class AccountRefresh:
         if self._thread is not None:
             return
         self._thread = threading.Thread(target=self._run,
-                                        name="simplex-account-refresh", daemon=True)
+                                        name="rex-account-refresh", daemon=True)
         self._thread.start()
 
     def stop(self):
@@ -235,7 +235,7 @@ class ScrobblingBearerProvider:
 
     Plex ships the 32-byte transport secret inside PMS. It is intentionally not
     copied into this repository; provide its base64 form through
-    ``SIMPLEX_SCROBBLING_DECRYPT_SECRET_B64`` or ``decrypt_secret``. Bearers and
+    ``REX_SCROBBLING_DECRYPT_SECRET_B64`` or ``decrypt_secret``. Bearers and
     encrypted service tokens remain memory-only and are never logged.
     """
 
@@ -410,7 +410,7 @@ class WatchStateSync:
         if self._thread is not None:
             return
         self._thread = threading.Thread(target=self._run,
-                                        name="simplex-account-state", daemon=True)
+                                        name="rex-account-state", daemon=True)
         self._thread.start()
 
     def stop(self):

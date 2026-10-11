@@ -122,7 +122,7 @@ impl Runtime {
         for (name, field) in [("accountID", "accountID"), ("deviceID", "deviceID")] {
             if let Some(value) = query.get(name) {
                 let Some(number) = value.trim_start_matches('+').parse::<i64>().ok() else {
-                    return Response::error(400, "simplex: bad request");
+                    return Response::error(400, "rex: bad request");
                 };
                 rows.retain(|row| row.get(field).and_then(Value::as_i64) == Some(number));
             }

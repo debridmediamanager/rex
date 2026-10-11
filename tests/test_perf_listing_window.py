@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A paged section listing projects only its page, on fun's library (2026-10-10).
 
-fun-simplex, fed by zurg: 361 shows, 698 seasons and 13,509 episodes. A page of 50 movies
+fun-rex, fed by zurg: 361 shows, 698 seasons and 13,509 episodes. A page of 50 movies
 took 9 s and a `X-Plex-Container-Size=0` episode count over 30 s: the section listing
 projected EVERY row of the library and `page_fields` sliced the page out afterwards.
 The shape is fun's (`rust/tests/fixtures/fun_show_shape.json`); every episode is a copy of one real
@@ -31,8 +31,8 @@ from server_command import server_command
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY", "PLEX_TOKEN"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY", "PLEX_TOKEN"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "perf-listing-window", "Accept": "application/json"}
@@ -176,7 +176,7 @@ def run(port, episodes):
 
 
 def main():
-    directory = tempfile.mkdtemp(prefix="simplex-perf-window-")
+    directory = tempfile.mkdtemp(prefix="rex-perf-window-")
     process = None
     try:
         path, episodes = catalog(directory)

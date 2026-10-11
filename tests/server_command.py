@@ -1,7 +1,7 @@
 """Select the server executable used by black-box test processes.
 
-The default is the native Rust server, `rust/target/release/simplex` (build it with
-`cargo build --release --manifest-path rust/Cargo.toml`). `SIMPLEX_SERVER=python`
+The default is the native Rust server, `rust/target/release/rex` (build it with
+`cargo build --release --manifest-path rust/Cargo.toml`). `REX_SERVER=python`
 selects the Python server, which stays in the tree as the measured oracle the
 native port is compared against. Any other value is an executable command rather
 than only a path, so a binary can be selected with fixed arguments while retaining
@@ -15,25 +15,25 @@ import sys
 
 
 def server_command(*args, root=None):
-    """Return a subprocess argv for a test-owned simplex server.
+    """Return a subprocess argv for a test-owned rex server.
 
     With no environment override this is the native release binary under
-    ``root``; ``SIMPLEX_SERVER=python`` is the Python oracle. Any other override
+    ``root``; ``REX_SERVER=python`` is the Python oracle. Any other override
     may contain a quoted executable path and additional fixed arguments, for
-    example ``'/tmp/rust build/simplex' --serve``. ``--no-state`` is added unless
+    example ``'/tmp/rust build/rex' --serve``. ``--no-state`` is added unless
     the arguments name ``--state`` or ``--no-state`` themselves.
     """
 
     if root is None:
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    configured = os.environ.get("SIMPLEX_SERVER")
+    configured = os.environ.get("REX_SERVER")
     if configured is None:
-        native = os.path.join(root, "rust", "target", "release", "simplex")
+        native = os.path.join(root, "rust", "target", "release", "rex")
         if not os.path.exists(native):
             raise FileNotFoundError(
                 "%s is not built: run `cargo build --release --manifest-path "
-                "rust/Cargo.toml`, or set SIMPLEX_SERVER=python for the Python oracle"
+                "rust/Cargo.toml`, or set REX_SERVER=python for the Python oracle"
                 % native)
         command = [native]
     elif configured.strip() == "python":
@@ -42,12 +42,12 @@ def server_command(*args, root=None):
         try:
             command = shlex.split(configured)
         except ValueError as error:
-            raise ValueError("SIMPLEX_SERVER is not valid shell syntax: %s" % error) from error
+            raise ValueError("REX_SERVER is not valid shell syntax: %s" % error) from error
         if not command:
-            raise ValueError("SIMPLEX_SERVER must name an executable command")
+            raise ValueError("REX_SERVER must name an executable command")
 
     args = [str(arg) for arg in args]
-    # A state file is the server's default (`simplex.db` beside the catalog), and the
+    # A state file is the server's default (`rex.db` beside the catalog), and the
     # suites rely on a restart reloading the fixture: a test server keeps nothing
     # unless the test asks for a state file itself.
     if not any(arg in ("--state", "--no-state") or arg.startswith("--state=") for arg in args):

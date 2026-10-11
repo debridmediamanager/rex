@@ -298,7 +298,7 @@ impl Runtime {
                 return response;
             }
             if !matches!(method, "GET" | "HEAD") {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return Response::json(200, json!({"ButlerTasks": {"ButlerTask": tasks}}));
         }
@@ -307,10 +307,10 @@ impl Runtime {
             .iter()
             .any(|task| task.get("name").and_then(Value::as_str) == Some(name))
         {
-            return Response::error(404, "simplex: no such task");
+            return Response::error(404, "rex: no such task");
         }
         if method != "POST" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         self.run_butler(&[name.to_string()]);
         let mut response = Response::empty(200);
@@ -594,7 +594,7 @@ impl Runtime {
             })
             .unwrap_or_default();
         if paths.is_empty() {
-            paths.push(format!("/simplex/{section_id}"));
+            paths.push(format!("/rex/{section_id}"));
         }
         if let Some(wanted) = query.get("path").filter(|value| !value.is_empty()) {
             let inside = paths.iter().any(|path| {
@@ -610,7 +610,7 @@ impl Runtime {
             }
         }
         let force = query.get("force").map(String::as_str) == Some("1");
-        // A library has no folders simplex reads: its sources push what it holds
+        // A library has no folders rex reads: its sources push what it holds
         // (`feed.rs`), so a refresh -- old zurg builds still send one per release -- is
         // the catalog's measured skeleton and changes nothing.
         self.notify_section_scan(section_id, section);
@@ -640,10 +640,10 @@ impl Runtime {
         query: &HashMap<String, String>,
     ) -> Response {
         let Some(agent) = query.get("agent").filter(|value| !value.is_empty()) else {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         };
         if !KNOWN_AGENTS.contains(&agent.as_str()) {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if let Some(asked) = query.get("type").filter(|value| !value.is_empty()) {
             let named = if asked.bytes().all(|b| b.is_ascii_digit()) {
@@ -659,17 +659,17 @@ impl Runtime {
                 Some(asked.clone())
             };
             if named.as_deref() != section.get("type").and_then(Value::as_str) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
         }
         if let Some(scanner) = query.get("scanner").filter(|value| !value.is_empty()) {
             if !KNOWN_SCANNERS.contains(&scanner.as_str()) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
         }
         if let Some(language) = query.get("language").filter(|value| !value.is_empty()) {
             if !self.known_languages().contains(&language.to_lowercase()) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
         }
         if let Some(object) = self
@@ -732,14 +732,14 @@ impl Runtime {
         if let Some(months) = query.get("monthsAgo") {
             let digits = months.strip_prefix(['+', '-']).unwrap_or(months);
             if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-                return Response::error(400, "simplex: bad request");
+                return Response::error(400, "rex: bad request");
             }
         }
         let Some(section) = self.section(segments[2]).cloned() else {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         };
         if segments.len() != 4 || !matches!(request.method.as_str(), "GET" | "HEAD") {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let section_key = string_value(section.get("key").unwrap_or(&Value::Null));
         let mut plays: Vec<(String, usize)> = Vec::new();
@@ -811,7 +811,7 @@ impl Runtime {
                 && digits.bytes().all(|b| b.is_ascii_digit())
                 && digits.trim_start_matches('0') == "1";
             if !one {
-                return Response::error(404, "simplex: no such account");
+                return Response::error(404, "rex: no such account");
             }
         }
         Response::json(
@@ -870,7 +870,7 @@ impl Runtime {
         request: &Request,
     ) -> Response {
         if !matches!(request.method.as_str(), "GET" | "HEAD") {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let mut headers = super::inner_headers(request);
         headers.insert("accept".to_string(), "application/json".to_string());

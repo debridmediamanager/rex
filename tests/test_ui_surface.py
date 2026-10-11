@@ -17,7 +17,7 @@ are recorded in docs/findings.md.
 
 **This suite WRITES.** It edits rows, marks items played, builds and deletes
 playlists and collections, and finally deletes a library row and a section. All
-of that is in simplex's memory -- catalog.json is never rewritten -- so a
+of that is in rex's memory -- catalog.json is never rewritten -- so a
 restart is the undo button. Run it against a test instance and restart that
 instance afterwards:
 
@@ -65,7 +65,7 @@ RED = "\033[31m"
 YELLOW = "\033[33m"
 OFF = "\033[0m"
 
-UA = "Plex Web/4.147.1 (simplex-test)"
+UA = "Plex Web/4.147.1 (rex-test)"
 
 results = []
 skipped = []
@@ -222,7 +222,7 @@ def request(base, method, path, want_json=True, body=None):
     req = urllib.request.Request(url, method=method, data=body, headers={
         "User-Agent": UA,
         "Accept": "application/json" if want_json else "*/*",
-        "X-Plex-Client-Identifier": "simplex-ui-test",
+        "X-Plex-Client-Identifier": "rex-ui-test",
         "X-Plex-Product": "Plex Web",
         "X-Plex-Version": "4.147.1",
         # The web client sends its platform on every request, and a real PMS picks
@@ -320,7 +320,7 @@ def main():
     # `showSyncDownload` reads server.allowSync; absent is not the same as false
     check("allowSync present and false", providers.get("allowSync") is False,
           repr(providers.get("allowSync")))
-    # `showOptimize`: transcoderVideo AND backgroundProcessing. simplex has no
+    # `showOptimize`: transcoderVideo AND backgroundProcessing. rex has no
     # encoder, so the entry must stay hidden rather than fail when pressed.
     check("Optimize entry stays hidden (no encoder)",
           providers.get("transcoderVideo") is False,
@@ -480,7 +480,7 @@ def main():
     print("\n=== item artwork is the row's own remote image ===")
     # A row identified against TMDB keeps its poster and backdrop as remote urls, and
     # its own `/thumb` and `/art` paths serve those images -- `/thumb` at the published
-    # variant nearest the width asked for, since simplex cannot resize -- with the
+    # variant nearest the width asked for, since rex cannot resize -- with the
     # direct-asset headers. A generated tile here is a grid of grey squares. Read before
     # any check below writes artwork. Without network access the fetch fails and the
     # path is a 404 (a row with no remote artwork gets the generated PNG): both skip.
@@ -533,7 +533,7 @@ def main():
         row = (show_row.get("Metadata") or [{}])[0]
         show_prefs = [s.get("id") for s in (row.get("Preferences") or {}).get("Setting") or []]
         # Measured: eleven settings on a show and three on a season, and they are
-        # not the same three. simplex used to invent a single `episodeSort` row.
+        # not the same three. rex used to invent a single `episodeSort` row.
         check("a show's own settings tab gets the measured list",
               "episodeSort" in show_prefs and "flattenSeasons" in show_prefs
               and len(show_prefs) > 5, "%d setting(s)" % len(show_prefs))
@@ -570,7 +570,7 @@ def main():
                 check("an episode carries Extras but no settings of its own",
                       erow.get("Extras") is not None and not erow.get("Preferences"))
                 # Measured on the reference AND on production: a real episode row
-                # carries no Genre, studio, tagline or Country. simplex's
+                # carries no Genre, studio, tagline or Country. rex's
                 # inherited all of them from the show.
                 strays = [k for k in ("Genre", "studio", "tagline", "Country")
                           if erow.get(k)]
@@ -589,7 +589,7 @@ def main():
         # flattenSeasons does NOT change what /children returns: measured, a real
         # PMS still answers with the seasons and sets `skipChildren` on the SHOW,
         # and the client skips the level on the strength of that one field.
-        # simplex served the preference and then ignored it.
+        # rex served the preference and then ignored it.
         request(base, "PUT", "/library/sections/%s/prefs?flattenSeasons=1" % show_section)
         _, flat, _ = get(base, "/library/metadata/%s" % show)
         _, kids, _ = get(base, "/library/metadata/%s/children" % show)
@@ -641,7 +641,7 @@ def main():
     # Thumb, Art, Guid, Rating, Theme, Role`. The value grammar is the `+?0*1` family
     # (`1`, `01`, `+1`, `000001` on; `2`, `-1`, `1.5`, `true`, empty off) and nothing
     # refuses. A DECISION IGNORES it, the same exception `excludeElements=` already has
-    # -- and simplex's decision row is a full row, so that exception has to be coded.
+    # -- and rex's decision row is a full row, so that exception has to be coded.
     alt_c45 = {}
     detail_c45 = "/library/metadata/%s?includeAlternates=1" % movie
     _status_c45a, body_c45a, _ = get(base, detail_c45)
@@ -694,7 +694,7 @@ def main():
     # plexscratch42 (1.42.2) over 91 leaf names, which agree on every one:
     # `/library/sections/{id}/{name}/top` is a REAL two-segment section leaf -- the
     # fifth, beside `extras/all`, `query/parse`, `indexes/thumbnails` and the versioned
-    # `composite/{v}` -- and simplex 404'd every form of it. PMS's own route table names
+    # `composite/{v}` -- and rex 404'd every form of it. PMS's own route table names
     # it `/:tagType/top`, read out of the binary's string block, which is why it matches
     # ANY single segment rather than a fixed list.
     #
@@ -723,7 +723,7 @@ def main():
     # media-axis exception and answers the whole library, as `/resolution/zzz` does.
     # The 1.43.4-only vocabulary splits with the version: `videoCodec`, `audioCodec`,
     # `subtitleCodec`, `audioLayout`, `atmos`, `hdr10plus`, `squareArt` and `clearLogo`
-    # are 200s on kids and 404s on zen, so simplex -- which reports 1.42.2 -- 404s them.
+    # are 200s on kids and 404s on zen, so rex -- which reports 1.42.2 -- 404s them.
     # GET and HEAD only; every other verb is the read-only route's 404.
     top_c45 = {}
     for leaf_c45t in ("genre", "director", "writer", "actor", "producer", "country",
@@ -914,7 +914,7 @@ def main():
     # Re-measured: this HIDES the row and KEEPS the resume point. The reference's
     # viewOffset was still 91000 afterwards and the row simply stopped appearing in
     # /library/onDeck and /hubs/continueWatching -- until the next timeline brought it
-    # back. simplex deleted the offset, so the entry also threw away the resume
+    # back. rex deleted the offset, so the entry also threw away the resume
     # position and the next Play started the item over.
     status, hidden, _ = container(base, "PUT",
                                   "/actions/removeFromContinueWatching?ratingKey=%s" % movie)
@@ -1014,12 +1014,12 @@ def main():
     print("\n=== context menu: Edit ===")
     status, body, _ = request(
         base, "PUT", "/library/metadata/%s?titleSort.value=%s&titleSort.locked=1"
-                     % (movie, quote("zzz simplex")))
+                     % (movie, quote("zzz rex")))
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
     row = (detail.get("Metadata") or [{}])[0]
     locked = {f.get("name") for f in row.get("Field") or [] if f.get("locked")}
     check("edit writes the field and answers an empty 200",
-          is_empty_200(status, body) and row.get("titleSort") == "zzz simplex",
+          is_empty_200(status, body) and row.get("titleSort") == "zzz rex",
           "titleSort=%r" % row.get("titleSort"))
     check("edit records the field lock", "titleSort" in locked, ",".join(sorted(locked)))
     request(base, "PUT", "/library/metadata/%s?titleSort.value=&titleSort.locked=0" % movie)
@@ -1030,7 +1030,7 @@ def main():
           and "titleSort" not in {f.get("name") for f in row.get("Field") or []})
     # Measured field by field: only `title` and `summary` are STORED as the empty
     # string -- everything else is removed so the agent can supply it again, and an
-    # empty INTEGER is a 500. simplex removed every field and accepted every value.
+    # empty INTEGER is a 500. rex removed every field and accepted every value.
     request(base, "PUT", "/library/metadata/%s?summary.value=" % movie)
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
     row = (detail.get("Metadata") or [{}])[0]
@@ -1042,36 +1042,36 @@ def main():
 
     status, body, _ = request(
         base, "PUT", "/library/metadata/%s?collection%%5B0%%5D.tag.tag=%s&collection.locked=1"
-                     % (movie, quote("simplex probe tag")))
+                     % (movie, quote("rex probe tag")))
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
     row = (detail.get("Metadata") or [{}])[0]
     tags = [t.get("tag") for t in row.get("Collection") or []]
     # Cycle 61, re-measured on both copies: a NEW tag's first ASCII letter is upper-cased.
     check("Add to Collection tags the row", is_empty_200(status, body)
-          and "Simplex probe tag" in tags, ",".join(tags))
+          and "Rex probe tag" in tags, ",".join(tags))
     # Cycle 30, measured on BOTH writable references (plexscratch 1.43.4 and the new
     # plexscratch42 1.42.2): the tag write makes a TAG and NOT a collection. It appears in
     # the section's `/collection` AXIS -- and in both search endpoints -- while
     # `/library/sections/{id}/collections` and `/library/all?type=18` gain nothing; only
     # `POST /library/collections` makes an item. This check asserted the opposite since
-    # cycle 4, because simplex materialised one.
+    # cycle 4, because rex materialised one.
     _, collections, _ = get(base, "/library/sections/%s/collections" % movie_section)
     names = [c.get("title") for c in collections.get("Metadata") or []]
     _, axis, _ = get(base, "/library/sections/%s/collection" % movie_section)
     axis_names = [d.get("title") for d in axis.get("Directory") or []]
     check("the tagged collection is a TAG, not a collection",
-          "Simplex probe tag" in axis_names and "Simplex probe tag" not in names,
+          "Rex probe tag" in axis_names and "Rex probe tag" not in names,
           "axis %s | collections %s" % (",".join(axis_names), ",".join(names)))
     request(base, "PUT", "/library/metadata/%s?collection%%5B%%5D.tag.tag-=%s"
-                         % (movie, quote("simplex probe tag")))
+                         % (movie, quote("rex probe tag")))
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
     check("removing the tag clears it from the row",
-          "simplex probe tag" not in
+          "rex probe tag" not in
           [t.get("tag") for t in (detail.get("Metadata") or [{}])[0].get("Collection") or []])
 
     print("\n=== the Edit dialog's own paths ===")
     # THE save path: MultiMetadataModel.saveUrl is `PUT /library/sections/{id}/all`,
-    # and simplex answered the LISTING to it with a 200 -- so every Edit dialog Save
+    # and rex answered the LISTING to it with a 200 -- so every Edit dialog Save
     # applied nothing and the dialog reported success. The quietest failure on the
     # whole surface.
     status, body, _ = request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
@@ -1111,7 +1111,7 @@ def main():
     check("a bare parameter scopes the edit rather than being written",
           len(hits) == 1 and hits[0].get("ratingKey") == target.get("ratingKey"),
           "%d of %d row(s) edited" % (len(hits), len(scoped.get("Metadata") or [])))
-    # The dialog's PRE-read. simplex 404'd it, and populate() rejects on that, so
+    # The dialog's PRE-read. rex 404'd it, and populate() rejects on that, so
     # Edit said "There was an error editing this item" before the user could type.
     status, common, _ = get(base, "/library/sections/%s/common?type=1&id=%s"
                                  "&includeExternalMedia=1" % (movie_section, movie))
@@ -1134,7 +1134,7 @@ def main():
         skip("several ids name their differing fields in mixedFields", "need a second row")
     status, _, _ = container(base, "GET", "/library/sections/%s/common" % movie_section)
     check("/common needs a type too", status == 400, "HTTP %s" % status)
-    # The dialog's source of EDITABLE TAG FIELDS. simplex answered two Directory
+    # The dialog's source of EDITABLE TAG FIELDS. rex answered two Directory
     # rows and no Type at all, so the Tags pane had no genre, collection or label.
     _, plain_pivots, _ = get(base, "/library/sections/%s" % movie_section)
     _, detailed, _ = get(base, "/library/sections/%s?includeDetails=1&includeAdvanced=1"
@@ -1154,7 +1154,7 @@ def main():
     # RE-MEASURED in cycle 18 on kids ("Movies") and zen ("Zen Movies", "Bench TV"): a
     # MOVIE library COMPOSES this row's title from its own -- zen answers "All Zen
     # Movies" -- and only a SHOW library answers the constant "All Shows". The check
-    # asserted the constant for both, which is the half simplex had hardcoded.
+    # asserted the constant for both, which is the half rex had hardcoded.
     check("the pivot rows carry the titles the sidebar prints",
           (plain_pivots.get("Directory") or [{}])[0].get("title")
           == "All " + str(movie_title)
@@ -1236,11 +1236,11 @@ def main():
     print("\n=== collections and playlists as metadata items ===")
     # Both are metadata items in their own right, and the client edits them through
     # /library/metadata/{key} -- its saveUrl falls back to that path for a playlist.
-    # simplex kept them outside the catalog, so both answered 404 and neither could
+    # rex kept them outside the catalog, so both answered 404 and neither could
     # be renamed from its own page.
     _, made, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s"
                                         "&title=%s&uri=%s"
-                                        % (movie_section, quote("simplex item probe"),
+                                        % (movie_section, quote("rex item probe"),
                                            quote("server://%s/com.plexapp.plugins.library"
                                                  "/library/metadata/%s" % (machine, movie))))
     ckey = (made.get("Metadata") or [{}])[0].get("ratingKey")
@@ -1274,15 +1274,15 @@ def main():
             check("collection prefs: %s is a %d" % (why, want), status == want,
                   "HTTP %s" % status)
         request(base, "DELETE", "/library/collections/%s" % ckey)
-        # Cycle 88 B3: renamed on its item path, the delete leaves `Simplex item probe` on
+        # Cycle 88 B3: renamed on its item path, the delete leaves `Rex item probe` on
         # the movie, as a real PMS does (`collection_delete_by_title_s42.json`); take it off.
         request(base, "PUT", "/library/metadata/%s?collection%%5B%%5D.tag.tag-=%s"
-                             % (movie, quote("Simplex item probe")))
+                             % (movie, quote("Rex item probe")))
     else:
         skip("a collection is editable through /library/metadata/{key}",
              "could not create a collection")
     _, made, _ = container(base, "POST", "/playlists?type=video&title=%s&uri=%s"
-                                        % (quote("simplex item playlist"),
+                                        % (quote("rex item playlist"),
                                            quote("server://%s/com.plexapp.plugins.library"
                                                  "/library/metadata/%s" % (machine, movie))))
     pkey = (made.get("Metadata") or [{}])[0].get("ratingKey")
@@ -1343,7 +1343,7 @@ def main():
     # refresh does NOT re-version the artwork -- and the reference really ran it, because
     # it pushed the seven-frame sequence each time. Cycle 20 established that an artwork
     # URL's version IS the row's `updatedAt`, so the two move together and neither does.
-    # This check used to assert the opposite, which is what simplex did: every Refresh
+    # This check used to assert the opposite, which is what rex did: every Refresh
     # Metadata told every client that an unchanged row's poster had changed. The clock is
     # still let tick, so a version that DID move would be visible.
     edge = time.time()
@@ -1362,7 +1362,7 @@ def main():
     else:
         skip("refresh leaves the artwork key and updatedAt alone",
              "row has no artwork to version")
-    # Re-measured: a refresh's activity ENDS. simplex only ever fired `started`, so
+    # Re-measured: a refresh's activity ENDS. rex only ever fired `started`, so
     # an activity that nothing cancelled stayed in /activities for the life of the
     # process and the header's spinner never stopped -- this check used to assert
     # that stuck row was there.
@@ -1480,14 +1480,14 @@ def main():
     if entries:
         # Change Poster writes to the SINGULAR path, and the response body is the new
         # artwork path -- the client does `model.set("thumb", response)` with it.
-        # simplex had the plural path as the write and served image bytes from the
+        # rex had the plural path as the write and served image bytes from the
         # singular one, so Change Poster did nothing AND set the tile's img src to a
         # blob of PNG. The plural path is a 404 for a write.
         status, body, _ = request(base, "PUT", "/library/metadata/%s/poster?url=%s"
                                                % (movie, quote(entries[-1]["key"])))
         _, detail, _ = get(base, "/library/metadata/%s" % movie)
         row = (detail.get("Metadata") or [{}])[0]
-        # Decoded defensively: a server that answers image BYTES here (what simplex
+        # Decoded defensively: a server that answers image BYTES here (what rex
         # did before this was measured) must FAIL this check, not raise a
         # UnicodeDecodeError that kills the run before the rest of the suite speaks.
         check("selecting a poster answers the new artwork path as its body",
@@ -1513,7 +1513,7 @@ def main():
     # 9. Get Info
     # ------------------------------------------------------------------
     print("\n=== artwork: composites and requested sizes ===")
-    # A real PMS builds a 400x600 mosaic of its members' posters. simplex has no
+    # A real PMS builds a 400x600 mosaic of its members' posters. rex has no
     # imaging library and will not fabricate one, so it serves one member's own
     # poster -- honestly one of the images that mosaic is made of. The failure
     # this guards is the flat generated grey tile it showed before.
@@ -1527,7 +1527,7 @@ def main():
               "%s %d bytes" % (kind, size))
         narrow = image_at("/library/sections/%s/composite/1?width=185" % movie_section)
         wide = image_at("/library/sections/%s/composite/1?width=1280" % movie_section)
-        # simplex cannot resize; it asks TMDB for the variant nearest the width
+        # rex cannot resize; it asks TMDB for the variant nearest the width
         # the client wanted, so the two answers are different images.
         check("the requested width picks a different upstream variant",
               narrow[2] != wide[2], "%d vs %d bytes" % (narrow[2], wide[2]))
@@ -1617,7 +1617,7 @@ def main():
           "playQueueID=%s" % queue.get("playQueueID"))
     # Re-measured: the source URI comes back REWRITTEN, not echoed -- a single
     # item as `library://x/item/<encoded path>` and anything naming a list as
-    # `library://x/directory/<the same>`. simplex echoed the raw server:// uri, so
+    # `library://x/directory/<the same>`. rex echoed the raw server:// uri, so
     # a client that re-read the queue got a source it had not sent.
     check("play queue rewrites its source uri to a library:// one",
           queue.get("playQueueSourceURI")
@@ -1674,7 +1674,7 @@ def main():
         skip("Play Next inserts after the current item", "need a second row")
 
     print("\n=== the play queue as a queue, not a key list ===")
-    # A queue over a SHOW or a SEASON holds its EPISODES. simplex enqueued the
+    # A queue over a SHOW or a SEASON holds its EPISODES. rex enqueued the
     # parent row, which has no Media at all, so Play, Play All and Shuffle on every
     # show page, season page and TV library handed the player something it could
     # not play -- "An error occurred loading items to play" for the whole TV half.
@@ -1803,14 +1803,14 @@ def main():
                                   windowed.get("playQueueTotalCount")))
     # A queue built from a playlist names the playlist and carries NO source uri.
     _, made, _ = container(base, "POST", "/playlists?type=video&title=%s&uri=%s"
-                                        % (quote("simplex queue probe"), quote(add_uri)))
+                                        % (quote("rex queue probe"), quote(add_uri)))
     probe_playlist = (made.get("Metadata") or [{}])[0].get("ratingKey")
     if probe_playlist:
         _, from_playlist, _ = container(base, "POST", "/playQueues?type=video&playlistID=%s"
                                                      % probe_playlist)
         check("a playlist queue names the playlist and omits the source uri",
               from_playlist.get("playQueuePlaylistID") == int(probe_playlist)
-              and from_playlist.get("playQueuePlaylistTitle") == "simplex queue probe"
+              and from_playlist.get("playQueuePlaylistTitle") == "rex queue probe"
               and "playQueueSourceURI" not in from_playlist
               and len(from_playlist.get("Metadata") or []) == 1,
               json.dumps({k: v for k, v in from_playlist.items()
@@ -1823,7 +1823,7 @@ def main():
     # client's new queue retires its older ones. Cycle 41 measured this exact
     # one-item create -> plain add -> move sequence on both writable PMS versions.
     # Moving the added tail to the head re-anchors lastAdded to the NEW tail; frozen
-    # simplex retained the moved item's id.
+    # rex retained the moved item's id.
     _, move_built_c41f, _ = container(
         base, "POST", "/playQueues?type=video&uri=%s" % quote(add_uri))
     qid = move_built_c41f.get("playQueueID")
@@ -1849,7 +1849,7 @@ def main():
     else:
         skip("a queue move re-anchors lastAdded to the new tail",
              "expected two rows, got %s" % move_ids_c41f)
-    # Every refusal measured on the reference, each of which simplex answered 200 to.
+    # Every refusal measured on the reference, each of which rex answered 200 to.
     for method, path_, want, why in (
             ("POST", "/playQueues?type=video", 400, "a create with no uri"),
             ("POST", "/playQueues?uri=%s" % quote(add_uri), 400, "a create with no type"),
@@ -1952,7 +1952,7 @@ def main():
              "the subtitle sidecar endpoint")):
         status, _, _ = container(base, "GET", path_)
         check("refusal: %s is a %d" % (why, want), status == want, "HTTP %s" % status)
-    # The History page filters and sorts, and simplex ignored all of it.
+    # The History page filters and sorts, and rex ignored all of it.
     # Cycle 15: every read here carries `type=1`. A real PMS lists NOTHING
     # without one, so these checks were reading a page the client never sees.
     _, whole_history, _ = get(base, "/status/sessions/history/all?type=1")
@@ -1984,7 +1984,7 @@ def main():
         status, _, _ = container(base, "GET", "/status/sessions/history/all?sort=wibble")
         check("an unknown history sort key is a 400, not a 500", status == 400,
               "HTTP %s" % status)
-        # And a row can be deleted, which simplex answered 200 to without deleting.
+        # And a row can be deleted, which rex answered 200 to without deleting.
         key = str(one.get("historyKey") or "").rsplit("/", 1)[-1]
         status, deleted_row, _ = container(base, "DELETE",
                                            "/status/sessions/history/%s" % key)
@@ -2033,7 +2033,7 @@ def main():
     print("\n=== context menu: Add to Playlist ===")
     status, created, _ = container(
         base, "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"
-                      % (quote("simplex probe"), quote(uri)))
+                      % (quote("rex probe"), quote(uri)))
     playlist = (created.get("Metadata") or [{}])[0]
     check("playlist created", status == 200 and playlist.get("ratingKey"),
           "ratingKey=%s" % playlist.get("ratingKey"))
@@ -2129,11 +2129,11 @@ def main():
         check("a playlist composite answers an image",
               status == 200 and kind.startswith("image/"), "%s %d bytes" % (kind, size))
         status, body, _ = request(base, "PUT", "/playlists/%s?title=%s"
-                                              % (playlist_key, quote("simplex renamed")))
+                                              % (playlist_key, quote("rex renamed")))
         _, one, _ = get(base, "/playlists/%s" % playlist_key)
         check("renaming a playlist works",
               is_empty_200(status, body)
-              and (one.get("Metadata") or [{}])[0].get("title") == "simplex renamed",
+              and (one.get("Metadata") or [{}])[0].get("title") == "rex renamed",
               (one.get("Metadata") or [{}])[0].get("title"))
         status, body, _ = request(base, "DELETE", "/playlists/%s" % playlist_key)
         # Measured: a playlist delete is 204, while a collection delete is 200.
@@ -2152,7 +2152,7 @@ def main():
     # Two of them, because a direction can only be observed across two rows --
     # and the playlist the checks above built has been deleted by now.
     sort_keys = []
-    for name in ("aaa simplex sort probe", "zzz simplex sort probe"):
+    for name in ("aaa rex sort probe", "zzz rex sort probe"):
         _, made_sort, _ = container(base, "POST",
                                     "/playlists?type=video&title=%s&smart=0&uri=%s"
                                     % (quote(name), quote(uri)))
@@ -2180,7 +2180,7 @@ def main():
     # Cycle 49 REFUTES cycle 15's "the two lists really are different": re-measured on
     # zen (1.42.2), kids (1.43.4) and both unclaimed copies in six parameter spellings,
     # `/playlists/sorts` ends with the SAME `mediaCount` "Item Count" row the `Meta`
-    # descriptor carries. simplex ended it with `updatedAt` "Date Modified", so its two
+    # descriptor carries. rex ended it with `updatedAt` "Date Modified", so its two
     # surfaces contradicted each other and the page's sort menu offered a key the
     # playlist listing does not advertise.
     rows_c49d = [(d_c49d.get("key"), d_c49d.get("title"), d_c49d.get("descKey"))
@@ -2202,7 +2202,7 @@ def main():
     print("\n=== collections ===")
     status, created, _ = container(
         base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
-                      % (quote("simplex collection"), movie_section, quote(uri)))
+                      % (quote("rex collection"), movie_section, quote(uri)))
     collection = (created.get("Metadata") or [{}])[0]
     check("collection created", status == 200 and collection.get("ratingKey"),
           "ratingKey=%s" % collection.get("ratingKey"))
@@ -2226,7 +2226,7 @@ def main():
         tags = [t.get("tag") for t in (detail.get("Metadata") or [{}])[0].get("Collection") or []]
         # Cycle 61: the member tag of a new collection is capitalised (the title is not).
         check("a member row carries the collection as a tag",
-              "Simplex collection" in tags, ",".join(tags))
+              "Rex collection" in tags, ",".join(tags))
         if spare:
             add_uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s" \
                       % (machine, spare)
@@ -2254,13 +2254,13 @@ def main():
         else:
             skip("a collection member can be reordered", "need a second row")
         status, body, _ = request(base, "PUT", "/library/collections/%s?title=%s"
-                                              % (collection_key, quote("simplex renamed")))
+                                              % (collection_key, quote("rex renamed")))
         _, one, _ = get(base, "/library/collections/%s" % collection_key)
         # Measured on a writable copy of the reference: the rename changes the title and
         # leaves the members' tag as it was.
         check("renaming a collection renames it",
               is_empty_200(status, body)
-              and (one.get("Metadata") or [{}])[0].get("title") == "simplex renamed",
+              and (one.get("Metadata") or [{}])[0].get("title") == "rex renamed",
               (one.get("Metadata") or [{}])[0].get("title"))
         status, body, _ = request(base, "DELETE", "/library/collections/%s" % collection_key)
         # Measured: 200 here, unlike the playlist delete's 204.
@@ -2269,27 +2269,27 @@ def main():
         _, detail, _ = get(base, "/library/metadata/%s" % movie)
         # Cycle 88 B3, measured alike on plexscratch42 (1.42.2) and plexscratch (1.43.4)
         # with this exact sequence: the delete untags by the collection's CURRENT title, so
-        # after the collections-path rename above the members keep `Simplex collection`
+        # after the collections-path rename above the members keep `Rex collection`
         # (`tests/fixtures/collection_delete_by_title_s42.json`). This check used to say the
         # delete untagged them; the item edit takes the tag off, as on the reference.
         check("deleting a collection renamed on its collections path leaves its members' tag",
               [t.get("tag") for t in (detail.get("Metadata") or [{}])[0].get("Collection") or []]
-              == ["Simplex collection"],
+              == ["Rex collection"],
               (detail.get("Metadata") or [{}])[0].get("Collection"))
         for member_c88 in [movie] + ([spare] if spare else []):
             request(base, "PUT", "/library/metadata/%s?collection%%5B%%5D.tag.tag-=%s"
-                                 % (member_c88, quote("Simplex collection")))
+                                 % (member_c88, quote("Rex collection")))
     status, _, _ = get(base, "/library/collections")
     check("the bare collections endpoint 404s, as a real PMS does", status == 404,
           "HTTP %s" % status)
     # Measured: the single-collection container carries allowSync TRUE, the
     # identifier and the media-tag pair, and its librarySectionID is a NUMBER --
-    # simplex sent a string and omitted the other three, so a client could not
+    # rex sent a string and omitted the other three, so a client could not
     # resolve a tag into an image URL from a collection page. And `/items`
-    # answers the members, where simplex answered an empty container.
+    # answers the members, where rex answered an empty container.
     _, made, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s"
                                         "&title=%s&uri=%s"
-                                        % (movie_section, quote("simplex shape probe"),
+                                        % (movie_section, quote("rex shape probe"),
                                            quote("server://%s/com.plexapp.plugins.library"
                                                  "/library/metadata/%s" % (machine, movie))))
     probe_key = (made.get("Metadata") or [{}])[0].get("ratingKey")
@@ -2316,7 +2316,7 @@ def main():
     # the playlist ROW reports the same number in milliseconds -- one endpoint apart.
     _, built_playlist, _ = container(
         base, "POST", "/playlists?type=video&title=%s&uri=%s"
-                      % (quote("simplex duration probe"),
+                      % (quote("rex duration probe"),
                          quote("server://%s/com.plexapp.plugins.library"
                                "/library/metadata/%s" % (machine, movie))))
     row = (built_playlist.get("Metadata") or [{}])[0]
@@ -2332,7 +2332,7 @@ def main():
              "the probe row has no duration")
 
     print("\n=== smart playlists and smart collections ===")
-    # A smart list is a stored QUERY, re-run on every read. simplex stored the
+    # A smart list is a stored QUERY, re-run on every read. rex stored the
     # rows the query matched at creation time, so the list was a snapshot: it
     # looked right the moment it was made and then went quietly stale.
     smart_query = "type=1&unwatched=1&sort=titleSort"
@@ -2342,7 +2342,7 @@ def main():
     wanted = [r.get("title") for r in expected.get("Metadata") or []]
     status, created, _ = container(base, "POST",
                                   "/playlists?type=video&title=%s&smart=1&uri=%s"
-                                  % (quote("simplex smart list"), smart_uri))
+                                  % (quote("rex smart list"), smart_uri))
     smart_playlist = (created.get("Metadata") or [{}])[0]
     check("a smart playlist reports leafCount from its query and a smart icon",
           status == 200 and smart_playlist.get("smart") is True
@@ -2387,7 +2387,7 @@ def main():
         request(base, "DELETE", "/playlists/%s" % smart_key)
     status, created, _ = container(
         base, "POST", "/library/collections?type=1&smart=1&sectionId=%s&title=%s&uri=%s"
-                      % (movie_section, quote("simplex smart collection"), smart_uri))
+                      % (movie_section, quote("rex smart collection"), smart_uri))
     smart_collection = (created.get("Metadata") or [{}])[0]
     # Measured: a collection's `smart` is the STRING "1", it keeps the server://
     # URI verbatim, and its `content` is in the LIST as well as the single read.
@@ -2412,7 +2412,7 @@ def main():
         check("a smart collection lists content and leaves its members untagged",
               (row.get("content") or "").startswith("server://")
               and [r.get("title") for r in children.get("Metadata") or []] == wanted
-              and not any(t.get("tag") == "simplex smart collection" for t in tags),
+              and not any(t.get("tag") == "rex smart collection" for t in tags),
               "%d child(ren), %d tag(s) on the member" % (
                   len(children.get("Metadata") or []), len(tags)))
         request(base, "DELETE", "/library/collections/%s" % smart_collection_key)
@@ -2421,7 +2421,7 @@ def main():
                       % (machine, movie))
     status, created, _ = container(
         base, "POST", "/library/collections?type=1&sectionId=%s&title=%s&uri=%s"
-                      % (movie_section, quote("simplex plain collection"), plain_uri))
+                      % (movie_section, quote("rex plain collection"), plain_uri))
     plain = (created.get("Metadata") or [{}])[0]
     check("a plain collection omits smart, where a plain playlist sends false",
           "smart" not in plain and "content" not in plain,
@@ -2436,7 +2436,7 @@ def main():
     # ------------------------------------------------------------------
     print("\n=== refusals, measured against a real PMS ===")
     for method, path, want, why in (
-            ("GET", "/simplex/nonsense/path", 404, "an unrouted path"),
+            ("GET", "/rex/nonsense/path", 404, "an unrouted path"),
             ("POST", "/player/playback/play?commandID=1", 400, "player commands"),
             ("GET", "/player/timeline/poll?wait=0", 400, "player timeline"),
             ("GET", "/system/proxy?url=https%3A%2F%2Fplex.tv", 400, "the plex.tv proxy"),
@@ -2466,7 +2466,7 @@ def main():
         check("%s answers %s" % (why, want), status == want, "HTTP %s" % status)
 
     print("\n=== concurrency ===")
-    # simplex is a ThreadingHTTPServer and everything the UI writes -- playlists,
+    # rex is a ThreadingHTTPServer and everything the UI writes -- playlists,
     # collections, catalog rows -- is mutable state with no lock around it. This
     # was measured rather than assumed: 33,300 requests with three threads
     # churning the items dict through merge/split while four iterated it produced
@@ -2518,7 +2518,7 @@ def main():
     print("\n=== playback sessions: Now Playing and the Dashboard ===")
     # Measured: a session is created by /:/timeline, not by anyone reading bytes
     # -- a bare timeline with no play queue, no decision and no part read puts a
-    # full row in /status/sessions, and `state=stopped` removes it. simplex
+    # full row in /status/sessions, and `state=stopped` removes it. rex
     # answered `{size:0}` for its whole life, so Now Playing was always empty and
     # the Terminate button had nothing to act on.
     session_item = spare or movie
@@ -2587,7 +2587,7 @@ def main():
     # which a real PMS answers here. `row` is a session opened by a bare timeline and
     # nothing else, and on the copy such a session's Part carries NO `decision` at all --
     # the flag is armed by that session's own decision, and the check below drives it.
-    # Asserting `directplay` on an undecided session is what kept simplex stamping it on
+    # Asserting `directplay` on an undecided session is what kept rex stamping it on
     # every session row, so the Dashboard said "Direct Play" for a client that had never
     # asked whether it could play the file. The `TranscodeSession` half is true of both.
     check("a session carries no TranscodeSession",
@@ -2633,14 +2633,14 @@ def main():
                            "&X-Plex-Session-Identifier=c50-f4-new"
                            % (session_item, quote("/library/metadata/%s" % session_item)))
     # Re-measured, correcting the earlier note: `viewOffset` is the item's STORED
-    # offset and is -1 only when it has none. simplex always sent -1, so a client
+    # offset and is -1 only when it has none. rex always sent -1, so a client
     # reading its resume point off the timeline never found one.
     check("the timeline echoes the item's stored offset, not -1",
           late.get("viewOffset") == 90000,
           "viewOffset=%s" % late.get("viewOffset"))
     # And `Bandwidths` is armed by a DECISION, not by the state: it appears on
     # every timeline once one has been made for the item, `stopped` included, and
-    # disappears after the stopping one. simplex keyed it on the state alone.
+    # disappears after the stopping one. rex keyed it on the state alone.
     _, no_decision, _ = beat("playing", 5000)
     container(base, "GET", "/video/:/transcode/universal/decision?path=%s"
                            "&mediaIndex=0&partIndex=0&protocol=dash&session=uitest"
@@ -2714,7 +2714,7 @@ def main():
     print("\n=== the Dashboard's own numbers ===")
     # Measured: a real PMS counts EVERY response's bytes, not just media, into
     # per-second rows and rolls them into hour/day/week/month/year buckets.
-    # simplex serves every byte it reports, so these are real.
+    # rex serves every byte it reports, so these are real.
     _, live, _ = get(base, "/statistics/bandwidth?timespan=6")
     rows = live.get("StatisticsBandwidth") or []
     check("bandwidth statistics carry real per-second rows",
@@ -2733,7 +2733,7 @@ def main():
           "%d row(s)" % len(media_stats.get("StatisticsMedia") or []))
     # Cycle 58, measured on zen (UTC) and kids (Europe/Berlin): the coarse buckets are
     # CALENDAR buckets in the server's local time -- a day starts at local midnight, a
-    # week on a Monday, a month on the 1st and a year on January 1st. simplex floored
+    # week on a Monday, a month on the 1st and a year on January 1st. rex floored
     # the epoch to fixed widths, so every week began on a Thursday and every "month" on
     # whatever day thirty-day steps reached. The suite runs on the server's host.
     def aligned_c58(at, span):
@@ -2757,7 +2757,7 @@ def main():
     # Re-measured against BOTH reference servers: /statistics/resources answers
     # 200 with a StatisticsResources series, and only timespan=6 has samples --
     # every coarser bucket is an empty 200, and so is a request with no timespan.
-    # simplex used to 404 it on the theory that the client hides an unsupported
+    # rex used to 404 it on the theory that the client hides an unsupported
     # graph; the measurement says a real PMS answers.
     status, resources, _ = get(base, "/statistics/resources?timespan=6")
     sample = (resources.get("StatisticsResources") or [{}])[0]
@@ -2828,7 +2828,7 @@ def main():
     # Measured verbatim off the reference's eventsource: a refresh pushes SEVEN
     # frames, and the last one is `state: 5` with NO metadataState. That frame is
     # what dispatches the client's `metadataProcessed` -- which is what makes it
-    # refetch the row it just refreshed. simplex pushed one activity `started` and
+    # refetch the row it just refreshed. rex pushed one activity `started` and
     # one `timeline(3, queued)` and stopped: Refresh Metadata did nothing on screen
     # until a reload, the spinner never stopped (its gate is `!!metadataState`, never
     # cleared), and the activity stayed in /activities for the life of the process.
@@ -2857,7 +2857,7 @@ def main():
     # Measured: the started frame's progress is -1, not 0, and it reaches 100.
     check("the activity's progress runs -1 to 100",
           progresses and progresses[0] == -1 and progresses[-1] == 100, str(progresses))
-    # An EDIT pushes two frames. simplex pushed none, so an edit made here was
+    # An EDIT pushes two frames. rex pushed none, so an edit made here was
     # invisible to every other open client.
     frames = sequence(lambda: request(base, "PUT", "/library/metadata/%s?tagline.value=%s"
                                                   % (movie, quote("notified"))))
@@ -2867,7 +2867,7 @@ def main():
     # And a DELETE pushes state 9, which is what dispatches the client's `deleted`
     # action -- without it a deleted row stays on screen in every other client.
     _, made, _ = container(base, "POST", "/playlists?type=video&title=%s&uri=%s"
-                                        % (quote("simplex notify probe"),
+                                        % (quote("rex notify probe"),
                                            quote("server://%s/com.plexapp.plugins.library"
                                                  "/library/metadata/%s" % (machine, movie))))
     probe_key = (made.get("Metadata") or [{}])[0].get("ratingKey")
@@ -2964,7 +2964,7 @@ def main():
     check("the log endpoint answers with content, not a zip",
           status == 200 and "content" in logs, ",".join(sorted(logs)))
     status, body, _ = request(base, "POST",
-                              "/log?level=4&message=simplex+test&source=Plex+Web")
+                              "/log?level=4&message=rex+test&source=Plex+Web")
     check("the client's own log lines are accepted", is_empty_200(status, body),
           "HTTP %s" % status)
     status, top, _ = get(base, "/library/all/top?type=1")
@@ -2988,7 +2988,7 @@ def main():
     # the writer follows the BLOCK. `useOriginalTitle=1` is a 200 on a matched movie and a
     # **400** on an unmatched one; `audioLanguage` and `subtitleMode` are a show's and are
     # 400s on both. The check ran three hundred lines after the unmatch above and asserted
-    # the 200 the row would have given before it -- simplex answered 200 either way, which
+    # the 200 the row would have given before it -- rex answered 200 either way, which
     # is what made it pass.
     #
     # Both rows are SELECTED by their state rather than assumed: with a TMDB key the Fix
@@ -3040,9 +3040,9 @@ def main():
     print("\n=== the token gate, and the headers every response carries ===")
     # A real PMS 401s EVERYTHING but /identity and /web/* without its token -- for a
     # missing one and a wrong one alike, with no WWW-Authenticate and no difference
-    # between them. simplex had no token check at all, so any peer that could reach
+    # between them. rex had no token check at all, so any peer that could reach
     # the port read the whole library, the preferences, the sessions and the bytes.
-    # The gate is opt-in (`--token`) because the suites and probes talk to simplex
+    # The gate is opt-in (`--token`) because the suites and probes talk to rex
     # without one; this check starts its OWN gated instance to prove it works.
     import subprocess
     import sys as _sys
@@ -3103,7 +3103,7 @@ def main():
         # -- and only a path that DOES exist answers 401. The legacy single-segment
         # plug-in dispatcher (`/prefs`, `/channels`, `/prefsx`) is a 403 with its own
         # 85-byte body, and `GET /` is a 401 whose 193-byte body carries a script that
-        # walks a browser into the web client. simplex answered one generic 401 to all
+        # walks a browser into the web client. rex answered one generic 401 to all
         # of them, so a probing client could not tell "no such item" from "not
         # authorised" and a person opening the origin in a browser got a bare 401
         # where a real server lands them in the app.
@@ -3129,7 +3129,7 @@ def main():
         # both routes cycle 49 added, after this list was written -- are 401s; `/manage`
         # answers its 302 to the web client like `/web`; and `/search`, `/downloadQueue`
         # and `/player` answer their OWN refusal before the gate (400, 404 and, on 1.42.2,
-        # 400). simplex answered the generic 403 to all six.
+        # 400). rex answered the generic 403 to all six.
         widened_c52l = {path_c52l: gated_status(path_c52l)[0]
                         for path_c52l in ("/connections", "/dlna", "/search",
                                           "/downloadQueue", "/player")}
@@ -3157,7 +3157,7 @@ def main():
         gated.wait(timeout=10)
 
     # Measured across eight endpoints on both reference servers: `Cache-Control:
-    # no-cache` on EVERYTHING. simplex sent none -- except on artwork, where it sent
+    # no-cache` on EVERYTHING. rex sent none -- except on artwork, where it sent
     # a day of caching the reference does not, so a Change Artwork or a re-match
     # stayed invisible to the browser even though the version in the URL changed.
     for path_ in ("/library/sections", "/library/sections/%s/all" % movie_section,
@@ -3185,9 +3185,9 @@ def main():
 
     print("\n=== artwork refusals, resources, and the paths a real PMS answers ===")
     # Measured: both dimensions are MANDATORY on /photo/:/transcode, a non-numeric one
-    # is a 400, and a `url` naming a row the server does not have is a 404. simplex
+    # is a 400, and a `url` naming a row the server does not have is a 404. rex
     # answered a 200 grey tile to all four, so a client that would have drawn its own
-    # title-card placeholder drew -- and could cache -- simplex's instead.
+    # title-card placeholder drew -- and could cache -- rex's instead.
     art_url = quote("/library/metadata/%s/thumb/1" % movie)
     for spec, want, why in (
             ("?width=100&height=100", 400, "no url"),
@@ -3205,7 +3205,7 @@ def main():
     check("a real transcode still answers",
           status == 200 and str(headers_.get("Content-Type", "")).startswith("image/"),
           "HTTP %s %s" % (status, headers_.get("Content-Type")))
-    # A resource name a real PMS does not have is a 404; simplex drew a tile for any.
+    # A resource name a real PMS does not have is a 404; rex drew a tile for any.
     status_known, _, _ = request(base, "GET", "/:/resources/movie.png", want_json=False)
     status_unknown, _, _ = request(base, "GET", "/:/resources/nope.png", want_json=False)
     check("an unknown /:/resources name is a 404",
@@ -3230,7 +3230,7 @@ def main():
               == ["all", "recentlyViewed"],
           "HTTP %s %s" % (status, [d.get("key") for d in channels.get("Directory") or []]))
     # A real PMS routes per (method, path) and NOT uniformly: /identity and /hubs
-    # answer any verb, these three refuse with their own statuses. simplex answered
+    # answer any verb, these three refuse with their own statuses. rex answered
     # the GET body to every verb.
     for method, path_, want in (("POST", "/library/sections", 400),
                                 ("PUT", "/library/sections", 404),
@@ -3249,7 +3249,7 @@ def main():
     print("\n=== CORS, which a browser enforces before the server sees anything ===")
     # Measured either side of an Origin header: a real PMS ECHOES the origin and
     # echoes the requested header list on a preflight, and sends no CORS headers
-    # at all without an Origin. simplex answered `*` unconditionally and
+    # at all without an Origin. rex answered `*` unconditionally and
     # published a FIXED header list that omitted `X-Plex-Session-Id`,
     # `X-Plex-Language` and others the client sends -- a preflight that omits one
     # makes the browser refuse the request with no server-side trace.
@@ -3257,7 +3257,7 @@ def main():
     # Cycle 15 re-measured this on the copy: a BARE OPTIONS -- no
     # `Access-Control-Request-*` headers -- is ROUTED like any other verb and 404s
     # here; only a genuine preflight is answered. The old form sent no preflight
-    # headers and asserted 200, so it was testing simplex's own habit of answering
+    # headers and asserted 200, so it was testing rex's own habit of answering
     # every OPTIONS as a preflight rather than anything a real PMS does.
     status, _, headers = request(base, "OPTIONS",
                                  "/library/metadata/%s/refresh" % movie, want_json=False)
@@ -3296,11 +3296,11 @@ def main():
           "Access-Control-Allow-Origin" not in bare,
           ",".join(k for k in bare if k.lower().startswith("access-control")) or "none")
 
-    print("\n=== the XML surface, which is simplex's DEFAULT ===")
+    print("\n=== the XML surface, which is rex's DEFAULT ===")
     # The playlist checks above deleted theirs; the XML element name for a
     # playlist row can only be checked against a list that has one.
     _, made, _ = container(base, "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"
-                                         % (quote("simplex xml probe"), quote(uri)))
+                                         % (quote("rex xml probe"), quote(uri)))
     xml_playlist = ((made.get("Metadata") or [{}])[0]).get("ratingKey")
     # Every check above asks for JSON. A TV or mobile client sends no Accept
     # header at all and gets XML, and the mapping is not a generic json2xml:
@@ -3330,7 +3330,7 @@ def main():
     # Re-measured in cycle 8: a folder's SUBDIRECTORIES render as <Directory> and its
     # FILES as the items they hold -- <Video> for Firefly's episodes under `?parent=`.
     # The cycle-4 check wanted <Directory> for every row, which holds only for a level
-    # made of folders; simplex's catalogs keep their files flat, so its top level is
+    # made of folders; rex's catalogs keep their files flat, so its top level is
     # the items themselves.
     status, root = xml_root("/library/sections/%s/folder" % movie_section)
     folder_rows = get(base, "/library/sections/%s/folder" % movie_section)[1].get("Metadata") or []
@@ -3466,10 +3466,10 @@ def main():
               "%s=%s" % (flippable["id"], now.get("value")))
 
     status, agents, _ = get(base, "/system/agents")
-    check("Agents page lists the agents simplex identifies with",
+    check("Agents page lists the agents rex identifies with",
           status == 200 and agents.get("Agent"),
           "%d agent(s)" % len(agents.get("Agent") or []))
-    # The agent CHAIN the page edits lives one path deeper, and simplex answered
+    # The agent CHAIN the page edits lives one path deeper, and rex answered
     # the plain agent list to every /system/agents* path.
     # Re-measured on both real servers: for a modern agent the chain is EMPTY. Cycle 58:
     # and it is the framework's XML whatever the Accept header asks for.
@@ -3480,7 +3480,7 @@ def main():
           "HTTP %s %r" % (status, chain[:120]))
     # Measured: the element is `Scanner` with nothing but a `name`, and the
     # container's identifier is com.plexapp.system rather than the library's.
-    # simplex answered `Directory` rows with a key and a title, which the Edit
+    # rex answered `Directory` rows with a key and a title, which the Edit
     # Library dialog's scanner dropdown does not read at all.
     status, scanners, _ = get_system(base, "/system/scanners/%s" % movie_section)
     names = [s.get("name") for s in scanners.get("Scanner") or []]
@@ -3505,7 +3505,7 @@ def main():
     # whole plex.tv mapping block is missing there. Version and mapping state are
     # CONFOUNDED on the only two claimed servers this project has, and neither unclaimed
     # copy can separate them (an unclaimed PMS holds no account token at all).
-    # simplex's omission therefore stands as a DELIBERATE deviation, not a measurement:
+    # rex's omission therefore stands as a DELIBERATE deviation, not a measurement:
     # its own token gate defaults OFF, so emitting the claim token here would hand it to
     # every peer that can reach the port. See HANDOVER 3.3 and 8.
     _, body, _ = request(base, "GET", "/myplex/account")
@@ -3525,7 +3525,7 @@ def main():
           status == 404, "HTTP %s" % status)
 
     print("\n=== the server-info document, and the refusals a real PMS makes ===")
-    # `GET /` is NOT `/identity`: simplex answered the five-field identity document
+    # `GET /` is NOT `/identity`: rex answered the five-field identity document
     # to both. A real PMS answers the whole capability blob plus 25 Directory rows
     # naming its top-level endpoints, and python-plexapi reads every attribute it
     # has from here.
@@ -3542,7 +3542,7 @@ def main():
     check("every / Directory row is {count, key, title}",
           all(set(d) == {"count", "key", "title"} for d in root.get("Directory") or []),
           str((root.get("Directory") or [{}])[0]))
-    # 23 scheduled tasks, and only BackupDatabase is titled -- simplex listed two
+    # 23 scheduled tasks, and only BackupDatabase is titled -- rex listed two
     # with invented titles, so the page showed tasks that do not exist.
     status, body, _ = request(base, "GET", "/butler")
     butler = json.loads(body).get("ButlerTasks", {}) if body[:1] == b"{" else {}
@@ -3568,7 +3568,7 @@ def main():
               set(item) <= {"id", "MediaPart"}, ",".join(sorted(item)))
     else:
         skip("a show's tree nests seasons and episodes and omits MediaItem", "no show row")
-    # Every refusal below was an empty 200 or an empty container on simplex, each of
+    # Every refusal below was an empty 200 or an empty container on rex, each of
     # which a client reads as "that worked" or "that exists and is empty".
     for method, path_, want, why in (
             ("GET", "/updater/check?download=0", 404, "a GET of updater/check"),
@@ -3585,7 +3585,7 @@ def main():
             ("PUT", "/butler/CleanOldBundles", 404, "a PUT to a butler task")):
         status, _, _ = container(base, method, path_)
         check("refusal: %s is a %d" % (why, want), status == want, "HTTP %s" % status)
-    # And the endpoints simplex refused that a real PMS answers.
+    # And the endpoints rex refused that a real PMS answers.
     for path_, why, test in (
             ("/log/networked", "networked logging", lambda s, b: s == 200),
             ("/diagnostics", "the diagnostics root",
@@ -3682,7 +3682,7 @@ def main():
     print("\n=== the filter query language ===")
     # The operator is part of the KEY, not the value: the client holds `>>=` and
     # sends `year%3E%3E=2000`, so the server reads a parameter NAMED `year>>`.
-    # simplex iterated its parameters looking for names it knew, saw none of
+    # rex iterated its parameters looking for names it knew, saw none of
     # these, and applied no constraint -- every filter returned the whole library
     # while looking like it worked.
     def filtered(spec):
@@ -3753,7 +3753,7 @@ def main():
 
     print("\n=== the filter query language: the field's TYPE decides ===")
     # The operator table alone is not the whole language: what a bare `=` MEANS
-    # depends on the field's advertised type, and simplex treated everything that
+    # depends on the field's advertised type, and rex treated everything that
     # was not a number or a date as a substring match.
     _, sample, _ = get(base, "/library/sections/%s/all" % movie_section)
     rows = sample.get("Metadata") or []
@@ -3811,7 +3811,7 @@ def main():
              "no videoResolution on the catalog's Media")
     for spec, want, why in (("?resolution=2160", 500, "a resolution outside the set is a 500"),
                             ("?resolution=", 500, "an empty resolution is a 500"),
-                            ("?location=%2Fsimplex%2F1", 500,
+                            ("?location=%2Frex%2F1", 500,
                              "a folder location is an ID, so a path is a 500")):
         status, _, _ = container(base, "GET",
                                  "/library/sections/%s/all%s" % (movie_section, spec))
@@ -3828,7 +3828,7 @@ def main():
           % (filtered("?genre%3E%3E=1"), filtered("?title%3C%3C=x")))
 
     # A SHOW library advertises its fields PREFIXED (`show.genre`), and the client
-    # sends the advertised key back verbatim. simplex looked the name up after
+    # sends the advertised key back verbatim. rex looked the name up after
     # stripping the prefix, in a map keyed by the prefixed names, so nothing
     # matched and every filter on a show grid returned the whole library.
     if show_section:
@@ -3976,7 +3976,7 @@ def main():
                                 "/library/sections/%s/query/parse?type=1" % movie_section)
     check("query/parse: /query alone and a POST are both 404",
           status == 404 and status_post == 404, "%s / %s" % (status, status_post))
-    # XML is simplex's default, and this response's root is not a MediaContainer.
+    # XML is rex's default, and this response's root is not a MediaContainer.
     status, raw, _ = request(base, "GET", "/library/sections/%s/query/parse"
                                          "?type=1&genre=1&sort=titleSort" % movie_section,
                              want_json=False)
@@ -3993,7 +3993,7 @@ def main():
           (raw[:80].decode("utf-8", "replace")) if raw else "no body")
 
     print("\n=== the include/exclude options the client actually sends ===")
-    # Each of these is a parameter the official client sends and simplex ignored.
+    # Each of these is a parameter the official client sends and rex ignored.
     # An ignored option is the quiet kind of wrong: the response is a valid detail
     # document that simply lacks the block asked for, so the page draws with a
     # section missing rather than with an error.
@@ -4099,7 +4099,7 @@ def main():
     print("\n=== the decision container's codes ===")
     # Measured: on a DIRECT PLAY a real PMS sends only the `mde*` pair. The
     # general/directPlay/transcode triples appear only when direct play is
-    # refused. simplex sent every 1000 at once, which tells a client a transcode
+    # refused. rex sent every 1000 at once, which tells a client a transcode
     # decision was made when none was.
     def decided(spec):
         status, body, _ = request(
@@ -4117,7 +4117,7 @@ def main():
                       for k in ok_decision),
           ",".join(sorted(k for k in ok_decision if k.endswith("Code"))) or "no codes")
     check("the decision container names the session and says allowSync as a string",
-          ok_decision.get("resourceSession") == "simplex-ui-test"
+          ok_decision.get("resourceSession") == "rex-ui-test"
           and ok_decision.get("allowSync") == "1"
           and isinstance(ok_decision.get("librarySectionID"), str)
           and isinstance(ok_decision.get("mediaTagVersion"), str),
@@ -4125,7 +4125,7 @@ def main():
           % (ok_decision.get("resourceSession"), ok_decision.get("allowSync"),
              ok_decision.get("librarySectionID")))
     _, refused = decided("directPlay=0&directStream=1&hasMDE=1")
-    # simplex cannot convert, so a refused direct play is the measured "neither"
+    # rex cannot convert, so a refused direct play is the measured "neither"
     # answer a real PMS gives a client with no conversion profile -- not the
     # 1001 "Conversion OK." of a server that has an encoder.
     check("a refused direct play answers 3000 with 2000 and 4005",
@@ -4142,7 +4142,7 @@ def main():
     print("\n=== container paging: both parameters, either transport ===")
     # Measured: a real PMS pages only when BOTH parameters are present, and it
     # accepts them as HTTP HEADERS as well as query parameters -- the React paths
-    # send headers, which simplex never read.
+    # send headers, which rex never read.
     _, both, _ = get(base, "/library/sections/%s/all?X-Plex-Container-Start=0"
                            "&X-Plex-Container-Size=1" % movie_section)
     _, size_only, _ = get(base, "/library/sections/%s/all?X-Plex-Container-Size=1"
@@ -4218,7 +4218,7 @@ def main():
                 # Measured in cycle 12 against a real library: a LISTING row CAPS its tag
                 # lists (2 Genre, 2 Writer, 2 Country, 3 Role), so membership has to be
                 # read off the DETAIL row. This check used to compare listing rows with
-                # listing rows, which agreed only because simplex sent the whole list.
+                # listing rows, which agreed only because rex sent the whole list.
                 def carries(key):
                     _, _, full = detail_of("x=1", key)
                     return any(t.get("tag") == entry["title"] for t in full.get(field) or [])
@@ -4234,7 +4234,7 @@ def main():
                                 == int(entry["key"]) for row in rows)
         check("By %s lists and filters" % axis, ok, detail)
     # Measured: only a `genre` entry carries a `type`, and a person entry carries
-    # the tag's own `thumb`. simplex stamped `type` on every tag axis.
+    # the tag's own `thumb`. rex stamped `type` on every tag axis.
     _, genres, _ = get(base, "/library/sections/%s/genre" % movie_section)
     _, actors, _ = get(base, "/library/sections/%s/actor" % movie_section)
     genre_entries = genres.get("Directory") or []
@@ -4273,10 +4273,10 @@ def main():
     # Cycle 44 RE-MEASURED the other four and this check had the wrong belief in it.
     # `videoCodec`, `audioCodec`, `subtitleCodec` and `audioLayout` are secondary axes
     # 1.43.4 answers and **1.42.2 404s** -- confirmed on zen AND on plexscratch42, both
-    # 1.42.2, on a movie library and a show library alike, against kids' 200s. simplex
+    # 1.42.2, on a movie library and a show library alike, against kids' 200s. rex
     # reports 1.42.2. `CLAUDE.md` already records the same six-name media-codec split
     # for `/filters` and the `Meta` descriptor; the AXES split with them, which nothing
-    # had checked, and simplex's own `/filters` correctly omits all four while the axis
+    # had checked, and rex's own `/filters` correctly omits all four while the axis
     # paths answered the newer version's surface.
     for axis in ("videoCodec", "audioCodec", "subtitleCodec", "audioLayout"):
         status, listing, _ = get(base, "/library/sections/%s/%s" % (movie_section, axis))
@@ -4307,7 +4307,7 @@ def main():
           unplayed.get("title2") == "Unplayed" and unplayed.get("viewGroup") != "secondary",
           "%s / %s" % (unplayed.get("title2"), unplayed.get("viewGroup")))
     # The seven axes the REFERENCE itself 404s, advertised in /filters all the
-    # same. simplex advertises them too, so a 200 here would be the invention.
+    # same. rex advertises them too, so a 200 here would be the invention.
     for axis in ("hdr", "dovi", "hdr10plus", "atmos", "inProgress", "unmatched"):
         status, _, _ = get(base, "/library/sections/%s/%s" % (movie_section, axis))
         check("the %s axis 404s, as the reference's does" % axis, status == 404,
@@ -4315,12 +4315,12 @@ def main():
 
     print("\n=== /filters is per library TYPE ===")
     # A movie library advertises a different list from a show library -- the same
-    # lesson as the two Meta sidecars. simplex served one trimmed list for both, so
+    # lesson as the two Meta sidecars. rex served one trimmed list for both, so
     # a show grid's filter bar could only talk about movies.
     #
     # Cycle 14 re-measured the COUNT: this check said 28, which is kids' answer
-    # (1.43.4). zen -- 1.42.2, the build simplex reports -- answers 22, and the six
-    # it drops are the media-codec axes. simplex was advertising a newer server's
+    # (1.43.4). zen -- 1.42.2, the build rex reports -- answers 22, and the six
+    # it drops are the media-codec axes. rex was advertising a newer server's
     # filter bar than the version it claims to be. See docs/findings.md.
     _, movie_filters, _ = get(base, "/library/sections/%s/filters" % movie_section)
     movie_names = [e.get("filter") for e in movie_filters.get("Directory") or []]
@@ -4381,7 +4381,7 @@ def main():
           "%d folder(s)" % len(folders.get("Metadata") or []))
 
     print("\n=== the Home screen's own shelves ===")
-    # /hubs/promoted is called ONCE PER PINNED LIBRARY, and simplex ignored
+    # /hubs/promoted is called ONCE PER PINNED LIBRARY, and rex ignored
     # contentDirectoryID and answered every library's shelf every time -- so Home
     # drew each library's rows under every library's heading. Its hubs were also
     # missing the five fields the client lays the page out from.
@@ -4389,7 +4389,7 @@ def main():
                                "&pinnedContentDirectoryID=%s" % (movie_section, movie_section))
     hubs = promoted.get("Hub") or []
     identifiers = [h.get("hubIdentifier") for h in hubs]
-    # RE-MEASURED in cycle 13 on zen, the 1.42.2 build simplex reports: this call sends
+    # RE-MEASURED in cycle 13 on zen, the 1.42.2 build rex reports: this call sends
     # `pinnedContentDirectoryID`, and with it the third shelf is `home.movies.recent.N`,
     # not `movie.recentlyadded.N`. The bare call still answers the latter, and the check
     # below covers it. kids (1.43.4) ignores the parameter, which is how the pinned
@@ -4444,7 +4444,7 @@ def main():
                                   for h in excluded.get("Hub") or []],
           ", ".join(str(h.get("hubIdentifier")) for h in excluded.get("Hub") or []))
     # The Continue Watching hub is identified `continueWatching`, styled hero, and
-    # its key is its OWN items endpoint -- which simplex did not route at all.
+    # its key is its OWN items endpoint -- which rex did not route at all.
     _, watching, _ = get(base, "/hubs/continueWatching?contentDirectoryID=%s" % movie_section)
     hub = (watching.get("Hub") or [{}])[0]
     status, items, _ = get(base, hub.get("key") or "/nope")
@@ -4472,7 +4472,7 @@ def main():
 
     print("\n=== the preplay page's Related shelf ===")
     # The client rewrites /library/metadata/{id} to /hubs/metadata/{id} and appends
-    # the leaf. simplex routed neither, and a 404 is exactly what the preplay page
+    # the leaf. rex routed neither, and a 404 is exactly what the preplay page
     # reads as "no related items" -- silently.
     # Pick a row that still HAS genres: the Unmatch check above deliberately strips
     # them off the movie every other check uses, and a row with no genre has no
@@ -4527,7 +4527,7 @@ def main():
     check("an unknown item hub leaf is a 404", status == 404, "HTTP %s" % status)
 
     print("\n=== search, which is seventeen hubs every time ===")
-    # simplex answered only the hubs that had rows, so the results page was laid
+    # rex answered only the hubs that had rows, so the results page was laid
     # out from a list that changed per query; it matched by SUBSTRING, where a real
     # PMS matches a word PREFIX; and it sent no `score`, which the client sorts by.
     _, sample, _ = get(base, "/library/sections/%s/all" % movie_section)
@@ -4634,7 +4634,7 @@ def main():
     print("\n=== the library's Recommended tab ===")
     # Measured: `?count=N` caps every shelf at N rows AND sets `more` on the ones
     # that were cut, which is how the client knows to draw the "see all" chevron.
-    # simplex hard-coded `more: false` and ignored count, so a truncated shelf
+    # rex hard-coded `more: false` and ignored count, so a truncated shelf
     # looked complete. The client asks for count+1 for exactly this reason.
     for section_id in (movie_section, show_section):
         if not section_id:
@@ -4688,7 +4688,7 @@ def main():
         status, hubs, _ = get(base, "/hubs/sections/%s" % section_id)
         shelves = hubs.get("Hub") or []
         identifiers = [h.get("hubIdentifier") for h in shelves]
-        # RE-MEASURED in cycle 13 on zen, the 1.42.2 build simplex reports: a movie
+        # RE-MEASURED in cycle 13 on zen, the 1.42.2 build rex reports: a movie
         # library carries SIX shelves and a show library SEVEN. kids (1.43.4) builds
         # neither `movie.topunwatched` nor `tv.startwatching`/`tv.toprated` although
         # its own rows qualify for all three, so the five were a version difference
@@ -4762,7 +4762,7 @@ def main():
           len(draws[0]) > 2 and len(set(draws)) > 1
           and all(sorted(d) == sorted(draws[0]) for d in draws),
           "orders %s" % sorted(set(draws)))
-    # A `sort=` spec is a COMMA-SEPARATED list, and simplex used to split the
+    # A `sort=` spec is a COMMA-SEPARATED list, and rex used to split the
     # whole thing on the first colon: the secondary key was dropped and
     # `titleSort:asc,year:desc` even came out descending, because the spec as a
     # whole ended in `:desc`. These two differ only in the SECOND key.
@@ -4840,7 +4840,7 @@ def main():
     print("\n=== order, and the state the sequence leaves behind ===")
     # Measured on both servers: the DEFAULT order of a listing is titleSort ascending,
     # not the catalog's own order, and the secondary key is ALWAYS titleSort whatever
-    # the primary is. simplex answered catalog order, so an edited Sort Title never
+    # the primary is. rex answered catalog order, so an edited Sort Title never
     # moved a row and the grid's default disagreed with its own sort control.
     _, defaulted, _ = get(base, "/library/sections/%s/all" % movie_section)
     _, by_title, _ = get(base, "/library/sections/%s/all?sort=titleSort" % movie_section)
@@ -4866,7 +4866,7 @@ def main():
     else:
         skip("a tie falls back to titleSort", "no key the rows all share")
     # The advanced Meta: the client sends includeAdvanced=1 and reads the Sort list
-    # straight into its sort menu. simplex's Meta was identical with and without it.
+    # straight into its sort menu. rex's Meta was identical with and without it.
     _, plain_meta, _ = get(base, "/library/sections/%s/all?includeMeta=1"
                                 "&X-Plex-Container-Start=0&X-Plex-Container-Size=0"
                                 % movie_section)
@@ -4915,11 +4915,11 @@ def main():
         skip("the in-library search box is substring while global search is fuzzy",
              "title too short")
     # Removing a collection member: the client builds this exact DELETE and assigns
-    # the response onto its model. simplex had no DELETE branch, so the tile
+    # the response onto its model. rex had no DELETE branch, so the tile
     # disappeared optimistically and came back on the next fetch.
     _, made, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s"
                                         "&title=%s&uri=%s"
-                                        % (movie_section, quote("simplex member probe"),
+                                        % (movie_section, quote("rex member probe"),
                                            quote("server://%s/com.plexapp.plugins.library"
                                                  "/library/metadata/%s" % (machine, movie))))
     ckey = (made.get("Metadata") or [{}])[0].get("ratingKey")
@@ -5016,13 +5016,13 @@ def main():
     status, created, _ = container(
         base, "POST", "/library/sections?name=%s&type=movie&agent=tv.plex.agents.movie"
                       "&scanner=Plex%%20Movie&language=en-US&location=%s"
-                      % (quote("simplex probe library"), quote("/simplex")))
+                      % (quote("rex probe library"), quote("/rex")))
     directory = (created.get("Directory") or [{}])[0]
     check("Add Library answers 201 with the created library",
           status == 201 and directory.get("key"), "HTTP %s key=%s"
           % (status, directory.get("key")))
     # Measured: a real PMS validates the create form and answers a PLAIN-TEXT 400
-    # naming what is wrong. simplex answered 201 to every malformed form and really
+    # naming what is wrong. rex answered 201 to every malformed form and really
     # created the library -- a POST with NO parameters at all made one called
     # "New Library", which then sat in the sidebar.
     for spec, why in (
@@ -5042,16 +5042,16 @@ def main():
     if new_section:
         # The dialog sends the WHOLE form, and a real PMS validates it: a `name`
         # on its own is a 400, and so are a missing or unknown agent, scanner or
-        # language. simplex accepted every one with a 200, so a typo looked saved.
+        # language. rex accepted every one with a 200, so a typo looked saved.
         form = ("&agent=tv.plex.agents.movie&scanner=Plex%%20Movie&language=en-US"
-                "&location=%s" % quote("/simplex"))
+                "&location=%s" % quote("/rex"))
         status, body, _ = request(base, "PUT", "/library/sections/%s?name=%s%s"
-                                               % (new_section, quote("simplex renamed"),
+                                               % (new_section, quote("rex renamed"),
                                                   form))
         _, sections, _ = get(base, "/library/sections")
         titles = [d.get("title") for d in sections.get("Directory") or []]
         check("Edit Library renames it",
-              is_empty_200(status, body) and "simplex renamed" in titles,
+              is_empty_200(status, body) and "rex renamed" in titles,
               ",".join(titles))
         for spec, why in (
                 ("", "no name at all"),
@@ -5169,7 +5169,7 @@ def main():
     status, form, _ = get(base, "/library/sections/%s/prefs?agent=tv.plex.agents.none"
                           % movie_lib)
     # RE-MEASURED in cycle 18: this list is PER VERSION. 1.43.4 answers 12 settings here
-    # and 1.42.2 -- the build simplex reports -- answers 7: `tv.plex.agents.none` adds no
+    # and 1.42.2 -- the build rex reports -- answers 7: `tv.plex.agents.none` adds no
     # agent rows there at all. `section_prefs_new.json` was captured off kids, which is
     # the fourth fixture found to carry a version's own shape.
     check("an existing library's form is reshaped by ?agent=",
@@ -5260,13 +5260,13 @@ def main():
     agent_rows = agents.get("Agent") or []
     movie_agent = next((a for a in agent_rows if a.get("identifier") == "tv.plex.agents.movie"), {})
     # Cycle 17 re-measured this on kids (1.43.4) and zen (1.42.2): the two
-    # `tv.plex.agents.nfo.*` rows exist only on 1.43.4, and simplex reports 1.42.2, so
+    # `tv.plex.agents.nfo.*` rows exist only on 1.43.4, and rex reports 1.42.2, so
     # a movie library is offered TWO modern agents and not three. The fixture this
     # check was written against was captured off kids.
     #
     # Cycle 53 re-measured the whole list: a real 1.42.2 server offers FIVE agents for a
     # movie library, because the three legacy PRIMARIES for that type come first. This
-    # check encoded simplex's own four-agent catalogue, which was the inherited bound
+    # check encoded rex's own four-agent catalogue, which was the inherited bound
     # cycle 53 retired -- so it is updated to what zen and plexscratch42 answer rather
     # than deleted.
     check("a movie library is offered its five agents, legacy first",
@@ -5277,7 +5277,7 @@ def main():
           ",".join(str(a.get("identifier")) for a in agent_rows))
     # Cycle 21: the list is read from the XML, because this endpoint writes its
     # `Language` rows as repeated JSON KEYS and a parser keeps only the last -- which
-    # is what both references do and what simplex now does. zen carries 150 Language
+    # is what both references do and what rex now does. zen carries 150 Language
     # elements here and kids 195, and exactly one of each agent's carries `default="1"`.
     _, agents_xml_c21, _ = request(base, "GET", "/system/agents?mediaType=1", want_json=False)
     movie_agent_xml_c21 = next(
@@ -5310,7 +5310,7 @@ def main():
     # (1.43.4), and the write on plexscratch42: a LEGACY primary agent has a chain. The
     # Agents settings page lists every agent serving the type -- the enabled ones first, in
     # the saved order -- and its reorder saves `PUT ?order=`, answering the `<combine>`
-    # document. simplex answered an empty container to every read and 404'd the save.
+    # document. rex answered an empty container to every read and 404'd the save.
     legacy_c58 = "/system/agents/com.plexapp.agents.none/config/1"
     ids_c58 = lambda body: re.findall(r'identifier="([^"]+)"/>', body.decode())
     on_c58 = lambda body: re.findall(r'enabled="1" hasPrefs="\d" identifier="([^"]+)"',
@@ -5360,8 +5360,8 @@ def main():
     status, _, _ = request(base, "GET", "/log")
     check("a log line with no level or message is a 400", status == 400, "HTTP %s" % status)
     status, paths, _ = get(base, "/services/browse")
-    status_plain, _, _ = get(base, "/services/browse/%s" % quote("L3NpbXBsZXg="))
-    status_files, children, _ = get(base, "/services/browse/L3NpbXBsZXg=?includeFiles=1")
+    status_plain, _, _ = get(base, "/services/browse/%s" % quote("L3JleA=="))
+    status_files, children, _ = get(base, "/services/browse/L3JleA==?includeFiles=1")
     check("the folder picker walks a filesystem",
           status == 200 and (paths.get("Path") or [{}])[0].get("path") == "/"
           and status_plain == 400 and status_files == 200 and children.get("Path"),
@@ -5376,7 +5376,7 @@ def main():
           "HTTP %s, %d tag(s), bare %s" % (status, len(tags.get("Directory") or []), status_bare))
 
     # -- devices, play attribution and view counts -----------------------
-    player = {"X-Plex-Client-Identifier": "simplex-c5-player", "X-Plex-Device-Name": "C5 Player",
+    player = {"X-Plex-Client-Identifier": "rex-c5-player", "X-Plex-Device-Name": "C5 Player",
               "X-Plex-Platform": "c5platform", "Accept": "application/json"}
     duration = int((get(base, "/library/metadata/%s" % c5_movie)[1].get("Metadata") or [{}])[0]
                    .get("duration") or 600000)
@@ -5390,7 +5390,7 @@ def main():
             % (c5_movie, quote("/library/metadata/%s" % c5_movie), state, offset, duration),
             headers=player)
     devices = get(base, "/devices")[1].get("Device") or []
-    seen = next((d for d in devices if d.get("clientIdentifier") == "simplex-c5-player"), {})
+    seen = next((d for d in devices if d.get("clientIdentifier") == "rex-c5-player"), {})
     check("/devices lists every client with its name and platform",
           seen.get("name") == "C5 Player" and seen.get("platform") == "c5platform",
           "%d device(s)" % len(devices))
@@ -5491,7 +5491,7 @@ def main():
               "title1=%r parentTitle=%r" % (episodes_doc.get("title1"), episodes_doc.get("parentTitle")))
     if c5_episode:
         episode_row = (get(base, "/library/metadata/%s" % c5_episode)[1].get("Metadata") or [{}])[0]
-        # And no grandparentTheme either: simplex has no theme audio, and a real show
+        # And no grandparentTheme either: rex has no theme audio, and a real show
         # without a theme names none on itself or on its children (measured, cycle 7).
         check("an episode row carries no theme of its own", "theme" not in episode_row
               and "grandparentTheme" not in episode_row, str(episode_row.get("theme")))
@@ -5652,7 +5652,7 @@ def main():
                 spec.pop(key, None)
             else:
                 spec[key] = value
-        sent = {"Accept": "application/json", "X-Plex-Client-Identifier": "simplex-ui-test",
+        sent = {"Accept": "application/json", "X-Plex-Client-Identifier": "rex-ui-test",
                 "X-Plex-Platform": "Chrome"}
         for key, value in (headers or {}).items():
             if value is None:
@@ -5667,7 +5667,7 @@ def main():
     # asserted more than a real PMS refuses, and is SPLIT rather than deleted. What
     # refuses is a path that names nothing playable and an OUT-OF-RANGE `mediaIndex`
     # (`1` on a one-Media row). What does NOT refuse -- 200 on both references, where
-    # simplex answered 400 -- is a missing, non-numeric, negative or empty `mediaIndex`
+    # rex answered 400 -- is a missing, non-numeric, negative or empty `mediaIndex`
     # and any `partIndex` at all. python-plexapi's `getStreamURL` and several TV apps
     # omit `mediaIndex`, so the old behaviour refused them before any profile question.
     refusals = [decide(params)[0] for params in (
@@ -5793,7 +5793,7 @@ def main():
     status_delete, _, _ = request(base, "DELETE", "/downloadQueue/%s" % queue.get("id"))
     _, bare_queue, _ = get(base, "/downloadQueue")
     check("the download queue is created per client and read back",
-          status_q == 200 and queue.get("clientIdentifier") == "simplex-ui-test"
+          status_q == 200 and queue.get("clientIdentifier") == "rex-ui-test"
           and queue.get("status") == "done"
           and (again.get("DownloadQueue") or [{}])[0].get("id") == queue.get("id")
           and status_read == 200 and (read_back.get("DownloadQueue") or [{}])[0].get("id")
@@ -5902,7 +5902,7 @@ def main():
           first_states == ["loading", "queued"], str(first_states))
 
     subject = c5_episode or c5_movie
-    player6 = {"X-Plex-Client-Identifier": "simplex-c6-timeline", "Accept": "application/json",
+    player6 = {"X-Plex-Client-Identifier": "rex-c6-timeline", "Accept": "application/json",
                "X-Plex-Platform": "Chrome"}
 
     def beat6(state, offset, duration):
@@ -6000,7 +6000,7 @@ def main():
         themed = ([k for k in show_row if "heme" in k] + [k for k in season_list if "heme" in k]
                   + [k for k in episode_row if "heme" in k]
                   + [k for r in season_list.get("Metadata") or [] for k in r if "heme" in k])
-        check("nothing advertises a theme simplex cannot serve", not themed, ",".join(themed))
+        check("nothing advertises a theme rex cannot serve", not themed, ",".join(themed))
         images = [(i.get("type"), i.get("url")) for i in episode_row.get("Image") or []]
         check("an episode's coverPoster is its show's poster and its still a snapshot",
               images[:2] == [("coverPoster", episode_row.get("grandparentThumb")),
@@ -6011,7 +6011,7 @@ def main():
         check("a season and an episode offer no background of the show's", arts == [0, 0],
               str(arts))
     else:
-        skip("nothing advertises a theme simplex cannot serve", "no show in this catalog")
+        skip("nothing advertises a theme rex cannot serve", "no show in this catalog")
 
     _, with_playlists, _ = get(base, "/hubs/sections/%s?includeLibraryPlaylists=1" % movie_lib)
     _, without, _ = get(base, "/hubs/sections/%s" % movie_lib)
@@ -6060,7 +6060,7 @@ def main():
     # ------------------------------------------------------------------
     # Cycle 7, second batch: python-plexapi as a third-party client. Scoped sort
     # keys and filters, the title word matcher, /library/all as a query, and the
-    # reads plexapi makes that simplex 404'd. Measured against the reference and
+    # reads plexapi makes that rex 404'd. Measured against the reference and
     # fun; every check fails against the server as it stood before.
     # ------------------------------------------------------------------
     print("\n=== scoped sorts and filters, /library/all, and python-plexapi's reads ===")
@@ -6245,7 +6245,7 @@ def main():
                                   for status, body in candidate_lists),
           str([status for status, _ in candidate_lists]))
 
-    folder = base64.b64encode(("/simplex/%s" % movie_lib).encode()).decode()
+    folder = base64.b64encode(("/rex/%s" % movie_lib).encode()).decode()
     status_off, folders_only, _ = get(base, "/services/browse/%s?includeFiles=0" % folder)
     status_on, with_files, _ = get(base, "/services/browse/%s?includeFiles=1" % folder)
     check("the folder picker needs includeFiles present, and =1 lists the files too",
@@ -6265,7 +6265,7 @@ def main():
         """A JSON read with the container paging the client sends as HEADERS."""
         req = urllib.request.Request(base.rstrip("/") + path, headers={
             "User-Agent": UA, "Accept": "application/json",
-            "X-Plex-Client-Identifier": "simplex-ui-test", "X-Plex-Product": "Plex Web",
+            "X-Plex-Client-Identifier": "rex-ui-test", "X-Plex-Product": "Plex Web",
             "X-Plex-Platform": "Chrome",
             "X-Plex-Container-Start": str(start), "X-Plex-Container-Size": str(size)})
         try:
@@ -6351,7 +6351,7 @@ def main():
                         .get("Directory") or [])
     season_filters = get(base, "/library/sections/%s/filters?type=3" % movie_lib)[1].get("Directory")
     # Cycle 14: the episode list is 17 on kids (1.43.4) and 9 on zen (1.42.2, the
-    # build simplex reports) -- it drops the six codec axes AND `hdr`/`dovi`, which
+    # build rex reports) -- it drops the six codec axes AND `hdr`/`dovi`, which
     # the movie list keeps. The type-keying and the Duplicates rule are unchanged.
     check("/filters is the asked TYPE's list, and includeAdvanced adds Duplicates",
           len(episode_filters) == 9
@@ -6510,7 +6510,7 @@ def main():
     # -- cycle 8, second batch: the XML path and the clients that are not Plex Web -----
     def fetch_as(path, headers, want_json=True):
         """A read with extra request headers, in JSON or (no Accept) in XML."""
-        sent = {"User-Agent": UA, "X-Plex-Client-Identifier": "simplex-ui-test",
+        sent = {"User-Agent": UA, "X-Plex-Client-Identifier": "rex-ui-test",
                 "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"}
         if want_json:
             sent["Accept"] = "application/json"
@@ -6610,7 +6610,7 @@ def main():
     # had none: an On Deck row is the DETAIL row, child element for child element, and it
     # names its library by KEY as well as by UUID. The light projection and the missing
     # key are 1.43.4's answer -- plexscratch's row drops `librarySectionKey`, `Guid`,
-    # `Rating` and `Producer` and stamps `studio` instead -- and simplex reports 1.42.2,
+    # `Rating` and `Producer` and stamps `studio` instead -- and rex reports 1.42.2,
     # so zen is the witness that counts. What is left here is the librarySection pair
     # each path carries; the projection itself is cycle 28's own check further down, and
     # 1.42.2's Continue Watching row cannot be measured at all (zen is read-only and has
@@ -6620,7 +6620,7 @@ def main():
                       if isinstance(v, list)))
               for r in deck8]
     # Cycle 30 corrected both halves on plexscratch42, a writable copy of the version
-    # simplex reports: the row is the detail row MINUS `Field`, and it carries NO
+    # rex reports: the row is the detail row MINUS `Field`, and it carries NO
     # `librarySectionKey` -- on a movie and an episode alike, as plexscratch (1.43.4) and
     # cycle 21's fun also said. zen's one on-deck row is the outlier (HANDOVER 3.3).
     check("On Deck rows are the detail row minus Field, named by UUID and not by key",
@@ -6990,7 +6990,7 @@ def main():
     # save path MERGES tags -- the indexed list first, in INDEX order and deduplicated
     # case-insensitively, then the row's other tags -- and a `tag-` removal there
     # removes only the (double-encoded) names it lists. The item path replaces.
-    # simplex replaced on both paths, in parameter order.
+    # rex replaced on both paths, in parameter order.
     def genres_w1(key):
         return [t.get("tag") for t in (get(base, "/library/metadata/%s" % key)[1]
                                        .get("Metadata") or [{}])[0].get("Genre") or []]
@@ -7015,7 +7015,7 @@ def main():
 
     # Measured on plexscratch: a Sort Title that is not LOCKED does not stick -- a title
     # write, a sort-title write and an unlock all re-derive it from the title, article
-    # stripped -- and only a lock keeps what was typed. simplex stored whatever came.
+    # stripped -- and only a lock keeps what was typed. rex stored whatever came.
     def row_w2(key):
         return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
     title_w2 = row_w2(movie).get("title")
@@ -7035,7 +7035,7 @@ def main():
 
     # Measured on plexscratch: the save path edits only rows of the asked TYPE in ITS
     # library -- a movie id under `type=2`, or on another library's path, is a 200 that
-    # edits nothing -- and a type-scoped filter there is a 400. simplex edited every id
+    # edits nothing -- and a type-scoped filter there is a 400. rex edited every id
     # it had and applied the filter.
     if show and show_section:
         status_type_w3, _, _ = request(base, "PUT", "/library/sections/%s/all?type=2&id=%s"
@@ -7064,7 +7064,7 @@ def main():
     # rolls over, a bare integer is epoch seconds, a trailing time is dropped), and on
     # the section path it sets the year, clearing it removes both, and a date it cannot
     # read is a 500 -- the item path leaves the year alone. A year of 0 is removed and
-    # `+2000` is 2000. simplex stored dates verbatim and never touched the year.
+    # `+2000` is 2000. rex stored dates verbatim and never touched the year.
     def dated_w4():
         row = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
         return row.get("originallyAvailableAt"), row.get("year")
@@ -7101,7 +7101,7 @@ def main():
     # Measured on plexscratch: the section save path STORES a userRating, stamping
     # lastRatedAt (-1 clears both), where the item path discards it; audienceRating and
     # rating are numbers, and an empty one is a 500 on the item path and removed on the
-    # section path. simplex kept the strings and discarded userRating on both paths.
+    # section path. rex kept the strings and discarded userRating on both paths.
     def rated_w5():
         return (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     audience_w5 = rated_w5().get("audienceRating")
@@ -7136,7 +7136,7 @@ def main():
     # Measured on plexscratch: the section path parses a lock as an integer 0 or 1 (`01`
     # locks; `true` and `2` are a 400), `thumb` and the other artwork and identity
     # columns take a lock (`key` does not), and `Field` lists in the metadata table's
-    # column order. simplex unlocked on anything and 400'd `thumb`.
+    # column order. rex unlocked on anything and 400'd `thumb`.
     statuses_w6 = [container(base, "PUT", "/library/sections/%s/all?type=1&id=%s&studio.locked=%s"
                                           % (movie_section, movie, value))[0]
                    for value in ("true", "2")]
@@ -7160,7 +7160,7 @@ def main():
     # Measured on plexscratch: a frame titles a show with its year, a season `<show> S19`
     # and an episode `<show> S19 E09`; a section save pushes every row's state 3 before any
     # state 5, in sort-title order; and renaming a playlist or a collection pushes the
-    # list's own type-15 or type-18 pair. simplex titled rows by their own title,
+    # list's own type-15 or type-18 pair. rex titled rows by their own title,
     # interleaved the batch and pushed nothing for a list.
     def entries_w8(trigger):
         _, frames = notifications(base, trigger, seconds=3)
@@ -7225,7 +7225,7 @@ def main():
     # a season's onto its episodes' parentTitle/parentStudio, a show's onto its seasons'
     # parentTitle/parentStudio and every episode's grandparentTitle, an emptied show title
     # dropping them -- and a season's episode list names a custom season title and carries
-    # the season's summary. simplex copied them once, when the catalog loaded.
+    # the season's summary. rex copied them once, when the catalog loaded.
     if show:
         def row_w7(key):
             return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
@@ -7268,7 +7268,7 @@ def main():
     # Measured on plexscratch: an emptied season title is GENERATED -- `Season N` -- and an
     # episode's is `Episode N`, following a later index edit; every emptied title keeps
     # its old title's sort form; and a playlist sorts without its article from creation,
-    # emptied or not. simplex stored "" and dropped the sort title.
+    # emptied or not. rex stored "" and dropped the sort title.
     if show:
         season_w9 = next((r for r in get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
                           if r.get("type") == "season"), {}).get("ratingKey")
@@ -7315,7 +7315,7 @@ def main():
 
     # Measured on plexscratch: /:/progress stores ANY position past a minute -- even one past
     # the end -- without completing the play or writing history, and a missing or
-    # unparseable `time` is a 500. simplex marked the item watched and answered 200.
+    # unparseable `time` is a 500. rex marked the item watched and answered 200.
     if spare:
         progress_w10d = "/:/progress?key=%s&identifier=com.plexapp.plugins.library" % spare
         request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % spare)
@@ -7338,7 +7338,7 @@ def main():
              "need a second movie")
 
     # Measured on plexscratch: a negative rating other than -1 clears the stars and leaves
-    # a lastRatedAt; -1 clears both from a RATED row. simplex cleared both for any negative
+    # a lastRatedAt; -1 clears both from a RATED row. rex cleared both for any negative
     # rating. Cycle 90, plexscratch42 (1.42.2, tests/fixtures/rating_noop_s42.json): a -1
     # of a row with no stars is no write at all, so after the -5 it KEEPS that lastRatedAt.
     rate_w10e = "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=%%s" % movie
@@ -7361,7 +7361,7 @@ def main():
              cleared_w10e.get("userRating"), cleared_w10e.get("lastRatedAt")))
 
     # Measured on plexscratch: a timeline `time` past the `duration` sent with it, a negative
-    # or unparseable `time` and an unparseable `duration` are each a 400. simplex answered
+    # or unparseable `time` and an unparseable `duration` are each a 400. rex answered
     # 200, and a time past the duration completed the play.
     if spare:
         def timeline_w11a(time_w11a, duration_w11a):
@@ -7380,7 +7380,7 @@ def main():
              "need a second movie")
 
     # Measured on plexscratch: a second completion of the same play answers `ignore` -- it
-    # counts nothing -- where simplex answered `complete` again.
+    # counts nothing -- where rex answered `complete` again.
     if spare:
         def timeline_w11b(time_w11b):
             return ("/:/timeline?ratingKey=%s&key=%s&state=stopped&time=%s&duration=600000"
@@ -7395,7 +7395,7 @@ def main():
         skip("a second completion of the same play answers ignore", "need a second movie")
 
     # Measured on plexscratch: Remove from Continue Watching is a PUT that needs its
-    # ratingKey -- a GET is a 404 and a bare PUT a 400. simplex hid the row on a GET.
+    # ratingKey -- a GET is a 404 and a bare PUT a 400. rex hid the row on a GET.
     get_w11c, _, _ = container(base, "GET", "/actions/removeFromContinueWatching?ratingKey=%s" % movie)
     bare_w11c, _, _ = container(base, "PUT", "/actions/removeFromContinueWatching")
     check("Remove from Continue Watching is a PUT that needs a ratingKey",
@@ -7403,7 +7403,7 @@ def main():
 
     # Measured on plexscratch: a playlist create needs a title, a type and a uri (each a 400
     # when missing), a type outside video/audio/photo is a 500, and audio over a movie is a
-    # 400. simplex created an "Untitled" list of whatever it was sent.
+    # 400. rex created an "Untitled" list of whatever it was sent.
     uri_w12a = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))
     results_w12a = [container(base, "POST", "/playlists?" + spec)
                     for spec in ("type=video&smart=0&uri=%s" % uri_w12a,
@@ -7459,7 +7459,7 @@ def main():
 
     # Measured on plexscratch: deleting an item id a playlist does not hold is a 404 (a
     # ratingKey is not an item id), DELETE on the items clears the list, and a smart
-    # playlist refuses an add or a removal with 400. simplex answered 200 to all of them.
+    # playlist refuses an add or a removal with 400. rex answered 200 to all of them.
     uri_w12b = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))
     _, made_w12b, _ = container(base, "POST", "/playlists?type=video&title=w12b&smart=0&uri=%s" % uri_w12b)
     list_w12b = (made_w12b.get("Metadata") or [{}])[0].get("ratingKey")
@@ -7475,7 +7475,7 @@ def main():
     smart_drop_w12b, _, _ = container(base, "DELETE", "/playlists/%s/items/1" % smart_key_w12b)
     request(base, "DELETE", "/playlists/%s" % list_w12b)
     request(base, "DELETE", "/playlists/%s" % smart_key_w12b)
-    # Cycle 31, measured on plexscratch42 (1.42.2 -- the build simplex reports) against
+    # Cycle 31, measured on plexscratch42 (1.42.2 -- the build rex reports) against
     # plexscratch (1.43.4): a smart list's item ADD is a **200 on 1.42.2** and REPLACES the
     # stored query with the uri given, where 1.43.4 answers 400. The per-item DELETE stays a
     # 400 on both. Cycle 16 measured the pair on the 1.43.4 copy alone.
@@ -7487,7 +7487,7 @@ def main():
 
     # Measured on plexscratch: a playlist move with an `after` the list does not hold -- an
     # unknown id, `abc` -- sends the item to the FRONT, and `after` naming the item itself
-    # changes nothing. simplex appended to the end.
+    # changes nothing. rex appended to the end.
     _, made_w12c, _ = container(base, "POST", "/playlists?type=video&title=w12c&smart=0&uri=%s"
                                               % quote("server://%s/com.plexapp.plugins.library/library/sections/%s"
                                                       "/all?type=1" % (machine, movie_section)))
@@ -7512,7 +7512,7 @@ def main():
 
     # Measured on plexscratch: every state write needs the `identifier` the client always
     # sends -- without it a scrobble, unscrobble, rate or progress is a 400, even for a key
-    # the server does not have -- and a foreign identifier is a 404. simplex accepted both.
+    # the server does not have -- and a foreign identifier is a 404. rex accepted both.
     statuses_w10a = [container(base, "GET", path_w10a % movie)[0] for path_w10a in (
         "/:/scrobble?key=%s", "/:/unscrobble?key=%s", "/:/rate?key=%s&rating=6", "/:/progress?key=%s&time=120000",
         "/:/scrobble?key=%s&identifier=bogus", "/:/rate?key=%s&rating=6&identifier=bogus")]
@@ -7527,7 +7527,7 @@ def main():
 
     # Measured on plexscratch: an EPISODE scrobble adds one to its season's and its show's
     # own viewCount -- every time -- while scrobbling the show itself leaves the show's own
-    # count alone, and unscrobbling the show removes it. simplex did the reverse.
+    # count alone, and unscrobbling the show removes it. rex did the reverse.
     if show:
         def count_w10b(key):
             return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0].get("viewCount")
@@ -7556,7 +7556,7 @@ def main():
 
     # Measured on plexscratch: a show puts ONE row on deck -- removing any of its episodes
     # from Continue Watching hides that row, a timeline on one of them brings it back, and
-    # with the first one watched the next one in progress is the row. simplex listed every
+    # with the first one watched the next one in progress is the row. rex listed every
     # episode with a resume point. WHICH in-progress episode is the one viewed most
     # recently: cycle 9 recorded "the lowest number" on ten-second clips and cycle 14
     # re-measured it on long ones (see `continue_watching`). This check kept cycle 9's
@@ -7614,7 +7614,7 @@ def main():
         skip("a completed play answers complete until a stopped beat closes it, then ignore", "need a second movie")
 
     # Measured on plexscratch: an item takes no POST (edits are PUTs) and /library/all takes
-    # no write -- both are 404s, where simplex answered the detail row and the listing.
+    # no write -- both are 404s, where rex answered the detail row and the listing.
     post_w17a, _, _ = container(base, "POST", "/library/metadata/%s?summary.value=w17a" % movie)
     all_w17a, _, _ = container(base, "PUT", "/library/all?type=1&tagline.value=w17a")
     check("an item takes no POST and /library/all takes no write",
@@ -7623,7 +7623,7 @@ def main():
     # Measured on plexscratch: these edits are each a 200 that changes nothing -- thumb,
     # art, addedAt, guid, lastViewedAt and viewCount values, a movie's duration and index,
     # an episode's parentIndex, a show's network tag and a bare `genre=` -- and an actor
-    # written with a tagRole is stored with `role: ""`. simplex 400'd most and stored two.
+    # written with a tagRole is stored with `role: ""`. rex 400'd most and stored two.
     def row_w17b(key):
         return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
     before_w17b = row_w17b(movie)
@@ -7657,7 +7657,7 @@ def main():
           "%s %s role %s %s" % (statuses_w17b, extra_w17b, role_w17b, roles_w17b))
 
     # Measured on plexscratch: `key=` names the item a play queue starts on -- a queue over
-    # the whole library selects that movie -- where simplex selected the first row.
+    # the whole library selects that movie -- where rex selected the first row.
     listing_w14a = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
     if len(listing_w14a) >= 2:
         last_w14a = str(listing_w14a[-1]["ratingKey"])
@@ -7675,12 +7675,12 @@ def main():
         skip("a play queue starts on the item its key names", "need two movies")
 
     # Measured on plexscratch: a client's new play queue retires its older one -- reading it
-    # is a 404 -- while another client's queue leaves it alone. simplex kept every queue.
+    # is a 404 -- while another client's queue leaves it alone. rex kept every queue.
     uri_w14c = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))
     first_w14c = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % uri_w14c)[1].get("playQueueID")
     other_w14c = urllib.request.Request(base.rstrip("/") + "/playQueues?type=video&own=1&uri=%s" % uri_w14c,
                                         method="POST", headers={"User-Agent": UA, "Accept": "application/json",
-                                                                "X-Plex-Client-Identifier": "simplex-w14c-other",
+                                                                "X-Plex-Client-Identifier": "rex-w14c-other",
                                                                 "X-Plex-Platform": "Chrome"})
     with urllib.request.urlopen(other_w14c, timeout=30) as response_w14c:
         other_status_w14c = response_w14c.status
@@ -7694,7 +7694,7 @@ def main():
           % (other_status_w14c, survives_w14c, retired_w14c, current_w14c))
 
     # Measured on plexscratch: `PUT /playQueues/{id}?playlistID=` adds that playlist's items;
-    # simplex stepped the version and added nothing.
+    # rex stepped the version and added nothing.
     _, list_w14d, _ = container(base, "POST", "/playlists?type=video&title=w14d&smart=0&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)))
     list_key_w14d = (list_w14d.get("Metadata") or [{}])[0].get("ratingKey")
     list_size_w14d = len(get(base, "/playlists/%s/items" % list_key_w14d)[1].get("Metadata") or [])
@@ -7708,7 +7708,7 @@ def main():
           "%d row(s) after adding a %d-item playlist" % (len(added_w14d.get("Metadata") or []), list_size_w14d))
 
     # Measured on plexscratch: DELETE on a play queue's items clears it down to the selected
-    # item; simplex answered 404.
+    # item; rex answered 404.
     made_w14e = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)))[1]
     cleared_status_w14e, cleared_w14e, _ = container(base, "DELETE", "/playQueues/%s/items" % made_w14e.get("playQueueID"))
     check("DELETE on a play queue's items keeps only the selected item",
@@ -7719,7 +7719,7 @@ def main():
 
     # Measured on plexscratch: deleting a play queue's selected item answers the queue as it
     # stood -- the old selection and version, no rows -- and the next read has the selection
-    # on the following item. simplex left the selection on the deleted id.
+    # on the following item. rex left the selection on the deleted id.
     made_w14f = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)))[1]
     ids_w14f = [r.get("playQueueItemID") for r in made_w14f.get("Metadata") or []]
     if len(ids_w14f) >= 2:
@@ -7738,7 +7738,7 @@ def main():
         skip("deleting the selected queue item answers the old header and moves the selection on", "need two movies")
 
     # Measured on plexscratch: a play queue move with an `after` the queue does not hold --
-    # `0`, an unknown id -- goes to the front; simplex answered 404.
+    # `0`, an unknown id -- goes to the front; rex answered 404.
     made_w14g = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)))[1]
     ids_w14g = [r.get("playQueueItemID") for r in made_w14g.get("Metadata") or []]
     if len(ids_w14g) >= 3:
@@ -7756,7 +7756,7 @@ def main():
         skip("a play queue move after nothing it holds goes to the front", "need three movies")
 
     # Measured on plexscratch: a windowed queue read's `includeBefore`/`includeAfter` choose
-    # the sides, and the selected item comes back only when both are on. simplex ignored both.
+    # the sides, and the selected item comes back only when both are on. rex ignored both.
     made_w14h = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)))[1]
     ids_w14h = [r.get("playQueueItemID") for r in made_w14h.get("Metadata") or []]
     if len(ids_w14h) >= 3:
@@ -7773,7 +7773,7 @@ def main():
         skip("a windowed queue read honours includeBefore and includeAfter", "need three movies")
 
     # Measured on plexscratch: a play queue uri naming ANOTHER server builds an empty queue
-    # that echoes the uri verbatim; simplex resolved it against its own library.
+    # that echoes the uri verbatim; rex resolved it against its own library.
     foreign_w14i = ("server://0123456789abcdef0123456789abcdef01234567/com.plexapp.plugins.library"
                     "/library/metadata/%s" % movie)
     status_w14i, made_w14i, _ = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % quote(foreign_w14i))
@@ -7783,7 +7783,7 @@ def main():
           "HTTP %s size %s source %r" % (status_w14i, made_w14i.get("size"), made_w14i.get("playQueueSourceURI")))
 
     # Measured on plexscratch: a collection create needs a title and a sectionId -- each
-    # missing one is a 400 -- where simplex made an "Untitled" collection anyway.
+    # missing one is a 400 -- where rex made an "Untitled" collection anyway.
     results_w13a = [container(base, "POST", "/library/collections?" + spec)
                     for spec in ("type=1&sectionId=%s&uri=%s" % (movie_section, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))),
                                  "type=1&title=w13a&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie)))]
@@ -7794,7 +7794,7 @@ def main():
           [r[0] for r in results_w13a] == [400, 400], str([r[0] for r in results_w13a]))
 
     # Measured on plexscratch: a collection over a show holds the SHOW (subtype show, one
-    # child) and one over a season holds the season; simplex expanded both into episodes.
+    # child) and one over a season holds the season; rex expanded both into episodes.
     if show and show_section:
         season_w13f = next((r for r in get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
                             if r.get("type") == "season"), {}).get("ratingKey")
@@ -7816,7 +7816,7 @@ def main():
 
     # Measured on plexscratch: a collection add with no uri, an unknown key, or a row of
     # another type (an episode into a movie collection) is a 400, and so is any add to a
-    # smart collection. simplex added whatever the uri named.
+    # smart collection. rex added whatever the uri named.
     _, doc_w13b, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s&title=w13b&uri=%s"
                                              % (movie_section, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))))
     key_w13b = (doc_w13b.get("Metadata") or [{}])[0].get("ratingKey")
@@ -7849,7 +7849,7 @@ def main():
     # Measured on plexscratch: a collection's children come back by RELEASE DATE unless a
     # custom order is set; a move starts from that order, answers the collection row and
     # switches the collection to custom (collectionSort 2), and collectionSort 0 goes back
-    # to release date. simplex listed insertion order and answered the move with nothing.
+    # to release date. rex listed insertion order and answered the move with nothing.
     listing_w13c = (get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or [])[:3]
     if len(listing_w13c) == 3:
         keys_w13c = [str(r["ratingKey"]) for r in listing_w13c]
@@ -7892,7 +7892,7 @@ def main():
              "need three movies")
 
     # Measured on plexscratch: a collection takes a Label like any item, and the section save
-    # with type=18 edits the collection its id names. simplex ignored both.
+    # with type=18 edits the collection its id names. rex ignored both.
     _, doc_w13d, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s&title=w13d&uri=%s"
                                              % (movie_section, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))))
     key_w13d = (doc_w13d.get("Metadata") or [{}])[0].get("ratingKey")
@@ -7905,7 +7905,7 @@ def main():
           "labels %s summary %r" % ([t.get("tag") for t in row_w13d.get("Label") or []], row_w13d.get("summary")))
 
     # Measured on plexscratch: renaming a collection leaves its members' Collection tag as
-    # it was. simplex renamed the tag with the collection. Cycle 88 B3, re-measured with this
+    # it was. rex renamed the tag with the collection. Cycle 88 B3, re-measured with this
     # exact sequence on plexscratch42 (1.42.2) and plexscratch (1.43.4) alike: the delete
     # untags by the CURRENT title, so `W13e` stays on the member (the old "still untags
     # them" was wrong on both); the item edit takes it off.
@@ -7936,7 +7936,7 @@ def main():
         return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
     # Measured on plexscratch: a full library edit APPLIES its language and prefs[...] -- they
     # read back on the section and in its settings -- and runs a scan: one
-    # library.update.section activity and a status naming the section. simplex renamed the
+    # library.update.section activity and a status naming the section. rex renamed the
     # library and dropped the rest.
     section_w15a = next((d for d in get(base, "/library/sections")[1].get("Directory") or []
                          if str(d.get("key")) == str(movie_section)), {})
@@ -7971,7 +7971,7 @@ def main():
     def timelines_w15(frames):
         return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
     # Measured on plexscratch: /library/sections/all/refresh scans EVERY library -- a status
-    # naming each -- and a scan is one library.update.section activity. simplex 404'd the
+    # naming each -- and a scan is one library.update.section activity. rex 404'd the
     # path, and scanned by starting a metadata activity per row.
     titles_w15b = [d.get("title") for d in get(base, "/library/sections")[1].get("Directory") or []]
     holder_w15b = []
@@ -7985,7 +7985,7 @@ def main():
           "HTTP %s, statuses %s, kinds %s" % (holder_w15b, statuses_w15(frames_w15b)[:4], sorted(kinds_w15b)))
 
     # Measured on plexscratch: a movie's written setting shows on its row, as a show's does;
-    # simplex stored it and never showed it.
+    # rex stored it and never showed it.
     #
     # Cycle 36: the row this ran against has been UNMATCHED three thousand lines above,
     # and an unmatched movie's `Preferences` block is EMPTY -- so every prefs write to it
@@ -8012,7 +8012,7 @@ def main():
               "%r then %r" % (shown_w15c, cleared_w15c))
 
     # Measured on plexscratch: a library create applies its prefs[...] and answers a bare
-    # container; simplex dropped the prefs and sent the library container's extras.
+    # container; rex dropped the prefs and sent the library container's extras.
     status_w15d, body_w15d, _ = request(base, "POST", "/library/sections?name=W15d&type=show"
                                                       "&agent=tv.plex.agents.series&scanner=%s&language=en-US"
                                                       "&location=%s&prefs%%5BflattenSeasons%%5D=1"
@@ -8040,7 +8040,7 @@ def main():
     def timelines_w15(frames):
         return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
     # Measured on plexscratch: analyzing a movie library pushes, for every movie, a state-5
-    # frame with mediaState analyzing, one with thumbnailing, and a plain state 5. simplex
+    # frame with mediaState analyzing, one with thumbnailing, and a plain state 5. rex
     # pushed nothing.
     movies_w15f = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
     holder_w15f = []
@@ -8057,7 +8057,7 @@ def main():
     # Cycle 49, measured on zen (1.42.2) and kids (1.43.4): `/servers` is the list of
     # servers this one has discovered, and its OWN row carries its own interface address
     # and the port it really listens on -- zen `192.168.88.244`/32400, kids
-    # `172.31.7.2`/32400, neither one loopback. simplex answered `127.0.0.1` and the
+    # `172.31.7.2`/32400, neither one loopback. rex answered `127.0.0.1` and the
     # CONSTANT 32400 whatever port it was on, because `private_address` was declared and
     # never assigned. A companion client reads this list to find the server.
     port_c49a = int(base.rsplit(":", 1)[1].split("/")[0])
@@ -8083,7 +8083,7 @@ def main():
 
     # Cycle 49: `privateAddress` and `privatePort` move TOGETHER. zen carries both and
     # kids -- whose plex.tv mapping holds no local connection -- carries `""` and **0**.
-    # simplex was the only server of the four that answered a port beside an empty
+    # rex was the only server of the four that answered a port beside an empty
     # address, because the port was the literal 32400.
     _, raw_c49b, _ = request(base, "GET", "/myplex/account")
     my_c49b = json.loads(raw_c49b).get("MyPlex") or {}
@@ -8115,10 +8115,10 @@ def main():
     # Cycle 49: two more values on the same blob that no reference emits. `livetv` is a
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
-    # the unclaimed pair, never 0. simplex answered 0 for both.
+    # the unclaimed pair, never 0. rex answered 0 for both.
     # Cycle 49, measured on plexscratch42 (1.42.2): a `mood[0].tag.tag=` write to a MOVIE
     # is a 200 that stores NOTHING, where the `style` and `similar` beside it really
-    # store. simplex stored it and then carried a `Mood` element no real PMS emits on a
+    # store. rex stored it and then carried a `Mood` element no real PMS emits on a
     # movie into every projection that reads the row -- which is also why `Mood` has no
     # slot in `xmlout._CHILD_ORDER`: its position there is unmeasurable.
     status_c49s, _, _ = request(base, "PUT", "/library/metadata/%s?type=1&id=%s"
@@ -8136,11 +8136,11 @@ def main():
           == ["C49Style"],
           "%r" % ((row_c49s2.get("Metadata") or [{}])[0]).get("Style"))
 
-    # Cycle 49 REFUTED the premise behind simplex's deliberate deletion of an emptied
+    # Cycle 49 REFUTED the premise behind rex's deliberate deletion of an emptied
     # collection. The old comment said a real PMS keeps the empty row but "also leaves
-    # the stale tag on the item", a state simplex could not represent. Measured on
+    # the stale tag on the item", a state rex could not represent. Measured on
     # plexscratch42 (1.42.2): it does BOTH the representable things -- the collection
-    # item stays alive and the tag comes off the item -- so simplex was deleting a row a
+    # item stays alive and the tag comes off the item -- so rex was deleting a row a
     # real PMS keeps, and a client saw a collection vanish out of its Collections pivot
     # when an item was edited.
     machine_c49r = get(base, "/identity")[1].get("machineIdentifier", "")
@@ -8167,11 +8167,11 @@ def main():
 
     # Cycle 49, measured on both writable copies: a request carrying a device name or a
     # platform and NO client identifier writes them onto the ANONYMOUS device row, the one
-    # with `clientIdentifier=""`. simplex recorded them only for an identified client, so
+    # with `clientIdentifier=""`. rex recorded them only for an identified client, so
     # that row stayed nameless whatever a client sent. This is the same write that
     # corrupted BOTH references during this programme: a NUMERIC `X-Plex-Platform` stores
     # as a number there and makes `/devices` and `/statistics/bandwidth` a 500 (see
-    # HANDOVER 9). simplex stores the string and does not reproduce the crash.
+    # HANDOVER 9). rex stores the string and does not reproduce the crash.
     request(base, "GET", "/identity")   # make sure the anonymous row exists
     import urllib.request as _u49q
     req_c49q = _u49q.Request(base + "/identity", headers={
@@ -8304,7 +8304,7 @@ def main():
     # MADE to carry the whole tag family at once -- a row shape no reference library holds,
     # which is why cycle 23's 2,994-path child-order sweep could not see any of this.
     # Three findings: a LIGHT row carries none of `Label`, `Style`, `Similar` or `Mood`
-    # (simplex passed all four through, `Label` text-only and the rest with their full
+    # (rex passed all four through, `Label` text-only and the rest with their full
     # `id`/`filter`); `Style` sits AFTER `Country` on a detail row, not before `Genre`;
     # and `/status/sessions`, which has a serialiser of its own, applied its alphabetical
     # string-id rule to ten tag names and missed those three.
@@ -8361,7 +8361,7 @@ def main():
 
     # Cycle 49, the dual-format census: two differences XML cannot see. A
     # `/system/agents` `Language`'s `default` is the JSON BOOLEAN `true` on all four
-    # references and simplex sent the string `"1"` -- it survived because
+    # references and rex sent the string `"1"` -- it survived because
     # `agent_languages.json` is read out of the XML, which writes `default="1"` either
     # way. And `/myplex/account`'s root is `MyPlex`, which `to_xml` treated as a container
     # and sorted alphabetically while the JSON writer kept the reference's own order: the
@@ -8399,7 +8399,7 @@ def main():
     # library list -- the section rows keyed by their full path, without `allowSync`,
     # `filters` and `refreshing`, ending in a `/channels/all` "Channels" row -- and
     # `/manage` is the same 302 into the web client that `/web` answers, byte for byte.
-    # simplex answered the dispatcher's empty `content="plugins"` container to both.
+    # rex answered the dispatcher's empty `content="plugins"` container to both.
     # (The dispatcher's PREFIX listing beside them -- `/dev` naming `devices`, `/me`
     # naming media's children -- is measured and recorded in docs/findings.md rather
     # than built: reproducing it needs PMS's own route registry.)
@@ -8600,7 +8600,7 @@ def main():
     # Cycle 50, 56 language tags on one row against kids and zen (identical on all 20 that
     # differ): the language-list enums carry their names in the REQUEST's language, and an
     # explicit `X-Plex-Language: en` -- which is exactly what Plex Web sends -- is NOT the
-    # no-header document. simplex short-circuited English in `_send_container` and
+    # no-header document. rex short-circuited English in `_send_container` and
     # `translations.json` carries no `en` entry for these enums because English is the
     # source, so every English user's Advanced/Edit language picker read `català,
     # Čeština, Dansk...` where a real server reads `Catalan, Czech, Danish...`. The
@@ -8670,13 +8670,13 @@ def main():
           [p.get("types") for p in prov_c50d.get("MediaProvider") or []] == ["video,audio,photo"],
           "%s" % [p.get("types") for p in prov_c50d.get("MediaProvider") or []])
 
-    # Cycle 50, from the matched-catalog byte diff -- a simplex catalog built to MIRROR
+    # Cycle 50, from the matched-catalog byte diff -- a rex catalog built to MIRROR
     # kids' library exactly, so the two servers could be compared byte for byte instead of
     # shape-wise. Five findings: the image transcoder also transcodes the server's OWN
-    # bundled assets (and simplex uses exactly those as its placeholder `thumb`, so every
+    # bundled assets (and rex uses exactly those as its placeholder `thumb`, so every
     # placeholder tile it asked for through the transcoder was a 500); three of `/`'s 25
-    # Directory rows carry `count="3"` where simplex's own comment said "the count is 1 on
-    # every one"; a MOVIE's `/allLeaves` is the movie view pair and simplex answered the
+    # Directory rows carry `count="3"` where rex's own comment said "the count is 1 on
+    # every one"; a MOVIE's `/allLeaves` is the movie view pair and rex answered the
     # SEASON one, the same inversion as the founding Seasons bug; a show library's
     # `director`, `writer` and `producer` axes are built from the EPISODES (a show row
     # carries no such tag, which is why `/actor` was the one that worked); and
@@ -8746,14 +8746,14 @@ def main():
     else:
         skip("...and a row with children carries the subset's own filter in its key", "no shows")
 
-    # Cycle 50, driving the official Plex Web client end to end against simplex: Settings
+    # Cycle 50, driving the official Plex Web client end to end against rex: Settings
     # -> Status -> **Conversions** renders "The conversion queue is unavailable." The
     # client's own `initializeConversionView` waits on four requests and needs three of
-    # them, and simplex answered none of the three: `/playQueues?type=42` was a 400 where
+    # them, and rex answered none of the three: `/playQueues?type=42` was a 400 where
     # all three references answer a one-row container, `/playlists?type=42` was empty
     # where they answer the "Background Processing List", and `/playQueues/1` was a 404
-    # where it is permanently that queue. simplex also handed id 1 to the first USER
-    # queue. This is cycle 6's rule from the other side: simplex advertises
+    # where it is permanently that queue. rex also handed id 1 to the first USER
+    # queue. This is cycle 6's rule from the other side: rex advertises
     # `backgroundProcessing=true` on `/` and refused everything behind it. The
     # `clientIdentifier` is the same constant on zen, kids and plexscratch42 -- PMS's own,
     # not the install's -- and it is carried in the list's guid too.
@@ -8995,7 +8995,7 @@ def main():
     # Cycle 49, 16 framing cells and 13 header spellings on plexscratch42 (1.42.2) and
     # plexscratch (1.43.4): a real PMS really dechunks a `Transfer-Encoding: chunked`
     # request body, including on a write -- a chunked subtitle upload lands a sidecar
-    # byte-identical to the `Content-Length` form's. simplex ignored the header, so the
+    # byte-identical to the `Content-Length` form's. rex ignored the header, so the
     # upload was its empty-body 406 and the chunk framing went into the next request.
     # The size token parses like `strtol` in base 16 and NOTHING may follow it: a chunk
     # EXTENSION, which HTTP allows, is a 400 on both references.
@@ -9155,7 +9155,7 @@ def main():
 
     # Cycle 49, four refusal shapes on kids and zen, both identical: only the image
     # transcoder's 200 belongs to the image header family. Its 400s and 404s order the
-    # length before the type, like every other refusal on the surface, where simplex sent
+    # length before the type, like every other refusal on the surface, where rex sent
     # the image order to them too and put the connection pair in front of both.
     import socket as _s49k
     _h49k, _, _p49k = base.split("//", 1)[1].partition(":")
@@ -9205,7 +9205,7 @@ def main():
     # ROUTER writes; the ones written BELOW it were never swept. The rule they show is
     # that a refusal of the request's ENVELOPE closes the connection and a refusal of its
     # MEANING keeps it -- which is why cycle 30's "the one refusal that closes" was never
-    # an exception. simplex broke it in seven cells, and one of them is not a connection
+    # an exception. rex broke it in seven cells, and one of them is not a connection
     # state at all: it answered 200 to an `obs-fold` continuation both references refuse,
     # because Python's reader unfolds it before the handler can see it.
     import socket as _s49j
@@ -9272,7 +9272,7 @@ def main():
     # Cycle 49, 20 target forms and 15 pipeline spellings on kids (1.43.4) and zen
     # (1.42.2), both references identical: a real PMS accepts the ABSOLUTE FORM -- what a
     # client sends through an explicit HTTP proxy -- and routes it, discarding the
-    # authority; simplex read the scheme as a path segment and 404'd every one. And the
+    # authority; rex read the scheme as a path segment and 404'd every one. And the
     # `X-Plex-Http-Pipeline` opt-out cycle 45 measured as a header works as a QUERY
     # parameter too, with the header's own grammar and the header winning when both are
     # sent -- the same family as `X-Plex-Platform` and `X-Plex-Language`.
@@ -9347,10 +9347,10 @@ def main():
     # Cycle 49, from raw sockets on kids (1.43.4), zen (1.42.2) and plexscratch42: the
     # CONNECTION layer, which no cycle had swept. A real PMS answers a GET carrying a
     # declared body without waiting (cycle 37's half) and THEN consumes exactly
-    # `Content-Length` bytes, so two requests on one socket get two answers; simplex left
+    # `Content-Length` bytes, so two requests on one socket get two answers; rex left
     # the bytes in the stream and the client was handed a refusal belonging to nothing it
     # sent. When the body never comes a real PMS closes. A header block ended by EOF
-    # rather than by a blank line is answered with NOTHING -- simplex ran it, and a
+    # rather than by a blank line is answered with NOTHING -- rex ran it, and a
     # query-only write really committed. And the incomplete-request cap is ABSOLUTE from
     # the first byte, where Python's socket timeout is per-read: fifty clients dribbling a
     # byte every two seconds held fifty threads where a real PMS dropped all fifty.
@@ -9488,7 +9488,7 @@ def main():
     # parameter orders: with `includeAdvanced=1` the row IS there, and it is the one
     # Filter row on this path that keeps `advanced="1"` -- cycle 16's "a Filter carries
     # no advanced here" holds for every OTHER row. Cycle 23 read the absence of the FLAG
-    # as the absence of the ROW, so simplex stripped it from the descriptor the Edit
+    # as the absence of the ROW, so rex stripped it from the descriptor the Edit
     # Library dialog reads.
     def secdet_c49g(spec_c49g):
         _, body_c49g, _ = request(base, "GET", "/library/sections/%s?%s"
@@ -9543,7 +9543,7 @@ def main():
     def timelines_w15(frames):
         return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
     # Measured on plexscratch: cleaning bundles runs a general.bundle.clean activity and
-    # deleting a library a library.delete one, each started, six updates, ended. simplex
+    # deleting a library a library.delete one, each started, six updates, ended. rex
     # pushed nothing for either.
     def run_w15g(trigger, kind):
         _, frames = notifications(base, trigger, seconds=3)
@@ -9560,7 +9560,7 @@ def main():
           "%s / %s" % (bundles_w15g, deleted_w15g))
 
     # Measured on plexscratch: a merge with no ids is a 400, an unknown id a 404, and a movie
-    # into a show a 400. simplex answered 200 to all three and moved the movie into the show.
+    # into a show a 400. rex answered 200 to all three and moved the movie into the show.
     unknown_w16a, _, _ = container(base, "PUT", "/library/metadata/%s/merge?ids=999999" % movie)
     bare_w16a, _, _ = container(base, "PUT", "/library/metadata/%s/merge" % movie)
     cross_w16a = container(base, "PUT", "/library/metadata/%s/merge?ids=%s" % (show, movie))[0] if show else 400
@@ -9580,7 +9580,7 @@ def main():
         return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
     # Measured on plexscratch: a merge frames the absorbed row deleted and the survivor as
     # type -1 (state 3 then 5); a split frames the new row created (0, 0, 1) and the source
-    # refreshed (3, 5). simplex pushed nothing for either.
+    # refreshed (3, 5). rex pushed nothing for either.
     listing_w16b = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
     if len(listing_w16b) >= 3:
         keep_w16b, absorb_w16b = str(listing_w16b[1]["ratingKey"]), str(listing_w16b[2]["ratingKey"])
@@ -9611,7 +9611,7 @@ def main():
         return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
     # Measured on plexscratch: unmatching an episode gives it `local://<id>` and the generated
     # `Episode N`, keeps its Guids and pushes matching then done; a season becomes `Season
-    # N` on `local://<id>`. simplex used the filename, a none:// guid and dropped the Guids.
+    # N` on `local://<id>`. rex used the filename, a none:// guid and dropped the Guids.
     if show:
         season_w16c = next((r for r in get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
                             if r.get("type") == "season"), {}).get("ratingKey")
@@ -9644,13 +9644,13 @@ def main():
     # Measured on both servers: a video's and a subtitle's displayTitle carries the codec only
     # for Plex Web and the twelve other products named in mediainfo.CODEC_TITLE_PRODUCTS, in
     # the X-Plex-Product header or the query alike; any other product gets the plain title,
-    # and the extended title is the same for everyone. simplex sent every client the plain one.
+    # and the extended title is the same for everyone. rex sent every client the plain one.
     episodes_c10a = (get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []
                      if show_section else [])
     if episodes_c10a:
         def titles_c10a(product, query=""):
             headers_c10a = {"User-Agent": UA, "Accept": "application/json", "X-Plex-Platform": "Chrome",
-                            "X-Plex-Client-Identifier": "simplex-ui-test"}
+                            "X-Plex-Client-Identifier": "rex-ui-test"}
             if product:
                 headers_c10a["X-Plex-Product"] = product
             url_c10a = base.rstrip("/") + "/library/metadata/%s%s" % (episodes_c10a[0]["ratingKey"], query)
@@ -9677,7 +9677,7 @@ def main():
     # A catalog built before cycle 10's media rules still loads right: the resolution label and
     # aspect ratio are recomputed from the Media's own size, a stored `profile: 0` / `level: -99`
     # is dropped, and the titles are composed after those fields are corrected (the rules are
-    # in tests/test_mediainfo.py). simplex served a stored 1920x800 row as 720 / 2.4 / 0 / -99.
+    # in tests/test_mediainfo.py). rex served a stored 1920x800 row as 720 / 2.4 / 0 / -99.
     media_c10b = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
                   .get("Media") or [{}])[0]
     video_c10b = next((s for p in media_c10b.get("Part") or [] for s in p.get("Stream") or []
@@ -9697,7 +9697,7 @@ def main():
     # Measured on both servers: a library's extras are a section leaf -- `/extras` names its one
     # `all` view, `/extras/all` lists the library's clips (none here) in the library's container,
     # anything deeper is a 404 -- and `/hubs/sections/{id}/extras` is an empty hub list; an
-    # item's `/extras/{n}` is a 404. simplex 404'd the first three and answered the last.
+    # item's `/extras/{n}` is a 404. rex 404'd the first three and answered the last.
     titles_c10c = {str(d.get("key")): d.get("title") for d in get(base, "/library/sections")[1].get("Directory") or []}
     status_c10c, extras_c10c, _ = get(base, "/library/sections/%s/extras" % movie_section)
     status_all_c10c, all_c10c, _ = get(base, "/library/sections/%s/extras/all" % movie_section)
@@ -9720,7 +9720,7 @@ def main():
 
     # Measured on plexscratch: a settings save pushes one `preference` frame per written id,
     # in ASCII order of the id, whether or not the value changed -- and FriendlyName is the
-    # server's name everywhere, with an empty one falling back to the host name. simplex
+    # server's name everywhere, with an empty one falling back to the host name. rex
     # stored the values, pushed nothing, and kept its old name on /, /media/providers and
     # /servers.
     def prefs_c10d(query):
@@ -9752,7 +9752,7 @@ def main():
              empty_c10d, value_c10d))
 
     # Measured on plexscratch: track selection is a POST as well as a PUT -- the same
-    # endpoint, the same 200 -- where simplex 404'd the POST.
+    # endpoint, the same 200 -- where rex 404'd the POST.
     row_c10e = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     part_c10e = ((row_c10e.get("Media") or [{}])[0].get("Part") or [{}])[0]
     audio_c10e = next((s.get("id") for s in part_c10e.get("Stream") or []
@@ -9773,7 +9773,7 @@ def main():
     # Measured on plexscratch: a butler task run answers an EMPTY body and pushes one
     # `butler` activity around the task's own frames, ending with its message; `POST
     # /butler` and `DELETE /butler` are empty too, and `DELETE /butler/{Task}` -- which
-    # simplex answered 200 -- is a 404. simplex answered the task LIST to the first three
+    # rex answered 200 -- is a 404. rex answered the task LIST to the first three
     # and pushed no frames at all, so Settings > Scheduled Tasks showed nothing running.
     _, frames_c10f = notifications(base, lambda: request(base, "POST", "/butler/BackupDatabase"),
                                    seconds=4)
@@ -9806,7 +9806,7 @@ def main():
     # Measured on plexscratch: the Edit-smart-list Save is `PUT {list}/items?uri=<listing>`,
     # which REPLACES the stored query and answers the list ROW -- for a playlist and a
     # collection alike -- while an ITEM uri and no uri stay 400s and `DELETE` on a smart
-    # playlist's items is a 400. simplex refused every uri on a smart list, so Save showed
+    # playlist's items is a 400. rex refused every uri on a smart list, so Save showed
     # "There was a problem updating this item.", and cleared a smart playlist on a DELETE.
     machine_c10g = get(base, "/identity")[1].get("machineIdentifier")
     def uri_c10g(query):
@@ -9857,10 +9857,10 @@ def main():
     # with the image as the body, and it answers an EMPTY 200 -- the uploaded image becomes an
     # `upload://` candidate, selected, the row's thumb and art both re-version, and one state-5
     # frame is pushed. Picking a candidate (`PUT .../poster?url=`) answers a NEW versioned path
-    # and stores THAT, never the url itself. simplex answered the candidate list to the upload
+    # and stores THAT, never the url itself. rex answered the candidate list to the upload
     # and stored nothing, and wrote the raw url into `thumb` -- so a client set the tile's src
     # to `upload://posters/...`. A playlist's and a collection's artwork list live under
-    # /library/metadata/{ratingKey} too, which simplex 404'd.
+    # /library/metadata/{ratingKey} too, which rex 404'd.
     def row_c10h():
         return (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     def posters_c10h():
@@ -9918,7 +9918,7 @@ def main():
     # with a name is a 200 that just renames and refreshes, and matching to a guid ANOTHER
     # row in the library already carries MERGES this row into that one -- this row is deleted,
     # the survivor keeps both Media, and the frames are the merge's followed by the survivor's
-    # refresh. Every match ends its activity. simplex accepted a nameless match, refused an
+    # refresh. Every match ends its activity. rex accepted a nameless match, refused an
     # empty guid, left two rows with one guid, and started a `Matching` activity that never
     # ended -- one per match, for the life of the process.
     spare_c10i = spare if spare and spare != movie else None
@@ -9965,7 +9965,7 @@ def main():
 
     # Measured on plexscratch: a scan's `updated` frames carry a Context naming the library,
     # and a SHOW library steps per SEASON ("Scanning <show>/Season 02", subtitle
-    # "<show> - Season 02") where a movie library steps per movie. simplex sent no Context
+    # "<show> - Season 02") where a movie library steps per movie. rex sent no Context
     # and stepped a show library by show.
     if show_section:
         _, frames_c10j = notifications(
@@ -9994,7 +9994,7 @@ def main():
     # the show's own refresh sequence, then each SEASON (state 5 `processing`, 4 `loading`)
     # and each EPISODE inside it (5 `processing`, 4 `loading` twice, 5), the episodes again
     # with `mediaState` analyzing then thumbnailing, and the activity stepping per season --
-    # and ends with the show at state 5. simplex stored the value and pushed nothing, so a
+    # and ends with the show at state 5. rex stored the value and pushed nothing, so a
     # re-ordering made in one client was invisible in every other until a reload.
     if show:
         _, frames_c10k = notifications(
@@ -10032,7 +10032,7 @@ def main():
     # position under 90% of the duration THAT BEAT carries. A cold item beaten once at 95%
     # records nothing (five climbing beats from 95% to 99% record nothing either), another
     # client's earlier position does not enable it, and neither does a stored `/:/progress`
-    # offset. simplex completed on the position alone, so dragging the scrubber to the end,
+    # offset. rex completed on the position alone, so dragging the scrubber to the end,
     # or a second client joining near the end, silently marked the item watched.
     def beat_c10l(key, position, duration, session, state="playing"):
         path = ("/:/timeline?ratingKey=%s&key=%s&state=%s&hasMDE=1&time=%s"
@@ -10082,7 +10082,7 @@ def main():
 
     # Measured on plexscratch: a beat with NO `duration` stores nothing and completes nothing,
     # and answers the offset the item already has; `duration=0` is a 200 that stores nothing,
-    # where an empty one and a `time` past the duration stay 400s. simplex fell back to the
+    # where an empty one and a `time` past the duration stay 400s. rex fell back to the
     # item's own duration -- so a player that omits it drove the whole watched-state machine --
     # and 400'd `duration=0`.
     bare_c10m = [r["ratingKey"] for r in
@@ -10133,7 +10133,7 @@ def main():
 
     # Measured on plexscratch: a session driven from a play queue carries `playQueueItemID`
     # and `playQueueID` on every `playing` frame -- the Now Playing panel and companion
-    # clients tie the frame to the queue item they hold. simplex sent neither.
+    # clients tie the frame to the queue item they hold. rex sent neither.
     machine_c10n = get(base, "/identity")[1].get("machineIdentifier")
     queue_c10n = container(base, "POST", "/playQueues?type=video&uri=%s&X-Plex-Client-Identifier=c10n"
                            % urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
@@ -10156,7 +10156,7 @@ def main():
           "queue %s item %s, frame %s" % (id_c10n, item_c10n, playing_c10n[0] if playing_c10n else None))
 
     # Measured on plexscratch: a /status/sessions row does NOT carry `Guid` or `Image`, which
-    # the item's own detail row does, and its `Player` carries a `profile`. simplex copied the
+    # the item's own detail row does, and its `Player` carries a `profile`. rex copied the
     # detail row wholesale and sent no profile.
     span_c10o = int((get(base, "/library/metadata/%s" % movie)[1]
                      .get("Metadata") or [{}])[0].get("duration") or 0)
@@ -10177,7 +10177,7 @@ def main():
     # Measured on both reference servers: /statistics/media takes `accountID` and `deviceID`
     # like /statistics/bandwidth does -- an id neither has answers `size 0` with no Device and
     # no Account row, the account that played keeps its rows, and an empty or non-numeric
-    # `accountID` is a 400. simplex answered the whole server to every one of them.
+    # `accountID` is a 400. rex answered the whole server to every one of them.
     span_c10p = int((get(base, "/library/metadata/%s" % movie)[1]
                      .get("Metadata") or [{}])[0].get("duration") or 0)
     for state_c10p, position_c10p in (("playing", 300000), ("stopped", 400000)):
@@ -10213,7 +10213,7 @@ def main():
     # Measured on kids (1.43.4) and zen (1.42.2): `?limit=N` caps a listing's rows.
     # `limit=0` answers ONE row, a negative one every row, and `limit=abc` is a 500 --
     # and it is a property of the QUERY grammar, so /newest and /children ignore it.
-    # simplex read `limit` only in /query/parse, so every capped list was the whole
+    # rex read `limit` only in /query/parse, so every capped list was the whole
     # section: a smart list saved with a limit previewed as if it had none.
     def rows_c11a(path):
         status, body, _ = get(base, path)
@@ -10245,7 +10245,7 @@ def main():
     # Measured on kids (1.43.4) and zen (1.42.2), identically on both: a section
     # listing answers 500 to a `type=` it cannot parse and 200-with-no-rows to a
     # number it does not know, and /library/all answers 400 to the same values while
-    # keeping 500 for an empty one. simplex answered the whole grid to all of them,
+    # keeping 500 for an empty one. rex answered the whole grid to all of them,
     # so a client that sent a malformed type read the library as if it had matched.
     def status_c11b(path):
         return request(base, "GET", path)[0]
@@ -10273,7 +10273,7 @@ def main():
     # Measured on kids (1.43.4) and zen (1.42.2): `excludeElements=Media` drops the
     # Media children and substitutes `mediaCount` on EVERY listing, including the
     # three cycles 9 and 10 added -- the section's allLeaves, /library/people/{id}/media
-    # and /hubs/items. simplex applied it to the grid and to child lists only, so a
+    # and /hubs/items. rex applied it to the grid and to child lists only, so a
     # client asking for the cheap list to lay a page out got the expensive one and no
     # count to draw the badge from.
     def excl_c11c(path):
@@ -10306,7 +10306,7 @@ def main():
 
     # Measured on kids (1.43.4) and zen (1.42.2): a section's `allLeaves` is a full
     # query surface like `/all` -- `type=`, the filters, `sort=` and `limit=` all
-    # apply, an unknown sort key and an unparseable type are 500s. simplex answered
+    # apply, an unknown sort key and an unparseable type are 500s. rex answered
     # its whole leaf list to every one of them.
     # Stated as "allLeaves answers the same query the grid answers" rather than against a
     # hand-computed order: on a movie library the two are over the same rows, and by this
@@ -10344,7 +10344,7 @@ def main():
     # like `=`/`!=` -- cycle 11 measured them against a value that was not one, where
     # they really do match nothing, and recorded that as the whole rule. A value that
     # is not a number sorts above every id: `id=abc` matches
-    # nothing and `id!=abc` everything. simplex reported it as an unknown field, so
+    # nothing and `id!=abc` everything. rex reported it as an unknown field, so
     # python-plexapi's editions() (`guid=<x>&id!=<self>`) called every item its own
     # duplicate.
     def ids_c11e(query_c11e):
@@ -10409,7 +10409,7 @@ def main():
     # Re-measured on kids (1.43.4) and zen (1.42.2), correcting cycle 9's reading:
     # `viewGroup`/`viewMode` on /library/people/{id}/media belong to an ACTOR's list
     # (tagType 6) only -- a Director, Writer or Producer list carries neither -- and
-    # the list is a QUERY, so the library filters narrow it. simplex sent the actor
+    # the list is a QUERY, so the library filters narrow it. rex sent the actor
     # container for every tag type and answered every row to every filter.
     # Scanned across the whole section rather than off one row: by this point the suite
     # has replaced that row's tag lists, and a check that skips is a check that never runs.
@@ -10449,7 +10449,7 @@ def main():
     # Measured on kids (1.43.4) and zen (1.42.2): a statistics container pages its
     # SERIES only. Device and Account are a lookup for the rows on the page -- the
     # answer carries exactly the ones its rows name -- so a window past the end
-    # carries neither. simplex sliced all three lists with the same offset, so the
+    # carries neither. rex sliced all three lists with the same offset, so the
     # second page of a Dashboard graph named a device it had not sent.
     span_c11g = int((get(base, "/library/metadata/%s" % movie)[1]
                      .get("Metadata") or [{}])[0].get("duration") or 0)
@@ -10463,7 +10463,7 @@ def main():
         url_c11g = base.rstrip("/") + "/statistics/media"
         req_c11g = urllib.request.Request(url_c11g, headers=dict({
             "User-Agent": UA, "Accept": "application/json",
-            "X-Plex-Client-Identifier": "simplex-ui-test", "X-Plex-Product": "Plex Web",
+            "X-Plex-Client-Identifier": "rex-ui-test", "X-Plex-Product": "Plex Web",
             "X-Plex-Platform": "Chrome"}, **(headers_c11g or {})))
         with urllib.request.urlopen(req_c11g, timeout=30) as response_c11g:
             body_c11g = json.loads(response_c11g.read()).get("MediaContainer", {})
@@ -10487,7 +10487,7 @@ def main():
 
     # Measured on kids (1.43.4) and zen (1.42.2): every statistics endpoint refuses a
     # `timespan` that is not a whole number with 400 -- `abc`, `1.5`, an empty value,
-    # a leading space -- and answers 200 to `0`, `-1` and `06`. simplex ran an
+    # a leading space -- and answers 200 to `0`, `-1` and `06`. rex ran an
     # unguarded int() on it: a 500 on two endpoints, and an ignored parameter on the
     # third.
     spans_c11h = {}
@@ -10508,7 +10508,7 @@ def main():
     # Measured on kids (1.43.4) and zen (1.42.2): `includeStorage=1` adds
     # `durationTotal` and `storageTotal` to a section grid row, at the library's own
     # top-level type only -- a show's are the sums over its episodes -- and nowhere
-    # else (allLeaves, /library/all, /newest, a detail read carry neither). simplex
+    # else (allLeaves, /library/all, /newest, a detail read carry neither). rex
     # sent neither, so the library's storage column was empty although the row
     # already carries both numbers.
     def storage_c11i(path):
@@ -10516,7 +10516,7 @@ def main():
         rows_c11i = body.get("Metadata") or []
         # Cycle 27: both are JSON STRINGS on a real PMS -- `"10031"` on kids and
         # `"1440171"`/`"573936917"` on zen -- where this check was written against
-        # simplex's integers. The value is compared as a number, with the type asserted
+        # rex's integers. The value is compared as a number, with the type asserted
         # by the cycle-27 check that measured it; comparing the raw strings here would
         # make this check duplicate that one and fail for the wrong reason.
         return status, [(None if r.get("durationTotal") is None else int(r["durationTotal"]),
@@ -10554,7 +10554,7 @@ def main():
     # Measured on kids (1.43.4) and zen (1.42.2), identical on both across every
     # readable row: a SINGLE history read is a nine-attribute row -- no `key`, no
     # `ratingKey`, no artwork -- with `viewType` 1, and an episode adds
-    # grandparentTitle, index and parentIndex. simplex answered its stored listing
+    # grandparentTitle, index and parentIndex. rex answered its stored listing
     # row, which advertises links this endpoint does not have.
     span_c11j = int((get(base, "/library/metadata/%s" % movie)[1]
                      .get("Metadata") or [{}])[0].get("duration") or 0)
@@ -10591,13 +10591,13 @@ def main():
     # Re-measured on kids (1.43.4) and zen (1.42.2): a real PMS gzips every
     # compressible body whenever the client offers gzip, even when compressing makes
     # it LARGER (83 bytes in, 90 out), and sends it plain only for
-    # `Accept-Encoding: identity`. simplex had an 860-byte floor and a "only if it
+    # `Accept-Encoding: identity`. rex had an 860-byte floor and a "only if it
     # shrinks" test, both inferred rather than measured, so seventeen endpoints
     # answered plain and without the length pair.
     def encoded_c11k(path, encoding_c11k="gzip"):
         req_c11k = urllib.request.Request(base.rstrip("/") + path, headers={
             "User-Agent": UA, "Accept": "application/json", "Accept-Encoding": encoding_c11k,
-            "X-Plex-Client-Identifier": "simplex-ui-test", "X-Plex-Product": "Plex Web",
+            "X-Plex-Client-Identifier": "rex-ui-test", "X-Plex-Product": "Plex Web",
             "X-Plex-Platform": "Chrome"})
         with urllib.request.urlopen(req_c11k, timeout=30) as response_c11k:
             raw_c11k = response_c11k.read()
@@ -10618,7 +10618,7 @@ def main():
     # Re-measured on a writable copy of the reference: a plain "Add to Queue" lands
     # immediately after the current item, in front of the queue's original members,
     # and a second one stacks behind the first -- [A,B,C] + D = [A,D,B,C], + E =
-    # [A,D,E,B,C]. simplex skipped forward while the item id was above the selected
+    # [A,D,E,B,C]. rex skipped forward while the item id was above the selected
     # id, which every original member also satisfies, so it appended to the very end
     # and Add to Queue from a grid put the row at the bottom of the queue.
     def queue_rows_c11l(body_c11l):
@@ -10669,7 +10669,7 @@ def main():
     # with the file as the body answers 200 and an EMPTY body, and leaves a new
     # subtitle Stream that becomes the selected one. No title, and a title with no
     # extension, are 500s; a format it does not take is a 400; an empty body is a 406.
-    # simplex fell through to the subtitle SEARCH branch and answered 400 to all of
+    # rex fell through to the subtitle SEARCH branch and answered 400 to all of
     # them, so the modal always said "Unable to upload subtitle file".
     def upload_c11m(query_c11m, body_c11m=b"1\n00:00:00,000 --> 00:00:02,000\nc11\n\n"):
         return request(base, "POST", "/library/metadata/%s/subtitles%s" % (movie, query_c11m),
@@ -10707,7 +10707,7 @@ def main():
 
     # Cycle 73, measured on plexscratch42 and zen in 43 languages: the `External` in the
     # codec suffix Plex Web's plain title gets is the client's word, as in the extended
-    # title -- `Unbekannt (SRT Extern)`. simplex localised the extended title only.
+    # title -- `Unbekannt (SRT Extern)`. rex localised the extended title only.
     localised_c73a = {}
     for lang_c73a in ("de", "ja", "sr"):
         row_c73a = (get(base, "/library/metadata/%s?X-Plex-Language=%s" % (movie, lang_c73a))[1]
@@ -10733,7 +10733,7 @@ def main():
     # 200 with an empty body (and stores nothing -- the title is unchanged after it),
     # a DELETE of an embedded track is 403 because it is part of the file, and a DELETE
     # of an uploaded sidecar really removes it (200). An unknown id keeps cycle 6's
-    # refusals: PUT 400, DELETE 404, GET 404. simplex answered 501 to every verb.
+    # refusals: PUT 400, DELETE 404, GET 404. rex answered 501 to every verb.
     row_c11n = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     streams_c11n = [s_c11n for m_c11n in (row_c11n.get("Media") or [])
                     for p_c11n in (m_c11n.get("Part") or []) for s_c11n in (p_c11n.get("Stream") or [])]
@@ -10771,7 +10771,7 @@ def main():
     # Measured on a writable copy of the reference: a playlist's items and a
     # collection's children are the LIGHT grid row -- no Guid, no Rating, no Field, no
     # Stream under the Part, tags text-only -- while the same item's detail read is
-    # full. simplex sent the detail row on both, the two list endpoints the grid
+    # full. rex sent the detail row on both, the two list endpoints the grid
     # projection was never applied to.
     def weight_c11o(row_c11o):
         parts_c11o = [p_c11o for m_c11o in (row_c11o.get("Media") or [])
@@ -10809,7 +10809,7 @@ def main():
     # Measured on kids (1.43.4) and zen (1.42.2) against a real library: a LIGHT row
     # carries at most 2 Genre, 2 Writer, 2 Country and 3 Role -- the first of the detail
     # row's own order -- where the detail row carries them all (155 roles on one zen
-    # movie, 3 on every listing of it). simplex sent the whole list on every grid, hub
+    # movie, 3 on every listing of it). rex sent the whole list on every grid, hub
     # and search row. Invisible on a five-clip library, which is why eleven cycles
     # missed it.
     def tags_c12a(path_c12a, key_c12a=None):
@@ -10836,7 +10836,7 @@ def main():
 
 
     # Measured on kids (1.43.4) and zen (1.42.2): an episode's `parentGuid` is the
-    # SEASON's guid, not the show's. simplex copied the season's own `parentGuid` (the
+    # SEASON's guid, not the show's. rex copied the season's own `parentGuid` (the
     # show), so every episode of a show shared one parent guid and a client keying
     # per-season state off it could not tell the seasons apart.
     episodes_c12b = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
@@ -10866,7 +10866,7 @@ def main():
 
 
     # Measured on kids (1.43.4) and zen (1.42.2): the section grid answers
-    # `allowSync: true`. simplex answered false on the grid while already answering
+    # `allowSync: true`. rex answered false on the grid while already answering
     # true on /newest, /recentlyAdded, /onDeck, /folder, /children and a detail row --
     # the most-requested container on the surface, and an attribute python-plexapi
     # reads off every section listing.
@@ -10884,7 +10884,7 @@ def main():
 
 
     # Measured on kids (1.43.4) and zen (1.42.2): with no `limit`, /hubs/search caps
-    # each hub at 3 rows and /library/search answers 10 results in all. simplex
+    # each hub at 3 rows and /library/search answers 10 results in all. rex
     # defaulted both to 30, so the type-ahead path and every non-web client got a page
     # many times the size a real PMS sends. The query has to overflow a hub or the
     # fixture cannot tell 3 from 30 -- 'ha' matches four of its actors by word prefix.
@@ -10918,7 +10918,7 @@ def main():
 
 
     # Measured on kids (1.43.4) and zen (1.42.2): an actor tag row in search is
-    # `tagType: 6` and a director row 4. simplex sent 4 for both, while
+    # `tagType: 6` and a director row 4. rex sent 4 for both, while
     # /library/people/{id} already answered 6 for the same person -- the server
     # contradicted itself.
     def tag_rows_c12e(path_c12e):
@@ -11036,7 +11036,7 @@ def main():
 
 
     # Measured on kids (1.43.4) and zen (1.42.2): `group=type`, `group=guid` and
-    # `group=id` all answer 200 where simplex answered 500. Exercised against all 27
+    # `group=id` all answer 200 where rex answered 500. Exercised against all 27
     # candidate fields -- the other 24 agree, including the 11 that are 500 everywhere.
     # `id` became a filter field in cycle 11 and was still not a group field.
     groups_c12f = {field_c12f: request(base, "GET", "/library/sections/%s/all?group=%s"
@@ -11053,7 +11053,7 @@ def main():
 
     # Measured across all 26 secondary axes on kids (1.43.4) and zen (1.42.2): every
     # axis carries `content: "secondary"` except `actor`, which carries `viewGroup`
-    # without it. simplex sent it there too. No rule explains the exception and both
+    # without it. rex sent it there too. No rule explains the exception and both
     # servers agree on it, so it is emulated as measured.
     axes_c12h = {axis_c12h: get(base, "/library/sections/%s/%s" % (movie_section, axis_c12h))[1]
                  for axis_c12h in ("actor", "genre", "director", "writer", "year", "collection")}
@@ -11069,7 +11069,7 @@ def main():
     # EPISODE's title IS compared by /common (several differently titled episodes list
     # `title` in mixedFields, a single one sends its title) where a SEASON's is not, and
     # `titleSort` is "" only when it is genuinely mixed -- a single row answers its own
-    # sort title. simplex dropped `title` for both and hardcoded `titleSort` to "", so
+    # sort title. rex dropped `title` for both and hardcoded `titleSort` to "", so
     # the Edit dialog opened with the Title and Sort Title boxes blank on an episode.
     def common_c12g(query_c12g):
         status_c12g, body_c12g, _ = get(base, "/library/sections/%s/common?%s"
@@ -11130,7 +11130,7 @@ def main():
     # `agent`, not a `name` and not a `scanner`. The client's library-upgrade handler
     # sends `agent` and `scanner` and nothing else; `agent` alone is a 200 too, while
     # `name` alone, `scanner` alone, `language` alone and an empty form are 400.
-    # simplex demanded `name`, so the upgrade form was refused every time.
+    # rex demanded `name`, so the upgrade form was refused every time.
     forms_c12j = {
         "agent+scanner": "?agent=tv.plex.agents.movie&scanner=Plex%20Movie",
         "agent only": "?agent=tv.plex.agents.movie",
@@ -11159,7 +11159,7 @@ def main():
 
 
     # Re-measured on the copy: `psb` is accepted alongside srt/ass/ssa/smi/txt, and the
-    # format check is CASE-SENSITIVE -- `SRT` is a 400 where `srt` is a 200. simplex
+    # format check is CASE-SENSITIVE -- `SRT` is a 400 where `srt` is a 200. rex
     # lowercased the value and so accepted uploads a real PMS refuses, and refused psb.
     def upload_c12k(query_c12k):
         return request(base, "POST", "/library/metadata/%s/subtitles%s" % (movie, query_c12k),
@@ -11183,7 +11183,7 @@ def main():
 
     # Measured on the copy: `DELETE /library/streams/abc` is a 400 (a malformed id)
     # where `DELETE /library/streams/999999` is a 404 (a missing one), and a POST to a
-    # stream the server HAS is a 404 rather than the 501 its GET answers. simplex made
+    # stream the server HAS is a 404 rather than the 501 its GET answers. rex made
     # a malformed id indistinguishable from a missing one.
     row_c12l = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     stream_c12l = next((s_c12l.get("id") for m_c12l in (row_c12l.get("Media") or [])
@@ -11203,7 +11203,7 @@ def main():
 
 
     # Measured on the copy: a `server://` uri naming ANOTHER machine adds nothing, and
-    # an add that adds nothing leaves `playQueueVersion` exactly where it was. simplex
+    # an add that adds nothing leaves `playQueueVersion` exactly where it was. rex
     # read the ratingKey out of any uri and added the item, and stepped the version on
     # every no-op -- and the client DISCARDS a queue response whose version it does not
     # expect, so a no-op add invalidated the queue the player was holding.
@@ -11235,7 +11235,7 @@ def main():
 
     # Measured on the copy, frame for frame: `PUT /library/optimize` runs a
     # `general.db.optimize` activity -- started 0 with an empty subtitle, updated at
-    # 0/10/40/60 with `Optimizing Database`, ended 100. simplex answered 200 and pushed
+    # 0/10/40/60 with `Optimizing Database`, ended 100. rex answered 200 and pushed
     # nothing, so the Settings progress bar never moved.
     _, optimize_c12n = notifications(base, lambda: request(base, "PUT", "/library/optimize"),
                                      seconds=6)
@@ -11255,7 +11255,7 @@ def main():
     # Measured on the copy: a refresh's frames are timeline(3 queued), activity started
     # -1, activity updated 49, timeline(3 processing), timeline(4 loading), activity
     # ended 100, timeline(5) -- the order this file's own docstring already recorded.
-    # simplex emitted the `updated` inside finish_activity, after `loading`. And the
+    # rex emitted the `updated` inside finish_activity, after `loading`. And the
     # activity's subtitle is the row's `title (year)`, not the bare title.
     _, refresh_frames_c12o = notifications(
         base, lambda: request(base, "PUT", "/library/metadata/%s/refresh" % movie), seconds=8)
@@ -11283,7 +11283,7 @@ def main():
     # `provider.subscriptions.process` activities -- outer started, section ended,
     # completion status, inner started, inner ended, outer ended -- and "Refresh All
     # Metadata" (`?force=1`) runs that whole sequence before it refreshes anything.
-    # simplex pushed neither, so the Libraries page showed no scan for the one
+    # rex pushed neither, so the Libraries page showed no scan for the one
     # operation that takes longest.
     def scan_frames_c12p(path_c12p):
         _, frames_c12p = notifications(base, lambda: request(base, "GET", path_c12p), seconds=8)
@@ -11351,7 +11351,7 @@ def main():
     # so the show's shows through as `parentYear`, and its `thumb` falls back to the
     # SHOW's. kids corroborates the season half from the other side: its season 11 is
     # unmatched and carries the show's thumb, no year and `parentYear: 2002`, where
-    # its matched season 7 carries its own thumb and year. simplex edited the one row,
+    # its matched season 7 carries its own thumb and year. rex edited the one row,
     # which left matched episodes under an unmatched parent -- a state a real PMS
     # cannot produce, and one where the client's `local://` menu predicate disagrees
     # with itself between the season page and the episodes listed on it.
@@ -11399,7 +11399,7 @@ def main():
     # userRating, contentRating, year, originallyAvailableAt, viewCount, viewOffset,
     # lastViewedAt, mediaHeight and mediaBitrate, and on a show library at type 2, 3
     # and 4: a row with NO value for the sort key sorts BELOW every row that has one
-    # -- first ascending, last descending. simplex keyed on `(value is None, value)`,
+    # -- first ascending, last descending. rex keyed on `(value is None, value)`,
     # which puts it above instead. Twelve of the fifteen sorts a section advertises
     # default to `desc`, so Rating, Plays, Date Viewed, Critic Rating and the rest all
     # opened the grid on the rows with no value at all.
@@ -11432,7 +11432,7 @@ def main():
     # than one" -- 44 shows and 74 seasons on zen, and three sampled `duplicate=1` shows
     # each had a multi-Media episode where three `duplicate=0` shows had none. kids holds
     # no multi-Media item at all, so it answers 0 and is consistent rather than
-    # contradicting. simplex returned 0 for every row, so the Duplicates control that
+    # contradicting. rex returned 0 for every row, so the Duplicates control that
     # `includeAdvanced=1` puts in the filter bar was advertised and permanently empty.
     if not show_section:
         skip("the Duplicates filter selects the rows with more than one version",
@@ -11474,7 +11474,7 @@ def main():
     # And `contentRating=None`, in that exact spelling, is a synonym for the empty value
     # (2864 on zen, 3 on kids) where `none` and `NONE` match nothing; no other field has
     # such a synonym. The codec axes disagree between the two servers (kids 0, zen every
-    # row), so they are a version difference and are left alone. simplex applied the
+    # row), so they are a version difference and are left alone. rex applied the
     # valueless-row rule to all of them, so a bare `genre=` selected the whole library
     # and `studio=` selected only the rows that had none.
     def sized_c13e(query_c13e):
@@ -11532,7 +11532,7 @@ def main():
     # `type=` completely: the same list comes back for every value including `abc`, on a
     # movie library and a show library alike. And `firstCharacter` IS scoped by the type,
     # its counts following it (zen's show library: 13/40 shows at type=2, 13/64 seasons at
-    # type=3, 185/207 episodes at type=4, empty at type=1). simplex answered 200 to every
+    # type=3, 185/207 episodes at type=4, empty at type=1). rex answered 200 to every
     # axis whatever the type said, scoped `resolution` by type, and read firstCharacter off
     # the whole section.
     codes_c13f = {}
@@ -11565,7 +11565,7 @@ def main():
     # filter fields on a show listing -- `viewedOrInProgressLeafCount=0` is 499 of 507
     # and `=1` is 4, `viewedLeafCount>>0` is exactly the 8 shows with a watched episode,
     # and `unviewedLeafCount>>0` is 505 -- while `leafCount` and `childCount` are NOT
-    # (both answer the whole library, which simplex already matched). simplex answered
+    # (both answer the whole library, which rex already matched). rex answered
     # the same rows to `=0` and `=1`, i.e. it read all five as unknown fields. The first
     # of them is the key of a real PMS's own "Start Watching" shelf.
     if not show_section:
@@ -11604,14 +11604,14 @@ def main():
                   % (every_c13g, key_c13g, shows_c13g("viewedLeafCount%3E%3E=0"),
                      shows_c13g("viewedOrInProgressLeafCount=0"), shows_c13g("leafCount%3E%3E=0")))
 
-        # Measured on zen (1.42.2 -- the build simplex reports), against a 3887-movie and
+        # Measured on zen (1.42.2 -- the build rex reports), against a 3887-movie and
     # 507-show library: with no `count=` every library shelf carries at most SIX rows and
     # sets `more: true` -- movie.recentlyreleased, movie.recentlyadded, movie.topunwatched,
     # tv.recentlyaired, tv.startwatching and tv.toprated are all size 6, more true -- and
     # `/hubs` does the same (home.television.recent size 6, more true). `?count=3`,
     # `?count=12` and `?count=20` are honoured exactly, so six is the DEFAULT, not a
     # ceiling; the related shelf caps at six too (`movie.similar` size 6, more true).
-    # simplex used 12, a number no reference has ever answered. kids cannot witness it
+    # rex used 12, a number no reference has ever answered. kids cannot witness it
     # either way: with five movies and one show, no shelf there can reach even six, which
     # is how the recorded "up to 12" survived twelve cycles unmeasured.
     if not show_section:
@@ -11637,13 +11637,13 @@ def main():
                   "%s | count=1 %s | count=3 %s | count=8 %s"
                   % (shelves_c13h, counted_c13h[1], counted_c13h[3], counted_c13h[8]))
 
-        # Measured on zen (1.42.2 -- simplex's own reported build): a movie library's
+        # Measured on zen (1.42.2 -- rex's own reported build): a movie library's
     # Recommended tab carries `movie.topunwatched` between the genre shelf and Recently
     # Watched, and a show library carries `tv.startwatching` after Recently Added and
     # `tv.toprated` after Rediscover. Each is `style: shelf`, `random: true`, and each
     # key is the listing its "see all" opens. kids (1.43.4) emits none of the three
     # although it HAS qualifying rows -- all three keys answer `size 1` there -- so this
-    # is a version difference and zen is the witness that matters. simplex built six
+    # is a version difference and zen is the witness that matters. rex built six
     # shelves where 1.42.2 builds eight.
     shelves_c13i = {h_c13i.get("hubIdentifier"): h_c13i for h_c13i in
                     get(base, "/hubs/sections/%s" % movie_section)[1].get("Hub") or []}
@@ -11677,7 +11677,7 @@ def main():
         # Re-measured on kids (1.43.4) and zen (1.42.2) across four queries that match
     # nothing at all (`nomatchatall`, `xyzzyplugh`, `qwertyuiopzz`, `1234567890zz`):
     # both servers answer the seventeen hubs in ONE order, and it is not the order
-    # simplex used. `movie` is FIFTH, not first, and `collection` is FOURTEENTH,
+    # rex used. `movie` is FIFTH, not first, and `collection` is FOURTEENTH,
     # between genre and playlist, not seventh. (A query with fuzzy hits promotes the
     # hubs that scored -- which is why this has to be measured on a query that matches
     # nothing. Cycle 41 recovered and implemented that promotion separately below.)
@@ -11713,10 +11713,10 @@ def main():
     # eleven movie rows all reasoned on the actor, and across ten zen queries 53 of 81
     # item rows carried a `reason` -- most search hits on a real library are tag hits.
     # `/library/search` does NOT carry them (kids `colin` is two Directory rows and
-    # nothing else, zen `spielberg` five), so this is the hubs endpoint alone. simplex
+    # nothing else, zen `spielberg` five), so this is the hubs endpoint alone. rex
     # matched titles only, so searching an actor, a director or a genre drew the tag row
     # with an empty Movies shelf beside it -- and its `reason` code could never fire.
-    # One WORD of a director's name, because simplex's tag matcher is a word-prefix
+    # One WORD of a director's name, because rex's tag matcher is a word-prefix
     # matcher and a two-word needle never begins a single word.
     person_c13k = next((t_c13k.get("tag") for t_c13k in
                         (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
@@ -11748,7 +11748,7 @@ def main():
     # `audienceRating` carries `audienceRatingImage` and a `Rating` element too -- 60 of
     # 60 One Piece episodes and 3 of 3 kids episodes, with no exception, and the three
     # kids episodes with no rating carry none of the three. A SEASON never carries any of
-    # them (0 of 12 sampled across both servers). simplex built `Rating` and
+    # them (0 of 12 sampled across both servers). rex built `Rating` and
     # `audienceRatingImage` for a show and a movie only, so its own episode rows
     # contradicted its own movie rows, and the rating badge was missing from every
     # episode page and every episode row of a listing.
@@ -11780,7 +11780,7 @@ def main():
     # Productions" on all six of Firefly's, "Toei Animation" on One Piece's, "20th
     # Century Fox Television" on The Simpsons'. Nothing else carries it: the episode's
     # own detail row, the season's `/children` and the SECTION's `allLeaves` all answer
-    # no studio on both servers. simplex sent none anywhere.
+    # no studio on both servers. rex sent none anywhere.
     if not show:
         skip("a show's allLeaves gives every episode the show's studio", "need a show")
     else:
@@ -11812,7 +11812,7 @@ def main():
     # movie row never carries it. And it is on that endpoint ALONE: swept across
     # /library/sections/{id}/recentlyAdded, /newest, /hubs/home/recentlyAdded,
     # /hubs/sections/{id}, /hubs/promoted, a type=3 listing, /children and /library/onDeck,
-    # every other season row on both servers carries none. simplex never sent it anywhere.
+    # every other season row on both servers carries none. rex never sent it anywhere.
     rows_c13n = get(base, "/library/recentlyAdded")[1].get("Metadata") or []
     seasons_c13n = [r_c13n for r_c13n in rows_c13n if r_c13n.get("type") == "season"]
     movies_c13n = [r_c13n for r_c13n in rows_c13n if r_c13n.get("type") == "movie"]
@@ -11839,7 +11839,7 @@ def main():
                  [("parentSummary" in r_c13n) for r_c13n in movies_c13n],
                  [("parentSummary" in r_c13n) for r_c13n in elsewhere_c13n]))
 
-        # Measured on zen (1.42.2 -- the build simplex reports): `/hubs/promoted` answers a
+        # Measured on zen (1.42.2 -- the build rex reports): `/hubs/promoted` answers a
     # DIFFERENT third shelf when the client sends `pinnedContentDirectoryID` beside
     # `contentDirectoryID`. Bare, it is `movie.recentlyadded.1` / "Recently Added in Zen
     # Movies", keyed on the section listing; with the parameter it is
@@ -11849,7 +11849,7 @@ def main():
     # ignores the parameter entirely, so this is a version difference and zen is the
     # witness. The web client does send it -- its Promoted fetch builds
     # `{contentDirectoryID, pinnedContentDirectoryID, includeMeta, excludeFields}` --
-    # and simplex answered the bare shape to both, so a pinned library's Home row was
+    # and rex answered the bare shape to both, so a pinned library's Home row was
     # titled and keyed as the unpinned one.
     def promoted_c13o(section_c13o, pinned_c13o):
         path_c13o = "/hubs/promoted?contentDirectoryID=%s" % section_c13o
@@ -11891,7 +11891,7 @@ def main():
     else:
         def paged_c13p(start_c13p, size_c13p):
             # The paging parameters go in the query here: a real PMS reads them from the
-            # headers, and simplex normalises both spellings into the same place.
+            # headers, and rex normalises both spellings into the same place.
             _, body_c13p, _ = get(base, "/library/metadata/%s/children"
                                         "?X-Plex-Container-Start=%s&X-Plex-Container-Size=%s"
                                         % (show, start_c13p, size_c13p))
@@ -11923,7 +11923,7 @@ def main():
     # that still has one), `titleSort` removed where there was one, the thumb re-versioned
     # and every `Image.alt` following the new title. The two things the cascade does that
     # this does not -- `parentGuid` moving to `local://` and `parentThumb` going null --
-    # are consequences of the SEASON changing, not of the episode write. simplex changed
+    # are consequences of the SEASON changing, not of the episode write. rex changed
     # the guid and the title and left the rest, so an unmatched episode kept the agent's
     # summary, rating and cast under a `local://` guid: a state a real PMS cannot produce.
     if not show:
@@ -11973,7 +11973,7 @@ def main():
     # `tv.plex.agents.none://<id>`, each episode's `parentGuid` follows its season, and the
     # artwork goes with them -- the show's `art`, the seasons' `thumb`/`art`/`parentThumb`,
     # the episodes' `art`/`parentThumb`/`grandparentThumb`/`grandparentArt` all removed.
-    # The inherited `contentRating` goes from every descendant as well. simplex edited the
+    # The inherited `contentRating` goes from every descendant as well. rex edited the
     # show row and stopped, leaving matched seasons and episodes under an unmatched show,
     # which is the state the client's own Match/Fix Match predicate reads per row.
     if not show:
@@ -12010,7 +12010,7 @@ def main():
 
         # Re-measured on the copy: after `PUT /library/metadata/{movie}/unmatch` the server's
     # `/activities` is EMPTY -- the whole refresh sequence runs and ends (12 frames for a
-    # one-Media row, 18 for a two-Media one). simplex opened an `Unmatching` activity at
+    # one-Media row, 18 for a two-Media one). rex opened an `Unmatching` activity at
     # progress 0 and never ended it, so it was still listed minutes later: the Dashboard
     # spinner then turns for the life of the process, which is the exact failure
     # docs/findings.md names for an activity that never ends. Cycle 9 fixed this for a
@@ -12033,7 +12033,7 @@ def main():
         # Re-measured on the copy: `PUT /library/metadata/{season}?index.value=5` moves the
     # season from 1 to 5 AND rewrites every episode's `parentIndex` to 5 -- on the detail
     # row and in the season's `/children` alike. It is the same rule cycle 9 measured for
-    # a parent's `title` and `studio`, which simplex already copies; `index` was missed,
+    # a parent's `title` and `studio`, which rex already copies; `index` was missed,
     # so an episode kept pointing at a season number that no longer existed and any client
     # grouping by `parentIndex` drew an empty season.
     if not show:
@@ -12066,12 +12066,12 @@ def main():
         # Measured on a writable copy: editing a SHOW's `contentRating` moves it on the
     # episodes beneath it -- the write side of the rule kids and zen show from the read
     # side, where every episode of a show carries the show's certificate and no season
-    # carries one. simplex derived it once, when the catalog loaded, so a show edited
+    # carries one. rex derived it once, when the catalog loaded, so a show edited
     # afterwards left its episodes showing the old certificate, and a show whose rating was
     # cleared left them showing one it no longer had.
     #
     # The copy distinguishes an episode's OWN agent rating from an inherited one and moves
-    # only the inherited ones; simplex's catalog has one column for both, so it moves all
+    # only the inherited ones; rex's catalog has one column for both, so it moves all
     # of them. That divergence is named here rather than guessed around.
     if not show or not show_section:
         skip("a show's content rating follows onto its episodes when it is edited",
@@ -12102,7 +12102,7 @@ def main():
     # combining marks BEFORE stripping the article. Measured on zen over 5,294 rows
     # -- all 21 accented rows carry the folded form and all 90 leading-space rows
     # carry the trimmed one, with no counterexample, which is what makes it the
-    # server's derivation and not agent metadata. simplex stripped the article only,
+    # server's derivation and not agent metadata. rex stripped the article only,
     # so an accented row sorted under its raw title and sent no titleSort at all.
     orig_c14a = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
                  .get("title") or "Movie")
@@ -12196,11 +12196,11 @@ def main():
 
     # Cycle 14: `/filters` is the list the server's OWN VERSION advertises. kids
     # (1.43.4) answers 28 for a movie library, 17 at type=4 and 6 at type=10; zen
-    # (1.42.2 -- the build simplex reports) answers 22, 9 and 5, and the difference
+    # (1.42.2 -- the build rex reports) answers 22, 9 and 5, and the difference
     # is exactly the media-codec axes: `hdr10plus`, `atmos`, `videoCodec`,
     # `audioCodec`, `subtitleCodec`, `audioLayout` everywhere, plus `hdr` and `dovi`
     # on the EPISODE list, which keeps them on the movie list. Types 2, 3, 8, 9, 13
-    # and 20 are identical on both, and so is the advanced Duplicates row. simplex
+    # and 20 are identical on both, and so is the advanced Duplicates row. rex
     # shipped kids' lists, so its filter bar offered a 1.42.2 client six axes that
     # build's own libraries do not have.
     codec_c14d = {"hdr10plus", "atmos", "videoCodec", "audioCodec", "subtitleCodec",
@@ -12216,7 +12216,7 @@ def main():
     show_c14d = filt_c14d("?type=2")
     ten_c14d = filt_c14d("?type=10")
     adv_c14d = filt_c14d("?includeAdvanced=1")
-    check("/filters advertises the 1.42.2 lists simplex's version reports",
+    check("/filters advertises the 1.42.2 lists rex's version reports",
           len(movie_c14d) == 22 and len(ep_c14d) == 9 and len(show_c14d) == 15
           and len(ten_c14d) == 5 and len(adv_c14d) == 23
           and not codec_c14d & set(movie_c14d) and not codec_c14d & set(ep_c14d)
@@ -12262,7 +12262,7 @@ def main():
     # picked before the sort -- so the same SET comes back under every sort and only
     # the order changes. Measured on kids (group=type answers the lowest-addedAt row,
     # not the lowest ratingKey, under three different sorts) and on zen (the minimum
-    # addedAt in 88/88 year groups and 3450/3450 title groups). simplex kept the first
+    # addedAt in 88/88 year groups and 3450/3450 title groups). rex kept the first
     # row the sort produced, so changing the sort changed which rows the grid showed.
     def grouped_c14f(spec):
         return [r.get("ratingKey") for r in
@@ -12295,7 +12295,7 @@ def main():
     # Cycle 14: a type-prefixed `group=` is SCOPED like a filter and like a sort key.
     # On kids `type=4&group=show.title` is 1 and `group=title` is 4; `group=season.index`
     # is 2 and `group=index` is 3. On zen they are 505 vs 4443 and 58 vs 1144, and
-    # `group=season.title` collapses 9287 episodes to 1. simplex stripped the prefix and
+    # `group=season.title` collapses 9287 episodes to 1. rex stripped the prefix and
     # read the field off the episode itself, so the two always agreed.
     def gtotal_c14g(spec):
         body_c14g = get(base, "/library/sections/%s/all?type=4&%s" % (show_section, spec))[1]
@@ -12319,7 +12319,7 @@ def main():
 
     # Cycle 14: the actor axis is the union of each item's FIRST THREE roles. kids'
     # five movies contribute 0+2+2+2+3 and the axis totalSize is exactly 9; zen's is
-    # 3413 against 59030 actor tags. Every other tag axis carries every tag. simplex
+    # 3413 against 59030 actor tags. Every other tag axis carries every tag. rex
     # listed all of them, so on a real library it would hold 155 names per movie.
     # Five roles have to be WRITTEN here: by this point the suite has replaced every
     # fixture tag list, so a check that waited for a row with more than three would
@@ -12368,12 +12368,12 @@ def main():
 
 
     # Cycle 14: nine columns filter on a real PMS without appearing in any Meta, and
-    # simplex answered the whole library to each. Measured on kids and zen, which
+    # rex answered the whole library to each. Measured on kids and zen, which
     # agree: `viewOffset>>=0` is 0 rows on both (an UNKNOWN field answers every row,
     # which is how the two are told apart), and on zen `updatedAt>>=1780000000` is
     # 3861/3887 and `originalTitle>>=M` is 393. `parentIndex` is a 500 on a listing on
     # both. A movie row's `index` is 1 on every row, so `index=1` is the whole library
-    # and `index=2` is none -- simplex's movie rows carry no index and answered zero.
+    # and `index=2` is none -- rex's movie rows carry no index and answered zero.
     def ftotal_c14i(spec):
         path_c14i = "/library/sections/%s/all?type=1" % movie_section
         if spec:
@@ -12418,7 +12418,7 @@ def main():
              rule_c14i.get("fieldTitle"), refused_c14i, idx_c14i))
 
 
-    # Cycle 14: thirteen sort keys a real PMS accepts and simplex answered 500 to, and
+    # Cycle 14: thirteen sort keys a real PMS accepts and rex answered 500 to, and
     # one it accepted that both references refuse. Measured key by key on kids and zen,
     # which agree exactly; none of the thirteen is in `/sorts?includeAdvanced=1`, so
     # this is the unadvertised-but-real set, the same class as the filter columns above.
@@ -12456,7 +12456,7 @@ def main():
     # librarySectionID or metadataItemID is 400 (`abc`, empty and `1.5` alike, while
     # `1`, `-1` and `01` pass); a metadataItemID naming no row is 404, `0` included; an
     # unknown librarySectionID is an empty 200, not a 404; deviceID is not validated at
-    # all; and `viewedAt>=` refuses a non-integer. simplex answered 200/size 0 to all
+    # all; and `viewedAt>=` refuses a non-integer. rex answered 200/size 0 to all
     # of them, so a bad id read as "no history" rather than as an error.
     def hstatus_c14k(spec_c14k):
         return request(base, "GET", "/status/sessions/history/all?" + spec_c14k)[0]
@@ -12553,7 +12553,7 @@ def main():
     # zen answer the same rows on a movie library and a show library alike, whatever
     # ratings the library holds -- and the nine axes belonging to OTHER library types
     # answer an EMPTY secondary container with their own title2 rather than a 404.
-    # simplex 404'd all ten, so the Ratings filter entry opened nothing and a client
+    # rex 404'd all ten, so the Ratings filter entry opened nothing and a client
     # reading the axis list was told nine endpoints do not exist.
     rating_c14n = get(base, "/library/sections/%s/userRating" % movie_section)[1]
     rating_rows_c14n = [(d.get("key"), d.get("title"), "fastKey" in d)
@@ -12586,7 +12586,7 @@ def main():
 
     # Cycle 14: `/library/sections/{id}/recentlyReleased` is a 404 on kids and zen
     # alike -- both library types, every `type=`, five library/type combinations -- and
-    # it appears nowhere in findings.md, CLAUDE.md or either suite. simplex answered a
+    # it appears nowhere in findings.md, CLAUDE.md or either suite. rex answered a
     # 200 listing for an endpoint nobody ever measured. `/unwatched` beside it is real
     # and stays.
     rr_c14o = request(base, "GET", "/library/sections/%s/recentlyReleased" % movie_section)[0]
@@ -12601,10 +12601,10 @@ def main():
 
 
     # Cycle 14: `/banners` and `/thumbs` are artwork candidate lists on BOTH references
-    # -- 200 with the same container shape as `/posters` -- and simplex 404'd them.
+    # -- 200 with the same container shape as `/posters` -- and rex 404'd them.
     # `banners` is empty on kids and zen alike; `thumbs` lists the media bundle's video
-    # thumbnails, which simplex has none of. `/squareArts` stays a 404: it is 200 on
-    # kids (1.43.4) and 404 on zen (1.42.2), the version simplex reports.
+    # thumbnails, which rex has none of. `/squareArts` stays a 404: it is 200 on
+    # kids (1.43.4) and 404 on zen (1.42.2), the version rex reports.
     art_c14p = {}
     for leaf_c14p in ("posters", "arts", "banners", "thumbs", "squareArts"):
         status_c14p, body_c14p, _ = request(
@@ -12652,7 +12652,7 @@ def main():
 
 
     # Cycle 14: `/library/metadata/{id}/background` and `/composite` are 404s on kids
-    # and zen alike -- every row type, bare and versioned -- and simplex served image
+    # and zen alike -- every row type, bare and versioned -- and rex served image
     # bytes from both. `thumb`, `art` and `poster` beside them are real and stay 200.
     # A playlist's and a collection's `/composite` is real and is served elsewhere.
     def artstatus_c14r(key_c14r, leaf_c14r):
@@ -12714,7 +12714,7 @@ def main():
 
     # Cycle 14: a hub container says `allowSync: true` on kids and zen alike -- every
     # hub path except `/hubs/metadata/{id}/postplay`, which says false, and
-    # `/hubs/search` and `/hubs/items`, which carry none at all. simplex defaulted to
+    # `/hubs/search` and `/hubs/items`, which carry none at all. rex defaulted to
     # false with three call sites putting it back, so eight of the ten said the opposite.
     def sync_c14t(path_c14t):
         body_c14t = get(base, path_c14t)[1]
@@ -12738,7 +12738,7 @@ def main():
     # Cycle 14: on a SEASON listing the three leaf-count filters read the SHOW's
     # counts. Measured on zen -- `type=3&viewedLeafCount>>0` answers 48 seasons, every
     # season of the 8 shows with a watched leaf, and all 48 carry 0 on their own row --
-    # and on the copy. simplex read the season's own counts, so a season grid filtered
+    # and on the copy. rex read the season's own counts, so a season grid filtered
     # by "watched" answered only the seasons that happened to hold the watched episode.
     if not show or not show_section:
         skip("a season listing's leaf-count filters read the show's counts", "need a show")
@@ -12819,7 +12819,7 @@ def main():
     # the usual pair) and changes the ROWS instead. `flattenSeasons=1` sets
     # `skipChildren` on the show and `skipParent` on every episode while removing their
     # `parentRatingKey`/`parentKey`; `episodeSort=1` puts a season's `/children` newest
-    # first. simplex pushed a 79-frame cascade and changed nothing.
+    # first. rex pushed a 79-frame cascade and changed nothing.
     if not show:
         skip("a show's prefs write changes the rows and pushes no frames", "need a show")
     else:
@@ -12874,7 +12874,7 @@ def main():
     # moves `updatedAt` with them, LOCKS the picked field and CASCADES the new stamp
     # onto the children that point at the row -- a season's `parentThumb`/`art` and an
     # episode's `grandparent*`, never the season's own `thumb`. One frame goes out.
-    # Measured on the copy with a socket open. simplex re-versioned one field and left
+    # Measured on the copy with a socket open. rex re-versioned one field and left
     # every child tile pointing at the old stamp.
     if not show:
         skip("an artwork pick re-versions all three and cascades to the children",
@@ -12953,7 +12953,7 @@ def main():
     # Cycle 14: the refresh cascade belongs to `showOrdering` alone. Measured on the
     # copy one setting at a time with a socket open: `showOrdering=dvd` pushes 45
     # frames, while `flattenSeasons`, `episodeSort`, `useOriginalTitle` and
-    # `subtitleMode` each push zero. simplex pushed the cascade for every prefs write.
+    # `subtitleMode` each push zero. rex pushed the cascade for every prefs write.
     if not show:
         skip("only showOrdering pushes the prefs cascade", "need a show")
     else:
@@ -12989,7 +12989,7 @@ def main():
     # own row's `key` points at -- with a full secondary container carrying `key`,
     # `parentIndex` (its TAG id), `parentTitle`, `title2`, `nocache` and the
     # librarySection triple, while `/library/collections/{id}/children` beside it stays
-    # the bare `{size: N}`. Measured on the copy. simplex 404'd the metadata form, so a
+    # the bare `{size: N}`. Measured on the copy. rex 404'd the metadata form, so a
     # collection page drew nothing.
     made_c14z = request(base, "POST", "/library/collections?type=1&title=C14Kids&smart=0"
                         "&sectionId=%s&uri=%s"
@@ -13030,7 +13030,7 @@ def main():
     # Cycle 14: a `type=18` listing is a real query -- `title=` filters it, `sort=`
     # orders it, the default order is titleSort -- and a collection row's `index` is its
     # own TAG id, the number its members carry in their `Collection` tag. Measured on
-    # the copy with two collections. simplex answered the whole collection list to every
+    # the copy with two collections. rex answered the whole collection list to every
     # query and sent `index` 1 for all of them.
     for name_c15a, member_c15a in (("C15 Zulu", movie), ("C15 Alpha", movie)):
         request(base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
@@ -13066,7 +13066,7 @@ def main():
 
     # Cycle 14: `/library/all?type=18` lists every collection the server holds, across
     # libraries, in title order. Measured on the copy (two collections, `Aardvark`
-    # before `C14 Trio`). simplex answered `size 0` because its collections are not
+    # before `C14 Trio`). rex answered `size 0` because its collections are not
     # rows in the item catalog and that handler only looked there.
     for name_c15b in ("C15b Zulu", "C15b Alpha"):
         request(base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
@@ -13115,7 +13115,7 @@ def main():
     # its `default`. Re-read live on BOTH references while implementing the
     # inheritance rule: kids (1.43.4) show 6 and zen (1.42.2) show 5189 both answer
     # `-1`. `item_prefs.json` carried `0`, captured on 2026-09-12 from a show that
-    # had been written, and simplex served that stale value for every show it holds.
+    # had been written, and rex served that stale value for every show it holds.
     # It matters because `-1` is the value that INHERITS the library's setting, so a
     # captured `0` reads as a per-show refusal of it.
     #
@@ -13141,7 +13141,7 @@ def main():
     # `episodeSort` produce exactly the row effects the ITEM path produces, and the
     # show's own setting stays `-1` throughout -- so `-1` on an item means INHERIT,
     # not "off". All four combinations were measured; the item overrides the library
-    # in BOTH directions. simplex read the item's `_prefs` alone, so a library-wide
+    # in BOTH directions. rex read the item's `_prefs` alone, so a library-wide
     # write (where the Edit Library dialog actually puts these two) moved the setting
     # list and left every row untouched -- except `skipChildren` on the show, which it
     # set without the episode half, leaving the client every `parentRatingKey` it
@@ -13199,7 +13199,7 @@ def main():
     #
     # This is the answer to the `size 0` that cycle 11 recorded as unexplained and
     # three cycles carried in the revalidation register: the plain call really does
-    # list nothing, on a server with 73 rows in it. simplex ignored `type=`
+    # list nothing, on a server with 73 rows in it. rex ignored `type=`
     # altogether, so it answered its whole history to a request a real PMS answers
     # nothing to, and answered every row to `type=2` as well.
     watched_h15 = get(base, "/library/sections/%s/all?type=1" % movie_section)[1] \
@@ -13245,7 +13245,7 @@ def main():
     # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: the in-library
     # search box answers the LIGHT grid row, exactly as every other listing does -- no
     # `Guid`, no `Rating`, no tag ids, no `Stream` inside a Part. Its row is
-    # byte-comparable with the grid's row for the same item on both servers. simplex
+    # byte-comparable with the grid's row for the same item on both servers. rex
     # answered the DETAIL row here and nowhere else, so the one listing a user reaches
     # by typing carried uncapped tag lists, every Stream element and every external
     # guid -- and a client that tests `Rating`/`Guid` presence to decide "this row is
@@ -13268,7 +13268,7 @@ def main():
     # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `includeChildren=1` inlines
     # a `Children` block on a SHOW and on nothing else. Neither reference puts one on a
     # season, and neither is silent for want of children -- kids' season 7 holds three
-    # episodes and zen's season 17201 holds twenty-two. simplex inlined a season's
+    # episodes and zen's season 17201 holds twenty-two. rex inlined a season's
     # episodes too, so a season detail read carried a list the client had not asked for
     # and would fetch again from /children.
     show_row_c15c = (get(base, "/library/metadata/%s?includeChildren=1" % show)[1]
@@ -13296,7 +13296,7 @@ def main():
     #   file=               a case-insensitive SUBSTRING of the Part's path -- `unn`
     #                       finds Big Buck Bunny, `.mkv` is 3811 of zen's 3887, an empty
     #                       value is every row and `zzz` is none.
-    # simplex ignored all four, which on a filter is worse than refusing: it answered
+    # rex ignored all four, which on a filter is worse than refusing: it answered
     # every row to two mutually exclusive queries.
     seasons_c15p = get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
     one_c15p = seasons_c15p[0]["ratingKey"]
@@ -13345,7 +13345,7 @@ def main():
     # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: /query/parse
     # echoes eight fields as a Rule with an EMPTY fieldTitle that a LISTING does not
     # filter on -- the parse surface is wider than the filter surface, and the two were
-    # the same map in simplex. `guid` is the sharpest of them: simplex's listing has
+    # the same map in rex. `guid` is the sharpest of them: rex's listing has
     # filtered on `guid=` since cycle 8 while its own /query/parse called the field
     # unknown, so the server contradicted itself. `parentIndex` is a 500 on a listing
     # (cycle 14) and still a Rule here.
@@ -13379,7 +13379,7 @@ def main():
     # carries one `Type` row whose `active` flips with the type -- `movie` true at
     # type=1, `mixed` false at type=2, and no `Meta` block at all for any other type.
     # `Meta.Type[].Sort` is what the playlist page reads straight into its sort menu, so
-    # without it the menu is empty. simplex sent no Meta on either path.
+    # without it the menu is empty. rex sent no Meta on either path.
     #
     # The sixth sort is `mediaCount` "Item Count". Cycle 15 recorded that
     # `/playlists/sorts` ends with `updatedAt` "Date Modified" instead; cycle 49
@@ -13417,7 +13417,7 @@ def main():
     # and movie hubs; with `contentDirectoryID=1` only the movie library's, with `=2`
     # only the show library's. `abc`, `99`, `1.5` and `-1` -- anything that does not
     # name a section -- are 404s on both, while an EMPTY value is a 200 that scopes
-    # nothing. simplex ignored the parameter and 200'd every value, so search-within-
+    # nothing. rex ignored the parameter and 200'd every value, so search-within-
     # this-library returned hits from every library and a bad id read as "no results
     # here" rather than as an error.
     sm_c15h = {cd_c15h: get(base, "/hubs/search?query=%s%s" % (quote("Tears"), cd_c15h))
@@ -13451,7 +13451,7 @@ def main():
     # substitutes `mediaCount` and `mediaCountOptimized`. Cycle 11 wired it into the
     # section grid, the section allLeaves, /library/people/{id}/media and /hubs/items;
     # eight more surfaces were never wired, and the Home screen is the one that costs
-    # most -- it is how a client asks for a CHEAP shelf, and simplex sent a full
+    # most -- it is how a client asks for a CHEAP shelf, and rex sent a full
     # Media/Part/Stream tree for every shelf row on every Home render.
     paths_c15e = ["/library/all?type=1", "/library/recentlyAdded",
                   "/library/sections/%s/recentlyAdded" % movie_section,
@@ -13488,7 +13488,7 @@ def main():
     # the candidate list with nothing `selected`. Afterwards the bare GET of the deleted
     # path is a 404.
     #
-    # simplex answered the GET -- 56 KB of JPEG -- to the DELETE and changed nothing. That
+    # rex answered the GET -- 56 KB of JPEG -- to the DELETE and changed nothing. That
     # is Remove Poster doing nothing, and because Change Poster assigns the response BODY
     # onto the row (the recorded singular-path rule), a client that clears the artwork sets
     # the tile's img src to a blob of JPEG.
@@ -13496,7 +13496,7 @@ def main():
     # plexscratch, which is 1.43.4 -- and all FIVE artwork DELETE leaves are **404s there**,
     # on a row that owns and serves the image. The path is routed for other verbs on 1.42.2
     # (`PUT .../poster?url=` is a 200) and `DELETE` itself works (a playlist delete is a
-    # 204), so 1.43.4 ADDED the endpoint. simplex reports 1.42.2, so it answers the 404 --
+    # 204), so 1.43.4 ADDED the endpoint. rex reports 1.42.2, so it answers the 404 --
     # and the cleared state is still reachable, because an empty `thumb.value=` removes the
     # column on both versions.
     before_c15d = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
@@ -13537,14 +13537,14 @@ def main():
     # every other verb, so `/identity`, `/hubs` and `/playlists` answer 200 to it (the
     # recorded "these answer any verb" rule) and every other path 404s it.
     #
-    # Cycle 31 took `PATCH` out of this check: on 1.42.2 -- the build simplex reports -- it
+    # Cycle 31 took `PATCH` out of this check: on 1.42.2 -- the build rex reports -- it
     # is not a method at all, a **500 on every path**, `/identity` included, which cycle 15
     # could not see because plexscratch is 1.43.4. The 500 is asserted on its own below. What a real PMS does not recognise as a method AT ALL -- `FROB`,
     # `TRACE`, a wrong-case `Get` -- is a **500** with its own four-line html body, on
     # every path.
     #
-    # simplex answered Python's BaseHTTPRequestHandler 501 page, which also leaks
-    # `Server: SimPlex/0.1 Python/3.10.20`; HANDOVER records that a real PMS never
+    # rex answered Python's BaseHTTPRequestHandler 501 page, which also leaks
+    # `Server: Rex/0.1 Python/3.10.20`; HANDOVER records that a real PMS never
     # answers 405, and it never answers 501 either. A bare OPTIONS with no
     # Access-Control-Request-* headers was a 200 where a real PMS routes it; a genuine
     # preflight is unchanged except that its response carries `Content-Type: text/plain`.
@@ -13577,7 +13577,7 @@ def main():
     #
     # It also refines a recorded rule. HANDOVER has the subtitle upload's "no `title`
     # is a 500, an empty body a 406"; with NEITHER, the copy answers 406, so the
-    # empty-body check runs FIRST. simplex checked the title first and answered 500,
+    # empty-body check runs FIRST. rex checked the title first and answered 500,
     # and answered 400/404/200 across the other six -- two of which (`/themes`,
     # `/clearLogos`) returned the candidate LISTING to a POST, which is fix 4's trap:
     # a client reads that as an accepted upload.
@@ -13602,11 +13602,11 @@ def main():
     #     movie 1   show 2   season 3   episode 4      smart: 101  102  104
     #
     # Cycle 14 saw `1` on a three-member collection and left it unexplained. The rule
-    # predicted 102 and 104 before either was measured. simplex sent the member count,
+    # predicted 102 and 104 before either was measured. rex sent the member count,
     # which is already in `childCount` -- and the 100 offset is a second, independent
     # signal of `smart`.
     #
-    # `librarySectionID` is a NUMBER on a collection row too. simplex already sends an
+    # `librarySectionID` is a NUMBER on a collection row too. rex already sends an
     # int on a movie detail row, so its collection path contradicted its own rows.
     made_c15r = {}
     for label_c15r, typ_c15r, sec_c15r, key_c15r in (("movie", 1, movie_section, movie),
@@ -13648,16 +13648,16 @@ def main():
     # Cycle 15, measured on plexscratch. Three separate defects on the collection leaves:
     #
     #   GET /library/collections/{id}/prefs  is a **404** -- smart and plain alike --
-    #       where simplex answered an empty 200. That is fix 4's trap from the inside:
+    #       where rex answered an empty 200. That is fix 4's trap from the inside:
     #       the client reads a 200 as "this endpoint exists and is empty" and stops
     #       looking for the settings, which live in the includePreferences block.
     #   GET /library/collections/{id}/posters carries the container's identifying
     #       triple (identifier, mediaTagPrefix, mediaTagVersion) and ONE `default://`
     #       candidate -- the collection's own composite -- marked selected, with NO
     #       `provider` key. /arts is an empty container carrying the same triple.
-    #       simplex answered a bare `{size: 0}` to both, so Change Poster on a
+    #       rex answered a bare `{size: 0}` to both, so Change Poster on a
     #       collection page offered nothing.
-    #   GET /library/metadata/{collection}/arts must be EMPTY as well; simplex handed
+    #   GET /library/metadata/{collection}/arts must be EMPTY as well; rex handed
     #       back the POSTER there, so Change Background offered the poster.
     coll_c15l = (container(
         base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
@@ -13700,7 +13700,7 @@ def main():
     # a 200 for `collectionMode`). The block rides on `/library/metadata/{id}` and on
     # `/library/collections/{id}` alike and never on a listing row.
     #
-    # simplex sent no `Preferences` on a collection at all, so the Edit Collection
+    # rex sent no `Preferences` on a collection at all, so the Edit Collection
     # dialog had no Collection Mode and no Collection order control.
     def coll_prefs_c15k(smart_c15k):
         uri_c15k = (quote("server://%s/com.plexapp.plugins.library"
@@ -13744,7 +13744,7 @@ def main():
     # integer -- `1`, `2`, `3`, `99`, `-1`, `01` and `+1` all do -- and by RELEASE DATE
     # for `0` and for anything that does not parse: `1.5`, a leading space, `abc`, and an
     # empty value (which also removes the field). So a leading `+` is allowed, a decimal
-    # point and a leading space are not. simplex honoured only `1` and `2` and fell back
+    # point and a leading space are not. rex honoured only `1` and `2` and fell back
     # to release date for every other number, so a stored value the free-text pref can
     # easily hold drew the collection in the wrong order.
     # The fixture's three movies share a release date and sort alphabetically in
@@ -13803,7 +13803,7 @@ def main():
     # TAG as well, on every member and in the `/collection` axis.
     #
     # It matters because the Edit Collection dialog saves through the SECTION path. After
-    # a rename on simplex every member's page still showed the old collection name and
+    # a rename on rex every member's page still showed the old collection name and
     # the library's Collections filter still offered it, and the two never converged.
     #
     rn_c15w = (container(
@@ -13841,7 +13841,7 @@ def main():
     # COLLECTION's own `guid` -- the same `collection://<uuid>` string the collection row
     # has -- and carries NO `count`, which is consistent with cycle 12's refutation of
     # `count` on a detail row's tags. Cycle 14 recorded "guid and count"; only the guid
-    # half is real. simplex emitted neither, so a client could not tie a member's tag to
+    # half is real. rex emitted neither, so a client could not tie a member's tag to
     # the collection it names by anything but the title.
     tg_c15u = (container(
         base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
@@ -13864,7 +13864,7 @@ def main():
     # `/library/metadata/{id}/art` path is a 404, bare and versioned. Its `/thumb` and
     # `/poster` are 200s, and a SEASON's `/art` is a 200 on zen, so this belongs to the
     # episode alone. The row ATTRIBUTE is not affected: an episode's `art` names its
-    # season's, exactly as simplex's does, and that is the URL a client actually builds.
+    # season's, exactly as rex's does, and that is the URL a client actually builds.
     leaf_c15x = (get(base, "/library/metadata/%s/children"
                      % (get(base, "/library/metadata/%s/children" % show)[1]
                         .get("Metadata") or [{}])[0]["ratingKey"])[1]
@@ -13879,7 +13879,7 @@ def main():
 
     # Cycle 15, measured on plexscratch: a label written onto a COLLECTION reaches the
     # library's `/label` axis -- under a bare call, under `?type=18` and under `?type=1`
-    # alike, consistent with cycle 14's note that the axis is global. simplex's axis
+    # alike, consistent with cycle 14's note that the axis is global. rex's axis
     # listed a label written onto a MOVIE and never looked at collections, so a label
     # used to organise collections could not be filtered on at all.
     lb_c15y = (container(
@@ -13902,14 +13902,14 @@ def main():
     # `tag` Directory row in the `collection` hub -- `tagType: 2`, the member count,
     # the collection's own `guid`, a `key` and `filter` of `collection=<tag id>`, and
     # `reason`/`reasonID`/`reasonTitle` naming the LIBRARY (`section`, its id, its
-    # title), which is the tag-row shape simplex already builds for actors and genres.
+    # title), which is the tag-row shape rex already builds for actors and genres.
     #
     # `/library/search` finds NOTHING for a collection on the copy, with or without
     # `includeCollections=1` -- which REFUTES cycle 14's note that it carries the
     # collection as a tag row. Only `/hubs/search` and the library's own
     # `?type=18` search box do.
     #
-    # simplex's `collection` hub was empty for every query, so typing a collection's
+    # rex's `collection` hub was empty for every query, so typing a collection's
     # name into Plex Web's search box never found it.
     sc_c15z = (container(
         base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
@@ -13947,7 +13947,7 @@ def main():
     # reference is forbidden, so it needed the disposable copy. Re-measured by the
     # driver across 33 paths, every one of which differed:
     #
-    #   * A READ-ONLY route answers **404** to PUT, POST and DELETE. simplex answered
+    #   * A READ-ONLY route answers **404** to PUT, POST and DELETE. rex answered
     #     the GET body with a 200 to all three on twenty of them -- `/`,
     #     `/library/recentlyAdded`, `/library/onDeck`, `/hubs/promoted`,
     #     `/hubs/continueWatching`, `/hubs/search`, `/channels/all`, `/services/browse`,
@@ -13956,7 +13956,7 @@ def main():
     #     leaves `allLeaves`, `tree`, `related`, `similar` and `matches`.
     #   * The legacy single-segment plug-in dispatcher answers **every** method, not
     #     just GET: `PUT /prefs`, `POST /setting`, `DELETE /users` and `/devices.xml`
-    #     are all 200 with `content="plugins"` on the copy, where simplex 404'd them.
+    #     are all 200 with `content="plugins"` on the copy, where rex 404'd them.
     #
     # HANDOVER already records that verb routing is per (method, path) and not uniform.
     # It reads to a client -- and to python-plexapi's capability probes, which are
@@ -13998,7 +13998,7 @@ def main():
     # its ids. A GOOD limit still does nothing on `/children` (cycle 11) -- ignoring the
     # VALUE is not the same as not parsing the string.
     #
-    # simplex validated `limit` on three paths and `parent` nowhere, so a caller reading
+    # rex validated `limit` on three paths and `parent` nowhere, so a caller reading
     # a 200 with the full listing took it for "that filter applied".
     bad_c15g = {}
     for path_c15g in ("/library/sections/%s/all?type=1" % movie_section,
@@ -14038,7 +14038,7 @@ def main():
     #
     # So it is not the python type -- `year` and `duration` are integers too. It is the
     # timestamp and per-user-state family. And `lastRatedAt`, `createdAt` and
-    # `lastViewedAt` refuse `abc` and an empty value as well, which simplex missed for a
+    # `lastViewedAt` refuse `abc` and an empty value as well, which rex missed for a
     # reason worth writing down: its date branch returns early when the ROW's value is
     # null, so on a library where nothing carries the column the VALUE was never parsed.
     # A real PMS parses the value first.
@@ -14066,14 +14066,14 @@ def main():
           "word=%s empty=%s" % (word_c15f, empty_c15f))
 
     # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), identical on both:
-    # `/hubs/search?limit=` refuses in two different ways, and simplex had them the
+    # `/hubs/search?limit=` refuses in two different ways, and rex had them the
     # wrong way round.
     #
     #     abc  ''  1.5   -> 400   (unparseable)
     #     -1   0         -> 500   (parses, but is not a positive count)
     #     01   1   3     -> 200
     #
-    # simplex answered 500 to the 400 cases, 200 to the 500 cases, and let an empty
+    # rex answered 500 to the 400 cases, 200 to the 500 cases, and let an empty
     # value through. No real client sends a malformed limit; it is recorded because it
     # is a complete two-witness grammar and cheap to hold.
     sl_c15q2 = {v_c15q2: request(base, "GET", "/hubs/search?query=%s&limit=%s"
@@ -14084,13 +14084,13 @@ def main():
                        "01": 200, "1": 200, "3": 200},
           str(sl_c15q2))
 
-    # Cycle 15, measured on zen (1.42.2 -- the build simplex reports; kids holds no
+    # Cycle 15, measured on zen (1.42.2 -- the build rex reports; kids holds no
     # related items at all for any row, which is an instrument limit and is stated
     # rather than hidden): the INLINE `Related` block caps at **5** rows per hub and
     # says `more: true`, where the standalone `/hubs/metadata/{id}/related` answers 6
     # for the same row. `includeRelatedCount=N` sets the inline cap -- `=1` gives 1 and
     # `=3` gives 3, and `more` stays true -- and it does nothing without
-    # `includeRelated=1`. simplex honoured `count=` on the standalone endpoint and
+    # `includeRelated=1`. rex honoured `count=` on the standalone endpoint and
     # ignored the inline spelling entirely, so on a real catalog the preplay page's
     # Related shelf would carry every related row the server had.
     rel_c15o = {}
@@ -14121,7 +14121,7 @@ def main():
     #     `/library/metadata/{id}/refresh`, `/library/metadata/{id}`,
     #     `/library/metadata/{id}/posters` and `/library/sections/{id}/all` alike. Only
     #     a genuine preflight is answered 200. The old check sent no preflight headers
-    #     and asserted 200, so it was testing simplex's own habit of answering every
+    #     and asserted 200, so it was testing rex's own habit of answering every
     #     OPTIONS as a preflight.
     #   * `PUT /library/metadata/{id}/banners` is a 404 and `POST .../thumbs` a **406**,
     #     not the 404 the old check wanted -- every artwork candidate list answers 406
@@ -14143,14 +14143,14 @@ def main():
     #     PUT /library/metadata/7/refresh   (season)   18 frames
     #     PUT /library/metadata/6/refresh   (show)     49 frames
     #
-    # The EPISODE form is the seven-frame sequence simplex already sends. A SEASON adds
+    # The EPISODE form is the seven-frame sequence rex already sends. A SEASON adds
     # its episodes inside its own activity -- season queued, activity started, season
     # processing, season loading, then each episode's four (state 5 processing, state 4
     # loading twice, state 5 with no metadataState), activity ended, season done -- and a
     # SHOW nests a season's whole block under each season, with an `activity updated`
     # carrying that SEASON's frame title as its subtitle.
     #
-    # simplex answered SEVEN frames at every level, so refreshing a show told the client
+    # rex answered SEVEN frames at every level, so refreshing a show told the client
     # one row had been re-read and left every season and episode showing stale metadata
     # until a reload.
     def frames_for_c15r2(key_c15r2):
@@ -14214,7 +14214,7 @@ def main():
     #     episode  5 frames    season 11    show 21 (with the queue frame)    movie 5
     #
     # Cycle 13's "a per-LEVEL triple" was wrong -- the season and show rows are never
-    # framed themselves, only their leaves. simplex pushed nothing at all.
+    # framed themselves, only their leaves. rex pushed nothing at all.
     #
     # The 21st frame of the show form is a `backgroundProcessingQueue`
     # `queueRegenerated` at +7.1 s. It is not create-specific and not periodic: cycle 14
@@ -14268,20 +14268,20 @@ def main():
 
     # Cycle 15, re-measured on plexscratch -- the last of the three cascades HANDOVER
     # 3.3 carried into this cycle. `POST /library/sections` is a 201 with a `Location`
-    # header (simplex already had both) and then 75 frames: a `library.update.section`
+    # header (rex already had both) and then 75 frames: a `library.update.section`
     # "Scanning" activity stepping through the files with a `status` LIBRARY_UPDATE
     # frame beside it, a `created` pair per item, each item's refresh sequence, and
     # finally ONE `backgroundProcessingQueue` `queueRegenerated` at **+63.1 s**.
     #
-    # The per-item half is over REAL files being scanned. simplex owns none and a
+    # The per-item half is over REAL files being scanned. rex owns none and a
     # library it creates is empty by construction, so there is nothing for those frames
     # to name -- that is an instrument fact and is recorded rather than faked. The queue
-    # frame is not: it follows the write itself, and simplex never sent it.
+    # frame is not: it follows the write itself, and rex never sent it.
     frames_c15n2 = notifications(
         base, lambda: request(base, "POST",
                               "/library/sections?name=C15n&type=movie"
                               "&agent=tv.plex.agents.movie&scanner=Plex%20Movie"
-                              "&language=en-US&location=%2Fsimplex%2F1"), seconds=6)[1]
+                              "&language=en-US&location=%2Frex%2F1"), seconds=6)[1]
     queue_c15n2 = [f_c15n2 for f_c15n2 in frames_c15n2
                    if (f_c15n2.get("NotificationContainer", f_c15n2).get("type")
                        == "backgroundProcessingQueue")]
@@ -14300,8 +14300,8 @@ def main():
 
     # Cycle 16, measured on kids (1.43.4) and zen (1.42.2) over fifteen paths and
     # every status they answer: a real PMS sends NO `Server:` header at all.
-    # BaseHTTPRequestHandler adds one from `server_version`, so simplex announced
-    # itself as `SimPlex/0.1 Python/3.10.20` on every single response -- the one
+    # BaseHTTPRequestHandler adds one from `server_version`, so rex announced
+    # itself as `Rex/0.1 Python/3.10.20` on every single response -- the one
     # header on the wire that says the server is not a Plex Media Server.
     banner_c16a = {}
     for path_c16a in ("/identity", "/library/sections", "/no/such/path",
@@ -14322,7 +14322,7 @@ def main():
     # type=3 AND at type=4; bucketing them by their own titles reproduces 0 of 28.
     # kids -- whose one show is Firefly, whose seasons are "Season 1"/"Season 2" and
     # whose episodes have real titles -- answers `F:2` at type=3 and `F:6` at type=4.
-    # simplex counted each row's own title, so an episode grid's A-Z rail was an index
+    # rex counted each row's own title, so an episode grid's A-Z rail was an index
     # of episode titles where a real PMS indexes the shows.
     def bucket_of_c16c(row_c16c):
         head_c16c = (str(row_c16c.get("titleSort") or row_c16c.get("title") or "")[:1]
@@ -14357,7 +14357,7 @@ def main():
     # "Start with '<key>'", the librarySection triple, and the listing grammar on top
     # (zen's `B` bucket answers 6 of its 161 rows to `year=2020` and reverses under
     # `sort=titleSort:desc`). It filters on the ROW's own sort title, which is what
-    # makes it disagree with the axis above it. simplex routed on the leaf alone, so
+    # makes it disagree with the axis above it. rex routed on the leaf alone, so
     # the extra segment was dropped and every bucket answered the AXIS again: clicking
     # a letter in the A-Z rail redrew the rail instead of opening the rows behind it.
     grid_c16d = (get(base, "/library/sections/%s/all" % movie_section)[1]
@@ -14389,7 +14389,7 @@ def main():
 
     # Cycle 16, measured on kids and zen: a SHOW library's `/unwatched` carries
     # `nocache: true` like every other container it answers, and a movie library's
-    # does not. simplex carried it on /all, /newest, /recentlyAdded, /onDeck,
+    # does not. rex carried it on /all, /newest, /recentlyAdded, /onDeck,
     # /recentlyViewed, /allLeaves and /folder and dropped it on exactly this one, so
     # the Unplayed view was the single show-library listing a client was free to
     # cache.
@@ -14411,7 +14411,7 @@ def main():
     # title as `title2` and a 404 for an id the library does not hold, `year` and
     # `decade` keyed by a non-negative integer (a word or a negative number is a 404),
     # `contentRating` as "Rated <value>" and `resolution` accepting anything at all.
-    # simplex routed on the leaf alone and dropped the rest of the path, so every one
+    # rex routed on the leaf alone and dropped the rest of the path, so every one
     # of these answered the AXIS -- 200 with a Directory of letters where the client
     # asked for a list of films.
     dead_c16g = {}
@@ -14449,7 +14449,7 @@ def main():
     # formats: a real PMS NAMES its connection state on every response. With
     # `Connection: keep-alive` (or HTTP/1.1 and no Connection header) it answers
     # `Connection: Keep-Alive` and `Keep-Alive: timeout=20`; with `Connection: close`
-    # or HTTP/1.0 it answers `Connection: close` and no Keep-Alive. simplex sent
+    # or HTTP/1.0 it answers `Connection: close` and no Keep-Alive. rex sent
     # neither header on any response, so a client that reads the timeout to schedule
     # reuse got nothing -- and an abandoned keep-alive socket pinned a thread for the
     # life of the process, because nothing closed an idle connection either.
@@ -14489,7 +14489,7 @@ def main():
     # beside the body's own `offset`/`totalSize`, on every container that pages
     # (`/identity` answers Total-Size 0). And the paging HEADER beats the query when
     # both are sent: query `Start=0&Size=2` with header `Start=1&Size=1` answers
-    # offset 1, size 1 on both references. simplex read the header only where the
+    # offset 1, size 1 on both references. rex read the header only where the
     # query did not name the parameter, so a client sending both got the query's page.
     _, _, plain_c16i = request(base, "GET", "/library/sections/%s/all" % movie_section)
     lower_c16i = {k_c16i.lower(): v_c16i for k_c16i, v_c16i in plain_c16i.items()}
@@ -14510,7 +14510,7 @@ def main():
     # Cycle 16, measured on kids and zen: a section's `/composite` exists only in its
     # VERSIONED form. The bare path is a 404 on both references, with and without
     # `?width&height`, and no `/library/sections` row carries a `composite` attribute
-    # for a client to build the bare form from. simplex answered image bytes there --
+    # for a client to build the bare form from. rex answered image bytes there --
     # the same shape of invention as cycle 14's `/recentlyReleased`.
     # Cycle 31: the composite needs a member that OWNS a poster, and by this point the
     # artwork checks above have cleared the movie's -- the empty-value edit is 1.42.2's
@@ -14530,7 +14530,7 @@ def main():
 
     # Cycle 16, measured on kids and zen: a real PMS never sends `100 Continue`. With
     # `Expect: 100-continue` on a GET both references answer the 200 directly, while
-    # simplex wrote `HTTP/1.1 100 Continue` first (BaseHTTPRequestHandler's default
+    # rex wrote `HTTP/1.1 100 Continue` first (BaseHTTPRequestHandler's default
     # `handle_expect_100`). A client that counts responses, or a proxy, sees an extra
     # one that a real server never sends.
     import socket as socket_c16k
@@ -14553,7 +14553,7 @@ def main():
     # Cycle 16, measured on kids and zen: the `Accept-Encoding` token is matched
     # EXACTLY and case-sensitively. `GZIP` and `x-gzip` get a plain body on both
     # references, `*` gets a plain body, and `gzip;q=0` is still gzipped (the q is
-    # ignored). simplex lower-cased the whole header and looked for the substring
+    # ignored). rex lower-cased the whole header and looked for the substring
     # "gzip", so it compressed for `GZIP` and `x-gzip` where a real PMS does not.
     encodings_c16l = {}
     for offer_c16l in ("gzip", "GZIP", "x-gzip", "*", "gzip;q=0"):
@@ -14571,7 +14571,7 @@ def main():
 
     # Cycle 16, measured on plexscratch: a PREFLIGHT that carries no `Origin` gets no
     # CORS headers at all -- not the method list, not the header list, not Max-Age.
-    # simplex answered all three. A browser always sends Origin, so nothing
+    # rex answered all three. A browser always sends Origin, so nothing
     # user-visible turns on it; it is a probe being answered a question it did not ask.
     # A bare OPTIONS with no `Access-Control-Request-Method` is a different thing
     # entirely (cycle 15: it is routed like any other verb), so the preflight header
@@ -14609,7 +14609,7 @@ def main():
     # Cycle 16, measured on kids and zen: `X-Plex-Platform: Roku` (header or query,
     # that exact spelling -- `roku`, iOS, tvOS, Chrome, Windows and the rest change
     # nothing) strips `id` AND the whole `Pivot` list from every library `Directory`
-    # of `/media/providers`, leaving the other nine attributes untouched. simplex sent
+    # of `/media/providers`, leaving the other nine attributes untouched. rex sent
     # the same rows to every platform, so a Roku client is handed pivots a real server
     # withholds from it.
     def library_rows_c16o(platform_c16o):
@@ -14648,7 +14648,7 @@ def main():
     # non-negative float weighs that; anything else -- `q=0`, `q=abc`, `q=`, `q=-1`,
     # `q="0.5"`, `q=0.5x`, and a second parameter of any kind -- weighs 0 and still
     # QUALIFIES. Highest weight wins, a tie goes to the range listed first, and no
-    # qualifying range at all is XML. simplex dropped every zero-or-unparseable q
+    # qualifying range at all is XML. rex dropped every zero-or-unparseable q
     # instead of ranking it, so `application/json;q=0` came back as XML where both
     # references answer JSON.
     accepts_c16p = {}
@@ -14683,14 +14683,14 @@ def main():
     # only to media bytes. `Range: bytes=0-9` on `/identity`, a grid, `/:/prefs` or
     # artwork answers `206 Partial Content` with `Content-Range: bytes 0-9/<len>`;
     # a range past the end is a `416`; an unrecognised unit (`cheese=0-9`) is served as
-    # bytes; and a 206 is never gzipped even when the client offers gzip. simplex
+    # bytes; and a 206 is never gzipped even when the client offers gzip. rex
     # answered 200 with the whole body to all of them.
     # Cycle 33: read with a RAW SOCKET. A ranged CONTAINER answers `Content-Length` twice
     # -- the whole body's and the slice's, which is what both references send -- and
     # `http.client` takes the FIRST and then waits for bytes that never come
     # (`IncompleteRead`). The check is the same; only the reader changed.
     # Cycle 75, measured from kids: 30 simultaneous connects to plexscratch42 are all
-    # answered; simplex reset most of them (a listen backlog of 5), and six at once -- a
+    # answered; rex reset most of them (a listen backlog of 5), and six at once -- a
     # browser's per-host count -- already lost some.
     host_c75b = (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1]))
     burst_c75b, gate_c75b = [], threading.Barrier(30)
@@ -14760,7 +14760,7 @@ def main():
 
 
     # Cycle 16, measured on kids and zen in XML: a `Meta/Type` element's children come
-    # out `Filter, Sort, Field`. simplex wrote `Field, Filter, Sort` --
+    # out `Filter, Sort, Field`. rex wrote `Field, Filter, Sort` --
     # `xmlout._CHILD_ORDER` knew the item-level `Field` and nothing about these three,
     # so they fell out in the order the dict happened to hold them. XML child order is
     # load-bearing in this project's history, which is why that table exists at all.
@@ -14783,7 +14783,7 @@ def main():
     # NO `active`/`activeDirection` and a `Filter` no `advanced` -- those three belong
     # to the `includeMeta=1` form, where all of them appear. The `includeDetails` Type
     # blocks sit at the TOP level of the container rather than inside a `Meta`.
-    # simplex stamped `active` and `activeDirection` on every Sort under
+    # rex stamped `active` and `activeDirection` on every Sort under
     # includeDetails, so the Edit Library dialog's descriptor claimed a sort was
     # selected when the client had asked for none.
     details_c16s = get(base, "/library/sections/%s?includeDetails=1" % movie_section)[1]
@@ -14806,7 +14806,7 @@ def main():
 
     # Cycle 16, measured on kids and zen: the rows inlined by `includeChildren=1` carry
     # NO `librarySectionID`, `librarySectionKey` or `librarySectionTitle` -- and
-    # neither do the same rows fetched through `/children`, which is where simplex
+    # neither do the same rows fetched through `/children`, which is where rex
     # already had it right. The inline block was built from the FULL row instead of the
     # child projection, so it alone carried the triple, and a client reading the
     # inlined season rows saw a shape no real PMS sends.
@@ -14830,7 +14830,7 @@ def main():
 
     # Cycle 16, measured on kids and zen across five containers: a MediaContainer's
     # attributes come out `size`, then `totalSize` and `offset` when it is paged, then
-    # every other attribute in alphabetical order. simplex emitted them in the order
+    # every other attribute in alphabetical order. rex emitted them in the order
     # its dict happened to hold (`size, identifier, mediaTagPrefix, mediaTagVersion,
     # allowSync, ...`). Nothing a parser cares about -- it is the replay diff that
     # reads it, and a stable order is what makes that diff mean something.
@@ -14850,7 +14850,7 @@ def main():
     # Cycle 16, measured on kids and zen: a malformed request header is a 400 on a
     # real PMS. A header line with no colon, a TAB anywhere in a value (a space is
     # fine), a header name over 1024 bytes and a value over 4096 are each a 400.
-    # simplex accepted every one of them with a 200 and only refused at Python's own
+    # rex accepted every one of them with a 200 and only refused at Python's own
     # 64 KiB line limit, answering Python's HTML error page rather than a 400.
     import socket as socket_c16v
 
@@ -14890,7 +14890,7 @@ def main():
     # Cycle 16, measured on kids and zen: `/web` and `/web/` answer `302 Moved
     # Temporarily` with an ABSOLUTE `Location` built from the request's own `Host`
     # header (`Host: example.com:1234` gives `http://example.com:1234/web/index.html`),
-    # `Cache-Control: public`, `X-Plex-Protocol: 1.0` and a zero-length body. simplex
+    # `Cache-Control: public`, `X-Plex-Protocol: 1.0` and a zero-length body. rex
     # answered `302 Found` with a relative `Location: /web/index.html`, no
     # X-Plex-Protocol and no Cache-Control -- a relative Location is legal but it is
     # not what a real PMS sends, and the `public` is the one place on the surface that
@@ -14969,12 +14969,12 @@ def main():
     # `Cache-Control: no-cache` like the rest of the surface, `Accept-Ranges: bytes`,
     # and NEVER gzipped even when the client offers gzip -- and three content types
     # that differ from Python's guesses (`.js` is `text/javascript`, `.html` carries
-    # NO charset, `.ico` is `application/octet-stream`). simplex cached them for an
+    # NO charset, `.ico` is `application/octet-stream`). rex cached them for an
     # hour, which keeps an unhashed `index.html` pointing at the previous build's
     # chunk names for an hour after an upgrade. It needs `--web-root`, so it starts
     # its own instance the way the token-gate checks do.
     import tempfile as tempfile_c16y
-    web_root_c16y = tempfile_c16y.mkdtemp(prefix="simplex-web-")
+    web_root_c16y = tempfile_c16y.mkdtemp(prefix="rex-web-")
     open(os.path.join(web_root_c16y, "index.html"), "w").write("<html>" + "x" * 4000)
     open(os.path.join(web_root_c16y, "app.js"), "w").write("var a=1;" + "//\n" * 400)
     open(os.path.join(web_root_c16y, "favicon.ico"), "wb").write(b"\x00" * 300)
@@ -15025,7 +15025,7 @@ def main():
     # is a 400; a filter (`?title=`, `?year>>=`, `?unwatched=1`) constrains it; an
     # unknown field is ignored; `sort=` and `limit=` are PARSED and then ignored (an
     # unparseable one is a 500); and `?includeMeta=1` carries the Meta the page's own
-    # All / Movies / Episodes / Seasons / TV Shows tab bar is built from. simplex
+    # All / Movies / Episodes / Seasons / TV Shows tab bar is built from. rex
     # answered every row to every one of them and no Meta at all, so the tab bar was
     # absent and each tab, had it been drawn, would have shown the same list.
     made_c16a1 = request(base, "POST", "/playlists?title=c16items&type=video&smart=0"
@@ -15060,7 +15060,7 @@ def main():
     # Cycle 16, measured on plexscratch: a playlist is born `viewCount: 1` with
     # `lastViewedAt` equal to its `addedAt`, and those two appear on the LISTING row
     # only -- `/playlists`, `/playlists/all`, `?playlistType=`, `?type=15` -- never on
-    # the single read at `/playlists/{id}` and never on the create response. simplex
+    # the single read at `/playlists/{id}` and never on the create response. rex
     # carried neither anywhere, and the Home shelf `home.playlists` is keyed
     # `/playlists/all?type=15&sort=lastViewedAt:desc`, so with nothing to sort on the
     # shelf's order was arbitrary and the Meta's own "Plays" and "Last Played" sorts
@@ -15085,11 +15085,11 @@ def main():
 
 
     # Cycle 16, measured on plexscratch: `/playlists` is a filtered listing.
-    # `?title=` matches, `?smart=1` selects the smart ones (simplex only ever honoured
+    # `?title=` matches, `?smart=1` selects the smart ones (rex only ever honoured
     # `smart=0`), `?sectionID=` selects the lists whose members live in that library --
     # a mixed list answers to BOTH its libraries -- an unknown section answers none,
     # `?type=1` answers none because a playlist is type 15, and `?type=abc` is a 500.
-    # simplex answered every playlist to all of them, so a library's Recent Playlists
+    # rex answered every playlist to all of them, so a library's Recent Playlists
     # shelf showed every playlist on the server.
     smart_uri_c16a3 = ("server://%s/com.plexapp.plugins.library/library/sections/%s/all"
                        "?type=1" % (machine, movie_section))
@@ -15121,7 +15121,7 @@ def main():
     # whose ratingKey, addedAt and title orders are all different: the default
     # `/playlists` order is the SMART ones first, then `titleSort` within each group --
     # and every tie under `?sort=viewCount:desc`, `mediaCount:desc` and `duration:desc`
-    # falls back to the same. simplex sorted by titleSort alone, so a smart list sat
+    # falls back to the same. rex sorted by titleSort alone, so a smart list sat
     # among the plain ones.
     made_c16a4 = []
     for name_c16a4 in ("d-plain", "b-smart", "a-plain", "c-smart"):
@@ -15149,11 +15149,11 @@ def main():
 
 
     # Cycle 16, measured on plexscratch: `sort=mediaCount` on `/playlists` is a real
-    # ordering by item count -- it is the sixth sort simplex's own
+    # ordering by item count -- it is the sixth sort rex's own
     # `/playlists?includeMeta=1` advertises, as "Item Count" -- while `leafCount` is a
-    # 500 on both. simplex 500'd mediaCount too, so picking "Item Count" in the sort
+    # 500 on both. rex 500'd mediaCount too, so picking "Item Count" in the sort
     # menu got an error page. And `POST /playlists/{id}/items` is a plain 404 on a real
-    # PMS: only PUT adds. simplex answered the item LISTING with a 200, which tells a
+    # PMS: only PUT adds. rex answered the item LISTING with a 200, which tells a
     # client -- and python-plexapi's capability probes, which are exactly this shape --
     # that the endpoint exists and accepts writes.
     holder_c16a5 = json.loads(request(
@@ -15179,10 +15179,10 @@ def main():
 
 
     # Cycle 16, measured on plexscratch: an EMPTY `title=` on a create is stored
-    # verbatim -- the row reads back `""` -- where simplex substituted "Untitled". The
+    # verbatim -- the row reads back `""` -- where rex substituted "Untitled". The
     # *missing*-title 400 both answer is a different case and already recorded. And
     # `smart=1` over a comma-joined key list is a **400** that creates nothing: a smart
-    # list's uri has to be a LISTING. simplex created a smart playlist whose stored
+    # list's uri has to be a LISTING. rex created a smart playlist whose stored
     # query was a key list, so its `content` named a path that selects nothing and the
     # list was permanently empty.
     empty_c16a6 = request(base, "POST", "/playlists?title=&type=video&smart=0&uri=%s"
@@ -15194,7 +15194,7 @@ def main():
         % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s,%s"
                 % (machine, movie, spare or movie)))
     request(base, "DELETE", "/playlists/%s" % made_c16a6["ratingKey"])
-    # Cycle 31: the key-list create is a **200 on 1.42.2**, the build simplex reports --
+    # Cycle 31: the key-list create is a **200 on 1.42.2**, the build rex reports --
     # measured on plexscratch42 against plexscratch's 400 -- and it makes a real smart
     # playlist (`smart: true`, `icon: playlist://image.smart`, leafCount 3). Cycle 16
     # measured the refusal on the 1.43.4 copy alone. The empty-title half is unchanged.
@@ -15208,7 +15208,7 @@ def main():
 
 
     # Cycle 16, measured on plexscratch: three consecutive shuffled queues over the
-    # same show come back in three DIFFERENT orders. simplex reversed the unshuffled
+    # same show come back in three DIFFERENT orders. rex reversed the unshuffled
     # queue, deterministically, so Shuffle on a show or a library played the episodes
     # backwards and played them backwards again every single time.
     orders_c16a7 = []
@@ -15236,7 +15236,7 @@ def main():
     # `includeBefore=1&includeAfter=0` everything before it. Both zero is a 400, and so
     # is any value that is not 0 or 1, an unparseable one and an empty one. Cycle 9
     # measured these only ever WITH `window=1`, which is why the no-window half was
-    # missing: simplex answered the whole queue to the first two and 200 to all four
+    # missing: rex answered the whole queue to the first two and 200 to all four
     # refusals.
     queued_c16a8 = json.loads(request(
         base, "POST", "/playQueues?type=video&shuffle=0&own=1&uri=%s"
@@ -15265,7 +15265,7 @@ def main():
     # container as it stood BEFORE the delete -- the old `playQueueVersion` and
     # `playQueueTotalCount` -- with the remaining rows; only the SELECTED item's delete
     # also drops the rows. The next GET carries the stepped version and the new total.
-    # simplex answered the post-mutation container for a non-selected item, and the
+    # rex answered the post-mutation container for a non-selected item, and the
     # client DISCARDS a queue response whose version it did not expect.
     fresh_c16a9 = json.loads(request(
         base, "POST", "/playQueues?type=video&shuffle=0&own=1&uri=%s"
@@ -15293,7 +15293,7 @@ def main():
 
     # Cycle 16, measured on plexscratch: two move forms a real PMS REFUSES.
     # `?after=<the moving item's own id>` is a 404 and `?after=` (empty) is a 400,
-    # where simplex answered 200 and sent the item to the head in both cases. The
+    # where rex answered 200 and sent the item to the head in both cases. The
     # client's own move URL is `...move?after={t||-1}`, so `after=-1` -- which really
     # does move to the front -- is the form that matters and was already right.
     moved_c16a10 = json.loads(request(
@@ -15320,7 +15320,7 @@ def main():
     # Cycle 16, measured on plexscratch: a queue built from a PLAYLIST uri
     # (`uri=server://<machine>/com.plexapp.plugins.library/playlists/{id}/items`) is a
     # playlist queue -- it carries `playQueuePlaylistID` and `playQueuePlaylistTitle`
-    # and NO `playQueueSourceURI` at all, exactly as `playlistID=` already did. simplex
+    # and NO `playQueueSourceURI` at all, exactly as `playlistID=` already did. rex
     # recognised only the `playlistID=` form, so the same queue built the way the
     # client builds it named a source URI and no playlist.
     list_c16a11 = json.loads(request(
@@ -15351,7 +15351,7 @@ def main():
     # Reynolds, Episode 1, 2, 3" where `sort=titleSort` gives "Episode 1, 2, 3,
     # Bushwhacked, Our Mrs. Reynolds, The Train Job"; zen's, 2000 rows in, is one
     # show's episodes in broadcast order where `sort=titleSort` is an alphabetical
-    # jumble across shows. simplex answered its own titleSort order to both, so opening
+    # jumble across shows. rex answered its own titleSort order to both, so opening
     # a show library's Episodes or Seasons tab gave an alphabetical shuffle.
     # `docs/findings.md` already asserted "`/allLeaves` AND the section listing keep
     # broadcast order"; only the allLeaves half had been implemented.
@@ -15382,7 +15382,7 @@ def main():
 
 
     # Cycle 16, measured on plexscratch: `type=` on the section SAVE path has to parse.
-    # `?type=abc&id=...&summary.value=x` is a 400 and edits nothing, where simplex
+    # `?type=abc&id=...&summary.value=x` is a 400 and edits nothing, where rex
     # answered 200 having edited nothing -- which reads to the client as a save that
     # worked. (No `type` at all is a 400 on both, and already implemented.)
     bad_c16a13 = request(base, "PUT", "/library/sections/%s/all?type=abc&id=%s"
@@ -15401,7 +15401,7 @@ def main():
     # `titleSort.value=` -- it survives until the next TITLE write, which re-derives it
     # -- while the ITEM path discards it outright, which is the rule already recorded
     # ("an unlocked Sort Title does not stick"). That rule is the item path's alone.
-    # simplex discarded it on both, at every type, so a Sort Title typed into the grid's
+    # rex discarded it on both, at every type, so a Sort Title typed into the grid's
     # own edit dialog vanished on save.
     was_c16a14 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0]
     request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&title.value=%s"
@@ -15429,7 +15429,7 @@ def main():
     # Cycle 16, measured on plexscratch: a SHOW's `contentRating` write reaches only the
     # episodes that carry none of their own. Three matched episodes with their own
     # rating kept it while three unmatched ones followed the show; setting one episode
-    # explicitly and writing the show again left that one alone. simplex stamped the
+    # explicitly and writing the show again left that one alone. rex stamped the
     # show's rating on EVERY episode, so an explicit per-episode rating was destroyed by
     # the next edit of its show.
     leaves_c16a15 = [r_c16a15["ratingKey"] for r_c16a15 in get(
@@ -15448,7 +15448,7 @@ def main():
 
     # Cycle 16, measured on plexscratch: a SHOW's `index` write cascades onto its
     # seasons' `parentIndex` -- write `index.value=6` on the show and both seasons read
-    # back `parentIndex: 6`. simplex moved the show's own index and left every season
+    # back `parentIndex: 6`. rex moved the show's own index and left every season
     # claiming the old one. (A season's `index` write already cascaded onto its
     # episodes' `parentIndex` on both.)
     request(base, "PUT", "/library/sections/%s/all?type=2&id=%s&index.value=6"
@@ -15468,7 +15468,7 @@ def main():
     # Cycle 16, measured on plexscratch: a SEASON whose own `year` is cleared gains
     # `parentYear` -- the show's -- in the same read. The rule ("only a season without
     # one falls back to the show's year") is already recorded and already right at
-    # catalog LOAD; simplex derived it only there, so a season that lost its year at
+    # catalog LOAD; rex derived it only there, so a season that lost its year at
     # runtime carried neither, and the season page printed no year at all.
     seasons_c16a17 = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"
                          % show)[1].get("Metadata") or []
@@ -15491,13 +15491,13 @@ def main():
 
 
     # Cycle 16, measured on plexscratch: `PUT /playlists/{id}` takes the whole ITEM edit
-    # grammar, not the four fields simplex allowed. `thumb=` and `art=` are 200s that
+    # grammar, not the four fields rex allowed. `thumb=` and `art=` are 200s that
     # mint artwork under `/library/metadata/{playlist ratingKey}/` and add an `Image`
     # row; `title.locked=1` and its siblings really lock; `year`, `originallyAvailableAt`
     # and `studio` are stored; `userRating`, `guid`, `duration` and the timestamps are
     # accepted and discarded. Only `playlistType`, `smart`, `composite`, `leafCount`,
     # `key`, `icon`, `content`, `sectionID`, `ratingKey`, `playQueueID`, an unknown
-    # field and a bare PUT are 400s. simplex 400'd every one of the accepted ones, so
+    # field and a bare PUT are 400s. rex 400'd every one of the accepted ones, so
     # the playlist Edit dialog's Poster and Background pickers and every lock checkbox
     # answered "There was a problem updating this item".
     made_c16a18 = json.loads(request(
@@ -15566,7 +15566,7 @@ def main():
     # three lists built in a row took 40/41, 42/43, 44/45, unbroken -- and a SMART
     # list's items carry NONE at all, because its members are its query. Every item
     # write on a smart list is a 400: the move, the single delete and the clear alike.
-    # simplex restarted the ids at 1 inside each playlist, stamped 1, 2, 3 on a smart
+    # rex restarted the ids at 1 inside each playlist, stamped 1, 2, 3 on a smart
     # list's items, and answered 404 to a smart move.
     keys_c16a19, ids_c16a19 = [], []
     for n_c16a19 in range(2):
@@ -15603,7 +15603,7 @@ def main():
     # Cycle 16, measured on plexscratch: a create `uri` the server cannot RESOLVE adds
     # nothing -- a foreign machine, a scheme-less `/library/metadata/1` and a key the
     # library does not hold all answer 200 with `leafCount: 0` and NO `composite` and
-    # NO `duration`, the shape of a list that was never filled. simplex resolved the
+    # NO `duration`, the shape of a list that was never filled. rex resolved the
     # first two against its own library and created a one-item list, so a uri naming
     # another server's item silently queued its own.
     made_c16a20 = {}
@@ -15629,7 +15629,7 @@ def main():
     # `/library/metadata/{ratingKey}/`, not under `/playlists/{id}/`. There `posters`,
     # `arts`, `thumbs`, `banners` and `tree` are all 200s; under `/playlists/{id}/` the
     # same names -- `posters`, `arts`, `thumb`, `art` and the UNVERSIONED `composite` --
-    # are 404s. simplex had it the other way round on eight of those paths, so a client
+    # are 404s. rex had it the other way round on eight of those paths, so a client
     # following the row's own artwork URL got a 404 while a probe of a path a real PMS
     # does not have got a 200, which is fix 4's trap from both sides at once.
     made_c16a21 = json.loads(request(
@@ -15660,7 +15660,7 @@ def main():
     # `plex://show/...` advertises the full list: an UNMATCHED item loses its
     # agent-driven preferences. A show drops `languageOverride` and `useOriginalTitle`;
     # a MOVIE loses the whole `Preferences` block, not merely its rows; a SEASON keeps
-    # its three. simplex left every setting in place, so the settings tab of an
+    # its three. rex left every setting in place, so the settings tab of an
     # unmatched item offered agent options that have no agent behind them.
     #
     # Asserted as the RULE rather than as a transition: by this point in the suite the
@@ -15712,7 +15712,7 @@ def main():
     # `state 3` frame carries the row's title from BEFORE the write and the `state 5`
     # frame the new one, while the ITEM path sends the new title in both. It is visible
     # only on a TITLE edit of a SHOW -- an episode's frame title is derived from its
-    # show, so it cannot show the difference. simplex sent the new title in both frames
+    # show, so it cannot show the difference. rex sent the new title in both frames
     # on the section path; the cost is small (the Dashboard's "Updating Metadata" line
     # names the new title a beat early) but the frame pair is the thing every other
     # client keys its refresh off.
@@ -15749,7 +15749,7 @@ def main():
     # its `displayTitle`, and all 200+ `/:/prefs` labels and summaries change; an
     # unknown language falls back to English, `de-DE` works like `de`, and the LIBRARY's
     # own rows -- item titles, `All Movies`, a secondary axis's `title2`, `Unplayed` --
-    # do not change at all. simplex read the header nowhere, so every non-English user
+    # do not change at all. rex read the header nowhere, so every non-English user
     # of every real client (Plex Web sends it from the browser locale, iOS/Android/TV
     # from the OS) saw English filter and sort menus, English hub titles, English
     # "Season N" and English track labels on every screen.
@@ -15787,11 +15787,11 @@ def main():
 
     # Cycle 17: the Meta Field list is per VERSION, like the Filter list. Cycle 14 split
     # `Meta.Type[].Filter` per version and left `Field` at 1.43.4's, because BOTH Meta
-    # fixtures were captured off kids. Measured on zen (1.42.2, the build simplex
+    # fixtures were captured off kids. Measured on zen (1.42.2, the build rex
     # reports): 34 movie Fields and 20 episode ones against kids' 40 and 26, differing in
     # exactly the six media-codec axes -- and on 1.42.2 those six are UNKNOWN fields, so a
     # listing filtered on one answers EVERY row (3887 of zen's 3887) and /query/parse
-    # reports an `Error` rather than a `Rule`. simplex advertised all six in the smart
+    # reports an `Error` rather than a `Rule`. rex advertised all six in the smart
     # filter builder, filtered on them (0 rows) and parsed them as real Rules.
     meta_c17d1 = get(base, "/library/sections/%s/all?includeMeta=1"
                      "&X-Plex-Container-Start=0&X-Plex-Container-Size=0"
@@ -15850,7 +15850,7 @@ def main():
     # plane included (an emoji is `&#128512;`, not a surrogate pair); and every control
     # character XML 1.0 forbids -- U+0001..U+0008, U+000B, U+000C, U+000E..U+001F and
     # U+007F -- is replaced with a literal `?`. So a real PMS's XML is pure ASCII even
-    # though it declares UTF-8. simplex used `xml.sax.saxutils.quoteattr`, which writes
+    # though it declares UTF-8. rex used `xml.sax.saxutils.quoteattr`, which writes
     # `&quot;`, leaves `'` alone, sends `\n`/`\r` as decimal and passes every non-ASCII
     # character through raw -- a different body on every response carrying an accent or
     # an apostrophe, which on a real library is most of them.
@@ -15889,7 +15889,7 @@ def main():
     # Cycle 17: §3.3 carried "the MECHANISM is measured; the COVERAGE is only as wide as
     # capture_i18n.py's path list" since cycle 16, and it was right. Sweeping 87 paths
     # against kids in German found 119 (attribute, string) pairs the reference
-    # translates that the table did not hold, and zen -- 1.42.2, the build simplex
+    # translates that the table did not hold, and zen -- 1.42.2, the build rex
     # reports -- moves the same families (43 strings on a library's /prefs, 17 on
     # /hubs/search, 2 on /butler). The biggest is the PREFERENCES family: every `label`,
     # `summary` and `enumValues` of the Edit Library dialog and the per-item Advanced
@@ -15948,7 +15948,7 @@ def main():
     # `Preferences` block's `Setting` rows (`label`, `summary` and `enumValues` alike,
     # at `/library/metadata/{id}?includePreferences=1` on a movie, a show and a season)
     # and a `Stream`'s language fields -- and nothing else: the row's own `title`,
-    # `summary` and tag names stay English in every language. simplex's localiser stops
+    # `summary` and tag names stay English in every language. rex's localiser stops
     # dead at the row boundary, so the whole per-item Advanced pane -- 31 labels, 30
     # summaries and 19 enum lists -- stayed English for every non-English client while
     # the same settings on `/library/sections/{id}/prefs` were translated.
@@ -15987,7 +15987,7 @@ def main():
     # because the language part was already omitted for carrying one of the title's own
     # words -- the omission is decided on the ENGLISH name and only the rendered name
     # moves. Its Tamil track goes the other way: `Tamil (Tamil-in-Tamil SRT)` becomes
-    # `Tamil (Tamoul SRT)` in French. simplex left every stream field English.
+    # `Tamil (Tamoul SRT)` in French. rex left every stream field English.
     # The English streams in this fixture are the SHOW's episodes, not the movies.
     rows_c17d5 = list(get(base, "/library/sections/%s/all" % movie_section)[1]
                       .get("Metadata") or [])
@@ -16049,7 +16049,7 @@ def main():
     #
     # What it costs a client: an episode's grandparent artwork URL on this list is
     # stable for the life of the row, so a client that caches it keeps a valid URL
-    # across artwork edits. simplex re-pointed it at the show's newest version, which
+    # across artwork edits. rex re-pointed it at the show's newest version, which
     # invalidates the cached image for every episode of the show on every edit.
     leaves_c17a1 = (get(base, "/library/metadata/%s/allLeaves" % show)[1]
                     .get("Metadata") or [])
@@ -16105,7 +16105,7 @@ def main():
     # `ratingKey, key, guid, slug, studio, type, title, titleSort`, and a Hub leads
     # `hubKey, key, title, type, hubIdentifier`. 25 element buckets, each a topological
     # sort of every attribute PAIR the two references were seen to emit and each checked
-    # to be a superset of every observed sequence; simplex inverted a witnessed pair in
+    # to be a superset of every observed sequence; rex inverted a witnessed pair in
     # 11 of them, 634 pairs in all.
     #
     # What it costs a real client: nothing visible -- every Plex client uses a real XML
@@ -16175,18 +16175,18 @@ def main():
     # Cycle 17, measured on kids (1.43.4) and zen (1.42.2) over the bare path and every
     # `mediaType=`: `tv.plex.agents.nfo.movie` and `tv.plex.agents.nfo.series` exist on
     # 1.43.4 and on NOTHING on 1.42.2, which lists four modern agents where 1.43.4 lists
-    # six. `system_agents.json` was captured off kids, so simplex -- which reports
+    # six. `system_agents.json` was captured off kids, so rex -- which reports
     # 1.42.2 -- offered the Add Library and Edit Library dialogs an agent a server of
     # its version does not have; picking it is a scanner/agent pair a real 1.42.2 would
     # refuse. Same family as this cycle's Meta Field split: a fixture captured off the
     # wrong version. The three legacy `com.plexapp.agents.*` rows both references also
-    # list stay deliberately absent -- simplex hosts no plug-in framework, and that is
+    # list stay deliberately absent -- rex hosts no plug-in framework, and that is
     # recorded in the fixture's own provenance.
     def agents_c17d6(query_c17d6):
         return [a_c17d6.get("identifier") for a_c17d6
                 in (get(base, "/system/agents%s" % query_c17d6)[1].get("Agent") or [])]
     # Cycle 53 scopes this to the MODERN rows: a real PMS lists the eleven legacy
-    # plug-in agents first, which simplex now does too, so a check written against
+    # plug-in agents first, which rex now does too, so a check written against
     # its four-agent catalogue was testing the bound rather than the surface.
     def modern_c17d6(rows_c17d6):
         return [a_c17d6 for a_c17d6 in rows_c17d6 if str(a_c17d6).startswith("tv.plex.")]
@@ -16260,7 +16260,7 @@ def main():
 
     # Cycle 17, re-measured by the driver on plexscratch: a save a real PMS REFUSES
     # writes nothing at all. `PUT /library/metadata/{id}?title.value=PARTIAL&
-    # year.value=abc` is a 500 there and the title is untouched. simplex applied each
+    # year.value=abc` is a 500 there and the title is untouched. rex applied each
     # parameter as it validated it, so everything before the bad one landed and
     # everything after it did not -- the client is told the save failed, keeps its old
     # model, and the row on disk has moved. The same on the section save path.
@@ -16285,8 +16285,8 @@ def main():
     # answer 200 and the edit lands. Each of them ALONE is still a 400, as is a PUT
     # with no parameters. The recorded rule ("an unknown field or tag type is 400") was
     # measured with the unknown name alone, which is failure class A: the client sends
-    # its save with whatever options it carries, and simplex 400'd 34 of the 71 names
-    # swept -- so a client that appends one option simplex does not know loses the
+    # its save with whatever options it carries, and rex 400'd 34 of the 71 names
+    # swept -- so a client that appends one option rex does not know loses the
     # whole save.
     def edit_c17b2(query_c17b2):
         request(base, "PUT", "/library/metadata/%s?title.value=SENTINEL17" % show)
@@ -16340,7 +16340,7 @@ def main():
     # Cycle 17, re-measured by the driver on plexscratch: the collection ITEM paths
     # answer 404 to every verb they do not implement. `/library/collections/{id}/items`
     # takes PUT (add) and nothing else; `/items/{ratingKey}` takes DELETE and nothing
-    # else; `/items/{ratingKey}/move` takes PUT and nothing else. simplex answered 200
+    # else; `/items/{ratingKey}/move` takes PUT and nothing else. rex answered 200
     # with an empty container to POST, DELETE, PATCH and OPTIONS on the list, 200 with
     # an INVENTED single-item container to a GET of one member, and 200 with the whole
     # children listing to a GET of `/move` -- fix 4's trap from the inside, where a
@@ -16388,7 +16388,7 @@ def main():
     # `/refresh`, `/analyze` and `/unmatch` all take PUT and refuse POST, where
     # `POST /library/sections/{id}/refresh` really is a 200. And `/library/metadata/
     # {id}/match` answers EVERY verb with its own no-parameters refusal: a GET and a
-    # DELETE there are 400, not 404. simplex ran the action on a POST -- so a client
+    # DELETE there are 400, not 404. rex ran the action on a POST -- so a client
     # that got the verb wrong re-matched an item instead of being refused -- and 404'd
     # the two match reads.
     post_c17b5 = {}
@@ -16407,7 +16407,7 @@ def main():
 
     # Cycle 17, re-measured on plexscratch: `GET /library/sections/{id}/refresh?force=`
     # PARSES the flag -- `abc` and an empty value are 400s there, where `0` and `1` are
-    # 200s. simplex took anything and ran the scan, so a client that sent a malformed
+    # 200s. rex took anything and ran the scan, so a client that sent a malformed
     # flag triggered a full refresh instead of being refused.
     force_c17b6 = {value_c17b6: request(
         base, "GET", "/library/sections/%s/refresh?force=%s"
@@ -16425,7 +16425,7 @@ def main():
     # `PATCH` and `OPTIONS` on `/butler` and on `/devices` answer the dispatcher's
     # `{"size": 0, "content": "plugins"}`, exactly as an unknown single-segment path
     # does -- the recorded rule that a read-only route 404s every verb but GET and HEAD
-    # is the rule for MULTI-segment routes. simplex 404'd them.
+    # is the rule for MULTI-segment routes. rex 404'd them.
     fell_c17b7 = {}
     for path_c17b7 in ("/butler", "/devices"):
         for verb_c17b7 in ("PUT", "OPTIONS"):   # cycle 31: PATCH is a 500 on 1.42.2
@@ -16440,7 +16440,7 @@ def main():
 
     # Cycle 17, measured read-only on kids (1.43.4) and zen (1.42.2), which agree
     # exactly: `GET /livetv` is the plug-in dispatcher's own THREE-row container --
-    # `dvrs`, `epg`, `sessions`, with `content="plugins"` -- not an empty one. simplex
+    # `dvrs`, `epg`, `sessions`, with `content="plugins"` -- not an empty one. rex
     # routed the whole `/livetv` tree to a bare empty container, so the one path that
     # does answer said the server had no Live TV surface at all rather than no tuner.
     status_c17b8, livetv_c17b8, _ = get(base, "/livetv")
@@ -16454,7 +16454,7 @@ def main():
 
 
     # Cycle 17, re-measured by the driver on plexscratch: a library PREFERENCE write
-    # moves the section's own `updatedAt`. simplex left it where it was, and clients
+    # moves the section's own `updatedAt`. rex left it where it was, and clients
     # cache a library keyed on that stamp -- so a settings change never invalidated the
     # cache. The write itself is unchanged: 200 with an empty body and zero frames on
     # both, exactly as cycle 15 recorded.
@@ -16483,7 +16483,7 @@ def main():
     # recorded rule -- "a bad int is a 500 on /:/prefs, IGNORED on a library" -- whose
     # second half was measured by watching the write answer 200 without reading the
     # value back. Clearing "Minimum automatic collection size" in the Edit Library
-    # dialog is exactly this request, and on simplex it silently kept the old number.
+    # dialog is exactly this request, and on rex it silently kept the old number.
     def threshold_c17b10():
         for s_c17b10 in (get(base, "/library/sections/%s/prefs"
                              % movie_section)[1].get("Setting") or []):
@@ -16508,7 +16508,7 @@ def main():
     # percent-ESCAPED for the two characters that delimit an `enumValues` string --
     # `:` becomes `%3a` and `|` becomes `%7c`, in lowercase hex -- and a value carrying
     # a `%` of its own is stored EMPTY. Every other character round-trips, `/` and a
-    # space included. The server is protecting its own encoding; simplex stored all
+    # space included. The server is protecting its own encoding; rex stored all
     # three verbatim.
     def country_c17b11():
         for s_c17b11 in (get(base, "/library/sections/%s/prefs"
@@ -16538,7 +16538,7 @@ def main():
     # `ratingKey` and a SERVER PATH as its `key` and `thumb`:
     # `/library/metadata/{id}/file?url=<the uri percent-encoded, with `.` encoded too>`,
     # which really serves the image (200 image/jpeg on kids). A `media://` candidate
-    # carries NO `provider` while a `metadata://` one carries the agent's. simplex put
+    # carries NO `provider` while a `metadata://` one carries the agent's. rex put
     # the bare uri in `key` and `thumb` and stamped every local row `provider: "local"`,
     # so Change Artwork drew each uploaded tile with `img src="upload://posters/..."`,
     # which no browser can fetch -- a grid of broken tiles.
@@ -16576,7 +16576,7 @@ def main():
     # CLEARS the poster -- the field goes and the row's other artwork is re-stamped,
     # exactly as `/poster` and `/art` already did.
     #
-    # Cycle 31: that is **1.43.4's** answer. On 1.42.2 -- the build simplex reports -- all
+    # Cycle 31: that is **1.43.4's** answer. On 1.42.2 -- the build rex reports -- all
     # five artwork DELETE leaves are 404s, so this check now drives the clear through the
     # empty-value edit, which both versions answer identically. The rule being tested is
     # the same one: clearing a poster removes the field and 404s the bare path.
@@ -16599,7 +16599,7 @@ def main():
 
     # Cycle 17, re-measured on plexscratch: an artwork UPLOAD moves `updatedAt` onto the
     # same stamp the new artwork path carries, exactly as an artwork PICK does. Cycle 15
-    # measured that for the pick and simplex implemented it there only, so a client that
+    # measured that for the pick and rex implemented it there only, so a client that
     # caches on `updatedAt` -- which is what the stamp is for -- never refetched a poster
     # the user had just uploaded.
     before_c17b14 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0]
@@ -16618,7 +16618,7 @@ def main():
 
     # Cycle 17, re-measured by the driver on plexscratch: a collection's children on the
     # METADATA path answer the LIGHT grid row inside a container that carries the
-    # librarySection triple and `allowSync: true` and NO `thumb`. simplex sent the full
+    # librarySection triple and `allowSync: true` and NO `thumb`. rex sent the full
     # detail row -- `Guid`, `Rating`, every tag list with ids, the whole `Stream` table
     # -- put the librarySection triple on each ROW instead of the container, said
     # `allowSync: false`, and added a `thumb` the reference does not carry. A client
@@ -16701,8 +16701,8 @@ def main():
     # EMPTY `after=` and an unparseable one are 400s that move nothing; an `after=` that
     # names no member -- `999999`, `0` -- is a 200 that moves the row to the FRONT, the
     # same as no `after=` at all; a ratingKey that is not a member is a 400, not a 404;
-    # and the `/children/{ratingKey}/move` alias really moves, where simplex answered
-    # `{size: 0}` and moved nothing. simplex answered 200 to every one of them and
+    # and the `/children/{ratingKey}/move` alias really moves, where rex answered
+    # `{size: 0}` and moved nothing. rex answered 200 to every one of them and
     # moved the row regardless, so drag-to-reorder through the alias silently did
     # nothing and a stale `after=` left the row where it was instead of moving it.
     ids_c17b16 = [r_c17b16["ratingKey"] for r_c17b16
@@ -16760,7 +16760,7 @@ def main():
     # TOLERATES the members it cannot use. A movie and an episode into a movie
     # collection is a 200 that adds the movie and drops the episode; an unknown key
     # beside a real one adds the real one. Only a SINGLE-key uri of the wrong type is
-    # the 400 cycle 9 recorded. simplex refused the whole batch, so "Add to Collection"
+    # the 400 cycle 9 recorded. rex refused the whole batch, so "Add to Collection"
     # over a multi-select lost every row when one of them was the wrong type.
     episodes_c17b17 = [r_c17b17["ratingKey"] for r_c17b17
                        in (get(base, "/library/metadata/%s/allLeaves"
@@ -16807,8 +16807,8 @@ def main():
     # Cycle 17, re-measured by the driver on plexscratch, every one of the 23 tasks run
     # singly with a notification socket open: the Scheduled Tasks page's Run button
     # reports a different sentence for twelve of them, three report SEVERAL messages,
-    # and five report one where simplex reported none at all. The task LIST is identical
-    # on kids, zen, plexscratch and simplex -- 23 names, same order, same fields -- and
+    # and five report one where rex reported none at all. The task LIST is identical
+    # on kids, zen, plexscratch and rex -- 23 names, same order, same fields -- and
     # every `POST /butler/{Task}` is a 200 with an empty body on both, so what differs is
     # only what the page then prints. The COUNT in each sentence is content and not part
     # of the rule; the template is.
@@ -16816,7 +16816,7 @@ def main():
     # The two tasks with an activity of their own differ in it too: `CleanOldBundles` is
     # titled `Cleaning Bundles` and steps its SUBTITLE through four named phases, and
     # `OptimizeDatabase` is titled `Optimizing database` with the subtitle `Optimizing
-    # Database` -- simplex had that pair the other way round.
+    # Database` -- rex had that pair the other way round.
     def butler_frames_c17b18(name_c17b18):
         _, frames_c17b18 = notifications(
             base, lambda: request(base, "POST", "/butler/%s" % name_c17b18), seconds=4)
@@ -16866,7 +16866,7 @@ def main():
     # -- a ratingKey that is not a number -- is a 404, where an unknown NUMBER is a 200
     # that removes nothing (the delete is idempotent). It is the same split the stream
     # paths already have, recorded in cycle 15: a malformed id is told apart from a
-    # missing one. simplex answered 200 with the collection row to both, so a client
+    # missing one. rex answered 200 with the collection row to both, so a client
     # that built the path wrong was told the member had been removed.
     made_c17b19 = json.loads(request(
         base, "POST", "/library/collections?type=1&title=c17del&smart=0&sectionId=%s"
@@ -16895,7 +16895,7 @@ def main():
     # Cycle 17, re-measured by the driver on plexscratch: an ACTIVITY's subtitle is the
     # row's FRAME title, which is not the row's own title -- a season's is `<show> S01`
     # and an episode's `<show> S01 E01`, the same strings their timeline frames carry.
-    # simplex used `title (year)` for every type, which is the MOVIE and SHOW form, so
+    # rex used `title (year)` for every type, which is the MOVIE and SHOW form, so
     # the Dashboard printed `Season 19 (2007)` where a real PMS prints `The Simpsons
     # S19`. The rule is recorded in CLAUDE.md for the timeline frames and was
     # implemented there only: `notify_timeline` computed it correctly and `_frame_title`
@@ -16956,7 +16956,7 @@ def main():
     # Cycle 18, measured on zen (1.42.2) over 3,887 real rows: on a string field no Meta
     # advertises, `<=`, `<<=`, `>=` and `>>=` are all a case-insensitive LEXICOGRAPHIC
     # comparison, both sides strict -- `titleSort<<=B` and `>>=B` partition the library
-    # and a row whose sort title IS the value is in neither. simplex allowed the keys and
+    # and a row whose sort title IS the value is in neither. rex allowed the keys and
     # fell through to containment, so `titleSort<<=Z` answered no rows at all and
     # `titleSort>>=A` answered every row whose title holds an `a`.
     # The expectation is computed from the rows AS THEY STAND: by this point in the
@@ -16989,7 +16989,7 @@ def main():
     # value -- an equality on this field -- answers 740 of zen's 741 seasons and 4,630 of
     # its 9,287 episodes, `titleSort<<=0` answers the same set, and every LETTER bucket of
     # a season `firstCharacter` listing answers none of them while `#` answers them all.
-    # simplex read the row's TITLE where it stores no sort title, so its synthesised
+    # rex read the row's TITLE where it stores no sort title, so its synthesised
     # seasons filtered and bucketed under `S`.
     # Cycle 31: an earlier check leaves a LOCKED sort title on a season, which is stored
     # exactly as kids' agent-titled season 7 stores one -- and since cycle 31 a stored value
@@ -17034,7 +17034,7 @@ def main():
 
     # Cycle 18: `section_prefs_new.json` is the FOURTH fixture found to be per VERSION,
     # after Meta.Type[].Filter (14), Meta.Type[].Field and system_agents.json (17). It was
-    # captured off kids (1.43.4) and differs from zen (1.42.2, the build simplex reports)
+    # captured off kids (1.43.4) and differs from zen (1.42.2, the build rex reports)
     # in 16 of 35 (type, agent) cells: on 1.42.2 the AGENT's settings are appended whatever
     # the `type=`, and on 1.43.4 `tv.plex.agents.none` adds five generic rows at type 1
     # that 1.42.2 does not have -- the cell the Add Library dialog's "Personal Media"
@@ -17057,8 +17057,8 @@ def main():
     # Cycle 18, measured on kids (1.43.4) and zen (1.42.2), byte-identical: four more
     # single-segment paths are the legacy plug-in dispatcher's own POPULATED listings --
     # `/media` names grabbers/providers/subscriptions, `/services` ten services, `/status`
-    # sessions -- `/statistics` is its empty 200 where simplex 404'd, and `/security` is a
-    # real empty container with NO `content` key at all, which simplex filed under the
+    # sessions -- `/statistics` is its empty 200 where rex 404'd, and `/security` is a
+    # real empty container with NO `content` key at all, which rex filed under the
     # dispatcher. Cycle 17 found `/livetv` was one of these; this is the rest of the family.
     for path, want in (("/media", ["grabbers", "providers", "subscriptions"]),
                        ("/status", ["sessions"]),
@@ -17080,7 +17080,7 @@ def main():
 
     # Cycle 18, measured on plexscratch over sixteen single-segment paths and seven verbs:
     # a KNOWN single-segment path answers the plug-in dispatcher for every verb it does not
-    # implement. simplex answered its own GET handler instead -- `PUT /identity` returned
+    # implement. rex answered its own GET handler instead -- `PUT /identity` returned
     # the identity, `DELETE /hubs` the whole hub list -- so a client that got the verb wrong
     # read a 200 with real content as acceptance. The recorded "/identity and /hubs answer
     # any verb" is that bug seen from the inside.
@@ -17107,7 +17107,7 @@ def main():
     # Cycle 18, measured on kids and zen across five libraries: the in-library search box
     # types its container from the ASKED `type=`, not from the library -- `type=3` is
     # `viewGroup="season"` with `viewMode` 65593 and `type=4` is `viewGroup="episode"` with
-    # `mixedParents: 1`. simplex answered the library's own type and 65592 to all four, so
+    # `mixedParents: 1`. rex answered the library's own type and 65592 to all four, so
     # a client searching episodes got the show-grid layout with no parent context, and one
     # searching seasons got the EPISODE layout -- the exact inversion behind the Seasons bug.
     for typ, group, mode, mixed in ((1, "movie", 65592, False), (2, "show", 65592, False),
@@ -17133,7 +17133,7 @@ def main():
     # Cycle 18, measured on kids ("Movies", "TV Shows"), zen ("Zen Movies", "Zen Shows",
     # "Bench TV"): the `All ...` string is COMPOSED from the library's own title on a movie
     # library and is the constant "All Shows" on a show library -- in both places it
-    # appears, the `/all` container's `title2` and the `all` pivot row. simplex composed the
+    # appears, the `/all` container's `title2` and the `all` pivot row. rex composed the
     # container's title2 for a show library ("All Debrid TV") and hardcoded "All Movies" for
     # a movie library's pivot row, so it had each half wrong in the opposite place.
     status, listing, _ = get(base, "/library/sections/%s/all" % show_section)
@@ -17159,7 +17159,7 @@ def main():
     # Cycle 18, measured on kids and zen: `/library/recentlyAdded?limit=N` really caps and
     # rewrites `totalSize` with the cap, and its grammar is a third one -- `limit=0` answers
     # ZERO rows (a section listing answers one), a negative value lifts the server's own
-    # 50-row cap, and an unparseable one is IGNORED (a section listing is a 500). simplex
+    # 50-row cap, and an unparseable one is IGNORED (a section listing is a 500). rex
     # ignored `limit=` on this path, so a client asking for the top N got the whole list and
     # paged against a totalSize a real server would have capped.
     status, listing, _ = get(base, "/library/recentlyAdded")
@@ -17179,7 +17179,7 @@ def main():
     # Cycle 18, measured on kids and zen: `/status/sessions/history/all` takes `limit=`,
     # and it is a third grammar again -- `limit=-1` answers ZERO rows where the same value
     # lifts the cap on `/library/recentlyAdded` and means "every row" on a section listing
-    # -- while `group=` is a 400 there, the empty form included. simplex ignored both, so
+    # -- while `group=` is a 400 there, the empty form included. rex ignored both, so
     # the Activity page asking for a capped page got the whole history and a client error
     # read as success.
     # A history row is written by a COMPLETED play, and a play completes only when a beat
@@ -17203,7 +17203,7 @@ def main():
     # `/playlists` as well as on a section listing, and a `resolution=` outside the enum is
     # a 500 there too (`/playlists?resolution=1` refuses where `?resolution=1080` is a 200).
     # Cycle 15 recorded the parentIndex rule and it was wired into the section listing
-    # alone -- the class-C shape -- so python-plexapi and the SDKs read simplex's 200 as
+    # alone -- the class-C shape -- so python-plexapi and the SDKs read rex's 200 as
     # "this field filtered nothing" rather than as a refusal.
     for path in ("/library/all?type=1&parentIndex=1", "/library/all?type=4&parentIndex=1",
                  "/playlists?parentIndex=1", "/playlists?resolution=1"):
@@ -17217,7 +17217,7 @@ def main():
     # Cycle 18, measured on kids and zen over 76 candidate names: `/hubs` and a SHOW
     # library's `/hubs/sections/{id}` answer a 500 to exactly fifteen field names with any
     # non-empty value, whatever operator follows; an empty value is a 200, an unknown field
-    # is a 200, and a MOVIE library's hub page takes all fifteen. simplex answered 200
+    # is a 200, and a MOVIE library's hub page takes all fifteen. rex answered 200
     # everywhere, so anything sweeping the surface read a hub path as "a listing with the
     # listing grammar", which it is not.
     fields = ("duration", "lastViewedAt", "lastRatedAt", "viewCount", "skipCount",
@@ -17268,7 +17268,7 @@ def main():
 
     # Cycle 18: `/system/search` is a 200 on kids and zen alike -- an empty
     # `com.plexapp.system` container with `mediaTagPrefix` and `prefsKey`, the one container
-    # attribute either reference emits that simplex never did -- where simplex 404'd it.
+    # attribute either reference emits that rex never did -- where rex 404'd it.
     status, listing, _ = get_system(base, "/system/search")
     check("/system/search is a real container",
           status == 200 and listing.get("size") == 0
@@ -17285,10 +17285,10 @@ def main():
     # `/system` subtree is a different server with an envelope of its own -- `PATCH` is a
     # **405** with an HTML body (the one 405 on the surface, against the library server's
     # "never 405"), a bare `OPTIONS` is a 200 with an empty body, and every other
-    # unimplemented verb is a 404 with an EMPTY body. simplex answered its own text/plain
+    # unimplemented verb is a 404 with an EMPTY body. rex answered its own text/plain
     # 404 to all of them.
     for path in ("/system", "/system/agents", "/system/zzz"):
-        # Cycle 31: the 405 is **1.43.4's**. On 1.42.2 -- the build simplex reports -- PATCH
+        # Cycle 31: the 405 is **1.43.4's**. On 1.42.2 -- the build rex reports -- PATCH
         # is not a method at all and answers the unrecognised-method 500 here like everywhere
         # else, so this subtree has no 405 of its own and the surface has none anywhere.
         status, body, headers = request(base, "PATCH", path, want_json=False)
@@ -17305,7 +17305,7 @@ def main():
     check("and the GET still answers", status == 200 and listing.get("size"), "%s" % status)
 
     # Cycle 18, measured on plexscratch with all seven verbs on each path: the playlist item
-    # paths refuse the verbs they do not implement, exactly as the collection's do. simplex
+    # paths refuse the verbs they do not implement, exactly as the collection's do. rex
     # answered 200 to thirteen cells -- a GET of ONE member returned the whole item listing,
     # and so did a GET or a DELETE of `/move`, which a client reads as acceptance.
     status, body, _ = request(base, "POST", "/playlists?type=video&title=VerbChk&smart=0"
@@ -17335,7 +17335,7 @@ def main():
 
     # Cycle 18, measured on plexscratch: `DELETE /library/metadata/{playlist}` is a 200 with
     # an EMPTY body that deletes nothing, where `DELETE /playlists/{id}` on the same copy is
-    # a 204 that really removes the row -- so it is not the copy refusing a delete. simplex
+    # a 204 that really removes the row -- so it is not the copy refusing a delete. rex
     # answered the playlist row, a MediaContainer where a real PMS sends no body at all.
     status, body, _ = request(base, "POST", "/playlists?type=video&title=DelChk&smart=0"
                               "&uri=server://%s/com.plexapp.plugins.library"
@@ -17360,7 +17360,7 @@ def main():
              .get("Metadata") or [])]
     spare = live[-1] if live else spare
     # Cycle 18, measured on plexscratch: a REPEATED `id=` on the section save path edits
-    # NOTHING -- a 200 in which neither row moves -- where the comma list edits both. simplex
+    # NOTHING -- a 200 in which neither row moves -- where the comma list edits both. rex
     # edited the LAST id, so the same request edited a row at random.
     request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&summary.value=RepeatBefore"
             % (movie_section, spare))
@@ -17378,7 +17378,7 @@ def main():
 
     # Cycle 18, measured on plexscratch: `POST /library/metadata/{id}/split` and `.../merge`
     # are 404s, exactly as `/refresh`, `/analyze` and `/unmatch` are -- cycle 17 landed the
-    # rule for three of the five leaves. simplex PERFORMED the split on a POST, which is a
+    # rule for three of the five leaves. rex PERFORMED the split on a POST, which is a
     # mutation a real PMS refuses to route at all.
     for leaf in ("split", "merge", "refresh", "analyze", "unmatch"):
         status, _, _ = request(base, "POST", "/library/metadata/%s/%s" % (movie, leaf))
@@ -17388,7 +17388,7 @@ def main():
 
     # Cycle 18, measured on plexscratch: a write to `/library/parts/{id}` resolves the PART
     # first -- an unknown number, a malformed id and an unparseable stream value on an
-    # unknown part are all 404s -- where simplex answered 200 whenever the request named no
+    # unknown part are all 404s -- where rex answered 200 whenever the request named no
     # usable stream, so a track picker pointed at a stale part id saw its selection applied.
     for path in ("/library/parts/999999", "/library/parts/abc",
                  "/library/parts/999999?subtitleStreamID=abc",
@@ -17402,7 +17402,7 @@ def main():
     check("and a real part with no parameters is still a 200", status == 200, "%s" % status)
 
     # Cycle 18, measured on plexscratch: `/library/metadata/{id}/subtitles` answers 404 to
-    # DELETE, PATCH and OPTIONS, where simplex answered the upload validator's 400 to all
+    # DELETE, PATCH and OPTIONS, where rex answered the upload validator's 400 to all
     # three -- a 400 says "your request was wrong", a 404 says "this verb is not here".
     for verb in ("DELETE", "OPTIONS"):     # cycle 31: PATCH is a 500 on 1.42.2
         status, _, _ = request(base, verb, "/library/metadata/%s/subtitles" % movie)
@@ -17435,7 +17435,7 @@ def main():
     # Cycle 18, swept character by character on plexscratch over every codepoint from U+0080
     # to U+02FF that NFD leaves alone: exactly eleven fold, and two of them are witnessed on
     # zen's real library -- `D\u00f8d Kalm` sorts as `D0d Kalm` and `D\u00e6monicus` as
-    # `Demonicus`. simplex folded combining marks only, so those rows carried no `titleSort`
+    # `Demonicus`. rex folded combining marks only, so those rows carried no `titleSort`
     # at all where a real PMS sends one.
     pairs = ((u"\u00c6ther Probe", "Ether Probe"), (u"D\u00f8d Probe", "D0d Probe"),
              (u"D\u00e6mon Probe", "Demon Probe"), (u"Wei\u00df Probe", "Weis Probe"),
@@ -17454,7 +17454,7 @@ def main():
     # Cycle 18, measured on plexscratch with a control and corroborated on zen: a row whose
     # title the SERVER generated is not in the query surface at all. The reference's season
     # `Season 2` answers nothing to `search?type=3&query=season` while the same season
-    # renamed answers at once, and zen's `type=3&title=Season` is 0 of 741 seasons. simplex
+    # renamed answers at once, and zen's `type=3&title=Season` is 0 of 741 seasons. rex
     # synthesises every season title, so its seasons answered both.
     status, found, _ = get(base, "/library/sections/%s/search?type=3&query=season" % show_section)
     check("a generated season title is not in the search index",
@@ -17478,7 +17478,7 @@ def main():
     # tags, audio first then subtitles, each named in its own language -- before the generic
     # regional list. zen's show 6910 leads `en:English|bg:...|cs:...` against its episodes'
     # one audio and fifteen subtitle languages, and show 11113 leads `pa:...|en:English`.
-    # simplex served the captured fixture list to every item, so a show's own languages could
+    # rex served the captured fixture list to every item, so a show's own languages could
     # not be chosen in its Preferences pane. The fixture gains one French subtitle track for
     # this check: with nothing but English in it the rule is invisible.
     status, detail, _ = get(base, "/library/metadata/%s?includePreferences=1" % show)
@@ -17499,7 +17499,7 @@ def main():
     # then `.../Season 02`, `.../Season 01` -- and that row has no activity update of its
     # own. And `provider.subscriptions.process` is the one activity a real PMS marks
     # `cancellable: true`, where every `library.update.section` and
-    # `library.update.item.metadata` beside it is false; simplex sent false for all three,
+    # `library.update.item.metadata` beside it is false; rex sent false for all three,
     # so the Dashboard drew no Cancel control.
     _status_c19y, frames_c19y = notifications(
         base, lambda: request(base, "GET", "/library/sections/%s/refresh" % show_section))
@@ -17524,9 +17524,9 @@ def main():
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2). Three rules about the `Meta`
     # descriptor the library page is built from. (1) `active` follows the REQUEST: a show
     # library's `?type=3&includeMeta=1` marks `season` and `?type=4` marks `episode`, where
-    # simplex served the captured fixture's stored flags and kept the Shows tab lit. (2)
+    # rex served the captured fixture's stored flags and kept the Shows tab lit. (2)
     # `?includeDetails=1` honours `includeAdvanced=1` -- bare it is 9 sorts on a movie
-    # library and 17 on a show one, with the flag 15 and 32 -- where simplex always answered
+    # library and 17 on a show one, with the flag 15 and 32 -- where rex always answered
     # the advanced list, so six sorts and the Duplicates filter the client hides behind its
     # own toggle were permanently on show. (3) That form carries no `folder` Type row and
     # marks none of the others active.
@@ -17597,7 +17597,7 @@ def main():
     # row that has none -- a show, a season -- from its LEAVES, matching when ANY leaf does.
     # zen's show library answers `type=2&duration<=1200000` with 39 and `>=1200000` with 483
     # of its 505 shows that have a value, which overlap and so cannot be one column on the
-    # show row; `mediaSize` behaves the same. simplex read `Media[0]` of the row itself, so
+    # show row; `mediaSize` behaves the same. rex read `Media[0]` of the row itself, so
     # every media filter on a show or season grid -- the Resolution control a TV library
     # actually offers -- answered nothing.
     leaves_c19v = get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []
@@ -17645,7 +17645,7 @@ def main():
     # `titleSort` at all and the one that does -- One Piece's season 22, the only season
     # in the library with a `year` -- carries `"Egghead"`, its own stored title, not the
     # `"Season 22"` it displays. Cycle 7 fitted "a year means titleSort == title" to
-    # kids' season 7, whose `Season 1` came from the agent and IS stored. simplex
+    # kids' season 7, whose `Season 1` came from the agent and IS stored. rex
     # synthesises every season title, so under cycle 18's stored-title rule it stores
     # none -- and it was contradicting itself: the ROW said `titleSort: "Season 19"`
     # while `?titleSort=` (an equality on the empty string) matched the same row.
@@ -17684,7 +17684,7 @@ def main():
     # them one -- 0 exceptions either way -- and kids reproduces it exactly: season 7 has
     # its own poster and its three episodes carry `parentThumb`, season 11 carries the
     # show's and its three carry none. `art` is NOT like this: it is handed down borrowed
-    # or not. simplex copied the season's thumb down whatever it pointed at, so an
+    # or not. rex copied the season's thumb down whatever it pointed at, so an
     # episode row named a poster that belongs to another row.
     _, seasons_c20b, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
     season_thumbs_c20b = {str(r_c20b.get("ratingKey")): str(r_c20b.get("thumb") or "")
@@ -17748,7 +17748,7 @@ def main():
     # BELOW every value and equal to 0. kids answers `viewCount=0` with all six,
     # `<<=0` with the three that have no row, `>=0` with the three that have one, and
     # `!=0` with none. `skipCount` is NOT in this family -- its nulls match nothing,
-    # which is how the two were separated. simplex answered an empty grid to
+    # which is how the two were separated. rex answered an empty grid to
     # `viewCount=0`, the client's own "never played" probe.
     # Expected from the rows themselves, because by this point the suite has played,
     # scrobbled and unscrobbled several of them.
@@ -17801,7 +17801,7 @@ def main():
     # kids' six all-English episodes that predicts `=`6 `!=`0 `==`0 `!==`6 `<=`0 `>=`0
     # `<<=`6 `>>=`6, which is exactly what it answers; zen's 9,287 agree, and a row
     # with no stream of that type matches every non-`=` operator vacuously (its
-    # `audioLanguage=zz` is 0 and `!=zz` all 3,887). simplex answered 0 to `!==`,
+    # `audioLanguage=zz` is 0 and `!=zz` all 3,887). rex answered 0 to `!==`,
     # `<<=` and `>>=`.
     lang_c20t = {}
     for label_c20t, key_c20t in (("=", "audioLanguage"), ("!=", "audioLanguage%21"),
@@ -17827,7 +17827,7 @@ def main():
     # one show and two seasons -- while the same probe at `type=4` returns a real
     # subset on both, so the filter is live and the parent row simply has no such
     # column. Cycle 19 built the any-leaf fallback for `duration`, `resolution` and
-    # `mediaSize`; simplex applied it to these two as well and selected every show.
+    # `mediaSize`; rex applied it to these two as well and selected every show.
     parents_c20u = {spec_c20u: len(get(base, "/library/sections/%s/all?%s"
                                        % (show_section, spec_c20u))[1].get("Metadata") or [])
                     for spec_c20u in ("type=2&audioLanguage=en", "type=3&audioLanguage=en",
@@ -17842,7 +17842,7 @@ def main():
     # Cycle 20: the media axes of a SHOW library are built from the LEAVES. Both
     # references answer a populated `/library/sections/{show}/resolution` and
     # `/audioLanguage` -- zen 6 and 46 entries, kids 1 and 1 -- although no show or
-    # season row has Media of its own. simplex built them from the section's top-level
+    # season row has Media of its own. rex built them from the section's top-level
     # rows only and answered an empty container, so the Resolution and Audio Language
     # menus of a TV library's filter bar were empty while the FILTER behind them worked.
     axes_c20v = {leaf_c20v: get(base, "/library/sections/%s/%s" % (show_section, leaf_c20v))[1]
@@ -17860,7 +17860,7 @@ def main():
     # Cycle 20: `file=` refuses a SHOW listing and reads the leaves on a SEASON one.
     # `type=2&file=/` is a 500 on kids and zen alike -- the only media column that
     # refuses rather than answering -- while `type=3&file=/` answers every season (zen
-    # 741, kids 2) and `type=4` every episode. simplex answered a 200 with no rows at
+    # 741, kids 2) and `type=4` every episode. rex answered a 200 with no rows at
     # type=2 and nothing at all at type=3: its `file` branch reads the row's own Media
     # and sits ABOVE the leaves fallback cycle 19 added, so the fallback never ran.
     fragment_c20w = ""
@@ -17887,7 +17887,7 @@ def main():
     # kids each answer 0 rows to `?type=1`, `?type=3`, `?type=4` and `?type=10` on a
     # show library -- and the container's `viewGroup` flips to `episode` for every one
     # of them where a movie library keeps `movie`. An unparseable or empty `type=` is a
-    # 500 there, and on `/onDeck` too, the refusal simplex already answered on `/all`.
+    # 500 there, and on `/onDeck` too, the refusal rex already answered on `/all`.
     unwatched_c20x = {}
     for spec_c20x in ("", "?type=2", "?type=3", "?type=4", "?type=1"):
         status_c20x, doc_c20x, _ = get(base, "/library/sections/%s/unwatched%s"
@@ -17914,7 +17914,7 @@ def main():
     # 741 seasons and 9,287 episodes to `type=2`, `3` and `4`, kids 1, 2 and 6, and
     # both answer 0 to `type=1` and `type=10`, while the container keeps
     # `viewGroup="show"`, its own `title2` and `allowSync: false` at every type.
-    # simplex ignored the parameter and always answered the show list.
+    # rex ignored the parameter and always answered the show list.
     typed_c20y = {}
     for value_c20y in ("2", "3", "4", "1"):
         status_c20y, doc_c20y, _ = get(base, "/library/sections/%s/recentlyViewedShows?type=%s"
@@ -17944,7 +17944,7 @@ def main():
     # of 507 rows -- 24 shows are in both -- and its seasons split 74 / 702 with 35 in
     # both. Both queries are evaluated per LEAF: `=1` is "some leaf has more than one
     # Media" and `!=1` is "some leaf has exactly one", so a parent holding both is in
-    # each. simplex collapsed a parent to one scalar, which makes the two sets
+    # each. rex collapsed a parent to one scalar, which makes the two sets
     # complements by construction and can never overlap -- cycle 19's own any-leaf
     # rule, implemented as a proxy.
     _, versions_c20aa, _ = get(base, "/library/metadata/%s" % c20_dup_leaf)
@@ -17969,7 +17969,7 @@ def main():
     # exactly the 1,518 with a value, so the 2,369 without one are in neither half --
     # the same rule cycle 19 measured for a numeric column. And `!=` really compares:
     # `addedAt!=2020-01-01` answers every row on both references where
-    # simplex answered none, because the date branch had no `!=` case at all and fell
+    # rex answered none, because the date branch had no `!=` case at all and fell
     # through to equality. The old "a NULL date matches is-before" was measured on
     # fun, which is out of scope.
     dates_c20ab = {}
@@ -18001,7 +18001,7 @@ def main():
     # selects the matched ones under all eight. It belongs with `resolution`, which
     # cycle 19 measured as operator-insensitive, and NOT with `unwatched`, which
     # follows the boolean rule on both references (the control: `unwatched=1` answers
-    # every season and its seven other operators none). simplex applied the boolean
+    # every season and its seven other operators none). rex applied the boolean
     # rule here, so `unmatched!=1` and `unmatched!=0` were both inverted.
     request(base, "PUT", "/library/metadata/%s/unmatch" % c20_unmatched)
     grid_c20z = {}
@@ -18040,7 +18040,7 @@ def main():
     # that one season and `!==5190` with the other 740, kids `id==7` with season 7,
     # and the movie libraries agree. Cycle 11 recorded "`==`/`!==` never match a
     # number" for this column -- measured, it seems, only against a value that was not
-    # one -- and simplex answered nothing to `id==` and every row to `id!==`.
+    # one -- and rex answered nothing to `id==` and every row to `id!==`.
     ids_c20ad = {}
     for label_c20ad, key_c20ad in (("=", "id"), ("==", "id%3D"), ("!==", "id%21%3D"),
                                    ("!=", "id%21")):
@@ -18057,13 +18057,13 @@ def main():
 
 
     # Cycle 20: `mediaCount` and `createdAt` are recorded filter fields that could
-    # never select anything in simplex, because no row carries either attribute and
+    # never select anything in rex, because no row carries either attribute and
     # both were read straight off the row. Both references answer real subsets:
     # `type=1&mediaCount=1` is 3,673 of zen's 3,887 and all 5 of kids', `type=2` and
     # `type=3` read the LEAVES (487 shows and 702 seasons answer `=1`, 44 and 74
     # answer `>>=1` -- the duplicate sets exactly), and `createdAt>=2000-01-01`
     # answers every row of every library on both. `sort=mediaCount` is a real
-    # ordering on both too, where simplex answered 500.
+    # ordering on both too, where rex answered 500.
     counts_c20ae = {}
     for spec_c20ae in ("type=1&mediaCount=1", "type=1&mediaCount%3E%3E=1",
                        "type=1&createdAt%3E=2000-01-01"):
@@ -18096,7 +18096,7 @@ def main():
     # READ-TIME fallback, not a copy made when the show is written. Set the episode's
     # own to EP-OWN and the show to SHOW-NEW: the episode keeps its own. CLEAR the
     # episode's (`contentRating.value=`) and it reads SHOW-NEW at once; write the show
-    # again and the episode follows to SHOW-NEW2. simplex copied the show's rating onto
+    # again and the episode follows to SHOW-NEW2. rex copied the show's rating onto
     # the episodes at load and on a show edit, so an episode whose own rating was
     # cleared had none at all and drew a blank badge for the rest of the process.
     if show_section:
@@ -18130,7 +18130,7 @@ def main():
     # between the runs: a SHOW library's `PUT /library/sections/{id}/analyze` pushes three
     # frames per EPISODE LEAF -- `mediaState` analyzing, thumbnailing, none -- and no
     # activity, exactly the item-analyze shape. Eighteen for its six episodes; the movie
-    # library's fifteen for five movies is the same rule. simplex framed only rows whose
+    # library's fifteen for five movies is the same rule. rex framed only rows whose
     # own `type` is `movie`, so a show library's Analyze pushed NOTHING and every
     # `!!mediaState` gate in the client stayed as it was.
     if show_section:
@@ -18176,7 +18176,7 @@ def main():
     # (`viewGroup: movie`, `viewMode: 65592`, `mixedParents` on the allLeaves) where a
     # playlist 404s both, `/extras` is the 400 the item path already answers, `/match` its
     # no-parameters 400, and `/analyze` splits -- 200 on a collection, 400 on a playlist.
-    # The artwork writes land like an item's. simplex 404'd every one, so Change Poster and
+    # The artwork writes land like an item's. rex 404'd every one, so Change Poster and
     # Clear Artwork on a collection page did nothing at all.
     codes_c21n = {}
     for label_c21n, key_c21n in (("collection", c21n_collection), ("playlist", c21n_playlist)):
@@ -18233,7 +18233,7 @@ def main():
     # Cycle 21, measured on plexscratch: `PUT /library/collections/{id}` is the ITEM edit
     # path, with the whole grammar -- a form that writes nothing is a 400, an unknown
     # `.value` is a 400, a pref name there is a 400, and `titleSort.value` with its lock
-    # really stores. simplex answered 200 to all of them from a second, weaker code path
+    # really stores. rex answered 200 to all of them from a second, weaker code path
     # and dropped the sort title, so a save on the collection page reported success and
     # lost the edit. And `POST`, `PATCH` and a bare `OPTIONS` are 404s on
     # `/library/collections/{id}`, on its `/children`, and on `/library/metadata/{id}` for
@@ -18268,7 +18268,7 @@ def main():
     # Cycle 21, measured on plexscratch by sweeping 41 candidate names from both
     # references' `Meta` keys and every column findings.md records: twenty-nine more names
     # take an item edit and a real LOCK -- a 200 that adds a `{"locked": true, "name": ...}`
-    # `Field` row -- where simplex answered 400 "unknown field", while eleven (`album`,
+    # `Field` row -- where rex answered 400 "unknown field", while eleven (`album`,
     # `artist`, `chapterSource`, `childCount`, `hasChapterVideoStream`, `leafCount`,
     # `logo`, `poster`, `role`, `sourceType`, `track`) are a 400 on both and `hdr10plus`
     # alone is a 200 that stores nothing. No VALUE is stored for any of them. Five of the
@@ -18301,7 +18301,7 @@ def main():
     # Cycle 21, measured on plexscratch over eight key shapes and three identifier shapes
     # on all four `/:/` writes: the `key=` is a BARE ratingKey, not a path. The path form
     # the client builds elsewhere -- `/library/metadata/17` -- is a 404 on scrobble and
-    # unscrobble and a 500 on rate and progress, where simplex took the last path segment
+    # unscrobble and a 500 on rate and progress, where rex took the last path segment
     # and accepted it. Past that the four diverge: `rate` and `progress` INT-PARSE the key
     # (`abc`, `1.5`, a leading space and an empty key are 500s; `+17` and `017` parse) where
     # scrobble and unscrobble just look it up and 404; `progress` accepts ANY integer key,
@@ -18346,7 +18346,7 @@ def main():
     # Cycle 21, measured on plexscratch value by value: `/:/progress?time=` takes a NEGATIVE
     # value and a leading `+`. `-1` and `-500000` are 200s that store nothing, `+120000`
     # stores 120000, and `abc`, an empty value, `1.5`, `0x10`, `1e6` and a leading space
-    # stay the 500 simplex already answered. simplex read the value with `isdigit()`, so
+    # stay the 500 rex already answered. rex read the value with `isdigit()`, so
     # the two shapes a real PMS accepts were refused.
     codes_c21r = {}
     for label_c21r, value_c21r in (("neg1", "-1"), ("neg", "-500000"), ("plus", "%2B120000"),
@@ -18370,7 +18370,7 @@ def main():
     # 200 with an empty body and pushing zero frames and leaving every row's `updatedAt`
     # and `scannedAt` alone. It is the container half of cycle 20's "an edit does not move
     # `updatedAt`, an artwork write does": clients cache a library keyed on that stamp, so
-    # on simplex the delete never invalidated it.
+    # on rex the delete never invalidated it.
     def section_stamp_c21s():
         return next((d_c21s.get("updatedAt") for d_c21s in
                      get(base, "/library/sections")[1].get("Directory") or []
@@ -18398,7 +18398,7 @@ def main():
     # Cycle 21, measured on plexscratch four times on a movie and four on a show: a
     # `PUT /library/metadata/{id}/refresh` does NOT move the row's `updatedAt` -- and the
     # reference really ran the refresh, because it pushed its seven-frame sequence each
-    # time. simplex stamped it and re-minted the artwork paths with it, so every Refresh
+    # time. rex stamped it and re-minted the artwork paths with it, so every Refresh
     # Metadata told every client that the row's poster and background had changed. Cycle 20
     # established that the artwork version IS the row's `updatedAt`, so the two move
     # together and neither should. (plexscratch is isolated from plex.tv, so what is
@@ -18423,7 +18423,7 @@ def main():
     # storage. A wire `%%2541` is `%%41` after HTTP and `A` after the second decode; a wire
     # `%%2525` stores `%%25`, so the stored form escapes `%%` as well as `:` and `|`, in
     # lowercase hex; a value whose second decode FAILS (`a%%b`) is stored empty. Cycle 17's
-    # "a value carrying `%%` is stored EMPTY" was the malformed half only -- simplex emptied
+    # "a value carrying `%%` is stored EMPTY" was the malformed half only -- rex emptied
     # every value containing one, so a ratings source with a percent escape was lost.
     stored_c21u = {}
     for label_c21u, wire_c21u in (("pct41", "%2541"), ("pct25", "%2525"),
@@ -18455,7 +18455,7 @@ def main():
 
     # Cycle 21, measured on plexscratch: `PUT /library/metadata/{playlist}/prefs` is a 400
     # -- the item prefs writer refuses a name it does not know, exactly as it does on every
-    # other row type -- where simplex 404'd it, because that path resolved a COLLECTION
+    # other row type -- where rex 404'd it, because that path resolved a COLLECTION
     # and nothing else. A collection's own write is unchanged at 200.
     check("a playlist answers the item prefs path with the item's own 400",
           request(base, "PUT", "/library/metadata/%s/prefs?zzz=1" % c21v_playlist)[0] == 400
@@ -18472,7 +18472,7 @@ def main():
     # it -- and the bare `OPTIONS` 200 come back with no body and no type, where a 404
     # anywhere ELSE on the surface carries `text/html` and a body. Cycle 18 recorded the
     # empty BODY for the non-GET verbs and implemented it as an empty `text/html`; the GET
-    # was never covered at all, so simplex answered its own 18-byte `text/plain` refusal
+    # was never covered at all, so rex answered its own 18-byte `text/plain` refusal
     # where a real PMS sends nothing.
     envelope_c21w = {}
     for verb_c21w in ("GET", "POST", "PUT", "DELETE", "OPTIONS"):
@@ -18512,7 +18512,7 @@ def main():
     # carries `viewCount`. Neither reaches a member. And the block comes back MID-ROW in
     # a fixed order -- `userRating, viewOffset, viewCount, lastViewedAt, lastRatedAt`,
     # after a collection's `ratingCount` and after a playlist's `composite` -- on every
-    # read but `/playlists/{id}` and the create response, which omit it whole. simplex
+    # read but `/playlists/{id}` and the create response, which omit it whole. rex
     # 404'd all ten writes, so the star rating on a collection page and on a playlist
     # page errored and never stuck.
     member_before_c21k = (get(base, "/library/metadata/%s" % movie)[1]
@@ -18594,7 +18594,7 @@ def main():
                     .get("Metadata") or [])][-1]
 
     # Cycle 21, measured on plexscratch over three artwork fields and two rows: a write
-    # after a DELETE is a 200 that re-mints the path. simplex answered 404 to every
+    # after a DELETE is a 200 that re-mints the path. rex answered 404 to every
     # later `PUT .../poster`, `.../thumb` and `.../art` on a row whose artwork had been
     # cleared -- the ownership guard cycle 16 added reads the row's CURRENT value, and a
     # cleared row owns nothing -- so Clear Artwork followed by Change Poster was a dead
@@ -18623,7 +18623,7 @@ def main():
         """Pick the row's ORIGINAL remote candidate again, so its versioned path serves.
 
         Earlier checks pick an `upload://` candidate and an unreachable http one, and
-        simplex has bytes for neither -- and once an upload is picked the remote candidate
+        rex has bytes for neither -- and once an upload is picked the remote candidate
         is no longer listed at `/posters`, so the url has to come from the copy taken
         before any artwork was written. Two checks passed or failed on suite order alone.
         """
@@ -18643,7 +18643,7 @@ def main():
     #   tv.plex.agents.movie      bare: 45 Language + 0 MediaType | typed: 45 + 0
     #
     # All six modern `tv.plex.agents.*` rows carry their Language list in BOTH forms and
-    # a `MediaType` in neither. simplex holds the modern agents only (the legacy
+    # a `MediaType` in neither. rex holds the modern agents only (the legacy
     # plug-ins are section 8), so the bare form is the typed form's children -- and it
     # was stripping exactly the rows the Agents page reads to build each agent's
     # language selector, handing it a lone `MediaType` instead.
@@ -18676,7 +18676,7 @@ def main():
     # on `/:/prefs`, `Agent` here, `Genre`, `Media`, `Role`, `Image` on a row,
     # `Action`, `Directory`, `Feature`, `Pivot` on `/media/providers`). A JSON parser
     # keeps the LAST of the repeated keys, so a client sees exactly one language per
-    # agent where simplex showed it forty-five.
+    # agent where rex showed it forty-five.
     status_c21b, body_c21b, _ = request(base, "GET", "/system/agents?mediaType=1")
     text_c21b = body_c21b.decode("utf-8", "replace").replace(" ", "")
     _, providers_c21b, _ = request(base, "GET", "/media/providers")
@@ -18695,7 +18695,7 @@ def main():
     # self-closed. Every one of the fifteen on `/media/providers` is written as a PAIRED
     # empty element (`<Feature key="/hubs/search" type="search"></Feature>`) on both
     # servers, while `Directory`, `Action` and `Pivot` in the same document self-close
-    # when they have no children. simplex self-closed all fifteen. It is the writer's
+    # when they have no children. rex self-closed all fifteen. It is the writer's
     # own quirk rather than anything a parser can see, and it is the last byte-level
     # difference on that document.
     # XML is the default format, and `request` asks for JSON unless told otherwise.
@@ -18720,7 +18720,7 @@ def main():
     # inherit option of a SEASON's `audioLanguage` and `subtitleLanguage` is
     # `:Series default`, not `:Account default` -- a season inherits from its SHOW.
     # `subtitleMode` already says `-1:Series default` in the captured fixture and
-    # simplex had that one right; the two enum-valued language settings are rebuilt at
+    # rex had that one right; the two enum-valued language settings are rebuilt at
     # read time (cycle 19's "led by the item's own streams") and the rebuild hardcoded
     # the account label. A SHOW says `:Account default` on both references, which is
     # what makes it the row type's rule rather than a constant.
@@ -18751,7 +18751,7 @@ def main():
     # EPISODE's `/tree` is the ancestor CHAIN and nothing else -- exactly three
     # `MetadataItem` nodes, the show, THAT episode's season and the episode. No sibling
     # season and no sibling episode. The controls agree on both references: a SEASON's
-    # tree is the season plus its own episodes and a SHOW's is the whole tree. simplex
+    # tree is the season plus its own episodes and a SHOW's is the whole tree. rex
     # rooted an episode's tree at the show and then answered the WHOLE show, so the
     # response grew with the show and the node the caller asked about was no longer
     # identifiable as the leaf.
@@ -18779,7 +18779,7 @@ def main():
     # references answer `size 0` to `type=3`, `type=4`, `type=5`, `type=8`, an
     # unparseable one and an empty one -- and both HOLD episodes, so it is not a
     # content difference -- with and without `sectionID`, `pinnedContentDirectoryID`
-    # and `includeMeta`. simplex answered eight episode rows at `type=4`, a shelf a
+    # and `includeMeta`. rex answered eight episode rows at `type=4`, a shelf a
     # real PMS does not have.
     hub_types_c21f = {}
     for value_c21f in ("1", "2", "3", "4", "5", "abc", ""):
@@ -18800,7 +18800,7 @@ def main():
     # Cycle 21: a `/library/onDeck` row LEADS with `allowSync` and the librarySection
     # triple, exactly as a `/library/recentlyAdded` row does. zen's on-deck episode
     # answers `allowSync="1" librarySectionID="4" librarySectionTitle="Bench TV"
-    # librarySectionUUID="c37aa2af-..."` before `ratingKey`; simplex carried the id,
+    # librarySectionUUID="c37aa2af-..."` before `ratingKey`; rex carried the id,
     # the title and the UUID but no `allowSync` -- and `allowSync` on the ROW is the
     # signal `xmlout` keys the whole lead on, so without it the four came out in the
     # middle of the row. It is cycle 19's own recorded rule, implemented on one of the
@@ -18821,10 +18821,10 @@ def main():
 
     # Cycle 21, measured byte for byte on kids and zen: a section's
     # `/hubs/sections/{id}/continueWatching/items` container is
-    # `{size, allowSync: true, identifier}` and nothing else. simplex said
+    # `{size, allowSync: true, identifier}` and nothing else. rex said
     # `allowSync: false` and added `mediaTagPrefix` and `mediaTagVersion`, on an empty
     # container as well as a populated one. Cycle 15's rule is that every hub path says
-    # `allowSync: true` except `/hubs/metadata/{id}/postplay`; simplex satisfied it on
+    # `allowSync: true` except `/hubs/metadata/{id}/postplay`; rex satisfied it on
     # every hub path but this one.
     keys_c21h, sync_c21h = {}, {}
     for section_c21h in (movie_section, show_section):
@@ -18841,7 +18841,7 @@ def main():
     # EXTRA SEGMENT after the version is a 404 -- `/library/metadata/{id}/thumb/{v}/x`
     # and `/thumb/{v}/1/2` both, on `thumb`, `poster` and `art`. A single trailing slash
     # is a 200 on all three (the recorded "one trailing slash is harmless") and so is a
-    # bad version. simplex served the image for anything that merely STARTED like an
+    # bad version. rex served the image for anything that merely STARTED like an
     # artwork path, which is the inverse of the `/photo/:/transcode` rule: a 404 lets
     # the client draw its own placeholder where a 200 gets cached.
     restore_poster_c21(movie)
@@ -18883,7 +18883,7 @@ def main():
     # fell out in dict insertion order and were APPENDED after `updatedAt` -- and
     # cycle 19 established that a real PMS's JSON key order is its XML order, so both
     # formats moved. `parentSummary` is the other half: on a `/library/recentlyAdded`
-    # season row it comes directly after `parentTitle`, before `summary`, where simplex
+    # season row it comes directly after `parentTitle`, before `summary`, where rex
     # put it last.
     for rating_key_c21j in (c21_state_show, c21_state_season, c21_state_episode):
         request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
@@ -18918,7 +18918,7 @@ def main():
     # `type=1`, `type=4` and `type=abc` are all accepted, the value is not read and the
     # row's own `type` never changes -- `type` is simply one of the lockable names cycle 20
     # added, and a form naming only a lockable name is the accepted no-op every other one
-    # already was. simplex stripped `type` from the edit form before the grammar ran,
+    # already was. rex stripped `type` from the edit form before the grammar ran,
     # because on the SECTION path it is the scoping parameter, so on the item path a form
     # that named only `type` looked empty and answered the 400 an empty form answers.
     codes_c22a = {}
@@ -18943,7 +18943,7 @@ def main():
     # carries a comparison character after the operator suffix comes off -- `collection==`,
     # `year>=`, `title!!` -- is an UNKNOWN FIELD, not a refusal. A listing ignores it and
     # answers every row, exactly as a bogus name does, and `/query/parse` answers 200 with
-    # `Error: [{type: "field", value: "<the key verbatim>"}]`. simplex raised a 400 from
+    # `Error: [{type: "field", value: "<the key verbatim>"}]`. rex raised a 400 from
     # `split_key` on both surfaces. The pair with NO `=` at all (`?year%%3E2010`) is a
     # different shape and stays the 400 cycle 11 measured, on all three servers.
     _, all_c22b, _ = get(base, "/library/sections/%s/all?type=1" % movie_section)
@@ -18975,7 +18975,7 @@ def main():
     # `『ONE PIECE』…` (U+300E), then `iHostage`, then `Zero Tolerance`; `studio:desc` on
     # `ufotable` before `Zide-Perry`; `summary:desc` on `Özge…` then `join 6 murder…` then
     # `handu dreams…`; `originalTitle:desc` on Hangul above Latin. Every one puts the
-    # highest codepoint first, so lowercase sorts ABOVE uppercase. simplex's `_sort_key`
+    # highest codepoint first, so lowercase sorts ABOVE uppercase. rex's `_sort_key`
     # returned `str(value).lower()` for every text key, which reorders any library holding
     # a lowercase-initial or non-ASCII value. It is the SORT side of the split cycle 20
     # measured on the FILTER side, where only `titleSort` folds case -- and `titleSort`
@@ -19016,7 +19016,7 @@ def main():
     # rows carry: `excludeElements=` honours an ALLOW-LIST -- `Media`, `Part`, `Genre`,
     # `Country`, `Guid`, `Rating`, `Director`, `Writer`, `Role`, `Producer` -- and every
     # other name is a NO-OP, exactly like an unknown one. `Extras`, `Related`,
-    # `Preferences`, `Field`, `Chapter` and `Review` all survive being named. simplex had
+    # `Preferences`, `Field`, `Chapter` and `Review` all survive being named. rex had
     # the rule inverted: cycle 19 measured `Image` and `UltraBlurColors` as the exceptions
     # and generalised to "everything else really goes", so a client naming `Related` or
     # `Preferences` in a bandwidth-trimming list lost a block a real PMS still sends.
@@ -19051,7 +19051,7 @@ def main():
     # Cycle 22, measured on zen and kids: `excludeElements=` reaches the rows INSIDE the
     # inline `Related` and `Extras` blocks, not just the top-level row. With
     # `excludeElements=Media` the nested related rows lose their Media and gain
-    # `mediaCount`; with `=Genre` they lose their Genre. simplex applied the option to the
+    # `mediaCount`; with `=Genre` they lose their Genre. rex applied the option to the
     # top row alone, so a client trimming a preplay page still received every `Media`,
     # `Part` and `Stream` of five related rows.
     _, nested_c22e, _ = get(base, "/library/metadata/%s?includeRelated=1&includeExtras=1"
@@ -19075,7 +19075,7 @@ def main():
 
     # Cycle 22, measured on zen and kids over 10 values x 6 options: five more options
     # carry `checkFiles`'s value grammar exactly -- `0`, `1`, `00` and `01` are 200s and
-    # an empty value, `abc`, `2`, `true`, `-1` and `1.5` are 400s. simplex validated
+    # an empty value, `abc`, `2`, `true`, `-1` and `1.5` are 400s. rex validated
     # `checkFiles` alone (cycle 19) and took anything at all for the other five, so it
     # advertised a tolerance a real PMS does not have.
     grammar_c22f = {}
@@ -19095,7 +19095,7 @@ def main():
           % (sorted(set(good_c22f.values())), sorted(set(bad_c22f.values()))))
 
     # Cycle 22, measured on zen and kids: `includeRelatedCount=0` EMPTIES the inline hub --
-    # `{hubIdentifier, size: 0, more: true}` with no rows -- where simplex read `0` as
+    # `{hubIdentifier, size: 0, more: true}` with no rows -- where rex read `0` as
     # "absent" and fell through to its default of five. `more` is true for any parsed cap
     # below the pool size, `0` included.
     _, zero_c22g, _ = get(base, "/library/metadata/%s?includeRelated=1&includeRelatedCount=0"
@@ -19121,7 +19121,7 @@ def main():
 
     # Cycle 22, measured on zen (236 newlines in one movie's XML) and kids (34): a real
     # PMS writes ONE element per line, with no indentation, and ends the document with a
-    # newline. simplex emitted a newline after the declaration and nowhere else, and no
+    # newline. rex emitted a newline after the declaration and nowhere else, and no
     # trailing one. It changes `Content-Length` on every XML response and what a `Range`
     # read of a container returns, which cycle 16 established applies to every body.
     _, xml_c22h, _ = request(base, "GET", "/library/metadata/%s" % movie, want_json=False)
@@ -19162,7 +19162,7 @@ def main():
 
     # Cycle 22, harvested from 633 zen paths and 133 kids paths: three attribute orders a
     # five-clip library never emits. A `Part` leads with `accessible, exists, id, key`
-    # where simplex appended the two flags last; a section's pivot `Directory` leads with
+    # where rex appended the two flags last; a section's pivot `Directory` leads with
     # `secondary` (and with `prompt, search` on the search pivot); and a `Feature` leads
     # with `flavor`. `_ATTR_ORDER` is a topological sort of observed PAIRS, so a pair no
     # reference was ever seen to emit falls to the end -- which is exactly what happened
@@ -19192,7 +19192,7 @@ def main():
 
     # Cycle 22, measured on zen and kids: a LIGHT row's JSON child-element order is the
     # light order, not the detail order -- `Guid` comes straight after `UltraBlurColors`,
-    # before the tags. simplex's XML writer had it right and its JSON writer did not:
+    # before the tags. rex's XML writer had it right and its JSON writer did not:
     # `xmlout._split` picks the light order off the row's own `_light` marker, and
     # `json_body` calls `_drop_private` FIRST, which strips the marker before the orderer
     # ever sees it. Cycle 19's "one answer both writers ask" held everywhere but here.
@@ -19214,7 +19214,7 @@ def main():
 
     # Cycle 22, measured on zen and kids: four `include*` options parse their value as an
     # INTEGER -- `01` and `001` turn them on, `2` and `true` do not -- while
-    # `includePreferences` compares the string and takes `1` alone. simplex tested `== "1"`
+    # `includePreferences` compares the string and takes `1` alone. rex tested `== "1"`
     # for all five, so a client sending the zero-padded form got a response with the block
     # missing: fix 4's failure mode, a valid document short a section.
     zeros_c22l = {}
@@ -19260,7 +19260,7 @@ def main():
 
     # Cycle 22, measured on plexscratch: an artwork write on a COLLECTION frames it as
     # `type 18` and on a PLAYLIST as `type 15` with `sectionID "-1"`, exactly as their
-    # other frames do. simplex sent `type 1` for both and an EMPTY sectionID for the
+    # other frames do. rex sent `type 1` for both and an EMPTY sectionID for the
     # playlist -- and CLAUDE.md already records that the client builds the URL it updates
     # from that number, so a Change Poster on a collection told every client on the socket
     # that a MOVIE with that ratingKey had changed. A row that does not exist.
@@ -19284,11 +19284,11 @@ def main():
           "%s" % frames_c22m)
 
     # Cycle 22, measured on plexscratch: `PUT /library/collections/{id}/refresh`,
-    # `/unmatch` and `/analyze` answer 200 with an EMPTY body, where simplex answered a
+    # `/unmatch` and `/analyze` answer 200 with an EMPTY body, where rex answered a
     # `{size: 0}` MediaContainer. CLAUDE.md's own rule -- "a mutating endpoint answers 200
     # with an EMPTY body, not a MediaContainer" -- had never reached these three; the
     # client parses the body of `match` to decide whether a match took. The playlist form
-    # of all three is a 404 on both, which simplex already had right.
+    # of all three is a 404 on both, which rex already had right.
     bodies_c22n = {}
     for leaf_c22n in ("refresh", "unmatch", "analyze"):
         status_c22n, body_c22n, _ = request(
@@ -19305,7 +19305,7 @@ def main():
     # Cycle 22, measured on kids, zen AND plexscratch: `/resources/{anything}` is a real
     # 200 answering an empty container -- `1`, `99999` and `abc` alike, and on plexscratch
     # every verb answers the same -- while `/search/voice` with NO parameters is a 400 that
-    # becomes a 404 once a `query=` is given. simplex 404'd both unconditionally, and it
+    # becomes a 404 once a `query=` is given. rex 404'd both unconditionally, and it
     # answered the plug-in dispatcher's listing to `POST`/`PUT /search`, where all three
     # references refuse with a 400: `/search` is a real routed endpoint, not an unknown
     # single segment.
@@ -19331,7 +19331,7 @@ def main():
     # Cycle 22, measured on plexscratch: `PATCH` had never been swept on the paths cycle 6
     # measured POST/PUT/DELETE on, and it is a 404 on every one of them --
     # `/library/sections`, `/status/sessions`, `/media/providers` and `/playQueues/{id}` --
-    # where simplex answered each one's own GET. `/accounts/{id}` refuses POST as well as
+    # where rex answered each one's own GET. `/accounts/{id}` refuses POST as well as
     # the DELETE cycle 19 measured. And `/system/proxy` is the one path in the `/system`
     # subtree that does NOT take cycle 18's envelope: it answers its own 400 to every verb,
     # GET included, rather than an empty-bodied 404.
@@ -19348,8 +19348,8 @@ def main():
           "%s | /system/proxy %s" % (verbs_c22p, proxy_c22p))
 
     # Cycle 23, measured on plexscratch twice over and re-measured by the driver: a MOVIE's
-    # unmatch pushes twelve frames and simplex pushed NONE. The sequence opens on two
-    # `matching` frames -- `state 2` and then `state 3`, a pair simplex emitted nowhere --
+    # unmatch pushes twelve frames and rex pushed NONE. The sequence opens on two
+    # `matching` frames -- `state 2` and then `state 3`, a pair rex emitted nowhere --
     # and the activity inside it steps through a second TITLE, `Analyzing Media`, before
     # returning to `Updating Metadata`:
     #   2/matching, 3/matching, 3/queued, activity started(-1, Updating Metadata),
@@ -19406,7 +19406,7 @@ def main():
     c23b_playlist = json.loads(c23b_made_pl)["MediaContainer"]["Metadata"][0]["ratingKey"]
 
     # Cycle 23, measured on plexscratch twice over: a collection and a playlist answer
-    # `/refresh` and `/unmatch` with a 200 and a real frame sequence, where simplex 404'd
+    # `/refresh` and `/unmatch` with a 200 and a real frame sequence, where rex 404'd
     # both -- so the Refresh Metadata and Fix Match entries `/media/providers` advertises
     # on a collection page did nothing. The sequences, and the guid GATE behind the first:
     #   collection refresh, guid `collection://...`  3 frames: 2/matching, 5, 3/queued
@@ -19461,7 +19461,7 @@ def main():
     # from the section grid and once from `/search`: the `/search` row is byte-identical to
     # that row's GRID row, prefixed with six attributes. `allowSync, librarySectionID,
     # librarySectionTitle, librarySectionUUID, personal, sourceTitle` lead it, and nothing
-    # else differs. simplex answered the DETAIL row -- `Guid`, `Rating`, tag elements
+    # else differs. rex answered the DETAIL row -- `Guid`, `Rating`, tag elements
     # carrying `id`/`filter` -- led by `ratingKey`, with no `allowSync` and no
     # `librarySectionUUID`, and a `librarySectionKey` neither reference sends there. On a
     # real library that is several times the bytes per hit (zen's detail rows carry up to
@@ -19495,7 +19495,7 @@ def main():
     # all -- and WHICH sort is marked follows the `sort=` parameter: none given lights the
     # default (`titleSort`, asc), `sort=addedAt:desc` lights `addedAt` with
     # `activeDirection="desc"`, and a spec naming no advertised key (`sort=year`) lights
-    # nothing. simplex lit its own top-level type's first sort in every cell. The client
+    # nothing. rex lit its own top-level type's first sort in every cell. The client
     # reads this straight into the grid's sort menu, so on a Seasons or Episodes grid it
     # highlighted "Title" while the rows were in broadcast order. Cycle 19's rule about the
     # `Type` row's own `active` is a different attribute and stays correct.
@@ -19562,7 +19562,7 @@ def main():
           "includeDetails %s | includeMeta %s" % (details_rows_c23e, meta_rows_c23e))
 
     # Cycle 23, measured on kids and zen: a `/library/tags` (and `/library/people/{id}`) row
-    # is `id, filter, tag, tagType, tagKey, thumb` -- `thumb` LAST -- where simplex led with
+    # is `id, filter, tag, tagType, tagKey, thumb` -- `thumb` LAST -- where rex led with
     # it, because `_ATTR_INDEX["Directory[none]"]` knows `thumb` and knows none of the other
     # five, so they all fell behind it. And the `/hubs/sections/{id}/manage` Hub leads with
     # `identifier`, not `title`, and SELF-CLOSES: cycle 22 put `Hub` in `_ALWAYS_PAIRED`
@@ -19592,9 +19592,9 @@ def main():
 
     # Cycle 23, measured on kids and zen: a `Common` row leads with the GRANDPARENT pair and
     # puts the PARENT pair before `ratingKey` -- `grandparentRatingKey, grandparentTitle,
-    # mixedFields, parentRatingKey, parentTitle, ratingKey, ...` -- where simplex appended
+    # mixedFields, parentRatingKey, parentTitle, ratingKey, ...` -- where rex appended
     # all four relational attributes after the scalars. And `/library/sections/{id}/common`
-    # was the LAST place simplex's own two writers disagreed with each other: `ordered()`
+    # was the LAST place rex's own two writers disagreed with each other: `ordered()`
     # called `_element_name` without the `overrides` the handler passes, so the JSON writer
     # never saw `_xml={"Metadata": "Common"}`, bucketed the row as `Video[common]` -- which
     # no index knows -- and left its keys in build order while the XML sorted them by the
@@ -19624,7 +19624,7 @@ def main():
     # Cycle 23, measured on plexscratch over 138 path templates x 7 verbs: three more
     # read-only routes answer 404 to every verb but GET and HEAD -- `/hubs/home/
     # recentlyAdded`, `/hubs/sections/{id}` and `/library/metadata/{id}/children` -- where
-    # simplex answered each one's own GET to POST, PUT, PATCH, DELETE and a bare OPTIONS.
+    # rex answered each one's own GET to POST, PUT, PATCH, DELETE and a bare OPTIONS.
     # Cycle 19 recorded the rule and these three never had it applied. It is fix 4's
     # failure mode from the other side: a client reading a 200 from
     # `DELETE /hubs/sections/1` is told the write was accepted.
@@ -19647,9 +19647,9 @@ def main():
     # Cycle 25, measured on plexscratch on an uncontended socket (cycle 23 deferred it
     # because its own hunt was running the butler on the same copy). A SEASON's unmatch
     # pushes ONE `matching` frame and then the SEASON cascade -- 28 frames, 9 of them the
-    # state-dependent media pass -- where simplex sent the seven-frame EPISODE form, so
+    # state-dependent media pass -- where rex sent the seven-frame EPISODE form, so
     # the episodes under an unmatched season were never re-announced. A SHOW's pushes 46
-    # and simplex pushed NONE, so Fix Match on a show page changed nothing on screen.
+    # and rex pushed NONE, so Fix Match on a show page changed nothing on screen.
     # The opener differs by row type and that is measured, not inferred: a movie and a
     # show open with the `matching` PAIR (`state 2` then `state 3`) and a season with one.
     def cascade_frames_c25a(path_c25a, cap_c25a=80):
@@ -19738,7 +19738,7 @@ def main():
     # Cycle 25, re-measured on kids over all seven verbs: `/library/metadata/{id}/match`
     # answers its no-parameters 400 to every one of them -- GET, HEAD, PUT, POST, DELETE,
     # PATCH and a bare OPTIONS. Cycle 17 recorded exactly that sentence and implemented
-    # it for GET and DELETE, so simplex still 404'd HEAD, PATCH and OPTIONS: the client's
+    # it for GET and DELETE, so rex still 404'd HEAD, PATCH and OPTIONS: the client's
     # own "is this matchable?" probe read as an endpoint that does not exist.
     match_verbs_c25c = {verb_c25c: request(base, verb_c25c,
                                            "/library/metadata/%s/match" % movie)[0]
@@ -19755,7 +19755,7 @@ def main():
     # on zen: a `/hubs/search` hit LEADS with `librarySectionTitle, score` before
     # `ratingKey`, and a `/library/search` hit leads with `librarySectionTitle` alone.
     # HANDOVER 3.3 carried this as single-witness because cycle 22's driver could only
-    # reproduce it on zen. simplex carried both attributes and put `librarySectionTitle`
+    # reproduce it on zen. rex carried both attributes and put `librarySectionTitle`
     # after `title` and `score` LAST, so its rows disagreed with both references and --
     # since a real PMS's JSON key order IS its XML order -- so did its JSON.
     def lead_c25d(path_c25d):
@@ -19819,7 +19819,7 @@ def main():
     # Cycle 25, measured on kids and zen: the `Setting` rows a show's `/tree` ends with
     # are NOT localised -- `Episode sorting` stays English in de, fr and ja, where the
     # same setting under `?includePreferences=1` moves. A tree node is a row keyed by
-    # `id` rather than `ratingKey`, so simplex's row guard did not see it and translated
+    # `id` rather than `ratingKey`, so rex's row guard did not see it and translated
     # what a real PMS leaves alone.
     def settings_c25f(path_c25f, lang_c25f):
         joiner_c25f = "&" if "?" in path_c25f else "?"
@@ -19895,7 +19895,7 @@ def main():
     # each library's whole `Preferences` block, byte-identical to the one
     # `/library/sections?includePreferences=1` answers -- the per-SHOW `episodeSort`
     # variant included -- as the FIRST child of the library `Directory`. The `Home` row,
-    # which names no library, gets none. simplex handled the option at three other sites
+    # which names no library, gets none. rex handled the option at three other sites
     # and ignored it here.
     providers_c25h = get(base, "/media/providers?includePreferences=1")[1]
     dirs_c25h = [row_c25h
@@ -19935,7 +19935,7 @@ def main():
     # Cycle 25, measured on kids and confirmed identical on zen: a modern agent's
     # `Language` rows are TITLED and ORDERED in the client's language -- 45 of them, all
     # six modern agents sharing one list. `system_agents.json` was captured with no
-    # `X-Plex-Language` at all, which is class A exactly, so simplex answered the
+    # `X-Plex-Language` at all, which is class A exactly, so rex answered the
     # self-named list to every client including one asking in English. The Add Library
     # and Edit Library dialogs build their language dropdown from this list and validate
     # the submitted `language` against it, so a German user got 45 entries each in a
@@ -20062,7 +20062,7 @@ def main():
     # Cycle 25, measured on plexscratch through four driven states: Continue Watching is
     # NOT On Deck. It holds only the rows with a stored `viewOffset` -- movies and
     # episodes alike -- where On Deck holds one row per show, its in-progress episode or
-    # the one after the last watched, which has no offset at all. simplex answered the
+    # the one after the last watched, which has no offset at all. rex answered the
     # same list to both, so its hero shelf offered episodes nobody had started.
     #
     #   cleared            onDeck []          contW []
@@ -20119,7 +20119,7 @@ def main():
     # Cycle 25, measured on plexscratch through the same four driven states: `/hubs` and
     # `/hubs/promoted` OMIT the `home.ondeck` Hub -- the element, not an empty one --
     # exactly when its rows are the ones Continue Watching is already showing, and that
-    # set is not empty. simplex always sent both, so Home drew the same in-progress
+    # set is not empty. rex always sent both, so Home drew the same in-progress
     # episode twice.
     def home_ids_c25m(path_c25m="/hubs"):
         return [h_c25m.get("hubIdentifier")
@@ -20162,7 +20162,7 @@ def main():
     # Cycle 25, re-measured on plexscratch one scrobble at a time, OVERTURNING cycle 9's
     # "a scrobble writes NO history row": it writes one per LEAF it marks. A movie
     # scrobbled twice adds two rows, a SEASON adds one per episode, a SHOW one per leaf,
-    # and an unscrobble removes none. simplex recorded none, so its History page stayed
+    # and an unscrobble removes none. rex recorded none, so its History page stayed
     # empty however much anyone marked played.
     def history_size_c25o():
         return get(base, "/status/sessions/history/all?type=1")[1].get("size") or 0
@@ -20207,10 +20207,10 @@ def main():
                                       len(leaves_c25o)))
 
 
-    # Cycle 25, measured on zen (1.42.2, the build simplex reports -- 73 of 73 episode
+    # Cycle 25, measured on zen (1.42.2, the build rex reports -- 73 of 73 episode
     # rows) and on plexscratch (1.43.4): an EPISODE history row carries `title` and
     # `originallyAvailableAt`, in a fixed order that is its own and not an ordinary
-    # `Video`'s. simplex carried neither, so the History page listed the episode with no
+    # `Video`'s. rex carried neither, so the History page listed the episode with no
     # episode name; and because a real PMS's JSON key order is its XML order, both
     # formats were wrong.
     episode_key_c25n = [r_c25n.get("ratingKey") for r_c25n in
@@ -20249,7 +20249,7 @@ def main():
     # SECTION's own Continue Watching shelf. The hide empties `/hubs/home/onDeck`,
     # `/hubs/home/continueWatching` and `/library/sections/{id}/onDeck` on both servers,
     # and the row is still in `/hubs/sections/{id}/continueWatching/items` afterwards on
-    # a real PMS -- stable to +20 s, so it is not a settle. simplex removed it there too.
+    # a real PMS -- stable to +20 s, so it is not a settle. rex removed it there too.
     leaf_c25p = [r_c25p.get("ratingKey") for r_c25p in
                  get(base, "/library/metadata/%s/allLeaves" % show)[1]
                  .get("Metadata") or []][0]
@@ -20278,7 +20278,7 @@ def main():
 
     # Cycle 25, measured on plexscratch after rating every movie in the section: a
     # Common's `userRating` is a STRING and it sits directly after `mixedFields`, ahead
-    # of `guid`. simplex sent the float the item row carries, in the middle of the row.
+    # of `guid`. rex sent the float the item row carries, in the middle of the row.
     # Single witness by construction -- the field only appears once every row in the
     # section shares a value, which neither read-only reference can be made to do.
     movie_keys_c25q = [r_c25q.get("ratingKey") for r_c25q in
@@ -20315,7 +20315,7 @@ def main():
     # Cycle 25, measured on plexscratch: the UNTYPED `/library/all` lists collections as
     # well -- 14 rows to 15 on a create and back on a delete -- and the row is byte for
     # byte the one `?type=18` answers, sorted in by ratingKey. The section form lists
-    # them on neither server, so the gap is this query alone. simplex's collections are
+    # them on neither server, so the gap is this query alone. rex's collections are
     # not rows in its catalog and this handler only looked there, so any client or script
     # enumerating the server through `/library/all` never saw one.
     def all_types_c25r():
@@ -20359,7 +20359,7 @@ def main():
 
 
     # Cycle 25, measured on plexscratch: a playlist appears in Home's Recent Playlists
-    # shelf, in `/hubs/search` and in `/library/search`. simplex hardcoded the shelf's
+    # shelf, in `/hubs/search` and in `/library/search`. rex hardcoded the shelf's
     # rows to `[]` -- with a comment saying the reference had "no playlist history",
     # which was true of the reference when it was measured and is not a rule -- and
     # searched its catalog alone, where a playlist is not a row. So Home's Playlists
@@ -20410,7 +20410,7 @@ def main():
     # `butler` wrapper -- four runs agree now, counting cycles 22 and 23. And the two
     # tasks with an activity of their own OPEN differently: `general.db.optimize` starts
     # at 0 with an empty subtitle, `general.db.backup` at -1 with its subtitle already
-    # set. simplex ran the backup once and opened both the optimize way.
+    # set. rex ran the backup once and opened both the optimize way.
     #
     # Two cycle-23 claims did NOT reproduce and are recorded as refuted rather than
     # implemented: `POST /butler/{Task}` pushes its first frame at +0.0 on a freshly
@@ -20538,7 +20538,7 @@ def main():
     # containers: a decision with NO `hasMDE=1` from a profile that direct plays the item
     # answers the directPlay/general PAIR -- both 1000, both "Direct play OK." -- with NO
     # transcode codes, the same Metadata row the MDE form carries, and `resourceSession`.
-    # simplex answered its "neither" refusal to every client that does not send `hasMDE`
+    # rex answered its "neither" refusal to every client that does not send `hasMDE`
     # -- Roku, plex-for-kodi, python-plexapi and the older TV apps -- so a server whose
     # whole purpose is direct play told them the catalog was unplayable.
     def decide_c26a(platform_c26a, extra_c26a="", item_c26a=None):
@@ -20661,7 +20661,7 @@ def main():
     # `timespan` the server does not KEEP is an empty 200, not the nearest bucket.
     # bandwidth keeps `0 1 2 3 4 6`, media `0 1 2 3 4`, resources `6`; 5, 7, 99, -1 and
     # 007 answer `size 0` on both references, and `06` parses as 6 and answers rows.
-    # simplex fell back to the ONE-SECOND bucket for every unstored value, so it answered
+    # rex fell back to the ONE-SECOND bucket for every unstored value, so it answered
     # the live per-second series relabelled with the asked-for window -- invented rows.
     # The client's own enum names 5 ("Minutes"), so it is reachable.
     def span_size_c26c(which_c26c, span_c26c):
@@ -20707,7 +20707,7 @@ def main():
     # list -- `metadataType` is NOT a media key, which is the one that looks like it
     # should be. And the `at` family is four operators: `at>` means `>=`, `at<` means
     # `<=`, `at=` is exact, and `at>=`, `at<=` and `at!=` are unknown keys that answer
-    # every row. simplex answered 200 to every `limit` and `sort` and sorted by none.
+    # every row. rex answered 200 to every `limit` and `sort` and sorted by none.
     limits_c26d = {value_c26d: get(base, "/statistics/bandwidth?timespan=6&limit=%s"
                                    % value_c26d)[0]
                    for value_c26d in ("1", "01", "0", "-1", "1.5", "abc", "", "+1")}
@@ -20774,7 +20774,7 @@ def main():
 
     # Cycle 26, measured on kids and zen: neither `/status/sessions` nor
     # `/statistics/{which}` is a PREFIX. Six session paths and three statistics ones that
-    # simplex answered 200 are 404s on both references -- and a 200 reads to a client as
+    # rex answered 200 are 404s on both references -- and a 200 reads to a client as
     # "this endpoint exists and is empty", which is fix 4's trap from the other side and
     # the same shape cycle 25 found behind `/library/sections/{id}/recentlyReleased`.
     prefixes_c26e = {path_c26e: get(base, path_c26e)[0] for path_c26e in (
@@ -20803,10 +20803,10 @@ def main():
 
 
     # Cycle 26, measured on kids and zen. A decision answers exactly ONE Media -- the
-    # `mediaIndex` asked for -- where simplex echoed every version with `selected` on the
+    # `mediaIndex` asked for -- where rex echoed every version with `selected` on the
     # chosen one, so a client counting them saw the whole edition list. And
     # `excludeElements=` is a NO-OP on this endpoint, the one exception to cycle 23's
-    # "every container that carries rows honours it"; simplex applied it and substituted
+    # "every container that carries rows honours it"; rex applied it and substituted
     # `mediaCount`, leaving the client a decision with nothing to play.
     def decide_row_c26f(extra_c26f=""):
         # Cycle 32 refit: the MDE form, which answers the row for any profile. Roku's
@@ -20903,7 +20903,7 @@ def main():
     #
     # A decision row KEEPS `summary` whatever the row type -- the rule it replaces was
     # fitted to movie 1, the one row on the copy whose summary is the EMPTY STRING, so
-    # the attribute was absent there for a different reason and simplex dropped it from
+    # the attribute was absent there for a different reason and rex dropped it from
     # every movie. Four movies with real summaries and two episodes refute it.
     #
     # A transcode START for a `session=` that has made no decision is a 400, not a 404:
@@ -20920,13 +20920,13 @@ def main():
             # The client identifier is load-bearing, and was added when the arming was
             # measured to be per SESSION: this decision and the start below have to be
             # the SAME session, as a real client's are. `request()` sends
-            # `simplex-ui-test`, and the identity falls back to it when no
+            # `rex-ui-test`, and the identity falls back to it when no
             # X-Plex-Session-Identifier is sent, so both requests arm and read the same
             # pair. Without it the decision armed one session and the start read another
             # and the gate refused a request a real PMS would have let through.
             headers={"User-Agent": UA, "Accept": "application/json",
                      "X-Plex-Platform": "Chrome",
-                     "X-Plex-Client-Identifier": "simplex-ui-test",
+                     "X-Plex-Client-Identifier": "rex-ui-test",
                      "X-Plex-Session-Identifier": session_c26h}, method="GET")
         with urllib.request.urlopen(request_c26h, timeout=30) as response_c26h:
             body_c26h = json.loads(response_c26h.read() or b"{}")
@@ -20961,7 +20961,7 @@ def main():
     undecided_c26h = request(base, "GET", start_c26h)[0]
     decide_full_c26h(movie, "c26h-start")
     decided_c26h = request(base, "GET", start_c26h)[0]
-    # The 404 is simplex's OWN answer -- it has no encoder -- and not the reference's,
+    # The 404 is rex's OWN answer -- it has no encoder -- and not the reference's,
     # whose `start.mpd` is a 404 there while the same session's `start.m3u8` is a 200.
     # What is emulated, and what this check is for, is the 400 that comes first.
     check("a transcode start with no decision is a 400, and not once one is made",
@@ -20970,7 +20970,7 @@ def main():
 
 
     # Cycle 26, measured on the copy: an `/unmatch` on a collection or a playlist really
-    # WRITES, and simplex's write never reached a read. The line setting `guid` has
+    # WRITES, and rex's write never reached a read. The line setting `guid` has
     # always been there; `_collection_row` and `_playlist_row` rebuild the public row on
     # every read and re-mint the agent guid, so the write landed in a projection that is
     # thrown away -- the frames were right and the row a client reads was unchanged, so
@@ -20984,7 +20984,7 @@ def main():
     #
     # And the activity a collection pushes ENDS at 100, not at 49: 49 is the progress of
     # its own `updated` frame, left in the dict, so the Dashboard's bar stopped there and
-    # then vanished. A PLAYLIST pushes no activity at all, which simplex already had.
+    # then vanished. A PLAYLIST pushes no activity at all, which rex already had.
     created_c26i = request(
         base, "POST", "/library/collections?type=1&title=c26i&smart=0&sectionId=%s&uri=%s"
         % (movie_section, quote("server://%s/com.plexapp.plugins.library"
@@ -21148,11 +21148,11 @@ def main():
     # the `butler` wrapper steps once PER TASK -- `updated` at 100 for the task just
     # finished, then `updated` at `round(100 * n / (n + 1))` for the queue -- with no
     # step after the last task, so a run of N pushes N `updated 100` frames and N-1
-    # steps before its `ended 100`. Both runs were identical frame for frame. simplex
+    # steps before its `ended 100`. Both runs were identical frame for frame. rex
     # pushed a single `updated 100` for the whole run.
     #
     # Two of the three task shapes were also in the wrong order. `CleanOldBundles`
-    # INTERLEAVES its two messages with its own activity's phases; simplex pushed both
+    # INTERLEAVES its two messages with its own activity's phases; rex pushed both
     # after the activity had ended, so the Dashboard reported the media bundles after it
     # had moved on to the metadata ones. And `RefreshLibraries` REPORTS BEFORE IT SCANS:
     # the message goes out, the wrapper steps to 100 and ends, and only then does the
@@ -21164,7 +21164,7 @@ def main():
     # by hand a moment earlier, was skipped -- and an immediate second POST ran 12. No
     # row of `GET /butler` carries a last-run or next-run time, so which tasks are due
     # is not observable from the surface and two runs cannot separate "its interval has
-    # not elapsed" from "it found nothing to do". simplex runs every enabled task. What
+    # not elapsed" from "it found nothing to do". rex runs every enabled task. What
     # IS refuted, 2 of 2, is the older reading that a second POST is one
     # `backgroundProcessingQueue` frame and nothing else: it is a full run of its own.
     def butler_frames_c26k(path_c26k):
@@ -21190,7 +21190,7 @@ def main():
     expected_c26k = [int(round(100.0 * n_c26k / (n_c26k + 1)))
                      for n_c26k in range(1, len(steps_c26k) + 1)]
     # `len(hundreds) > 1` is load-bearing: without it the check passes on a server that
-    # pushes ONE `updated 100` for the whole run, which is exactly what simplex did.
+    # pushes ONE `updated 100` for the whole run, which is exactly what rex did.
     check("the butler wrapper steps round(100n/(n+1)) between its tasks",
           len(hundreds_c26k) > 1
           and len(steps_c26k) == len(hundreds_c26k) - 1
@@ -21231,7 +21231,7 @@ def main():
 
 
     # Cycle 26, re-measured on the copy over ten runs: a session with no further beat
-    # went at +184.0 at the earliest and +210.4 at the latest. simplex's
+    # went at +184.0 at the earliest and +210.4 at the latest. rex's
     # cutoff was SEVENTY seconds, fitted in cycle 9 to the lab's ten-second clips before
     # `long` media existed, so a client that stops beating -- several TV apps stop while
     # paused -- fell off Now Playing after a minute and a bit.
@@ -21355,7 +21355,7 @@ def main():
     # `Role` there is `filter, id, role, tag, tagKey, thumb`, which refutes cycle 26's
     # "alphabetical AFTER filter"), and `Player` is the one element with an order of its
     # own -- the string-valued attributes alphabetically, then `local, relayed, secure,
-    # userID`. simplex wrote whatever order its builder's dict held, so a Player came out
+    # userID`. rex wrote whatever order its builder's dict held, so a Player came out
     # `address, state, local, relayed, secure, userID, profile, machineIdentifier, ...`.
     ident_c27a = ("X-Plex-Client-Identifier=c27a-client"
                   "&X-Plex-Session-Identifier=c27a-sess&X-Plex-Product=Plex+for+Roku"
@@ -21398,7 +21398,7 @@ def main():
     # `Opera TV App` reports `HTML TV App` -- the resolution runs
     # `X-Plex-Client-Profile-Name` then `X-Plex-Platform` then `X-Plex-Device` with a
     # value that names nothing falling THROUGH, and the attribute is OMITTED when none of
-    # the three names a profile. simplex stamped `Web` on every session, so the Dashboard
+    # the three names a profile. rex stamped `Web` on every session, so the Dashboard
     # named the wrong client profile for every product that is not a browser.
     #
     # The block sends its own headers rather than going through `request()`: that helper
@@ -21496,7 +21496,7 @@ def main():
                      for s_c27c in seasons_c27c
                      for e_c27c in kids_of_c27c(s_c27c["ratingKey"])]
     # The rule measured is that a leaf whose `art` NAMES the show follows the show's new
-    # stamp, where simplex moved `grandparentArt` and left `art` behind. Whether a leaf
+    # stamp, where rex moved `grandparentArt` and left `art` behind. Whether a leaf
     # that carries no `art` at all GAINS one is a different question and is not measured
     # -- the only way to produce that state is a show unmatch, which the suite runs
     # before this point, so the check is stated over the leaves that still borrow.
@@ -21570,7 +21570,7 @@ def main():
     # of headers in fifty lines is a 200 -- so the "~41 KB total" HANDOVER 3.3 carried is
     # refuted; it was the same cap measured with ~410-byte headers.
     #
-    # simplex answered Python's own `431 Request Header Fields Too Large` twice over: at
+    # rex answered Python's own `431 Request Header Fields Too Large` twice over: at
     # a HUNDRED headers, one short of the reference, because Python's reader counts the
     # blank terminator line; and for any header line over 64 KiB. 431 is a status neither
     # reference sends on any path.
@@ -21604,7 +21604,7 @@ def main():
     # Cycle 27, bisected to the byte on kids and zen, identical on both and over three
     # verbs: a real PMS bounds the URL at exactly 32768 bytes and answers a plain 400 to
     # 32769. It is the URL and not the request LINE -- the boundary does not move when
-    # the method does. simplex took Python's 64 KiB request-line limit instead, so every
+    # the method does. rex took Python's 64 KiB request-line limit instead, so every
     # URL between 32 KiB and 64 KiB was a 200 where a real PMS refuses, and a longer one
     # came back `414 Request-URI Too Long`, a status neither reference sends anywhere.
     def url_status_c27e(length_c27e):
@@ -21635,7 +21635,7 @@ def main():
     # the tokens and none after, an origin- or absolute-form target, and the two version
     # digits unconstrained, so `HTTP/2.0` and `HTTP/9.9` are 200s where `HTTP/1` is a
     # 400. An HTTP/0.9 line with no version at all is answered with a FULL HTTP/1.1
-    # response. simplex took Python's parser: it answered 200 to four lines a real PMS
+    # response. rex took Python's parser: it answered 200 to four lines a real PMS
     # refuses, Python's 505 page to `HTTP/2.0`, and a bare status-line-less body to the
     # 0.9 form.
     def line_status_c27f(line_c27f, ending_c27f=b"\r\n"):
@@ -21681,13 +21681,13 @@ def main():
 
     # Cycle 27, measured on kids and zen with a GET and on the writable copy with a POST,
     # which agree: an unparseable `Content-Length` is IGNORED (`abc` is a 200 everywhere,
-    # and no body is read) and a NEGATIVE one is a 500. simplex called `int()` on the raw
+    # and no body is read) and a NEGATIVE one is a 500. rex called `int()` on the raw
     # header, so `abc` raised inside the handler thread and the socket closed with no
     # response, and `-1` reached `rfile.read(-1)`, which blocks until the peer hangs up.
     #
     # Not emulated, and recorded instead: a `Content-Length` the client does not then
     # SEND. A real PMS answers at once -- it reads the body only where the endpoint wants
-    # one -- where simplex reads eagerly and waits out its own 20-second socket timeout.
+    # one -- where rex reads eagerly and waits out its own 20-second socket timeout.
     def content_length_c27g(value_c27g, verb_c27g="GET", path_c27g="/identity"):
         sock_c27g = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
@@ -21742,7 +21742,7 @@ def main():
 
 
     # Cycle 27, re-measured on kids (1.43.4) and zen (1.42.2) in JSON: `durationTotal`
-    # and `storageTotal` are STRINGS on both, where simplex sent integers. XML cannot
+    # and `storageTotal` are STRINGS on both, where rex sent integers. XML cannot
     # tell the two apart, which is why cycle 19 recorded that the pair exists here and
     # not what type it is. A typed client whose model declares them `String` rejects the
     # section grid row whenever `includeStorage=1` is on.
@@ -21759,7 +21759,7 @@ def main():
     # rows and NO `MediaType`. Cycle 21 read the opposite off the legacy plug-in rows,
     # where it is true -- `com.plexapp.agents.imdb` really does carry a `MediaType` in
     # the bare form and none in the typed one -- and generalised it to every agent.
-    # simplex holds the modern agents only, so it stripped exactly the rows the Agents
+    # rex holds the modern agents only, so it stripped exactly the rows the Agents
     # page reads to build each agent's language selector.
     bare_c27i = request(base, "GET", "/system/agents", want_json=False)[1].decode(
         "utf-8", "replace")
@@ -21779,7 +21779,7 @@ def main():
 
 
     # Cycle 27, measured on kids and zen: a modern `Agent` row leads `identifier, name,
-    # hasPrefs, id`. simplex emitted `hasPrefs, id, identifier, name` -- its builder's
+    # hasPrefs, id`. rex emitted `hasPrefs, id, identifier, name` -- its builder's
     # dict order -- because `_ATTR_ORDER` had no `Agent` bucket at all. Cycle 19 parked
     # this on the LEGACY rows' own pairs, which the modern rows do not carry.
     agent_xml_c27j = request(base, "GET", "/system/agents",
@@ -21801,7 +21801,7 @@ def main():
     # Cycle 27, measured on kids and zen over five `includeMeta=1` paths: a `Sort` row
     # leads with `active, activeDirection` and only then `default, defaultDirection,
     # descKey, firstCharacterKey, key, title`; and a `Hub` puts `random` BEFORE `style`.
-    # Neither element had a bucket in `_ATTR_ORDER`, so simplex emitted the flags it
+    # Neither element had a bucket in `_ATTR_ORDER`, so rex emitted the flags it
     # adds last, last.
     sort_xml_c27k = request(base, "GET", "/library/sections/%s/all?includeMeta=1"
                             "&includeAdvanced=1&X-Plex-Container-Size=1" % movie_section,
@@ -21825,7 +21825,7 @@ def main():
     # Cycle 27, measured on kids (1.43.4) and zen (1.42.2), which agree: the rows
     # `?includeDetails=1` answers are ONE paged sequence -- 20 `Directory` + 1 `Type` +
     # 8 `FieldType` = 29 -- so a 20-row window is `size=20 totalSize=29 offset=0` and
-    # `Start=20` hands back the Type and the eight FieldTypes as rows 20-28. simplex's
+    # `Start=20` hands back the Type and the eight FieldTypes as rows 20-28. rex's
     # generic pager takes `totalSize` from the longest list, so it reported
     # `totalSize=20` beside a `size` of 29 and answered nothing past the twentieth row.
     def detail_page_c27l(start_c27l, size_c27l):
@@ -21874,7 +21874,7 @@ def main():
 
     # Cycle 27, swept over eleven values of each of seven parameters on kids (1.43.4) and
     # zen (1.42.2), which agree on all 77: `/photo/:/transcode` validates five more
-    # parameters, and simplex took anything for all five -- so a client sending a
+    # parameters, and rex took anything for all five -- so a client sending a
     # malformed tile URL got an image where a real PMS refuses the request.
     # `minSize` and `upscale` are BOOLEANS (`0`, `1`, `01`, `+1` only); `opacity` and
     # `quality` take any integer; `blur` takes any integer but 500s a negative one.
@@ -21900,7 +21900,7 @@ def main():
                  get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata")
                  or []]
     # ...and the poster it picks is the row's own GENERATED placeholder, not a remote
-    # url: simplex has no bytes for an unreachable one, so the versioned path it mints
+    # url: rex has no bytes for an unreachable one, so the versioned path it mints
     # for it is a 404 on read and every case below comes back 404 whatever it asked.
     owned_c27o = None
     if live_c27o:
@@ -21948,7 +21948,7 @@ def main():
     # Cycle 27, measured on kids (1.43.4) and zen (1.42.2): the SINGLE history read is a
     # third projection with an order of its own -- `historyKey, librarySectionID, title,
     # [grandparentTitle,] type, [index, parentIndex,] originallyAvailableAt, viewedAt,
-    # accountID, deviceID, viewType`. Cycle 18 measured the FIELD SET and simplex built
+    # accountID, deviceID, viewType`. Cycle 18 measured the FIELD SET and rex built
     # it correctly, then `_split` re-sorted it as an ordinary `Video[movie]` row, because
     # nothing marked it as this projection.
     listing_c27m = get(base, "/status/sessions/history/all?type=1")[1].get("Metadata") or []
@@ -21985,7 +21985,7 @@ def main():
     # path once per media type, and a real PMS answers an empty 200 to ANY type number
     # that PARSES -- 0, 3, 8, 9, 10, 12, 13, 15, 18, 20 and -1 included -- and a 400 only
     # to a value that does not (`abc`, an empty one, `1.5`). Measured over 17 values on
-    # kids and zen, which agree on every one. simplex refused everything but 1, 2 and 4.
+    # kids and zen, which agree on every one. rex refused everything but 1, 2 and 4.
     #
     # What it costs a real client: the web client issues movie, show and ARTIST inside
     # one `all([...])` under a single try/catch, so the `type=8` refusal rejects the
@@ -22004,7 +22004,7 @@ def main():
     # Cycle 27, recorded through a real client: the Settings -> Metadata Agents pane
     # reads `/media/providers/metadata` and `/media/providers/metadata/group`
     # immediately before `/system/agents?mediaType=`, and both are populated 200s on
-    # kids (7 and 6 rows) and zen (4 and 4). simplex had never routed either, so the
+    # kids (7 and 6 rows) and zen (4 and 4). rex had never routed either, so the
     # pane's provider list was empty on a server that holds four modern agents.
     prov_c27r = get(base, "/media/providers/metadata")[1]
     group_c27r = get(base, "/media/providers/metadata/group")[1]
@@ -22027,7 +22027,7 @@ def main():
     # Add Agent is unconditional. Its query-only POST creates an in-table group,
     # rename returns the same full row, an incompatible Personal Media secondary is
     # a 400 followed by a 404 delete, and deleting the group is an empty 200. Frozen
-    # simplex answered the create with Cycle 31's broad 400, so every dependent
+    # rex answered the create with Cycle 31's broad 400, so every dependent
     # branch was unreachable and the visible Add Agent action did nothing.
     before_groups_c40b = request(base, "GET", "/media/providers/metadata/group")[1]
     primary_c40b = next((row_c40b for row_c40b in rows_c27r
@@ -22088,12 +22088,12 @@ def main():
     # Cycle 27, measured on kids (1.43.4) and zen (1.42.2) and recorded through a real
     # client: every PERSON tag carries a 24-hex `tagKey` -- on a detail row's `Director`,
     # `Writer`, `Role` and `Producer`, and on the rows of `/library/tags?type=4|5|6|7` --
-    # where `Genre` and `Country` carry none. simplex carried none at all, and the web
+    # where `Genre` and `Country` carry none. rex carried none at all, and the web
     # client's Cast & Crew link builder reads `/library/people/${tag.tagKey}` for any
     # server that is not plex.tv's cloud, so every person tile on every preplay page
     # linked to `/library/people/undefined`.
     #
-    # The value is MINTED (see hierarchy.py): simplex has no source for plex.tv's own
+    # The value is MINTED (see hierarchy.py): rex has no source for plex.tv's own
     # person ids, so the shape is measured and the value is a deterministic substitute.
     detail_c27s = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     people_c27s = {name_c27s: (detail_c27s.get(name_c27s) or [{}])[0]
@@ -22133,7 +22133,7 @@ def main():
     # artwork the row OWNS. Season 7's `art` was still the SHOW's path after its own
     # poster was picked, and zen's episode 11115 carries `art` naming its SEASON beside a
     # `grandparentArt` naming the show at a different stamp -- a borrowed field keeps the
-    # owner's path, stamp and all. simplex re-versioned `thumb`, `art` and `theme` onto
+    # owner's path, stamp and all. rex re-versioned `thumb`, `art` and `theme` onto
     # the picking row whatever it owned, so a season that borrowed the show's backdrop
     # came away claiming a path only the show serves.
     #
@@ -22175,7 +22175,7 @@ def main():
     # back 19766, 19767, 19763, 19762 -- the first pair last viewed at 1788088024 and
     # the second at 1788088000 -- which is neither ratingKey nor `addedAt` order, and
     # the row does not carry the number: it is the history's own, the same place
-    # `globalViewCount` comes from. simplex sorted on `(-plays, ratingKey)`, so a tied
+    # `globalViewCount` comes from. rex sorted on `(-plays, ratingKey)`, so a tied
     # group came back least-recently-watched first.
     c27u_rows = get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or []
     if len(c27u_rows) < 2:
@@ -22212,7 +22212,7 @@ def main():
     # which really does ignore it, and wrong for these four. It is not academic: Plex
     # Web's Home saga builds every hubs request as
     # `{contentDirectoryID: pinned.join(","), pinnedContentDirectoryID, includeMeta,
-    # excludeFields}`, so on simplex an unpinned library's Continue Watching and On Deck
+    # excludeFields}`, so on rex an unpinned library's Continue Watching and On Deck
     # rows leaked onto Home and a library filter did nothing at all.
     def hubs_c28a(value_c28a):
         path_c28a = "/hubs?q=%s" % quote(str(value_c28a))
@@ -22274,7 +22274,7 @@ def main():
     # shelves, `0`, `00`, `2`, `10`, `1.5`, `true`, ` 1`, `abc` and an empty value do
     # not -- and it drops BOTH `home.continue` and `home.ondeck`, on `/hubs/promoted`
     # and on the bare `/hubs` alike. No other `exclude<Name>=1` spelling does anything.
-    # simplex compared the raw string with `"1"`, so `01` missed; it dropped only
+    # rex compared the raw string with `"1"`, so `01` missed; it dropped only
     # `home.continue`; and it ignored the parameter on `/hubs` entirely.
     def resume_shelves_c28b(path_c28b, value_c28b):
         sep_c28b = "&" if "?" in path_c28b else "?"
@@ -22322,9 +22322,9 @@ def main():
     # Cycle 28, measured on kids (1.43.4) and zen (1.42.2), identically: `/clients/
     # profiles` is the server's CLIENT PROFILE catalogue, not the hosted-client list --
     # one `Profile` row per file in its `Resources/Profiles` directory, the same 78
-    # names simplex already holds for `Player.profile`. The bare form and `type=0`/`00`
+    # names rex already holds for `Player.profile`. The bare form and `type=0`/`00`
     # answer all 78; `type=42` (`LOCAL` in the client's own enum) and `042` answer
-    # SEVEN; every other value, an empty one included, is a 400. simplex answered an
+    # SEVEN; every other value, an empty one included, is a 400. rex answered an
     # empty container to all of them.
     profiles_c28d = {}
     for value_c28d in (None, "0", "00", "42", "042", "1", "43", "-1", "abc", ""):
@@ -22351,7 +22351,7 @@ def main():
     # unparseable `type` and an unparseable `limit` are each a 500, while `subtype`,
     # `smart` and an empty `sort` are accepted and ignored, and a `type=` the library
     # holds answers those rows instead (a movie library's `type=1` is its movies).
-    # simplex answered a 200 and `size 0` to every one of them.
+    # rex answered a 200 and `size 0` to every one of them.
     coll_c28e = {spec_c28e: request(
         base, "GET", "/library/sections/%s/collections%s" % (movie_section, spec_c28e))[0]
         for spec_c28e in ("", "?sort=zzz", "?type=zzz", "?type=", "?limit=abc",
@@ -22381,11 +22381,11 @@ def main():
     # aggregation from `/library/recentlyAdded`, where cycle 25's "dated by the earliest
     # episode" holds and is re-confirmed below.
     #
-    # simplex filtered `type == "show"`, so a new episode or a new season of an existing
+    # rex filtered `type == "show"`, so a new episode or a new season of an existing
     # show was invisible on Home; the shelf only ever changed when a whole show arrived.
     #
     # What this FIXTURE can show: its eight episodes span four seasons and are all
-    # equally recent, so the roll-up's own answer is the SHOW -- which is what simplex
+    # equally recent, so the roll-up's own answer is the SHOW -- which is what rex
     # used to answer for the wrong reason. The half that separates them is the DATE: the
     # row now carries its newest leaf's stamp rather than the show's own. The MIXED case
     # needs a library where only some rows are recent, which is zen's, and the suite
@@ -22418,7 +22418,7 @@ def main():
     # on deck: all three On Deck paths answer the FULL DETAIL row, child for child
     # identical to `/library/metadata/{id}` (`Guid`, `Rating`, and the four person tags
     # carrying `id`, `filter`, `tagKey`, `role`, `thumb`), where the same row through the
-    # section grid is the light one. simplex answered the light row on `/library/onDeck`
+    # section grid is the light one. rex answered the light row on `/library/onDeck`
     # and `/library/sections/{id}/onDeck` -- which is what every non-web client reads.
     ident_c28g = ("X-Plex-Client-Identifier=c28g&X-Plex-Session-Identifier=c28g"
                   "&X-Plex-Product=Plex+Web&X-Plex-Platform=Chrome")
@@ -22455,7 +22455,7 @@ def main():
     # Cycle 28, measured on zen and kids at `count=40`: a non-`random` shelf's rows are
     # exactly the head of its OWN `key` listing, in that listing's order -- 29 of 32
     # non-empty shelves matched byte for byte, and the three that did not are the
-    # `random="1"` ones. simplex's Recently Watched shelf broke it: the key it publishes
+    # `random="1"` ones. rex's Recently Watched shelf broke it: the key it publishes
     # is `?sort=lastViewedAt:desc&unwatched=0&viewOffset=0` and its builder honoured
     # neither clause, so a row in progress sat on the shelf and then vanished when the
     # user clicked the shelf's own See All chevron.
@@ -22494,7 +22494,7 @@ def main():
     # 30 rows sit at positions 26 to 579 of its 583-row key listing, non-monotonically,
     # and the same for `tv.startwatching` and `tv.toprated`. A NON-random shelf is exactly
     # the head of its key: 29 of 32 non-empty shelves matched byte for byte at
-    # `count=40`, and the three that did not are these. simplex advertised the flag and
+    # `count=40`, and the three that did not are these. rex advertised the flag and
     # answered the deterministic sorted head on every request, so "Top Unwatched" would
     # show the same six titles for ever.
     #
@@ -22537,7 +22537,7 @@ def main():
     else:
         # Cycle 30 corrected this on zen: the sample is a SAMPLE of the key set and it
         # is STABLE -- 21 reads over seven minutes answered the identical rows. Cycle 28
-        # asserted the order varying, which was simplex's own bug.
+        # asserted the order varying, which was rex's own bug.
         check("a random shelf advertises the flag and answers a steady sample",
               bool(flagged_c28i) and len(orders_c28i) == 1
               and steady_c28i is not None and len(steady_c28i) == 1,
@@ -22550,7 +22550,7 @@ def main():
     # `count=-1` answers ONE row with `more: false` and `-2`, `-5` and `-100` answer NONE
     # with `more: false`, where `count=0` answers none with `more: TRUE`. So a negative
     # count is `len(rows) + count` clamped at zero and always reports the shelf as
-    # exhausted. simplex clamped every negative value to zero and kept `more: true`.
+    # exhausted. rex clamped every negative value to zero and kept `more: true`.
     # No client sends a negative count, so this changes nothing visible; the edge was
     # measured, so it is recorded.
     def shelf_edge_c28j(value_c28j):
@@ -22583,7 +22583,7 @@ def main():
     # `count` is the size of the listing the row's own `key` names, which is the
     # library's own top-level type: 3 of 3 rows on zen and kids.
     #
-    # simplex keyed the hits by name alone and counted every row carrying the tag, so a
+    # rex keyed the hits by name alone and counted every row carrying the tag, so a
     # genre both libraries hold was one row naming whichever library the catalog reached
     # first, with a count its own filter link could not answer, and the other library's
     # link was missing from the search page.
@@ -22614,7 +22614,7 @@ def main():
     # Cycle 28, measured on kids (`Ian Hubert`) and zen (three `Amélie` actors): a PERSON
     # search tag row carries its 24-hex `tagKey`, directly after `tagType` and before the
     # `thumb`, with `count` LAST -- and a `Genre` row carries none. The client builds
-    # every person link from it, so simplex's search hit, which minted the key for the
+    # every person link from it, so rex's search hit, which minted the key for the
     # detail row and left it off this one, sent a click on an actor found by the search
     # box to `/library/people/undefined`.
     # The check MAKES both tags: the fixture's own Role lists have been edited away by
@@ -22652,7 +22652,7 @@ def main():
     # `/library/search` tag row is the `/hubs/search` row WITHOUT `reason`, `reasonID`,
     # `reasonTitle` and its own `score` -- the score sits on the `SearchResult` wrapper
     # alone there, as a number, where the hubs row carries it inside as a string.
-    # simplex answered the hubs row verbatim on the flat endpoint, four attributes and
+    # rex answered the hubs row verbatim on the flat endpoint, four attributes and
     # all, telling every client that each tag had matched "because" its section.
     # The check MAKES the tag it needs. The fixture carries `Animation` on a row of each
     # library at load, but the suite's edit checks have replaced those lists by the time
@@ -22685,7 +22685,7 @@ def main():
     # Cycle 28, measured on kids and zen: a `/library/search` `SearchResult` prints its
     # score with FIVE decimals in XML (`score="0.52000"`, `score="0.93095"`) and sends
     # the same value as a plain number in JSON -- XML being the default format, which is
-    # the wire every TV and mobile client reads. simplex wrote Python's own `"0.32"`.
+    # the wire every TV and mobile client reads. rex wrote Python's own `"0.32"`.
     # The check MAKES the tag it needs. The fixture carries `Animation` on a row of each
     # library at load, but the suite's edit checks have replaced those lists by the time
     # this runs -- an indexed tag write REPLACES the list on the item path -- so the state
@@ -22736,7 +22736,7 @@ def main():
     # row family of `/hubs/search`, each by its own library -- kids' `drama` keeps one
     # `Drama` tag row at `=1` and the other library's at `=2`, and plexscratch's
     # `c26act` keeps three collections and a movie playlist at `=1` and empties both at
-    # `=2`, a playlist going with its MEMBERS' library. simplex compared the tag ENTRIES
+    # `=2`, a playlist going with its MEMBERS' library. rex compared the tag ENTRIES
     # on a key they do not carry, so a scoped search answered NO tag rows for either
     # library, and its collections were not scoped at all.
     request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
@@ -22784,7 +22784,7 @@ def main():
     # And `limit=` caps the WHOLE list, not each hub -- kids' `firefly&limit=3` answers
     # the show and two of its episodes -- refusing an unparseable value with a 400 and a
     # non-positive one with a 500, the same two-way refusal `/hubs/search` makes.
-    # simplex answered its rows whatever `searchTypes` said, capped each hub separately,
+    # rex answered its rows whatever `searchTypes` said, capped each hub separately,
     # and had the two refusals the wrong way round.
     # The check MAKES the rows it needs. The fixture's titles are gone by the time this
     # runs -- the suite renames rows all the way through -- so it writes its own word into
@@ -22853,7 +22853,7 @@ def main():
     # Cycle 29, measured on plexscratch by uploading an `art` to a SEASON and reading its
     # three episodes back: an artwork UPLOAD cascades exactly as a pick does -- the
     # season's own `thumb` and `art` land on one stamp and every episode's `parentThumb`
-    # follows it. simplex's upload path set the row's two fields, moved `updatedAt` and
+    # follows it. rex's upload path set the row's two fields, moved `updatedAt` and
     # pushed its frame, and never called the cascade, so the children kept the old stamp.
     # A client caches artwork on that stamp, which is what it is for, so an uploaded
     # poster was invisible on every episode page until the process restarted.
@@ -22904,7 +22904,7 @@ def main():
     #     on both
     #
     # So a row's own artwork field is its NEAREST ancestor's that OWNS one, and
-    # `parentX`/`grandparentX` always name that specific ancestor. simplex could only MOVE
+    # `parentX`/`grandparentX` always name that specific ancestor. rex could only MOVE
     # a field a row already had, so a leaf that lost its `art` never got one back, a
     # season that gained its own had it overwritten by the next show pick, and no leaf ever
     # followed its season's.
@@ -22984,7 +22984,7 @@ def main():
     # Cycle 29, measured on plexscratch by clearing the THUMB of a season that owned its
     # poster and borrowed its backdrop from the show: the borrowed `art` is left exactly as
     # it was, naming the SHOW's path at the show's own stamp, and the season's `thumb` falls
-    # back to the show's. simplex re-versioned the borrowed field as the season's own -- a
+    # back to the show's. rex re-versioned the borrowed field as the season's own -- a
     # row claiming an image the server has none of -- which the artwork derivation then
     # handed down to every episode.
     # By the time this runs, cycle 23's artwork DELETE check has cleared the SHOW's own
@@ -23065,7 +23065,7 @@ def main():
     # ancestor's, exactly as clearing its `thumb` does (cycle 27). A season that owned an
     # `art` reads back carrying the SHOW's path, its episodes' own `art` follows it there,
     # and the bare `GET /library/metadata/{season}/art` is a 404 because the row no longer
-    # owns an image. simplex left the field off the row, so the season page and every
+    # owns an image. rex left the field off the row, so the season page and every
     # episode page under it drew no backdrop where a real PMS draws the show's.
     # By the time this runs, cycle 23's artwork DELETE check has cleared the SHOW's own
     # `art`, and every rule here is about a field handed down from it -- so the check
@@ -23108,7 +23108,7 @@ def main():
     # both fields from its show: only the field the upload WROTE becomes the row's own.
     # The season's `thumb` became its own and its `art` went on naming the SHOW's path at
     # the show's own stamp, while its episodes GAINED a `parentThumb` naming the season's
-    # new poster. simplex re-versioned both fields as the row's own, so a poster upload
+    # new poster. rex re-versioned both fields as the row's own, so a poster upload
     # invented a season-owned backdrop the server has no image for -- and the derivation
     # then handed that path down to every episode.
     # By the time this runs, cycle 23's artwork DELETE check has cleared the SHOW's own
@@ -23152,7 +23152,7 @@ def main():
     # EMPTY one a 404, an item artwork path of a row it holds the image, of a row it does
     # not hold a 404, one the row does not OWN a 404 (the transcoder answers what the
     # direct path answers), a server path that is not artwork a 500, and a url with a
-    # SCHEME or no leading slash a 404. simplex fell through to a GENERATED grey tile for
+    # SCHEME or no leading slash a 404. rex fell through to a GENERATED grey tile for
     # five of those, with `max-age=259200` on it, so a browser kept the grey square for
     # three days where a real PMS refuses and the client draws its own placeholder.
     leaf_c29g = (get(base, "/library/metadata/%s/allLeaves" % show)[1]
@@ -23199,8 +23199,8 @@ def main():
     # they are PMS's own bundled default-artwork assets): `/:/resources/` has SEVEN names
     # and `library-art.png`, `playlist.png` and `album.png` are 404s on both references --
     # even though a real PMS's own `/library` container advertises `library-art.png` as its
-    # `art`, which simplex copies. And `?width=`/`?height=` are IGNORED: a 100x100 request
-    # answers the same bytes as the bare path. simplex generated a tile for all nine names
+    # `art`, which rex copies. And `?width=`/`?height=` are IGNORED: a 100x100 request
+    # answers the same bytes as the bare path. rex generated a tile for all nine names
     # it knew and resized it.
     res_c29h = {}
     for name_c29h in ("movie.png", "show.png", "artist.png", "photo.png",
@@ -23225,7 +23225,7 @@ def main():
     # on all 54: a 0/1 option's value is `+?0*[01]`. `0`, `1`, `00`, `01`, `000`, `0000001`,
     # `+1`, `+0` and `+01` pass; `2`, `+2`, `-1`, `+`, `++1`, `1+`, `1.5`, `true`, an empty
     # value and either surrounding space are 400s. Cycle 23 recorded the four-value form
-    # from a sweep with no sign in it, so simplex refused a leading `+` a real PMS accepts
+    # from a sweep with no sign in it, so rex refused a leading `+` a real PMS accepts
     # -- on `checkFiles` and its five siblings and on `minSize`/`upscale`.
     bools_c29i = {}
     for value_c29i in ("0", "1", "00", "01", "000", "0000001", "+1", "+0", "+01",
@@ -23260,7 +23260,7 @@ def main():
     # read: it is one of the 0/1 options and carries their whole grammar -- `1`, `01` and
     # `+1` are the download, `0`, `00` and `+0` the plain read, and `2`, `-1`, `1.5`,
     # `true`, `false`, `TRUE`, `yes`, `abc`, an empty value, ` 1`, `1 ` and `10` are each a
-    # 400. simplex compared the raw string with `"1"`/`"true"`, so `download=true` was a
+    # 400. rex compared the raw string with `"1"`/`"true"`, so `download=true` was a
     # download where a real PMS refuses the read, and `download=2` streamed the media.
     part_c29j = None
     for media_c29j in ((get(base, "/library/metadata/%s" % movie)[1]
@@ -23290,9 +23290,9 @@ def main():
     # Cycle 29, measured on kids and zen over eight body paths and three container paths: a
     # 416 is an ERROR RESPONSE and not the original resource with no bytes. The reference
     # answers its 129-byte HTML page with `Content-Type: text/html` and neither
-    # `Accept-Ranges` nor `Content-Range`; simplex answered `Content-Length: 0` with the
+    # `Accept-Ranges` nor `Content-Range`; rex answered `Content-Length: 0` with the
     # original media type and the full success header set, so a client got an `image/jpeg`
-    # carrying zero bytes. simplex keeps its own text/plain error body (cycle 1's
+    # carrying zero bytes. rex keeps its own text/plain error body (cycle 1's
     # deliberate deviation) and now sends a body, a plain type and no `Accept-Ranges`.
     # The suite has taken the fixture movie's own poster away by the time this runs (cycle
     # 23's artwork DELETE check), and an artwork path is a 200 only on the row that OWNS the
@@ -23308,7 +23308,7 @@ def main():
         request_c29k = urllib.request.Request(
             base.rstrip("/") + path_arg_c29k,
             headers={"User-Agent": UA, "Range": "bytes=999999999-",
-                     "X-Plex-Client-Identifier": "simplex-ui-test"})
+                     "X-Plex-Client-Identifier": "rex-ui-test"})
         try:
             with urllib.request.urlopen(request_c29k, timeout=30) as response_c29k:
                 return (response_c29k.status, response_c29k.read(),
@@ -23332,7 +23332,7 @@ def main():
     # Cycle 29, measured on kids and zen: `X-Plex-Local-Asset: 1` marks an ITEM's own
     # artwork and nothing else -- present on `/library/metadata/{id}/{thumb,art,poster}`
     # and absent from a section's `/composite/{v}`, from `/:/resources/*`, from `/web/*`
-    # and from a part read. simplex put it on every image it sent, so a section tile
+    # and from a part read. rex put it on every image it sent, so a section tile
     # claimed to be an item's local asset.
     def local_c29m(path_c29m):
         status_c29m, _body_c29m, headers_c29m = request(base, "GET", path_c29m,
@@ -23360,8 +23360,8 @@ def main():
     # Cycle 29, measured on kids and zen: under `/web/*` a DIRECTORY is an empty
     # `application/octet-stream` 200 (`Content-Length: 0`, never the index page), a
     # trailing slash after a file is a 404, a path that escapes the root is a **400** (not
-    # the 403 simplex invented, a status that is nowhere else on the surface), and
-    # `.woff`/`.woff2` are `application/octet-stream` like `.ico`. simplex substituted
+    # the 403 rex invented, a status that is nowhere else on the surface), and
+    # `.woff`/`.woff2` are `application/octet-stream` like `.ico`. rex substituted
     # `index.html` for a directory -- so every directory under the bundle served the whole
     # client -- and served a file with a trailing slash.
     #
@@ -23370,7 +23370,7 @@ def main():
     import subprocess as subprocess_c29l
     import sys as sys_c29l
     import tempfile as tempfile_c29l
-    root_c29l = tempfile_c29l.mkdtemp(prefix="simplex-c29l-")
+    root_c29l = tempfile_c29l.mkdtemp(prefix="rex-c29l-")
     os.makedirs(os.path.join(root_c29l, "js"))
     open(os.path.join(root_c29l, "index.html"), "w").write("<html>c29l")
     open(os.path.join(root_c29l, "js", "app.js"), "w").write("var a=1;")
@@ -23424,7 +23424,7 @@ def main():
     # Cycle 29, measured on plexscratch: `/library/metadata/{id}/extras/all` and
     # `/library/sections/{id}/extras/all` answer 404 to PUT, DELETE, PATCH, POST and a bare
     # OPTIONS, like every other read-only route, where the bare `/extras` keeps its POST
-    # 400. simplex's verb gate matched a FOUR-segment path and cycle 18's `/extras/all` is
+    # 400. rex's verb gate matched a FOUR-segment path and cycle 18's `/extras/all` is
     # five, so all five verbs answered the extras container with a 200 -- the last hole in
     # cycle 18's own rule.
     verbs_c29s = {}
@@ -23449,7 +23449,7 @@ def main():
 
     # Cycle 29, measured on kids and zen on a movie and a show: a properly encoded `+1`
     # (`%2B1`) turns an `include*` block on, where a RAW `+` decodes to a SPACE and stays
-    # off. Cycle 22 recorded `+1` as off from the raw form, so simplex refused a sign a
+    # off. Cycle 22 recorded `+1` as off from the raw form, so rex refused a sign a
     # real PMS accepts -- the same integer parse the 0/1 options have.
     inc_c29r = {}
     for value_c29r in ("1", "01", "001", quote("+1"), quote("+01"), "2", "true", "1.0",
@@ -23469,7 +23469,7 @@ def main():
     # Cycle 29, measured on kids (whose 14 rows come back `movie x5, show, season x2,
     # episode x6` under `sort=type` and exactly reversed under `type:desc`) and sampled
     # across zen's 14,434: `sort=type` orders by the type NUMBER -- movie 1, show 2,
-    # season 3, episode 4 -- not by the type's NAME. simplex kept `type` in its text-sort
+    # season 3, episode 4 -- not by the type's NAME. rex kept `type` in its text-sort
     # list, so its order was alphabetical (`episode` first), which is a different order
     # for python-plexapi and for any stored smart-list uri naming the key.
     def types_c29q(spec_c29q):
@@ -23490,7 +23490,7 @@ def main():
     # Cycle 29, measured on kids (14 rows collapsing to 4 by type, 7 by year, 10 by title)
     # and zen (14,434 to 4, 90, 8,358), which agree: `group=` is honoured on
     # `/library/all` too, and an unknown or empty field is a 500 there as on a section
-    # listing. simplex's `grouped()` was already right -- this handler never called it, so
+    # listing. rex's `grouped()` was already right -- this handler never called it, so
     # the cross-library Group control did nothing and an ungroupable field answered every
     # row instead of erroring.
     def all_c29p(spec_c29p):
@@ -23521,7 +23521,7 @@ def main():
     # It also refuses FOUR keys the section grid accepts: `duration`, `resolution`,
     # `mediaSize` and `file` are 500s here and 200s on `/all`, so they are the leaf's own
     # refusal and not the column's. `extraType=`, `title=`, `audioLanguage=` and a good
-    # `limit` stay 200s. simplex built the leaf as a fixed empty container -- true of its
+    # `limit` stay 200s. rex built the leaf as a fixed empty container -- true of its
     # own libraries -- so it answered `200 size 0` to every malformed request, which a
     # client reads as "this library has no extras".
     extras_c29o = {}
@@ -23547,7 +23547,7 @@ def main():
 
 
     # Cycle 30, measured on **plexscratch42** -- a fresh, writable, isolated copy of the
-    # exact build simplex reports (1.42.2.10156), built this cycle because four HANDOVER
+    # exact build rex reports (1.42.2.10156), built this cycle because four HANDOVER
     # 3.3 entries all said "a writable 1.42.2 copy" would settle them:
     #
     #   * an On Deck row carries NO `librarySectionKey`, on a movie and on an episode
@@ -23560,7 +23560,7 @@ def main():
     #     `/hubs/home/continueWatching`. zen's on-deck episode has no locked field, so
     #     cycle 28 could not see this half at all
     #
-    # `/hubs/home/onDeck` and `/hubs/home/continueWatching` DO carry the key, which simplex
+    # `/hubs/home/onDeck` and `/hubs/home/continueWatching` DO carry the key, which rex
     # already had right; the section leaf carries no librarySection field on the row.
     leaf_c30a = (get(base, "/library/metadata/%s/allLeaves" % show)[1]
                  .get("Metadata") or [{}])[0].get("ratingKey")
@@ -23593,11 +23593,11 @@ def main():
 
 
     # Cycle 30, measured on **plexscratch42**, a fresh writable copy of 1.42.2.10156 -- the
-    # build simplex reports -- built this cycle for the questions cycle 21 could not ask:
+    # build rex reports -- built this cycle for the questions cycle 21 could not ask:
     # `hdr10plus.locked=1` is a **200** there as well as on plexscratch (1.43.4), so it is
-    # a lockable name on both versions and simplex's 400 was wrong; while the five
+    # a lockable name on both versions and rex's 400 was wrong; while the five
     # media-codec names beside it (`atmos`, `audioCodec`, `audioLayout`, `subtitleCodec`,
-    # `videoCodec`) are each a **400** on 1.42.2 against 1.43.4's 200, so simplex's refusal
+    # `videoCodec`) are each a **400** on 1.42.2 against 1.43.4's 200, so rex's refusal
     # of those is right and cycle 21's hold-out is CLOSED by measurement.
     locks_c30b = {}
     for name_c30b in ("hdr10plus", "hdr", "dovi", "atmos", "audioCodec", "audioLayout",
@@ -23610,7 +23610,7 @@ def main():
     # Cycle 31 re-measured this and read the `Field` list BACK: `hdr10plus` is a 200 that
     # stores NOTHING -- not a value and not a lock -- on both versions, which is what cycle
     # 21 recorded before cycle 30 put the name in the lock-recording set. The five codec
-    # names are unchanged: 400 on 1.42.2, and simplex refuses them.
+    # names are unchanged: 400 on 1.42.2, and rex refuses them.
     check("hdr10plus is accepted and stores nothing, and the five codec names are refused",
           locks_c30b["hdr10plus"] == 200 and "hdr10plus" not in fields_c30b
           and all(locks_c30b[name_c30b] == 200 for name_c30b in ("hdr", "dovi", "title"))
@@ -23621,12 +23621,12 @@ def main():
 
 
     # Cycle 30, measured on **plexscratch42** (a writable 1.42.2.10156 copy -- the build
-    # simplex reports) against plexscratch (1.43.4): the settings a PUT refuses with a 403
+    # rex reports) against plexscratch (1.43.4): the settings a PUT refuses with a 403
     # are TWO on 1.42.2, not four. `TranscoderH264Options` and
     # `TranscoderH264OptionsOverride` answer 200 there and really store the value, where
     # 1.43.4 answers 403 for both; `PlexOnlineUrl` and `allowMediaDeletionLanOnly` are 403
     # on both versions. Cycle 19 measured the list on the only writable reference it had,
-    # which was 1.43.4, so simplex refused two writes its own version accepts.
+    # which was 1.43.4, so rex refused two writes its own version accepts.
     prefs_c30c = {}
     for spec_c30c in ("TranscoderH264Options=c30probe",
                       "TranscoderH264OptionsOverride=c30probe",
@@ -23653,7 +23653,7 @@ def main():
     # `/library/metadata/{id}` and none on `/library/onDeck`,
     # `/library/sections/{id}/onDeck`, `/hubs/home/onDeck`, `/hubs/home/continueWatching`
     # or `/hubs/sections/{id}/continueWatching/items` -- the lock list is the one block the
-    # full row loses on a resume list. simplex's `/hubs/continueWatching/items` answered
+    # full row loses on a resume list. rex's `/hubs/continueWatching/items` answered
     # the whole row, `Field` and all.
     request(base, "PUT", "/library/metadata/%s?title.locked=1" % movie)
     request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
@@ -23755,7 +23755,7 @@ def main():
     # Cycle 30, measured on kids and zen 3/3 on each of seven paths: the 400 a query pair
     # with no `=` answers CLOSES the connection, and it is the ONLY handler-level refusal
     # on the surface that does -- seventeen other reachable 400s keep it alive on both
-    # references. simplex kept this one alive, so a harness that sends a malformed pair and
+    # references. rex kept this one alive, so a harness that sends a malformed pair and
     # then reuses the socket passes here and hangs against a real PMS.
     import socket as socket_c30f_mod
 
@@ -23845,7 +23845,7 @@ def main():
     # a `tagType: 2` row with a `count` and **no `guid`** -- while `/library/all?type=18`
     # and `/library/sections/{id}/collections` list nothing new, twenty minutes later and
     # after a refresh. Only `POST /library/collections` makes an item, and that row's
-    # search hit DOES carry a guid. simplex materialised a browsable collection from the
+    # search hit DOES carry a guid. rex materialised a browsable collection from the
     # tag write, so "Add to Collection" created a row in the Collections tab that no real
     # PMS has.
     before_c30g = len(get(base, "/library/all?type=18")[1].get("Metadata") or [])
@@ -23872,7 +23872,7 @@ def main():
 
     # Cycle 30, measured on the copy with a client that PONGS -- which every real client
     # does automatically (RFC 6455 5.5.2) -- against one that never pongs: the reference's
-    # ping timer is FREE-RUNNING, 3 pings in 35 s either way. simplex waited for "one ping
+    # ping timer is FREE-RUNNING, 3 pings in 35 s either way. rex waited for "one ping
     # interval" with a `select()` that returns for ANY frame, so a pong ended the wait and
     # the loop pinged again at once: **903,480 pings in 35 seconds**, measured twice with
     # two client stacks. Every browser and every Plex app triggers it ten seconds after
@@ -23943,7 +23943,7 @@ def main():
 
 
     # Cycle 30: the reference's 101 upgrade carries `Date` as its last header, like every
-    # other response on the surface. simplex writes that handshake by hand rather than
+    # other response on the surface. rex writes that handshake by hand rather than
     # through `_send`, so it was the one response with none.
     import socket as socket_c30j_mod
     import base64 as base64_c30j_mod
@@ -23978,10 +23978,10 @@ def main():
 
 
     # Cycle 30, measured on the copy: ONE notification consumer that stops reading must not
-    # reach the request path. On simplex a socket opened and never read from turned write
+    # reach the request path. On rex a socket opened and never read from turned write
     # 104 into 5.2 s and write 105 into 20.0 s, and a second client's unrelated edit timed
     # out after 30 s; the reference took ten times the volume with every request under
-    # 0.031 s. simplex now gives a sink a two-second budget and drops the channel rather
+    # 0.031 s. rex now gives a sink a two-second budget and drops the channel rather
     # than the writers -- it drops where the reference buffers, which is the half it can
     # implement, and a consumer that has stopped reading was not going to see the frames.
     import socket as socket_c30l_mod
@@ -24044,7 +24044,7 @@ def main():
     # `absoluteIndex.value=` is a 200 that stores NOTHING -- on the item path and on the
     # section path, on a movie, an episode, a season and a show alike -- while
     # `absoluteIndex.locked=1` really does record the lock. Cycle 20 recorded the column as
-    # "read on both" paths, so simplex stored the number and an edited row carried an
+    # "read on both" paths, so rex stored the number and an edited row carried an
     # attribute no real PMS puts there, which `sort=absoluteIndex` then ordered on.
     for path_c31b in ("/library/metadata/%s?absoluteIndex.value=7" % movie,
                       "/library/sections/%s/all?type=1&id=%s&absoluteIndex.value=12"
@@ -24071,7 +24071,7 @@ def main():
     # column has to be EMPTY for it to be visible, which is why cycle 20 read them as
     # discarded: on a row that already owns a poster the write looks like a no-op.
     #
-    # simplex discarded the value and left the column alone, so the Edit dialog's artwork
+    # rex discarded the value and left the column alone, so the Edit dialog's artwork
     # fields wrote nothing and every Save there was a silent no-op.
     request(base, "PUT", "/library/metadata/%s?thumb.value=" % movie)
     request(base, "PUT", "/library/metadata/%s?art.value=" % movie)
@@ -24089,7 +24089,7 @@ def main():
     # Cycle 31, re-measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) over five
     # values -- `5`, `0`, `abc`, an empty one and a real epoch: `lastRatedAt.value=` on the
     # SECTION save path is a **500 on both versions, every time**, where the ITEM path takes
-    # it with a 200. simplex answered its unknown-field 400 there. It is the ninth member of
+    # it with a 200. rex answered its unknown-field 400 there. It is the ninth member of
     # the set cycle 20 measured one column at a time.
     section_c31d = {value_c31d: request(
         base, "PUT", "/library/sections/%s/all?type=1&id=%s&lastRatedAt.value=%s"
@@ -24109,7 +24109,7 @@ def main():
     # the stored SORT title, which is why cycle 18's `titleSort=` split works at all.
     #
     # On kids: `titleSort=Season 1` answers season 7, `titleSort=` answers season 11 alone,
-    # and `titleSort>>=Season 0` answers 7. simplex treated a stored sort title EQUAL to the
+    # and `titleSort>>=Season 0` answers 7. rex treated a stored sort title EQUAL to the
     # generated title as no sort title at all, so it answered nothing to the first and third
     # and wrongly kept the row in the second -- one clause, three symptoms, and invisible
     # until the storage was read.
@@ -24158,7 +24158,7 @@ def main():
     # exactly: an EMPTY `thumb.value=` or `art.value=` is a 200 that REMOVES the column, and
     # the bare artwork GET becomes a 404 -- the same end state `DELETE .../thumb` reaches on
     # 1.43.4. It is the version-independent half of the artwork column grammar, and on
-    # 1.42.2 -- the build simplex reports, where that DELETE is a 404 on all five leaves --
+    # 1.42.2 -- the build rex reports, where that DELETE is a 404 on all five leaves --
     # it is the ONLY way a client can clear a row's artwork at all.
     request(base, "PUT", "/library/metadata/%s?thumb.value=%s&art.value=%s"
                          % (movie, quote("http://example.com/a.jpg"),
@@ -24180,11 +24180,11 @@ def main():
 
 
     # Cycle 31, measured on plexscratch42 -- a fresh 1.42.2 install, which is the build
-    # simplex reports -- against plexscratch (1.43.4), on a row that owns and serves the
+    # rex reports -- against plexscratch (1.43.4), on a row that owns and serves the
     # image on both: `DELETE /library/metadata/{id}/{poster,thumb,art,banner,theme}` is a
     # **404 on 1.42.2, all five**, where 1.43.4 answers each with an empty 200 and clears
     # the field. Cycle 18 measured the endpoint on plexscratch alone and recorded it as the
-    # surface's, and simplex then implemented three of the five, so it answered neither
+    # surface's, and rex then implemented three of the five, so it answered neither
     # version consistently.
     #
     # The controls that make it the VERB and not a gate: the same paths take a `PUT
@@ -24207,7 +24207,7 @@ def main():
           % (deletes_c31g, owned_c31g.get("thumb"), after_c31g.get("thumb")))
 
 
-    # Cycle 31, measured on plexscratch42 (a fresh 1.42.2 install -- the build simplex
+    # Cycle 31, measured on plexscratch42 (a fresh 1.42.2 install -- the build rex
     # reports) against plexscratch (1.43.4), over 20 paths and three body dispositions
     # (no `Content-Length`, `Content-Length: 0`, and that plus a Content-Type):
     # **`PATCH` is a 500 on every path on 1.42.2**, where 1.43.4 routes it (200 on
@@ -24219,7 +24219,7 @@ def main():
     # the one that answers every other verb -- `GET HEAD PUT POST DELETE OPTIONS` are all
     # 200 there on 1.42.2 and PATCH alone is a 500.
     #
-    # simplex implemented 1.43.4's table exactly while reporting 1.42.2. No client sends
+    # rex implemented 1.43.4's table exactly while reporting 1.42.2. No client sends
     # PATCH, so nothing renders differently; what this corrects is four recorded rules that
     # were the other version's.
     patch_c31h = {path_c31h: request(base, "PATCH", path_c31h, want_json=False)[0]
@@ -24239,7 +24239,7 @@ def main():
     # every verb but GET and HEAD with a 404, and `/library/sections`,
     # `/media/providers` and `/media/providers/metadata` answer their own 400 to POST.
     #
-    # simplex answered **200 with the whole GET body** to a bare OPTIONS on each -- 3,852
+    # rex answered **200 with the whole GET body** to a bare OPTIONS on each -- 3,852
     # bytes of `/media/providers`, 1,398 of `/statistics/bandwidth`, its section list, its
     # profile catalogue -- and to POST and PUT on most of them. That is fix 4's trap from
     # the outside: a companion or proxy client that probes with OPTIONS reads "this
@@ -24267,7 +24267,7 @@ def main():
     # `PUT /library/collections/{id}/prefs` really writes. `?collectionSort=1` and
     # `?collectionMode=2` are each a 200 with an empty body, `includePreferences=1` reads
     # the new values back, GET/POST/DELETE there are 404s and an unknown setting is a 400.
-    # Cycle 15 measured the GET alone, recorded the 404 and stopped, so simplex advertised
+    # Cycle 15 measured the GET alone, recorded the 404 and stopped, so rex advertised
     # both settings in the collection's `includePreferences` block and 404'd the save
     # behind them -- a menu entry whose write does not exist.
     made_c31j = (container(base, "POST",
@@ -24310,17 +24310,17 @@ def main():
                  unknown_c31j))
 
 
-    # Cycle 31, measured on plexscratch42 (1.42.2 -- the build simplex reports) against
+    # Cycle 31, measured on plexscratch42 (1.42.2 -- the build rex reports) against
     # plexscratch (1.43.4). Two writes 1.42.2 accepts and 1.43.4 refuses, both of which
-    # simplex refused:
+    # rex refused:
     #
     #   POST /playlists?smart=1&uri=<server://.../library/metadata/1,2,3>
     #       1.42.2 -> 200, smart true, icon playlist://image.smart, leafCount 3
-    #       1.43.4 -> 400          simplex (before) -> 400
+    #       1.43.4 -> 400          rex (before) -> 400
     #   PUT /playlists/{smart}/items?uri=<an ITEM>
     #       1.42.2 -> 200, and the stored query is REPLACED by that uri
     #                (content library://x/directory/%2F...%2F1%2C2 -> library://x/item/...)
-    #       1.43.4 -> 400          simplex (before) -> 400
+    #       1.43.4 -> 400          rex (before) -> 400
     #
     # Both forms were driven on a key-list-backed and a listing-backed smart list, so the
     # rule is the VERB and not the uri's shape. No client sends either, so nothing visible
@@ -24357,7 +24357,7 @@ def main():
     #   zen   title=Love, -> 3,887      title=Love -> 59   title=Actually,Love -> 59
     #   kids  title=Steel. -> 0         title=Tears of Steel. -> 0    zen Actually. -> 0
     #
-    # simplex stripped both characters from the query, so a typed comma found one row where
+    # rex stripped both characters from the query, so a typed comma found one row where
     # a real PMS answers all of them and a trailing period found one where a real PMS
     # answers none. This is the filter bar's own Title box.
     total_c31l = get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
@@ -24449,7 +24449,7 @@ def main():
     # `?query=Salaire`, `Douai`, `Meurtres` and `Chung` each answer 0 rows there, while the
     # rows carrying those original titles are present and findable by their titles; a
     # title-only model scores 1,244 of 1,244 generated queries on both zen libraries where
-    # the title-or-original model misses 102. simplex read both, so the box listed foreign
+    # the title-or-original model misses 102. rex read both, so the box listed foreign
     # films under a name a real PMS does not index here.
     request(base, "PUT", "/library/metadata/%s?originalTitle.value=%s"
                          % (movie, quote("Zarquon Original")))
@@ -24474,7 +24474,7 @@ def main():
     # with "Fear by the Lake" at 0.73067. Reversed, the row still comes back in the 0.33
     # fuzzy band, so the order decides the score and not the membership.
     #
-    # simplex required the joined phrase as a prefix, so `Tears Steel` answered NO HUBS AT
+    # rex required the joined phrase as a prefix, so `Tears Steel` answered NO HUBS AT
     # ALL -- 230 of zen's rows scoring 0.5 or better over 119 of 1,237 generated queries
     # were missed. This is Plex Web's global search box.
     title_c31n = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
@@ -24505,7 +24505,7 @@ def main():
     # `query=don't` answers "Don't Look Up" and "Don't Move" at 0.53, `Don't Move` answers
     # 0.93041, `Dont Move` falls to the 0.33 fuzzy band, `Handmaid` answers "The Handmaid's
     # Tale", and `Delete` does not find 'Control-Alt-Delete' at a word score while
-    # `Control-Alt` does. simplex split on `[^0-9a-z]+`, so an apostrophe and a hyphen were
+    # `Control-Alt` does. rex split on `[^0-9a-z]+`, so an apostrophe and a hyphen were
     # separators: a query carrying one could never match, and `Air` found "L'air Perdu".
     request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
                          % (spare, quote("Don't Move")))
@@ -24527,7 +24527,7 @@ def main():
     # query matches a title EQUAL to it and nothing else -- `query=X` answers the movie 'X'
     # at 0.93076 and `A` answers 'A' at 0.91089, while `I` and `9`, which no zen title is,
     # answer nothing. So it is equality, not the one-character prefix cycle 12 refuted.
-    # simplex's two-character floor answered nothing to any of them.
+    # rex's two-character floor answered nothing to any of them.
     request(base, "PUT", "/library/metadata/%s?title.value=X&title.locked=1" % spare)
     def one_c31p(query_c31p):
         found_c31p = []
@@ -24545,7 +24545,7 @@ def main():
     # instrument for it: `title=` matches the ORIGINAL title as a CONSECUTIVE run of whole
     # words, unfolded. `Le Salaire`, `Salaire de`, `de la peur`, `Le Sal` and `la peur` each
     # answer the one row; `Salaire peur`, `Le peur`, `Sal de`, `e Salaire` and
-    # `Meurtres Douai` answer none. simplex ran the TITLE's two-pass folded matcher over it,
+    # `Meurtres Douai` answer none. rex ran the TITLE's two-pass folded matcher over it,
     # so a query whose words are not adjacent, or which needs a fold, matched rows a real
     # PMS does not answer -- 14 of them in a 1,244-query corpus.
     request(base, "PUT", "/library/metadata/%s?originalTitle.value=%s"
@@ -24566,7 +24566,7 @@ def main():
 
 
     # Cycle 31: the artwork CLEAR moved off the DELETE -- a 404 on 1.42.2 -- and onto the
-    # empty-value edit, which is the only clear route the version simplex reports has. That
+    # empty-value edit, which is the only clear route the version rex reports has. That
     # clear owes its children exactly what the DELETE owed them: cycle 29's derivation says
     # a borrower's field is DERIVED from the nearest ancestor that owns one, so clearing a
     # show's `art` must remove it from every season and episode below. The edit path did not
@@ -24595,7 +24595,7 @@ def main():
     # as a read's does. With the client's own play-queue form over three rows and
     # `X-Plex-Container-Start: 1` / `X-Plex-Container-Size: 1`, both answer `size 1,
     # totalSize 3, offset 1` and ONE row, and with `excludeElements=Media` both drop the
-    # Media tree and substitute `mediaCount: 1`. simplex gated both post-processors on the
+    # Media tree and substitute `mediaCount: 1`. rex gated both post-processors on the
     # METHOD, so the twelve playlist, collection and play-queue write responses escaped
     # cycle 21's rule that paging is a property of the RESPONSE.
     keys_c32a = [r_c32a.get("ratingKey") for r_c32a in
@@ -24634,7 +24634,7 @@ def main():
 
     # Cycle 32, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): two concurrent
     # `POST /playQueues` carrying the SAME `X-Plex-Client-Identifier` are two 200s on a real
-    # PMS -- 0 refusals in 110 pairs across both versions -- where simplex answered a **404
+    # PMS -- 0 refusals in 110 pairs across both versions -- where rex answered a **404
     # to a CREATE** in 9 of 60. The retire-and-insert ran under the lock and the response was
     # built after releasing it, so a sibling create retired the queue in the gap. Plex Web
     # creates the queue before it asks for a decision, so a double-clicked Play did not play.
@@ -24685,7 +24685,7 @@ def main():
     # `Thé Tráin Jób` each answer NOTHING -- a folded query carrying the article cannot
     # match, because the article is not in the string the folded pass reads.
     #
-    # simplex folded the TITLE, so it answered rows a real PMS does not and missed every
+    # rex folded the TITLE, so it answered rows a real PMS does not and missed every
     # row findable only by its sort title. Rows with no article match either way, which is
     # why thirteen cycles never saw it.
     request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
@@ -24712,7 +24712,7 @@ def main():
     # codepoints): the sort title folds a TABLE of 100 characters, not every letter NFD
     # can decompose. `\u0119 \u0105 \u015f \u0107` and the capital macron `\u0100` survive,
     # the long s `\u017f` survives, `\u00e9` and `\u0160` fold, and a decomposed accent is
-    # dropped. simplex folded by NFD, so a Polish or Turkish title sorted -- and landed in a
+    # dropped. rex folded by NFD, so a Polish or Turkish title sorted -- and landed in a
     # `firstCharacter` bucket -- on a letter it does not have.
     title_c32d = "Zo\u0119 \u0106af\u00e9 \u0160\u0105\u0142\u017f \u0100ra Cafe\u0301"
     request(base, "PUT", "/library/metadata/%s?title.value=%s" % (movie, quote(title_c32d)))
@@ -24727,7 +24727,7 @@ def main():
     # copies: the `title=` folded pass folds the QUERY by the title table and a simple case
     # fold, and the STORED sort title by the case fold only. So the long s finds `s`, an
     # ogonek or a capital macron finds nothing, and a locked accented sort title is not
-    # folded back to ASCII. simplex ran NFD over both sides.
+    # folded back to ASCII. rex ran NFD over both sides.
     request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
                          % (movie, quote("Zeta Sorcery")))
 
@@ -24784,7 +24784,7 @@ def main():
 
     # Cycle 32, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): two concurrent
     # adds to ONE play queue each answer the queue as that add left it -- versions 2 and 3,
-    # each naming its own `playQueueLastAddedItemID` -- in 110 of 110 pairs, where simplex
+    # each naming its own `playQueueLastAddedItemID` -- in 110 of 110 pairs, where rex
     # answered both with the SAME container in 11 of 67: the write ran under the lock and
     # the answer was built after it, like the create cycle 32's first race fix closed.
     # 150 barrier-released pairs; the unfixed server shows it at about one pair in twenty.
@@ -24841,7 +24841,7 @@ def main():
     # Cycle 32, read out of the reference's Resources/Profiles and scored against the
     # decision endpoint on kids and zen (1,872 cells, the outcome exact on 1,871): a
     # decision with no `hasMDE` runs the client's OWN profile file against the item.
-    # simplex hard-coded Roku and Xbox One as the two that direct play, where 44 profiles
+    # rex hard-coded Roku and Xbox One as the two that direct play, where 44 profiles
     # direct play a real row -- and neither of those two lists webm/vp8 or eac3.
     def decide_c32h(profile_c32h, item_c32h):
         url_c32h = ("/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
@@ -24891,7 +24891,7 @@ def main():
 
     # Cycle 32, measured on zen, kids and both writable copies: a real PMS writes JSON
     # COMPACT and in raw UTF-8 -- no space after `:` or `,`, an accent written as itself,
-    # and a C0 control as `\\u00XX` in upper-case hex. simplex wrote Python's defaults.
+    # and a C0 control as `\\u00XX` in upper-case hex. rex wrote Python's defaults.
     request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
                          % (movie, quote("Zq \u00e9t\u00e9\x1f/end")))
     status_c32i, raw_c32i, _h_c32i = request(base, "GET", "/library/metadata/%s" % movie)
@@ -24908,7 +24908,7 @@ def main():
     # Cycle 33, measured on kids and zen off a raw socket over twenty-six response
     # classes, keep-alive and closing, the two references identical in every case: the
     # response headers come out in a measured ORDER, per response family. Everywhere,
-    # `X-Plex-Protocol` is first and `Date` is last -- simplex had exactly those two the
+    # `X-Plex-Protocol` is first and `Date` is last -- rex had exactly those two the
     # wrong way round -- and the families contradict each other, a 200 container putting
     # `Content-Type` before `Content-Length` where a 404 is the reverse.
     order_c33a = {}
@@ -24951,10 +24951,10 @@ def main():
 
     # Cycle 33, measured on kids and zen: the CORS preflight and the `/web` 302 name
     # their connection state like every other response, and the preflight carries
-    # `Cache-Control: no-cache` as well. Both simplex handlers write their own header
+    # `Cache-Control: no-cache` as well. Both rex handlers write their own header
     # set and sent neither.
     # A real preflight, not a bare OPTIONS: without `Access-Control-Request-Method` a
-    # real PMS (and simplex) route the verb like any other and answer a 404.
+    # real PMS (and rex) route the verb like any other and answer a 404.
     preflight_request_c33c = urllib.request.Request(
         base.rstrip("/") + "/library/sections", method="OPTIONS",
         headers={"User-Agent": UA, "Origin": "https://app.plex.tv",
@@ -25056,7 +25056,7 @@ def main():
     # 12, all `local://`): a NEVER-MATCHED row opens its refresh with `state 2
     # metadataState=matching` and a bare `state 5` before the queued frame, where an
     # explicitly unmatched (`tv.plex.agents.none://`) row opens with the queued frame
-    # alone. simplex opened both with the queued frame.
+    # alone. rex opened both with the queued frame.
     episode_c33f = ((get(base, "/library/sections/%s/all?type=4" % show_section)[1]
                      .get("Metadata") or [{}])[-1].get("ratingKey")) if show_section else None
     if not episode_c33f:
@@ -25082,7 +25082,7 @@ def main():
     # Cycle 33, measured on kids and zen in XML and in JSON: a 206 of a CONTAINER answers
     # `Content-Length` TWICE -- the whole body's length in its usual place, then
     # `Content-Range`, then the SLICE's after the connection state -- while the body is
-    # the slice. A ranged artwork or asset answers the slice's length alone. simplex
+    # the slice. A ranged artwork or asset answers the slice's length alone. rex
     # answered one length everywhere.
     #
     # Read with a RAW SOCKET on purpose: a client that takes the FIRST `Content-Length`
@@ -25118,7 +25118,7 @@ def main():
     # `/refresh` and a 204 playlist delete) and recorded from the official client's own
     # `PUT /updater/check` against the reference: a response with an EMPTY body orders
     # `Content-Length` before `Content-Type`, like an error, where a container body is
-    # type-first. simplex ordered every 200 as a container.
+    # type-first. rex ordered every 200 as a container.
     def order_c34a(method_c34a, path_c34a):
         sock_c34a = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
@@ -25157,7 +25157,7 @@ def main():
     # Cycle 34, measured on kids and zen and recorded from the official client's own
     # preflight of `PUT /updater/check`, which asks for no headers: the reference sends
     # `Access-Control-Allow-Headers` ONLY when `Access-Control-Request-Headers` was sent,
-    # echoing that value. simplex always sent a fallback list.
+    # echoing that value. rex always sent a fallback list.
     def preflight_c34b(extra_c34b):
         request_c34b = urllib.request.Request(
             base.rstrip("/") + "/updater/check", method="OPTIONS",
@@ -25184,7 +25184,7 @@ def main():
     # never be opened on kids or zen, so the harness's recording of the official client's
     # own handshake is the only witness): the 101 answers `X-Plex-Protocol,
     # Access-Control-Expose-Headers, Vary, Upgrade, Connection, Sec-WebSocket-Accept,
-    # Cache-Control, Access-Control-Allow-Origin, Date`. simplex had the set right and put
+    # Cache-Control, Access-Control-Allow-Origin, Date`. rex had the set right and put
     # the three CORS headers at the end.
     import base64 as base64_c34c
 
@@ -25250,7 +25250,7 @@ def main():
 
     # Cycle 35, 43 `Range` header values swept against kids and zen over a container and
     # a `/web` asset -- 172 cells, the two references and the two body kinds identical in
-    # every one. simplex had twelve of the 43 wrong; these are the cells a real client can
+    # every one. rex had twelve of the 43 wrong; these are the cells a real client can
     # provoke, and each was a 206 with no bytes or a 200 with no `Content-Range`.
     def ranged_c35b(value_c35b):
         sock_c35b = socket.create_connection(
@@ -25346,7 +25346,7 @@ def main():
     # answers 0 where kids answers 1; zen and kids, the two CLAIMED references, both
     # answer 1 on both versions, and so does the `GenerateAdMarkerBehavior` preference
     # (`scheduled`, a setting that does not exist at all on an unclaimed server).
-    # simplex asserts a claim, so the claimed value is the one it has to answer.
+    # rex asserts a claim, so the claimed value is the one it has to answer.
     # `/butler` is one of the two roots on the surface that is not a MediaContainer.
     _, raw_c35c, _ = request(base, "GET", "/butler")
     enabled_c35c = {task_c35c.get("name"): task_c35c.get("enabled")
@@ -25384,7 +25384,7 @@ def main():
           not wrong_c35c and len(enabled_c35c) == len(want_c35c),
           "%d task(s), wrong %s" % (len(enabled_c35c), wrong_c35c))
     # Cycle 49: the preference behind the same task. Both CLAIMED references answer
-    # `default="scheduled" value="scheduled"`; simplex's captured fixture carried
+    # `default="scheduled" value="scheduled"`; rex's captured fixture carried
     # `value="never"`, which is the value the Library settings pane draws.
     prefs_c49e = {p_c49e.get("id"): p_c49e for p_c49e in
                   (get(base, "/:/prefs")[1].get("Setting") or [])}
@@ -25396,14 +25396,14 @@ def main():
 
     # Cycle 35, captured on plexscratch (1.43.4) and plexscratch42 (1.42.2) -- frame for
     # frame identical -- for a `POST /library/sections` whose location holds NO files: a
-    # create scans, and the scan's skeleton survives an empty library. simplex pushed only
+    # create scans, and the scan's skeleton survives an empty library. rex pushed only
     # the `backgroundProcessingQueue` frame, so nothing a client can render as "a library
     # was just created" ever reached the socket.
     def create_frames_c35d():
         def trigger_c35d():
             request(base, "POST", "/library/sections?name=C35%20Create&type=movie"
                                   "&agent=tv.plex.agents.movie&scanner=Plex%20Movie"
-                                  "&language=en-US&location=%2Fsimplex")
+                                  "&language=en-US&location=%2Frex")
         _, events_c35d = eventsource(base, trigger_c35d, seconds=8)
         shape_c35d = []
         for name_c35d, raw_c35d in events_c35d:
@@ -25443,7 +25443,7 @@ def main():
     # search hit gets is the matcher's own in-order rule, plus the condition that the
     # query's first term matches the title's FIRST word -- `Tears Steel` and `Big Bunny`
     # are 0.73, `Steel`, `Bunny`, `Buck Bunny` and `of Steel` are the 0.33 fuzzy band, and
-    # an exact title is 0.93 on both references where simplex said 0.95. Both scorers read
+    # an exact title is 0.93 on both references where rex said 0.95. Both scorers read
     # a title PREFIX instead, so a skipped middle word scored below the threshold the
     # client promotes a hub on and a middle word alone scored above it.
     def hubscore_c35e(query_c35e, path_c35e="/hubs/search"):
@@ -25484,7 +25484,7 @@ def main():
     # Cycle 36, measured on kids and zen over seven statuses and every path family that
     # answers one: a real PMS's refusal BODY is one fixed HTML document per status --
     # `<html><head><title>{reason}</title></head><body><h1>{code} {reason}</h1></body>
-    # </html>` with `Content-Type: text/html` -- and it ignores `Accept`. simplex had
+    # </html>` with `Content-Type: text/html` -- and it ignores `Accept`. rex had
     # three of them (the 401, the 403 and the root's redirect) and answered `text/plain`
     # with a sentence of its own everywhere else, so a client that renders the server's
     # error document was handed a different document on five of eight refusals.
@@ -25517,7 +25517,7 @@ def main():
     # Cycle 36, measured on kids and zen with a bad token and a good one in one query: a
     # repeated query parameter takes the LAST occurrence -- bad then good is a 200 and
     # good then bad a 401, on both references. That is the rule cycle 35 measured for
-    # every other key on the surface, and the rule simplex's own `query` dict already
+    # every other key on the surface, and the rule rex's own `query` dict already
     # follows. Three readers took the FIRST instead: the token gate, the client
     # identifier the session bookkeeping keys on, and the notification channels'
     # `filters=` whitelist. The gate's half needs a server started with `--token` and so
@@ -25541,7 +25541,7 @@ def main():
     # Cycle 36, measured on kids and zen over six path families and byte-identical in
     # every one: an id in a path SEGMENT is parsed as a number, so `01`, `001`, `+1` and
     # `+01` name the same row as `1`, while `++1`, `1+`, `-1`, `0x1`, `1.0` and a
-    # non-ASCII digit name nothing. simplex compared the segment as a string, so a
+    # non-ASCII digit name nothing. rex compared the segment as a string, so a
     # zero-padded or plus-signed id was a 404 from a server that holds the row.
     def body_c36c(path_c36c):
         status_c36c, payload_c36c, _headers_c36c = request(base, "GET", path_c36c)
@@ -25572,7 +25572,7 @@ def main():
 
     # Cycle 36, measured on kids and zen over seven envelope refusals: a request the
     # server refuses BELOW the API answers the same 89-byte `text/html` document as
-    # every refusal above it. simplex answered Python's own 460-byte DOCTYPE page with
+    # every refusal above it. rex answered Python's own 460-byte DOCTYPE page with
     # `text/html;charset=utf-8` -- the one document on the surface that names a library
     # rather than a status. Read with a raw socket: a malformed request line cannot be
     # sent through `urllib`.
@@ -25619,9 +25619,9 @@ def main():
     # Cycle 36, swept byte by byte over 0x01-0xFF on kids and zen: the request TARGET
     # must be printable ASCII (0x21-0x7E), and in the PATH a `%` must begin an escape
     # the reference's own parser can read -- an optional sign then a hex digit, with two
-    # characters present, or another `%`. simplex accepted 150 of the 158 refused bytes
+    # characters present, or another `%`. rex accepted 150 of the 158 refused bytes
     # and every malformed escape, so a client that put a raw accented character in a
-    # `title=` query got a 200 from simplex and a 400 from a real PMS.
+    # `title=` query got a 200 from rex and a 400 from a real PMS.
     def target_c36e(target_c36e):
         sock_c36e = socket.create_connection(
             (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
@@ -25665,7 +25665,7 @@ def main():
 
 
     # Cycle 36, measured on kids and zen: `/hubs/sections/{id}` and its Continue
-    # Watching see-all leaf 404 a section id the server does not hold, where simplex
+    # Watching see-all leaf 404 a section id the server does not hold, where rex
     # built a full Recommended page for any id at all -- `abc` and `-1` included.
     unknown_c36f = {
         "hub 999": request(base, "GET", "/hubs/sections/999")[0],
@@ -25687,7 +25687,7 @@ def main():
     # Cycle 36, measured on kids and zen: `/hubs/metadata/{id}/related` never resolves
     # the row -- an id the server does not hold answers the empty hub container, where
     # `/library/metadata/{id}/related` and `/hubs/metadata/{id}/postplay` on the same id
-    # are 404s. simplex 404'd all three.
+    # are 404s. rex 404'd all three.
     status_c36g, body_c36g, _headers_c36g = request(base, "GET", "/hubs/metadata/999999/related")
     word_c36g, container_c36g, _h2_c36g = get(base, "/hubs/metadata/abc/related")
     others_c36g = {
@@ -25711,7 +25711,7 @@ def main():
     # integer -- `2147483647` is that path's own not-found answer and `2147483648` a
     # 400 -- and a negative value inside the range is a 404 on all four, including
     # `/system/scanners`, whose answer for an unknown non-negative type is a 500.
-    # simplex had the bound on two of the four, read a small negative play-queue id as
+    # rex had the bound on two of the four, read a small negative play-queue id as
     # malformed, and reported a malformed scanner request as a missing scanner.
     def code_c36h(path_c36h):
         return request(base, "GET", path_c36h)[0]
@@ -25788,7 +25788,7 @@ def main():
     # score, and held out by the hunt over 11,076 scored (query, row) pairs of which
     # 11,075 decompose this way: a search hit's five decimals are the TIER plus the
     # row's own `audienceRating` / 10000, and a row with none scores the bare tier.
-    # simplex printed the bare tier for every row, so every hit inside a tier tied and
+    # rex printed the bare tier for every row, so every hit inside a tier tied and
     # the page fell back to insertion order rather than the best-rated hit first.
     detail_c36j = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     rating_c36j = detail_c36j.get("audienceRating")
@@ -25813,7 +25813,7 @@ def main():
 
     # Cycle 36, measured on zen and kids: a TAG row's ladder is the item ladder with the
     # anchored tier collapsed away -- an exact name 0.92, a token-wise prefix from the
-    # first word 0.52, a later-word reach 0.32 -- and there is no 0.72. simplex
+    # first word 0.52, a later-word reach 0.32 -- and there is no 0.72. rex
     # hard-coded 0.52 on a collection row and 0.32 on every other tag row, and its tag
     # matcher compared the whole query against ONE word, so a multi-word tag name could
     # not be found by typing it at all.
@@ -25848,7 +25848,7 @@ def main():
     # Cycle 36, measured on kids and zen: ORDER decides the SCORE, not membership. A
     # query whose words are all in the title but out of order comes back in the 0.33
     # fuzzy band -- `Steel Tears` answers "Tears of Steel" on kids, `justice riders` and
-    # `Justice of` answer "Riders of Justice" on zen -- where simplex's in-order walk
+    # `Justice of` answer "Riders of Justice" on zen -- where rex's in-order walk
     # answered no hubs at all. Cycle 31 measured the sentence and built half of it.
     title_c36l = (get(base, "/library/metadata/%s" % movie)[1]
                   .get("Metadata") or [{}])[0].get("title") or ""
@@ -25880,7 +25880,7 @@ def main():
     # client profiles: when the source is profile 5 and the client HAS a conversion
     # target, the server refuses on the SOURCE -- `transcodeDecisionCode 2003`, "File is
     # unplayable. DoVi (Profile 5) color space is not supported." -- where a client with
-    # no target at all gets the ordinary 4005. simplex sent 4005 to both.
+    # no target at all gets the ordinary 4005. rex sent 4005 to both.
     #
     # The UI fixture holds no Dolby Vision row, so this SKIPS here; the code path was
     # proved fail-then-pass by hand against a copy of this fixture carrying one
@@ -25919,7 +25919,7 @@ def main():
     # Cycle 36, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2), which agree:
     # a playlist and a collection take an artwork UPLOAD on their metadata path exactly
     # as an item does -- an empty 200, the candidate list growing from one `default://`
-    # row to two, and the uploaded image SELECTED. simplex answered 404, so Change Poster
+    # row to two, and the uploaded image SELECTED. rex answered 404, so Change Poster
     # -> Upload on a list page failed outright while the PICK beside it worked.
     import base64 as _base64_c36n
     png_c36n = _base64_c36n.b64decode(
@@ -25964,7 +25964,7 @@ def main():
     # matched Firefly as a control, both versions agreeing: an UNMATCHED show refuses the
     # two agent-driven prefs with a 400 (they are not in its own eight-setting
     # `Preferences` block), and `showOrdering` there is a plain 500 for every value while
-    # the value is STORED and no frames are pushed. simplex answered 200 to all of them
+    # the value is STORED and no frames are pushed. rex answered 200 to all of them
     # and pushed its whole cascade.
     if not show_section or not show:
         skip("an unmatched show refuses the agent prefs and 500s showOrdering",
@@ -26002,7 +26002,7 @@ def main():
     # `?path=` naming the section's OWN Location scans everything (the full skeleton with
     # its `progress` rows) and so does a CHILD of it, where cycle 19 recorded that a child
     # scans nothing -- that measurement was taken on a movie library, whose children are
-    # files. simplex scanned nothing for EITHER, because the catalog's section dict
+    # files. rex scanned nothing for EITHER, because the catalog's section dict
     # carries no `Location` and the comparison was against an empty list.
     location_c36p = ((get(base, "/library/sections")[1].get("Directory") or [{}])[0]
                      .get("Location") or [{}])[0].get("path")
@@ -26032,7 +26032,7 @@ def main():
 
 
     # Cycle 36, measured on plexscratch with a listener open: the three action leaves of
-    # `/library/collections/{id}` really RUN, where simplex answered cycle 22's empty 200
+    # `/library/collections/{id}` really RUN, where rex answered cycle 22's empty 200
     # and did nothing. `/refresh` pushes the same three frames the metadata spelling
     # does, and `/unmatch` gives the collection `local://{rk}`, `subtype "unknown"` and no
     # `ratingCount` -- so the same action from the client's own context-menu path and from
@@ -26066,7 +26066,7 @@ def main():
     # frames the way the section path frames an ITEM -- `state 3` with `metadataState
     # "queued"` carrying the title from BEFORE the write, then `state 5` with the new one
     # -- where the item and metadata spellings of the same edit send `loading` with the
-    # new title in both. simplex routed the section save through the item writer.
+    # new title in both. rex routed the section save through the item writer.
     machine_c36r = get(base, "/identity")[1].get("machineIdentifier")
     uri_c36r = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
                      % (machine_c36r, movie))
@@ -26177,7 +26177,7 @@ def main():
 
 
     # Cycle 37, raw sockets on both references: GET and HEAD ignore a declared body
-    # and answer immediately, with or without `Expect: 100-continue`.  simplex read
+    # and answer immediately, with or without `Expect: 100-continue`.  rex read
     # Content-Length bytes before routing every verb, so a slow or absent body stalled
     # a read-only request indefinitely.
     def early_read_c37c(method_c37c, expect_c37c):
@@ -26208,7 +26208,7 @@ def main():
 
     # Cycle 38, 20/20 on both PMS 1.43.4 and the target 1.42.2 build: query-only
     # item edits and playlist creates ignore a stale declared body and commit at once.
-    # A subtitle upload really consumes bytes and remains the control.  simplex read
+    # A subtitle upload really consumes bytes and remains the control.  rex read
     # every non-GET/HEAD body before routing, so the two UI writes hung for its full
     # 20-second socket timeout and never ran while the peer remained open.
     parsed_c38a = urllib.parse.urlsplit(base)
@@ -26331,7 +26331,7 @@ def main():
     # Cycle 44, measured on zen (3,887 real movies, 1.42.2) and kids (1.43.4) over every
     # key 0-12 on both library types: a star bucket rounds its KEY down to an even star
     # and takes the values within one of it, so a stored 5.0 is in `/userRating/6` and in
-    # neither `/4` nor `/5`. simplex truncated -- `int(value) == key` -- which puts a 5.0
+    # neither `/4` nor `/5`. rex truncated -- `int(value) == key` -- which puts a 5.0
     # in `/5` alone and answers 165 rows where zen answers 208.
     rows_c44s = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
     if not rows_c44s:
@@ -26369,7 +26369,7 @@ def main():
     # Cycle 44: `/library/sections/{id}/rating` is a real secondary axis on BOTH
     # references and BOTH versions -- the same six-bucket "By Rating" container
     # `/userRating` answers, byte for byte -- and it is ADVERTISED in a movie library's
-    # own pivot `Directory` list, which `/userRating` is not. simplex advertised the
+    # own pivot `Directory` list, which `/userRating` is not. rex advertised the
     # pivot and 404'd the leaf, so the Ratings entry in the official client's sidebar
     # opened nothing. The buckets read the CRITIC rating: zen's `/rating/8` is 221 rows
     # and its `/userRating/8` is 200.
@@ -26409,10 +26409,10 @@ def main():
                    bucket_c44r(8)[0], bucket_c44r("-1")[0], seven_c44r, cleared_c44r)))
 
 
-    # Cycle 44, measured on plexscratch42 (1.42.2, the build simplex reports) and
+    # Cycle 44, measured on plexscratch42 (1.42.2, the build rex reports) and
     # confirmed for GET and HEAD on kids and zen: `/myplex/claim` is routed for POST
     # ALONE. GET, HEAD, PUT, DELETE and a bare OPTIONS are each a 404 there, and PATCH
-    # and an unknown method are the version-wide 500. simplex routed every verb and
+    # and an unknown method are the version-wide 500. rex routed every verb and
     # answered its own "missing claim token" 400 to all of them -- which tells a client
     # the endpoint exists and its request was malformed, where a real PMS says the
     # endpoint is not there at all. Its neighbour `/myplex/refreshReachability` already
@@ -26434,7 +26434,7 @@ def main():
     # `/sync/` -- is the legacy plug-in dispatcher's `{size: 0, content: "plugins"}`
     # 200, like every other single-segment path on the surface, while the deeper sync
     # paths (`/sync/items`, `/sync/transcodeQueue`, `/sync/zzz`) really are 404s.
-    # simplex short-circuited the whole prefix to a 404 on the note that it has no sync,
+    # rex short-circuited the whole prefix to a 404 on the note that it has no sync,
     # so it answered ONE single-segment path differently from all the others.
     sync_c45 = {}
     for path_c45 in ("/sync", "/sync/", "/sync/items", "/sync/transcodeQueue",
@@ -26457,7 +26457,7 @@ def main():
     # `type=` the same way -- 500 for `abc` and for an empty value, 404 for a bucket
     # sub-path. The one thing that makes it worth measuring rather than inferring: its
     # `title2` is the EMPTY STRING, where every other axis carries a "By ..." heading.
-    # simplex 404'd it.
+    # rex 404'd it.
     plat_c45 = {}
     for label_c45, section_c45 in (("movie", movie_section), ("show", show_section)):
         if section_c45 is None:
@@ -26478,7 +26478,7 @@ def main():
           str((plat_c45, refusals_c45)))
 
 
-    # Cycle 45: `/library/arts` is a real listing that simplex 404'd -- every row on the
+    # Cycle 45: `/library/arts` is a real listing that rex 404'd -- every row on the
     # server that OWNS an `art`, measured on kids (6 rows) and zen (4,190). The row is a
     # fixed ELEVEN attributes in which six are the EMPTY STRING and four are `-1`; they
     # are not omitted, which is what makes the shape worth copying rather than inferring.
@@ -26522,7 +26522,7 @@ def main():
     # `writer`, `producer` and `country`, and zen's DIRECTOR tag 8544 answers ITS two
     # rows under every one of them too. The lookup is the server's global tag TABLE and
     # the name in front of it is decoration; only `studio` and `platform` are not bucket
-    # names at all, and an id no tag holds is a 404 under every name. simplex resolved
+    # names at all, and an id no tag holds is a 404 under every name. rex resolved
     # the id against the NAME's own column, so nine names worked for their own tags and
     # ten more 404'd everything.
     axis_c45t = get(base, "/library/sections/%s/genre" % movie_section)[1]
@@ -26561,7 +26561,7 @@ def main():
     # for any value (cycle 29's rule; this is its SET), and `/extras/all` is a real leaf
     # of its own. Everything else -- `/children/1`, `/allLeaves/all`, `/tree/zzz`,
     # `/related/1`, `/posters/all`, `/similar/1`, `/matches/zzz` and thirteen more -- is a
-    # 404 on kids and zen alike. simplex answered the LEAF AGAIN for sixteen of them and
+    # 404 on kids and zen alike. rex answered the LEAF AGAIN for sixteen of them and
     # its own 400 for four: fix 4's trap, where a client reads a 200 as "this endpoint
     # exists". 64 of the 212 swept cells were wrong.
     closed_c45l = {}
@@ -26589,7 +26589,7 @@ def main():
     # measured on four paths and this is a fifth. (An ITEM's artwork version is the
     # unvalidated kind and really does take anything -- `/thumb/zzz` is a 200 on both.)
     #
-    # simplex normalises `+?0*<digits>` in EVERY path segment, which cycle 36 measured
+    # rex normalises `+?0*<digits>` in EVERY path segment, which cycle 36 measured
     # for an ID and is over-broad here: `+1` named row 1 and so served the bytes where a
     # real PMS 404s. And its section composite served the image for any second segment at
     # all -- fix 4's trap in image form, since a 200 tile gets cached where a 404 lets
@@ -26625,7 +26625,7 @@ def main():
     # Cycle 45, found by sweeping HEAD and GET over 76 reachable paths on all three
     # servers -- the one disagreement of the 152 cells. `HEAD /library/sections/{id}/
     # common` answers exactly what its GET answers on kids and zen: a 400 with no
-    # `type=` and a 200 with one. simplex's handler tested `method != "GET"` and 404'd
+    # `type=` and a 200 with one. rex's handler tested `method != "GET"` and 404'd
     # the HEAD, although its own SECTION_LEAF_VERBS table already allowed it -- the gate
     # was written twice and the inner one forgot HEAD. Cycle 33's HEAD sweep used a hand
     # list of sixty paths and `/common` was not on it.
@@ -26687,7 +26687,7 @@ def main():
     # filter keys `/hubs` refuses -- `duration lastViewedAt lastRatedAt viewCount
     # skipCount viewOffset userRating unwatched resolution hdr mediaSize file parentIndex
     # slug group` -- with a 500, which is why `group=zzz` and `unwatched=1` are 500s and
-    # not the ordinary filter. simplex answered its whole list to every one of them.
+    # not the ordinary filter. rex answered its whole list to every one of them.
     arts_c45q = {}
     for suffix_c45q in ("", "?title=zzzzzz", "?id=999999", "?summary=zzzzzz",
                         "?sort=zzz", "?limit=abc", "?group=zzz", "?unwatched=1",
@@ -26710,17 +26710,17 @@ def main():
 
     # Cycle 45, found by sweeping the QUERY-PARAMETER name space (1,704 cells, three
     # findings) and then pinned cell by cell on kids and zen with nothing else on the
-    # wire. Three columns simplex reads wrongly:
+    # wire. Three columns rex reads wrongly:
     #
     #  * `extraType=` is a **500 wherever a listing consumes it** -- a section listing
-    #    and `/library/all`, typed or untyped, for every value. simplex filtered on
+    #    and `/library/all`, typed or untyped, for every value. rex filtered on
     #    nothing and answered 200. It is already in `PARSE_ONLY_FIELD_TYPES`, so
     #    `/query/parse` knew it and the listing did not: the class-C shape exactly.
     #  * `unmatched=` is a **500 on `/library/all`** (typed or not) while it is a real
-    #    filter on a SECTION listing on both library types. simplex filtered on it
+    #    filter on a SECTION listing on both library types. rex filtered on it
     #    everywhere.
     #  * `file=` is a **200 on `/library/all`** and really filters (kids 11 rows of 14,
-    #    zen 12,899). simplex raised its show-listing 500 there, because it decides that
+    #    zen 12,899). rex raised its show-listing 500 there, because it decides that
     #    refusal per ROW and an untyped `/library/all` contains shows. The refusal is a
     #    property of the QUERY's type: `type=2` refuses everywhere, `type=3` refuses on
     #    `/library/all` and answers on a section listing, and nothing else refuses.
@@ -26771,13 +26771,13 @@ def main():
 
     # Cycle 45, and it is cycle 44's own fix finished. Cycle 44 measured that a `.webm`
     # file's container is `mkv` on a real PMS -- on the IDENTICAL 571,346,576-byte file,
-    # zen answers `mkv` where simplex answered `webm` -- and corrected `build_media`.
+    # zen answers `mkv` where rex answered `webm` -- and corrected `build_media`.
     # `normalize_media`, the load-time corrector that exists precisely so a catalog built
     # before a rule was measured is fixed on load, was not touched, so every catalog
     # already on disk went on serving `webm`.
     #
     # And this one is PROVED at the client, which cycle 44's could not be: driving the
-    # official Plex Web bundle simplex itself serves, through a real browser, the row
+    # official Plex Web bundle rex itself serves, through a real browser, the row
     # with `container="webm"` gets `POST /playQueues` then a `state=stopped&time=0`
     # timeline and NO decision and NO part read -- the player refuses it outright --
     # while the same row with `container="mkv"` reaches the decision, a 206 on the part
@@ -26804,15 +26804,15 @@ def main():
     # third witness: **a crossing beat at or under 60 000 ms completes the play.** The
     # recorded rule was "the timeline's minute is strict and has no `stopped` exemption:
     # 60 000 ms exactly is not stored"; that is true of the RESUME POINT (a beat at or
-    # under a minute still deletes the stored offset, and simplex already matches) and
+    # under a minute still deletes the stored offset, and rex already matches) and
     # false of COMPLETION. Measured on plexscratch42 (1.42.2) and plexscratch (1.43.4):
     # `duration=66667` beaten `30000 -> 60000`, `duration=3000` beaten `900 -> 3000` and
     # `duration=10030` beaten `6000 -> 10000` each answer `ignore` then **`complete`**
-    # and leave `viewCount 1` with `lastViewedAt` stamped. simplex answered `ignore`
+    # and leave `viewCount 1` with `lastViewedAt` stamped. rex answered `ignore`
     # twice and wrote nothing, so nothing whose 90% point falls under ~66.7 s could ever
     # be marked watched -- a trailer, an extra, a short, a music video, a clip.
     #
-    # And the completion itself stamps the ROW's `lastViewedAt`, which simplex set only
+    # And the completion itself stamps the ROW's `lastViewedAt`, which rex set only
     # when a `progress` beat happened to run first. A watched row without it sorts last
     # under `sort=lastViewedAt`, never reaches `/recentlyViewed`, and cannot win On
     # Deck's most-recently-viewed rule.
@@ -26825,7 +26825,7 @@ def main():
         request_c45s = urllib.request.Request(url_c45s, headers={
             "Accept": "application/json", "User-Agent": UA,
             "X-Plex-Session-Identifier": session_c45s,
-            "X-Plex-Client-Identifier": "simplex-ui-test",
+            "X-Plex-Client-Identifier": "rex-ui-test",
             "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"})
         with urllib.request.urlopen(request_c45s, timeout=20) as response_c45s:
             return (json.loads(response_c45s.read()).get("MediaContainer") or {})
@@ -26858,7 +26858,7 @@ def main():
     #    does. On kids (1.43.4) it is deterministic -- the pair on 17 of 17 reads. On zen
     #    (1.42.2) the check is genuinely SCHEDULED rather than blocking, so the pair
     #    appears on 9 of 16 reads of the same rows while `checkFiles=1` is 4 of 4; on a
-    #    fresh isolated 1.42.2 copy that has never run one it never appears. simplex has
+    #    fresh isolated 1.42.2 copy that has never run one it never appears. rex has
     #    no async check and hard-codes the pair, so answering it like `checkFiles=1` is
     #    the completed case -- which is what kids always answers and what zen answers
     #    once the check has run. Cycle 22 measured this option's value GRAMMAR and added
@@ -26868,7 +26868,7 @@ def main():
     #    sends it on every beat -- and `1.5`, `abc`, an empty value, a surrounding space,
     #    `0x10`, `1e6` and anything past the int32 bound are each a **400** on both
     #    copies, while `0`, `4001`, `-1`, `+1`, `01` and `2147483647` pass. The name
-    #    appears nowhere in simplex, so every one of those was a 200.
+    #    appears nowhere in rex, so every one of those was a 200.
     def part_of_c45a(suffix_c45a):
         row_c45a = (get(base, "/library/metadata/%s%s" % (movie, suffix_c45a))[1]
                     .get("Metadata") or [{}])[0]
@@ -26934,7 +26934,7 @@ def main():
 
 
     # Cycle 45: two more section leaves, 200 on kids, zen and both writable copies and
-    # 404 on simplex.
+    # 404 on rex.
     #
     #  * `/recentlyViewedGrandparents` is byte-identical to `/recentlyViewedShows` on
     #    both library types -- same `title2` ("Recently Viewed Shows"), same rows, same
@@ -26972,7 +26972,7 @@ def main():
           str(grand_c45))
 
 
-    # Cycle 45: three more routed endpoints simplex 404'd, all 200/400 on kids, zen and
+    # Cycle 45: three more routed endpoints rex 404'd, all 200/400 on kids, zen and
     # both writable copies. A 404 tells a client the endpoint does not exist.
     #
     #  * `/library/sections/{id}/stations/{genre|mood|style|decade}` -- an empty
@@ -27007,9 +27007,9 @@ def main():
     #  * `/security/token` validates its parameter VALUES. Both references accept
     #    exactly `type=delegation` and `scope=all`, case-SENSITIVE, and answer **400**
     #    to `Delegation`, `All`, `transient`, `zzz`, `scope=server` and a repeated
-    #    parameter whose last occurrence is wrong. simplex checked only that both names
+    #    parameter whose last occurrence is wrong. rex checked only that both names
     #    were present and minted a token for any value. It is reachable: a real PMS
-    #    probing simplex as a shared source asks this exact question -- it is one of the
+    #    probing rex as a shared source asks this exact question -- it is one of the
     #    three requests the lab's own PMS sent, with `X-Plex-Internal-Request: 1`.
     #  * `includeSummary=1` on `/library/sections` adds a `Summary` block to each
     #    library `Directory` -- `{"duration": <ms over the library>, "Type": [{"type":
@@ -27045,7 +27045,7 @@ def main():
     # Cycle 45, three findings from the PMS binary's own string table, each then measured
     # on a real server:
     #
-    #  * **`X-Plex-Container-Focus-Key`** is a paging mode simplex did not have. Header
+    #  * **`X-Plex-Container-Focus-Key`** is a paging mode rex did not have. Header
     #    or query, its value must begin `/library/metadata/`; it supplies the container
     #    START as `max(0, index - (size - 1) // 2)` -- the focused row centred in the
     #    window, biased earlier -- and it needs `X-Plex-Container-Size` to do anything.
@@ -27062,7 +27062,7 @@ def main():
     #  * **The singular artwork PUT is routed for SIX names** on 1.42.2 -- `poster`,
     #    `art`, `thumb`, `banner`, `theme`, `clearLogo` -- each answering its own 400
     #    with no parameters, while `logo`, `squarePoster` and `squareArt` are 404s.
-    #    simplex routed two, answered **200** to a `thumb` write that stores nothing, and
+    #    rex routed two, answered **200** to a `thumb` write that stores nothing, and
     #    404'd the other four.
     focus_c45 = {}
     rows_c45f = get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or []
@@ -27107,10 +27107,10 @@ def main():
     # both. TWO findings in one place, and both are reachable from every browser.
     #
     #  * `X-Plex-Accept-Language` is a THIRD localisation input, header AND query, and it
-    #    ranks BETWEEN the two simplex knew: `X-Plex-Language` > `X-Plex-Accept-Language`
-    #    > `Accept-Language`. simplex ignored it, so a client that sends only that header
+    #    ranks BETWEEN the two rex knew: `X-Plex-Language` > `X-Plex-Accept-Language`
+    #    > `Accept-Language`. rex ignored it, so a client that sends only that header
     #    got English.
-    #  * `Accept-Language`'s `q` grammar ranks the WHOLE list. simplex read the first
+    #  * `Accept-Language`'s `q` grammar ranks the WHOLE list. rex read the first
     #    member and dropped the rest (`accept.split(",")[0].split(";")[0]`), so
     #    `de;q=0.1, fr;q=0.9` answered German where a real PMS answers French, and
     #    `de;q=0` answered German where a real PMS falls back to English. Measured:
@@ -27164,7 +27164,7 @@ def main():
 
     # Cycle 45, measured on kids (1.43.4) and zen (1.42.2), which agree on every cell:
     # `/library/shared` is a real endpoint -- the tab bar the Shared view draws -- and
-    # simplex 404'd it while answering only the `/all` leaf below it. It is a CONSTANT
+    # rex 404'd it while answering only the `/all` leaf below it. It is a CONSTANT
     # seven-row `Type` container in an identifier of its own
     # (`com.plexapp.plugins.library.shared`), each row `type: "mixed"`, `active: false`
     # and carrying the same two `Sort` rows (`titleSort` "Title", default asc; and
@@ -27173,12 +27173,12 @@ def main():
     #
     # Below it, EVERY second segment answers the same list -- `/all`, `/libraries`
     # (which the tab bar names), `/servers`, `/items`, `/sections`, `/1` and `/zzz` are
-    # byte-identical -- and a THIRD segment is a 404. simplex answered `/all` alone.
+    # byte-identical -- and a THIRD segment is a 404. rex answered `/all` alone.
     #
     # The list is this server's OWN libraries in a projection of their own: `art` and
     # `thumb` are the EMPTY STRING and lead the row, the `key` names the section's
     # listing, and `allowSync`, `filters` and `refreshing` -- which `/library/sections`
-    # carries -- are all absent. simplex sent the section row with the three extra
+    # carries -- are all absent. rex sent the section row with the three extra
     # fields and no leading art.
     #
     # The query grammar: `?type=` takes an integer or a comma list of them and selects
@@ -27191,7 +27191,7 @@ def main():
     # NOT measured, and deliberately: **an EMPTY `?sort=` CRASHES a real PMS.** It
     # closed the connection on kids and SEGV'd zen's Plex outright (systemd:
     # `code=killed, signal=SEGV`), reproduced on both. There is no answer to copy, so
-    # simplex reads the empty value as absent -- the convention `/collections` already
+    # rex reads the empty value as absent -- the convention `/collections` already
     # has for it -- and the crash is recorded rather than emulated. Do not send that
     # request to zen.
     shared_c45 = {}
@@ -27269,7 +27269,7 @@ def main():
     # row whose theme really exists), `type: "track"`, an EMPTY `title` and `summary`,
     # `index: 1`, `addedAt` the mint time and `genuineMediaAnalysis: "1"`. A row that
     # really HAS a theme at that version adds the theme's `duration` and its
-    # `Media`/`Part`/`Stream`; simplex holds no theme audio at all -- no row names one --
+    # `Media`/`Part`/`Stream`; rex holds no theme audio at all -- no row names one --
     # so it always answers the bare form. The minted row is idempotent per (item,
     # version) and readable at `/library/metadata/{mintedKey}`, and it carries NO
     # `librarySectionID`, which is why it is invisible in every listing including
@@ -27331,7 +27331,7 @@ def main():
     # Cycle 45, measured on kids (1.43.4) and zen (1.42.2): `ownerFeatures` on `GET /`
     # and `subscriptionFeatures` on `/myplex/account` are the SAME STRING, byte for byte
     # -- 7,078 characters on kids and 6,967 on zen, identical within each server.
-    # simplex answered `pass,sync,hwtranscode` for one and the bare `pass` for the
+    # rex answered `pass,sync,hwtranscode` for one and the bare `pass` for the
     # other, so its own two fields contradicted each other and the client -- which reads
     # `ownerFeatures` in 28 places in its bundle -- was told the account had three
     # features on one path and one on the other.
@@ -27339,7 +27339,7 @@ def main():
     # The list is a SORTED comma join of the account's plex.tv entitlements: ~180 opaque
     # UUIDs plus 32 NAMED features, and the 32 names are byte-identical on both servers
     # while the UUID count differs (212 against 209). So the names are the modellable
-    # half and the UUIDs are account-and-server-scoped plex.tv content: simplex carries
+    # half and the UUIDs are account-and-server-scoped plex.tv content: rex carries
     # the names and does not invent the ids. `owner_features.txt` beside `server.py`
     # stays the local override for anyone who wants the real list, and it is gitignored
     # for the same reason `catalog.json` is.
@@ -27398,14 +27398,14 @@ def main():
 
     # Cycle 46, found by sweeping the OPTION name space the way cycle 45 swept the path
     # one -- 116 option-shaped names taken from the PMS binary's own string block and the
-    # official web client's bundle, against 19 container paths on kids, zen and simplex.
+    # official web client's bundle, against 19 container paths on kids, zen and rex.
     # `checkFileAvailability` is a full SIBLING of `checkFiles`: the same
     # `accessible`/`exists` pair on the Part, the same `+?0*[01]` value grammar (`0`,
     # `1`, `01`, `+1` pass and everything else -- an empty value, `2`, `-1`, `1.5`,
     # `true`, `abc` -- is a 400), and the same reach (a DETAIL read only; a section grid,
     # `/library/all` and `/children` are byte-identical with and without it, exactly as
     # they are for `checkFiles`). Measured on kids and zen, which agree on all 20 cells.
-    # simplex knew the six options cycle 22's 60-name sweep found and not this one --
+    # rex knew the six options cycle 22's 60-name sweep found and not this one --
     # that sweep read the detail path's own vocabulary, where this name does not appear.
     avail_c46 = {}
     for value_c46a in ("", "0", "1", "01", "+1", "2", "-1", "1.5", "true", "abc"):
@@ -27433,7 +27433,7 @@ def main():
 
     # Cycle 46, from the same option sweep: `includeGuids=1` carries the `Guid` list on
     # `/library/recentlyAdded` as it does on `/library/all`, a section grid and a
-    # section's `recentlyAdded` -- measured on kids and zen, which agree. simplex built
+    # section's `recentlyAdded` -- measured on kids and zen, which agree. rex built
     # this one listing with `_grid_row`'s default, which strips `Guid` unconditionally,
     # so the one path the client uses to ask "do you already have this?" across the
     # whole server could never answer with an id.
@@ -27499,7 +27499,7 @@ def main():
 
 
     # Cycle 46, from the option sweep: `includeMeta=1` carries a `Meta` on three more
-    # containers than simplex answered -- measured on kids and zen, which agree.
+    # containers than rex answered -- measured on kids and zen, which agree.
     #
     #  * `/hubs/home/onDeck` and `/hubs/home/continueWatching` each carry ONE `Type` row
     #    naming the leaf itself: `{key, type: "mixed", title: "On Deck" / "Continue
@@ -27698,7 +27698,7 @@ def main():
     # Cycle 19: a boolean filter field's whole operator grammar, measured on kids and zen
     # over `unwatched` and `duplicate`, seven values and all eight operators. Exactly two
     # requests answer the TRUE set -- `field=1` and `field!=0`; every other operator and
-    # every other value answers the rows where the column is FALSE. simplex compared 0/1
+    # every other value answers the rows where the column is FALSE. rex compared 0/1
     # numerically, so `unwatched>=0` was the whole library and `unwatched!=2` the unwatched
     # half. Counted against the rows as they stand rather than against the fixture.
     rows_c19b = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
@@ -27829,7 +27829,7 @@ def main():
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2) with eleven field names:
     # `excludeFields=` strips the named field from every CHILD ELEMENT, not only from the
     # row -- `id` off Media/Part/Stream/Genre/Guid, `file` off Part, `url` off Image,
-    # `value` off Rating, `index` and `codec` off Stream, `tag` off Genre and Role. simplex
+    # `value` off Rating, `index` and `codec` off Stream, `tag` off Genre and Role. rex
     # trimmed the row and the container alone, so a client asking not to be sent `file`
     # still got the full filesystem path.
     status_c19x, detail_c19x, _ = get(base, "/library/metadata/%s?excludeFields=id" % movie)
@@ -27849,7 +27849,7 @@ def main():
     # Cycle 19, measured on kids (4 Image and 1 UltraBlurColors before and after) and zen
     # (2 and 1): `excludeElements=Image` and `=UltraBlurColors` are no-ops on both servers,
     # exactly like an unknown name, while every other element the option names really goes.
-    # simplex removed them, so a client naming Image in a bandwidth-trimming list lost the
+    # rex removed them, so a client naming Image in a bandwidth-trimming list lost the
     # artwork rows and the tile colour wash a real PMS still sends.
     _, plain_c19e, _ = get(base, "/library/metadata/%s" % movie)
     _, cut_c19e, _ = get(base, "/library/metadata/%s?excludeElements=Image,UltraBlurColors,Genre"
@@ -27868,7 +27868,7 @@ def main():
 
     # Cycle 19: the ITEM path has the `/all` form the SECTION path does. Both references
     # answer `/library/metadata/{id}/extras/all` with the container `/extras` gives -- kids
-    # an empty one, zen a three-clip one -- and simplex 404'd the segment, which a client
+    # an empty one, zen a three-clip one -- and rex 404'd the segment, which a client
     # walking to the paged form of a preplay Extras shelf reads as "this item is gone".
     status_c19q, body_c19q, _ = get(base, "/library/metadata/%s/extras/all" % movie)
     status_c19r, bare_c19q, _ = get(base, "/library/metadata/%s/extras" % movie)
@@ -27883,7 +27883,7 @@ def main():
     # Cycle 41, re-measured on kids (1.43.4) and zen (1.42.2): file-state fields
     # are a DETAIL option. Bare and `checkFiles=0` detail reads omit them;
     # `checkFiles=1` adds both; a section listing omits both even when it receives
-    # the option. simplex's old plezy compatibility waiver sent both everywhere.
+    # the option. rex's old plezy compatibility waiver sent both everywhere.
     def first_part_c41b(document):
         metadata_c41b = (document.get("Metadata") or [{}])[0]
         media_c41b = (metadata_c41b.get("Media") or [{}])[0]
@@ -27982,7 +27982,7 @@ def main():
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2), identically: `checkFiles=` takes
     # a bare decimal whole number that is 0 or 1 -- `0`, `1` and `01` are 200 while `abc`,
     # an empty value, `2`, `true`, `-1`, `1.5`, a leading space and a trailing one are all
-    # 400. simplex accepted every one of them. (That simplex sends `exists`/`accessible`
+    # 400. rex accepted every one of them. (That rex sends `exists`/`accessible`
     # unconditionally is a deliberate deviation recorded in docs/findings.md; the VALUE
     # grammar is not part of it.)
     grammar_c19c = {v_c19c: get(base, "/library/metadata/%s?checkFiles=%s"
@@ -27995,7 +27995,7 @@ def main():
           str(grammar_c19c))
 
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): inside a `Meta` the `Type` rows
-    # come BEFORE the `FieldType` rows. simplex sorted a Meta's children by the item table,
+    # come BEFORE the `FieldType` rows. rex sorted a Meta's children by the item table,
     # which knows neither name, so they came out in dict order -- FieldType first. XML is
     # the DEFAULT response format, so this is the shape a TV or mobile client reads.
     status_c19o, raw_c19o, _ = request(
@@ -28011,7 +28011,7 @@ def main():
           str(order_c19o[:12]))
 
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2), which agree on every sequence:
-    # five element buckets simplex had no `_ATTR_ORDER` entry for (`Common`, `Feature`,
+    # five element buckets rex had no `_ATTR_ORDER` entry for (`Common`, `Feature`,
     # `Type`, the `/media/providers` library `Directory`, and `count`/`hubKey` inside
     # `Directory[none]`), plus the rows of `/library/recentlyAdded` and `/library/onDeck`,
     # which LEAD with `allowSync` and the librarySection triple before `ratingKey` where
@@ -28073,7 +28073,7 @@ def main():
     # ordered differently from a detail row's. On `?type=1&includeGuids=1` every listing row
     # on both servers answers `Media Image UltraBlurColors Guid Genre Country Director
     # Writer Role`, where the detail row answers `Media Image UltraBlurColors Genre Country
-    # Guid Rating Director Writer Role Producer`. simplex used one table for both. XML is
+    # Guid Rating Director Writer Role Producer`. rex used one table for both. XML is
     # the DEFAULT response format, so this is the document a TV client parses -- and the
     # private marker that carries the projection must not leak into either format.
     import re as re_c19g
@@ -28128,9 +28128,9 @@ def main():
 
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a real PMS's JSON object keys
     # come out in exactly its XML order -- the container's, the row's, `Media`'s, `Part`'s
-    # and the row's child element keys, on all four row types. simplex ordered the XML alone
+    # and the row's child element keys, on all four row types. rex ordered the XML alone
     # (cycles 16-19) and left the JSON in dict order, so its two formats disagreed on every
-    # response. Checked here by comparing simplex's own two renderings of one request, which
+    # response. Checked here by comparing rex's own two renderings of one request, which
     # is the strongest form the suite can assert: the XML order is already reference-verified.
     import re as re_c19j
 
@@ -28165,7 +28165,7 @@ def main():
 
     # Cycle 19, measured on plexscratch: `DELETE /devices/{id}` and `DELETE /accounts/{id}`
     # are 404s for an id the server lists and one it does not, with the list unchanged --
-    # a device or an account is removed through plex.tv, not through the server. simplex
+    # a device or an account is removed through plex.tv, not through the server. rex
     # answered an empty 200 to the device form and the accounts LISTING to the account one,
     # which a client reads as a successful write. And `PUT /activities/{x}` is a 400 where
     # the DELETE of the same path is a 404.
@@ -28184,7 +28184,7 @@ def main():
           and request(base, "PUT", "/activities/abc")[0] == 400,
           str(acts_c19s))
 
-    # Cycle 19: `HEAD /:/prefs` is a 200 on kids, zen and plexscratch and simplex 404'd it --
+    # Cycle 19: `HEAD /:/prefs` is a 200 on kids, zen and plexscratch and rex 404'd it --
     # the one disagreement in a HEAD sweep over sixty paths and four servers.
     head_c19p, body_c19p, headers_c19p = request(base, "HEAD", "/:/prefs")
     get_c19p, gbody_c19p, _gh_c19p = request(base, "GET", "/:/prefs")
@@ -28199,14 +28199,14 @@ def main():
     # push no frame -- even writing back the value already stored -- while the other 147
     # settings answer 200 (`FriendlyName` is the control). And `ButlerStartHour=abc` and
     # `ButlerEndHour=abc` are 200s that store nothing, alone among the 38 integer settings;
-    # simplex 500'd all 38, so an empty hour field could not be saved.
+    # rex 500'd all 38, so an empty hour field could not be saved.
     protected_c19w = {p_c19w: request(base, "PUT", "/:/prefs?%s=x" % p_c19w)[0]
                       for p_c19w in ("PlexOnlineUrl", "TranscoderH264Options",
                                      "TranscoderH264OptionsOverride")}
     protected_c19w["allowMediaDeletionLanOnly"] = request(
         base, "PUT", "/:/prefs?allowMediaDeletionLanOnly=1")[0]
-    control_c19w = request(base, "PUT", "/:/prefs?FriendlyName=simplex")[0]
-    # Cycle 30, on plexscratch42 (1.42.2, the build simplex reports): the list is TWO
+    control_c19w = request(base, "PUT", "/:/prefs?FriendlyName=rex")[0]
+    # Cycle 30, on plexscratch42 (1.42.2, the build rex reports): the list is TWO
     # there. `TranscoderH264Options` and `TranscoderH264OptionsOverride` take a write with
     # a 200 and store it, where 1.43.4 -- the copy cycle 19 had -- answers 403 for both.
     check("two settings refuse a write with a 403 on 1.42.2",
@@ -28241,10 +28241,10 @@ def main():
     check("an empty butler window moves the end hour to start + 1",
           window_c74 == [(5, 6), (23, 0), (6, 4)], window_c74)
 
-    # Cycle 19: `server_prefs.json` was captured off kids (1.43.4) and simplex reports 1.42.2
+    # Cycle 19: `server_prefs.json` was captured off kids (1.43.4) and rex reports 1.42.2
     # -- the fifth fixture found to be per VERSION. kids answers 174 settings and zen 173,
     # and exactly `AllowLegacyAgents` and `CLDriver` are on kids and not on zen. A write to
-    # one of them succeeded on simplex where a real 1.42.2 refuses the whole request as an
+    # one of them succeeded on rex where a real 1.42.2 refuses the whole request as an
     # unknown preference.
     _s_c19v, prefs_c19v, _h_c19v = get(base, "/:/prefs")
     ids_c19v = [s_c19v.get("id") for s_c19v in (prefs_c19v.get("Setting") or [])]
@@ -28262,9 +28262,9 @@ def main():
 
     # Cycle 19, measured on plexscratch: four differences in the Add Library form's
     # validation at once. A missing `language` and an unparseable one (`zz-ZZ`) are both
-    # 400s where simplex created the library; an EMPTY `location` is a 201 where simplex
+    # 400s where rex created the library; an EMPTY `location` is a 201 where rex
     # refused it; and a NUMERIC `type` is accepted and creates a library of that type
-    # (`type=1` a movie library) where simplex refused it.
+    # (`type=1` a movie library) where rex refused it.
     FORM_C19L = ("name=CycleNineteen&agent=tv.plex.agents.movie&scanner=Plex%20Movie")
 
 
@@ -28299,7 +28299,7 @@ def main():
     # scan. The section's own Location, an empty value and no `path` at all each scan
     # everything (5 progress rows on its five-movie library); a parent of it and a path the
     # library does not hold scan NOTHING -- 0 progress rows, the activity running 0 to 100
-    # with an empty subtitle. simplex ignored the parameter. And a library EDIT refuses a
+    # with an empty subtitle. rex ignored the parameter. And a library EDIT refuses a
     # `type` naming a different type from the library's own (400) while accepting its own,
     # as a word or as a number.
     def scan_rows_c19z(query_c19z):
@@ -28331,7 +28331,7 @@ def main():
           "own %s ; numeric %s ; foreign %s" % (own_c19z, numeric_c19z, foreign_c19z))
 
     # Cycle 19, measured on plexscratch behind a control write. `OptimizeDatabase` starts at
-    # 0 with an empty subtitle and steps 0/10/40/60 before ending at 100, where simplex
+    # 0 with an empty subtitle and steps 0/10/40/60 before ending at 100, where rex
     # started at -1 with the subtitle set and stepped 10/53/100 -- disagreeing with its own
     # `/library/optimize`, which already matched. `CleanOldBundles` has SEVEN updates, not
     # four: `Analyzing metadata bundles` is followed by two `Deleting N metadata bundles`
@@ -28380,8 +28380,8 @@ def main():
     # Cycle 19, measured on plexscratch behind a control write: a library EDIT scans only
     # when the form carries `language` or `scanner` -- `agent` alone, `agent` with `name` and
     # `agent` with a `prefs[...]` are 200s with ZERO frames, while either of those two makes
-    # it 20. simplex scanned on every accepted edit. And `PUT /updater/check` pushes one
-    # `update.statechange` frame carrying an `AutoUpdateNotification` row, where simplex
+    # it 20. rex scanned on every accepted edit. And `PUT /updater/check` pushes one
+    # `update.statechange` frame carrying an `AutoUpdateNotification` row, where rex
     # pushed none and Check for Updates never resolved.
     def edit_frames_c19u(form_c19u):
         _s_c19u, frames_c19u = notifications(
@@ -28413,7 +28413,7 @@ def main():
     # come back as a Rule with an EMPTY `fieldTitle` -- the shape `id`, `guid`, `slug`
     # and `parentIndex` already had -- under every one of the eight operator keys, and a
     # LISTING filtered on any of them is a 500 on both servers, the way `parentIndex`
-    # already was. simplex reported them as unknown fields: an Error where the smart-list
+    # already was. rex reported them as unknown fields: an Error where the smart-list
     # builder draws "that field does not exist", and a listing that answered every row.
 
     def parse_doc_c20(path_c20):
@@ -28446,8 +28446,8 @@ def main():
           % (parsed_c20c, listed_c20c, (ord_c20c or {}).get("Rule")))
 
     # Cycle 20: `slug` is the fifth column of that family. It parses under all eight
-    # operator keys -- simplex answered an Error for `>>` and `<<` -- and a LISTING
-    # filtered on it is a 500 on both references for every operator, not the 200 simplex
+    # operator keys -- rex answered an Error for `>>` and `<<` -- and a LISTING
+    # filtered on it is a 500 on both references for every operator, not the 200 rex
     # answered. Cycle 7 recorded the listing half and left it unimplemented; the sweep
     # that found the artwork columns settled it in the same run.
 
@@ -28482,7 +28482,7 @@ def main():
     # and `guid<<=` are each an Error naming the key with the operator still on it
     # (`guid!`, `guid>`), and a listing filtered on one of those answers every row. That
     # is the "unknown FIELD" shape, so the operator is not part of the field's grammar at
-    # all. simplex accepted all eight and echoed whichever it was given.
+    # all. rex accepted all eight and echoed whichever it was given.
 
     def parse_doc_c20(path_c20):
         """/query/parse answers a `Query` root, which `get` (a MediaContainer reader)
@@ -28524,7 +28524,7 @@ def main():
     # surface with NO `fieldTitle` key at all -- and each really filters, on the row's
     # TYPE NUMBER: zen answers 0 rows to `type=1&type>>=1` and 3,887 to `type<<=99`, 0
     # to `type=4&type!=4` and 9,287 to `type=4&type>>=3`, and kids agrees on all four.
-    # It reaches `/library/all` as well. simplex called the key an unknown field, so the
+    # It reaches `/library/all` as well. rex called the key an unknown field, so the
     # parser reported an Error and the listing answered every row.
     type_parse_c20f = {}
     for label_c20f, key_c20f in ((">>=", "type%3E%3E"), ("<<=", "type%3C%3C"),
@@ -28568,7 +28568,7 @@ def main():
     # `0` and `-1` pass -- it constrains no row, and the parser reports NO Rule for it.
     # What it does do is switch the source: any value but `1` makes the Query carry the
     # DEFAULT `Order` block (`id`, ascending) that it otherwise omits, with the rules,
-    # the limit and the group untouched, and an explicit `sort=` still wins. simplex
+    # the limit and the group untouched, and an explicit `sort=` still wins. rex
     # reported it as an unknown field and ignored every value.
     status_one_c20g, one_c20g = parse_doc_c20("/library/sections/%s/query/parse?type=1&sourceType=1"
                                               % movie_section)
@@ -28606,7 +28606,7 @@ def main():
     # Cycle 20, the `group=` holdout across 60 candidate keys on both references: five
     # more group. `originalTitle`, `createdAt`, `mediaCount`, `ratingCount` and
     # `absoluteIndex` each answer a 200 on kids and zen (zen: 472, 3840, 9, 1 and 1
-    # groups of its 3,887 movies) where simplex answered the 500 it answers an unknown
+    # groups of its 3,887 movies) where rex answered the 500 it answers an unknown
     # key. They are exactly the unadvertised columns cycle 14 and 15 found FILTER, so
     # the group surface tracks the filter surface rather than the Meta.
     grouped_c20h = {field_c20h: get(base, "/library/sections/%s/all?type=1&group=%s"
@@ -28642,7 +28642,7 @@ def main():
 
     # Cycle 20: the section search box answers the LIGHT grid row, and a grid row
     # carries no librarySection fields -- they are on the container. Neither reference
-    # sends one on `/library/sections/{id}/search`, on either library type; simplex
+    # sends one on `/library/sections/{id}/search`, on either library type; rex
     # kept the triple on the search path alone after cycle 18 made the rest of the row
     # light.
     # Search for a word one of the rows really holds: by this point the suite has
@@ -28664,10 +28664,10 @@ def main():
           % ([k_c20af for k_c20af in row_c20af if k_c20af.startswith("librarySection")],
              searched_c20af.get("title2")))
 
-    # Cycle 20: four small leaves validate `type=` and simplex refused the wrong half
+    # Cycle 20: four small leaves validate `type=` and rex refused the wrong half
     # of each. On both references `?type=abc`, `?type=`, `?type=1.5` and `?type=%20`
     # are each a 400 on `/sorts`, `/filters`, `/common` and `/search` -- sixteen cells,
-    # all 400 -- where simplex answered 200 to the empty value on the first two and to
+    # all 400 -- where rex answered 200 to the empty value on the first two and to
     # the three unparseable ones on the last two.
     validation_c20ag = {}
     for leaf_c20ag, tail_c20ag in (("sorts", ""), ("filters", ""),
@@ -28686,7 +28686,7 @@ def main():
     # `contentRating`) over half a minute left it at 1789203303 exactly, on the item
     # path and the section path alike, while the control -- a poster write -- moved it
     # to 1789428407 in the same session. The column tracks the ARTWORK and the row's
-    # own identity, not its text. simplex stamped `_now()` on every edit, and that
+    # own identity, not its text. rex stamped `_now()` on every edit, and that
     # column is the cursor python-plexapi and every sync client polls: one title fix
     # made the whole row look new.
     _, before_c20i, _ = get(base, "/library/metadata/%s" % movie)
@@ -28717,7 +28717,7 @@ def main():
     # on kids (1.43.4), `thumb` and `art` alike, no exception. The copy shows the
     # mechanism from the write side: `updatedAt.value=1500000000` through the section
     # save path moves the column AND re-versions the poster to
-    # `/library/metadata/1/thumb/1500000000`, which still serves the image. simplex
+    # `/library/metadata/1/thumb/1500000000`, which still serves the image. rex
     # versioned on a hash of the source URL -- a stable version, and not this one.
     _, rows_c20j, _ = get(base, "/library/sections/%s/all" % movie_section)
     owned_c20j = []
@@ -28728,7 +28728,7 @@ def main():
                 owned_c20j.append((r_c20j.get("ratingKey"), field_c20j,
                                    value_c20j.rsplit("/", 1)[-1], str(r_c20j.get("updatedAt"))))
     # The served GET needs a row whose poster candidate is a real image: an earlier check
-    # leaves an `upload://` candidate behind, and simplex has no bytes for one, so which
+    # leaves an `upload://` candidate behind, and rex has no bytes for one, so which
     # row came first decided whether this passed. Prepare the state instead.
     restore_poster_c21(movie)
     _, served_row_c20j, _ = get(base, "/library/metadata/%s" % movie)
@@ -28750,7 +28750,7 @@ def main():
     # a `Field` lock, on a movie, a show, a season and an episode alike, where
     # `bogusXY` is the 400 an unknown name really gets. Only the VALUE of
     # `absoluteIndex` is read (a word is a 500 there and a 200 on all the others),
-    # which is what tells a known numeric column from an ignored name. simplex 400'd
+    # which is what tells a known numeric column from an ignored name. rex 400'd
     # all eleven, so a client locking any of them was told the field does not exist.
     lockable_c20k = ["absoluteIndex", "updatedAt", "createdAt", "skipCount", "viewOffset",
                      "ratingCount", "type", "viewedLeafCount", "contentRatingAge",
@@ -28788,7 +28788,7 @@ def main():
     # `contentRatingAge` and an episode's `index` -- while `duration` and `parentIndex`
     # parse and change nothing. It is the Edit dialog's own save path, so a form
     # carrying an unreadable number in any of fifteen fields is refused whole by a real
-    # PMS; simplex answered 200 to all of them.
+    # PMS; rex answered 200 to all of them.
     def section_put_c20l(field_c20l, value_c20l):
         return request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&%s.value=%s"
                        % (movie_section, movie, field_c20l, value_c20l))[0]
@@ -28822,7 +28822,7 @@ def main():
     # `year`'s alone -- the other numeric columns take 9223372036854775807 happily,
     # because the item path never reads them. And the refusal carries cycle 19's whole-
     # form rule with it: `summary.value=OK&year.value=<huge>` is a 500 on the copy with
-    # the summary untouched, where simplex answered 200 and wrote the summary. It was
+    # the summary untouched, where rex answered 200 and wrote the summary. It was
     # the last hole in "a save a real PMS refuses writes nothing".
     _, was_c20m, _ = get(base, "/library/metadata/%s" % movie)
     summary_c20m = (was_c20m.get("Metadata") or [{}])[0].get("summary")
@@ -28847,7 +28847,7 @@ def main():
     # REMOVES the field, exactly as a negative year does. Everything else in the
     # column's grammar already agreed (`7.5` stores, `abc` is a 500, `0` stores `0.0`),
     # and the rule reaches these two and no other float: `userRating` was already
-    # measured as discarded on the item path. simplex stored `-3.0` and the preplay
+    # measured as discarded on the item path. rex stored `-3.0` and the preplay
     # page printed it.
     ratings_c20n = {}
     for field_c20n in ("rating", "audienceRating"):
@@ -28869,7 +28869,7 @@ def main():
     # edit path. `theme.value=http://example.invalid/t.mp3` is a 200 and the row comes
     # back carrying `theme: "/library/metadata/4/theme/1789421253"` -- the URL discarded
     # and the path minted at the row's current `updatedAt`, exactly as a poster pick
-    # mints one. `banner` behaves identically. simplex honoured the lock and stored
+    # mints one. `banner` behaves identically. rex honoured the lock and stored
     # nothing, so the column never appeared; and on the SECTION path it went further and
     # 400'd `theme`, `banner` and `slug`, all three of which the copy takes on both
     # paths.
@@ -28897,7 +28897,7 @@ def main():
     # (`addedAtX`, `sortTitle`, `ratingKey`, `childCount`, `flattenSeasons`,
     # `composite`, `bogusXY`), an unparseable number is a 500 (`year`, `index`), and
     # `title`, `summary` and `userRating` are the 200s -- identically on both row types,
-    # and nothing is stored either way. simplex skipped the validation for these two
+    # and nothing is stored either way. rex skipped the validation for these two
     # row types and answered 200 to every name, which is the one place it contradicted
     # itself: the same field was a 400 on a movie and a 200 on a collection.
     _status_c20q, made_c20q, _ = request(
@@ -28927,7 +28927,7 @@ def main():
     # JSON/XML Accept and identity/gzip: this legacy Framework action is a fixed
     # 500 application/xml traceback whatever representation the caller asks for.
     # Its GET honours gzip; HEAD carries the uncompressed 464-byte length and no
-    # encoding. simplex advertised the absent action as an empty successful API
+    # encoding. rex advertised the absent action as an empty successful API
     # container, so a service-url resolver read failure as supported-but-empty.
     lookup_error_c40a = (
         b"<?xml version='1.0' encoding='utf-8'?>\n"
@@ -29148,7 +29148,7 @@ def main():
     # route table names `/:file(crossdomain.xml|clientaccesspolicy.xml)`, and those two plus
     # `/favicon.ico` are real static resources. They answer with NO token -- the third,
     # fourth and fifth exception to the 401 rule -- carry `Accept-Ranges: bytes`, are never
-    # gzipped, and fall through to the dispatcher for every verb but GET and HEAD. simplex
+    # gzipped, and fall through to the dispatcher for every verb but GET and HEAD. rex
     # answered the dispatcher's empty 101-byte container to all three.
     wrong_c52b = []
     for path_c52b, want_type_c52b, want_len_c52b in (
@@ -29180,9 +29180,9 @@ def main():
     # Cycle 52, measured on kids (1.43.4), zen (1.42.2), plexscratch and plexscratch42, which
     # answer the identical seventeen rows in the identical order: `/:/plugins` lists the
     # plug-ins PMS itself bundles. HANDOVER §8 carried "the `/:/plugins` listing" as a
-    # deliberate bound since cycles 1-6 on the grounds that simplex hosts no plug-ins -- but
+    # deliberate bound since cycles 1-6 on the grounds that rex hosts no plug-ins -- but
     # the list is a fixed table in the image, like the profile files cycle 31 shipped, and
-    # simplex answered `size 0` where a real server answers seventeen.
+    # rex answered `size 0` where a real server answers seventeen.
     _, plugins_c52c, _ = get(base, "/:/plugins")
     rows_c52c = plugins_c52c.get("Plugin") or []
     check("/:/plugins lists the seventeen bundled plug-ins",
@@ -29195,7 +29195,7 @@ def main():
                   for row_c52c in rows_c52c),
           "%d rows" % len(rows_c52c))
 
-    # `/:/plugins/{id}/prefs` is what a `prefsKey` opens, and simplex advertises
+    # `/:/plugins/{id}/prefs` is what a `prefsKey` opens, and rex advertises
     # `prefsKey="/:/plugins/com.plexapp.system/prefs"` on its own search container while
     # 404ing it. Thirteen of the seventeen answer a document, byte-identical on both
     # versions; the other four answer the framework's 500.
@@ -29242,7 +29242,7 @@ def main():
     # `/:/plugins/{id}/prefs`: the plug-in framework's cookie rides its OWN responses, and
     # neither the bare OPTIONS 200 nor the PATCH refusal is one of them. Both are answered
     # before the framework runs, so neither carries `Set-Cookie` on either version, where
-    # simplex attached it to every response under `/system`.
+    # rex attached it to every response under `/system`.
     wrong_c52d = []
     for method_c52d, path_c52d in (("OPTIONS", "/system"), ("PATCH", "/system"),
                                    ("OPTIONS", "/system/zzz"), ("PATCH", "/system/zzz"),
@@ -29262,7 +29262,7 @@ def main():
     # transcoder FETCHES the `url=` path, and its answer follows that fetch -- a url the
     # server answers with anything but 200 is a 404 here (a missing section composite, an
     # unknown item leaf, a row that borrows the field), and only a 200 whose bytes are not an
-    # image is the 500. simplex matched four artwork names with one regex and 500'd
+    # image is the 500. rex matched four artwork names with one regex and 500'd
     # everything else, its OWN section composite included: `/library/sections/{id}/composite/
     # {v}` is a 200 jpeg on the direct path and was a 500 through the transcoder, which is
     # the path Plex Web builds every library card from.
@@ -29308,10 +29308,10 @@ def main():
           % (direct_head_c52f.get("Content-Type"), len(direct_body_c52f),
              through_head_c52f.get("Content-Type"), len(through_body_c52f)))
 
-    # Cycle 52, measured on plexscratch42 (1.42.2, the build simplex reports) and plexscratch
+    # Cycle 52, measured on plexscratch42 (1.42.2, the build rex reports) and plexscratch
     # (1.43.4) on a row that owns its poster, three repeats each: an artwork READ leaf takes
     # GET, HEAD, PUT and DELETE, and answers the ordinary 85-byte 404 to POST and to a bare
-    # OPTIONS -- and the VERSIONED path 404s the PUT as well. simplex had no verb gate there,
+    # OPTIONS -- and the VERSIONED path 404s the PUT as well. rex had no verb gate there,
     # so `POST /library/metadata/{id}/thumb` and a bare `OPTIONS` each answered the whole
     # image.
     _, detail_c52g, _ = get(base, "/library/metadata/%s" % movie)
@@ -29337,12 +29337,12 @@ def main():
     check("an artwork read leaf refuses POST and a bare OPTIONS",
           not wrong_c52g, "; ".join(wrong_c52g)[:300])
 
-    # Cycle 52, measured on plexscratch42 (1.42.2, the build simplex reports) and plexscratch
+    # Cycle 52, measured on plexscratch42 (1.42.2, the build rex reports) and plexscratch
     # (1.43.4) on a fresh collection and a fresh playlist: a list's artwork READ leaves follow
     # the same ownership rule an item's do. A collection with nothing uploaded carries
     # `/library/collections/{id}/composite/{v}` in its `thumb` and a playlist carries none at
     # all, so `/thumb`, `/art` and `/poster` are 404s -- while `/clearLogos` and `/themes` are
-    # the same empty candidate containers an item answers. simplex served a generated grey
+    # the same empty candidate containers an item answers. rex served a generated grey
     # tile to the first three and 404'd the last two, the exact inverse.
     _, made_c52h, _ = request(
         base, "POST", "/library/collections?title=C52h&type=1&smart=0&sectionId=%s"
@@ -29373,7 +29373,7 @@ def main():
 
     # Cycle 52, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a real PMS names
     # `/playlists/{id}/composite/{updatedAt}` on the `default://` candidate of an EMPTY
-    # playlist, whose row carries neither `composite` nor `thumb`. simplex built that key by
+    # playlist, whose row carries neither `composite` nor `thumb`. rex built that key by
     # concatenating those two absent fields, so a just-created playlist answered
     # `key="?width=400&height=600"` -- a relative url that resolves to the page the client is
     # already on.
@@ -29396,7 +29396,7 @@ def main():
     # `/:/resources/*` is **70 names**, not the seven cycle 29 measured from a ten-name
     # sample. 59 are `image/png`, nine `image/jpeg` and two `application/octet-stream`; a
     # DIRECTORY is an empty octet-stream 200 in both spellings; `/:/resources` with no
-    # trailing slash is a 404; and matching is case-sensitive. simplex 404'd 63 of the 70,
+    # trailing slash is a 404; and matching is case-sensitive. rex 404'd 63 of the 70,
     # served the seven it knew at the wrong geometry, and sent PNG bytes under the
     # `image/jpeg` name -- on paths its OWN rows point at.
     wrong_c52j = []
@@ -29443,10 +29443,10 @@ def main():
     # that answers **text/plain**, one line per connection --
     # `3 10.0.0.1:61216 - Routing - GET /connections #4e445 - Token (plexa630) (curl/8.7.1)`
     # -- where every verb but GET and HEAD falls through to the legacy dispatcher's empty
-    # listing. simplex answered that dispatcher container to the GET as well, so a caller was
+    # listing. rex answered that dispatcher container to the GET as well, so a caller was
     # handed an XML MediaContainer where a real PMS sends a plain-text report. (PMS's fixed
     # acceptor pool, its ordinals and its hexadecimal request allocator are not emulated and
-    # stay recorded in HANDOVER 8; these are simplex's own live connections.)
+    # stay recorded in HANDOVER 8; these are rex's own live connections.)
     status_c52k, body_c52k, head_c52k = request(base, "GET", "/connections", want_json=False)
     lines_c52k = body_c52k.decode("utf-8", "replace").splitlines()
     first_c52k = lines_c52k[:1]
@@ -29469,7 +29469,7 @@ def main():
     # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), three repeats each: an extra
     # segment after a stream id is a 404, whatever it is -- `/colors`, `/zzz`, `/loudness/1`
     # -- where the stream itself is the 501 and `/loudness` and `/levels` are their own 404.
-    # simplex answered the 501 to every name it did not know.
+    # rex answered the 501 to every name it did not know.
     _, detail_c52m, _ = get(base, "/library/metadata/%s" % movie)
     stream_c52m = None
     for media_c52m in ((detail_c52m.get("Metadata") or [{}])[0].get("Media") or []):
@@ -29489,7 +29489,7 @@ def main():
 
     # Cycle 52, measured on kids (1.43.4) and zen (1.42.2): an extra segment after an account
     # or device id is a 404 -- `/accounts/1/history`, `/accounts/1/zzz`, `/devices/1/zzz`.
-    # simplex's handlers read the id segment and ignored the rest, so `/accounts/1/history`
+    # rex's handlers read the id segment and ignored the rest, so `/accounts/1/history`
     # answered the account row and `/devices/1/zzz` the whole device list.
     wrong_c52n = []
     for path_c52n in ("/accounts/1/history", "/accounts/1/zzz", "/devices/1/zzz",
@@ -29505,7 +29505,7 @@ def main():
     # every one: exactly four actions live under `/system/agents`, each answering the plug-in
     # framework's own TypeError traceback with a 500 -- `search` (456 bytes), `update` (456),
     # `contributors` (478) and `media/get` (462) -- and every other name is a 404 with an
-    # EMPTY body. simplex answered the AGENT CATALOGUE to `/system/agents/media/get` and to
+    # EMPTY body. rex answered the AGENT CATALOGUE to `/system/agents/media/get` and to
     # `/system/agents/media/zzz`, 404'd `search` and `update`, and sent its own text/html 500
     # for `contributors`.
     wrong_c52o = []
@@ -29540,7 +29540,7 @@ def main():
     # Cycle 52, measured on kids (1.43.4) and zen (1.42.2): PMS's own route table spells the
     # transcoder `/:type(video|music|audio|subtitles)/:/transcode`, and all four prefixes are
     # routed -- a bare `/audio/:/transcode/universal/decision` is the decision's own
-    # no-parameters 400 on both references, like the video form. simplex 404'd three of the
+    # no-parameters 400 on both references, like the video form. rex 404'd three of the
     # four, so a music or subtitle client was told the endpoint does not exist rather than
     # that it asked wrongly.
     wrong_c52q = []
@@ -29559,7 +29559,7 @@ def main():
     # `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`, so ONE extra segment is a filename
     # whatever it says -- `/library/parts/{id}/indexes`, `/abc` and `/12345678901` all serve
     # the bytes -- and the digit rule only decides the changestamp when a filename follows.
-    # `/indexes/sd` and `/a/b` stay 404s. simplex refused every non-digit first extra segment,
+    # `/indexes/sd` and `/a/b` stay 404s. rex refused every non-digit first extra segment,
     # so the part key with the filename suffix a client builds from `Part.file` was a 404 from
     # a server that holds the part.
     _, detail_c52r, _ = get(base, "/library/metadata/%s" % movie)
@@ -29573,7 +29573,7 @@ def main():
                                      ("/a/b", False), ("/1/2/3", False)):
         status_c52r, _, _ = request(base, "GET", "/library/parts/%s%s" % (part_c52r, suffix_c52r),
                                     want_json=False)
-        # The fixture's links are dead, so a routed read is simplex's own 502 rather than the
+        # The fixture's links are dead, so a routed read is rex's own 502 rather than the
         # bytes; what discriminates is whether the path is routed at all.
         if (status_c52r != 404) != routed_c52r:
             wrong_c52r.append("%s -> %s" % (suffix_c52r, status_c52r))
@@ -29583,7 +29583,7 @@ def main():
     # Cycle 52, measured on kids and zen: `/library/metadata/augmentations/{x}` parses the id
     # BEFORE it looks the row up, so a value that is not a number is a **400** (89 bytes) and
     # a number is the ordinary 404 -- the shape `/devices`, `/accounts`, `/playQueues` and
-    # `/system/scanners` already have. simplex answered 404 to both.
+    # `/system/scanners` already have. rex answered 404 to both.
     bad_c52p, body_c52p, _ = request(base, "GET", "/library/metadata/augmentations/zzz",
                                      want_json=False)
     good_c52p, good_body_c52p, _ = request(base, "GET", "/library/metadata/augmentations/1",
@@ -29593,8 +29593,8 @@ def main():
           and good_c52p == 404 and len(good_body_c52p) == 85,
           "bad=%s/%s good=%s" % (bad_c52p, len(body_c52p), good_c52p))
 
-    # Cycle 52, measured on zen (1.42.2, the build simplex reports) and kids (1.43.4):
-    # `/hubs/sections/{id}/popular` is a real route simplex 404'd. Its rows are the library's
+    # Cycle 52, measured on zen (1.42.2, the build rex reports) and kids (1.43.4):
+    # `/hubs/sections/{id}/popular` is a real route rex 404'd. Its rows are the library's
     # SEASONS with a `viewCount` above zero, most-watched first, in the full row projection,
     # and its container carries `allowSync` and the librarySection triple with a NUMERIC id.
     # A movie library answers the empty container on zen whatever its play counts.
@@ -29630,7 +29630,7 @@ def main():
     # cell: a Categories tile's `thumb` carries a `blendColor` -- thirteen genre names have a
     # FIXED colour and every other genre takes the next of a seven-colour cycle walked in
     # TAG-ID order among the unknown ones (19 of 19 on zen, 3 of 3 on kids) -- and the thumb
-    # is the FIRST attribute of the row, ahead of `type`. simplex emitted no `blendColor` at
+    # is the FIRST attribute of the row, ahead of `type`. rex emitted no `blendColor` at
     # all, so a TV client's Categories browse drew every tile untinted, and its attribute
     # order was `type, key, title, thumb`.
     # By the time this runs the suite has replaced the fixture's genre lists several times,
@@ -29661,7 +29661,7 @@ def main():
     # `/:/resources/actor-icon.png?t=<stamp>` and not one row lacks a `thumb`, while a
     # director, writer or producer with no portrait carries none at all (979 of kids' and
     # zen's 1,445 director rows have one) -- so the placeholder is the actor axis's alone.
-    # simplex left the attribute off, so Plex Web's Cast grid drew a broken image for anyone
+    # rex left the attribute off, so Plex Web's Cast grid drew a broken image for anyone
     # without a portrait.
     request(base, "PUT", "/library/metadata/%s?actor[0].tag.tag=%s"
             % (movie, quote("C52 Nameless Player")))
@@ -29678,7 +29678,7 @@ def main():
     # Cycle 52, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), five sub-keys
     # each: on the SECTION save path an indexed tag parameter is a tag write whatever follows
     # `.tag.` -- `actor[0].tag.role`, `.thumb`, `.id`, `.filter` and even `.zzz` are all 200s,
-    # and the role itself is stored EMPTY. simplex skipped only `.tag.tag`, so the Edit
+    # and the role itself is stored EMPTY. rex skipped only `.tag.tag`, so the Edit
     # dialog's own Cast row -- which sends the name and the role together -- was refused with
     # a 400 from the section path while the item path accepted it.
     status_c52v, _, _ = request(
@@ -29780,7 +29780,7 @@ def main():
 
     # Cycle 53, measured on kids and zen: a flag image is served by the plug-in framework, so
     # its header block is the `/system` family's -- the length before the type, the framework
-    # cookie, `Cache-Control: no-cache` -- and it names NO range unit, where simplex's asset
+    # cookie, `Cache-Control: no-cache` -- and it names NO range unit, where rex's asset
     # handler added `Accept-Ranges: bytes`.
     _, _, flag_head_c53b = request(
         base, "GET", "/system/bundle/media/flags/videoResolution/1080", want_json=False)
@@ -29797,7 +29797,7 @@ def main():
     # (`media`, `recordLabel`) have no directory in the bundle at all -- so every value under
     # them is the blank with a 200 where an unknown TYPE is the empty-bodied 404. And the
     # value takes at most ONE extra segment (the country form, which every type accepts and
-    # only `contentRating` has files for); a third segment is a 404. simplex 404'd the two
+    # only `contentRating` has files for); a third segment is a 404. rex 404'd the two
     # directoryless types and answered the blank to a third segment.
     wrong_c53c = []
     for value_c53c, want_c53c in (("media/zzz", "blank"), ("recordLabel/zzz", "blank"),
@@ -29815,13 +29815,13 @@ def main():
           not wrong_c53c, "; ".join(wrong_c53c)[:250])
 
     # Cycle 53, read out of `System.bundle/Contents/Code/` and then measured on kids (1.43.4)
-    # and zen (1.42.2), byte-identical on both: eighteen more framework routes simplex
+    # and zen (1.42.2), byte-identical on both: eighteen more framework routes rex
     # answered nothing for. `peerservice.py` registers channels and plugins over five
     # directory names -- ten paths, each the framework's 130-byte EMPTY container with no
     # channel installed; `systemservice.py` answers a 229-byte agent-service status report and
     # an empty `serverUpdated`; `messageservice.py` three empty event routes; and three
     # `/system/services` leaves plus the two `/system/agents/attribution` leaves answer the
-    # framework's own TypeError traceback, where simplex 404'd most and sent its own 109-byte
+    # framework's own TypeError traceback, where rex 404'd most and sent its own 109-byte
     # HTML 500 for the attribution pair.
     wrong_c53d = []
     for path_c53d, want_c53d, length_c53d in (
@@ -29855,9 +29855,9 @@ def main():
     # Cycle 53, measured on kids (1.43.4), zen (1.42.2) and plexscratch42, three repeats each:
     # three envelope rules under `/system`. The framework does NOT close its error response --
     # all five `plugin-xml` paths answer `Connection: Keep-Alive` and a second request on the
-    # same socket is served, where simplex closed on a comment nobody had measured. Five
+    # same socket is served, where rex closed on a comment nobody had measured. Five
     # routes put `Cache-Control` SECOND rather than last. And `/system//` is the framework's
-    # empty-bodied 404, not the 85-byte document, where simplex dropped the empty segment and
+    # empty-bodied 404, not the 85-byte document, where rex dropped the empty segment and
     # left the envelope.
     import socket as _socket_c53e
     parsed_c53e = urllib.parse.urlparse(base)
@@ -29957,7 +29957,7 @@ def main():
     # framework's, so `/system/agents/{id}/config/{N}` is written by the framework's
     # serialiser -- the single-quoted declaration and a SELF-CLOSED empty container, 130 bytes
     # -- and it is the one framework document that carries NO cookie, where its sibling
-    # `/contributors` carries one. simplex wrote it with the core writer (147 bytes, paired,
+    # `/contributors` carries one. rex wrote it with the core writer (147 bytes, paired,
     # double-quoted `UTF-8`) and sent the cookie on both.
     status_c53f, config_c53f, head_c53f = request(
         base, "GET", "/system/agents/tv.plex.agents.movie/config/1", want_json=False)
@@ -29976,11 +29976,11 @@ def main():
              len(contrib_c53f), contrib_head_c53f.get("Set-Cookie") is not None))
 
     # Cycle 53, measured on kids (1.43.4) and zen (1.42.2): `/system/library/sections` carries
-    # THIRTEEN attributes per row and simplex emitted four of them plus an `agent` that no
+    # THIRTEEN attributes per row and rex emitted four of them plus an `agent` that no
     # reference sends anywhere. The `key` is the URL-safe base64 of
     # `http://{host}:{port}/library/sections/{id}`; `unique` marks a title that occurs once;
     # the rows are sorted by the lower-cased title; the container carries the framework's
-    # `noHistory`/`replaceParent` pair. And an extra segment is a 404 where simplex answered
+    # `noHistory`/`replaceParent` pair. And an extra segment is a 404 where rex answered
     # the whole listing again.
     import base64 as _base64_c53g
     status_c53g, systemlib_c53g, _ = get_system(base, "/system/library/sections")
@@ -30014,9 +30014,9 @@ def main():
 
     # Cycle 53, measured on kids (1.43.4) and zen (1.42.2): a plug-in FRAMEWORK container
     # pages without emitting an `offset` -- cycle 18 measured that on `/system` -- and it
-    # still answers both `X-Plex-Container-*` response headers. simplex keyed those headers on
+    # still answers both `X-Plex-Container-*` response headers. rex keyed those headers on
     # the body's `offset`, so the one family that has none sent neither. And
-    # `/:/plugins/{id}/prefs` and `/system/library/sections` page too, where simplex served
+    # `/:/plugins/{id}/prefs` and `/system/library/sections` page too, where rex served
     # the whole document.
     def _paged_c53h(path_c53h):
         request_c53h = urllib.request.Request(base.rstrip("/") + path_c53h, headers={
@@ -30207,8 +30207,8 @@ def main():
     # (1.42.2), identical on both: nine legacy agents answer an attribution TEXT and eight an
     # IMAGE, `org.musicbrainz.agents.music` answers an empty text and no image, and every
     # other identifier -- the four modern agents included -- is a 404 on both leaves. The
-    # bundle simplex itself serves draws a 100x100 `<img>` per listed agent from the image
-    # leaf, and simplex 404'd every one.
+    # bundle rex itself serves draws a 100x100 `<img>` per listed agent from the image
+    # leaf, and rex 404'd every one.
     wrong_c53l = []
     for identifier_c53l, text_c53l, image_c53l in (
             ("com.plexapp.agents.themoviedb", 232, True),
@@ -30242,7 +30242,7 @@ def main():
     # and a `/hubs/continueWatching/items` row carry an integer `includedAt` directly after
     # `lastViewedAt` and before `year`, where `/hubs/home/continueWatching`,
     # `/hubs/sections/{id}/continueWatching/items` and `/library/onDeck` carry none. Plex
-    # Web's continue-watching reducer reads `includedAt ?? lastViewedAt`, so simplex's rows
+    # Web's continue-watching reducer reads `includedAt ?? lastViewedAt`, so rex's rows
     # ordered by the view time instead of the hub's own inclusion stamp.
     request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&time=300000"
             "&duration=900000&identifier=com.plexapp.plugins.library" % (movie, movie))
@@ -30270,7 +30270,7 @@ def main():
     # Cycle 53, measured on kids (episode 8, season 7) and zen (episode 19758), each twice:
     # `includeAlternates=1` inlines the row's OWN remote candidate list, so a row whose
     # `/arts` offers no AGENT candidate carries no `Art` key at all -- while zen's season
-    # 19757, whose `/arts` answers two, carries one. simplex inlined the SHOW's candidate
+    # 19757, whose `/arts` answers two, carries one. rex inlined the SHOW's candidate
     # onto every episode and season, because `hierarchy` copies `_art_url` down and the
     # option read it without the ownership gate the candidate leaf applies: the server
     # contradicted its own `/arts`.
@@ -30306,7 +30306,7 @@ def main():
     # kids (1.43.4) and zen (1.42.2), which agree cell for cell: ten more columns are real
     # query fields -- `remote`, `isAdult`, `resourcesChangedAt`, `userFields`,
     # `lastSkippedAt`, `mediaAnalysisVersion`, `beginsAt`, `endsAt`, `agent` and `source`.
-    # simplex knew none of them, and an UNKNOWN field answers every row, so a smart list built
+    # rex knew none of them, and an UNKNOWN field answers every row, so a smart list built
     # on one silently selected the whole library while `/query/parse` called the field
     # unknown. Five refuse an unparseable value with a 500, `userFields` refuses every value,
     # and all ten parse as a Rule with an empty `fieldTitle`.
@@ -30365,7 +30365,7 @@ def main():
 
     # Cycle 53, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2), identical on
     # both: the ten columns read out of the database template are editable on the ITEM path
-    # -- `<column>.value=` a 200 and `.locked=1` recording the lock -- where simplex answered
+    # -- `<column>.value=` a 200 and `.locked=1` recording the lock -- where rex answered
     # 400 to nine of the ten, and six of them are a 500 on the SECTION path, the split
     # `lastRatedAt` already had. Only `isAdult` reads back: exactly the literal `1` stores it,
     # every other value clears it, and the row then carries `isAdult: true` between
@@ -30479,7 +30479,7 @@ def main():
     # Cycle 54, found through the binary's SQL and fitted exactly on zen (16 of 16 cells over
     # 9,287 episodes and 741 seasons) and kids: on an EPISODE listing, and for
     # `unwatchedLeaves` on a season listing too, every leaf-count filter reads the SHOW's
-    # counts -- cycle 14's season rule, one level further down. simplex read the leaf's own
+    # counts -- cycle 14's season rule, one level further down. rex read the leaf's own
     # counts, which it does not have, so every unwatched episode fell in `unwatchedLeaves=0`.
     _, shows_c54b, _ = get(base, "/library/sections/%s/all?type=2" % show_section)
     def unviewed_c54b(one):
@@ -30563,7 +30563,7 @@ def main():
     # (`mediaHeight`, `mediaWidth`, `mediaAudioChannels`) refuse a word or an empty value
     # with a 500; the three names (`mediaVideoCodec`, `mediaAudioCodec`, `mediaContainer`)
     # compare case-sensitively -- zen's `mediaVideoCodec=h264` is 1,816 of 3,887 and `=H264`
-    # and `==H264` none. simplex did not know them, and an unknown field answers every row.
+    # and `==H264` none. rex did not know them, and an unknown field answers every row.
     _, grid_c54f = get(base, "/library/sections/%s/all" % movie_section)[:2]
     codecs_c54f = {m.get("videoCodec") for r in grid_c54f.get("Metadata") or []
                    for m in r.get("Media") or []}
@@ -30609,7 +30609,7 @@ def main():
     # Cycle 54, from the binary's parameter names, measured on zen (1.42.2) and kids
     # (1.43.4): the four photo-cluster columns parse as integers -- a word or an empty value
     # is a 500 -- and match NO row under any operator; and `trash` is an INTEGER column, not
-    # a boolean (`trash=abc` and `trash=` are 500s, `=01` is 1). simplex holds no trashed
+    # a boolean (`trash=abc` and `trash=` are 500s, `=01` is 1). rex holds no trashed
     # row, so its `trash` is 0 everywhere, as kids' is: `=0` every row, `!=0` none.
     wrong_c54h = []
     for query_c54h, want_c54h in (("cluster=abc", 500), ("clusterZoomLevel=", 500),
@@ -30633,7 +30633,7 @@ def main():
     # `/children` and `/grandchildren` run the listing QUERY -- filters constrain them,
     # `sort=` orders them and an unknown key or an unparseable value is a 500 -- and the
     # "All episodes" row is there only when MORE THAN ONE season row is answered, paged or
-    # not. simplex ignored all of it on both paths, and cycle 46's "a show's season list
+    # not. rex ignored all of it on both paths, and cycle 46's "a show's season list
     # ignores skipCount" is refuted: `skipCount=0` answers no season on either reference.
     if show:
         _, seasons_c54i, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)
@@ -30668,7 +30668,7 @@ def main():
     # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): `/unwatched` and
     # `/recentlyViewedShows` run the listing's FILTERS -- `genre=zzzq` and `title=zzzq`
     # answer nothing on both -- where `newest`, `recentlyViewed` and `recentlyAdded` ignore
-    # them. simplex answered both lists whole.
+    # them. rex answered both lists whole.
     wrong_c54j = []
     for path_c54j in ("/library/sections/%s/unwatched?title=zzzq" % movie_section,
                       "/library/sections/%s/recentlyViewedShows?title=zzzq" % show_section):
@@ -30850,7 +30850,7 @@ def main():
 
     # Cycle 54, from the binary's parameter names, measured on kids (1.43.4), zen (1.42.2)
     # and plexscratch42: thirteen parameters are PARSED -- a value the grammar refuses is a
-    # 400 -- where simplex answered 200. Most are int32 (`1.5`, empty and 2147483648
+    # 400 -- where rex answered 200. Most are int32 (`1.5`, empty and 2147483648
     # refuse), `monthsAgo` any-size integer, `bytes` int64, `maxDistance` a float and
     # `personal` the 0/1 option, which at 1 empties the list; `metadataTypes` also
     # FILTERS the providers (a provider must serve every listed type; empty is all).
@@ -30894,7 +30894,7 @@ def main():
     # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): `sectionID` on
     # `/hubs/home/recentlyAdded` is a NUMBER. `01` is section 1 (kids 5 rows, zen 3,887),
     # `0` answers nothing, and `abc`, `-1`, `1.5` and 2147483648 are IGNORED -- the whole
-    # list -- where simplex compared strings and answered none to all of them.
+    # list -- where rex compared strings and answered none to all of them.
     _, all_c54q, _ = get(base, "/hubs/home/recentlyAdded?type=1")
     every_c54q = len(all_c54q.get("Metadata") or [])
     wrong_c54q = []
@@ -30913,7 +30913,7 @@ def main():
     # in order) and on all four tagged kids movies: Related is a TAG SCORE. The item's first
     # THREE genres and first FOUR roles are counted against each candidate, a candidate needs
     # at least TWO in common, and the list is shared-count then release date, capped at 200.
-    # simplex took any one shared genre, ordered by addedAt, and stopped at 12.
+    # rex took any one shared genre, ordered by addedAt, and stopped at 12.
     _, grid_c55a, _ = get(base, "/library/sections/%s/all" % movie_section)
     pair_c55a = [r.get("ratingKey") for r in grid_c55a.get("Metadata") or []][:2]
     if len(pair_c55a) == 2:
@@ -30941,7 +30941,7 @@ def main():
     # order by viewed_at desc`, then the first unwatched episode after it) and measured on
     # plexscratch42: On Deck's next-up follows the MOST RECENTLY VIEWED watched episode, not
     # the highest-numbered one, and the row carries that view's `lastViewedAt`. Scrobbling
-    # episode 10 and then 8 puts 9 on deck; simplex put 11 there.
+    # episode 10 and then 8 puts 9 on deck; rex put 11 there.
     import time as time_c55b
     if show:
         _, seasons_c55b, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)
@@ -30971,7 +30971,7 @@ def main():
     # and measured on zen (21 rows, exactly `viewUpdatedAt` descending with ties by
     # ratingKey) and on plexscratch42: a section's `recentlyViewed` is ordered by the
     # VIEW-STATE WRITE time, so rating a watched row moves it to the front although it was
-    # not viewed again. simplex ordered by `lastViewedAt`.
+    # not viewed again. rex ordered by `lastViewedAt`.
     import time as time_c55c
     _, grid_c55c, _ = get(base, "/library/sections/%s/all" % movie_section)
     pair_c55c = [r.get("ratingKey") for r in grid_c55c.get("Metadata") or []][:2]
@@ -31041,7 +31041,7 @@ def main():
     # Cycle 55, from the binary's SQL (`sum(round(duration/1000, 0))` over each item's
     # longest Media, integer division) and measured on plexscratch42 (1800689 + 1800689 +
     # 20032 ms is 3620000, not 3621410): a playlist's `duration` is 1000 x the sum of each
-    # item's whole seconds. simplex summed the raw milliseconds.
+    # item's whole seconds. rex summed the raw milliseconds.
     _, grid_c55f, _ = get(base, "/library/sections/%s/all" % movie_section)
     keys_c55f = [r.get("ratingKey") for r in grid_c55f.get("Metadata") or []][:2]
     want_c55f = 0
@@ -31065,7 +31065,7 @@ def main():
 
     # Cycle 55, re-measured on zen (`movie.genre.1.241` is exactly the head of
     # `/library/sections/1/all?unwatched=1&genre=241&audienceRating>=7.0`): the genre shelf's
-    # rows are the head of its OWN key listing, in that listing's default order. simplex
+    # rows are the head of its OWN key listing, in that listing's default order. rex
     # answered them in catalog order.
     # The shelf needs unwatched rows rated 7 or better; make them, and make the catalog
     # order differ from the title order by renaming the LAST row to sort first.
@@ -31101,7 +31101,7 @@ def main():
     # Cycle 55, measured on plexscratch42: a season's GENERATED title follows an index edit
     # -- `index.value=0` makes it `Specials`, and putting the index back makes it `Season N`
     # again. A season's displayed title is generated unless the user wrote one (cycle 31 read
-    # `title = ''` for every season out of the database); simplex kept `Season 20`.
+    # `title = ''` for every season out of the database); rex kept `Season 20`.
     if show:
         _, seasons_c55h, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)
         season_c55h = (seasons_c55h.get("Metadata") or [{}])[-1]
@@ -31121,7 +31121,7 @@ def main():
     # `/onDeck` PARSE the listing's structural parameters -- `sort=abc`, `group=abc`,
     # `sourceType=abc` and `limit=2147483648` are 500s -- and ignore a good one:
     # `/genre?group=title` is the axis unchanged and `/unwatched?sort=titleSort:desc` is
-    # the unsorted list. simplex answered 200 to every refusal and reversed `/unwatched`.
+    # the unsorted list. rex answered 200 to every refusal and reversed `/unwatched`.
     genre_c55a1 = "/library/sections/%s/genre" % movie_section
     base_c55a1 = get(base, genre_c55a1)
     bad_c55a1 = [get(base, genre_c55a1 + q)[0] for q in (
@@ -31142,7 +31142,7 @@ def main():
     # person's `/media`, the in-library autocomplete, `/common` and the section's
     # `/extras/all` parse `group`, `sourceType`, `limit` and `sort` -- a bad one is a 500 --
     # and `/grandchildren` parses and applies its `type=` (`abc` a 500, `1` no episodes).
-    # simplex answered 200 to every one of them.
+    # rex answered 200 to every one of them.
     if show:
         _, detail_c55a2, _ = get(base, "/library/metadata/%s" % movie)
         roles_c55a2 = ((detail_c55a2.get("Metadata") or [{}])[0].get("Role") or [])
@@ -31172,7 +31172,7 @@ def main():
     # Top Played, `/nearest?limit=abc` (400) and `limit=-1` (500), `/library/onDeck?type=
     # abc` (400), the autocomplete's `limit=2147483648` (400), `type=2147483648` (400 on
     # `/library/all` and `/sorts`, 500 on a section grid) and a search `limit` past the
-    # 64-bit range (500). simplex answered 200 to all but the autocomplete's.
+    # 64-bit range (500). rex answered 200 to all but the autocomplete's.
     cells_c55a3 = [
         ("/library/sections/%s/collections?index=abc" % movie_section, 500),
         ("/playlists?index=abc", 500), ("/playlists/all?limit=abc", 500),
@@ -31198,7 +31198,7 @@ def main():
     # Cycle 55, measured on zen (1.42.2) and kids: Top Played refuses ANY `group`/`sort`
     # with a 400 and an item's `/users/top` with a 404; the hub pages parse `sourceType`
     # (`abc` a 500 on `/hubs`, `/hubs/promoted` and a show library's page) and
-    # `/hubs/promoted` and the TV Recently Added list refuse a `group=`. simplex answered
+    # `/hubs/promoted` and the TV Recently Added list refuse a `group=`. rex answered
     # 200 to all of them.
     cells_c55a4 = [("/library/all/top?type=1&group=title", 400),
                    ("/library/all/top?type=1&sort=titleSort", 400),
@@ -31214,7 +31214,7 @@ def main():
 
     # Cycle 55, measured on zen (`sourceType=0` answers `126, 380, 395...` where 1
     # answers the titleSort page) and kids (`1, 3, 4, 17, 18`): a `sourceType` other than
-    # 1 ORDERS the grid by id, and `2147483648` and ` 1` are 500s. simplex kept the
+    # 1 ORDERS the grid by id, and `2147483648` and ` 1` are 500s. rex kept the
     # titleSort order and parsed the value with `int(value.strip())`.
     grid_c55f2 = "/library/sections/%s/all" % movie_section
     ids_c55f2 = sorted(int(r.get("ratingKey")) for r in get(base, grid_c55f2)[1].get("Metadata") or [])
@@ -31237,7 +31237,7 @@ def main():
     # leading zeros -- `limit=+1` is one row, `mediaType=+1` the typed agent list,
     # `accountID=+1` and `librarySectionID=+1` filter history and Top Played (where
     # `1.5` matches nothing with a 200), `contentDirectoryID=01` scopes a search, and
-    # `type=01` is the `type=1` axis. simplex refused or string-compared every one.
+    # `type=01` is the `type=1` axis. rex refused or string-compared every one.
     cells_c55f3 = ["/library/sections/%s/all?limit=%%2B1" % movie_section,
                    "/playlists?limit=%2B1", "/system/agents?mediaType=%2B1",
                    "/library/all/top?type=1&accountID=1.5",
@@ -31256,7 +31256,7 @@ def main():
                                              [a[0] for a in axis_c55f3]))
 
     # Cycle 55, measured on zen and kids: `/hubs/continueWatching` and its `/items` leaf
-    # answer 200 to an EMPTY `contentDirectoryID=`; simplex 404'd both.
+    # answer 200 to an EMPTY `contentDirectoryID=`; rex 404'd both.
     got_c55f16 = [get(base, p_c55f16 + "?contentDirectoryID=")[0]
                   for p_c55f16 in ("/hubs/continueWatching", "/hubs/continueWatching/items")]
     bad_c55f16 = get(base, "/hubs/continueWatching?contentDirectoryID=abc")[0]
@@ -31267,7 +31267,7 @@ def main():
     # `1` does at every reader -- `/library/sections?includePreferences=01`,
     # `includeSummary=+1`, a section's `includeDetails=01`, `/sorts?includeAdvanced=01`,
     # a grid's `includeStorage=+1`, `/hubs?excludeContinueWatching=+1` and an item's
-    # `asyncCheckFiles=01`. simplex compared the raw string with "1" at each of them.
+    # `asyncCheckFiles=01`. rex compared the raw string with "1" at each of them.
     def same_c55f4(path, name, value):
         return (get(base, "%s%s%s=%s" % (path, "&" if "?" in path else "?", name, value))[:2]
                 == get(base, "%s%s%s=1" % (path, "&" if "?" in path else "?", name))[:2])
@@ -31289,7 +31289,7 @@ def main():
     # Cycle 55, measured on zen and kids: the `include*` blocks reach the FULL rows of
     # every hub and related list, not only `/hubs` -- `/similar?includeExtras=1`
     # carries `Extras` on each row and `/related?includeRelated=1` a `Related`
-    # block inside its `movie.similar` hub (zen: 4 of the first 4 rows). simplex
+    # block inside its `movie.similar` hub (zen: 4 of the first 4 rows). rex
     # expanded them on `/hubs` alone.
     _, grid_c55f5, _ = get(base, "/library/sections/%s/all" % movie_section)
     pair_c55f5 = [r.get("ratingKey") for r in grid_c55f5.get("Metadata") or []][:2]
@@ -31312,7 +31312,7 @@ def main():
                                           [sorted(k for k in r if k[:1].isupper()) for r in rrows_c55f5]))
 
     # Cycle 55, measured on zen and kids: `/unwatched?includeGuids=1` carries `Guid` on
-    # its rows like every other listing. simplex left it off.
+    # its rows like every other listing. rex left it off.
     _, unw_c55f6, _ = get(base, "/library/sections/%s/unwatched?includeGuids=1" % movie_section)
     rows_c55f6 = unw_c55f6.get("Metadata") or []
     _, plain_c55f6, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
@@ -31331,7 +31331,7 @@ def main():
     # Cycle 55, measured on zen, kids and plexscratch42: `field=-1` is "has no value" on
     # `rating`, `audienceRating`, `userRating`, `absoluteIndex` and `parent` -- zen's
     # `absoluteIndex=-1` and `parent=-1` are every movie -- under the bare `=` alone
-    # (`-01` counts, `-1.0` and `<=-1` do not). simplex answered no rows.
+    # (`-01` counts, `-1.0` and `<=-1` do not). rex answered no rows.
     grid_c55f7 = "/library/sections/%s/all" % movie_section
     every_c55f7 = get(base, grid_c55f7)[1].get("size")
     got_c55f7 = [get(base, grid_c55f7 + q)[1].get("size") for q in (
@@ -31344,7 +31344,7 @@ def main():
     # Cycle 55, measured on zen, kids and plexscratch42: a date column's epoch is a signed
     # 64-bit integer with nothing around it -- `addedAt= 1`, `updatedAt=1 ` and
     # `createdAt=9223372036854775808` are 500s, `9223372036854775807` a 200, and so is
-    # `viewedAt= 1` on an item's `/users/top`. simplex stripped and float-parsed the value.
+    # `viewedAt= 1` on an item's `/users/top`. rex stripped and float-parsed the value.
     grid_c55f8 = "/library/sections/%s/all" % movie_section
     got_c55f8 = [get(base, grid_c55f8 + q)[0] for q in (
         "?addedAt=%201", "?updatedAt=1%20", "?createdAt=9223372036854775808",
@@ -31356,7 +31356,7 @@ def main():
 
     # Cycle 55, measured on zen and kids: under a bare `=`, `lastViewedAt`, `lastRatedAt`
     # and `lastSkippedAt` take a signed 32-bit integer only -- `-5y`, `2020-01-01` and
-    # `2147483648` are 500s -- where `<<=-5y` still reads a date. simplex answered 200.
+    # `2147483648` are 500s -- where `<<=-5y` still reads a date. rex answered 200.
     grid_c55f9 = "/library/sections/%s/all" % movie_section
     got_c55f9 = [get(base, grid_c55f9 + q)[0] for q in (
         "?lastViewedAt=-5y", "?lastRatedAt=2020-01-01", "?lastSkippedAt=2147483648",
@@ -31365,7 +31365,7 @@ def main():
           got_c55f9 == [500, 500, 500, 200, 200], "%s" % got_c55f9)
 
     # Cycle 55, measured on zen, kids and plexscratch42: `clusterStartsAt` is a date --
-    # `-5y` and `2020-01-01` are 200s, `1.5` a 500. simplex parsed it as an integer.
+    # `-5y` and `2020-01-01` are 200s, `1.5` a 500. rex parsed it as an integer.
     grid_c55f10 = "/library/sections/%s/all" % movie_section
     got_c55f10 = [get(base, grid_c55f10 + q)[0] for q in (
         "?clusterStartsAt=-5y", "?clusterStartsAt=2020-01-01", "?clusterStartsAt=1.5")]
@@ -31374,7 +31374,7 @@ def main():
     # Cycle 55, measured on zen and kids: `decade`, `viewCount` and `viewOffset` take a
     # strict signed 32-bit integer -- `decade=1.5`, `decade=2147483648`,
     # `viewCount=2147483648` and `viewOffset= 1` are 500s -- where `decade=+1990` is
-    # 1990. simplex answered 200 to all four.
+    # 1990. rex answered 200 to all four.
     grid_c55f11 = "/library/sections/%s/all" % movie_section
     got_c55f11 = [get(base, grid_c55f11 + q)[0] for q in (
         "?decade=1.5", "?decade=2147483648", "?viewCount=2147483648", "?viewOffset=%201",
@@ -31384,7 +31384,7 @@ def main():
 
     # Cycle 55, measured on zen (1.42.2), kids and plexscratch42: `parent=` is a number
     # column -- `parent=+<show>` is that show's seasons and `parent=1.5` an empty 200 --
-    # and only a word or an empty value is the 500. simplex 500'd the first two.
+    # and only a word or an empty value is the 500. rex 500'd the first two.
     if show:
         seasons_c55f12 = get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
         want_c55f12 = len(seasons_c55f12.get("Metadata") or [])
@@ -31403,7 +31403,7 @@ def main():
     # Cycle 55, measured on zen and kids: `/hubs/search?sectionId=` refuses ANY integer id
     # that names no section (`999`, `03`, `+3` are 400s; cycle 54's `0` and 2147483647 were
     # two of them) and ignores what does not parse (`abc`, `-1`, `1.5`, `2147483648`).
-    # simplex refused only the two recorded values.
+    # rex refused only the two recorded values.
     got_c55f13 = [get(base, "/hubs/search?query=the&sectionId=%s" % v)[0]
                   for v in ("999", "0999", "%2B999", movie_section, "abc", "-1", "2147483648")]
     check("A hub search refuses a sectionId naming no section",
@@ -31411,7 +31411,7 @@ def main():
 
     # Cycle 55, measured on zen and kids: `personal=1` empties the MOVIE Recently Added
     # list and leaves the TV one (`type=2`) exactly as it was -- zen 50 rows, kids 1.
-    # simplex emptied both.
+    # rex emptied both.
     tv_c55f14 = [get(base, "/hubs/home/recentlyAdded?type=2%s" % q)[1].get("size")
                  for q in ("", "&personal=1")]
     movie_c55f14 = get(base, "/hubs/home/recentlyAdded?type=1&personal=1")[1].get("size")
@@ -31421,7 +31421,7 @@ def main():
 
     # Cycle 55, measured on zen (741 of 741 seasons) and kids (2 of 2): an empty `title=`
     # matches EVERY row, including the seasons whose title the server generates, on a
-    # section listing, on `/library/all` and on a show's `/children`. simplex dropped
+    # section listing, on `/library/all` and on a show's `/children`. rex dropped
     # every generated-title season.
     if show:
         seasons_c55f15 = [get(base, "/library/sections/%s/all?type=3%s" % (show_section, q))[1]
@@ -31437,7 +31437,7 @@ def main():
     # Cycle 55, measured on zen and kids: `/newest`, `/recentlyAdded` and
     # `/recentlyViewed` answer their ordinary list to `type=abc` and to an empty `type=`,
     # and a show's `/allLeaves` answers every episode to `limit=abc`, where `/onDeck`
-    # still refuses the type. simplex 500'd all of them.
+    # still refuses the type. rex 500'd all of them.
     subset_c55f17 = [get(base, "/library/sections/%s/%s?type=abc" % (movie_section, leaf))
                      for leaf in ("newest", "recentlyAdded", "recentlyViewed")]
     plain_c55f17 = [get(base, "/library/sections/%s/%s" % (movie_section, leaf))
@@ -31453,7 +31453,7 @@ def main():
 
     # Cycle 55, measured on zen and kids: `/hubs/sections/{id}/manage?metadataItemId=` has
     # three answers -- `-1` is the bare hub list, a number naming no item an EMPTY 200, and
-    # an item the server holds (or a value that is not an int32) the 400. simplex 400'd all.
+    # an item the server holds (or a value that is not an int32) the 400. rex 400'd all.
     manage_c55f18 = "/hubs/sections/%s/manage" % movie_section
     bare_c55f18 = get(base, manage_c55f18)
     minus_c55f18 = get(base, manage_c55f18 + "?metadataItemId=-1")
@@ -31468,14 +31468,14 @@ def main():
                                                   word_c55f18))
 
     # Cycle 55, measured on zen and kids: `/system/agents?mediaType=-1` is identical to the
-    # bare `/system/agents`. simplex answered the typed form, an empty agent list.
+    # bare `/system/agents`. rex answered the typed form, an empty agent list.
     bare_c55f19 = request(base, "GET", "/system/agents")[1]
     minus_c55f19 = request(base, "GET", "/system/agents?mediaType=-1")[1]
     check("mediaType=-1 is the bare agent list", bare_c55f19 == minus_c55f19,
           "%d vs %d bytes" % (len(bare_c55f19), len(minus_c55f19)))
 
     # Cycle 55, measured on zen and kids on the related hub: `count` is a strict signed
-    # 32-bit integer -- `+1` is one row, ` 1` and `-2147483649` the default. simplex
+    # 32-bit integer -- `+1` is one row, ` 1` and `-2147483649` the default. rex
     # stripped the value (` 1` was one row), refused `+1` and read `-2147483649` as none.
     _, grid_c55f20, _ = get(base, "/library/sections/%s/all" % movie_section)
     pair_c55f20 = [r.get("ratingKey") for r in grid_c55f20.get("Metadata") or []][:3]
@@ -31496,12 +31496,12 @@ def main():
 
     # Cycle 55, measured on zen and kids: for the client-title rule the X-Plex-Product
     # HEADER beats the query parameter -- header `abc` with query `Plex Web` prints the
-    # plain `1080p`, header `Plex Web` with query `abc` prints the codec. simplex read the
+    # plain `1080p`, header `Plex Web` with query `abc` prints the codec. rex read the
     # query first.
     def video_title_c55f21(path, product):
         req_c55f21 = urllib.request.Request(base + path, headers={
             "Accept": "application/json", "User-Agent": UA, "X-Plex-Product": product,
-            "X-Plex-Client-Identifier": "simplex-ui-test", "X-Plex-Platform": "Chrome"})
+            "X-Plex-Client-Identifier": "rex-ui-test", "X-Plex-Platform": "Chrome"})
         with urllib.request.urlopen(req_c55f21, timeout=30) as resp_c55f21:
             doc_c55f21 = json.loads(resp_c55f21.read())
         for media_c55f21 in (doc_c55f21["MediaContainer"].get("Metadata") or [{}])[0].get("Media") or []:
@@ -31520,7 +31520,7 @@ def main():
     # Cycle 55, measured on zen and kids: `/statistics/bandwidth?offset=` is an int32
     # (`abc` and `2147483648` 400s), `timespan` and `limit` past int32 are 400s and `+1`
     # a 200, a `group=` that is not one of the endpoint's keys is a 400, `accountID=-1`
-    # is an empty 200, and `/statistics/media?type=abc` is a 400. simplex answered 200 to
+    # is an empty 200, and `/statistics/media?type=abc` is a 400. rex answered 200 to
     # the refusals and 400 to `-1` and `limit=+1`.
     cells_c55f22 = [("/statistics/bandwidth?offset=abc", 400),
                     ("/statistics/bandwidth?offset=2147483648", 400),
@@ -31537,7 +31537,7 @@ def main():
           got_c55f22 == [want for _, want in cells_c55f22], "%s" % got_c55f22)
 
     # Cycle 55, measured on zen and kids: `/library/search?query=` is an empty 200 and only
-    # a missing `query` is the 400. simplex refused the empty value.
+    # a missing `query` is the 400. rex refused the empty value.
     empty_c55f23 = get(base, "/library/search?query=")
     missing_c55f23 = get(base, "/library/search")[0]
     check("An empty library search query is an empty 200",
@@ -31547,7 +31547,7 @@ def main():
 
     # Cycle 55, measured on zen and kids on `/system/agents?mediaType=1`: a value led by a
     # separator is not "no language" -- `-de` is German and `-1`, `-xx` and `.fr` are
-    # English, where a bare `xx` keeps the no-language default. simplex answered that
+    # English, where a bare `xx` keeps the no-language default. rex answered that
     # default to every separator-led value.
     def langs_c55f24(value):
         doc_c55f24 = get(base, "/system/agents?mediaType=1&X-Plex-Language=" + value)[1]
@@ -31584,7 +31584,7 @@ def main():
 
     # Cycle 56, measured on kids (1.43.4), zen (1.42.2) and plexscratch42: a SHOW library's
     # `durationTotal`/`storageTotal` on `/media/providers?includeStorage=1` is the sum of its
-    # episodes (kids' TV Shows 60186 ms / 37683488 bytes), where simplex summed only rows that
+    # episodes (kids' TV Shows 60186 ms / 37683488 bytes), where rex summed only rows that
     # own a Media -- none, in a show library -- and answered 0. python-plexapi's
     # `LibrarySection.totalDuration` and `totalStorage` read exactly this attribute.
     _, providers_c56a, _ = get(base, "/media/providers?includeStorage=1")
@@ -31625,7 +31625,7 @@ def main():
     # Cycle 56, measured on kids, zen, plexscratch and plexscratch42 (identical): in the BARE
     # `/system/agents` each legacy agent's `MediaType` carries its own `Language` rows -- 33
     # for the legacy IMDb agent's movies, 26 each for The Movie Database, 44 for Photos.
-    # python-plexapi's `agents()` reads them as `AgentMediaType.languageCodes`; simplex sent
+    # python-plexapi's `agents()` reads them as `AgentMediaType.languageCodes`; rex sent
     # none. Cycle 53's "no Language" is the AGENT row's, not its MediaType's.
     _, agents_c56c, _ = request(base, "GET", "/system/agents", want_json=False)
     text_c56c = agents_c56c.decode("utf-8", "replace")
@@ -31636,7 +31636,7 @@ def main():
 
     # Cycle 56, measured on zen (1.42.2) and kids (1.43.4): `decade` IGNORES its operator --
     # `decade!=2010`, `>>=2000`, `<<=2020` each answer the `=` bucket (zen 349, 252, 790).
-    # Plex Web builds "Decade / is not / 2010s" as `decade!=2010`; simplex compared.
+    # Plex Web builds "Decade / is not / 2010s" as `decade!=2010`; rex compared.
     _, grid_c56d, _ = get(base, "/library/sections/%s/all" % movie_section)
     years_c56d = [int(r.get("year")) for r in grid_c56d.get("Metadata") or [] if r.get("year")]
     if years_c56d:
@@ -31682,7 +31682,7 @@ def main():
 
     # Cycle 56, measured on zen and kids: `/hubs/sections/{id}?includeGuids=1` carries `Guid`
     # on its rows (kids 5 of 5 on Recently Added), and python-plexapi's `section.hubs()`
-    # always sends it (`_buildQueryKey` prepends `includeGuids=1`). simplex sent none.
+    # always sends it (`_buildQueryKey` prepends `includeGuids=1`). rex sent none.
     _, hubs_c56f, _ = get(base, "/hubs/sections/%s?includeGuids=1" % movie_section)
     # Cycle 83: an unmatched row (`local://` or `tv.plex.agents.none://`) has no Guid key.
     rows_c56f = [m for h in hubs_c56f.get("Hub") or [] for m in h.get("Metadata") or []
@@ -31712,7 +31712,7 @@ def main():
             return None
     # Cycle 57, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), identical: a
     # COLLECTION search row is on the tag ladder -- its full name 0.92, a word-by-word prefix
-    # from the first word 0.52, a later word 0.32 -- where simplex matched one word against
+    # from the first word 0.52, a later word 0.32 -- where rex matched one word against
     # the whole query (so a multi-word name was never found) and scored every hit 0.52.
     coll_c57a = make_list_c57("collection", "Rg57 Nebula Arc")
     def hub_c57a(query_c57a):
@@ -31750,7 +31750,7 @@ def main():
             return None
     # Cycle 57, measured on plexscratch42 and plexscratch: the history page answers an empty
     # 200 for a COLLECTION's or a PLAYLIST's id (python-plexapi's `Collection.history()` and
-    # `Playlist.history()`), and 404 only for an id naming nothing. simplex 404'd both.
+    # `Playlist.history()`), and 404 only for an id naming nothing. rex 404'd both.
     lists_c57b = [make_list_c57("collection", "Rg57 Hist Coll"),
                   make_list_c57("playlist", "Rg57 Hist Mix")]
     statuses_c57b = [request(base, "GET", "/status/sessions/history/all?metadataItemID=%s"
@@ -31782,7 +31782,7 @@ def main():
             return None
     # Cycle 57, measured on plexscratch42 and plexscratch: a PLAYLIST's search ladder is one
     # step below a movie's -- 0.92 exact, 0.72 from the first word, 0.52 a prefix, 0.32 a
-    # later word. simplex scored it at the movie's 0.93 base.
+    # later word. rex scored it at the movie's 0.93 base.
     pl_c57c = make_list_c57("playlist", "Rg57 Quasar Mix")
     def score_c57c(query_c57c):
         _, found_c57c, _ = get(base, "/hubs/search?query=%s" % quote(query_c57c))
@@ -31857,7 +31857,7 @@ def main():
     # and driven on plexscratch42 and plexscratch: the MERGED `/hubs/continueWatching` hub
     # Plex Web's Home is built from -- and its `/items` leaf -- holds the On Deck NEXT-UP
     # rows as well as the in-progress ones, each stamped `includedAt`, newest first, while
-    # `/hubs/home/continueWatching` stays in-progress only. simplex held the offsets alone,
+    # `/hubs/home/continueWatching` stays in-progress only. rex held the offsets alone,
     # so Home never offered the next episode after one was finished.
     if len(keys_c57e) >= 3:
         pristine_c57e()
@@ -31904,7 +31904,7 @@ def main():
     # the positive half: a SECTION's Continue Watching shelf (`tv.inprogress.{id}`) and its
     # see-all leaf list a next-up only when the episode before it was completed in a
     # PLAYBACK SESSION -- a scrobble puts the next episode on deck everywhere else and
-    # leaves this list empty. simplex listed the scrobble-derived next-up here too.
+    # leaves this list empty. rex listed the scrobble-derived next-up here too.
     def section_cw_c57f():
         leaf_c57f = [str(r.get("ratingKey")) for r in
                      get(base, "/hubs/sections/%s/continueWatching/items?contentDirectoryID=%s"
@@ -31938,7 +31938,7 @@ def main():
     # Cycle 58, measured on plexscratch42 and plexscratch over ten steps: the gate is the
     # SHOW's play history. Once one of its episodes was completed in a playback session the
     # shelf lists the On Deck episode however it became next -- here after that episode is
-    # unscrobbled and a LATER one is marked played -- where simplex kept dropping every
+    # unscrobbled and a LATER one is marked played -- where rex kept dropping every
     # scrobble-derived next-up and the library page showed nothing.
     if len(keys_c57f) >= 3:
         pristine_c57f()
@@ -31973,7 +31973,7 @@ def main():
     # first 20 shows, with no view state at all) and on both writable copies: a PRISTINE
     # show carries an inline `OnDeck` -- the first episode the library holds -- and so does
     # the season that owns it, while every other season omits the block. Cycle 41's "a
-    # pristine unwatched show omits it" is refuted; simplex drew no Play target for every
+    # pristine unwatched show omits it" is refuted; rex drew no Play target for every
     # untouched show, and python-plexapi's `Show.onDeck()` answered None.
     def deck_c57g(key_c57g):
         row_c57g = (get(base, "/library/metadata/%s?includeOnDeck=1" % key_c57g)[1]
@@ -32011,7 +32011,7 @@ def main():
     # `/hubs/metadata/{id}/related` and the inline block -- titled "<title> Collection",
     # context `hub.collection.related`, keyed on the collection's tag, and it REPLACES
     # `movie.similar` there (re-measured with shared genres: the similar hub comes back
-    # the moment the collection drops to one member). simplex never drew the shelf.
+    # the moment the collection drops to one member). rex never drew the shelf.
     _, grid_c57h, _ = get(base, "/library/sections/%s/all" % movie_section)
     pair_c57h = [str(r.get("ratingKey")) for r in grid_c57h.get("Metadata") or []][:2]
     if len(pair_c57h) == 2:
@@ -32058,7 +32058,7 @@ def main():
     # identical on both: `playQueueLastAddedItemID` is the TAIL of the contiguous block
     # after the selected item made of added items and items moved in behind it. A first
     # Play Next opens it, a move into or out of the block or a delete re-anchors it, and a
-    # delete answers the marker as it stood. simplex left it unset after a Play Next and
+    # delete answers the marker as it stood. rex left it unset after a Play Next and
     # after any move pointed it at the whole queue's last item -- and the player disables
     # Shuffle while it is set.
     def pq_c57i(method_c57i, path_c57i):
@@ -32120,7 +32120,7 @@ def main():
     # rows carrying that tag in ANY tag table (`tagId=1033` is the same 152 movies as
     # `genre=1033`, and a director, a country and an actor id each match their own
     # filter), an unknown id is none and `abc` or an empty value a 500. It is what the
-    # collection Related shelf's own `key` filters on, and simplex ignored it, so that
+    # collection Related shelf's own `key` filters on, and rex ignored it, so that
     # shelf's See All opened the whole library.
     _, grid_c57j, _ = get(base, "/library/sections/%s/all" % movie_section)
     # One member is enough: the grid has to hold a row the tag does NOT reach, which the
@@ -32151,7 +32151,7 @@ def main():
     # Cycle 58, measured on plexscratch42 (1.42.2): renaming a collection through the
     # SECTION path to a name a row of the library already carries as a `Collection` tag is a
     # 409 that changes nothing, ignoring case; its own title in another case is a 200.
-    # python-plexapi's `editTitle()` and the Edit dialog save here, and simplex renamed the
+    # python-plexapi's `editTitle()` and the Edit dialog save here, and rex renamed the
     # collection and left its member carrying two tags of one name.
     rows_c58k = [str(r.get("ratingKey")) for r in
                  get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or []]
@@ -32191,7 +32191,7 @@ def main():
     # under a minute deletes the stored resume point only inside a playback SESSION that has
     # already reported a position past the minute. A NEW session's sub-minute beats -- "Play
     # from beginning", stopped within a minute -- answer `ignore` with the stored offset and
-    # keep it, where simplex deleted it and the title left Continue Watching.
+    # keep it, where rex deleted it and the title left Continue Watching.
     I_c58t = "identifier=com.plexapp.plugins.library"
     def offset_c58t():
         return (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0] \
@@ -32222,7 +32222,7 @@ def main():
     # a beat at EXACTLY the stored position writes nothing -- `lastViewedAt` stands still and
     # a row removed from Continue Watching stays removed -- while 1 ms further stamps it and
     # brings it back. Resuming and stopping before the position moves sends exactly that
-    # beat, and simplex re-sorted Continue Watching and un-hid the removed row.
+    # beat, and rex re-sorted Continue Watching and un-hid the removed row.
     def viewed_c58u():
         return (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0] \
             .get("lastViewedAt")
@@ -32251,7 +32251,7 @@ def main():
     # Cycle 58, measured on zen (1.42.2): the Dashboard's Top Played TV column asks
     # `/library/all/top?type=2`, and a play is counted on the episode's SHOW there (zen's
     # one show answers `globalViewCount: 73`, its episodes' history rows) and on its SEASON
-    # at `type=3`. simplex matched the history row's own type, so no show ever had a play.
+    # at `type=3`. rex matched the history row's own type, so no show ever had a play.
     leaves_c58 = get(base, "/library/sections/%s/all?type=4" % show_section)[1].get(
         "Metadata") or [] if show_section else []
     if leaves_c58:
@@ -32283,7 +32283,7 @@ def main():
     # `/library/recentlyAdded` and `/library/onDeck` drop its rows, `/hubs` keeps its shelf
     # empty and `/hubs/promoted` drops that library's shelf outright -- while its own page
     # and search still answer. `hidden=2` takes it out of `/hubs/search` and
-    # `/library/search` too, and scoping a search to it is a 404. simplex stored the setting,
+    # `/library/search` too, and scoping a search to it is a 404. rex stored the setting,
     # reported `hidden: 0` and filtered nothing.
     def movie_ids_c58(rows):
         return [r for r in rows or [] if str(r.get("librarySectionID")) == str(movie_section)]
@@ -32333,7 +32333,7 @@ def main():
 
     # Cycle 59, measured on zen (1.42.2), kids (1.43.4) and both copies: under
     # `X-Plex-Language: en` -- python-plexapi's default header, Plex Web's query parameter --
-    # an item's Advanced enums stay English. simplex replaced every `Library default` enum
+    # an item's Advanced enums stay English. rex replaced every `Library default` enum
     # with the 46-language list, so a show's Seasons dropdown offered languages and
     # python-plexapi's `editAdvanced(flattenSeasons=1)` refused its own value. And an item's
     # own language enum (its stream languages, then the regional list) is localised piece by
@@ -32489,10 +32489,10 @@ def main():
     # python-plexapi's upload methods and Plex Web's Change Artwork dialog:
     #  * an upload is a candidate of the row it was posted to and of no other;
     #  * after a poster upload the agent's candidate stays, unselected, and exactly one
-    #    candidate is selected (simplex dropped the agent's and ticked the local one too);
+    #    candidate is selected (rex dropped the agent's and ticked the local one too);
     #  * a THEME and a LOGO upload are stored: a selected `upload://themes/...` /
     #    `upload://clearLogos/...` candidate, and the row gains its own versioned `theme`
-    #    (served audio) or a `clearLogo` Image -- where simplex kept nothing and filed a
+    #    (served audio) or a `clearLogo` Image -- where rex kept nothing and filed a
     #    theme as an `art` upload.
     png_c59g = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
                                 "+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
@@ -32542,7 +32542,7 @@ def main():
     # Cycle 59: a match that RENAMES a show or a season -- Fix Match with a name,
     # python-plexapi's `fixMatch(name=)` -- reaches the rows beneath it, as an edit does
     # (cycle 9, measured on the copy). A real PMS reads `parentTitle`/`grandparentTitle`
-    # off the parent row, so nothing below can keep the old name; simplex's match path
+    # off the parent row, so nothing below can keep the old name; rex's match path
     # renamed the show and left every season and episode on the old title.
     _, show_row_c59h, _ = get(base, "/library/metadata/%s" % show)
     old_c59h = ((show_row_c59h.get("Metadata") or [{}])[0]).get("title")
@@ -32595,7 +32595,7 @@ def main():
     # Cycle 59, measured on fun (1.42.2, claimed: `recommended, library, collections,
     # categories` where the library holds collections, no `collections` where it holds none)
     # and on both copies: a library's tab bar gains a Collections pivot while it holds a
-    # collection -- the tab Plex Web draws its Collections page from. simplex hard-coded
+    # collection -- the tab Plex Web draws its Collections page from. rex hard-coded
     # three pivots, so a library's collections had no tab.
     _, grid_c59j, _ = get(base, "/library/sections/%s/all" % movie_section)
     first_c59j = ((grid_c59j.get("Metadata") or [{}])[0]).get("ratingKey")
@@ -32634,7 +32634,7 @@ def main():
     # `playlists` content directory with one `playlists.video` pivot -- the Playlists
     # source Plex Web offers in setup and the sidebar -- and `/hubs/promoted` answers the
     # `home.playlists` shelf when `contentDirectoryID` names `playlists` (zen and kids answer
-    # it even empty). simplex had neither, so the source page read "Not found".
+    # it even empty). rex had neither, so the source page read "Not found".
     _, grid_c59k, _ = get(base, "/library/sections/%s/all" % movie_section)
     first_c59k = ((grid_c59k.get("Metadata") or [{}])[0]).get("ratingKey")
     _, made_c59k, _ = container(base, "POST", "/playlists?type=video&title=Rg59%%20Src&smart=0&uri=%s"
@@ -32688,7 +32688,7 @@ def main():
     # asks for with `includeLibraryPlaylists=1` -- holds the head of its own key,
     # `/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc&sectionID={id}`:
     # the video playlists with a member in that library, and every EMPTY one, which the
-    # listing answers to every library. simplex hard-coded it empty and dropped an empty
+    # listing answers to every library. rex hard-coded it empty and dropped an empty
     # playlist from every library's listing.
     _, grid_c59m, _ = get(base, "/library/sections/%s/all" % movie_section)
     first_c59m = ((grid_c59m.get("Metadata") or [{}])[0]).get("ratingKey")
@@ -32723,7 +32723,7 @@ def main():
           str((movie_shelf_c59m, show_shelf_c59m, movie_list_c59m, show_list_c59m)))
 
     # Cycle 59: `translations.json` is PER VERSION. It was captured off kids (1.43.4); zen
-    # (1.42.2, the build simplex reports) words 405 cells differently -- re-captured off zen
+    # (1.42.2, the build rex reports) words 405 cells differently -- re-captured off zen
     # with the same tool and overlaid. Three measured cells: a show's Seasons enum in Danish
     # and Serbian, and Portuguese leaving the subtitle mode's inherit option in English.
     import html as html_c59n
@@ -32745,7 +32745,7 @@ def main():
     # collection and adding an item to one each LOCK the member's `collection` field, and
     # the lock survives removing the member and deleting the collection. Plex Web's Edit
     # dialog draws that lock and sends it back on the next save; python-plexapi's
-    # `isLocked('collection')` reads it. simplex locked nothing.
+    # `isLocked('collection')` reads it. rex locked nothing.
     _, grid_c60a, _ = get(base, "/library/sections/%s/all" % movie_section)
     keys_c60a = [r.get("ratingKey") for r in grid_c60a.get("Metadata") or []]
     one_c60a, two_c60a = keys_c60a[0], keys_c60a[-1]
@@ -32796,7 +32796,7 @@ def main():
     # NAME follows the client's language by its TAG -- `fr` is `French` under `en`, which Plex
     # Web and python-plexapi both send, and `Französisch` under `de` -- and so do the Audio and
     # Subtitle Language axes; and the words the titles are composed from (`Unknown`,
-    # `Forced`, `SDH`, a sidecar's `External`) are localised with it. simplex left every name
+    # `Forced`, `SDH`, a sidecar's `External`) are localised with it. rex left every name
     # native under `en` and every word English.
     def streams_c60c(rk_c60c, language_c60c):
         body_c60c = json.loads(urllib.request.urlopen(urllib.request.Request(
@@ -32862,7 +32862,7 @@ def main():
 
     # Cycle 60, re-captured off zen (every path) and plexscratch42 (the settings documents)
     # recording the cells a language leaves in ENGLISH too: `translations.json` is 1.42.2's.
-    # Cycle 59 overlaid only the cells zen translated, so where 1.42.2 answers English simplex
+    # Cycle 59 overlaid only the cells zen translated, so where 1.42.2 answers English rex
     # still answered 1.43.4's translation (414 cells), and the Related, post-play and Manage
     # Recommendations titles were never in the table at all.
     def loc_c60e(path_c60e, language_c60e):
@@ -32936,7 +32936,7 @@ def main():
     # Cycle 61, measured on plexscratch42 (1.42.2): a playback session is LISTED in
     # /status/sessions from its first `playing` beat -- a `paused` or `buffering` beat on a new
     # session lists nothing, which is Plex Web's very first beat -- and its `Session` block is
-    # there only once the session has asked for a decision. simplex listed every beat's session
+    # there only once the session has asked for a decision. rex listed every beat's session
     # and gave every one a `Session` with a computed bandwidth.
     _, grid_c61b, _ = get(base, "/library/sections/%s/all" % movie_section)
     rk_c61b = ((grid_c61b.get("Metadata") or [{}])[0]).get("ratingKey")
@@ -32961,7 +32961,7 @@ def main():
     # Cycle 61, measured on plexscratch42 (a theme upload on a show) and read on kids'
     # Firefly: a season carries its show's theme as `parentTheme` and has no `theme` of its
     # own, an episode only `grandparentTheme`; and a theme uploaded after a LOGO lands --
-    # simplex diverted it into the logo branch. Plex Web plays theme music from
+    # rex diverted it into the logo branch. Plex Web plays theme music from
     # `grandparentTheme || parentTheme || theme`.
     mp3_c61c = b"ID3\x04\x00\x00\x00\x00\x00\x00" + b"\xff\xfb\x90\x00" * 32
     png_c61c = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
@@ -32998,7 +32998,7 @@ def main():
     # python-plexapi's `section.all()` after `Collection.editTitle()`: after a section-path
     # collection rename a member's LIGHT row -- grid, section search, Recently Added -- keeps
     # the OLD name (the first one through a chain of renames) while its detail row and the
-    # axis carry the new one; the delete clears both. simplex renamed it everywhere.
+    # axis carry the new one; the delete clears both. rex renamed it everywhere.
     import random as random_c62a
     token_c62a = "r%05d" % random_c62a.randint(0, 99999)
     _, grid_c62a, _ = get(base, "/library/sections/%s/all" % movie_section)
@@ -33215,7 +33215,7 @@ def main():
                for k in ("TranscoderTempDirectory", "_CPU-TranscodeCountLimit")]))
 
     # Cycle 66, measured on zen, kids and plexscratch42: Plex Web's `no` (Norsk) and `af`
-    # (Afrikaans) have catalogues of their own on a real PMS -- simplex held `nb` and no `af`.
+    # (Afrikaans) have catalogues of their own on a real PMS -- rex held `nb` and no `af`.
     def doc_c66g(path_c66g, language_c66g):
         return json.loads(urllib.request.urlopen(urllib.request.Request(
             base + path_c66g, headers={"User-Agent": UA, "Accept": "application/json",

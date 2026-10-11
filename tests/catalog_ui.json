@@ -1,7 +1,7 @@
 {
  "_provenance": "Derived from catalog.example.json -- the redacted copy of a real probe-built catalog -- by cloning its rows onto fresh keys. Every Media/Part/Stream shape is ffprobe-derived from real debrid content; only the multiplicity is synthetic, because a one-item section turns the Shuffle, Play Next, Merge and paging checks into no-ops. The debrid links are the example file's placeholder, so a part read fails at the provider rather than serving bytes: test_all.py covers real reads. Extended again for cycle 13: seasons 21 and 22 with an episode each, so a paged season list can return more than one row past the first page, and a second Media on episode 1004, so the Duplicates filter has a duplicate to find on the leaf, its season and the show. Same method -- existing rows cloned onto fresh keys. And three more episodes in the last season, because a shelf's default cap is six and a five-episode library cannot overflow one. The episodes carry no contentRating of their own, because a real PMS gives an episode its show's and a fixture that stores one on every row cannot show it. Extended for the UI suite's last content skips with three movies built the way build_catalog.py builds a row, from real files in zen's library: each ffprobe'd (8.1.2) over zen's own part URL and run through mediainfo.build_media, the two matched ones identified by metadata.enrich against the TMDB id zen matched and given zen's plex:// guid. \"Trust No One: The Hunt for the Crypto King\" and \"Tuesday\" are zen's Dolby Vision profile 5 rows 967 and 1120, and \"Vinaipayan\" is zen's unmatched local://3763, kept unmatched: a keyed run matches the first movie again, and the checks about an unmatched row need one either way. Their links are the same placeholder.",
  "machineIdentifier": "f1x7u4e0000000000000000000000000000000f1",
- "friendlyName": "simplex-ui-fixture",
+ "friendlyName": "rex-ui-fixture",
  "sections": [
   {
    "key": "1",
@@ -56,7 +56,7 @@
        "id": 10070,
        "key": "/library/parts/10070/1789180064/file.webm",
        "duration": 734167,
-       "file": "/simplex/1/Tears of Steel.webm",
+       "file": "/rex/1/Tears of Steel.webm",
        "size": 571346576,
        "container": "webm",
        "videoProfile": "0",
@@ -177,7 +177,7 @@
    "Location": [
     {
      "id": 1007,
-     "path": "/simplex/1/1007"
+     "path": "/rex/1/1007"
     }
    ],
    "slug": "tears-of-steel",
@@ -242,7 +242,7 @@
        "id": 10080,
        "key": "/library/parts/10080/1789180064/file.webm",
        "duration": 734167,
-       "file": "/simplex/1/Tears of Steel.webm",
+       "file": "/rex/1/Tears of Steel.webm",
        "size": 571346576,
        "container": "webm",
        "videoProfile": "0",
@@ -363,7 +363,7 @@
    "Location": [
     {
      "id": 1007,
-     "path": "/simplex/1/1007"
+     "path": "/rex/1/1007"
     }
    ],
    "slug": "tears-of-steel",
@@ -428,7 +428,7 @@
        "id": 10090,
        "key": "/library/parts/10090/1789180064/file.webm",
        "duration": 734167,
-       "file": "/simplex/1/Tears of Steel.webm",
+       "file": "/rex/1/Tears of Steel.webm",
        "size": 571346576,
        "container": "webm",
        "videoProfile": "0",
@@ -549,7 +549,7 @@
    "Location": [
     {
      "id": 1007,
-     "path": "/simplex/1/1007"
+     "path": "/rex/1/1007"
     }
    ],
    "slug": "tears-of-steel",
@@ -609,7 +609,7 @@
        "id": 10120,
        "key": "/library/parts/10120/1789180050/file.mkv",
        "duration": 5456672,
-       "file": "/simplex/1/Trust.No.One.The.Hunt.for.the.Crypto.King.2022.1080p.NF.WEB.DL.DDP5.1.DV.HEVC-WiNEY.mkv",
+       "file": "/rex/1/Trust.No.One.The.Hunt.for.the.Crypto.King.2022.1080p.NF.WEB.DL.DDP5.1.DV.HEVC-WiNEY.mkv",
        "size": 1425792014,
        "container": "mkv",
        "videoProfile": "main 10",
@@ -1184,7 +1184,7 @@
        "id": 10130,
        "key": "/library/parts/10130/1789180050/file.mkv",
        "duration": 6653888,
-       "file": "/simplex/1/Tuesday.2022.1080p.NF.WEB.DL.DDP5.1.DV.H.265-PMI.mkv",
+       "file": "/rex/1/Tuesday.2022.1080p.NF.WEB.DL.DDP5.1.DV.H.265-PMI.mkv",
        "size": 1421990771,
        "container": "mkv",
        "videoProfile": "main 10",
@@ -1397,7 +1397,7 @@
        "id": 10140,
        "key": "/library/parts/10140/1789180050/file.mkv",
        "duration": 1682218,
-       "file": "/simplex/1/Vinaipayan.2026.1080p.SFLIX.WEB.DL.AAC5.1.H.264-PMi-XDMovies.mkv",
+       "file": "/rex/1/Vinaipayan.2026.1080p.SFLIX.WEB.DL.AAC5.1.H.264-PMi-XDMovies.mkv",
        "size": 1114087637,
        "container": "mkv",
        "videoProfile": "main",
@@ -1569,7 +1569,7 @@
    "Location": [
     {
      "id": 20001,
-     "path": "/simplex/2/20001"
+     "path": "/rex/2/20001"
     }
    ],
    "slug": "the-simpsons",
@@ -1674,7 +1674,7 @@
        "id": 10010,
        "key": "/library/parts/10010/1789180059/file.mkv",
        "duration": 1311769,
-       "file": "/simplex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+       "file": "/rex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
        "size": 1546039833,
        "container": "mkv",
        "videoProfile": "high",
@@ -1895,7 +1895,7 @@
        "id": 10020,
        "key": "/library/parts/10020/1789180059/file.mkv",
        "duration": 1311769,
-       "file": "/simplex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+       "file": "/rex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
        "size": 1546039833,
        "container": "mkv",
        "videoProfile": "high",
@@ -2076,7 +2076,7 @@
        "id": 10030,
        "key": "/library/parts/10030/1789180059/file.mkv",
        "duration": 1311769,
-       "file": "/simplex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+       "file": "/rex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
        "size": 1546039833,
        "container": "mkv",
        "videoProfile": "high",
@@ -2297,7 +2297,7 @@
        "id": 10040,
        "key": "/library/parts/10040/1789180064/file.webm",
        "duration": 1311769,
-       "file": "/simplex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+       "file": "/rex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
        "size": 1546039833,
        "container": "mkv",
        "videoProfile": "high",
@@ -2382,7 +2382,7 @@
        "id": 10041,
        "key": "/library/parts/10041/1789180064/file.webm",
        "duration": 1311769,
-       "file": "/simplex/2/Fixture Episode 3 (second version).webm",
+       "file": "/rex/2/Fixture Episode 3 (second version).webm",
        "size": 1546039833,
        "container": "mkv",
        "videoProfile": "high",
@@ -2603,7 +2603,7 @@
        "id": 10050,
        "key": "/library/parts/10050/1789180064/file.webm",
        "duration": 1311769,
-       "file": "/simplex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+       "file": "/rex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
        "size": 1546039833,
        "container": "mkv",
        "videoProfile": "high",
@@ -2784,7 +2784,7 @@
        "id": 10060,
        "key": "/library/parts/10060/1789180064/file.webm",
        "duration": 1311769,
-       "file": "/simplex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+       "file": "/rex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
        "size": 1546039833,
        "container": "mkv",
        "videoProfile": "high",
@@ -2965,7 +2965,7 @@
        "id": 10100,
        "key": "/library/parts/10100/1789180064/file.webm",
        "duration": 1311769,
-       "file": "/simplex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+       "file": "/rex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
        "size": 1546039833,
        "container": "mkv",
        "videoProfile": "high",
@@ -3146,7 +3146,7 @@
        "id": 10110,
        "key": "/library/parts/10110/1789180064/file.webm",
        "duration": 1311769,
-       "file": "/simplex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+       "file": "/rex/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
        "size": 1546039833,
        "container": "mkv",
        "videoProfile": "high",

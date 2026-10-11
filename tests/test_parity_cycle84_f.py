@@ -3,7 +3,7 @@
 
 Measured on plexscratch42 (PMS 1.42.2) with a throwaway TV library, recorded in
 `tests/fixtures/queue_removal_s42.jsonl` and re-read here, so each rule below is checked
-against the reference's own exchange before it is applied to simplex:
+against the reference's own exchange before it is applied to rex:
 
 - EVERY row a write removes leaves every play queue -- a season's `DELETE` takes its
   episodes out, and an episode or show `PUT .../merge` takes out the rows it absorbs. The
@@ -22,7 +22,7 @@ does not parse, measured over raw sockets on kids and plexscratch42
 oracle's parser stripped every leading space.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `SIMPLEX_SERVER=python`.
+the oracle with `REX_SERVER=python`.
 
     python3 tests/test_parity_cycle84_f.py
 """
@@ -43,8 +43,8 @@ CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "queue_removal_s42.jsonl")
 OWS_FIXTURE = os.path.join(HERE, "fixtures", "header_ows_roku.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "Accept": "application/json"}
@@ -176,7 +176,7 @@ def reference_checks(queues):
     return last[1][1]["fields"]
 
 
-# -- simplex ---------------------------------------------------------------------------
+# -- rex ---------------------------------------------------------------------------
 
 def machine(port):
     return json.loads(request(port, "GET", "/identity")[1])["MediaContainer"]["machineIdentifier"]

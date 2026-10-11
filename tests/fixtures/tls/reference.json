@@ -17,7 +17,7 @@
   "subject_cn": "*.<32 hex>.plex.direct",
   "issuer": "C=US, O=Let's Encrypt, CN=YR2",
   "san": "DNS:*.<32 hex>.plex.direct",
-  "note": "The same 32-hex hash the GDM reply's Host line carries. plex.tv issues it to a claimed server, so simplex cannot mint one: the operator supplies it."
+  "note": "The same 32-hex hash the GDM reply's Host line carries. plex.tv issues it to a claimed server, so rex cannot mint one: the operator supplies it."
  },
  "plain_side": "identical API and identical response header block on the same port"
 }

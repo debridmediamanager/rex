@@ -2,8 +2,8 @@
 """Cycle 87 W3: what W and W2 left on `/system/agents` and `/media/providers/metadata`.
 
 - A LEGACY plug-in agent row writes `hasPrefs, identifier, primary` (then `name` in the
-  typed form), in JSON and XML alike; simplex put `identifier` first, the modern rows'
-  order. An empty legacy row is a PAIRED `<Agent ...>\\n</Agent>`; simplex self-closed
+  typed form), in JSON and XML alike; rex put `identifier` first, the modern rows'
+  order. An empty legacy row is a PAIRED `<Agent ...>\\n</Agent>`; rex self-closed
   it. Driven by zen's raw bodies: the JSON ones W2 recorded
   (`tests/fixtures/c87_w2_system_agents_zen.json`) and the XML ones recorded here
   (`tests/fixtures/c87_w3_system_agents_xml_zen.json`). After the fix every typed body
@@ -14,7 +14,7 @@
   built-in group is 4 with `metadataAgentProviderId` 5, and provider 4 is the unlisted
   MusicBrainz intermediary that only its per-id GET answers. Measured identically on kids,
   zen, plexscratch and a fresh 1.42.2 install (plexscratch42), so a rule and not one
-  database's history; simplex numbered providers by agent position. Driven by zen's
+  database's history; rex numbered providers by agent position. Driven by zen's
   exchanges (`tests/fixtures/c87_w3_provider_ids_zen.json`).
 
 - A write on a BUILT-IN provider or group id, measured on plexscratch42 (a fresh 1.42.2,
@@ -34,7 +34,7 @@
   `mediaType=8`/`9` -- and Add Library then refuses its agent with a 400 either way.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `SIMPLEX_SERVER=python`.
+default, the oracle with `REX_SERVER=python`.
 
     python3 tests/test_followups_c87_w3.py
 """
@@ -59,8 +59,8 @@ WRITE_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_provider_writes_s
 RENAME_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_group_rename_s42.json")
 DELETE_FIXTURE = os.path.join(HERE, "fixtures", "c87_w3_builtin_deletes_s42.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 
 results = []
@@ -255,7 +255,7 @@ def _compare_reads(port, headers, label, reads):
                 got, want_ids = sorted(got or []), sorted(want_ids)
             ok, shown = got == want_ids, got
         elif path == "/media/providers/metadata":
-            # simplex carries zen's `uri`/`online`; the ids are the question here.
+            # rex carries zen's `uri`/`online`; the ids are the question here.
             got = [row["id"] for row in body["MediaContainer"]["MetadataAgentProvider"]] \
                 if status == 200 else None
             ok = got == [row["id"] for row in want["body"]["MediaContainer"]["MetadataAgentProvider"]]
@@ -269,7 +269,7 @@ def _compare_reads(port, headers, label, reads):
 
 def builtin_deletes(port, fixture):
     """DELETE on built-in provider 3 and built-in group 3, in plexscratch42's order. The
-    two music-library creates are not replayed: simplex serves no music library at all
+    two music-library creates are not replayed: rex serves no music library at all
     (its Add Library refuses `type=artist`), so `derived_creates` asks the same question
     of a movie library."""
     headers = fixture["headers"]
@@ -289,7 +289,7 @@ def derived_creates(port, fixture):
     `metadataAgentProviderGroupId=3` (what 4.162.1 sends, the agent's `/system/agents` id)
     is a 400 "unable to find entry for provided 'metadataAgentProviderGroupId'", and no
     parameter a 400 "unable to find built-in agent group for provided 'agent'". The same
-    lookups, asked of the movie library simplex does serve."""
+    lookups, asked of the movie library rex does serve."""
     headers = fixture["headers"]
     form = ("/library/sections?name=W3%%20%s&type=movie&agent=tv.plex.agents.movie"
             "&scanner=Plex%%20Movie&language=en-US%s&location=%%2Fdata%%2Fw3-none")

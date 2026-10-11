@@ -18,7 +18,7 @@ Both servers sent every tag in join order, so python-plexapi's `Movie.collection
 `section.all()` object (a non-empty list is never reloaded) named different collections.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `SIMPLEX_SERVER=python`.
+the oracle with `REX_SERVER=python`.
 
     python3 tests/test_parity_cycle88_b4.py
 """
@@ -41,8 +41,8 @@ CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURES = [os.path.join(HERE, "fixtures", "collection_listing_order_s%s.json" % v)
             for v in ("42", "43")]
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "parity-cycle88-b4", "Accept": "application/json"}

@@ -82,7 +82,7 @@ def main():
     print("## only the REFERENCE run issued")
     for t in only_a:
         print(f"- `{t[:220]}` x{len(A[t])} {dict(summ(A[t])[0])}")
-    print("\n## only the SIMPLEX run issued")
+    print("\n## only the REX run issued")
     for t in only_b:
         print(f"- `{t[:220]}` x{len(B[t])} {dict(summ(B[t])[0])}")
     print("\n## common templates that differ")

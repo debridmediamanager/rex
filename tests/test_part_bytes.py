@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""simplex's MEDIA BYTE path against what a real PMS answers. No credential needed.
+"""rex's MEDIA BYTE path against what a real PMS answers. No credential needed.
 
 For the whole programme the part path could not be checked: every provider link in
 the checked-in fixture is account-scoped and dead, so `tests/test_all.py` reported
@@ -11,10 +11,10 @@ So this suite stands up the upstream instead of asking for one:
 
     local zurg  -- WebDAV file reads with ordinary byte-range semantics, behind basic
                    auth, answering 404 for a file it no longer has
-    simplex     -- started with ZURG_URL pointed at the stub, on a generated catalog
+    rex     -- started with ZURG_URL pointed at the stub, on a generated catalog
                    whose Part files sit under `--zurg-mount`
 
-and then drives simplex's real handler. The expectations are the values kids (1.43.4)
+and then drives rex's real handler. The expectations are the values kids (1.43.4)
 and zen (1.42.2) answer for the same header against their own parts, recorded in
 `EXPECTED` below with the measurement beside each one.
 
@@ -35,7 +35,7 @@ import urllib.request
 
 from server_command import server_command
 
-ROOT = os.environ.get("SIMPLEX_TEST_ROOT",
+ROOT = os.environ.get("REX_TEST_ROOT",
                       os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SIZE = 100000
 BODY = bytes(((i * 7 + 13) % 251) for i in range(SIZE))
@@ -67,7 +67,7 @@ SEEN = {"paths": []}
 
 
 class Zurg(_Quiet):
-    """zurg's WebDAV file read: what simplex streams a Part from."""
+    """zurg's WebDAV file read: what rex streams a Part from."""
 
     def _gate(self):
         SEEN["paths"].append(self.path)
@@ -133,7 +133,7 @@ def serve(handler):
 
 CATALOG = {
     "machineIdentifier": "0000000000000000000000000000000000000001",
-    "friendlyName": "simplex-part-bytes",
+    "friendlyName": "rex-part-bytes",
     "sections": [{"key": "1", "type": "movie", "title": "Bytes",
                   "uuid": "00000000000000000000000000000000000000ff"}],
     "items": [{
@@ -373,7 +373,7 @@ def main():
         # -- an UNAVAILABLE file is a 404, not a 502 -------------------------------
         # Measured on zen part 23595, whose `checkFiles=1` reports
         # `accessible=false`/`exists=false`: the byte read is a plain 404 with the
-        # binary refusal header set. simplex answered 502 to a dead link and to a
+        # binary refusal header set. rex answered 502 to a dead link and to a
         # network failure alike.
         UNAVAILABLE["on"] = True
         try:
@@ -386,7 +386,7 @@ def main():
               "%s %s" % (status, values.get("content-type")))
 
         # -- checkFiles reflects the same provider result -------------------------
-        # Cycle 46's first real comparison of this metadata claim with simplex's own
+        # Cycle 46's first real comparison of this metadata claim with rex's own
         # byte path found five false positives: every stale private-catalog link said
         # accessible=true/exists=true and immediately answered unavailable_file/404.
         # Both references expose false/false for a missing file, and the live/dead

@@ -58,9 +58,9 @@ class Instance:
         if state:
             command += ["--state", state]
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
-        env.pop("SIMPLEX_STATE", None)
+        env.pop("REX_STATE", None)
         if env_state is not None:
-            env["SIMPLEX_STATE"] = env_state
+            env["REX_STATE"] = env_state
         self.log = tempfile.TemporaryFile()
         self.proc = subprocess.Popen(command, cwd=ROOT, env=env,
                                      stdout=subprocess.DEVNULL, stderr=self.log)
@@ -73,7 +73,7 @@ class Instance:
                     break
                 time.sleep(0.1)
         self.log.seek(0)
-        raise SystemExit("simplex did not start:\n" + self.log.read().decode(errors="replace"))
+        raise SystemExit("rex did not start:\n" + self.log.read().decode(errors="replace"))
 
     def request(self, method, path, headers=None):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
@@ -154,14 +154,14 @@ def differing(before, after):
 
 
 def default_state():
-    """A state file is the default: `simplex.db` (the Python server's `state.pickle`)
+    """A state file is the default: `rex.db` (the Python server's `state.pickle`)
     beside the catalog, held by one server at a time; `--no-state` and an empty
-    `SIMPLEX_STATE` turn it off, and the last of `--state`/`--no-state` wins."""
-    work = tempfile.mkdtemp(prefix="simplex-persist-default-")
+    `REX_STATE` turn it off, and the last of `--state`/`--no-state` wins."""
+    work = tempfile.mkdtemp(prefix="rex-persist-default-")
     try:
         catalog = os.path.join(work, "catalog.json")
         shutil.copy(os.path.join(HERE, "catalog_ui.json"), catalog)
-        files = [os.path.join(work, name) for name in ("simplex.db", "state.pickle")]
+        files = [os.path.join(work, name) for name in ("rex.db", "state.pickle")]
         watched = lambda instance: first(
             instance.request("GET", "/library/metadata/1007")[1]).get("viewCount")
 
@@ -174,7 +174,7 @@ def default_state():
             second = Instance(catalog, default=True)
         except SystemExit as refused:
             check("a second server on one catalog refuses the held default file",
-                  "in use by another simplex" in str(refused), str(refused)[-600:])
+                  "in use by another rex" in str(refused), str(refused)[-600:])
         else:
             second.request("GET", "/:/rate?key=1008&identifier=%s&rating=8" % LIBRARY)
             second.stop()
@@ -195,7 +195,7 @@ def default_state():
 
         for label, instance in (
                 ("--no-state", lambda: Instance(catalog, args=("--no-state",))),
-                ("an empty SIMPLEX_STATE", lambda: Instance(catalog, default=True, env_state="")),
+                ("an empty REX_STATE", lambda: Instance(catalog, default=True, env_state="")),
                 ("--state then --no-state",
                  lambda: Instance(catalog, args=("--state", os.path.join(work, "other"),
                                                  "--no-state")))):
@@ -217,7 +217,7 @@ def default_state():
 
 
 def main():
-    work = tempfile.mkdtemp(prefix="simplex-persist-")
+    work = tempfile.mkdtemp(prefix="rex-persist-")
     try:
         catalog = os.path.join(work, "catalog.json")
         shutil.copy(os.path.join(HERE, "catalog_ui.json"), catalog)

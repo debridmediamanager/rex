@@ -20,7 +20,7 @@ catalog only the view state -- matched by guid, then by part file -- and the
 server-level settings carry over, and the old file is kept as `<file>.stale`.
 
     python3 tests/test_parity_persist.py            # native
-    SIMPLEX_SERVER=python python3 tests/test_parity_persist.py
+    REX_SERVER=python python3 tests/test_parity_persist.py
 """
 import hashlib
 import http.client
@@ -60,9 +60,9 @@ def check(name, ok, detail=""):
 
 
 def free_port():
-    # `SIMPLEX_PORT_RANGE=LOW-HIGH` confines the servers to a range shared agents
+    # `REX_PORT_RANGE=LOW-HIGH` confines the servers to a range shared agents
     # have split between them; otherwise the kernel picks.
-    bounds = os.environ.get("SIMPLEX_PORT_RANGE")
+    bounds = os.environ.get("REX_PORT_RANGE")
     candidates = range(int(bounds.split("-")[0]), int(bounds.split("-")[1]) + 1) \
         if bounds else [0]
     for candidate in candidates:
@@ -85,8 +85,8 @@ class Instance:
         if state:
             command += ["--state", state]
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-                   SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
-        for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+                   REX_PLEXTV_URL="http://127.0.0.1:9")
+        for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
             env.pop(name, None)
         self.log = tempfile.TemporaryFile()
         self.proc = subprocess.Popen(command, cwd=ROOT, env=env,
@@ -100,7 +100,7 @@ class Instance:
                     break
                 time.sleep(0.1)
         self.log.seek(0)
-        raise SystemExit("simplex did not start:\n" + self.log.read().decode(errors="replace"))
+        raise SystemExit("rex did not start:\n" + self.log.read().decode(errors="replace"))
 
     def request(self, method, path, headers=None, body=None):
         """(status, body): JSON parsed, anything else as its length and SHA-1."""
@@ -557,7 +557,7 @@ def again_all(inst, ctx):
 
 
 def main():
-    work = tempfile.mkdtemp(prefix="simplex-parity-persist-")
+    work = tempfile.mkdtemp(prefix="rex-parity-persist-")
     try:
         catalog = os.path.join(work, "catalog.json")
         shutil.copy(os.path.join(HERE, "catalog_ui.json"), catalog)

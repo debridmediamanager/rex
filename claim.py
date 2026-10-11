@@ -31,7 +31,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape
 
-logger = logging.getLogger("simplex.claim")
+logger = logging.getLogger("rex.claim")
 
 EXCHANGE_URL = "https://plex.tv/api/claim/exchange"
 CONNECTIVITY_URL = "https://plex.tv/api/servers/%s/connectivity"
@@ -61,7 +61,7 @@ PUBSUB_RETRY = 15
 # the real account signs real servers out (HANDOVER: the 2026-09-11 token reset), and a
 # second server announcing an identity rewrites that identity's registration. The host
 # stays in the path so the stub still sees which service was addressed.
-PLEXTV_URL_ENV = "SIMPLEX_PLEXTV_URL"
+PLEXTV_URL_ENV = "REX_PLEXTV_URL"
 
 
 def plextv_url(url):
@@ -82,9 +82,9 @@ def read_body(response):
 
 
 class Claim:
-    """Holds simplex's claimed identity and performs the exchange."""
+    """Holds rex's claimed identity and performs the exchange."""
 
-    def __init__(self, machine_identifier, state_path, *, name="simplex", version="1.43.3"):
+    def __init__(self, machine_identifier, state_path, *, name="rex", version="1.43.3"):
         self.machine = machine_identifier
         self.name = name
         self.version = version
@@ -183,7 +183,7 @@ class Claim:
             ("X-Plex-Device-Name", self.name),
             ("X-Plex-Device", "PC"),
             ("X-Plex-Model", "x86_64"),
-            ("X-Plex-Device-Vendor", "simplex"),
+            ("X-Plex-Device-Vendor", "rex"),
         ])
         return headers
 
@@ -429,5 +429,5 @@ class Claim:
                     logger.error("pubsub failed: %s; resubscribing in %ds", error, PUBSUB_RETRY)
                 stop.wait(PUBSUB_RETRY)
 
-        threading.Thread(target=run, name="simplex-registration", daemon=True).start()
+        threading.Thread(target=run, name="rex-registration", daemon=True).start()
         return stop

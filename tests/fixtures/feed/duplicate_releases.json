@@ -1,5 +1,5 @@
 {
- "_about": "Two releases of one film in fun's RD library, as fun's zurg answered /api/library/entry for them on 2026-10-11 (format.filename and signed_path redacted), with the TMDB and Plex answers fun-simplex cached for their IMDb id, trimmed to the fields identification reads. fun-simplex made them two movies (keys 104310 and 121691) carrying the same plex:// guid; a real PMS makes them one movie with two Media. `rows` are those two rows as fun-simplex's state database held them that day, the mount /mnt/zurg rewritten to the test's /zurg.",
+ "_about": "Two releases of one film in fun's RD library, as fun's zurg answered /api/library/entry for them on 2026-10-11 (format.filename and signed_path redacted), with the TMDB and Plex answers fun-rex cached for their IMDb id, trimmed to the fields identification reads. fun-rex made them two movies (keys 104310 and 121691) carrying the same plex:// guid; a real PMS makes them one movie with two Media. `rows` are those two rows as fun-rex's state database held them that day, the mount /mnt/zurg rewritten to the test's /zurg.",
  "entries": [
   {
    "path": "movies/127 Hours (2010) 1080p BD-Remux/127 Hours (2010) 1080p BD-Remux.mkv",

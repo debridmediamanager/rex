@@ -1,8 +1,8 @@
-# The feed API: sources push items to simplex
+# The feed API: sources push items to rex
 
-simplex does not list, scan or query any library. A **source** (zurg, or anything else
-that serves files over HTTP with `Range`) pushes the items it holds, and simplex turns
-them into library rows on keys that never change. The feed is simplex's own API, not an
+rex does not list, scan or query any library. A **source** (zurg, or anything else
+that serves files over HTTP with `Range`) pushes the items it holds, and rex turns
+them into library rows on keys that never change. The feed is rex's own API, not an
 emulated Plex route: nothing here was measured on a real PMS except what a row does when
 its file goes away (the trash rules below, `tests/fixtures/missing_file_scan_s43.json`).
 
@@ -10,7 +10,7 @@ its file goes away (the trash rules below, `tests/fixtures/missing_file_scan_s43
 
 A source has a name, a byte base URL, optional credentials for it, and the feed token
 it pushes with. They come from a JSON file named by `--sources FILE` (or
-`$SIMPLEX_SOURCES`); keep it out of the catalog and the repository, mode 600:
+`$REX_SOURCES`); keep it out of the catalog and the repository, mode 600:
 
 ```json
 {
@@ -34,11 +34,11 @@ it pushes with. They come from a JSON file named by `--sources FILE` (or
 
 Without a sources file, `ZURG_URL` (+ `ZURG_USER`/`ZURG_PASSWORD`) still defines one
 source named `zurg`: url `$ZURG_URL/dav`, mount `--zurg-mount`, feed token
-`$SIMPLEX_FEED_TOKEN`. A file entry named `zurg` replaces it.
+`$REX_FEED_TOKEN`. A file entry named `zurg` replaces it.
 
 ## Endpoints
 
-Every endpoint is under `/simplex/feed/{source}` and takes the source's feed token as
+Every endpoint is under `/rex/feed/{source}` and takes the source's feed token as
 `Authorization: Bearer <token>`. Plex tokens are not accepted and the Plex gate does not
 apply. An unknown source, or one with no token configured, is a `404`; a missing or
 wrong token is a `401`. Bodies are JSON, at most 16 MiB a request (`413` above that).
@@ -48,7 +48,7 @@ releases are identified on the way in (TMDB and Plex's matcher, a few lookups ea
 on disk after the first), so a first fill of a large library is slow: send chunks of a
 few hundred items and allow minutes per request.
 
-### `POST /simplex/feed/{source}/items` -- upsert
+### `POST /rex/feed/{source}/items` -- upsert
 
 ```json
 {"items": [ITEM, ...]}
@@ -57,7 +57,7 @@ few hundred items and allow minutes per request.
 Answers `200` with what happened:
 `{"created": 1, "updated": 0, "held": 1, "unchanged": 0, "rejected": [{"id": "...", "reason": "..."}]}`.
 
-### `DELETE /simplex/feed/{source}/items` -- remove
+### `DELETE /rex/feed/{source}/items` -- remove
 
 ```json
 {"ids": ["movies/Some.Release/file.mkv", ...]}
@@ -72,7 +72,7 @@ held id is simply forgotten. An id that is one of several releases on a row (see
 **Versions**) drops only its Media, counted as `deleted`; the row stays. Answers
 `{"trashed": n, "deleted": n, "released": n, "unknown": n}`.
 
-### `PUT /simplex/feed/{source}/snapshot` -- the complete set
+### `PUT /rex/feed/{source}/snapshot` -- the complete set
 
 ```json
 {"session": "2026-10-10T12:00:00Z", "part": 0, "complete": false, "items": [ITEM, ...]}
@@ -82,7 +82,7 @@ Every chunk's items are upserted as they arrive. The chunk with `"complete": tru
 the session: every id of this source that no chunk of the session named is removed as
 `DELETE` removes it. Without `session` a request is a whole, one-chunk snapshot.
 
-- `part` counts the chunks from 0. A chunk with `part > 0` for a session simplex does not
+- `part` counts the chunks from 0. A chunk with `part > 0` for a session rex does not
   hold (it restarted mid-snapshot, or a chunk was lost) is refused with `409`: start the
   snapshot again from part 0. A new session replaces an unfinished one.
 - **An empty snapshot removes nothing**, as an empty or unlistable library folder trashes
@@ -95,9 +95,9 @@ the session: every id of this source that no chunk of the session named is remov
 Answers the upsert counts, plus `"seen"` (ids so far in the session) and, on the final
 chunk, `"removed": {"trashed": n, "deleted": n, "released": n}`.
 
-### `GET /simplex/feed/{source}/items` and `GET /simplex/feed/{source}/held`
+### `GET /rex/feed/{source}/items` and `GET /rex/feed/{source}/held`
 
-What simplex holds for the source: the shown items with their ratingKeys
+What rex holds for the source: the shown items with their ratingKeys
 (`{"id", "ratingKey", "file", "deleted"}`), and the held ones (`{"id", "path", "name",
 "size", "since"}`). For operators and tests; read-only.
 

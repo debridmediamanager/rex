@@ -1,4 +1,4 @@
-//! simplex's side of plex.tv: `claim.py`, `heartbeat.py` and `accountstate.py`.
+//! rex's side of plex.tv: `claim.py`, `heartbeat.py` and `accountstate.py`.
 //!
 //! The Python modules are the oracle, request for request: the same hosts, paths,
 //! query order, headers in the order they are set, the same claim file beside the
@@ -6,7 +6,7 @@
 //! each request is shaped as it is live on the Python side and in docs/findings.md;
 //! this file cites them rather than repeating them.
 //!
-//! Every URL goes through [`plextv_url`], which `SIMPLEX_PLEXTV_URL` redirects to a
+//! Every URL goes through [`plextv_url`], which `REX_PLEXTV_URL` redirects to a
 //! local stub (`tests/test_plextv.py`): these flows WRITE to a plex.tv account, and a
 //! test identity claiming or announcing against the real one is what reset the
 //! account's tokens on 2026-09-11.
@@ -52,8 +52,8 @@ pub(crate) const ACCOUNT_STATE_INTERVAL: u64 = 1800;
 const ACCOUNT_REFRESH_INTERVAL: i64 = 86400;
 /// Cycle 47: the owner read and the feature read are 10.8--11.45 s apart.
 const ACCOUNT_FEATURE_DELAY: u64 = 11;
-pub(crate) const DECRYPT_SECRET_ENV: &str = "SIMPLEX_SCROBBLING_DECRYPT_SECRET_B64";
-const PLEXTV_URL_ENV: &str = "SIMPLEX_PLEXTV_URL";
+pub(crate) const DECRYPT_SECRET_ENV: &str = "REX_SCROBBLING_DECRYPT_SECRET_B64";
+const PLEXTV_URL_ENV: &str = "REX_PLEXTV_URL";
 
 /// `claim.plextv_url`: unset is the real service; set, `<base>/<host><path>`.
 pub(crate) fn plextv_url(url: &str) -> String {
@@ -520,7 +520,7 @@ impl Claim {
             ("X-Plex-Device-Name", self.name.clone()),
             ("X-Plex-Device", "PC".to_string()),
             ("X-Plex-Model", "x86_64".to_string()),
-            ("X-Plex-Device-Vendor", "simplex".to_string()),
+            ("X-Plex-Device-Vendor", "rex".to_string()),
         ]);
         headers
     }
@@ -923,7 +923,7 @@ pub(crate) fn start_registration(
     access: Option<Arc<Access>>,
 ) {
     let _ = thread::Builder::new()
-        .name("simplex-registration".to_string())
+        .name("rex-registration".to_string())
         .spawn(move || {
             if let Some(access) = &access {
                 let mut read = access.read.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -983,7 +983,7 @@ fn announce(token: &str, machine: &str, url: &str, name: &str) -> Result<(), Str
         ("X-Plex-Device-Name", name.to_string()),
         ("X-Plex-Device", "PC".to_string()),
         ("X-Plex-Model", "x86_64".to_string()),
-        ("X-Plex-Device-Vendor", "simplex".to_string()),
+        ("X-Plex-Device-Vendor", "rex".to_string()),
     ];
     let (_, body) = urlopen(
         "PUT",
@@ -1000,7 +1000,7 @@ fn announce(token: &str, machine: &str, url: &str, name: &str) -> Result<(), Str
 fn is_visible(token: &str, name: &str) -> Result<bool, String> {
     let headers = [
         ("X-Plex-Token", token.to_string()),
-        ("X-Plex-Client-Identifier", "simplex-heartbeat".to_string()),
+        ("X-Plex-Client-Identifier", "rex-heartbeat".to_string()),
         ("Accept", "application/json".to_string()),
     ];
     let (_, body) =
@@ -1049,7 +1049,7 @@ pub(crate) fn start_heartbeat(beat: Beat, claim: SharedClaim, interval: u64) {
         beat.machine, beat.url
     );
     let _ = thread::Builder::new()
-        .name("simplex-heartbeat".to_string())
+        .name("rex-heartbeat".to_string())
         .spawn(move || {
             let mut failures = 0_u64;
             let (token, name) = (beat.token.clone(), beat.name.clone());
@@ -1060,7 +1060,7 @@ pub(crate) fn start_heartbeat(beat: Beat, claim: SharedClaim, interval: u64) {
                     // disappearance into a log line.
                     if !is_visible(&token, &name)? {
                         warning!(
-                            "announced but NOT visible in /api/v2/resources -- clients cannot see simplex right now"
+                            "announced but NOT visible in /api/v2/resources -- clients cannot see rex right now"
                         );
                     }
                     Ok(())
@@ -1106,7 +1106,7 @@ impl AccountRefresh {
             return;
         }
         let _ = thread::Builder::new()
-            .name("simplex-account-refresh".to_string())
+            .name("rex-account-refresh".to_string())
             .spawn(move || {
                 let mut failures = 0_u64;
                 let mut next = 0_i64;
@@ -1641,7 +1641,7 @@ impl WatchStateSync {
         }
         let sync = Arc::clone(self);
         let _ = thread::Builder::new()
-            .name("simplex-account-state".to_string())
+            .name("rex-account-state".to_string())
             .spawn(move || loop {
                 if let Err(message) = sync.refresh(&claim, &runtime) {
                     let failures = sync.failures.fetch_add(1, Ordering::SeqCst) + 1;
@@ -1867,7 +1867,7 @@ pub(super) fn finish_claim(runtime: &SharedRuntime, token: &str, _target: &str) 
     };
     if let Err(message) = exchange(&plextv.claim, token) {
         error!("claim exchange failed: {message}");
-        return super::Response::error(500, &format!("simplex: claim exchange failed: {message}"));
+        return super::Response::error(500, &format!("rex: claim exchange failed: {message}"));
     }
     // What the probe PMS did next: POST /servers.xml, the device PUT, then the pubsub
     // stream that makes it present (`do_claim`).

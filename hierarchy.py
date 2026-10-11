@@ -3,7 +3,7 @@
 A Plex TV library is not a flat list of files. It is show -> season -> episode,
 and a client relies on that: an episode row carries `grandparent*` and `parent*`
 pointers, and the poster a grid draws for an episode comes from its SHOW, not
-from the episode itself. simplex originally emitted every file as `type=movie`
+from the episode itself. rex originally emitted every file as `type=movie`
 while still attaching `index`, `parentIndex` and `grandparentTitle` -- a row
 that claims to be a movie and an episode at once. Observed effect: identified
 episodes rendered as blank tiles in the library grid while a genuine movie in
@@ -54,7 +54,7 @@ def _carry(source, target, keys):
 
 
 def _fill_real_pms_fields(rows):
-    """Add the fields a real PMS show/season row carries that simplex omitted.
+    """Add the fields a real PMS show/season row carries that rex omitted.
 
     Individually these all look decorative -- library paths, a theme URL, a
     slug, lock flags, a colour palette. They are added as a batch because the
@@ -67,11 +67,11 @@ def _fill_real_pms_fields(rows):
         rating_key = row["ratingKey"]
 
         if kind == "show":
-            # The library folder a real show lives in. simplex owns no files, so
+            # The library folder a real show lives in. rex owns no files, so
             # this is the synthetic path already used for Part.file. Measured: a
             # MOVIE carries no Location on either real server, and a show carries it
             # on its detail row only.
-            row.setdefault("Location", [{"path": "/simplex/%s/%s"
+            row.setdefault("Location", [{"path": "/rex/%s/%s"
                                          % (row.get("librarySectionID"), rating_key)}])
         if kind in ("show", "movie"):
             row.setdefault("slug", _slug(row.get("title") or ""))
@@ -117,7 +117,7 @@ _MEDIA_EXTENSIONS = (".mkv", ".mp4", ".m4v", ".mov", ".avi", ".webm", ".ts", ".m
 # them in Latin-1, and the targets are not a transliteration anyone would write by hand:
 # `\u00f8` and `\u00d8` become the DIGIT ZERO and `\u00f0` becomes a capital `O`. Two of
 # them are witnessed on zen's real library as well (`D\u00f8d Kalm` sorts as `D0d Kalm`
-# and `D\u00e6monicus` as `Demonicus`), which is what found the gap: simplex folded
+# and `D\u00e6monicus` as `Demonicus`), which is what found the gap: rex folded
 # combining marks only, so both rows carried no `titleSort` at all where a real PMS
 # sends one. Nothing above U+02FF folds -- Greek, Cyrillic and CJK all survive, as the
 # 51 non-ASCII rows of zen already showed.
@@ -211,7 +211,7 @@ def sort_title(title):
     """The title a real PMS sorts by: whitespace trimmed, combining marks folded
     away, then the leading English article stripped.
 
-    Cycle 14 re-measured this on zen (1.42.2, the build simplex reports) over all
+    Cycle 14 re-measured this on zen (1.42.2, the build rex reports) over all
     5,294 rows of a real library, because the old rule had only fun -- now out of
     scope -- as its witness and a five-clip lab has no title that can show the rest.
     Three things, in this order, reproduce 5,289 of those rows exactly:
@@ -237,7 +237,7 @@ def sort_title(title):
     The five rows this misses are Spanish `La` (4) and German `Das` (1). Those are
     NOT mechanical -- `Les hommes de la baleine`, `Die Die Delta Pi II` and
     `O Ultimo Portal` keep theirs -- so the article list is per-item language, which
-    simplex's catalog does not carry. Left alone deliberately; see docs/findings.md.
+    rex's catalog does not carry. Left alone deliberately; see docs/findings.md.
 
     Cycle 17 re-measured the leading trim on plexscratch character by character and
     found it is not whitespace alone: a leading run of PUNCTUATION comes off too, and
@@ -268,7 +268,7 @@ def sort_title(title):
     return _ARTICLE.sub("", trimmed or folded)
 
 
-# The title forms a real PMS generates when it has none of its own. A season simplex
+# The title forms a real PMS generates when it has none of its own. A season rex
 # synthesises is always one of them: `hierarchy` builds "Season %d" from the index.
 # Cycle 20, measured on zen's 741 real seasons: a real PMS generates THREE season
 # labels. `Specials` is season 0 (4 rows there, each `index: 0`) and `[Unknown Season]`
@@ -294,7 +294,7 @@ def stored_title(row):
 
     It is the same rule `stored_sort_title` reads from the other side: the generated
     title is composed for DISPLAY and stored nowhere, so nothing that queries the
-    column can see it. simplex synthesises every season title, so its seasons answered
+    column can see it. rex synthesises every season title, so its seasons answered
     a search for "season" where a real PMS answers none.
     """
     return "" if _GENERATED_TITLE.match(row.get("title") or "") \
@@ -318,17 +318,17 @@ def stored_sort_title(row):
       bucket of a season list answers none -- which is the other half of cycle 16's
       "the axis counts by the SHOW's sort title and the listing filters on the row's
       own". The listing half was implemented reading the row's TITLE when it stores
-      no sort title, so simplex's season buckets answered under `S`.
+      no sort title, so rex's season buckets answered under `S`.
     * `sort=titleSort` puts them first ascending and last descending, as an empty
       string does and as cycle 13's "no value sorts BELOW every value" says.
 
     The one season and the 176 episodes that DO store a sort title while reading
     `Season 1`/`Episode 1` are rows an agent gave that exact title to (kids' season 7
     gained its own in the metadata refresh recorded in HANDOVER 4.1, and zen's 176
-    carry `plex://episode` guids). simplex cannot tell those apart from a title it
+    carry `plex://episode` guids). rex cannot tell those apart from a title it
     generated itself, so it decides on the title FORM -- a proxy for the mechanism,
-    recorded in HANDOVER 3.3. Every season in a simplex catalog is synthesised here,
-    so the proxy is exact for the rows simplex actually holds.
+    recorded in HANDOVER 3.3. Every season in a rex catalog is synthesised here,
+    so the proxy is exact for the rows rex actually holds.
 
     An emptied title is NOT this case: a title write that empties a row regenerates
     `Season N`/`Episode N` and KEEPS the old title's sort form, which is measured and
@@ -347,12 +347,12 @@ def stored_sort_title(row):
         # stored sort title equal to the generated title as no sort title at all -- which is
         # exactly kids' season 7, the only row in either reference that can show the
         # difference. Measured there: `titleSort=Season 1` answers season 7, `titleSort=`
-        # answers season 11 alone, and `titleSort>>=Season 0` answers 7. simplex answered
+        # answers season 11 alone, and `titleSort>>=Season 0` answers 7. rex answered
         # NOTHING to the first and third and wrongly included the row in the second, under
         # every operator -- one clause with three visible symptoms.
         #
         # A row that stores no sort title at all still answers `""`, which is every season
-        # simplex synthesises for itself, so cycle 18's whole measured set is unchanged.
+        # rex synthesises for itself, so cycle 18's whole measured set is unchanged.
         if not row.get("titleSort"):
             return ""
     return row.get("titleSort") or title
@@ -368,18 +368,18 @@ def stored_sort_title(row):
 # `/library/people/${tag.tagKey}` for any server that is not plex.tv's cloud, so a tag
 # without one links every person tile to `/library/people/undefined`.
 #
-# simplex has no source for plex.tv's own person ids, so this MINTS one: the first 24
+# rex has no source for plex.tv's own person ids, so this MINTS one: the first 24
 # hex digits of the sha1 of the person's name, which is deterministic, stable across
 # restarts and the same length and alphabet as the real thing. That is a substitute for
 # a value, not a measurement of it -- the SHAPE is measured, the value is invented, and
 # `/library/people/{key}` resolves the minted form exactly as it resolves the numeric id
-# (both are 200s on a real PMS). It is the same shape as the `plex://` guids simplex
+# (both are 200s on a real PMS). It is the same shape as the `plex://` guids rex
 # already mints from TMDB ids.
 PERSON_TAG_ELEMENTS = ("Director", "Writer", "Role", "Producer")
 
 
 def person_tag_key(name):
-    """The 24-hex `tagKey` simplex mints for a person. See above."""
+    """The 24-hex `tagKey` rex mints for a person. See above."""
     # "plexsim/" is the pre-rename namespace, frozen: changing it re-mints every id it seeds.
     return hashlib.sha1(("plexsim-person:%s" % name).encode("utf-8")).hexdigest()[:24]
 
@@ -420,10 +420,10 @@ def normalize_rows(rows):
 
     * `titleSort` is emitted only when it differs from `title` -- 0 of 3,856 movies
       and 0 of 599 shows on fun carry an equal one -- and it is the stripped title.
-      simplex sent the unstripped title on every movie, so "The Simpsons" filed
+      rex sent the unstripped title on every movie, so "The Simpsons" filed
       under T, and every episode carried its SHOW's name.
     * `originalTitle` is the original-language title, present only when it differs
-      (`Twelve Monkeys` for `12 Monkeys`). simplex put the media FILENAME there, and
+      (`Twelve Monkeys` for `12 Monkeys`). rex put the media FILENAME there, and
       the client prints it on the preplay page, in the window title and as the
       OS media-session artist line.
     * No `Field` lock and no empty `Label` by default: a real row lists a locked
@@ -432,14 +432,14 @@ def normalize_rows(rows):
     * A movie has no `Location`; neither real server sends one.
     * `rating` is the CRITIC rating (Rotten Tomatoes on fun), absent when there is
       none -- the lab's own TMDB-matched movies carry only `audienceRating`.
-      simplex copied the TMDB vote into both.
+      rex copied the TMDB vote into both.
     * A season with a year of its own carries it, a `titleSort` EQUAL to its title
       (the one row type that does) and no `parentYear`; one without has
       `parentYear` only. A zero `skipCount` is omitted. An episode has no
       `chapterSource` without chapters. A show has `index: 1`, and its `Location`
       is `{path}` with no id -- the id belongs to a SECTION's location.
     * No row names a theme -- `theme`, `parentTheme`, `grandparentTheme` -- because
-      simplex has no theme audio and its theme endpoint 404s. Measured on fun: a show
+      rex has no theme audio and its theme endpoint 404s. Measured on fun: a show
       without a theme carries none of the three, on itself or its children, and the
       web client asks for whichever it finds when theme music is on.
     """
@@ -543,7 +543,7 @@ def normalize_rows(rows):
         if kind == "movie":
             row.pop("Location", None)
         if kind in ("movie", "show", "episode"):
-            # `rating` is the CRITIC rating and simplex copies the TMDB vote into both,
+            # `rating` is the CRITIC rating and rex copies the TMDB vote into both,
             # so it is dropped -- extended to EPISODE here because no episode on either
             # reference carries one (0 of 20 One Piece episodes on zen, 0 of 3 on kids).
             row.pop("rating", None)
@@ -554,7 +554,7 @@ def normalize_rows(rows):
             # shows (TV-14, TV-Y, TV-PG). A SEASON carries none on either server, and the
             # write side agrees: on a writable copy, editing the show's rating moved it
             # on the episodes that had none of their own and a show unmatch removed it
-            # from all of them. simplex left an episode with no certificate at all.
+            # from all of them. rex left an episode with no certificate at all.
             parent = by_key.get(str(row.get("grandparentRatingKey")))
             if parent and parent.get("contentRating"):
                 row["contentRating"] = parent["contentRating"]
@@ -564,10 +564,10 @@ def normalize_rows(rows):
             # well -- 60 of 60 One Piece episodes and 3 of 3 on the lab, with no
             # exception, while the unmatched episodes with no rating carry none of the
             # three and a SEASON never carries any of them (0 of 12 sampled across both
-            # servers). simplex built these for a show and a movie only, so its own
+            # servers). rex built these for a show and a movie only, so its own
             # episode rows contradicted its own movie rows and no episode page or
             # episode listing row drew a rating badge. A real PMS sends two agents'
-            # rows here (imdb and themoviedb); simplex has one agent, so it sends the
+            # rows here (imdb and themoviedb); rex has one agent, so it sends the
             # one row it can honestly source.
             row.setdefault("Rating", [{"image": "themoviedb://image.rating",
                                        "value": row["audienceRating"], "type": "audience"}])
@@ -586,7 +586,7 @@ def normalize_rows(rows):
             # away, because the rule below reads "has a year of its own" off that
             # column. A real Plex series agent gives a season the SHOW's year as
             # `parentYear`. A season's own year stays legal -- it is simply not what
-            # this builder produces, and this builder wrote every season simplex holds.
+            # this builder produces, and this builder wrote every season rex holds.
             if row.get("year") is not None and not stored_sort_titles.get(id(row)):
                 # The discriminator is the STORED SORT TITLE, and it is measured on both
                 # references: every season that carries a year of its own also stores
@@ -607,7 +607,7 @@ def normalize_rows(rows):
                 # agent stored, where the row DISPLAYS `Season 22`. Cycle 7 read kids'
                 # season 7 (`Season 1`, agent-supplied and therefore stored) as "a year
                 # means titleSort == title"; the year is a coincidence of a season an
-                # agent really identified. simplex generates every season title, so the
+                # agent really identified. rex generates every season title, so the
                 # general rule above is the right one: a derived sort title equal to the
                 # title is not sent -- which is what `stored_sort_title` has answered to
                 # `?titleSort=` all along, so the row and the filter now agree.
@@ -664,7 +664,7 @@ def _stamp_artwork(rows):
     """Version every artwork URL so a client cannot serve a stale poster.
 
     A real PMS emits `/library/metadata/<rk>/thumb/<version>` -- fun uses a
-    timestamp. simplex emitted a constant `/thumb/1`, so when a ratingKey was
+    timestamp. rex emitted a constant `/thumb/1`, so when a ratingKey was
     reused by a later catalog build the URL stayed identical while the image
     behind it changed: The Simpsons at rk=20001 rendered with The Mentalist's
     poster, cached by the client from a previous build.
@@ -814,7 +814,7 @@ def build(leaves):
                 # `metadata.py`. A season's own year stays possible (zen has exactly one
                 # such row of 742) and `normalize_rows` still applies the year /
                 # parentYear rule below; what changed is that a Plex series agent does
-                # not give a season one, so simplex's never should either.
+                # not give a season one, so rex's never should either.
                 "year": leaf.get("_season_year"),
                 # The season's EXTERNAL ids. Both references carry them on a season
                 # detail row; this pipeline fetched and discarded them until cycle 44.
@@ -865,7 +865,7 @@ def build(leaves):
         leaf["grandparentArt"] = show["art"]
         leaf["grandparentGuid"] = show.get("guid")
         # Measured on kids (1.43.4) and zen (1.42.2): an episode's `parentGuid` is the
-        # SEASON's own guid (`plex://season/...`), not the show's. simplex copied the
+        # SEASON's own guid (`plex://season/...`), not the show's. rex copied the
         # season's `parentGuid` -- which is the show, correct for the season row itself
         # and wrong on the leaf -- so every episode of a show claimed to belong to one
         # and the same "season", and a client that keys per-season artwork or state off

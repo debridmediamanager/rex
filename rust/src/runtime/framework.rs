@@ -268,7 +268,7 @@ impl Response {
             status,
             content_type: "application/xml".to_string(),
             body,
-            headers: vec![("X-Simplex-No-Head-Gzip".to_string(), "1".to_string())],
+            headers: vec![("X-Rex-No-Head-Gzip".to_string(), "1".to_string())],
             close: false,
         }
     }
@@ -728,7 +728,7 @@ impl Runtime {
             .collect::<Vec<_>>();
         if segments.len() >= 2 && segments[..2] == ["system", "proxy"] {
             // Cycle 22: every verb, GET included, answers its own 400.
-            return Some(Response::error(400, "simplex: bad request"));
+            return Some(Response::error(400, "rex: bad request"));
         }
         if under_system {
             if method == "OPTIONS" {
@@ -754,7 +754,7 @@ impl Runtime {
         }
         if path == "/:/plugins" && !matches!(method, "GET" | "HEAD") {
             // The listing is a read-only route: every other verb is the 404 document.
-            return Some(Response::error(404, "simplex: not found"));
+            return Some(Response::error(404, "rex: not found"));
         }
         if segments.len() > 2 && segments[..2] == ["system", "scanners"] {
             // Cycle 36: the type is a SIGNED 32-bit integer, guarded before the framework
@@ -765,10 +765,10 @@ impl Runtime {
                 match raw.parse::<i64>() {
                     Ok(number) if (-2_147_483_648..=2_147_483_647).contains(&number) => {
                         if number < 0 {
-                            return Some(Response::error(404, "simplex: not found"));
+                            return Some(Response::error(404, "rex: not found"));
                         }
                     }
-                    _ => return Some(Response::error(400, "simplex: bad request")),
+                    _ => return Some(Response::error(400, "rex: bad request")),
                 }
             }
         }
@@ -878,7 +878,7 @@ impl Runtime {
                         .and_then(|entry| entry.get("image"))
                         .and_then(Value::as_array)
                     else {
-                        return Response::error(404, "simplex: not found");
+                        return Response::error(404, "rex: not found");
                     };
                     let width = size.first().and_then(Value::as_u64).unwrap_or(1) as u32;
                     let height = size.get(1).and_then(Value::as_u64).unwrap_or(1) as u32;
@@ -896,7 +896,7 @@ impl Runtime {
                     .and_then(|entry| entry.get("text"))
                     .and_then(Value::as_str)
                 else {
-                    return Response::error(404, "simplex: not found");
+                    return Response::error(404, "rex: not found");
                 };
                 let kind = entry
                     .and_then(|entry| entry.get("textType"))
@@ -912,10 +912,10 @@ impl Runtime {
             }
         }
         if segments.len() == 3 && segments[..2] == ["system", "agents"] {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if segments.len() == 4 && segments[..2] == ["system", "agents"] && segments[3] == "config" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if route.starts_with("/system/agents/") {
             return Response::bare(404);
@@ -925,7 +925,7 @@ impl Runtime {
         }
         if segments.len() >= 2 && segments[..2] == ["system", "scanners"] {
             if segments.len() == 2 {
-                return Response::error(404, "simplex: not found");
+                return Response::error(404, "rex: not found");
             }
             return self.system_scanners(segments[2]);
         }
@@ -942,7 +942,7 @@ impl Runtime {
             return Response::bare(404);
         }
         if route.starts_with("/system/appstore") {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         if route == "/system/services/url/lookup" {
             // Cycle 87 (`server.py`): the traceback is the BARE request only. Any `url`
@@ -1007,13 +1007,13 @@ impl Runtime {
             .collect::<Vec<_>>();
         let owner = pieces.first().copied().unwrap_or_default();
         if !PLUGIN_LIST.contains(&owner) {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let bundle = tables.bundles.get(owner).filter(|value| value.is_object());
         let rest = &pieces[1..];
         if bundle.is_none() && !rest.is_empty() {
             // A bundle the server hosts but does not RUN answers the framework's 500.
-            return Response::error(500, "simplex: plug-in has no preferences");
+            return Response::error(500, "rex: plug-in has no preferences");
         }
         if rest == ["messaging", "wait"] && bundle.is_some() {
             return Response::framework_string(200, PLUGIN_WAIT.to_vec(), "text/plain");
@@ -1067,7 +1067,7 @@ impl Runtime {
         }
         if rest == ["prefs"] || rest == ["prefs", "list"] {
             let Some(document) = tables.prefs.get(owner).and_then(Value::as_str) else {
-                return Response::error(500, "simplex: plug-in has no preferences");
+                return Response::error(500, "rex: plug-in has no preferences");
             };
             return page_framework_document(document, query);
         }
@@ -1184,7 +1184,7 @@ impl Runtime {
             "2" => (2, &["Plex TV Series", "Plex Series Scanner"]),
             "8" | "9" => (3, &["Plex Music", "Plex Music Scanner"]),
             "13" => (1, &["Plex Photo Scanner"]),
-            _ => return Response::error(500, "simplex: internal error"),
+            _ => return Response::error(500, "rex: internal error"),
         };
         // Cycle 87, measured on zen, kids and plexscratch42, byte-identical on all three
         // and under every Accept. The MUSIC list is written by a different writer from
@@ -1465,7 +1465,7 @@ impl Runtime {
                 digits.parse::<i64>().ok()
             };
             match parsed {
-                None => return Response::error(400, "simplex: bad request"),
+                None => return Response::error(400, "rex: bad request"),
                 Some(-1) => wanted = None,
                 Some(n) => wanted = Some(n.to_string()),
             }
@@ -1666,7 +1666,7 @@ fn page_window(query: &HashMap<String, String>) -> Option<(usize, usize)> {
 /// the framework's serialiser has no JSON form, so `/system`, `/system/search`,
 /// `/system/library/sections` and `/system/scanners/{N}` answer the same
 /// `application/xml` document whatever Accept says -- only the bare `/system/agents`,
-/// which PMS implements itself, answers JSON. simplex answered JSON to all four.
+/// which PMS implements itself, answers JSON. rex answered JSON to all four.
 fn system_body(container: &Value) -> Response {
     Response::framework_document(200, xmlout::to_system_xml(container, None))
 }

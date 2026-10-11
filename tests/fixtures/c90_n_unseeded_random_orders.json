@@ -1,5 +1,5 @@
 {
- "_about": "Cycle 90 N: an UNSEEDED sort=random read 60 times in a row through the Android app's grid form, on two real PMSes, every order kept. A real PMS draws a fresh, uniform order per request: kids' five movies (120 orders) gave 44 distinct orders in 60 reads, what a uniform draw gives (expected 47.2); plexscratch42's 24 gave 60 of 60. simplex's CRC-32 of '<salt>/<ratingKey>' is affine in the salt, so a fresh salt only XORs every key with one mask: catalog_ui's six movies came out in 8 orders over 300 reads on both servers.",
+ "_about": "Cycle 90 N: an UNSEEDED sort=random read 60 times in a row through the Android app's grid form, on two real PMSes, every order kept. A real PMS draws a fresh, uniform order per request: kids' five movies (120 orders) gave 44 distinct orders in 60 reads, what a uniform draw gives (expected 47.2); plexscratch42's 24 gave 60 of 60. rex's CRC-32 of '<salt>/<ratingKey>' is affine in the salt, so a fresh salt only XORs every key with one mask: catalog_ui's six movies came out in 8 orders over 300 reads on both servers.",
  "request": {
   "method": "GET",
   "path": "/library/sections/1/all",

@@ -19,7 +19,7 @@ asserts that measured answer on `tests/catalog_ui.json`, not "the two servers ag
 - `X-Plex-Container-*` as QUERY parameters on `/folder` and `/recentlyViewedShows`.
 
     python3 tests/test_parity_vocabulary.py            # native
-    SIMPLEX_SERVER=python python3 tests/test_parity_vocabulary.py
+    REX_SERVER=python python3 tests/test_parity_vocabulary.py
 """
 import http.client
 import json
@@ -35,8 +35,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"Accept": "application/json", "X-Plex-Client-Identifier": "parity-vocabulary",
            "X-Plex-Product": "Plex Web", "X-Plex-Version": "4.147.1",

@@ -11,7 +11,7 @@ FOLLOW it in its own season, and stops at the season's end; a PUT add honours it
 way; and a season or show uri added to a queue adds its episodes. The native PUT added the
 bare episode, season or show row.
 
-Starts its own server (native by default, `SIMPLEX_SERVER=python` the oracle) on
+Starts its own server (native by default, `REX_SERVER=python` the oracle) on
 `tests/catalog_ui.json`, whose show 20001 has seasons 30002 [1002, 1003] and
 30004 [1005, 1006, 1010, 1011].
 """
@@ -69,9 +69,9 @@ def main():
     assert added[1] == ["21", "387", "388"] and added[2][:4] == ["21", "25", "26", "27"], added
     assert len(added[3]) == 9 and len(added[4]) == 18, added
     port = free_port()
-    env = dict(os.environ, SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
+    env = dict(os.environ, REX_PLEXTV_URL="http://127.0.0.1:9")
     env.pop("TMDB_KEY", None)
-    env.pop("SIMPLEX_STATE", None)
+    env.pop("REX_STATE", None)
     proc = subprocess.Popen(
         server_command("--port", str(port), "--catalog", "tests/catalog_ui.json",
                        "--assert-claimed", "--gdm", "off", root=ROOT),

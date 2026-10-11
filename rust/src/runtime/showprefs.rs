@@ -136,7 +136,7 @@ impl Runtime {
         request: &Request,
     ) -> Response {
         if request.method != "PUT" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let kind = row
             .get("type")
@@ -174,7 +174,7 @@ impl Runtime {
             }
         }
         if writes.iter().any(|(name, _)| !settings.contains(name)) {
-            return Response::error(400, "simplex: bad request");
+            return Response::error(400, "rex: bad request");
         }
         if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
             let stored = object
@@ -199,7 +199,7 @@ impl Runtime {
             if unmatched {
                 self.save_if_dirty();
                 info!("ITEM PREF showOrdering on an unmatched show -- 500");
-                return Response::error(500, "simplex: internal error");
+                return Response::error(500, "rex: internal error");
             }
             self.notify_show_cascade(key);
         }

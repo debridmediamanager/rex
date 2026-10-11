@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""manager.py: start and stop simplex servers from stored configurations.
+"""manager.py: start and stop rex servers from stored configurations.
 
-One long-lived process that, by default, runs no simplex server at all. A server is
+One long-lived process that, by default, runs no rex server at all. A server is
 created from a configuration (port, zurg, catalog, options), kept stopped
 until it is started, and supervised once it is: an unexpected exit is restarted with a
 backoff, and a server that keeps dying is marked failed instead of looping. What was
@@ -18,7 +18,7 @@ Everything lives under the root (default `managed/` beside this file, mode 700):
 
     manager.db              the servers and their configurations (mode 600: it holds keys)
     admin.token             the API's bearer token, generated on first start (mode 600)
-    servers/<name>/         simplex.db (the catalog and, for the native server, its state
+    servers/<name>/         rex.db (the catalog and, for the native server, its state
                             in the same file), server.log, build.log, tmdb_cache.json ...
 
 The API (JSON, `Authorization: Bearer <admin token>` on every route but the page at /):
@@ -34,7 +34,7 @@ The API (JSON, `Authorization: Bearer <admin token>` on every route but the page
     GET    /servers/<name>/build        that job's status and log tail
 
 Secrets reach a server through its environment (ZURG_URL, ZURG_USER, ZURG_PASSWORD,
-TMDB_KEY, PLEX_TOKEN, SIMPLEX_TOKEN), never its command line, which `ps` shows.
+TMDB_KEY, PLEX_TOKEN, REX_TOKEN), never its command line, which `ps` shows.
 Stdlib only, like the server path.
 """
 
@@ -64,14 +64,14 @@ import catalogdb  # noqa: E402
 
 DEFAULT_ROOT = os.path.join(HERE, "managed")
 DEFAULT_LISTEN = "127.0.0.1:32300"
-DEFAULT_BINARY = os.path.join(HERE, "rust", "target", "release", "simplex")
+DEFAULT_BINARY = os.path.join(HERE, "rust", "target", "release", "rex")
 
 NAME = re.compile(r"^[a-z0-9-]{1,40}$")
 SECRETS = ("zurg_password", "tmdb_key", "plex_token", "token")
 # What each environment field is called in the server's environment; the zurg URL and
 # user are not secret, but travel the same way.
 SECRET_ENV = {"zurg_url": "ZURG_URL", "zurg_user": "ZURG_USER", "zurg_password": "ZURG_PASSWORD",
-              "tmdb_key": "TMDB_KEY", "plex_token": "PLEX_TOKEN", "token": "SIMPLEX_TOKEN"}
+              "tmdb_key": "TMDB_KEY", "plex_token": "PLEX_TOKEN", "token": "REX_TOKEN"}
 STOP_GRACE = 15          # seconds between SIGTERM and SIGKILL; the server saves on SIGTERM
 FAILURE_WINDOW = 600     # a server that fails this often within ten minutes ...
 FAILURE_LIMIT = 5        # ... is marked failed rather than restarted again
@@ -310,7 +310,7 @@ class Manager:
         return os.path.join(self.root, "servers", name)
 
     def catalog_path(self, name):
-        return os.path.join(self.directory(name), "simplex.db")
+        return os.path.join(self.directory(name), "rex.db")
 
     # views
     def view(self, name):
@@ -388,7 +388,7 @@ class Manager:
 
     def environment(self, config):
         env = {key: value for key, value in os.environ.items()
-               if key not in SECRET_ENV.values() and key != "SIMPLEX_STATE"}
+               if key not in SECRET_ENV.values() and key != "REX_STATE"}
         for field, variable in SECRET_ENV.items():
             if config.get(field):
                 env[variable] = config[field]
@@ -666,8 +666,8 @@ class Manager:
                 raise Refused(409, "a build for %s is already running" % name)
             os.makedirs(self.directory(name), exist_ok=True)
             log = open(os.path.join(self.directory(name), "build.log"), "wb")
-            # SIMPLEX_MANAGER_BUILDER replaces the builder (tests/test_manager.py).
-            builder = os.environ.get("SIMPLEX_MANAGER_BUILDER") or os.path.join(HERE, "build_catalog.py")
+            # REX_MANAGER_BUILDER replaces the builder (tests/test_manager.py).
+            builder = os.environ.get("REX_MANAGER_BUILDER") or os.path.join(HERE, "build_catalog.py")
             argv = [sys.executable, builder, "--seed", "--out", self.catalog_path(name)]
             for field, flag in (("friendly_name", "--name"), ("zurg_mount", "--zurg-mount")):
                 if row["config"].get(field):
@@ -701,11 +701,11 @@ class Manager:
 # -- the API ----------------------------------------------------------------------
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>simplex manager</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>rex manager</title>
 <style>body{font:14px system-ui,sans-serif;margin:16px;max-width:960px}table{border-collapse:collapse;width:100%}
 td,th{border-bottom:1px solid #ccc;padding:4px 6px;text-align:left}input,select{margin:2px}
 pre{background:#f4f4f4;padding:8px;max-height:300px;overflow:auto}</style></head><body>
-<h1>simplex manager</h1>
+<h1>rex manager</h1>
 <p>Admin token: <input id=tok type=password size=40> <button onclick="save()">Use</button></p>
 <table><thead><tr><th>name<th>port<th>status<th>desired<th>last exit<th></tr></thead><tbody id=rows></tbody></table>
 <h2>New server</h2>
@@ -752,7 +752,7 @@ load();setInterval(load,3000);
 
 def make_handler(manager, admin_token):
     class Handler(BaseHTTPRequestHandler):
-        server_version = "simplex-manager"
+        server_version = "rex-manager"
 
         def log_message(self, fmt, *args):  # the request log goes to stderr, tokenless
             sys.stderr.write("%s %s\n" % (time.strftime("%H:%M:%S"), fmt % args))
@@ -887,14 +887,14 @@ def serve(args):
 # -- the CLI client ---------------------------------------------------------------
 
 def client_token(args):
-    if os.environ.get("SIMPLEX_MANAGER_TOKEN"):
-        return os.environ["SIMPLEX_MANAGER_TOKEN"]
+    if os.environ.get("REX_MANAGER_TOKEN"):
+        return os.environ["REX_MANAGER_TOKEN"]
     path = args.token_file or os.path.join(args.root, "admin.token")
     try:
         with open(path) as handle:
             return handle.read().strip()
     except OSError:
-        raise SystemExit("no admin token: set SIMPLEX_MANAGER_TOKEN or --token-file (looked in %s)" % path)
+        raise SystemExit("no admin token: set REX_MANAGER_TOKEN or --token-file (looked in %s)" % path)
 
 
 def call(args, method, path, body=None):
@@ -967,12 +967,12 @@ def main(argv=None):
 
     run = sub.add_parser("serve", help="run the manager")
     run.add_argument("--listen", default=DEFAULT_LISTEN, help="host:port of the API (default %(default)s)")
-    run.add_argument("--binary", default=DEFAULT_BINARY, help="the simplex executable (default %(default)s)")
+    run.add_argument("--binary", default=DEFAULT_BINARY, help="the rex executable (default %(default)s)")
     run.add_argument("--admin-token-file", help="read the API token here instead of <root>/admin.token")
 
     def clientish(p):
         p.add_argument("--url", default="http://" + DEFAULT_LISTEN)
-        p.add_argument("--token-file", help="the admin token (default <root>/admin.token; or SIMPLEX_MANAGER_TOKEN)")
+        p.add_argument("--token-file", help="the admin token (default <root>/admin.token; or REX_MANAGER_TOKEN)")
 
     create = sub.add_parser("create", help="define a server (stopped)")
     clientish(create)

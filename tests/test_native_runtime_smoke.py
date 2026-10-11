@@ -5,7 +5,7 @@ The large UI suite owns the exhaustive measured surface.  This driver keeps a
 short, repeatable denominator for the native routes added during phase 3, so a
 build check cannot accidentally become the only runtime evidence.  It is run
 against the native server, which ``tests/server_command.py`` selects by default;
-``SIMPLEX_SERVER=python`` is refused because these routes are native-only checks.
+``REX_SERVER=python`` is refused because these routes are native-only checks.
 """
 
 import json
@@ -44,7 +44,7 @@ def check(results, label, condition, detail=""):
 
 
 def main():
-    if (os.environ.get("SIMPLEX_SERVER") or "").strip() == "python":
+    if (os.environ.get("REX_SERVER") or "").strip() == "python":
         print("this suite checks the native executable, not the Python oracle", file=sys.stderr)
         return 2
     port = 32620

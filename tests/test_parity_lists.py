@@ -6,7 +6,7 @@ found by recording `tests/test_ui_surface.py` against the oracle and the native 
 and diffing every exchange. Each one failed on the native build before its fix.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `SIMPLEX_SERVER=python`.
+default, the oracle with `REX_SERVER=python`.
 
     python3 tests/test_parity_lists.py
 """
@@ -230,7 +230,7 @@ def test_written_prefs_stay_on_the_detail_row(server):
     server.call("PUT", "/library/metadata/20001/prefs?episodeSort=-1&useOriginalTitle=-1")
 
 
-IMAGE = b"\x89PNG\r\n\x1a\n" + b"simplex parity upload " * 3
+IMAGE = b"\x89PNG\r\n\x1a\n" + b"rex parity upload " * 3
 IMAGE_SHA1 = __import__("hashlib").sha1(IMAGE).hexdigest()
 
 
@@ -322,10 +322,10 @@ def test_transcoder_and_envelope(server):
 
 
 def main():
-    port = int(os.environ.get("SIMPLEX_TEST_PORT") or free_port())
+    port = int(os.environ.get("REX_TEST_PORT") or free_port())
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-               SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
-    for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+               REX_PLEXTV_URL="http://127.0.0.1:9")
+    for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
         env.pop(name, None)
     log = tempfile.TemporaryFile()
     proc = subprocess.Popen(

@@ -8,7 +8,7 @@ Library commits added, in the request's language.
   Plex Web 4.162.1 and python-plexapi 4.18.2 make for it whose answer moves between
   English and German, in en, de, fr and ja. A real PMS translates the library's Meta
   field, sort and operator titles, its `All Artists`/`By Album`/`Search ...` rows, the
-  three search prompts and its shelves' titles; simplex had none of them in its table.
+  three search prompts and its shelves' titles; rex had none of them in its table.
 - the random `music.vault` shelf's title, read in every language Plex Web sends over
   forty minutes: `Haven't played in %s months|years` is localised around the number.
 - zen's (1.42.2) answer to a movie library's `sorts?type=13`, the photo sorts: `Date Taken`
@@ -17,7 +17,7 @@ Library commits added, in the request's language.
   every language Plex Web sends and `hu-HU`: three of the lines are translated.
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `SIMPLEX_SERVER=python`.
+the oracle with `REX_SERVER=python`.
 
     python3 tests/test_parity_cycle87_a.py
 """
@@ -37,8 +37,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "c87_a_music_i18n_s42.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 
 results = []

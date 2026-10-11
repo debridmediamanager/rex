@@ -22,7 +22,7 @@ Both servers pruned the absorbed key and recounted live, so the solo collection 
 the copy answers 400 to every media-item DELETE (`allowMediaDeletion` true, media read-only).
 
 Drives a real server process (`tests/server_command.py`): the native binary by default,
-the oracle with `SIMPLEX_SERVER=python`.
+the oracle with `REX_SERVER=python`.
 
     python3 tests/test_parity_cycle87_b2.py
 """
@@ -44,8 +44,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "collection_merged_s43.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 HEADERS = {"X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome",
            "X-Plex-Client-Identifier": "parity-cycle87-b2", "Accept": "application/json"}
@@ -218,7 +218,7 @@ def reference_checks():
           and refused[2]["status"] == 200, [(e["method"], e["status"]) for e in refused])
 
 
-# -- simplex ---------------------------------------------------------------------------
+# -- rex ---------------------------------------------------------------------------
 
 def uri(port, *keys):
     machine = request(port, "GET", "/identity")[1]["MediaContainer"]["machineIdentifier"]
@@ -255,7 +255,7 @@ def all_say(port, key, expected, name):
         check("%s: %s says %s" % (name, path, expected), value == expected, value)
 
 
-def simplex_checks(port):
+def rex_checks(port):
     year = {}
     for key in (OUTSIDE, SOLO, OLDER, NEWER, ADDED):
         row = metadata(request(port, "GET", "/library/metadata/%s" % key)[1])[0]
@@ -348,7 +348,7 @@ def removal_reference_checks():
           and standing.get("C49Empty", {}).get("childCount") == 1, standing)
 
 
-def removal_simplex_checks(port):
+def removal_rex_checks(port):
     year = str(metadata(request(port, "GET", "/library/metadata/%s" % NEWER)[1])[0]["year"])
     paths = {
         "children": lambda key, title: request(
@@ -387,12 +387,12 @@ def main():
     removal_reference_checks()
     process, port = start()
     try:
-        simplex_checks(port)
+        rex_checks(port)
     finally:
         stop(process)
     process, port = start()
     try:
-        removal_simplex_checks(port)
+        removal_rex_checks(port)
     finally:
         stop(process)
     # The stale counts are stored state on the reference (its database never recounts), so a

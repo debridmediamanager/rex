@@ -148,7 +148,7 @@ def main():
 
     with tempfile.TemporaryDirectory() as directory:
         state_path = os.path.join(directory, "claim.json")
-        owner = claim.Claim("machine", state_path, version="1.42.2.10156-simplex")
+        owner = claim.Claim("machine", state_path, version="1.42.2.10156-rex")
         owner.token = "SERVER-TOKEN"
         owner.account_id = 42
         owner._save()

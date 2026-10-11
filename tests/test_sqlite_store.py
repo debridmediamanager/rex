@@ -6,7 +6,7 @@ history entry) rewritten whole on every save, and a client write is saved before
 is answered -- so a single rating on a large library rewrote the whole library. This
 suite holds what replaced it:
 
-* the default state is `simplex.db` beside a JSON catalog, a SQLite database whose
+* the default state is `rex.db` beside a JSON catalog, a SQLite database whose
   collections are stored a row per element;
 * one client write on a 20,000-row catalog touches a handful of rows, counted by
   SQLite triggers installed in the server's own database, and is saved without
@@ -19,11 +19,11 @@ suite holds what replaced it:
 * a catalog rebuilt inside that database keeps a `.stale` copy and carries view
   state, as a rebuilt JSON catalog does.
 
-Native-only checks are skipped under `SIMPLEX_SERVER=python`: the Python oracle keeps
+Native-only checks are skipped under `REX_SERVER=python`: the Python oracle keeps
 its pickle (a recorded deliberate difference) and only reads a database catalog.
 
     python3 tests/test_sqlite_store.py
-    SIMPLEX_SERVER=python python3 tests/test_sqlite_store.py
+    REX_SERVER=python python3 tests/test_sqlite_store.py
 """
 import copy
 import json
@@ -41,7 +41,7 @@ from test_persist import Instance, LIBRARY, check, first, results
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-NATIVE = os.environ.get("SIMPLEX_SERVER", "").strip() != "python"
+NATIVE = os.environ.get("REX_SERVER", "").strip() != "python"
 MAGIC = b"SQLite format 3\x00"
 
 
@@ -58,7 +58,7 @@ def is_sqlite(path):
 
 
 def workdir(name="catalog.json", document=None):
-    work = tempfile.mkdtemp(prefix="simplex-sqlite-")
+    work = tempfile.mkdtemp(prefix="rex-sqlite-")
     catalog = os.path.join(work, name)
     if document is None:
         shutil.copy(os.path.join(HERE, "catalog_ui.json"), catalog)
@@ -85,14 +85,14 @@ def scrobble(instance, key="1007"):
 
 def default_database():
     if not NATIVE:
-        return skip("the default state is simplex.db, stored by the row")
+        return skip("the default state is rex.db, stored by the row")
     work, catalog = workdir()
     try:
         server = Instance(catalog, default=True)
         scrobble(server)
         server.stop(signal.SIGKILL)
-        database = os.path.join(work, "simplex.db")
-        check("the default state is simplex.db beside the catalog, a SQLite database",
+        database = os.path.join(work, "rex.db")
+        check("the default state is rex.db beside the catalog, a SQLite database",
               is_sqlite(database), "files %s" % sorted(os.listdir(work)))
         if not is_sqlite(database):
             return
@@ -135,7 +135,7 @@ def one_write_touches_few_rows():
         return skip(name)
     work, catalog = workdir(document=large_catalog(20000))
     try:
-        state = os.path.join(work, "simplex.db")
+        state = os.path.join(work, "rex.db")
         server = Instance(catalog, state=state, wait=180)
         scrobble(server)
         server.stop()
@@ -187,7 +187,7 @@ def one_write_touches_few_rows():
 
 
 def legacy_migration():
-    name = "a legacy state.json is imported into simplex.db and kept aside"
+    name = "a legacy state.json is imported into rex.db and kept aside"
     if not NATIVE:
         return skip(name)
     work, catalog = workdir()
@@ -198,7 +198,7 @@ def legacy_migration():
         restored = (watched(server),
                     first(server.request("GET", "/library/metadata/1008")[1]).get("title"))
         server.stop()
-        database = os.path.join(work, "simplex.db")
+        database = os.path.join(work, "rex.db")
         check("the legacy state is served after the import",
               restored == (1, "Legacy Title"), "got %s" % (restored,))
         check(name, is_sqlite(database) and os.path.exists(legacy + ".migrated")

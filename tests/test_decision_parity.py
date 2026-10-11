@@ -22,11 +22,11 @@ import decision  # noqa: E402
 
 def native_command():
     configured = os.environ.get(
-        "SIMPLEX_NATIVE_BIN", os.path.join(ROOT, "rust", "target", "debug", "simplex")
+        "REX_NATIVE_BIN", os.path.join(ROOT, "rust", "target", "debug", "rex")
     )
     command = shlex.split(configured)
     if not command:
-        raise AssertionError("SIMPLEX_NATIVE_BIN must name the native binary")
+        raise AssertionError("REX_NATIVE_BIN must name the native binary")
     return command
 
 
@@ -79,7 +79,7 @@ def main():
         },
     ]
     command = native_command()
-    with tempfile.TemporaryDirectory(prefix="simplex-decision-parity-") as directory:
+    with tempfile.TemporaryDirectory(prefix="rex-decision-parity-") as directory:
         for media in probes:
             expected_outcome, expected_text = decision.decide("Android", media)
             path = os.path.join(directory, "media.json")

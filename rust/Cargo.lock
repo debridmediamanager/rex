@@ -373,6 +373,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
+name = "rex"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "libc",
+ "regex",
+ "rusqlite",
+ "rustls",
+ "rustls-pemfile",
+ "serde_json",
+ "sha1",
+]
+
+[[package]]
 name = "ring"
 version = "0.17.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -521,20 +535,6 @@ name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
-
-[[package]]
-name = "simplex"
-version = "0.1.0"
-dependencies = [
- "flate2",
- "libc",
- "regex",
- "rusqlite",
- "rustls",
- "rustls-pemfile",
- "serde_json",
- "sha1",
-]
 
 [[package]]
 name = "smallvec"

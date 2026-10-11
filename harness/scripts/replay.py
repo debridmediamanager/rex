@@ -2,7 +2,7 @@
 """Replay a captured client corpus against a server and diff the answers.
 
 This is the point of the harness. A corpus recorded from the official client
-against a real PMS is the reference; simplex is correct when it answers the
+against a real PMS is the reference; rex is correct when it answers the
 *same* requests with the same shapes. Requests are reissued byte-for-byte --
 same path, same query params in the same order, same X-Plex-* headers -- because
 a replay that drops the client's paging params hides exactly the fields that

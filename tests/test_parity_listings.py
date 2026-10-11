@@ -9,7 +9,7 @@ double-slash pass-through routes -- found by diffing the native server's answers
 against the oracle's over the whole UI suite.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `SIMPLEX_SERVER=python`.
+default, the oracle with `REX_SERVER=python`.
 
     python3 tests/test_parity_listings.py
 """
@@ -28,8 +28,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 
 HEADERS = {"Accept": "application/json", "X-Plex-Client-Identifier": "parity-listings",
@@ -418,7 +418,7 @@ def run(port):
     common = (mc(port, "/library/sections/1/common?type=1").get("Metadata") or [{}])[0]
     tags = [t for t in common.get("Collection") or [] if t.get("tag") == "Common Probe"]
     check("a shared collection tag on /common carries the collection's guid",
-          tags and tags[0].get("guid") == "collection://simplex-%s" % made.get("ratingKey"),
+          tags and tags[0].get("guid") == "collection://rex-%s" % made.get("ratingKey"),
           (status, common.get("Collection")))
 
     # -- type=18 ------------------------------------------------------------------------

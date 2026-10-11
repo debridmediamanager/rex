@@ -1,4 +1,4 @@
-//! The feed: sources push their items here, and simplex lists or queries no source.
+//! The feed: sources push their items here, and rex lists or queries no source.
 //!
 //! `docs/feed-api.md` is the reference. A request is authenticated by its source's feed
 //! token (never a Plex token), parsed, classified under the runtime lock, identified off
@@ -163,9 +163,9 @@ fn answer(status: u16, body: Value) -> Response {
     Response::json(status, body)
 }
 
-/// `/simplex/feed/{source}/{items|snapshot|held}`, outside the Plex gate.
+/// `/rex/feed/{source}/{items|snapshot|held}`, outside the Plex gate.
 pub(super) fn handle(shared: &SharedRuntime, request: &Request, path: &str) -> Response {
-    let rest = path.trim_start_matches("/simplex/feed/").trim_end_matches('/');
+    let rest = path.trim_start_matches("/rex/feed/").trim_end_matches('/');
     let (name, leaf) = rest.split_once('/').unwrap_or((rest, ""));
     let Some(source) = lock(shared).sources.iter().find(|source| source.name == name).cloned() else {
         return answer(404, json!({"error": "no such source"}));

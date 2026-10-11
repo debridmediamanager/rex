@@ -101,7 +101,7 @@ thread_local! {
 
 /// A `FilterError` raised on this thread, noted for the request that raised it: the
 /// oracle's `handle()` catches the exception, logs `REFUSED <route>: <detail>` at
-/// WARNING and answers `simplex: <detail>`, where the native routes carry only the
+/// WARNING and answers `rex: <detail>`, where the native routes carry only the
 /// status back up. The runtime clears the note before a request and reads it after.
 pub fn refusal(status: u16, detail: impl Into<String>) -> FilterError {
     let detail = detail.into();
@@ -311,7 +311,7 @@ fn parse_iso_epoch(value: &str) -> Option<f64> {
 
 // Python's `time.mktime` interprets naive ISO values in the process-local
 // timezone and applies its DST rules.  Use the same libc primitive on the Unix
-// hosts that run simplex; the calendar conversion is the deterministic fallback
+// hosts that run rex; the calendar conversion is the deterministic fallback
 // for targets without a local-time API.
 #[cfg(unix)]
 fn local_epoch(year: i64, month: u32, day: u32, hour: u32, minute: u32, second: u32) -> f64 {

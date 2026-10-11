@@ -12,7 +12,7 @@ TMDB and Plex answer from the same on-disk caches `rust/src/runtime/scan.rs`'s u
 writes (real ids); a lookup they miss goes out with a fake key and is refused, so the
 unidentified release stays unmatched.
 
-    python3 probes/legacy_scan_fixture.py --bin <acaa3cc build>/simplex --root <acaa3cc tree>
+    python3 probes/legacy_scan_fixture.py --bin <acaa3cc build>/rex --root <acaa3cc tree>
 """
 import argparse
 import base64
@@ -96,11 +96,11 @@ def zurg_stub(files):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bin", required=True, help="the acaa3cc build of rust/target/release/simplex")
+    parser.add_argument("--bin", required=True, help="the acaa3cc build of rust/target/release/rex")
     parser.add_argument("--root", required=True, help="the acaa3cc tree (its sidecars)")
     parser.add_argument("--out", default=os.path.join(HERE, "tests", "fixtures", "feed", "legacy_scan_rows.json"))
     args = parser.parse_args()
-    work = tempfile.mkdtemp(prefix="simplex-legacy-")
+    work = tempfile.mkdtemp(prefix="rex-legacy-")
     movie, episode = ENTRIES["movie"], ENTRIES["episode"]
     files = {
         "/dav/movies/%s/%s" % (movie["release"], movie["file"]): movie["entry"],
@@ -119,12 +119,12 @@ def main():
     json.dump(PLEX_CACHE, open(os.path.join(work, "plex_cache.json"), "w"))
     port = free_port()
     env = dict(os.environ, ZURG_URL="http://127.0.0.1:%d" % zurg_port, TMDB_KEY="fake", PLEX_TOKEN="fake",
-               SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
-    for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "ZURG_USER", "ZURG_PASSWORD"):
+               REX_PLEXTV_URL="http://127.0.0.1:9")
+    for name in ("REX_STATE", "REX_TOKEN", "ZURG_USER", "ZURG_PASSWORD"):
         env.pop(name, None)
     log = open(os.path.join(work, "server.log"), "wb")
     process = subprocess.Popen([args.bin, "--port", str(port), "--catalog", os.path.join(work, "catalog.json"),
-                                "--state", os.path.join(work, "simplex.db"), "--zurg-mount", "/zurg",
+                                "--state", os.path.join(work, "rex.db"), "--zurg-mount", "/zurg",
                                 "--assert-claimed", "--gdm", "off"], cwd=args.root, env=env, stdout=log,
                                stderr=subprocess.STDOUT)
     base = "http://127.0.0.1:%d" % port
@@ -147,7 +147,7 @@ def main():
         process.terminate()
         process.wait(timeout=30)
         log.close()
-    db = sqlite3.connect(os.path.join(work, "simplex.db"))
+    db = sqlite3.connect(os.path.join(work, "rex.db"))
     items = [json.loads(body) for (body,) in db.execute(
         "SELECT body FROM row WHERE coll = 'state:items' ORDER BY pos")]
     (next_key,) = db.execute("SELECT body FROM doc WHERE name = 'state:nextScanKey'").fetchone()

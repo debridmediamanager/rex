@@ -2,23 +2,23 @@
 """Cycle 87 W2: `/system/agents?mediaType=N` as Plex Web 4.162.1 asks for it.
 
 Driven by zen's recorded exchanges (`tests/fixtures/c87_w2_system_agents_zen.json`,
-1.42.2, the version simplex reports): the bare path and every `mediaType` from 1 to 22,
+1.42.2, the version rex reports): the bare path and every `mediaType` from 1 to 22,
 each with the Plex Web headers and `X-Plex-Container-Start/Size` (zen is production and
 is always paged), plus two windowed reads and the `/media/providers/metadata` table. The
 bodies are kept as RAW TEXT, because the point of two of these checks is the repeated
 `Language` / `MediaType` keys that any JSON parser collapses.
 
 - A legacy agent's `hasPrefs` and `primary` are JSON BOOLEANS and a bare-form
-  `MediaType`'s `mediaType` a NUMBER on kids and zen alike; simplex sent the strings
+  `MediaType`'s `mediaType` a NUMBER on kids and zen alike; rex sent the strings
   `"0"`/`"1"` its XML capture held.
 - Under paging the native server re-serialised the route's body and wrote each repeated
   `Language` key once (the last one); the oracle and both references repeat it.
 - `mediaType` 9, 10, 14, 20, 21 and 22 list the modern agents zen lists (Plex Music and
   Plex Personal Media for album/track, Personal Media for the photo and 20-22 types);
-  simplex listed none of them, and the provider table's `MetadataType` lists followed.
+  rex listed none of them, and the provider table's `MetadataType` lists followed.
 
 Drives a real server process (`tests/server_command.py`): the native binary by
-default, the oracle with `SIMPLEX_SERVER=python`.
+default, the oracle with `REX_SERVER=python`.
 
     python3 tests/test_followups_c87_w2.py
 """
@@ -37,8 +37,8 @@ ROOT = os.path.dirname(HERE)
 CATALOG = os.path.join("tests", "catalog_ui.json")
 FIXTURE = os.path.join(HERE, "fixtures", "c87_w2_system_agents_zen.json")
 ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-           SIMPLEX_PLEXTV_URL=os.environ.get("SIMPLEX_PLEXTV_URL", "http://127.0.0.1:9"))
-for name in ("SIMPLEX_STATE", "SIMPLEX_TOKEN", "TMDB_KEY"):
+           REX_PLEXTV_URL=os.environ.get("REX_PLEXTV_URL", "http://127.0.0.1:9"))
+for name in ("REX_STATE", "REX_TOKEN", "TMDB_KEY"):
     ENV.pop(name, None)
 
 results = []
@@ -183,7 +183,7 @@ def agent_lists(port, exchange):
     actual = [get(row, "identifier")[0] for row in got]
     if exchange["path"] == "/system/agents":
         # The bare list's ORDER of `lastfm` and `plexthememusic` is zen's own plug-in load
-        # order; kids and both scratch copies agree with simplex (`legacy_agents.json`).
+        # order; kids and both scratch copies agree with rex (`legacy_agents.json`).
         expected, actual = sorted(expected), sorted(actual)
     window = [get(container, key) for key in ("size", "totalSize", "offset")]
     got_window = [get(got_container, key) for key in ("size", "totalSize", "offset")]

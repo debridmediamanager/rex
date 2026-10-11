@@ -1,8 +1,8 @@
 # The decisive question: a real Plex client has a PERSISTENT
-# X-Plex-Client-Identifier. Fresh-identifier reads always saw simplex; reads
+# X-Plex-Client-Identifier. Fresh-identifier reads always saw rex; reads
 # from persistent identities (python-plexapi, heartbeat.is_visible) repeatedly
 # did not. If plex.tv caches the resource list per client identifier, then real
-# clients can go blind to simplex while my instrument says everything is fine --
+# clients can go blind to rex while my instrument says everything is fine --
 # which would make the fresh-identifier measurements worthless for the question
 # that matters.
 #
@@ -14,7 +14,7 @@ sys.path.insert(0, '.')
 import heartbeat
 
 TOKEN = os.environ["PLEX_TOKEN"]
-FIXED = "simplex-fixed-client-7f3a91"   # stands in for a real client's identity
+FIXED = "rex-fixed-client-7f3a91"   # stands in for a real client's identity
 
 def read(cid):
     req = urllib.request.Request(
@@ -24,18 +24,18 @@ def read(cid):
     with urllib.request.urlopen(req, timeout=25) as r:
         rows = json.load(r)
     names = [x.get("name") for x in rows if "server" in (x.get("provides") or "")]
-    return "simplex-spike" in names
+    return "rex-spike" in names
 
 print("t      fixed-id  fresh-id   note", flush=True)
 started = time.time()
 for i in range(13):
     note = ""
     if i == 6:
-        heartbeat.announce(TOKEN, "1366743689", "https://simplex.sarmiento.cc",
-                           name="simplex-spike")
+        heartbeat.announce(TOKEN, "1366743689", "https://rex.sarmiento.cc",
+                           name="rex-spike")
         note = "<- re-announced here"
     f = read(FIXED)
-    n = read("simplex-fresh-" + uuid.uuid4().hex[:12])
+    n = read("rex-fresh-" + uuid.uuid4().hex[:12])
     print("t+%-5ds %-9s %-10s %s"
           % (int(time.time() - started), "YES" if f else "no",
              "YES" if n else "no", note), flush=True)

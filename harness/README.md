@@ -18,7 +18,7 @@ and both bodies.
 
 | Axis | File | What it holds |
 |---|---|---|
-| client → server | `capture/sessions/<label>.jsonl` | what the official client asks for, and what a real PMS answers. The corpus simplex must match. |
+| client → server | `capture/sessions/<label>.jsonl` | what the official client asks for, and what a real PMS answers. The corpus rex must match. |
 | server → plex.tv | `capture/outbound.jsonl` | how a real PMS registers and re-announces itself — the traffic that makes a server *detected* rather than merely reachable. |
 
 Media bodies are recorded by length only. A 1.8 GB part read is a fact about
@@ -73,9 +73,9 @@ with no real media on disk.
     --token "$ACCOUNT_TOKEN" --server-token "$SERVER_TOKEN" --machine "$MACHINE_ID"
 
 .venv/bin/python scripts/replay.py --corpus capture/sessions/reference-walk.jsonl \
-    --target http://127.0.0.1:32500 --target-token "$SIMPLEX_TOKEN" \
+    --target http://127.0.0.1:32500 --target-token "$REX_TOKEN" \
     --reference http://127.0.0.1:32400 --reference-token "$SERVER_TOKEN" \
-    --out capture/diffs/simplex.md
+    --out capture/diffs/rex.md
 ```
 
 `replay.py` reissues each request byte-for-byte — same path, same query params

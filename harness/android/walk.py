@@ -8,7 +8,7 @@ out/<label>/steps.json maps each step to the capture-line range it produced.
 import json, os, re, subprocess, sys, time
 import xml.etree.ElementTree as ET
 
-C = os.path.join(os.environ.get("DROID_WORK", os.path.expanduser("~/simplex-android")), "N")
+C = os.path.join(os.environ.get("DROID_WORK", os.path.expanduser("~/rex-android")), "N")
 ser, label, MLIB, MTITLE, SLIB, STITLE = sys.argv[1:7]
 ONLY = sys.argv[7:]
 OUT = f"{C}/out/{label}"

@@ -3,12 +3,12 @@
 Cycle 70's instrument. Plex for Android (2026.9.0 then; **2026.19.1**, versionCode 971050475,
 since cycle 94) is a **React Native app compiled to Hermes
 bytecode**, a codebase separate from Plex Web, so it builds its own requests. This directory drives
-the real app in a local arm64 emulator through mitmproxy, pinned to exactly one server (simplex or a
+the real app in a local arm64 emulator through mitmproxy, pinned to exactly one server (rex or a
 writable reference copy), and records every exchange the way `harness/scripts/tap.py` does for the
 web client.
 
 Nothing here holds a token. State and captures live in `$DROID_WORK` (default
-`~/simplex-android`); tokens come from `$DROID_TOKENS` (default `$DROID_WORK/tokens.env`, mode 600,
+`~/rex-android`); tokens come from `$DROID_TOKENS` (default `$DROID_WORK/tokens.env`, mode 600,
 `ACCOUNT_TOKEN=` plus whatever server tokens you pin to).
 
 ## Setup (once)
@@ -108,7 +108,7 @@ each writes a UI dump, a screenshot and the capture-line range it produced.
   `WebsocketsForPms` feature** (uuid `0668d10e-...`, from `/api/v2/features`); the test account
   lacks it. `featinject.py` adds it to the answer in the proxy (nothing is written to plex.tv);
   load it BEFORE `tap.py` so the tap records the edited body. The socket carries the ACCOUNT
-  token, not the server's: a simplex started with `--token` 401s it. `wstap.py` logs every frame
+  token, not the server's: a rex started with `--token` 401s it. `wstap.py` logs every frame
   and the close (`wslog=`); mitmproxy does not count ping/pong frames as messages.
 * **Pin a copy on Tailscale through a local relay** when the proxy has to see it: droid only maps
   `10.0.2.2:32588` to loopback, and a `100.x` connection bypasses the proxy entirely; with a

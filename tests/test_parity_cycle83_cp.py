@@ -5,8 +5,8 @@ Each check replays a reference exchange recorded in `tests/fixtures/cycle83_cp.j
 plexscratch42, both PMS 1.42.2) and asserts the measured value, not agreement between the two
 servers.
 
-Starts its own server (native by default, `SIMPLEX_SERVER=python` the oracle,
-`SIMPLEX_SERVER=/path/to/binary` any build) on `tests/catalog_ui.json`, without `--state`.
+Starts its own server (native by default, `REX_SERVER=python` the oracle,
+`REX_SERVER=/path/to/binary` any build) on `tests/catalog_ui.json`, without `--state`.
 """
 import http.client
 import json
@@ -42,8 +42,8 @@ def free_port():
 class Server:
     def __init__(self):
         self.port = free_port()
-        env = dict(os.environ, SIMPLEX_PLEXTV_URL="http://127.0.0.1:9")
-        for name in ("TMDB_KEY", "SIMPLEX_STATE"):
+        env = dict(os.environ, REX_PLEXTV_URL="http://127.0.0.1:9")
+        for name in ("TMDB_KEY", "REX_STATE"):
             env.pop(name, None)
         self.proc = subprocess.Popen(
             server_command("--port", str(self.port), "--catalog", "tests/catalog_ui.json",

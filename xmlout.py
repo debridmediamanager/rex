@@ -9,7 +9,7 @@ hardcoding one giant XML string per response; that does not survive a second
 endpoint, so this is the real mapping.
 
 Booleans go on the wire as 1/0 and `None` is dropped, both because that is what
-a real PMS emits and because simplex's own clients gate on attribute presence.
+a real PMS emits and because rex's own clients gate on attribute presence.
 """
 
 
@@ -35,7 +35,7 @@ _METADATA_ELEMENT = {
 
 # The order a row's child elements come in, measured on both servers across movie,
 # show and episode reads with every include option: media first, then artwork, then
-# the tags, then the blocks an option adds. simplex wrote them in whatever order the
+# the tags, then the blocks an option adds. rex wrote them in whatever order the
 # row dict held them -- Genre before Image, Guid after the people, Preferences after
 # Extras -- 41 pairs inverted. A child not listed keeps its place after these.
 # Cycle 19: a LIGHT row -- a section grid's, a hub shelf's, a search hit's -- puts
@@ -68,14 +68,14 @@ _CHILD_ORDER = {name: index for index, name in enumerate((
 
 # Cycle 16, measured on kids and zen: inside a `Meta/Type` the order is
 # `Filter, Sort, Field` -- which is NOT the item order above, where `Field` comes
-# before `Location`. simplex sorted these three by the item table, which knows only
+# before `Location`. rex sorted these three by the item table, which knows only
 # `Field`, so they came out in whatever order the dict held: `Field, Filter, Sort`.
 _TYPE_CHILD_ORDER = {name: index for index, name in enumerate(
     ("Filter", "Sort", "Field"))}
 
 # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): inside a `Meta` the two `Type`
 # rows come BEFORE the eight `FieldType` rows -- `Type, Type, FieldType x8` on a movie
-# library's `?includeMeta=1`. simplex sorted them by the item table, which knows
+# library's `?includeMeta=1`. rex sorted them by the item table, which knows
 # neither name, so the stable sort left the dict's own order and every Meta came out
 # `FieldType x8, Type, Type`. It gets the same pair right where they sit directly on
 # the container (`?includeDetails=1` is `Directory x20, Type, FieldType x8` on all
@@ -90,7 +90,7 @@ _META_CHILD_ORDER = {name: index for index, name in enumerate(("Type", "FieldTyp
 # NEWLINE and CR are HEX (`&#xA;`, `&#xD;`); every codepoint from U+0080 up becomes its
 # DECIMAL reference, astral plane included (an emoji is `&#128512;`, one reference and
 # not a surrogate pair); and every control character XML 1.0 forbids is replaced with a
-# literal `?`. simplex used `xml.sax.saxutils.quoteattr`, which writes `&quot;`, leaves
+# literal `?`. rex used `xml.sax.saxutils.quoteattr`, which writes `&quot;`, leaves
 # `'` alone, sends the newline as decimal and passes every non-ASCII character through
 # raw -- a different body from a real PMS on every response carrying an accent or an
 # apostrophe, which on a real library is most of them.
@@ -138,7 +138,7 @@ _ATTR_ORDER = {
         # `/library/sections/{id}/common`, a single-row form on both servers. zen's
         # sequence is a superset of kids'.
         # Cycle 23, measured on kids and zen: the GRANDPARENT pair LEADS the element
-        # and the PARENT pair comes before `ratingKey`. simplex appended all four
+        # and the PARENT pair comes before `ratingKey`. rex appended all four
         # after the scalars, because this bucket knew none of them.
         "grandparentRatingKey", "grandparentTitle",
         # Cycle 25: `userRating` follows `mixedFields` directly, ahead of `guid` --
@@ -150,14 +150,14 @@ _ATTR_ORDER = {
     ),
     "Feature": (
         # `/media/providers`. Only the scrobble feature carries the first two, and
-        # both references put them FIRST; simplex appended them.
-        # Cycle 22: `flavor` leads a `Feature` on both references; simplex
+        # both references put them FIRST; rex appended them.
+        # Cycle 22: `flavor` leads a `Feature` on both references; rex
         # appended it, the same topological-sort gap as `Part` above.
         "flavor",
         "scrobbleKey", "unscrobbleKey", "key", "type"
     ),
     "Type": (
-        # A `Meta/Type` row. simplex sorted it alphabetically -- `active, key, title,
+        # A `Meta/Type` row. rex sorted it alphabetically -- `active, key, title,
         # type` -- where both references answer `key, type, title, active`.
         "key", "type", "title", "active", "activeDirection"
     ),
@@ -187,7 +187,7 @@ _ATTR_ORDER = {
     ),
     # Cycle 41 measured these four writable tag children on disposable copies of
     # both supported PMS versions. Like Genre/Country they are exactly
-    # `id, filter, tag` in JSON and XML; without their own buckets simplex kept the
+    # `id, filter, tag` in JSON and XML; without their own buckets rex kept the
     # catalog dict's `id, tag, filter` construction order.
     "Collection": (
         "id", "filter", "tag"
@@ -240,7 +240,7 @@ _ATTR_ORDER = {
         "librarySectionTitle", "librarySectionID", "librarySectionKey",
         # Cycle 21: `parentSummary` comes directly after `parentTitle`, before
         # `summary` -- measured on the season rows of `/library/recentlyAdded`, the one
-        # list that carries it, on both references. simplex appended it.
+        # list that carries it, on both references. rex appended it.
         "parentTitle", "parentSummary", "summary", "index", "parentIndex",
         "viewCount", "skipCount", "viewOffset", "lastViewedAt", "includedAt",
         "userRating",
@@ -276,9 +276,9 @@ _ATTR_ORDER = {
     ),
     "Agent": (
         # Cycle 27, measured on kids and zen: a MODERN agent row leads `identifier,
-        # name`, where simplex emitted its builder's dict order. Cycle 19 parked "the
+        # name`, where rex emitted its builder's dict order. Cycle 19 parked "the
         # Agent element's attribute order" on the LEGACY pairs (`hasPrefs < identifier
-        # < primary`), which the rows simplex actually emits do not carry.
+        # < primary`), which the rows rex actually emits do not carry.
         "identifier", "name", "hasPrefs", "id", "primary"
     ),
     "Agent[legacy]": (
@@ -315,7 +315,7 @@ _ATTR_ORDER = {
     ),
     "Sort": (
         # Cycle 27, measured on kids and zen over five `includeMeta=1` paths: a `Sort`
-        # row leads with the ACTIVE pair, not with `default`. simplex had no `Sort`
+        # row leads with the ACTIVE pair, not with `default`. rex had no `Sort`
         # bucket, so the two flags it adds last came out last.
         "active", "activeDirection", "default", "defaultDirection", "descKey",
         "firstCharacterKey", "key", "title"
@@ -445,7 +445,7 @@ _LIBRARY_SECTION_LEAD = {"allowSync": -6, "librarySectionID": -5,
 # with `librarySectionTitle` before `ratingKey`, and a `/hubs/search` hit puts its own
 # `score` second. HANDOVER 3.3 carried this as single-witness because the driver could
 # only reproduce it on zen -- kids' hubs answered no `Video` for the queries that cycle
-# tried. `query=Sintel` hits on kids, and both references then agree exactly. simplex
+# tried. `query=Sintel` hits on kids, and both references then agree exactly. rex
 # carried both fields and put `librarySectionTitle` after `title` and `score` LAST.
 #
 # It needs a marker rather than a signal read off the row: `/library/all` and
@@ -489,7 +489,7 @@ def _attr_bucket(name, row):
     if name in ("Video", "Directory", "Track", "Playlist"):
         if row.get("agent") is not None or row.get("scanner") is not None:
             # Cycle 19: the library `Directory` of `/media/providers` is a DIFFERENT
-            # order from `/library/sections`'s, and simplex reused one bucket for
+            # order from `/library/sections`'s, and rex reused one bucket for
             # both. Measured identically on kids and zen: the provider form is
             # `agent, language, refreshing, scanner, uuid, id, key, hubKey, type,
             # title, updatedAt, scannedAt` where the section form leads `allowSync,
@@ -516,7 +516,7 @@ def _format(key, value, row):
     Measured: a real PMS writes most floats the way Python does (`audienceRating`
     is `"5.0"`, never `"5"`), but a stream's `frameRate` always carries three
     decimals (`"24.000"`, `"29.970"`), and a `double` Setting's whole value drops
-    its fraction (`requestLimitsScale` is `value="1"`). simplex wrote `"24.0"` and
+    its fraction (`requestLimitsScale` is `value="1"`). rex wrote `"24.0"` and
     `"1.0"`.
     """
     if isinstance(value, float) and not isinstance(value, bool):
@@ -526,7 +526,7 @@ def _format(key, value, row):
         # its score with FIVE decimals in XML (`score="0.52000"`, `score="0.93095"`) and
         # sends the same value as a plain number in JSON. It is the one place on the
         # surface where the score is a float rather than the string `/hubs/search`
-        # carries, so it is the only one this rule can reach -- and simplex wrote
+        # carries, so it is the only one this rule can reach -- and rex wrote
         # Python's own `"0.32"` there, a string no real PMS sends.
         if key == "score":
             return "%.5f" % value
@@ -597,7 +597,7 @@ def _split(name, row, container=False):
         children.sort(key=lambda child: 0 if child == "Meta" else 1)
         # Cycle 16, measured on kids and zen over five containers: the ATTRIBUTES come
         # out `size`, then `totalSize` and `offset` when the container is paged, then
-        # everything else alphabetically. simplex emitted whatever order its dict held.
+        # everything else alphabetically. rex emitted whatever order its dict held.
         lead = {"size": 0, "totalSize": 1, "offset": 2}
         if "noHistory" in attrs:
             # Cycle 18, measured on kids and zen: the PLUG-IN FRAMEWORK's container
@@ -636,7 +636,7 @@ def _split(name, row, container=False):
             # although `local` would sort third alphabetically. A FIXED bucket list fits
             # the same data; the type split is the model that also answers for an
             # attribute neither witness carried, and HANDOVER 3.3 records the pair.
-            # simplex emitted whatever order its builder's dict happened to hold.
+            # rex emitted whatever order its builder's dict happened to hold.
             attrs.sort(key=lambda key: (not isinstance(row.get(key), str), key))
             return attrs, children
         if row.get("_session"):
@@ -667,7 +667,7 @@ def ordered(container, overrides=None):
     Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a real PMS's JSON object
     keys come out in exactly its XML order -- the container's attributes, then its
     child keys; a row's attributes in the row's attribute order, then its child
-    element keys. simplex ordered the XML alone and left the JSON in whatever order
+    element keys. rex ordered the XML alone and left the JSON in whatever order
     the dict that built it held, so the two formats disagreed on every response. It
     costs a correct parser nothing, and that is the same reason cycle 17's attribute
     order mattered anyway: the document is a measurement.
@@ -689,7 +689,7 @@ def ordered(container, overrides=None):
                 # them `/library/sections/{id}/common` bucketed its row as
                 # `Video[common]`, which no index knows, so its JSON keys stayed in
                 # build order while the XML sorted them by the `Common` bucket -- the
-                # last place simplex's two writers contradicted each other, which cycle
+                # last place rex's two writers contradicted each other, which cycle
                 # 19 established a real PMS never does.
                 out[key] = [walk(_element_name(key, entry, overrides), entry)
                             for entry in value]
@@ -718,10 +718,10 @@ def ordered(container, overrides=None):
 # Cycle 27, measured on kids and zen: two more names join the table. An empty `Type`
 # (a `Meta/Type` row with no `Filter`, `Sort` or `Field`, which is what
 # `/hubs/home/recentlyAdded?includeMeta=1` answers) and an empty `Related` block are
-# both written PAIRED on both references, where simplex self-closed them.
+# both written PAIRED on both references, where rex self-closed them.
 # Cycle 50 added `Playlist`, the eighth: a playlist row with no children is
 # `<Playlist ...>\n</Playlist>` on zen, kids and plexscratch42 -- the ordinary rows of
-# `/playlists` and the background-processing row alike -- where simplex self-closed it.
+# `/playlists` and the background-processing row alike -- where rex self-closed it.
 # `PlayQueue`, in the same container family, self-closes on every one of them.
 _ALWAYS_PAIRED = ("Feature", "MediaContainer", "Stream", "Extras", "Media",
                   "Activity", "Type", "Related", "Playlist",
@@ -730,7 +730,7 @@ _ALWAYS_PAIRED = ("Feature", "MediaContainer", "Stream", "Extras", "Media",
                   "Common",
                   # Cycle 87: the six legacy `/system/agents` rows with no `MediaType`
                   # (fanarttv, htbackdrops, ...) are `<Agent ...>\n</Agent>` on kids
-                  # and zen alike; simplex self-closed them.
+                  # and zen alike; rex self-closed them.
                   "Agent")
 _PAIRED_WITH_EMPTY_CHILDREN = ("Hub",)
 
@@ -830,7 +830,7 @@ def to_xml(container, elements=None):
             container=(root.endswith("Container") or root in _ROOT_NAMES))
     # Cycle 22, measured on zen (236 newlines in one movie's document) and kids (34):
     # a real PMS writes ONE element per line, with no indentation, and the document
-    # ends with a newline. simplex joined the pieces with nothing, so every XML
+    # ends with a newline. rex joined the pieces with nothing, so every XML
     # response was a single line -- which changes `Content-Length` on all of them and
     # what a `Range` read of a container returns (cycle 16: `Range` applies to every
     # body). `_render` now ends each tag with its own newline.

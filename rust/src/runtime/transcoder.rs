@@ -62,10 +62,10 @@ impl Runtime {
     ) -> Response {
         for name in ["width", "height"] {
             let Some(value) = query.get(name).filter(|value| !value.is_empty()) else {
-                return Response::photo_error(400, "simplex: bad request");
+                return Response::photo_error(400, "rex: bad request");
             };
             if !photo_int(value) {
-                return Response::photo_error(400, "simplex: bad request");
+                return Response::photo_error(400, "rex: bad request");
             }
         }
         for name in ["opacity", "quality", "blur", "minSize", "upscale"] {
@@ -73,20 +73,20 @@ impl Runtime {
                 continue;
             };
             if !photo_int(value) {
-                return Response::photo_error(400, "simplex: bad request");
+                return Response::photo_error(400, "rex: bad request");
             }
             if matches!(name, "minSize" | "upscale") && !photo_bool(value) {
-                return Response::photo_error(400, "simplex: bad request");
+                return Response::photo_error(400, "rex: bad request");
             }
             if name == "blur"
                 && value.starts_with('-')
                 && value.trim_start_matches(['-', '0']) != ""
             {
-                return Response::photo_error(500, "simplex: server error");
+                return Response::photo_error(500, "rex: server error");
             }
         }
         let Some(url) = query.get("url") else {
-            return Response::photo_error(400, "simplex: bad request");
+            return Response::photo_error(400, "rex: bad request");
         };
         let target = percent_decode(url);
         let scheme = url_scheme(&target);
@@ -120,13 +120,13 @@ impl Runtime {
             return transcoded(response);
         }
         if scheme.is_some() || !target.starts_with('/') {
-            return Response::photo_error(404, "simplex: not found");
+            return Response::photo_error(404, "rex: not found");
         }
         let (inner, _) = target.split_once('?').unwrap_or((target.as_str(), ""));
         if let Some(relative) = inner.strip_prefix("/:/resources/") {
             let response = self.route_bundled_resource(relative, false);
             if response.status != 200 {
-                return Response::photo_error(response.status, "simplex: not found");
+                return Response::photo_error(response.status, "rex: not found");
             }
             let mut response = response;
             response
@@ -136,7 +136,7 @@ impl Runtime {
             return transcoded(response);
         }
         if IN_TRANSCODE.with(|cell| cell.get()) {
-            return Response::photo_error(404, "simplex: not found");
+            return Response::photo_error(404, "rex: not found");
         }
         let segments = inner
             .split('/')
@@ -144,7 +144,7 @@ impl Runtime {
             .collect::<Vec<_>>();
         if segments.last() == Some(&"metadata") && segments.contains(&"theme") {
             // A GET that MINTS a row must not run from here.
-            return Response::photo_error(500, "simplex: server error");
+            return Response::photo_error(500, "rex: server error");
         }
         let mut headers = super::inner_headers(request);
         headers.insert("accept".to_string(), "application/json".to_string());
@@ -181,7 +181,7 @@ impl Runtime {
         TRANSCODE_SIZE.with(|cell| cell.set(None));
         if fetched.status != 200 {
             // Every refusal the direct path makes -- 400, 404, 500 -- is a 404 here.
-            return Response::photo_error(404, "simplex: not found");
+            return Response::photo_error(404, "rex: not found");
         }
         // Cycle 83: an upload is served `image/jpeg` whatever its bytes, and the
         // transcoder DECODES them -- 32 bytes of text is its 500 on plexscratch42 -- so a
@@ -193,7 +193,7 @@ impl Runtime {
                 && !artwork::image_type(&fetched.body).starts_with("image/"))
         {
             self.pending_image = None;
-            return Response::photo_error(500, "simplex: server error");
+            return Response::photo_error(500, "rex: server error");
         }
         // The direct path answered with a remote image it has not fetched yet: the
         // transcoder asks for it at the variant nearest ITS width (`_at_width` over the
@@ -217,7 +217,7 @@ impl Runtime {
     }
 }
 
-/// `_at_width` (`TMDB_WIDTHS`): simplex cannot resize, so a TMDB url is re-pointed at the
+/// `_at_width` (`TMDB_WIDTHS`): rex cannot resize, so a TMDB url is re-pointed at the
 /// smallest published variant at least as wide as the client asked for.
 pub(super) fn tmdb_at_width(url: &str, width: Option<&str>) -> String {
     const TMDB_WIDTHS: [i64; 7] = [92, 154, 185, 342, 500, 780, 1280];

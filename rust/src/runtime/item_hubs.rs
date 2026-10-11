@@ -231,7 +231,7 @@ impl Runtime {
         query: &HashMap<String, String>,
     ) -> Response {
         if leaf != "related" && leaf != "postplay" {
-            return Response::error(404, "simplex: not found");
+            return Response::error(404, "rex: not found");
         }
         let row = if !rating_key.is_empty() && rating_key.bytes().all(|b| b.is_ascii_digit()) {
             let trimmed = rating_key.trim_start_matches('0');
@@ -247,7 +247,7 @@ impl Runtime {
             if leaf == "related" {
                 return Response::json(200, self.hub_container(Map::new()));
             }
-            return Response::error(404, "simplex: no such item");
+            return Response::error(404, "rex: no such item");
         };
         let mut hubs = self.related_hubs(row, query, leaf == "related");
         if leaf == "related" {
