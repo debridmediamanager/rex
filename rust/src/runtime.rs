@@ -11130,18 +11130,32 @@ impl Runtime {
             .get("includeLibraryPlaylists")
             .is_some_and(|value| is_true_option(value));
 
-        let items = self.section_rows(section_key);
-        let episodes = self
+        // References into the catalog, and a shelf projects only the rows it shows: every
+        // shelf copied and projected the whole section to answer 12 rows -- 10-37 s for
+        // fun's 27k episodes (2026-10-11), with every other request waiting on the lock.
+        let items = self
             .catalog
             .items()
             .iter()
-            .filter(|row| {
-                row.get("type").and_then(Value::as_str) == Some("episode")
-                    && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+            .filter(|item| {
+                matches!(item.get("type").and_then(Value::as_str), Some("movie" | "show"))
+                    && string_value(item.get("librarySectionID").unwrap_or(&Value::Null))
                         == section_key
             })
-            .cloned()
-            .collect::<Vec<_>>();
+            .collect::<Vec<&Value>>();
+        let episodes = if is_show {
+            self.catalog
+                .items()
+                .iter()
+                .filter(|row| {
+                    row.get("type").and_then(Value::as_str) == Some("episode")
+                        && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                            == section_key
+                })
+                .collect::<Vec<&Value>>()
+        } else {
+            Vec::new()
+        };
 
         // Cycle 57/58: the section's Continue Watching shelf is the same list as its
         // see-all leaf (`section_continue_watching`): the library's resume rows, a
@@ -11194,27 +11208,31 @@ impl Runtime {
                     .unwrap_or(false)
             });
         }
-        released.sort_by(|left, right| {
-            string_value(right.get("originallyAvailableAt").unwrap_or(&Value::Null)).cmp(
-                &string_value(left.get("originallyAvailableAt").unwrap_or(&Value::Null)),
-            )
+        released.sort_by_cached_key(|row| {
+            std::cmp::Reverse(string_value(row.get("originallyAvailableAt").unwrap_or(&Value::Null)))
         });
 
-        let mut added = self.section_recently_added_rows(section);
+        let mut added_tv = if is_show { self.section_recently_added_rows(section) } else { Vec::new() };
+        let mut added: Vec<&Value>;
         if is_show {
             // Cycle 54, measured on kids and zen: the TV shelf here runs the request's
             // filters over the episodes, and `contentDirectoryID` naming another
             // library empties it -- the other shelves keep their rows.
             match self.filtered_tv_leaves(query, true) {
                 Ok(Some(leaves)) => {
-                    added = self.recently_added_tv(Some(&section_key.to_string()), Some(leaves))
+                    added_tv = self.recently_added_tv(Some(&section_key.to_string()), Some(leaves))
                 }
                 Ok(None) => {}
                 Err(status) => return Response::error(status, "simplex: bad request"),
             }
             if content_directories(query).is_some_and(|wanted| !wanted.contains(section_key)) {
-                added.clear();
+                added_tv.clear();
             }
+            added = added_tv.iter().collect();
+        } else {
+            // `section_recently_added_rows`' movie order: the section's rows, newest first.
+            added = items.clone();
+            added.sort_by_key(|row| -row.get("addedAt").and_then(Value::as_i64).unwrap_or(0));
         }
 
         let mut top_unwatched = items.clone();
@@ -11242,7 +11260,7 @@ impl Runtime {
         let mut unstarted = items.clone();
         unstarted.retain(|show| {
             let key = key_of(show).unwrap_or_default();
-            self.leaves(&key).iter().all(|leaf| {
+            self.leaves_refs(&key).iter().all(|leaf| {
                 leaf.get("viewCount").and_then(Value::as_i64).unwrap_or(0) == 0
                     && leaf.get("viewOffset").and_then(Value::as_i64).unwrap_or(0) == 0
             })
@@ -11255,7 +11273,7 @@ impl Runtime {
                 .is_some_and(|value| value >= 7.0)
                 && {
                     let key = key_of(show).unwrap_or_default();
-                    self.leaves(&key)
+                    self.leaves_refs(&key)
                         .iter()
                         .any(|leaf| leaf.get("viewCount").and_then(Value::as_i64).unwrap_or(0) == 0)
                 }
@@ -11285,8 +11303,8 @@ impl Runtime {
             // way Python's `max` over a dict picks it: a hash map's order made the
             // shelf's genre (and so its hubIdentifier) change from one read to the
             // next, and `count=1` then named a different hub than the full read.
-            let mut counts: Vec<(String, (Value, Vec<Value>))> = Vec::new();
-            for row in &items {
+            let mut counts: Vec<(String, (Value, Vec<&Value>))> = Vec::new();
+            for &row in &items {
                 for tag in row
                     .get("Genre")
                     .and_then(Value::as_array)
@@ -11300,9 +11318,9 @@ impl Runtime {
                         continue;
                     }
                     if let Some(entry) = counts.iter_mut().find(|(known, _)| known == name) {
-                        entry.1 .1.push(row.clone());
+                        entry.1 .1.push(row);
                     } else {
-                        counts.push((name.to_string(), (tag.clone(), vec![row.clone()])));
+                        counts.push((name.to_string(), (tag.clone(), vec![row])));
                     }
                 }
             }
@@ -11338,13 +11356,34 @@ impl Runtime {
         let mut hubs = Vec::new();
         let mut make_shelf = |identifier: String,
                               shelf_title: String,
-                              source_rows: Vec<Value>,
+                              source_rows: Vec<&Value>,
                               kind: &str,
                               key: String,
                               context: &str,
                               promoted: bool,
                               random: bool| {
             let total = source_rows.len();
+            let mut source_rows = source_rows;
+            if random && source_rows.len() > 1 {
+                // Cycles 28 and 30, measured on zen: a `random="1"` shelf is a random
+                // SAMPLE of its whole key set in random order -- `movie.topunwatched.1`'s
+                // 30 rows sat at positions 26 to 579 of 583, not monotonic -- and the
+                // sample is STABLE per (shelf, `count=`) across reads and clients. The
+                // oracle mints one seed per pair for the life of the process. Sorting by
+                // ratingKey was neither: the same lowest keys on every run, in key order.
+                // The shuffle reads only the length, so it runs before the projection.
+                shelf_sample(&identifier, count, &mut source_rows);
+            }
+            // Cycle 28: a negative count is `len(rows) + count` clamped at zero, and it
+            // always reports the shelf as exhausted.
+            let mut exhausted = false;
+            let mut limit = count.unwrap_or(6);
+            if limit < 0 {
+                limit = (source_rows.len() as i64 + limit).max(0);
+                exhausted = true;
+            }
+            let shelf_limit = limit as usize;
+            source_rows.truncate(shelf_limit);
             let mut rows = source_rows
                 .into_iter()
                 .map(|row| {
@@ -11356,7 +11395,7 @@ impl Runtime {
                         // `includePreferences` and `includeRelated` each add their block
                         // to Firefly's row and to no light row -- the oracle's
                         // `expand_full_rows` over `/hubs/sections/{id}`.
-                        let mut full = self.detail_row(&row);
+                        let mut full = self.detail_row(row);
                         self.expand_full_rows(std::slice::from_mut(&mut full), query);
                         full
                     } else {
@@ -11364,34 +11403,15 @@ impl Runtime {
                         // `Guid` on a library hub page's rows too.
                         // The oracle's `_grid_row`: a shelf row keeps its `Media` (Parts
                         // without Streams) and its librarySection fields.
-                        let mut shown = self.grid_row(&row, true, false, false);
+                        let mut shown = self.grid_row(row, true, false, false);
                         if include_guids {
                             // Except on an unmatched row, which has no Guid key.
-                            apply_listing_guids(&mut shown, &row);
+                            apply_listing_guids(&mut shown, row);
                         }
                         shown
                     }
                 })
                 .collect::<Vec<_>>();
-            if random && rows.len() > 1 {
-                // Cycles 28 and 30, measured on zen: a `random="1"` shelf is a random
-                // SAMPLE of its whole key set in random order -- `movie.topunwatched.1`'s
-                // 30 rows sat at positions 26 to 579 of 583, not monotonic -- and the
-                // sample is STABLE per (shelf, `count=`) across reads and clients. The
-                // oracle mints one seed per pair for the life of the process. Sorting by
-                // ratingKey was neither: the same lowest keys on every run, in key order.
-                shelf_sample(&identifier, count, &mut rows);
-            }
-            // Cycle 28: a negative count is `len(rows) + count` clamped at zero, and it
-            // always reports the shelf as exhausted.
-            let mut exhausted = false;
-            let mut limit = count.unwrap_or(6);
-            if limit < 0 {
-                limit = (rows.len() as i64 + limit).max(0);
-                exhausted = true;
-            }
-            let shelf_limit = limit as usize;
-            rows.truncate(shelf_limit);
             if let Some(excluded) = query.get("excludeFields") {
                 let names = excluded.split(',').collect::<HashSet<_>>();
                 for row in &mut rows {
@@ -11436,7 +11456,7 @@ impl Runtime {
         make_shelf(
             format!("{prefix}.inprogress.{section_key}"),
             "Continue Watching".to_string(),
-            in_progress,
+            in_progress.iter().collect(),
             if is_show { "episode" } else { "movie" },
             format!("/hubs/sections/{section_key}/continueWatching/items"),
             if is_show {

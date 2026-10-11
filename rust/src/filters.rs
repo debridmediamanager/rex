@@ -1043,20 +1043,18 @@ pub fn evaluate_with(
         return Ok(true);
     }
     if let Some(op) = tree.get("op").and_then(Value::as_str) {
-        let rules = tree
-            .get("rules")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
+        // Borrowed, as is an unscoped candidate below: copying the rules and the whole
+        // row for every rule of every row was most of a filtered listing (fun, 2026-10-11).
+        let rules: &[Value] = tree.get("rules").and_then(Value::as_array).map_or(&[], Vec::as_slice);
         if op == "and" {
-            for rule in &rules {
+            for rule in rules {
                 if !evaluate_with(rule, row, value_of, resolve)? {
                     return Ok(false);
                 }
             }
             return Ok(true);
         }
-        for rule in &rules {
+        for rule in rules {
             if evaluate_with(rule, row, value_of, resolve)? {
                 return Ok(true);
             }
@@ -1067,18 +1065,13 @@ pub fn evaluate_with(
     let kind = tree.get("type").and_then(Value::as_str).unwrap_or("string");
     let operator = tree.get("operator").and_then(Value::as_str).unwrap_or("=");
     let wanted = tree.get("value").and_then(str_actual).unwrap_or_default();
-    let candidates = if let Some(resolve) = resolve {
-        if let Some(scope) = tree.get("scope").and_then(Value::as_str) {
-            if !scope.is_empty() {
-                resolve(scope, row)
-            } else {
-                vec![row.clone()]
-            }
-        } else {
-            vec![row.clone()]
-        }
-    } else {
-        vec![row.clone()]
+    let scope = tree.get("scope").and_then(Value::as_str).filter(|scope| !scope.is_empty());
+    let candidates: Vec<std::borrow::Cow<'_, Value>> = match (resolve, scope) {
+        (Some(resolve), Some(scope)) => resolve(scope, row)
+            .into_iter()
+            .map(std::borrow::Cow::Owned)
+            .collect(),
+        _ => vec![std::borrow::Cow::Borrowed(row)],
     };
     for candidate in candidates {
         if field == "title" && operator == "=" {

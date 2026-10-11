@@ -100,6 +100,11 @@ impl Runtime {
             .collect();
         for show in order {
             let mut episodes = shows.remove(&show).unwrap_or_default();
+            // A show with no play and no resume point has no row: skip it before the
+            // sort, which ran over every episode of the library on each call.
+            if !episodes.iter().any(|row| truthy(row, "viewOffset") || truthy(row, "viewCount")) {
+                continue;
+            }
             if !include_hidden && episodes.iter().any(|row| self.hidden_from_continue(row)) {
                 continue;
             }
@@ -519,9 +524,9 @@ impl Runtime {
                 .collect(),
         };
         if let Some(section) = section_number(section_id) {
+            let section = section.to_string();
             leaves.retain(|row| {
-                string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
-                    == section.to_string()
+                string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
             });
         }
         // Measured on plexscratch (1.43.4): a show whose effective `flattenSeasons` skips
@@ -531,69 +536,79 @@ impl Runtime {
         // ROW says (`apply_flatten_projection`); the stored row keeps its season, and this
         // roll-up reads the stored rows. The oracle once took the key off the stored row,
         // and this grouped a flattened show's episodes under no season to match it.
-        let season_of = |leaf: &Value| -> String {
-            string_value(leaf.get("parentRatingKey").unwrap_or(&Value::Null))
-        };
-        let seasons_of = leaves.iter().map(|leaf| season_of(leaf)).collect::<Vec<_>>();
-        let mut season_order: Vec<String> = Vec::new();
-        let mut by_season: HashMap<String, Vec<&Value>> = HashMap::new();
-        let mut show_order: Vec<String> = Vec::new();
-        let mut by_show: HashMap<String, Vec<&Value>> = HashMap::new();
-        let mut leaf_season: HashMap<String, String> = HashMap::new();
-        for (leaf, season) in leaves.iter().zip(seasons_of) {
-            leaf_season.insert(key_of(leaf).unwrap_or_default(), season.clone());
-            let show = string_value(leaf.get("grandparentRatingKey").unwrap_or(&Value::Null));
-            if !by_season.contains_key(&season) {
-                season_order.push(season.clone());
+        // Each leaf's key, season and show, read once and borrowed below: allocating them
+        // again for every map and lookup was most of this roll-up over fun's 27k episodes.
+        let named = leaves
+            .iter()
+            .map(|leaf| {
+                (
+                    *leaf,
+                    key_of(leaf).unwrap_or_default(),
+                    string_value(leaf.get("parentRatingKey").unwrap_or(&Value::Null)),
+                    string_value(leaf.get("grandparentRatingKey").unwrap_or(&Value::Null)),
+                )
+            })
+            .collect::<Vec<_>>();
+        let mut by_season: HashMap<&str, Vec<(&Value, &str)>> = HashMap::new();
+        let mut show_order: Vec<&str> = Vec::new();
+        let mut by_show: HashMap<&str, Vec<&str>> = HashMap::new();
+        let mut leaf_season: HashMap<&str, &str> = HashMap::new();
+        for (leaf, key, season, show) in &named {
+            leaf_season.insert(key.as_str(), season.as_str());
+            by_season.entry(season.as_str()).or_default().push((*leaf, key.as_str()));
+            if !by_show.contains_key(show.as_str()) {
+                show_order.push(show.as_str());
             }
-            by_season.entry(season).or_default().push(*leaf);
-            if !by_show.contains_key(&show) {
-                show_order.push(show.clone());
-            }
-            by_show.entry(show).or_default().push(*leaf);
+            by_show.entry(show.as_str()).or_default().push(key.as_str());
         }
-        let mut rows: Vec<&Value> = Vec::new();
-        let mut claimed: HashSet<String> = HashSet::new();
+        // An episode row carries its key for the claimed-season pass at the end.
+        let mut rows: Vec<(&Value, Option<&str>)> = Vec::new();
+        let mut claimed: HashSet<&str> = HashSet::new();
         for show_key in &show_order {
-            let show_leaves = &by_show[show_key];
             let show = self.catalog.get(show_key);
-            let mut seasons: Vec<String> = Vec::new();
-            for leaf in show_leaves {
-                let season = leaf_season
-                    .get(&key_of(leaf).unwrap_or_default())
-                    .cloned()
-                    .unwrap_or_default();
+            let mut seasons: Vec<&str> = Vec::new();
+            for key in &by_show[show_key] {
+                let season = leaf_season.get(key).copied().unwrap_or_default();
                 if !seasons.contains(&season) {
                     seasons.push(season);
                 }
             }
             if let Some(show) = show {
                 if seasons.len() > 1 {
-                    rows.push(show);
+                    rows.push((show, None));
                     claimed.extend(seasons);
                     continue;
                 }
             }
             for season_key in seasons {
-                let members = by_season.get(&season_key).cloned().unwrap_or_default();
-                match self.catalog.get(&season_key) {
+                let members = by_season.get(season_key).map(Vec::as_slice).unwrap_or_default();
+                match self.catalog.get(season_key) {
                     Some(season) if members.len() > 1 => {
-                        rows.push(season);
+                        rows.push((season, None));
                         claimed.insert(season_key);
                     }
-                    _ => rows.extend(members),
+                    _ => rows.extend(members.iter().map(|(leaf, key)| (*leaf, Some(*key)))),
                 }
             }
         }
-        rows.retain(|row| {
+        rows.retain(|(row, key)| {
             !(row.get("type").and_then(Value::as_str) == Some("episode")
-                && leaf_season
-                    .get(&key_of(row).unwrap_or_default())
+                && key
+                    .and_then(|key| leaf_season.get(key))
                     .is_some_and(|season| claimed.contains(season)))
         });
+        let rows = rows.into_iter().map(|(row, _)| row).collect::<Vec<_>>();
         let mut dated = rows
             .into_iter()
-            .map(|row| (self.newest_leaf_stamp(row), row))
+            .map(|row| {
+                // An episode is its own only leaf: looking up its (absent) children for
+                // each of the library's episodes was most of this roll-up.
+                if row.get("type").and_then(Value::as_str) == Some("episode") {
+                    (row.get("addedAt").and_then(Value::as_i64).unwrap_or(0), row)
+                } else {
+                    (self.newest_leaf_stamp(row), row)
+                }
+            })
             .collect::<Vec<_>>();
         dated.sort_by_key(|(stamp, _)| -stamp);
         dated
