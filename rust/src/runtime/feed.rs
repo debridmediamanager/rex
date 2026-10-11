@@ -387,11 +387,17 @@ fn upsert(shared: &SharedRuntime, source: &Source, values: &[Value], mut seen: O
                     let had = row.map(row_ids).unwrap_or_default();
                     // ponytail: a row holding several releases is not re-identified by one of
                     // them; splitting the release back out is Split's job.
+                    // An id that named nothing when it came is tried again on each push:
+                    // 285 of fun's shows sat on `local://` with zurg's exact id (2026-10-11),
+                    // an episode's IMDb id that `tmdb_find_imdb` did not read yet.
+                    let unnamed = row.and_then(|row| row.get("_identify")).is_some_and(|report| {
+                        ["tmdb", "plex"].iter().all(|field| report.get(*field).is_none_or(Value::is_null))
+                    });
                     let reidentify = named
                         && row.is_some_and(|row| versions(row).len() < 2)
                         && match (&item.imdb, &item.tmdb) {
-                            (Some(imdb), _) => had.get("imdb").map(string_value).as_deref() != Some(imdb.as_str()),
-                            (None, Some(tmdb)) => had.get("tmdb").map(string_value).as_deref() != Some(tmdb.as_str()),
+                            (Some(imdb), _) => unnamed || had.get("imdb").map(string_value).as_deref() != Some(imdb.as_str()),
+                            (None, Some(tmdb)) => unnamed || had.get("tmdb").map(string_value).as_deref() != Some(tmdb.as_str()),
                             _ => false,
                         };
                     Plan::Row { key, adopt, reidentify }

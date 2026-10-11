@@ -25,6 +25,7 @@ import os
 import shutil
 import socket
 import socketserver
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -240,6 +241,51 @@ def catalog(work, items=(), name="catalog.json", next_key=None):
     json.dump(document, open(os.path.join(work, name), "w"))
     for cache, rows in (("tmdb_cache.json", CACHE["tmdb"]), ("plex_cache.json", CACHE["plex"])):
         json.dump(rows, open(os.path.join(work, cache), "w"))
+
+
+def retry_unnamed(bytes_port):
+    """An id that named nothing is tried again on the next push, on its own server."""
+    work = tempfile.mkdtemp(prefix="rex-feed-unnamed-")
+    catalog(work)
+    server = Server(work, bytes_port)
+    try:
+        # -- an id that named nothing is tried again on the next push --------------------
+        # fun, 2026-10-11: zurg pushed Arrow's season pack with the IMDb id DMM knows its
+        # hash by, the pilot's (tt2340185). TMDB's /find answers an episode's id under
+        # `tv_episode_results`, which rex did not read, so the show stayed on `local://`, and
+        # every later push carried the same id, which re-identified nothing.
+        answers = json.load(open(os.path.join(FIXTURES, "feed", "episode_id_answers.json")))
+        arrow_path = answers["file"][len("/mnt/zurg/"):]
+        arrow = {"id": arrow_path, "path": arrow_path, "file": "%s/%s" % (MOUNT, arrow_path),
+                 "name": answers["release"], "release": "shows/" + answers["release"],
+                 "size": ENTRIES["episode"]["entry"]["size"], "hash": answers["hash"],
+                 "media_info": ENTRIES["episode"]["entry"]["media_info"], "ids": {"imdb": "tt2340185"}}
+        server.feed("POST", "items", {"items": [arrow]})
+        arrow_key = server.keys().get(arrow["id"])
+        first = server.row(arrow_key)
+        arrow_show = first.get("grandparentRatingKey")
+        check("an id no provider answered leaves the show unmatched",
+              arrow_key and first.get("grandparentGuid") == "local://%s" % arrow_show, first.get("grandparentGuid"))
+        # The providers answer now, as they did on fun once the request was one they knew.
+        for cache, rows in (("tmdb_cache.db", answers["tmdb"]), ("plex_cache.db", answers["plex"])):
+            with sqlite3.connect(os.path.join(work, cache)) as db:
+                db.executemany("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)",
+                               [(key, json.dumps(value)) for key, value in rows.items()])
+        status, body = server.feed("POST", "items", {"items": [arrow]})
+        show = server.row(arrow_show)
+        check("the same push again identifies it: the show by the episode's id, on its key",
+              status == 200 and body.get("updated") == 1 and server.keys().get(arrow["id"]) == arrow_key
+              and show.get("guid") == "plex://show/5d9c086c02391c001f5891cf" and show.get("title") == "Arrow",
+              (body, show.get("guid"), show.get("title")))
+        check("the show is known by its own IMDb id, not the pilot's",
+              {"id": "imdb://tt2193021"} in (server.row(arrow_key).get("Guid") or [])
+              or {"id": "imdb://tt2193021"} in (show.get("Guid") or []),
+              (show.get("Guid"), server.row(arrow_key).get("Guid")))
+        status, body = server.feed("POST", "items", {"items": [arrow]})
+        check("and once named, the same push changes nothing", body.get("unchanged") == 1, body)
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def main():
@@ -510,6 +556,7 @@ def main():
         server = Server(legacy_work, bytes_port)
         check("a restart keeps the adopted keys", server.keys() == keys, server.keys())
         shutil.rmtree(legacy_work, ignore_errors=True)
+        retry_unnamed(bytes_port)
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)

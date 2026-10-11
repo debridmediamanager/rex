@@ -1,0 +1,77 @@
+{
+ "_about": "fun rex's own cached answers for Arrow (2026-10-11): DMM's id for the release is the pilot's, tt2340185; trimmed to what identification reads",
+ "tmdb": {
+  "https://api.themoviedb.org/3/find/tt2340185?external_source=imdb_id&api_key=KEY": {
+   "movie_results": [],
+   "person_results": [],
+   "tv_results": [],
+   "tv_episode_results": [
+    {
+     "id": 64111,
+     "show_id": 1412,
+     "name": "Pilot",
+     "season_number": 1,
+     "episode_number": 1
+    }
+   ],
+   "tv_season_results": []
+  },
+  "https://api.themoviedb.org/3/tv/1412?append_to_response=credits%2Cexternal_ids%2Ccontent_ratings%2Crelease_dates&api_key=KEY": {
+   "id": 1412,
+   "name": "Arrow",
+   "first_air_date": "2012-10-10",
+   "overview": "Spoiled billionaire playboy Oliver Queen is missing and presumed dead when his yacht is lost at sea. He returns five years later a changed man, determined to clean up the city as a hooded vigilante armed with a bow.",
+   "external_ids": {
+    "imdb_id": "tt2193021",
+    "tvdb_id": 257655
+   },
+   "number_of_seasons": 8
+  }
+ },
+ "plex": {
+  "POST /library/metadata/matches {\"guid\": \"imdb://tt2340185\", \"type\": 2}": {
+   "MediaContainer": {
+    "librarySectionID": "home",
+    "librarySectionTitle": "Metadata",
+    "offset": 0,
+    "totalSize": 0,
+    "identifier": "tv.plex.provider.metadata",
+    "size": 0,
+    "Metadata": []
+   }
+  },
+  "POST /library/metadata/matches {\"guid\": \"tmdb://1412\", \"type\": 2}": {
+   "MediaContainer": {
+    "librarySectionID": "home",
+    "librarySectionTitle": "Metadata",
+    "offset": 0,
+    "totalSize": 1,
+    "identifier": "tv.plex.provider.metadata",
+    "size": 1,
+    "Metadata": [
+     {
+      "guid": "plex://show/5d9c086c02391c001f5891cf",
+      "title": "Arrow",
+      "year": 2012,
+      "type": "show",
+      "Guid": [
+       {
+        "id": "imdb://tt2193021"
+       },
+       {
+        "id": "tmdb://1412"
+       },
+       {
+        "id": "tvdb://257655"
+       }
+      ],
+      "slug": "arrow"
+     }
+    ]
+   }
+  }
+ },
+ "file": "/mnt/zurg/shows/Arrow.S06.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-EPSiLON/Arrow.S06E01.Fallout.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-EPSiLON.mkv",
+ "hash": "5660cd16629e66278bde7feb412a6390c0bbfa77",
+ "release": "Arrow.S06.1080p.BluRay.REMUX.AVC.DTS-HD.MA.5.1-EPSiLON"
+}
