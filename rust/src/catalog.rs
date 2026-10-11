@@ -35,20 +35,17 @@ pub struct Changes {
 
 impl Catalog {
     pub fn from_value(value: Value) -> Result<Self, String> {
-        let document = value
-            .as_object()
-            .cloned()
-            .ok_or_else(|| "catalog must be a JSON object".to_string())?;
-        let sections = document
-            .get("sections")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
-        let items = document
-            .get("items")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
+        let Value::Object(mut document) = value else {
+            return Err("catalog must be a JSON object".to_string());
+        };
+        // Taken out of the document, which keeps the keys in place (`to_value` writes them
+        // back): copying them held every row twice for the life of the server.
+        let mut take_array = |name: &str| match document.get_mut(name).map(Value::take) {
+            Some(Value::Array(rows)) => rows,
+            _ => Vec::new(),
+        };
+        let sections = take_array("sections");
+        let items = take_array("items");
         let mut catalog = Self {
             document,
             sections,
@@ -116,6 +113,11 @@ impl Catalog {
     }
 
     pub fn children(&self, parent_key: &str) -> Vec<Value> {
+        self.children_refs(parent_key).into_iter().cloned().collect()
+    }
+
+    /// `children` without the copies, for callers that only read or count.
+    pub fn children_refs(&self, parent_key: &str) -> Vec<&Value> {
         let index = self.children_index.get_or_init(|| {
             let mut index: HashMap<String, Vec<usize>> = HashMap::new();
             for (position, item) in self.items.iter().enumerate() {
@@ -133,7 +135,6 @@ impl Catalog {
             .into_iter()
             .flatten()
             .filter_map(|position| self.items.get(*position))
-            .cloned()
             .collect()
     }
 

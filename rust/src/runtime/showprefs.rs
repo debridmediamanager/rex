@@ -70,7 +70,7 @@ impl Runtime {
     pub(super) fn show_flattened(&self, show: &Value) -> bool {
         let value = self.show_pref(show, "flattenSeasons");
         value == "1"
-            || (value == "2" && self.children(&key_of(show).unwrap_or_default()).len() <= 1)
+            || (value == "2" && self.children_refs(&key_of(show).unwrap_or_default()).len() <= 1)
     }
 
     /// The row effects of `flattenSeasons=1`, applied where a row is projected: the

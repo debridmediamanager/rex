@@ -80,14 +80,16 @@ impl Runtime {
             .map(|row| (stamp_of(row), row.clone()))
             .collect();
         let mut order: Vec<String> = Vec::new();
-        let mut shows: HashMap<String, Vec<Value>> = HashMap::new();
+        // References: copying every episode of the library here, once per call and three
+        // calls per `/hubs`, was most of the home screen's 1.9 GB (fun, 2026-10-10).
+        let mut shows: HashMap<String, Vec<&Value>> = HashMap::new();
         for row in self.catalog.items() {
             if row.get("type").and_then(Value::as_str) == Some("episode") {
                 let show = string_value(row.get("grandparentRatingKey").unwrap_or(&Value::Null));
                 if !shows.contains_key(&show) {
                     order.push(show.clone());
                 }
-                shows.entry(show).or_default().push(row.clone());
+                shows.entry(show).or_default().push(row);
             }
         }
         let played_libraries: HashSet<String> = shows
@@ -109,13 +111,10 @@ impl Runtime {
             });
             // `max` keeps the FIRST maximal element in Python; iterate in order and
             // replace only on a strictly greater stamp.
-            let mut chosen: Option<Value> = None;
-            for row in episodes.iter().filter(|row| truthy(row, "viewOffset")) {
-                if chosen
-                    .as_ref()
-                    .map_or(true, |best| stamp_of(row) > stamp_of(best))
-                {
-                    chosen = Some(row.clone());
+            let mut chosen: Option<&Value> = None;
+            for row in episodes.iter().copied().filter(|row| truthy(row, "viewOffset")) {
+                if chosen.map_or(true, |best| stamp_of(row) > stamp_of(best)) {
+                    chosen = Some(row);
                 }
             }
             let mut anchor_stamp: Option<i64> = None;
@@ -124,13 +123,13 @@ impl Runtime {
                 let mut anchor: Option<usize> = None;
                 for (index, row) in episodes.iter().enumerate() {
                     if truthy(row, "viewCount")
-                        && anchor.map_or(true, |best| stamp_of(row) > stamp_of(&episodes[best]))
+                        && anchor.map_or(true, |best| stamp_of(row) > stamp_of(episodes[best]))
                     {
                         anchor = Some(index);
                     }
                 }
                 if let Some(anchor) = anchor {
-                    let anchor_row = &episodes[anchor];
+                    let anchor_row = episodes[anchor];
                     anchor_stamp = anchor_row.get("lastViewedAt").and_then(Value::as_i64);
                     scrobbled = !played_libraries.contains(&string_value(
                         anchor_row.get("librarySectionID").unwrap_or(&Value::Null),
@@ -144,10 +143,11 @@ impl Runtime {
                                 && (row.get("parentIndex").cloned() == parent_index
                                     || row.get("index").and_then(Value::as_i64).unwrap_or(0) > 0)
                         })
-                        .cloned();
+                        .copied();
                 }
             }
-            if let Some(mut chosen) = chosen {
+            if let Some(chosen) = chosen {
+                let mut chosen = chosen.clone();
                 if let (Some(stamp), Some(object)) = (anchor_stamp, chosen.as_object_mut()) {
                     if stamp != 0 {
                         object.insert("lastViewedAt".to_string(), json!(stamp));
@@ -158,7 +158,7 @@ impl Runtime {
                         object.insert("_nextUpFromScrobble".to_string(), json!(true));
                     }
                 }
-                let stamp = episodes.iter().map(stamp_of).max().unwrap_or(0);
+                let stamp = episodes.iter().map(|row| stamp_of(row)).max().unwrap_or(0);
                 rows.push((stamp, chosen));
             }
         }
@@ -187,13 +187,18 @@ impl Runtime {
     /// Whether `/hubs` and `/hubs/promoted` drop the On Deck shelf: exactly when
     /// every episode on deck is also in Continue Watching (cycle 25).
     pub(super) fn ondeck_shelf_hidden(&self) -> bool {
-        let deck: HashSet<String> = self
-            .continue_watching(false)
+        // One pass: `resuming` is the same rows filtered to a stored viewOffset.
+        let watching = self.continue_watching(false);
+        let deck: HashSet<String> = watching
             .iter()
             .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
             .filter_map(key_of)
             .collect();
-        let resuming: HashSet<String> = self.resuming().iter().filter_map(key_of).collect();
+        let resuming: HashSet<String> = watching
+            .iter()
+            .filter(|row| row.get("viewOffset").and_then(Value::as_f64).unwrap_or(0.0) != 0.0)
+            .filter_map(key_of)
+            .collect();
         !deck.is_empty() && deck == resuming
     }
 
@@ -486,7 +491,7 @@ impl Runtime {
     /// The newest leaf's `addedAt`, or the row's own with no leaves.
     fn newest_leaf_stamp(&self, row: &Value) -> i64 {
         let key = key_of(row).unwrap_or_default();
-        self.leaves(&key)
+        self.leaves_refs(&key)
             .iter()
             .map(|leaf| leaf.get("addedAt").and_then(Value::as_i64).unwrap_or(0))
             .max()
@@ -501,14 +506,18 @@ impl Runtime {
         section_id: Option<&String>,
         leaves_in: Option<Vec<Value>>,
     ) -> Vec<Value> {
-        let mut leaves = leaves_in.unwrap_or_else(|| {
-            self.catalog
+        // References into the catalog (or the caller's filtered leaves): every episode
+        // was copied three times here -- the list, then by season and by show -- and
+        // only the capped rows it answers are copied now.
+        let mut leaves: Vec<&Value> = match &leaves_in {
+            Some(rows) => rows.iter().collect(),
+            None => self
+                .catalog
                 .items()
                 .iter()
                 .filter(|row| row.get("type").and_then(Value::as_str) == Some("episode"))
-                .cloned()
-                .collect()
-        });
+                .collect(),
+        };
         if let Some(section) = section_number(section_id) {
             leaves.retain(|row| {
                 string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
@@ -525,11 +534,11 @@ impl Runtime {
         let season_of = |leaf: &Value| -> String {
             string_value(leaf.get("parentRatingKey").unwrap_or(&Value::Null))
         };
-        let seasons_of = leaves.iter().map(season_of).collect::<Vec<_>>();
+        let seasons_of = leaves.iter().map(|leaf| season_of(leaf)).collect::<Vec<_>>();
         let mut season_order: Vec<String> = Vec::new();
-        let mut by_season: HashMap<String, Vec<Value>> = HashMap::new();
+        let mut by_season: HashMap<String, Vec<&Value>> = HashMap::new();
         let mut show_order: Vec<String> = Vec::new();
-        let mut by_show: HashMap<String, Vec<Value>> = HashMap::new();
+        let mut by_show: HashMap<String, Vec<&Value>> = HashMap::new();
         let mut leaf_season: HashMap<String, String> = HashMap::new();
         for (leaf, season) in leaves.iter().zip(seasons_of) {
             leaf_season.insert(key_of(leaf).unwrap_or_default(), season.clone());
@@ -537,13 +546,13 @@ impl Runtime {
             if !by_season.contains_key(&season) {
                 season_order.push(season.clone());
             }
-            by_season.entry(season).or_default().push(leaf.clone());
+            by_season.entry(season).or_default().push(*leaf);
             if !by_show.contains_key(&show) {
                 show_order.push(show.clone());
             }
-            by_show.entry(show).or_default().push(leaf.clone());
+            by_show.entry(show).or_default().push(*leaf);
         }
-        let mut rows: Vec<Value> = Vec::new();
+        let mut rows: Vec<&Value> = Vec::new();
         let mut claimed: HashSet<String> = HashSet::new();
         for show_key in &show_order {
             let show_leaves = &by_show[show_key];
@@ -560,7 +569,7 @@ impl Runtime {
             }
             if let Some(show) = show {
                 if seasons.len() > 1 {
-                    rows.push(show.clone());
+                    rows.push(show);
                     claimed.extend(seasons);
                     continue;
                 }
@@ -569,7 +578,7 @@ impl Runtime {
                 let members = by_season.get(&season_key).cloned().unwrap_or_default();
                 match self.catalog.get(&season_key) {
                     Some(season) if members.len() > 1 => {
-                        rows.push(season.clone());
+                        rows.push(season);
                         claimed.insert(season_key);
                     }
                     _ => rows.extend(members),
@@ -584,13 +593,14 @@ impl Runtime {
         });
         let mut dated = rows
             .into_iter()
-            .map(|row| (self.newest_leaf_stamp(&row), row))
+            .map(|row| (self.newest_leaf_stamp(row), row))
             .collect::<Vec<_>>();
         dated.sort_by_key(|(stamp, _)| -stamp);
         dated
             .into_iter()
             .take(TV_RECENT_CAP)
-            .map(|(stamp, mut row)| {
+            .map(|(stamp, row)| {
+                let mut row = row.clone();
                 if row.get("addedAt").and_then(Value::as_i64) != Some(stamp) {
                     if let Some(object) = row.as_object_mut() {
                         object.insert("addedAt".to_string(), json!(stamp));

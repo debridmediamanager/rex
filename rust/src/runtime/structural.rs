@@ -222,7 +222,7 @@ impl Runtime {
         }
         GROUPABLE.contains(&bare)
             || FILTER_FIELDS.contains(&bare)
-            || self.sort_rows(Vec::new(), Some(bare)).is_ok()
+            || self.sort_rows(Vec::<Value>::new(), Some(bare)).is_ok()
     }
 
     /// The refusal a malformed structural parameter gets where it is only PARSED.
@@ -233,7 +233,7 @@ impl Runtime {
     ) -> Option<u16> {
         if parse.sort {
             if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
-                if self.sort_rows(Vec::new(), Some(sort)).is_err() {
+                if self.sort_rows(Vec::<Value>::new(), Some(sort)).is_err() {
                     return Some(500);
                 }
             }

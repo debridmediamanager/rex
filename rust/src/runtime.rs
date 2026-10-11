@@ -944,7 +944,7 @@ impl Runtime {
         }
     }
 
-    fn restore_state(&mut self, state: Value, source: &StateSource) -> Result<(), String> {
+    fn restore_state(&mut self, mut state: Value, source: &StateSource) -> Result<(), String> {
         if state.get("format").and_then(Value::as_i64) != Some(1) {
             self.set_state_aside(source);
             return Ok(());
@@ -980,12 +980,14 @@ impl Runtime {
         // the fields a user wrote); a file from before rows were kept falls back to the
         // overlays below.
         let restored_rows = !rebuilt && state.get("items").is_some_and(Value::is_array);
+        let saved_rows = state.get("items").is_some_and(Value::is_array);
         if restored_rows {
-            let mut rows = state
-                .get("items")
-                .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default();
+            // Taken, not copied: a copy held every row twice at the start (fun, 16,000
+            // rows: 805 MB of saved document beside a 775 MB catalog, 2026-10-10).
+            let mut rows = match state.get_mut("items").map(Value::take) {
+                Some(Value::Array(rows)) => rows,
+                _ => Vec::new(),
+            };
             let held: HashSet<String> = rows.iter().filter_map(key_of).collect();
             let deleted: HashSet<String> = state
                 .get("deleted")
@@ -994,14 +996,23 @@ impl Runtime {
                 .flatten()
                 .map(string_value)
                 .collect();
+            let before = rows.len();
             rows.extend(joining.into_iter().filter(|row| {
                 key_of(row).is_some_and(|key| !held.contains(&key) && !deleted.contains(&key))
             }));
+            let rows_joined = rows.len() - before;
+            let unchanged = rows_joined == 0;
             *self.catalog.items_mut() = rows;
             if let Some(sections) = state.get("sections").and_then(Value::as_array) {
                 self.catalog.sections = sections.clone();
             }
             self.catalog.rebuild_index();
+            // The rows are what the database holds (`store_cache` was read with them), so
+            // the first save need not serialise all of them to find that out: 150 MB and
+            // a CPU-second at every start on fun (2026-10-10).
+            if unchanged && matches!(source, StateSource::Database(_)) {
+                self.catalog.take_changes();
+            }
         }
         self.friendly = state
             .get("friendlyName")
@@ -1016,7 +1027,6 @@ impl Runtime {
         let mut carried = 0;
         // Keyed by ratingKey, so only for a file from before the rows were kept: over a
         // rebuilt catalog the saved rows are matched by `carry_view_state` instead.
-        let saved_rows = state.get("items").is_some_and(Value::is_array);
         if let Some(rows) = state
             .get("viewState")
             .and_then(Value::as_object)
@@ -1360,8 +1370,8 @@ impl Runtime {
             if let Some(next) = state.get("nextScanKey").and_then(Value::as_i64) {
                 self.next_scan_key = self.next_scan_key.max(next);
             }
-            if let Some(held) = state.get("feedHeld").and_then(Value::as_object) {
-                self.feed_held = held.iter().map(|(key, value)| (key.clone(), value.clone())).collect();
+            if let Some(Value::Object(held)) = state.get_mut("feedHeld").map(Value::take) {
+                self.feed_held = held.into_iter().collect();
             }
             if let Some(names) = state.get("collectionGuids").and_then(Value::as_object) {
                 self.collection_guids = names.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
@@ -1780,18 +1790,28 @@ impl Runtime {
     }
 
     fn children(&self, key: &str) -> Vec<Value> {
-        let mut rows = self.catalog.children(key);
+        self.children_refs(key).into_iter().cloned().collect()
+    }
+
+    fn leaves(&self, key: &str) -> Vec<Value> {
+        self.leaves_refs(key).into_iter().cloned().collect()
+    }
+
+    /// `children` and `leaves` by reference, for what only reads or counts them: a
+    /// show's row counted its episodes by copying every one of them (fun, 2026-10-10).
+    fn children_refs(&self, key: &str) -> Vec<&Value> {
+        let mut rows = self.catalog.children_refs(key);
         rows.sort_by_key(|row| row.get("index").and_then(Value::as_i64).unwrap_or(0));
         rows
     }
 
-    fn leaves(&self, key: &str) -> Vec<Value> {
+    fn leaves_refs(&self, key: &str) -> Vec<&Value> {
         let mut out = Vec::new();
-        for child in self.children(key) {
+        for child in self.children_refs(key) {
             if child.get("type").and_then(Value::as_str) == Some("episode") {
                 out.push(child);
-            } else if let Some(child_key) = key_of(&child) {
-                out.extend(self.leaves(&child_key));
+            } else if let Some(child_key) = key_of(child) {
+                out.extend(self.leaves_refs(&child_key));
             }
         }
         out
@@ -1923,8 +1943,8 @@ impl Runtime {
             }
         }
         if kind == "show" {
-            let seasons = self.children(&key);
-            let leaves = self.leaves(&key);
+            let seasons = self.children_refs(&key);
+            let leaves = self.leaves_refs(&key);
             object.insert("childCount".to_string(), json!(seasons.len()));
             object.insert("leafCount".to_string(), json!(leaves.len()));
             // A show's own `duration`, `year` and `originallyAvailableAt` are the
@@ -1947,7 +1967,7 @@ impl Runtime {
             // Cycle 15: the EFFECTIVE flattenSeasons -- the item's unless it inherits.
             self.apply_flatten_projection(object);
         } else if kind == "season" {
-            let children = self.children(&key);
+            let children = self.children_refs(&key);
             object.insert("leafCount".to_string(), json!(children.len()));
             object.insert(
                 "viewedLeafCount".to_string(),
@@ -4247,7 +4267,7 @@ impl Runtime {
                 Err(status) => return Response::error(status, "simplex: bad request"),
             };
             if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
-                if self.sort_rows(Vec::new(), Some(sort)).is_err() {
+                if self.sort_rows(Vec::<Value>::new(), Some(sort)).is_err() {
                     return Response::error(500, "simplex: unsupported sort key");
                 }
             }
@@ -5185,30 +5205,32 @@ impl Runtime {
     }
 
     fn choose_rows(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<Value> {
-        let mut rows = if let Some(section) = section {
-            self.catalog
-                .items()
-                .iter()
-                .filter(|row| {
+        self.choose_refs(section, type_number).into_iter().cloned().collect()
+    }
+
+    /// `choose_rows` without the copies: section and type are tested BEFORE a row is
+    /// cloned. Copying every row of a section first and dropping the other types after
+    /// put fun's whole show library -- 13,500 episodes -- in memory again for a page of 50
+    /// shows (+650 MB per request, 2026-10-10).
+    fn choose_refs(&self, section: Option<&str>, type_number: Option<i64>) -> Vec<&Value> {
+        let kind = type_number.map(|number| match number {
+            1 => "movie",
+            2 => "show",
+            3 => "season",
+            4 => "episode",
+            8 => "clip",
+            _ => "",
+        });
+        self.catalog
+            .items()
+            .iter()
+            .filter(|row| {
+                section.is_none_or(|section| {
                     string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section
                 })
-                .cloned()
-                .collect()
-        } else {
-            self.catalog.items().clone()
-        };
-        if let Some(number) = type_number {
-            let kind = match number {
-                1 => "movie",
-                2 => "show",
-                3 => "season",
-                4 => "episode",
-                8 => "clip",
-                _ => "",
-            };
-            rows.retain(|row| row.get("type").and_then(Value::as_str) == Some(kind));
-        }
-        rows
+            })
+            .filter(|row| kind.is_none_or(|kind| row.get("type").and_then(Value::as_str) == Some(kind)))
+            .collect()
     }
 
     fn filter_field_types(&self, section_type: &str) -> HashMap<String, String> {
@@ -5817,12 +5839,12 @@ impl Runtime {
         }
     }
 
-    fn filter_rows(
+    fn filter_rows<R: std::borrow::Borrow<Value>>(
         &self,
-        rows: Vec<Value>,
+        rows: Vec<R>,
         pairs: &[(String, String)],
         section_type: &str,
-    ) -> Result<Vec<Value>, u16> {
+    ) -> Result<Vec<R>, u16> {
         let field_types = self.filter_field_types(section_type);
         // These names are known to the query parser but the listing serializer
         // refuses them.  Treating them as unknown made the native server return
@@ -5891,7 +5913,7 @@ impl Runtime {
                     _ => vec![value.clone()],
                 }
             };
-            match crate::filters::evaluate_with(&tree, &row, &value_of, Some(&resolve)) {
+            match crate::filters::evaluate_with(&tree, row.borrow(), &value_of, Some(&resolve)) {
                 Ok(true) => output.push(row),
                 Ok(false) => {}
                 Err(error) => return Err(error.status),
@@ -5900,7 +5922,9 @@ impl Runtime {
         Ok(output)
     }
 
-    fn sort_rows(&self, mut rows: Vec<Value>, sort: Option<&str>) -> Result<Vec<Value>, u16> {
+    /// Owned rows or references (`choose_refs`): a listing sorts references and copies
+    /// only the page it answers.
+    fn sort_rows<R: std::borrow::Borrow<Value>>(&self, mut rows: Vec<R>, sort: Option<&str>) -> Result<Vec<R>, u16> {
         let Some(sort) = sort else {
             return Ok(rows);
         };
@@ -5998,7 +6022,7 @@ impl Runtime {
         if !specs.is_empty() && !only_title && !any_random {
             let natural = !rows.is_empty()
                 && rows.iter().all(|row| {
-                    matches!(row.get("type").and_then(Value::as_str), Some("season" | "episode"))
+                    matches!(row.borrow().get("type").and_then(Value::as_str), Some("season" | "episode"))
                 });
             specs.push((
                 if natural { "_natural" } else { "titleSort" }.to_string(),
@@ -6027,7 +6051,7 @@ impl Runtime {
                     shuffle_in_place(&mut rows);
                 } else {
                     rows.sort_by_key(|row| {
-                        let key = row.get("ratingKey").map(string_value).unwrap_or_else(|| "None".to_string());
+                        let key = row.borrow().get("ratingKey").map(string_value).unwrap_or_else(|| "None".to_string());
                         crc32(format!("{seed}/{key}").as_bytes())
                     });
                 }
@@ -6065,17 +6089,24 @@ impl Runtime {
                         (title, index, 0)
                     }
                 };
-                rows.sort_by_key(natural);
+                rows.sort_by_cached_key(|row| natural(row.borrow()));
                 continue;
             }
             let title_sort = field.rsplit('.').next() == Some("titleSort");
-            rows.sort_by(|left, right| {
-                let left_owned = self.sort_value(left, &field);
-                let right_owned = self.sort_value(right, &field);
-                let left_value = &left_owned;
-                let right_value = &right_owned;
+            // Each row's key once: computing both keys inside the comparator copied them
+            // O(n log n) times over a 13,500-episode listing.
+            let mut keyed: Vec<(Value, R)> = rows
+                .into_iter()
+                .map(|row| {
+                    let key = self.sort_value(row.borrow(), &field);
+                    (if title_sort { Value::String(folded(&key)) } else { key }, row)
+                })
+                .collect();
+            keyed.sort_by(|(left_value, _), (right_value, _)| {
                 let ordering = match (left_value, right_value) {
-                    _ if title_sort => folded(left_value).cmp(&folded(right_value)),
+                    // Folded once above.
+                    _ if title_sort => left_value.as_str().cmp(&right_value.as_str()),
+                    (Value::String(a), Value::String(b)) => a.cmp(b),
                     (Value::Number(a), Value::Number(b)) => a
                         .as_f64()
                         .partial_cmp(&b.as_f64())
@@ -6088,6 +6119,7 @@ impl Runtime {
                     ordering
                 }
             });
+            rows = keyed.into_iter().map(|(_, row)| row).collect();
         }
         Ok(rows)
     }
@@ -15762,7 +15794,7 @@ impl Runtime {
                     };
                     if let Some(sort) = query.get("sort") {
                         // Cycle 55: the leaf VALIDATES `sort=` and then ignores it.
-                        if let Err(status) = self.sort_rows(Vec::new(), Some(sort)) {
+                        if let Err(status) = self.sort_rows(Vec::<Value>::new(), Some(sort)) {
                             return Response::error(status, "simplex: bad request");
                         }
                     }
@@ -17373,7 +17405,7 @@ impl Runtime {
             return Response::json(200, self.container(fields, true));
         }
         let rows = self
-            .choose_rows(Some(section_key), type_number)
+            .choose_refs(Some(section_key), type_number)
             .into_iter()
             .filter(|_| !conflicting_types)
             .filter(|row| {
@@ -17557,7 +17589,7 @@ impl Runtime {
             (Some(start), Some(size)) => Some((start, size, rows.len())),
             _ => None,
         };
-        let rows: Vec<Value> = match window {
+        let rows: Vec<&Value> = match window {
             Some((start, size, _)) => rows.into_iter().skip(start).take(size).collect(),
             None => rows,
         };
@@ -17582,7 +17614,7 @@ impl Runtime {
                 }
                 if with_storage {
                     let leaves = if row.get("Media").is_some() {
-                        vec![row.clone()]
+                        vec![(*row).clone()]
                     } else {
                         self.leaves(&key_of(row).unwrap_or_default())
                     };
@@ -22977,6 +23009,25 @@ fn write_or_log(snapshot: Option<StateSnapshot>) {
     }
 }
 
+/// Hand the heap's free pages back to the system. glibc keeps what a request freed:
+/// fun's server sat at its high-water mark -- 3.5 GB resident and 1.5 GB swapped
+/// (2026-10-10) -- long after the load and the listings that raised it were done.
+fn release_freed_memory() {
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    // SAFETY: malloc_trim only walks the allocator's own free lists.
+    unsafe {
+        libc::malloc_trim(0);
+    }
+}
+
+/// Every 30 s, outside the runtime lock: trimming holds only the allocator's arenas.
+fn start_memory_trimmer() {
+    let _ = thread::Builder::new().name("trim".to_string()).spawn(|| loop {
+        thread::sleep(std::time::Duration::from_secs(30));
+        release_freed_memory();
+    });
+}
+
 /// `persist.Store.start`: with `--state`, what a request leaves dirty without being a
 /// client write is coalesced -- saved at most once per two-second interval -- and a
 /// SIGTERM saves before the process exits. Saving on every request instead rewrote the
@@ -23127,6 +23178,8 @@ pub fn serve(options: RuntimeOptions) -> Result<(), String> {
     let mut options = options;
     options.state = resolve_state_path(&options);
     let loaded = Runtime::load(options)?;
+    release_freed_memory();
+    start_memory_trimmer();
     if let Some(path) = &loaded.state_path {
         info!("state file {}: {}", path.display(), loaded.state_summary);
     }

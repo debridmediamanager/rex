@@ -123,10 +123,10 @@ pub(super) fn file_filter_refusal(
 
 /// `?limit=N` caps the rows the QUERY returns: `0` is one row and a negative one
 /// every row; anything but a signed 32-bit integer is a 500 (cycle 55).
-pub(super) fn limited(
-    rows: Vec<Value>,
+pub(super) fn limited<R>(
+    rows: Vec<R>,
     query: &HashMap<String, String>,
-) -> Result<Vec<Value>, u16> {
+) -> Result<Vec<R>, u16> {
     let Some(raw) = query.get("limit") else {
         return Ok(rows);
     };
@@ -143,7 +143,7 @@ pub(super) fn limited(
 impl Runtime {
     /// `group=<field>` -- one row per distinct value, the survivor being the group's
     /// minimum `addedAt` (then ratingKey), chosen BEFORE the sort (cycle 14).
-    pub(super) fn grouped(&self, rows: Vec<Value>, field: &str) -> Result<Vec<Value>, u16> {
+    pub(super) fn grouped<R: std::borrow::Borrow<Value>>(&self, rows: Vec<R>, field: &str) -> Result<Vec<R>, u16> {
         let bare = field.split_once('.').map_or(field, |(_, bare)| bare);
         if bare.is_empty() || !GROUPABLE.contains(&bare) {
             return Err(500);
@@ -154,6 +154,7 @@ impl Runtime {
         let (scope, column) = field.rsplit_once('.').unwrap_or(("", field));
         let mut best: HashMap<String, ((i64, i64), usize)> = HashMap::new();
         for (index, row) in rows.iter().enumerate() {
+            let row = row.borrow();
             let target = self.scope_first(scope, row);
             let marker = string_value(&self.filter_value(target.as_ref().unwrap_or(row), column));
             let rank = (
@@ -440,7 +441,7 @@ impl Runtime {
                 return Response::error(500, "simplex: server error");
             }
             if let Some(sort) = query.get("sort").filter(|sort| !sort.is_empty()) {
-                if self.sort_rows(Vec::new(), Some(sort)).is_err() {
+                if self.sort_rows(Vec::<Value>::new(), Some(sort)).is_err() {
                     return Response::error(500, "simplex: unsupported sort key");
                 }
             }
