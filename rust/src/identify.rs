@@ -72,6 +72,14 @@ static EDITION: LazyLock<Regex> = LazyLock::new(|| {
         r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cut|unrated|theatrical|4kremux\d*|uhd|imax)\b",
     )
 });
+// An episode named without `SxxEyy`: a bare number (`Mysterious Love E06 1080p`), the NxNN
+// form (`Some Day or One Day - 1x02`), or only inside the brackets `parse_release` drops (a
+// disc rip's `00000 (E01-The.Arrangement).m2ts`, Suits.S03 on fun). zurg files these as
+// shows since 2026-10-11, and with no number here the feed placed none of them.
+static LOOSE_NX: LazyLock<Regex> =
+    LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])(\d{1,2})x(\d{2})(?:[\s._\-\])]|$)"));
+static LOOSE_E: LazyLock<Regex> =
+    LazyLock::new(|| re(r"(?i)(?:^|[\s._\-\[(])E(\d{2,3})(?:[\s._\-\])]|$)"));
 // A season pack names its season without an episode: `Planet.Earth.II.S01.1080p…`,
 // `The Sopranos S01 …`, `Show Season 2 …`, `S01-S03`. Python ends it with
 // `(?![\s._-]?E\d)`, which the regex crate lacks. The tail below consumes exactly
@@ -142,6 +150,17 @@ pub fn parse_name(name: &str) -> Parsed {
     if parsed.year.unwrap_or(0) == 0 {
         if let Some(Some(year)) = ran {
             parsed.year = Some(year);
+        }
+    }
+    if parsed.season.is_none() && parsed.episode.is_none() {
+        let loose = LOOSE_NX.captures(&stem).map(|found| (&*LOOSE_NX, py_int(&found[1]), py_int(&found[2])))
+            .or_else(|| LOOSE_E.captures(&stem).map(|found| (&*LOOSE_E, None, py_int(&found[1]))));
+        if let Some((pattern, season, episode)) = loose {
+            parsed.season = season;
+            parsed.episode = episode;
+            if let Some(cut) = pattern.find(&parsed.title) {
+                parsed.title = parsed.title[..cut.start()].to_string();
+            }
         }
     }
     if parsed.season.is_none() && parsed.episode.is_none() {
@@ -702,6 +721,21 @@ mod tests {
 
     // Python's `(?![\s._-]?E\d)` refuses `S01` followed by an episode and backtracks;
     // answers taken from `identify.parse_name`.
+    /// Names zurg filed under movies on zen and fun until 2026-10-11, each a series.
+    #[test]
+    fn identify_loose_episode_numbers() {
+        for (name, title, season, episode) in [
+            ("Mysterious Love E06 1080p WEB.DL AAC H.264-Luvmichelle.mp4", "Mysterious Love", None, Some(6)),
+            ("Some Day or One Day - 1x02 (1080p VIKI WEB.DL Marshall).mkv", "Some Day or One Day", Some(1), Some(2)),
+            ("00000 (E01-The.Arrangement).m2ts", "00000 m2ts", None, Some(1)),
+            ("Suits.S03.1080p.BDRemux.2xRus.Eng.HDCLUB", "Suits", Some(3), None),
+            ("Movie.2020.1080p.DDP5.1.x264-GRP.mkv", "Movie", None, None),
+        ] {
+            let parsed = parse_name(name);
+            assert_eq!((parsed.title.as_str(), parsed.season, parsed.episode), (title, season, episode), "{name}");
+        }
+    }
+
     #[test]
     fn identify_season_pack_lookahead() {
         let pack = |name: &str| {

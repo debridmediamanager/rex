@@ -77,6 +77,11 @@ def parsing():
         ("Lanterns.2026.S01E08.1080p.x265-ELiTE.mkv", "Lanterns", 2026, True),
         ("Avatar - The Last Airbender (2005 - 2008) [1080p]", "Avatar - The Last Airbender",
          2005, True),
+        # Named without SxxEyy; zurg filed each under movies on zen or fun until 2026-10-11.
+        ("Mysterious Love E06 1080p WEB.DL AAC H.264-Luvmichelle.mp4", "Mysterious Love", None, True),
+        ("Some Day or One Day - 1x02 (1080p VIKI WEB.DL Marshall).mkv", "Some Day or One Day",
+         None, True),
+        ("00000 (E01-The.Arrangement).m2ts", "00000 m2ts", None, True),
     ]
     for name, title, year, show in cases:
         parsed = identify.parse_name(name)

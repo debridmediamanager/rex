@@ -47,6 +47,12 @@ _YEARS_RAN = re.compile(r"[(\[]\s*((?:19|20)\d{2})\s*[-–]\s*(?:(?:19|20)\d{2})
 _EDITION = re.compile(r"(?i)\b(?:remastered|extended(?: edition)?|director'?s cut|unrated|theatrical|4kremux\d*|uhd|imax)\b")
 # A season pack names its season without an episode: `Planet.Earth.II.S01.1080p…`,
 # `The Sopranos S01 …`, `Show Season 2 …`, `S01-S03`.
+# An episode named without `SxxEyy`: a bare number (`Mysterious Love E06 1080p`), the NxNN
+# form (`Some Day or One Day - 1x02`), or only inside the brackets `parse_release` drops (a
+# disc rip's `00000 (E01-The.Arrangement).m2ts`, Suits.S03 on fun). zurg files these as
+# shows since 2026-10-11, and with no number here the feed placed none of them.
+_LOOSE_NX = re.compile(r"(?i)(?:^|[\s._\-\[(])(\d{1,2})x(\d{2})(?:[\s._\-\])]|$)")
+_LOOSE_E = re.compile(r"(?i)(?:^|[\s._\-\[(])E(\d{2,3})(?:[\s._\-\])]|$)")
 _SEASON_PACK = re.compile(r"(?i)\b(?:S(\d{1,2})(?:\s?-\s?S?\d{1,2})?|Season[\s._-]?(\d{1,2}))\b(?![\s._-]?E\d)")
 
 
@@ -87,6 +93,16 @@ def parse_name(name):
     parsed["pack"] = ranged or bool(ran)
     if ran and not parsed["year"]:
         parsed["year"] = int(ran.group(1))
+    if parsed["season"] is None and parsed["episode"] is None:
+        nx, bare = _LOOSE_NX.search(stem), _LOOSE_E.search(stem)
+        if nx or bare:
+            if nx:
+                parsed["season"], parsed["episode"] = int(nx.group(1)), int(nx.group(2))
+            else:
+                parsed["episode"] = int(bare.group(1))
+            cut = (_LOOSE_NX if nx else _LOOSE_E).search(parsed["title"])
+            if cut:
+                parsed["title"] = parsed["title"][:cut.start()]
     if parsed["season"] is None and parsed["episode"] is None:
         pack = _SEASON_PACK.search(parsed["title"]) or _SEASON_PACK.search(stem.replace(".", " "))
         if pack:

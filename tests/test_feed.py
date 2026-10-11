@@ -288,6 +288,43 @@ def retry_unnamed(bytes_port):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def loose_episodes(bytes_port):
+    """Episodes named without SxxEyy are placed. zurg filed these under movies on zen and
+    fun until 2026-10-11; filed as shows, each was dropped as `has no episode number; not
+    placed`. Their real names, and Suits.S03's disc-rip file, whose number is only in
+    the brackets."""
+    work = tempfile.mkdtemp(prefix="rex-feed-loose-")
+    catalog(work)
+    server = Server(work, bytes_port)
+    entry = ENTRIES["episode"]["entry"]
+    try:
+        cases = [("Mysterious Love E06 1080p WEB.DL AAC H.264-Luvmichelle",
+                  "Mysterious Love E06 1080p WEB.DL AAC H.264-Luvmichelle.mp4", 1, 6),
+                 ("Some Day or One Day - 1x02 (1080p VIKI WEB.DL Marshall)",
+                  "Some Day or One Day - 1x02 (1080p VIKI WEB.DL Marshall).mkv", 1, 2),
+                 ("Suits.S03.1080p.BDRemux.2xRus.Eng.HDCLUB", "00000 (E01-The.Arrangement).m2ts", 3, 1)]
+        items = []
+        for release, filename, _season, _episode in cases:
+            path = "shows/%s/%s" % (release, filename)
+            items.append({"id": path, "path": path, "file": "%s/%s" % (MOUNT, path), "name": release,
+                          "release": "shows/" + release, "size": entry["size"],
+                          "hash": "%040x" % len(items), "media_info": entry["media_info"]})
+        status, body = server.feed("POST", "items", {"items": items})
+        keys = server.keys()
+        placed = [server.row(keys.get(item["id"])) if keys.get(item["id"]) else {} for item in items]
+        check("each is created", status == 200 and body.get("created") == len(items), body)
+        check("as an episode of its own season and number",
+              [(row.get("type"), row.get("parentIndex"), row.get("index")) for row in placed]
+              == [("episode", season, episode) for _r, _f, season, episode in cases],
+              [(row.get("type"), row.get("parentIndex"), row.get("index")) for row in placed])
+        check("under a show of its title",
+              [row.get("grandparentTitle") for row in placed] == ["Mysterious Love", "Some Day or One Day", "Suits"],
+              [row.get("grandparentTitle") for row in placed])
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main():
     work = tempfile.mkdtemp(prefix="rex-feed-")
     source = Bytes()
@@ -557,6 +594,7 @@ def main():
         check("a restart keeps the adopted keys", server.keys() == keys, server.keys())
         shutil.rmtree(legacy_work, ignore_errors=True)
         retry_unnamed(bytes_port)
+        loose_episodes(bytes_port)
     finally:
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
