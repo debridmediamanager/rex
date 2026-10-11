@@ -93,6 +93,7 @@ Where things live in `rust/src/`:
 | `runtime/wire.rs` | The response envelope: header order, Range/416, CORS, gzip, websocket handshake |
 | `runtime/upstream.rs` | The HTTP/HTTPS client (rustls, system roots) behind zurg, provider redirects, TMDB, Plex's metadata agent and artwork |
 | `runtime/source.rs`, `runtime/feed.rs`, `runtime/scan.rs` | Sources (`--sources`, or `ZURG_URL`'s `zurg`: where a Part's bytes are, the feed token), the feed API sources push items to (`docs/feed-api.md`), and the rows those items become: added, held until probed, filled, re-identified, trashed, keys minted once (`mint_key`) |
+| `runtime/universal.rs` | The video transcoder (`REX_TRANSCODER`): the conversion decision's plan and Media, `start.m3u8`/`start.mpd`, segments served outside the runtime lock, one FFmpeg per session with the hardware ladder, seeks, throttling and the idle reaper, and the `TranscodeSession` rows |
 | `runtime/plexmeta.rs`, `identify.rs` | Plex's metadata agent (`PLEX_TOKEN`), and the port of `identify.py` the feed names releases with |
 | `runtime/plextv.rs`, `runtime/tmdb.rs` | claim/heartbeat/account state, and Fix Match (`REX_PLEXTV_URL` points plex.tv at a stub) |
 | `runtime/*.rs` (the rest) | One subsystem each, named after it: search, listing, axes, edit, collections, playlists, artwork, butler, framework, i18n, resume (On Deck and hubs), logging and so on |
@@ -140,6 +141,15 @@ when the key it matched it to disappears. The first push of a file the old WebDA
 made a row for adopts that row and its key. `/library/sections/{id}/refresh` and
 `/activities` are what they are on a library with nothing to read; old zurg builds still
 send refreshes and change nothing.
+
+`REX_TRANSCODER` (an FFmpeg; README "Transcoding") turns on conversion: a decision the
+client cannot direct-play becomes the reference's 3000/1001/1001 with the converted Media,
+and `start.m3u8`/`start.mpd` start one FFmpeg per session reading the Part from its source.
+Without it rex is the encoder-less server every suite measures, so the Python oracle has no
+transcoder: like the feed, it is the native server's own, and only its wire shapes are the
+reference's (`tests/fixtures/transcode/`, recorded on plexscratch for Plex Web's exact
+requests). Segment lengths, encoder settings and the MPD's `minBufferTime` are ours, chosen
+by measurement (findings, "The universal transcoder").
 
 The native state file is a SQLite database and does not read the Python server's pickle,
 so a state file does not move between the two. `--announce-url` needs `PLEX_TOKEN`; a comma-separated
@@ -455,6 +465,8 @@ python3 tests/test_tls.py                   # HTTPS and plain HTTP on one port
 python3 tests/test_prefix_registry.py       # 58 measured prefix shapes
 python3 tests/test_regional_prefs.py        # the regional prefs documents, cell by cell
 python3 tests/test_part_bytes.py            # part reads against a local zurg stub
+python3 tests/test_native_transcode.py      # the transcoder against generated clips behind a local zurg; needs ffmpeg
+                                            # (REX_TRANSCODER, else PATH's); on zen REX_TRANSCODE_HW=vaapi with jellyfin-ffmpeg
 python3 tests/test_feed.py                  # the feed API against a stub source: auth, upsert, late ids, held
                                             # items, trash and return, snapshot reconcile and guards, migration
 python3 tests/test_feed_versions.py         # two releases of one title: one row, a Media each (fun's real 127 Hours)

@@ -18,6 +18,12 @@ Jellyfin.
   PART 200`, verified byte-identical across proxy, redirect and CDN paths
   (`e49cf18e698064cddc10a13ea0926fb3`), with real frames decoded at an offset
   rather than a trusted HTTP 200.
+- **Transcoding, on the GPU.** With an FFmpeg configured (`REX_TRANSCODER`), what a
+  client cannot direct-play is converted while it plays, over HLS (Plex Web from
+  app.plex.tv, the Apple apps) or DASH (the web client rex serves): a remux when the
+  codecs fit, H.264 otherwise, with the GPU decoding, scaling and encoding when it can
+  (VA-API or NVENC). Plex Web starts a converted HEVC film in about 2 s and seeks
+  in about 2.5 s on a 2-core Pentium's iGPU.
 - **Discoverable on the LAN.** rex answers Plex's own GDM discovery protocol
   on udp/32410 and udp/32414, so an official client on the same network finds it
   without plex.tv — and a real Plex Media Server on the same wire lists it in its
@@ -175,6 +181,35 @@ points the black-box test suites at it. Its state file is a pickle (`state.pickl
 default) that the native server does not read. The last Python-only `main` is the `python-server`
 branch.
 
+## Transcoding
+
+Off by default: rex then answers a conversion request the way a server with no
+encoder does. Point `REX_TRANSCODER` at an FFmpeg to turn it on. jellyfin-ffmpeg is
+the one it is measured with: its `.deb` carries its own Intel driver, so it runs
+from wherever it is unpacked.
+
+```bash
+curl -LO https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v8.1.3-1/jellyfin-ffmpeg8_8.1.3-1-jammy_amd64.deb
+dpkg -x jellyfin-ffmpeg8_8.1.3-1-jammy_amd64.deb ~/rex-ffmpeg
+J=~/rex-ffmpeg/usr/lib/jellyfin-ffmpeg
+export REX_TRANSCODER=$J/ffmpeg LD_LIBRARY_PATH=$J/lib LIBVA_DRIVERS_PATH=$J/lib/dri LIBVA_DRIVER_NAME=iHD
+sudo usermod -aG render "$USER"      # the GPU's /dev/dri/renderD128; log in again after
+```
+
+| Variable | Default | |
+|---|---|---|
+| `REX_TRANSCODER` | off | the FFmpeg binary |
+| `REX_TRANSCODE_HW` | `auto` | `vaapi`, `cuda` or `none` (`auto` tries VA-API, then NVENC) |
+| `REX_TRANSCODE_DEVICE` | `/dev/dri/renderD128` | the VA-API device |
+| `REX_TRANSCODE_DIR` | `$TMPDIR/rex-transcode-<port>` | segments; cleared at start |
+
+The startup log says what the probe found (`transcoder: ... hardware vaapi encode=true
+decode=[h264,hevc,mpeg2video]`). A conversion runs on the GPU end to end when it can
+decode the source there, uploads CPU-decoded frames when it cannot (AV1 on older Intel,
+HDR, which is tonemapped on the CPU), and falls back to x264 when there is no device.
+Every conversion is one FFmpeg reading the source over HTTP; nothing is downloaded
+first.
+
 ## Tests
 
 The suites target the native server (`tests/server_command.py` starts
@@ -188,6 +223,7 @@ python3 tests/test_all.py          # play queue → decision → byte reads → 
 python3 tests/conformance.py       # drives rex with python-plexapi
 python3 tests/test_persist.py      # --state survives restarts, crashes and catalog rebuilds
 python3 tests/test_feed.py         # the feed API against a stub source: upsert, hold, trash, snapshot, migration
+python3 tests/test_native_transcode.py  # HLS and DASH conversions of generated clips, decoded segment by segment
 ```
 
 ## Documentation

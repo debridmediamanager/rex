@@ -12268,3 +12268,88 @@ read-only, in scratch directories:
   `local://100050` to `plex://movie/626907dd4eba3bfb08aac74d` with its watch state. A 64 KiB
   Range read through rex matched zurg's own `/dav` bytes (MD5
   `95f9fa1e8a705a7d85dbbffcbca4760d`). zurg sent this rex no refresh.
+
+## The universal transcoder (2026-10-11)
+
+rex converts what a client cannot direct-play once `REX_TRANSCODER` names an FFmpeg
+(`rust/src/runtime/universal.rs`, README "Transcoding"). What follows is what it rests on.
+
+### How a real PMS converts, measured
+
+Recorded on plexscratch (1.43.4) for the clients' exact requests, in
+`tests/fixtures/transcode/`:
+
+- **Plex Web 4.160 (app.plex.tv) converts over HLS**, Plex Web 4.147.1 (the client rex
+  serves at `/web`) **over DASH**, with `directStream=0&directStreamAudio=0`: the bundled one
+  never remuxes. Both decide first and send `directPlay=0` when their own MDE refuses the file.
+- The decision is `directPlayDecisionCode 3000` with the refusal's text, then
+  `generalDecisionCode`/`transcodeDecisionCode 1001` "Direct play not available; Conversion
+  OK.". Its `Media` and `Part` describe the OUTPUT (HLS `mpegts`, DASH `mp4` with
+  `optimizedForStreaming`; the output's size and bitrate); the Part has no `key`, `file` or
+  `size`; each Stream keeps its own fields with the output's codec, size and bitrate and gains
+  `decision` (`copy`/`transcode`) and `location` (`segments-av`, or DASH's
+  `segments-video`/`segments-audio`).
+- HLS: `start.m3u8` names `session/<session>/base/index.m3u8` (the query's `session`), with
+  `?X-Plex-Incomplete-Segments=1` when the request carried it; the media playlist lists
+  EVERY segment of the title up front (`#EXTINF:10, nodesc`, the last the remainder,
+  `#EXT-X-ENDLIST`), before any is encoded. Segments are `video/MP2T`, `Connection: close`.
+- DASH: a static MPD, one `SegmentTemplate` per adaptation set (`duration="5"`,
+  `initialization="session/<id>/$RepresentationID$/header"`,
+  `media="session/<id>/$RepresentationID$/$Number$.m4s"`, `startNumber="0"`), video id 0,
+  audio id 1; `mediaPresentationDuration` through a 32-bit float (`PT0H30M0.689941S` for
+  1 800 690 ms). Every `.m4s` is the init (`ftyp`+`moov`) followed by
+  `styp`/`sidx`/`moof`/`mdat` with an absolute `tfdt`; header and segments are
+  `application/octet-stream`.
+- While converting, the timeline carries the `TranscodeSession` (key
+  `/transcode/sessions/<id>`) and `size` counts it; `Bandwidth` and `Session.bandwidth` are
+  ~1.05x the OUTPUT bitrate (509 for 485), not direct play's ~2.1x the source. A conversion
+  that dies reaches the client as `terminationCode 4006` on its next timeline.
+  `/transcode/sessions` keys the row by the bare id. ping and stop are empty 200s, then 404s.
+- PMS downloads its encoders from `servers.plex.tv/api/codecs/` on first use: the isolated
+  scratch copy fails "Encoder install failed: libx264", which is why conversions there were
+  recorded in remux mode, and an encoder from another PMS build fails `Unrecognized option
+  'crf:0'`.
+
+### What did not work as documented
+
+- **FFmpeg's `-segment_list` cannot say a segment is finished.** It is buffered and written
+  as the run ends; a slow source's first segment waited for the whole file. A segment is
+  finished when the next one's file opens (or FFmpeg exits 0).
+- **`-copyts` with the segment muxer after a seek wrote ONE unreadable segment** (jellyfin-ffmpeg
+  8.1.3, a seeked remux of a real mkv); Plex's own fork pairs `-copyts` with a
+  `-segment_copyts` upstream does not have. Timestamps counted from the seek plus the
+  segmenter's `-initial_offset` cut every boundary on the title's clock.
+- **The MP4 muxer rebases every fragment to zero** under `-output_ts_offset`;
+  `-format_options movflags=+frag_discont` keeps the real time (a run from 600 s: `tfdt`
+  14 400 000 at timescale 24 000). With it, AAC's priming writes the first audio fragment's
+  negative time as a wrapped 64-bit `tfdt` (4.2e14 s); `-avoid_negative_ts make_non_negative`.
+- **Plex Web's player is Shaka**, which starts only once `max(minBufferTime, 2 s)` is
+  buffered: the reference's `PT10S` (2x the segment) held every start for two 5 s segments,
+  6.3 s to the first frame. rex sends one segment's worth.
+- **Plex Web re-fetches both DASH headers on every seek.** A header that waited for its run's
+  first fragment hung once playback had passed the 120 s kept behind the player.
+- **Right after a seek the player still has a request out for the old position.** Each
+  restarting FFmpeg at its own segment in turn was a loop: 3 531 restarts in seconds, until
+  zurg answered 5xx. The newest request moves FFmpeg, once; an older one gives up.
+- **A killed rex left its FFmpeg running** for an hour, reading from zurg into a deleted
+  directory. Children now take `PR_SET_PDEATHSIG`, which fires when the spawning THREAD exits,
+  so they are spawned from one thread that lives as long as the process; a start also kills
+  any FFmpeg still running in its directory.
+
+### Performance on zen (Pentium G4400T, HD 510, 2 cores)
+
+jellyfin-ffmpeg 8.1.3's own iHD driver (26.2.4) opens the iGPU where the system's 22.3 did
+not. The probe finds VA-API encode and hardware decode for H.264, HEVC 8-bit and MPEG-2
+(no 10-bit HEVC, VP9 or AV1 on Skylake).
+
+| Source, through zurg | Path | Speed | First segment | Plex Web |
+|---|---|---|---|---|
+| HEVC 1080p + E-AC-3 5.1 | GPU decode, scale, encode | 5.7-6x | 1.4 s | first frame ~2 s, seek 2.4-2.9 s |
+| H.264 mkv, AAC | remux (copy) | ~190x | 0.6 s | hls.js 1.1 s, Shaka 1.3 s |
+| H.264 + E-AC-3 | video copy, audio to AAC 5.1 | 12x | 1.9 s | |
+| AV1 1080p | CPU decode, GPU encode | 1.4x | 2.5 s | |
+| (x264 veryfast, CPU only) | | 1.45x | | |
+
+The first segment is the encode of its first seconds, so a conversion's segments are 2 s
+(1.3 s to the first on the GPU, against 2.4 s for 5 s); a remux keeps Plex's 10 s (HLS) and
+5 s (DASH), because it can only cut on the source's keyframes.

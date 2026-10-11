@@ -4070,3 +4070,23 @@ are changing; replay the client's exact request before altering behavior.
   with pongs the socket stays open and carries them. CLIENT-VISIBLE. zen also CLOSES (`88 00`)
   after ponging an EMPTY ping where kids does not: recorded, not emulated
   (`tests/test_parity_cycle94_d.py`).
+
+## The transcoder
+
+- **Plex Web converts over HLS from app.plex.tv (4.160) and over DASH from the client rex
+  serves (4.147.1).** Test both; a DASH refusal reads "No conversion profile found for protocol
+  dash".
+- **A segment is finished when the next one opens.** FFmpeg's `-segment_list` is buffered to
+  the end of the run.
+- **No `-copyts` with the segment muxer.** Count from the seek and let `-initial_offset` put
+  the timestamps back; DASH needs `-output_ts_offset` and `movflags=+frag_discont`, and
+  `make_non_negative` against AAC priming's wrapped `tfdt`.
+- **Only the newest segment request may restart FFmpeg.** The request for the old position is
+  still out when the seek's arrives.
+- **Spawn FFmpeg from a thread that never exits.** `PR_SET_PDEATHSIG` is tied to the thread.
+- **Plex Web's `setup.html` is the Plex app too.** Loading it to get a page on rex's origin
+  resumed the play queue and started a conversion each time; open a 404 HTML page or blank the
+  document before the app runs.
+- **A browser test's playback can start paused.** Chrome allows a play with sound for ~5 s
+  after the click; a start slower than that comes up paused. That is the browser, not the
+  server: direct play in the same tab autoplays.
