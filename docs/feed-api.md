@@ -138,11 +138,15 @@ What the fields do:
   brings its `media_info` shows it, stamped as added then, so it arrives in Recently Added
   when it becomes playable. A row already shown never goes back to held.
 - **Identification.** `ids` first (an IMDb id is exact: TMDB's `/find`, then Plex's matcher
-  by external id), else the release name (`identify.rs`: Plex's matcher and TMDB, their
-  agreement the confidence). A release no source names stays unmatched, for Fix Match.
+  by external id; an episode's or a season's IMDb id names its show, which is how DMM knows
+  most season packs), else the release name (`identify.rs`: Plex's matcher and TMDB, their
+  agreement the confidence; when they name different shows and the release's season is one
+  only TMDB's has, TMDB's wins). A release no source names stays unmatched, for Fix Match.
+  An episode is numbered from `SxxEyy`, `NxNN` or a bare `E06`, in the file's name or its
+  release's.
 - **Late ids.** A push whose `ids` name what the row was not identified as re-identifies
   it on the same ratingKey, keeping its watch state (an episode moves to the show its new
-  identity names).
+  identity names). So does any push of a row whose ids named nothing when they came.
 - **Versions.** A release identified as a title already here -- the same agent guid in the
   same section, and for an episode the same season -- is no new row: it joins that row as
   another Media, as a real PMS offers several files of one movie as versions (2026-10-11,
