@@ -209,21 +209,26 @@ pub fn tmdb_details(t: &dyn TmdbSource, kind: &str, id: i64) -> Option<Value> {
     )
 }
 
-/// (kind, tmdb id) of an IMDb id, from TMDB's /find.
+/// (kind, tmdb id) of an IMDb id, from TMDB's /find. An episode's or a season's id
+/// names its show: the id DMM knows a season pack by is usually its first episode's
+/// (271 of the 285 shows fun's rex left unmatched on 2026-10-11, Arrow's tt2340185
+/// among them, were `tv_episode_results`).
 pub fn tmdb_find_imdb(t: &dyn TmdbSource, imdb: &str) -> (Option<String>, Option<i64>) {
     let found = t.get(
         &format!("find/{imdb}"),
         &[("external_source", "imdb_id".to_string())],
     );
-    for (key, kind) in [("movie_results", "movie"), ("tv_results", "show")] {
+    for (key, kind, id) in [
+        ("movie_results", "movie", "id"),
+        ("tv_results", "show", "id"),
+        ("tv_episode_results", "show", "show_id"),
+        ("tv_season_results", "show", "show_id"),
+    ] {
         let first = found
             .as_ref()
             .and_then(|found| found.get(key)?.as_array()?.first().cloned());
         if let Some(first) = first {
-            return (
-                Some(kind.to_string()),
-                first.get("id").and_then(Value::as_i64),
-            );
+            return (Some(kind.to_string()), first.get(id).and_then(Value::as_i64));
         }
     }
     (None, None)
@@ -492,7 +497,12 @@ impl Identifier<'_> {
                         identity.tmdb = tmdb_id;
                     }
                 }
-                identity.imdb = Some(imdb);
+                // An episode's id found its show: the show is known by its own id.
+                let series = match (self.tmdb, identity.tmdb) {
+                    (Some(t), Some(id)) if identity.kind == "show" => tmdb_imdb(t, "show", id),
+                    _ => None,
+                };
+                identity.imdb = Some(series.filter(|series| !series.is_empty()).unwrap_or(imdb));
             } else {
                 identity.tmdb = name_tmdb.as_deref().and_then(py_int);
             }

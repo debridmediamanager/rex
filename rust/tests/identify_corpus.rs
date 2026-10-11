@@ -76,12 +76,8 @@ impl PlexSource for ReplayPlex {
     }
 }
 
-#[test]
-fn identify_corpus() {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../tests/fixtures/identify/corpus.json"
-    );
+/// A recorded corpus and its provider answers, ready to replay.
+fn replay(path: &str) -> (Value, ReplayTmdb, ReplayPlex) {
     let corpus: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     let tmdb = ReplayTmdb {
         record: corpus["tmdb"]
@@ -112,6 +108,15 @@ fn identify_corpus() {
             .collect(),
         missed: RefCell::default(),
     };
+    (corpus, tmdb, plex)
+}
+
+#[test]
+fn identify_corpus() {
+    let (corpus, tmdb, plex) = replay(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../tests/fixtures/identify/corpus.json"
+    ));
     let identifier = Identifier {
         tmdb: Some(&tmdb),
         plex: Some(&plex),
@@ -208,4 +213,59 @@ fn identify_corpus() {
             "an answer without a Plex guid, kind or source: {identity:?}"
         );
     }
+}
+
+/// One release of each of the 285 shows fun's rex left unmatched on 2026-10-11 although
+/// zurg pushed the IMDb id DMM knows its hash by: 271 of those ids are an episode's
+/// (Arrow's tt2340185 is its pilot), which TMDB's /find answers under
+/// `tv_episode_results`, and each show stayed on `local://`.
+#[test]
+fn episode_ids_name_their_show() {
+    let (corpus, tmdb, plex) = replay(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../tests/fixtures/identify/episode_ids.json"
+    ));
+    let torrents = corpus["torrents"].as_array().unwrap();
+    let identifier = Identifier {
+        tmdb: Some(&tmdb),
+        plex: Some(&plex),
+        known: torrents
+            .iter()
+            .map(|torrent| {
+                (
+                    torrent["hash"].as_str().unwrap().to_string(),
+                    torrent["known"].as_str().unwrap().to_string(),
+                )
+            })
+            .collect(),
+    };
+    let mut shows = 0;
+    let mut missed = Vec::new();
+    for torrent in torrents {
+        let identity = identifier.identify(
+            torrent["name"].as_str().unwrap(),
+            torrent["hash"].as_str(),
+            torrent["files"].as_u64().unwrap() as usize,
+        );
+        if torrent["known"] == "tt2340185" {
+            assert_eq!(identity.imdb.as_deref(), Some("tt2193021"), "{identity:?}");
+        }
+        let Some(truth) = torrent["truth"].as_i64() else {
+            continue;
+        };
+        shows += 1;
+        let right = identity.kind == "show"
+            && identity.tmdb == Some(truth)
+            && identity.plex.as_deref().is_some_and(|guid| guid.starts_with("plex://show/"));
+        if !right {
+            missed.push(identity.name.clone());
+        }
+    }
+    let (tmdb_missed, plex_missed) = (tmdb.missed.borrow(), plex.missed.borrow());
+    assert!(
+        tmdb_missed.is_empty() && plex_missed.is_empty(),
+        "requests the recording does not hold: tmdb {tmdb_missed:?} plex {plex_missed:?}"
+    );
+    assert!(shows >= 270, "{shows} shows");
+    assert!(missed.is_empty(), "{} of {shows} missed: {:?}", missed.len(), &missed[..missed.len().min(3)]);
 }

@@ -122,7 +122,10 @@ class Identifier:
         return (details.get("external_ids") or {}).get("imdb_id") or details.get("imdb_id")
 
     def _tmdb_for_imdb(self, imdb):
-        """(kind, tmdb id) of an IMDb id, from TMDB's /find."""
+        """(kind, tmdb id) of an IMDb id, from TMDB's /find. An episode's or a season's
+        id names its show: the id DMM knows a season pack by is usually its first
+        episode's (271 of the 285 shows fun's rex left unmatched on 2026-10-11, Arrow's
+        tt2340185 among them, were `tv_episode_results`)."""
         if self.tmdb is None:
             return None, None
         found = self.tmdb._get("find/" + imdb, external_source="imdb_id") or {}
@@ -130,6 +133,9 @@ class Identifier:
             return "movie", found["movie_results"][0]["id"]
         if found.get("tv_results"):
             return "show", found["tv_results"][0]["id"]
+        for key in ("tv_episode_results", "tv_season_results"):
+            if found.get(key):
+                return "show", found[key][0].get("show_id")
         return None, None
 
     def _tmdb_identify(self, parsed, kind):
@@ -168,6 +174,9 @@ class Identifier:
                 found_kind, tmdb_id = self._tmdb_for_imdb(imdb)
                 if found_kind:
                     identity.update(kind=found_kind, tmdb=tmdb_id)
+                # An episode's id found its show: the show is known by its own id.
+                if identity["kind"] == "show" and identity["tmdb"]:
+                    identity["imdb"] = self._tmdb_imdb("show", identity["tmdb"]) or imdb
             else:
                 identity["tmdb"] = int(exact["tmdb"])
             if self.plex is not None:

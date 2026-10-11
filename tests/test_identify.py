@@ -146,10 +146,38 @@ def exact():
           and nothing["imdb"] is None)
 
 
+def episode_ids():
+    """`fixtures/identify/episode_ids.json`: one release of each of the 285 shows fun's rex
+    left unmatched on 2026-10-11 although zurg pushed the IMDb id DMM knows its hash by.
+    271 of those ids are an episode's (Arrow's tt2340185 is its pilot), which TMDB's /find
+    answers under `tv_episode_results`; the identifier read only movie and tv results, so
+    each show stayed on `local://` with no TMDB id or Plex guid."""
+    record = json.load(open(os.path.join(HERE, "fixtures", "identify", "episode_ids.json")))
+    tmdb, plex = ReplayTmdb(record["tmdb"]), ReplayPlex(record["plex"])
+    torrents = record["torrents"]
+    known = {t["hash"]: t["known"] for t in torrents}
+    identifier = identify.Identifier(tmdb=tmdb, plex=plex, known=known)
+    identities = [(t, identifier.identify(t["name"], info_hash=t["hash"], files=t["files"]))
+                  for t in torrents]
+    check("every provider answer the identifier asked for is recorded",
+          not tmdb.missed and not plex.missed,
+          "tmdb %s plex %s" % (tmdb.missed[:2], plex.missed[:2]))
+    shows = [(t, i) for t, i in identities if t["truth"]]
+    right = [(t, i) for t, i in shows if i["kind"] == "show" and i["tmdb"] == t["truth"]
+             and (i["plex"] or "").startswith("plex://show/")]
+    check("an episode's IMDb id names its show, with a Plex guid (%d of %d)"
+          % (len(right), len(shows)), len(shows) >= 270 and len(right) == len(shows),
+          "missed %s" % [t["name"] for t, i in shows if (t, i) not in right][:3])
+    arrow = next(i for t, i in identities if t["known"] == "tt2340185")
+    check("the show is known by its own IMDb id, not the episode's",
+          arrow["imdb"] == "tt2193021", str(dict(arrow)))
+
+
 if __name__ == "__main__":
     parsing()
     corpus()
     exact()
+    episode_ids()
     failed = results.count(False)
     print("\n%d/%d passed" % (len(results) - failed, len(results)))
     sys.exit(1 if failed else 0)
