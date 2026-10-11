@@ -9,9 +9,9 @@ episode row from it (`fixtures/fun_episode_row.json`, Media and cast included).
 
 The library is fun's first 120 shows (about 4,500 episodes): an unpaged listing of all
 13,509 projected rows held 5 GB, and two of them at once were killed by zen's OOM killer.
-The bounds are multiples of one unpaged SHOW listing measured first in the same run, so a
-slower host moves them with it. Measured on zen: unfixed, a count and the last page cost
-1.9 units each; windowed, 0.36.
+The bounds are fractions of one unpaged listing measured first in the same run, so a
+slower host moves them with it. The unit is one unpaged episode listing. Measured on
+zen: unfixed, a count and the last page cost 0.46 units each; windowed, 0.01-0.02.
 
     python3 tests/test_perf_listing_window.py
 """
@@ -140,24 +140,24 @@ def container(body):
 
 
 def run(port, episodes):
-    _, body, unit = median(port, "/library/sections/2/all")
-    print("unit (unpaged show listing, %d rows): %.3fs" % (len(container(body).get("Metadata", [])), unit),
+    _, body, unit = median(port, "/library/sections/2/all?type=4")
+    print("unit (unpaged episode listing, %d rows): %.3fs" % (len(container(body).get("Metadata", [])), unit),
           flush=True)
 
     status, body, took = median(port, "/library/sections/2/all?type=4"
                                       "&X-Plex-Container-Start=0&X-Plex-Container-Size=0")
     answer = container(body)
-    check("an episode count (Size=0) is under 1 unit (%.3fs)" % took,
+    check("an episode count (Size=0) is under 0.15 units (%.3fs)" % took,
           status == 200 and answer.get("totalSize") == episodes and not answer.get("Metadata")
-          and took < 1.0 * unit, (status, answer.get("totalSize"), took))
+          and took < 0.15 * unit, (status, answer.get("totalSize"), took))
 
     start = episodes - 50
     status, body, took = median(port, "/library/sections/2/all?type=4"
                                       "&X-Plex-Container-Start=%d&X-Plex-Container-Size=50" % start)
     answer = container(body)
-    check("the last page of episodes is under 1 unit (%.3fs)" % took,
+    check("the last page of episodes is under 0.15 units (%.3fs)" % took,
           status == 200 and answer.get("totalSize") == episodes and answer.get("offset") == start
-          and len(answer.get("Metadata", [])) == 50 and took < 1.0 * unit,
+          and len(answer.get("Metadata", [])) == 50 and took < 0.15 * unit,
           (status, answer.get("totalSize"), answer.get("offset"), len(answer.get("Metadata", [])), took))
 
     # The window is the one the unwindowed listing would have sliced.
@@ -170,9 +170,8 @@ def run(port, episodes):
     status, body, took = median(port, "/library/sections/2/all?X-Plex-Container-Start=0"
                                       "&X-Plex-Container-Size=50")
     answer = container(body)
-    # A ceiling, not the window's regression: measured 0.61 units unfixed, 0.46 fixed.
-    check("a page of 50 shows is under 0.75 units (%.3fs)" % took,
-          status == 200 and len(answer.get("Metadata", [])) == 50 and took < 0.75 * unit,
+    check("a page of 50 shows is under 0.15 units (%.3fs)" % took,
+          status == 200 and len(answer.get("Metadata", [])) == 50 and took < 0.15 * unit,
           (status, len(answer.get("Metadata", [])), took))
 
 
