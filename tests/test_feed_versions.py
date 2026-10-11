@@ -137,6 +137,21 @@ def main():
         server.stop()
         shutil.rmtree(work, ignore_errors=True)
 
+    # -- a save cut short: the survivor written, the absorbed row not yet deleted ------
+    work = tempfile.mkdtemp(prefix="simplex-versions-")
+    survivor, absorbed = [dict(row, _source="zurg") for row in FIXTURE["rows"]]
+    tag = lambda row: dict(row["Media"][0], _source="zurg", _sid=row["_sid"], _path=row["_path"])
+    catalog(work, [dict(survivor, Media=[tag(survivor), tag(absorbed)]), absorbed])
+    server = Server(work, bytes_port)
+    try:
+        row = server.row(survivor["ratingKey"])
+        check("an absorbed row back after a cut-short save folds without a second copy of its Media",
+              len(movies(server)) == 1 and files(row) == [m["Part"][0]["file"] for m in (survivor["Media"][0], absorbed["Media"][0])],
+              files(row))
+    finally:
+        server.stop()
+        shutil.rmtree(work, ignore_errors=True)
+
     print("\n%d/%d passed" % (sum(results), len(results)))
     return 0 if all(results) else 1
 

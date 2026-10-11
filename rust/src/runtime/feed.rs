@@ -572,6 +572,11 @@ pub(super) fn versions(row: &Value) -> Vec<(String, String, usize)> {
     }
 }
 
+/// The (source, source id) a tagged Media came from.
+fn media_release(media: &Value) -> Option<(String, String)> {
+    Some((media.get("_source")?.as_str()?.to_string(), media.get("_sid")?.as_str()?.to_string()))
+}
+
 /// The file a row's Media at `index` reads.
 fn media_file(row: &Value, index: usize) -> Option<String> {
     row.pointer(&format!("/Media/{index}/Part/0/file")).and_then(Value::as_str).map(str::to_string)
@@ -953,7 +958,10 @@ impl Runtime {
                 let Some(row) = self.catalog.get(other).cloned() else {
                     continue;
                 };
-                media.extend(tagged_media(&row));
+                // A save stopped between the survivor's write and the others' deletes
+                // brings an absorbed row back: its release is already a Media here.
+                let held: HashSet<(String, String)> = media.iter().filter_map(media_release).collect();
+                media.extend(tagged_media(&row).into_iter().filter(|version| media_release(version).is_none_or(|release| !held.contains(&release))));
                 info!("FEED folded {other} into {survivor} as another version");
                 folded.insert(other.clone());
                 gone.push(row);
