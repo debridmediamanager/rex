@@ -457,6 +457,7 @@ python3 tests/test_regional_prefs.py        # the regional prefs documents, cell
 python3 tests/test_part_bytes.py            # part reads against a local zurg stub
 python3 tests/test_feed.py                  # the feed API against a stub source: auth, upsert, late ids, held
                                             # items, trash and return, snapshot reconcile and guards, migration
+python3 tests/test_feed_versions.py         # two releases of one title: one row, a Media each (fun's real 127 Hours)
 python3 tests/test_server_command.py        # the launcher's native default and python override
 cargo test --manifest-path rust/Cargo.toml  # the Rust unit tests
 ```
