@@ -166,6 +166,18 @@ impl Catalog {
         Some(removed)
     }
 
+    /// Remove several rows with one reindex: `remove` reindexes every row each time.
+    pub fn remove_many(&mut self, rating_keys: &HashSet<String>) {
+        if rating_keys.is_empty() {
+            return;
+        }
+        if !self.changes.all {
+            self.changes.keys.extend(rating_keys.iter().cloned());
+        }
+        self.items.retain(|item| key_value(item).is_none_or(|key| !rating_keys.contains(&key)));
+        self.rebuild_index();
+    }
+
     /// Where a row sits in `items`, which is the order a save stores rows in.
     pub fn position(&self, rating_key: &str) -> Option<usize> {
         self.by_id.get(rating_key).copied()

@@ -38,10 +38,16 @@ impl Runtime {
         for child in children {
             self.retire_row(&child);
         }
+        self.catalog.remove(key);
+        self.forget_row(key);
+    }
+
+    /// What retiring a row leaves behind besides the row itself: its key retired, and its
+    /// playlist entries and collection memberships gone.
+    pub(super) fn forget_row(&mut self, key: &str) {
         if let Ok(number) = key.parse::<i64>() {
             self.retired_keys.push(number);
         }
-        self.catalog.remove(key);
         self.deleted.insert(key.to_string());
         // Cycle 87, plexscratch (1.43.4, `tests/fixtures/merge_playlist_s43.json`): the
         // absorbed row's playlist ENTRY goes with it -- its playlistItemID is a 404 to a

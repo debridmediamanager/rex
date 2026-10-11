@@ -941,40 +941,45 @@ impl Runtime {
             }
         }
         let mut folded = HashSet::new();
+        let mut gone = Vec::new();
         for (_, mut rows) in slots {
             if rows.len() < 2 || only.is_some_and(|only| !rows.iter().any(|(_, _, key)| only.contains(key))) {
                 continue;
             }
             rows.sort();
             let survivor = rows[0].2.clone();
+            let mut media = self.catalog.get(&survivor).map(tagged_media).unwrap_or_default();
             for (_, _, other) in &rows[1..] {
-                self.absorb_version(&survivor, other);
+                let Some(row) = self.catalog.get(other).cloned() else {
+                    continue;
+                };
+                media.extend(tagged_media(&row));
+                info!("FEED folded {other} into {survivor} as another version");
                 folded.insert(other.clone());
+                gone.push(row);
+            }
+            if let Some(object) = self.catalog.get_mut(&survivor).and_then(Value::as_object_mut) {
+                object.insert("Media".to_string(), Value::Array(media));
+            }
+            if let Some(row) = self.catalog.get(&survivor).cloned() {
+                self.push_timeline_entry(&row, 5, None, None, None, None);
             }
         }
-        folded
-    }
-
-    /// `other`'s Media appended to `survivor`'s, each tagged with the release it came
-    /// from, and `other` deleted with its key retired.
-    fn absorb_version(&mut self, survivor: &str, other: &str) {
-        let (Some(kept), Some(gone)) = (self.catalog.get(survivor).cloned(), self.catalog.get(other).cloned()) else {
-            return;
-        };
-        let mut media = tagged_media(&kept);
-        media.extend(tagged_media(&gone));
-        if let Some(object) = self.catalog.get_mut(survivor).and_then(Value::as_object_mut) {
-            object.insert("Media".to_string(), Value::Array(media));
+        if folded.is_empty() {
+            return folded;
         }
-        let absorbed = self.subtree_keys(other);
-        self.retire_row(other);
-        self.drop_from_queues(&absorbed);
-        self.push_timeline_entry(&gone, 9, Some("deleted"), None, None, None);
-        if let Some(row) = self.catalog.get(survivor).cloned() {
-            self.push_timeline_entry(&row, 5, None, None, None, None);
+        // Movies and episodes have no rows beneath them: retired the way `retire_row`
+        // retires one, with one reindex for them all rather than one each.
+        self.catalog.remove_many(&folded);
+        for row in &gone {
+            if let Some(key) = key_of(row) {
+                self.forget_row(&key);
+            }
+            self.push_timeline_entry(row, 9, Some("deleted"), None, None, None);
         }
+        self.drop_from_queues(&folded.iter().cloned().collect::<Vec<_>>());
         self.dirty = true;
-        info!("FEED folded {other} into {survivor} as another version");
+        folded
     }
 
     /// One release of a row holding several gone: its Media dropped, the row's own
