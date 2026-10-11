@@ -746,11 +746,13 @@ pub fn enrich(
         } else {
             put(row, "Guid", ids);
         }
-    } else {
+    } else if !episode_requested {
         let seed = imdb.clone().unwrap_or_else(|| format!("tmdb:{}", tmdb_id));
         put(row, "guid", plex_guid("movie", &seed));
         put(row, "Guid", externals.clone());
     }
+    // An episode TMDB does not have keeps the guid it had: it was minted a MOVIE guid
+    // and given its show's ids (zen's Tom and Jerry S02E05 under a one-season show).
     put(row, "_show_external_guids", externals);
     if let Some(path) = poster.as_deref() {
         put(row, "_poster_url", format!("{}w342{}", IMAGE_BASE, path));
@@ -865,6 +867,25 @@ mod tests {
                 json!({"tag":"E"})
             ]
         );
+    }
+    /// zen, 2026-10-10: `The.Tom.and.Jerry.Show.S02E05` under the 1975 show, which has no
+    /// season 2. TMDB answered the show and nothing for the episode; the episode row was
+    /// minted `plex://movie/...` and given the show's ids.
+    #[test]
+    fn an_episode_tmdb_lacks_keeps_its_guid() {
+        let mut row = Map::from_iter([("guid".to_string(), json!("local://100095"))]);
+        let details = json!({"id": 7842, "name": "The Tom and Jerry Show", "first_air_date": "1975-09-06",
+                             "external_ids": {"imdb_id": "tt0130417"}});
+        let parsed = Map::from_iter([
+            ("title".to_string(), json!("The Tom and Jerry Show")),
+            ("year".to_string(), Value::Null),
+            ("season".to_string(), json!(2)),
+            ("episode".to_string(), json!(5)),
+        ]);
+        assert!(enrich(&mut row, &details, &parsed, None, Some(&json!({})), "tv", 7842));
+        assert_eq!(row["guid"], "local://100095");
+        assert!(!row.contains_key("Guid"), "{:?}", row.get("Guid"));
+        assert_eq!(row["_show_external_guids"], json!([{"id": "imdb://tt0130417"}, {"id": "tmdb://7842"}]));
     }
     #[test]
     fn guid() {

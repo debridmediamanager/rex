@@ -193,6 +193,25 @@ def season_decides():
           all((i.get("disputed") or {}).get("tmdb") == 7842 for _t, i in identities),
           str([i.get("disputed") for _t, i in identities]))
 
+    class ShowWithoutTheEpisode:
+        """TMDB as it answered the 1975 show: the show, and nothing for S02E05."""
+        def details(self, kind, tmdb_id):
+            return {"id": 7842, "name": "The Tom and Jerry Show", "first_air_date": "1975-09-06",
+                    "external_ids": {"imdb_id": "tt0130417"}}
+
+        def season(self, tmdb_id, season):
+            return {}
+
+        def episode(self, tmdb_id, season, episode):
+            return None
+
+    row = {"guid": "local://100095", "title": "Episode 5"}
+    metadata.enrich(row, ShowWithoutTheEpisode(),
+                    {"title": "The Tom and Jerry Show", "year": None, "season": 2, "episode": 5},
+                    chosen=("tv", 7842))
+    check("an episode TMDB lacks keeps its own guid, not a minted movie one or its show's ids",
+          row["guid"] == "local://100095" and "Guid" not in row, str((row["guid"], row.get("Guid"))))
+
 
 if __name__ == "__main__":
     parsing()
