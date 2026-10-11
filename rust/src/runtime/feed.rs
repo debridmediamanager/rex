@@ -839,7 +839,10 @@ impl Runtime {
             return false;
         };
         let meta = arrival.meta.clone().unwrap_or_default();
-        if meta.get("_identity") == old.get("_identity") && meta.get("guid") == old.get("guid") {
+        // A row whose id still names nothing gets no guid from identification and keeps
+        // its own: nothing changed, so it is not placed again on every push.
+        let guid = meta.get("guid").or(old.get("guid").filter(|guid| guid.as_str().is_some_and(|guid| guid.starts_with("local://"))));
+        if meta.get("_identity") == old.get("_identity") && guid == old.get("guid") {
             return false;
         }
         let Some(mut leaf) = self.leaf_for(library, &arrival, Some(key.to_string())) else {

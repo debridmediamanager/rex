@@ -266,6 +266,10 @@ def retry_unnamed(bytes_port):
         arrow_show = first.get("grandparentRatingKey")
         check("an id no provider answered leaves the show unmatched",
               arrow_key and first.get("grandparentGuid") == "local://%s" % arrow_show, first.get("grandparentGuid"))
+        status, body = server.feed("POST", "items", {"items": [arrow]})
+        check("pushed again while its id still names nothing, it is left as it is",
+              body.get("unchanged") == 1 and server.row(arrow_key).get("addedAt") == first.get("addedAt")
+              and server.keys().get(arrow["id"]) == arrow_key, body)
         # The providers answer now, as they did on fun once the request was one they knew.
         for cache, rows in (("tmdb_cache.db", answers["tmdb"]), ("plex_cache.db", answers["plex"])):
             with sqlite3.connect(os.path.join(work, cache)) as db:
